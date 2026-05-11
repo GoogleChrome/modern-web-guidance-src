@@ -25,11 +25,11 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
-export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | undefined {
-  if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir);
-  if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir);
-  if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir);
-  return undefined;
+export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | null {
+  if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir) ?? null;
+  if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;
+  if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir) ?? null;
+  return null;
 }
 
 function extractErrorMessage(dir: string, targetFile: string): string {
