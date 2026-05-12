@@ -12,27 +12,28 @@ describe('replaceMacros (Functional with real data)', () => {
     it('replaces macro with widely available status including detailed browser support', () => {
       const content = '{{ BASELINE_STATUS("grid") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('2017-10-17'));
-      assert.ok(result.includes('Widely available'));
-      assert.ok(result.includes('Supported by: Chrome 57 (Mar 2017)'));
-      assert.ok(result.includes('Firefox 52 (Mar 2017)'));
-      assert.ok(result.includes('Safari 10.1 (Mar 2017)'));
+      assert.strictEqual(
+        result,
+        "Baseline status for Grid: Widely available. It's been Baseline since 2017-10-17.\nSupported by: Chrome 57 (Mar 2017), Edge 16 (Oct 2017), Firefox 52 (Mar 2017), Safari 10.1 (Mar 2017), Safari iOS 10.3 (Mar 2017)."
+      );
     });
 
     it('replaces macro with newly available status including detailed browser support', () => {
       const content = "{{ BASELINE_STATUS('popover') }}";
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('Newly available'));
-      assert.ok(result.includes('Supported by: Chrome 116 (Aug 2023)'));
-      assert.ok(result.includes('Safari 17 (Sep 2023)'));
+      assert.strictEqual(
+        result,
+        "Baseline status for Popover: Newly available. It's been Baseline since 2025-01-27.\nSupported by: Chrome 116 (Aug 2023), Edge 116 (Aug 2023), Firefox 125 (Apr 2024), Safari 17 (Sep 2023), Safari iOS 18.3 (Jan 2025)."
+      );
     });
 
     it('replaces macro with limited availability status listing exact supporting engines', () => {
       const content = '{{ BASELINE_STATUS("popover-hint") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('limited availability'));
-      assert.ok(result.includes('Supported by: Chrome 133 (Feb 2025)'));
-      assert.ok(!result.includes('Safari'));
+      assert.strictEqual(
+        result,
+        "popover=\"hint\" has limited availability.\nSupported by: Chrome 133 (Feb 2025), Edge 133 (Feb 2025), Firefox 149 (Mar 2026)."
+      );
     });
 
     it('throws error for non-existent feature', () => {
