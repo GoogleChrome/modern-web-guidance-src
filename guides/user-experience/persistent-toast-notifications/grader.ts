@@ -22,6 +22,13 @@ test.describe(`persistent-toast-notifications Expectations: ${demoName}`, () => 
     });
 
     await page.goto(demoUrl);
+
+    // Speed up transitions and animations to ensure instant E2E style checks without breaking transitionend events
+    await page.evaluate(() => {
+      const style = document.createElement('style');
+      style.innerHTML = '* { transition-duration: 0.001s !important; animation-duration: 0.001s !important; }';
+      document.head.appendChild(style);
+    });
   });
 
   test(`1. Toasts must appear on top of all other page content`, async ({ page }) => {
@@ -69,10 +76,8 @@ test.describe(`persistent-toast-notifications Expectations: ${demoName}`, () => 
     const toast = page.locator('.toast').first();
     await toast.waitFor({ state: 'visible' });
 
-    const closeBtn = toast.locator('button').first();
-    if (await closeBtn.isVisible()) {
-      await closeBtn.evaluate((btn: HTMLElement) => btn.click());
-    }
+    const closeBtn = toast.locator('button, .toast-close').first();
+    await closeBtn.evaluate((btn: HTMLElement) => btn.click()).catch(() => {});
 
     await expect(toast).toBeHidden({ timeout: 4000 });
   });

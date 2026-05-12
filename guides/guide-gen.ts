@@ -62,8 +62,8 @@ In this automated pipeline, the research has already been conducted by a special
 
 function buildUseCasesPrompt(feature: FeatureDataPlusMDN): string {
   const sourcesList = [
-    ...feature.mdnUrls.map(u => `- MDN: ${u}`),
-    ...feature.specUrls.map(u => `- Spec: ${u}`),
+    ...feature.mdnUrls.map((u: any) => `- MDN: ${u}`),
+    ...feature.specUrls.map((u: any) => `- Spec: ${u}`),
   ].join('\n')  || '(No source URLs available — use your knowledge of this feature)';
 
   const useCasesSkill = getSkillContent('project-use-cases');
@@ -207,7 +207,7 @@ description: ${uc.description}
 web-feature-ids:
   - ${feature.id}
 sources:
-${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
+${feature.mdnUrls.map((u: any) => `  - ${u}`).join('\n')}
 ---
 
 `;

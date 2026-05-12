@@ -51,7 +51,7 @@ export const environmentConfig: EnvironmentConfig = {
   codexCliBin: process.env.CODEX_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/codex'),
 
   // MCP Server Configuration
-  modernWebServerPath: path.join(rootDir, 'serving/mcp-server/index.ts'), // For modern-web MCP server
+  modernWebServerPath: path.join(rootDir, 'serving/mcp-server/index.ts'), // For modern-web-guidance MCP server
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
@@ -59,7 +59,8 @@ export const defaultSuiteConfig: SuiteConfig = {
   name: null,
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
-  mcpServersToEnable: ['modern-web'],
+  mcpServersToEnable: ['modern-web-guidance'],
+  skillsToEnable: ['modern-web-guidance'],
   serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
   workerCount: undefined,
@@ -113,6 +114,7 @@ export interface SuiteConfig {
   numRuns: number;
   tasks: string[];
   mcpServersToEnable: string[];
+  skillsToEnable: string[];
   serving: Serving;
   agent: string;
   workerCount?: number;
