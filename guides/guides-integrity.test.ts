@@ -2,6 +2,7 @@ import test, { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execSync } from 'node:child_process';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 
@@ -100,4 +101,33 @@ describe('Guides Validation (Single Source of Truth)', () => {
       }
     });
   }
+
+  it('checks all tracked files for conflict markers', () => {
+    const files = execSync('git ls-files', { encoding: 'utf8' }).trim().split('\n');
+    const extensions = ['.md', '.html', '.txt', '.yaml', '.yml'];
+    const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
+    const failedFiles: string[] = [];
+
+    for (const file of files) {
+      const ext = path.extname(file);
+      if (!extensions.includes(ext)) continue;
+
+      const filePath = path.resolve(REPO_ROOT, file);
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        for (const marker of conflictMarkers) {
+          if (content.includes(marker)) {
+            failedFiles.push(`${file} (contains "${marker}")`);
+            break;
+          }
+        }
+      } catch (e) {
+        // Ignore files that cannot be read
+      }
+    }
+
+    if (failedFiles.length > 0) {
+      assert.fail(`Conflict markers found in the following files:\n${failedFiles.join('\n')}`);
+    }
+  });
 });

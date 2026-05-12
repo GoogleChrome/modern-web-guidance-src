@@ -174,9 +174,11 @@ pnpm exec gd eval --config "$TEMP_CONFIG_FILE"
 EVAL_EXIT_CODE=$?
 set -euo pipefail
 
-if [ "$EVAL_EXIT_CODE" -ne 0 ]; then
-  echo "Evaluation completed with failures (exit code ${EVAL_EXIT_CODE}). Skipping upload step."
-  FAIL_REASON="Evaluation failed (exit code ${EVAL_EXIT_CODE}). Upload skipped."
+# Allow non-zero exit codes if evals.json was successfully generated (meaning tests ran but had failures/low scores)
+RESULTS_JSON="${REPO_ROOT}/harness/results/${SUITE_ID}/evals.json"
+if [ "$EVAL_EXIT_CODE" -ne 0 ] && [ ! -f "$RESULTS_JSON" ]; then
+  echo "Evaluation crashed catastrophically (exit code ${EVAL_EXIT_CODE}). Skipping upload step."
+  FAIL_REASON="Evaluation crashed (exit code ${EVAL_EXIT_CODE}). Upload skipped."
   exit $EVAL_EXIT_CODE
 fi
 
