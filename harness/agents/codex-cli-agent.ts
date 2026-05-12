@@ -1,12 +1,17 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
-
 import { fileURLToPath } from 'url';
+
+const TRAJECTORY_GLOB = 'session-*.jsonl';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+}
 
 // Usage: node codex-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
@@ -137,129 +142,101 @@ async function run() {
 
 export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
   const guidesFromSkills: string[] = [];
-  try {
-    const files = fs.readdirSync(dirPath);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
 
-    for (const file of sessionFiles) {
-      const sessionPath = path.join(dirPath, file);
-      const sessionContent = fs.readFileSync(sessionPath, 'utf8');
-      const lines = sessionContent.split('\n');
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
+  for (const file of getSessionFiles(dirPath)) {
+    const items = parseJsonlFile(path.join(dirPath, file));
+    for (const obj of items) {
+      const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
+      if (functionCall?.name === 'exec_command' && functionCall.arguments) {
         try {
-          const obj = JSON.parse(line);
-          let functionCall = null;
+          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+          const command = args.cmd || '';
 
-          if (obj.type === 'function_call') {
-            functionCall = obj;
-          } else if (obj.type === 'response_item' && obj.payload && obj.payload.type === 'function_call') {
-            functionCall = obj.payload;
-          }
-
-          if (functionCall && functionCall.name === 'exec_command' && functionCall.arguments) {
-            const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
-            const command = args.cmd || '';
-
-            if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
-              const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-              if (match) {
-                const ids = match[1].split(',');
-                for (const id of ids) {
-                  guidesFromSkills.push(id.trim());
-                }
-              }
-            } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
-              const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
-              if (match) {
-                guidesFromSkills.push(match[1]);
-              }
+          if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+            if (match) {
+              guidesFromSkills.push(...match[1].split(',').map((s: string) => s.trim()));
+            }
+          } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
+            const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
+            if (match) {
+              guidesFromSkills.push(match[1]);
             }
           }
-        } catch (e) {
-          console.error(`Failed to parse jsonl line in ${sessionPath}:`, e);
+        } catch {
+          // Ignore
         }
       }
     }
-  } catch (e) {
-    console.error(`Error reading session files in ${dirPath}:`, e);
   }
   return [...new Set(guidesFromSkills)];
 }
 
 export function extractCodexCliModel(resultsDir: string): string {
-  const sessionFiles = fs.globSync('**/session-*.jsonl', { cwd: resultsDir });
-  if (sessionFiles.length === 0) return 'unknown';
-
   const counts: Record<string, number> = {};
-  for (const relativePath of sessionFiles as string[]) {
-    const sessionPath = path.join(resultsDir, relativePath);
-    try {
-      const content = fs.readFileSync(sessionPath, 'utf8');
-      const lines = content.split('\n');
-      for (const line of lines) {
-        if (!line.trim() || !line.includes('"model"')) continue;
-        try {
-          const obj = JSON.parse(line);
-          if (obj.payload && typeof obj.payload.model === 'string') {
-            const m = obj.payload.model;
-            counts[m] = (counts[m] || 0) + 1;
-          }
-        } catch (e) {
-          console.warn(`Malformed JSONL line in ${sessionPath}:`, e);
-        }
+  for (const file of getSessionFiles(resultsDir, true)) {
+    const items = parseJsonlFile(path.join(resultsDir, file));
+    for (const obj of items) {
+      if (typeof obj.payload?.model === 'string') {
+        counts[obj.payload.model] = (counts[obj.payload.model] || 0) + 1;
       }
-    } catch (e) {
-      console.warn(`Failed to extract model from ${sessionPath}:`, e);
     }
   }
-
   const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  if (topModel) return topModel[0];
+  return topModel ? topModel[0] : 'unknown';
+}
 
-  return 'unknown';
+export function extractCodexCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  let total = 0;
+  let cached = 0;
+  let hasData = false;
+
+  for (const file of getSessionFiles(dir)) {
+    const items = parseJsonlFile(path.join(dir, file));
+    let lastTotal = 0;
+    let lastCached = 0;
+    let fileHasTokens = false;
+
+    for (const obj of items) {
+      const info = (obj.type === 'token_count' ? obj : obj.payload)?.info?.total_token_usage;
+      if (info) {
+        lastTotal = info.total_tokens || 0;
+        lastCached = info.cached_input_tokens || 0;
+        fileHasTokens = true;
+      }
+    }
+    if (fileHasTokens) {
+      total += lastTotal;
+      cached += lastCached;
+      hasData = true;
+    }
+  }
+  return hasData ? { total, cached } : undefined;
 }
 
 export function collectCodexToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const sessionFiles = fs.globSync('session-*.jsonl', { cwd: dir });
-  const firstSession = sessionFiles[0];
-  if (!firstSession) return toolsUsed;
+  const sessionFiles = getSessionFiles(dir);
+  if (sessionFiles.length === 0) return toolsUsed;
 
-  try {
-    const sessionPath = path.join(dir, firstSession);
-    const content = fs.readFileSync(sessionPath, 'utf8');
-    const lines = content.split('\n');
-    for (const line of lines) {
-      if (!line.trim()) continue;
+  const items = parseJsonlFile(path.join(dir, sessionFiles[0]));
+  for (const obj of items) {
+    const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
+    if (functionCall?.name === 'exec_command' && functionCall.arguments) {
       try {
-        const obj = JSON.parse(line);
-        let functionCall = null;
-        if (obj.type === 'function_call') {
-          functionCall = obj;
-        } else if (obj.type === 'response_item' && obj.payload && obj.payload.type === 'function_call') {
-          functionCall = obj.payload;
-        }
-
-        if (functionCall && functionCall.name === 'exec_command' && functionCall.arguments) {
-          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
-          const command = args.cmd || '';
-          if (command.includes('/skills/') && command.includes('SKILL.md')) {
-            const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
-            if (match) {
-              toolsUsed.push(match[1]);
-            }
+        const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+        const command = args.cmd || '';
+        if (command.includes('/skills/') && command.includes('SKILL.md')) {
+          const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
+          if (match) {
+            toolsUsed.push(match[1]);
           }
         }
-      } catch (e) {
-        console.error(`Failed to parse jsonl line in ${sessionPath}:`, e);
+      } catch {
+        // Ignore
       }
     }
-  } catch (e) {
-    console.error(`Failed to collect guidance tools used for Codex:`, e);
   }
-
   return Array.from(new Set(toolsUsed));
 }
 

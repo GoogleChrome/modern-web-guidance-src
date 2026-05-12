@@ -517,25 +517,34 @@ function renderSuites() {
         let maxRuns = 1;
         scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
 
+        const earlyFailureRate = data.summary?.unguidedEarlyFailureRate || 0;
+        const isFaulty = earlyFailureRate === 100;
+
+        const { label, ldap } = formatSuiteLabel(testInfo);
+
         html += `
-            <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
+            <tr class="suite-table-row ${isFaulty ? 'faulty' : ''}">
                 <td style="text-align: left; font-weight: 600;">
-                    <div style="color: var(--text-primary); font-size: 0.95rem;">${testId}</div>
-                    <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span></div>
+                    <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
+                        <div style="color: var(--text-primary); font-size: 0.95rem;" title="${escapeHtml(testId)}">${escapeHtml(label)}</div>
+                        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span>${ldap ? ` • <span>${escapeHtml(ldap)}</span>` : ''}</div>
+                    </a>
                 </td>
-                <td>${testInfo.agent}</td>
+                <td>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
                 <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${escapeHtml(testInfo.model).replaceAll('-', '-&shy;')}</td>
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
-                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 10px 15px; vertical-align: middle;">
-                    <div style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; position: relative; padding: 2px;">
-                        <div style="position: absolute; left: calc(${uRate}% - 3px); width: 6px; height: 6px; border: 1.5px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                        <div style="position: absolute; left: calc(${gRate}% - 4px); width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                        <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px); height: 2px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
-                        <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
-                    </div>
+                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
+                    <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
+                        <div class="suite-dumbbell-track">
+                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px);"></div>
+                            <div class="dot unguided" style="left: calc(${uRate}% - 3px);"></div>
+                            <div class="dot guided" style="left: calc(${gRate}% - 4px);"></div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
+                            <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
+                        </div>
+                    </a>
                 </td>
                 ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
@@ -607,7 +616,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
 
     if (!tooltipChartInstance) {
         tooltipChartInstance = new DumbbellChart('tooltip-chart', {
-            size: 400, height: 300, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
+            size: 270, maxHeight: 250, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
         });
     }
 
@@ -654,6 +663,64 @@ function hideTooltipChart() {
 // ==========================================
 // HELPERS
 // ==========================================
+
+function formatSuiteLabel(testInfo) {
+    const { testId, agent, serving } = testInfo;
+    if (!testId) return { label: 'evaluation-run', ldap: '' };
+
+    const timeRegex = /[-_]?\b\d{4}-\d{2}-\d{2}(?:[T_]\d{2}-\d{2}-\d{2})?\b[-_]?/;
+    const parts = testId.split(timeRegex);
+    
+    let prefix = parts[0] || '';
+    let suffix = parts[1] || '';
+    
+    prefix = prefix.replace(/^[-_]+|[-_]+$/g, '');
+    suffix = suffix.replace(/^[-_]+|[-_]+$/g, '');
+    
+    const label = prefix || 'evaluation-run';
+    
+    if (!suffix) return { label, ldap: '' };
+    
+    const normalize = s => (s || '').toLowerCase().replace(/[-_]+/g, '');
+    const normAgent = normalize(agent);
+    const normServing = normalize(serving);
+    
+    const suffixParts = suffix.split('-');
+    let ldap = '';
+    const otherTags = [];
+    
+    suffixParts.forEach(part => {
+        const normPart = normalize(part);
+        if (normPart === normAgent || normPart === normServing) return;
+        if (normPart === 'cli' || normPart === 'run' || normPart === 'skills') return;
+        otherTags.push(part);
+    });
+    
+    if (otherTags.length > 0) {
+        ldap = otherTags.pop();
+    }
+    
+    let finalLabel = label;
+    if (otherTags.length > 0) {
+        finalLabel += '-' + otherTags.join('-');
+    }
+    
+    return { label: finalLabel, ldap };
+}
+
+function getAgentBadge(agentName) {
+    const name = (agentName || '').toLowerCase();
+    if (name.includes('gemini') || name.includes('jetski')) {
+        return '<span class="agent-badge gemini">✦</span>';
+    }
+    if (name.includes('codex') || name.includes('openai')) {
+        return '<span class="agent-badge openai">❂</span>';
+    }
+    if (name.includes('claude')) {
+        return '<span class="agent-badge claude">✱</span>';
+    }
+    return '';
+}
 
 function calculateGroupTotalStats(results, groupType) {
     let passed = 0;
@@ -735,11 +802,11 @@ function renderPivotInsights() {
                         <div style="font-weight: 600;">${filterKey === 'serving' ? (servingDisplayNames[key] || key) : key}</div>
                         <div style="font-size: 0.75rem; color: var(--text-secondary);">${items.length} trials</div>
                     </td>
-                    <td style="width: 120px; vertical-align: middle;">
-                        <div style="height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; position: relative; padding: 1px; width: 100px;">
-                            <div style="position: absolute; left: calc(${uRate}% - 2px); width: 4px; height: 4px; border: 1px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                            <div style="position: absolute; left: calc(${gRate}% - 3px); width: 6px; height: 6px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                            <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px); height: 1.5px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
+                    <td class="insight-dumbbell-cell">
+                        <div class="insight-dumbbell-track">
+                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px);"></div>
+                            <div class="dot unguided" style="left: calc(${uRate}% - 2px);"></div>
+                            <div class="dot guided" style="left: calc(${gRate}% - 3px);"></div>
                         </div>
                         <div style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 2px;">${medUplift >= 0 ? '+' : ''}${medUplift}%</div>
                     </td>
