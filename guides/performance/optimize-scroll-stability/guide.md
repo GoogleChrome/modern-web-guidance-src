@@ -46,7 +46,7 @@ For scenarios that use different layouts, we can add the sizes of the elements a
 --description-block-size: 0.8lh;
 --gap: 8px;
 /* Intrinsic size adds all the values together */
-contain-intrinsic-block-size: calc(
+contain-intrinsic-block-size: auto calc(
   var(--label-block-size) + var(--gap) + var(--description-block-size)
 );
 ```
