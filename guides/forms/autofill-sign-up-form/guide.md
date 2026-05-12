@@ -18,44 +18,29 @@ If users ever need to sign up to your site, then good sign-up form design is cri
 
 Outlined below are the most important guidelines for building successful sign-up forms.
 
-### Use meaningful, valid HTML
-
-Make the most of the elements and attributes built for creating forms:
-
--   `<form>`, `<input>`, `<label>`, and `<button>`
--   `type`, `autocomplete`, and `inputmode`
-
-These enable built-in browser functionality, improve accessibility, and add meaning to markup.
-
-### Use the <label> element to label form fields for data entry
-
-To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by giving the label's `for` attribute the same value as the input's `id`.
+{{ INCLUDE("features/forms.md#forms-markup-best-practices") }}
 
 ### Make the most of HTML attributes
 
-Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
+{{ INCLUDE("features/forms.md#forms-html-attributes-intro") }}
 
-Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
-
-Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
+{{ INCLUDE("features/forms.md#forms-html-attributes-conclusion") }}
 
 ### Make buttons helpful
 
-Use `<button>` for buttons. You can also use `<input type="submit">`, but don't use a `div` or some other random element acting as a button. Button elements provide accessible behaviour, built-in form submission functionality, and can easily be styled.
+{{ INCLUDE("features/forms.md#forms-button-element") }}
 
 Give each form submit button a value that says what it does. Use a clear, recognizable label. For example, use **Create account** or **Sign up** rather than **Continue** or **Submit**.
 
 ### Use a single name input where possible
 
-Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler.
-
-Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
+{{ INCLUDE("features/forms.md#forms-single-name") }}
 
 ### Show sign-up progress
 
 For each step towards sign-up, use page headings and descriptive button values that make it clear what needs to be done now, and what the next step is.
 
-Use the `enterkeyhint` attribute on form inputs to set the mobile keyboard enter key label. For example, use `enterkeyhint="previous"` and `enterkeyhint="next"` within a multi-page form, `enterkeyhint="done"` for the final input in the form, and `enterkeyhint="search"` for a search input.
+{{ INCLUDE("features/forms.md#forms-enterkeyhint") }}
 
 ### Help users avoid re-entering sign-up data
 
@@ -67,27 +52,7 @@ This enables browsers to help users by securely storing sign-up details and corr
 
 Validate data entry both in realtime and before form submission. Use `type="email"` for email inputs — the browser will validate the format automatically. For passwords, use a `pattern` attribute to enforce strength requirements and provide clear error messages when validation fails. Add the `required` attribute to mandatory fields to prevent empty submissions.
 
-### Put sign-up in its own <form> element
-
-Always use the `<form>` element when you're getting users to enter data
-
-Don't wrap inputs in a `<div>` and handle input data submission purely with JavaScript. It's generally better to use a `<form>` element. This makes your site accessible to screenreaders and other assistive devices, enables a range of built-in browser features, makes it simpler to build basic functional sign-up for older browsers, and can still work even if JavaScript fails.
-
-### Don't double up inputs
-
-Some sites force users to enter emails or passwords twice. That might reduce errors for a few users, but causes extra work for all users, and increases abandonment rates. Asking twice also makes no sense where browsers autofill email addresses or suggest strong passwords. It's better to enable users to confirm their email address (you'll need to do that anyway) and make it easy for them to reset their password if necessary.
-
-### Keep passwords private—but enable users to see them if they want
-
-Passwords inputs should have `type="password"` to hide password text and help the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
-
-You should add a **Show password** toggle to enable users to check the text they've entered—and don't forget to add a **Forgot password** link.
-
-### Give mobile users the right keyboard
-
-Use `<input type="email">` to give mobile users an appropriate keyboard and enable basic built-in email address validation by the browser… no JavaScript required!
-
-If you need to use a telephone number instead of an email address, `<input type="tel">` enables a telephone keypad on mobile. You can also use the `inputmode` attribute where necessary: `inputmode="numeric"` is ideal for PIN numbers.
+{{ INCLUDE("features/auth-forms.md#auth-registration-practices") }}
 
 ### Prevent mobile keyboard from obstructing the Sign up button
 
@@ -97,12 +62,7 @@ Where possible, avoid this by displaying only the email (or phone) and password 
 
 ### Help users to avoid re-entering data
 
-You can help browsers store data correctly and autofill inputs, so users don't have to remember to enter email and password values. This is particularly important on mobile, and crucial for email inputs, which get high abandonment rates. There are two parts to this:
-
-1.  The `autocomplete`, `name`, `id`, and `type` attributes help browsers understand the role of inputs in order to store data that can later be used for autofill. To allow data to be stored for autofill, modern browsers also require inputs to have a stable `name` or `id` value (not randomly generated on each page load or site deployment), and to be in a `<form>` element with a `submit` button.
-1.  The `autocomplete` attribute helps browsers correctly autofill inputs using stored data.
-
-For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
+{{ INCLUDE("features/auth-forms.md#auth-avoid-re-entering") }}
 
 ### Use autocomplete="new-password" and id="new-password" for a new password
 
@@ -125,9 +85,7 @@ Add the `required` attribute to both email and password fields. Modern browsers 
 
 ### Allow password pasting
 
-Some sites don't allow text to be pasted into password inputs.
-
-Disallowing password pasting annoys users, encourages passwords that are memorable (and therefore may be easier to compromise) and, according to organizations such as the UK National Cyber Security Centre, may actually reduce security. Users only become aware that pasting is disallowed after they try to paste their password, so disallowing password pasting doesn't avoid clipboard vulnerabilities.
+{{ INCLUDE("features/auth-forms.md#auth-allow-password-pasting") }}
 
 ### Offer third-party login
 
