@@ -9,24 +9,30 @@ import { rootDir } from '../../lib/paths.ts';
 
 describe('replaceMacros (Functional with real data)', () => {
   describe('BASELINE_STATUS', () => {
-    it('replaces macro with widely available status', () => {
+    it('replaces macro with widely available status including detailed browser support', () => {
       const content = '{{ BASELINE_STATUS("grid") }}';
       const result = replaceMacros(content, 'test.md');
       assert.ok(result.includes('2017-10-17'));
       assert.ok(result.includes('Widely available'));
+      assert.ok(result.includes('Supported by: Chrome 57 (Mar 2017)'));
+      assert.ok(result.includes('Firefox 52 (Mar 2017)'));
+      assert.ok(result.includes('Safari 10.1 (Mar 2017)'));
     });
 
-    it('replaces macro with newly available status', () => {
-      const content = "{{ BASELINE_STATUS('dialog-closedby') }}";
+    it('replaces macro with newly available status including detailed browser support', () => {
+      const content = "{{ BASELINE_STATUS('popover') }}";
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result !== undefined); // Specific text might vary depending on live data
+      assert.ok(result.includes('Newly available'));
+      assert.ok(result.includes('Supported by: Chrome 116 (Aug 2023)'));
+      assert.ok(result.includes('Safari 17 (Sep 2023)'));
     });
 
-    it('replaces macro with not supported status', () => {
-      // Accelerometer is typically limited
-      const content = '{{ BASELINE_STATUS("accelerometer") }}';
+    it('replaces macro with limited availability status listing exact supporting engines', () => {
+      const content = '{{ BASELINE_STATUS("popover-hint") }}';
       const result = replaceMacros(content, 'test.md');
       assert.ok(result.includes('limited availability'));
+      assert.ok(result.includes('Supported by: Chrome 133 (Feb 2025)'));
+      assert.ok(!result.includes('Safari'));
     });
 
     it('throws error for non-existent feature', () => {
