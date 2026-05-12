@@ -70,7 +70,10 @@ function auditBuild() {
     } else if (isSKILL) {
       const targetGuideDir = path.join(repoRoot, 'guides', folderName);
       if (fs.existsSync(targetGuideDir)) {
-        type = 'BUNDLED_INTERFACE';
+        const hasMd = globSync(['**/*.md'], { cwd: targetGuideDir }).length > 0;
+        if (hasMd) {
+          type = 'BUNDLED_INTERFACE';
+        }
       }
     }
 

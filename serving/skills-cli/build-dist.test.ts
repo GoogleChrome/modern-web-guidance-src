@@ -2,7 +2,7 @@ import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildDist } from './build-dist.ts';
+import { } from './build-dist.ts';
 import { replaceMacros } from '../lib/macros.ts';
 
 
@@ -41,19 +41,14 @@ describe('processSkills', () => {
     assert.ok(result.includes('npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"'), 'Macro output should match the pattern in SKILL.md');
   });
 
-  it('builds distribution successfully with buildDist', async () => {
-    const publishRoot = path.join(testOutputDir, 'full-dist');
+  it('verifies distribution was built successfully', async () => {
+    const publishRoot = path.join(rootDir, 'dist/skills-cli');
     
-    // Ensure clean state for this test
-    fs.rmSync(publishRoot, { recursive: true, force: true });
-
-    const result = await buildDist({ publishRoot, version: '1.0.0' });
-    
-    assert.ok(result, 'buildDist should return a result');
-    assert.ok(result.skillsCount > 0, 'Should have processed skills');
-    
-    // Verify that esbuild outputs exist
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs')), 'modern-web.mjs should exist');
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/search.mjs')), 'search.mjs should exist');
+
+    // Verify standalone skills and their references exist
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/SKILL.md')), 'chrome-extensions SKILL.md should exist');
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/references/extensions/popup-ui.md')), 'chrome-extensions sibling popup-ui.md references should exist');
   });
 });

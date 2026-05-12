@@ -32,10 +32,6 @@ export const config: SkillsConfiguration = {
       name: "chrome-extensions",
       sourcePath: "skills-src/chrome-extensions/SKILL.md"
     },
-    {
-      name: "chrome-webstore",
-      sourcePath: "skills-src/chrome-webstore/SKILL.md"
-    },
     // Primary monoskill itself is also published as a skill definition
     {
       name: "modern-web-guidance",
