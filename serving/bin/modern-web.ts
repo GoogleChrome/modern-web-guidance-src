@@ -89,14 +89,14 @@ async function main() {
   } else if (command === "retrieve") {
     if (!arg) {
       const logger = new ClearcutLogger();
-      await logger.logRetrieveResult([], { latencyMs: 0, success: false });
+      await logger.logRetrieveResult("", { latencyMs: 0, success: false });
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
     const ids = arg.split(",").map(id => id.trim()).filter(Boolean);
     if (ids.length === 0) {
       const logger = new ClearcutLogger();
-      await logger.logRetrieveResult([], { latencyMs: 0, success: false });
+      await logger.logRetrieveResult("", { latencyMs: 0, success: false });
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
@@ -110,11 +110,11 @@ async function main() {
         const guide = await retrieveUseCase(id);
         console.log(`\n--- Guide for ${id} ---`);
         console.log(guide);
-        await logger.logRetrieveResult([id], { latencyMs: Date.now() - startTime, success: true });
+        await logger.logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: true });
       } catch (error) {
         hasError = true;
         console.error(`Retrieve failed for ${id}:`, error);
-        await logger.logRetrieveResult([id], { latencyMs: Date.now() - startTime, success: false });
+        await logger.logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: false });
       }
     }
 

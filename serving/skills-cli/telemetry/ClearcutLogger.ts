@@ -100,12 +100,12 @@ export class ClearcutLogger {
   }
 
   async logRetrieveResult(
-    guideIds: string[],
+    guideId: string,
     metrics?: { latencyMs: number; success?: boolean }
   ): Promise<void> {
     const payload: ChromeModernWebGuidance = {
       retrieve_result: {
-        guide_id: guideIds,
+        guide_id: guideId,
       },
       os: detectOS(),
       cli_version: getCliVersion(),

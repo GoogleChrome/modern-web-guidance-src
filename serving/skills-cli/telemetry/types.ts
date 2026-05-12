@@ -15,7 +15,7 @@ export interface SearchResult {
 }
 
 export interface RetrieveResult {
-  guide_id?: string[];
+  guide_id?: string;
 }
 
 export const OsType = {
