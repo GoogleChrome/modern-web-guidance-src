@@ -7,6 +7,8 @@ web-feature-ids:
 sources:
   - https://web.dev/articles/content-visibility#specify_the_natural_size_of_an_element_with_contain-intrinsic-size
   - https://12daysofweb.dev/2024/css-content-visibility/#pairing-with-contain-intrinsic-size
+  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/contain-intrinsic-size
+  - https://developer.mozilla.org/docs/Web/CSS/Guides/Containment/Using#size_containment
 ---
 `content-visibility: auto` is a useful tool for improving rendering performance as irrelevant content can be skipped for rendering.
 
