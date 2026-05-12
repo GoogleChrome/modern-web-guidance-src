@@ -99,6 +99,7 @@ function restoreFromCache(paths: CachePaths, outputDir: string, target: string):
     fs.mkdirSync(outputDir, { recursive: true });
     fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
+    fs.copyFileSync(paths.cachedTs, OUTPUT_FILE);
   } else {
     fs.mkdirSync(path.join(ROOT_DIR, "lib"), { recursive: true });
     fs.mkdirSync(path.join(ROOT_DIR, "build"), { recursive: true });
