@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heading Text Balance Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      max-width: 80ch;
+      margin: 0 auto;
+    }
+
+    /* Target specific headings for balanced line-breaking */
+    h1, h2 {
+      text-wrap: balance;
+    }
+
+    /* Paragraphs and Blockquotes: Pretty for typographic quality */
+    p, blockquote {
+      text-wrap: pretty;
+      margin-bottom: 1.5em;
+    }
+
+    blockquote {
+      border-left: 4px solid #ccc;
+      padding-left: 1rem;
+      font-style: italic;
+      color: #555;
+    }
+
+    .container {
+      width: 400px;
+      resize: horizontal;
+      overflow: auto;
+      border: 1px solid #333;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>A Very Long Heading That Needs To Be Balanced Across Multiple Lines</h1>
+    
+    <p>
+      The <code>text-wrap: pretty</code> property is designed for long paragraphs where typographic excellence is prioritized. 
+      It uses a more sophisticated, slower algorithm than the default "greedy" approach to intelligently adjust line breaks 
+      and prevent orphaned words (runts) on the final line of a block of text.
+    </p>
+
+    <blockquote>
+      "By enabling this feature, the browser evaluates the last few lines of text to ensure that the final line has a 
+      reasonable length, rather than leaving a single word alone. This creates a much more polished and professional 
+      look for articles, blog posts, and other long-form content."
+    </blockquote>
+
+    <p>
+      The result is improved legibility and a better overall user experience, as the text feels more stable and 
+      deliberately laid out regardless of the screen size or container width.
+    </p>
+  </div>
+</body>
+</html>

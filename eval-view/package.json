@@ -15,6 +15,7 @@
     "gh-pages": "^6.3.0",
     "gray-matter": "^4.0.3",
     "playwright": "^1.58.2",
+    "serving": "workspace:*",
     "typescript": "^5.9.3"
   }
 }

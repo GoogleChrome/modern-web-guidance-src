@@ -30,7 +30,7 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         });
 
         console.log(`\nRunning Gemini prompt using the skill...`);
-        const promptCmd = `${geminiBin} -p "use the modern-web skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
+        const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
         const output = execSync(promptCmd, { 
             stdio: ['ignore', 'pipe', 'pipe'], 
             timeout: 90000,
@@ -46,7 +46,7 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         console.log(`- Search Called: ${searchCalled}`);
         console.log(`- Retrieve Called: ${retrieveCalled}\n`);
         
-        assert.ok(skillActivated, 'Skill should specify check for modern-web activation');
+        assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
         assert.ok(searchCalled, 'Modern web search should be called');
         assert.ok(retrieveCalled, 'Modern web retrieve should be called');
         
