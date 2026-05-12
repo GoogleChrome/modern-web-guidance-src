@@ -1,13 +1,13 @@
 name: Publish Skills
 
 on:
-  push:
-    # We currently want to publish manually.
-    # branches: [ main ]
-    paths:
-      - 'serving/skills-cli/**'
-      - 'guides/**'
-      - '.github/workflows/publish.yml'
+  # We currently want to publish manually.
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'serving/skills-cli/**'
+  #     - 'guides/**'
+  #     - '.github/workflows/publish.yml'
   workflow_dispatch: {}
 
 concurrency:
