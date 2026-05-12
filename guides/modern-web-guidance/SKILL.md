@@ -73,19 +73,17 @@ Web features are labeled as one of:
 - **Newly Available**: Works across the latest devices and browser versions, but may not work in older devices/browsers.
 - **Widely Available**: Well established and works across many devices and browser versions. It's been Newly Available for at least 30 months.
 
-#### Enforcing a Support Floor
-
-By default, assume the user's project targets a support floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)**. The W3C WebDX Community Group defines this as features fully supported across the core browser set (Chrome, Edge, Firefox, Safari) for at least 30 months. This optimizes for production safety from the start.
-
--
+#### Enforcing a Support Floor (The Inversion of Support)
+A baseline target enforces a **support floor** rather than a strict ceiling. Interpret this floor through two distinct lenses:
+- **Supporting Browsers (Guaranteed Audience):** Setting a target establishes the audience guaranteed to receive an unbroken UX. By default, assume projects target a guaranteed audience floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)** (supported across core engines for ≥ 30 months). For features *more mature* than this target audience floor, fallbacks are completely unnecessary. (Users running older browsers below this target floor receive no fallbacks and risk broken experiences).
+- **Supporting Features (Capability Integration):** Conversely, when integrating features *less mature* than the guaranteed audience floor, you MUST implement progressive enhancement and feature-detected fallbacks to protect users within the guaranteed audience.
 - **Implicit Context:** Constraints defined in `AGENTS.md` are included implicitly within your standard context window. Do **not** execute upfront status lookups or prerequisite file-verification checks before engaging with command-line tools.
-- **Expert Fallbacks:** Always implement the recommended progressive enhancements and fallback strategies provided in the guidance. Extended baseline macros provide detailed support info, and guide authors clarify contexts where fallbacks may be unnecessary.
-- **Limited Support Warnings:** If a guide relies on limited-availability features where site functionality could break without perfect fallbacks, proactively warn the user about compatibility risks.
+- **Limited Support Warnings:** If a guide relies on low-maturity features where site functionality could break without perfect fallbacks, proactively warn the user about compatibility risks.
 
-#### The Experimental Firewall (Feature Maturity & Risk)
-Adopting features above the baseline floor introduces stability and feature maturity risks.
-- **Origin Trials & Production Safety:** There is no way to deliver a consistent experience across real production users for Origin Trial features. Because a smooth fallback story is usually absent, adoption must be deliberate and thoughtful. When encountering a guide utilizing an Origin Trial feature, you MUST pause and have the user explicitly decide how they want to handle real production users lacking support.
-- **Explicit Opt-In Required:** Features beyond *Baseline Newly Available* act as a firewall. You MUST require explicit user opt-in or risk-tolerance signaling in `AGENTS.md` before implementing high-risk experimental APIs.
+#### Feature Maturity & Risk (Rejecting the Ceiling)
+Enforcing a rigid "baseline ceiling" against newer features is counterproductive because many modern web APIs gracefully degrade or provide exceptional immediate value to supported clients. Evaluate newer features along a maturity spectrum:
+- **Single-Engine Support (e.g., Chrome-only):** Fair game by default in guidance. You will recommend these alongside robust feature detection and alternative code paths for unsupported engines.
+- **Origin Trials & Production Safety:** Highly immature APIs liable to breaking changes. Delivering a consistent experience across real production users is impossible, and smooth fallbacks are almost never available. When encountering a guide utilizing an Origin Trial feature, you MUST pause and have the user explicitly decide if they accept the risk and how to handle production users lacking support.
 
 #### Reactive Discovery & Persistence
 - **Reactive Discovery:** Do NOT proactively ask the user about their browser support target or risk appetite upfront. Only act reactively if you observe:

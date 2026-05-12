@@ -1,15 +1,14 @@
 # Baseline & Modern Web Guidance: Our Approach
 
-### 1. Enforcing a Support Floor, Not a Ceiling
-A baseline target enforces a **support floor**—the minimum acceptable browser support determined by a developer's tolerance for breaking user experiences.
-* **Graceful Degradation:** Enforcing a strict "baseline ceiling" (a hard rule against using any newer features) is counterproductive because many modern web features gracefully degrade.
-* **Default to Widely Available:** Guidance assumes a default floor of **Baseline Widely Available** to ensure strong production safety from the start.
-* **Expert Fallbacks:** Guidance relies on documented progressive enhancements. Guide authors explain specific fallback contexts and clarify why fallbacks might not be necessary for certain use cases. Extended baseline macros provide detailed browser support context directly to the agent.
+### 1. The Inversion of "Support": Browsers vs. Features
+A baseline target enforces a **support floor** rather than a ceiling. Understanding this floor requires separating two complementary perspectives:
+* **Supporting Browsers (The Audience Floor):** Setting a baseline target establishes the minimum browser versions guaranteed to work based on a developer's tolerance for broken user experiences. By defaulting to **Baseline Widely Available**, guidance optimizes for production safety without bloat. For features *more mature* than this target floor, fallback code is omitted entirely because the guaranteed audience natively supports them. (Consequently, users running older browsers below this floor receive no fallbacks and risk broken experiences).
+* **Supporting Features (The Capability Axis):** Conversely, when adopting features *less mature* than the target audience floor, guidance relies on documented progressive enhancements and feature detection to protect users within the guaranteed target window. Guide authors clarify specific fallback contexts and explain when fallbacks are unnecessary.
 
-### 2. Feature Maturity & Risk Tolerance (The Experimental Firewall)
-Adopting features above the baseline floor introduces considerations of API stability and feature maturity rather than pure compatibility.
-* **Maturity Model:** Developers can signal their comfort level with feature stability to prevent future breakage caused by shifting APIs.
-* **Origin Trials & Production Safety:** There is no way to deliver a consistent experience across real production users for Origin Trial features. Because a smooth fallback story is usually absent, adoption must be deliberate and thoughtful. When encountering an Origin Trial feature, the agent MUST pause and have the user explicitly decide how to handle production users lacking support.
+### 2. Feature Maturity & Risk (Rejecting the Ceiling)
+Enforcing a strict "baseline ceiling" (blocking all newer features) fails because many modern web features gracefully degrade or provide massive immediate benefits to supported clients. The decision to adopt newer features maps to a feature maturity model:
+* **Single-Engine Support (e.g., Chrome-only):** Totally fair game by default in guidance. Recommended alongside robust feature detection and alternative pathways for unsupported browsers.
+* **Origin Trials (The Experimental Firewall):** Highly immature APIs liable to breaking changes. Delivering a consistent experience across real production users is impossible, and smooth fallbacks are almost never available. When encountering a guide utilizing an Origin Trial feature, the agent MUST pause and have the user explicitly decide if they accept the risk and how to handle production users lacking support.
 
 ### 3. Streamlined Agent Workflow (Implicit Context)
 To prevent dangerous distractions that delay value delivery, agents avoid added prerequisite verification steps before engaging with the command-line interface.
