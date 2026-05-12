@@ -17,7 +17,7 @@ const GH_PUBLISH_PATTERNS = [
   '!**/tfjs_model_minilm/**',
   '!**/*.{js,mjs,ts,bin,map,gz}',
   '!THIRD_PARTY_NOTICES',
-  '!skills/modern-web/package.json',
+  '!skills/modern-web-guidance/package.json',
 ];
 
 const isDryRun = process.argv.includes('--dry-run');

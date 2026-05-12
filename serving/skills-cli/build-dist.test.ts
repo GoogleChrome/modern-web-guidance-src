@@ -2,7 +2,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { processSkills } from './build-dist.ts';
+import { processSkills, buildDist } from './build-dist.ts';
 import { replaceMacros } from '../lib/macros.ts';
 import { resetGuidesMap } from '../../lib/guide-validation.ts';
 
@@ -64,5 +64,21 @@ describe('processSkills', () => {
     const result = replaceMacros('{{ GUIDE_REF("break-up-long-tasks") }}', 'test.md', { target: 'skills-cli' });
 
     assert.ok(result.includes('npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"'), 'Macro output should match the pattern in SKILL.md');
+  });
+
+  it('builds distribution successfully with buildDist', async () => {
+    const publishRoot = path.join(testOutputDir, 'full-dist');
+    
+    // Ensure clean state for this test
+    fs.rmSync(publishRoot, { recursive: true, force: true });
+
+    const result = await buildDist({ publishRoot, version: '1.0.0' });
+    
+    assert.ok(result, 'buildDist should return a result');
+    assert.ok(result.skillsCount > 0, 'Should have processed skills');
+    
+    // Verify that esbuild outputs exist
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs')), 'modern-web.mjs should exist');
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/search.mjs')), 'search.mjs should exist');
   });
 });
