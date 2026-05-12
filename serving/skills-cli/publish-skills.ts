@@ -29,11 +29,7 @@ function incrementVersion(version: string): string {
 }
 
 const getLatestGitTag = (target = 'HEAD') => {
-  try {
-    return execSync(`git describe --tags --match "v*.*.*" --abbrev=0 ${target}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-  } catch {
-    return '';
-  }
+  return execSync(`git describe --tags --match "v*.*.*" --abbrev=0 ${target}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
 };
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
@@ -42,24 +38,20 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
   const target = isDryRun ? 'origin/main' : 'HEAD';
   console.log(`Checking latest tag against ${target}...`);
   
-  let latestTag = getLatestTag(target);
-  
-  // Fallback if origin/main failed or returned nothing (e.g. on PR branch not fully fetched)
-  if (!latestTag && isDryRun) {
-    console.log("Could not find tags on origin/main. Falling back to HEAD.");
-    latestTag = getLatestTag('HEAD');
+  let latestTag: string;
+  try {
+    latestTag = getLatestTag(target);
+  } catch (err) {
+    if (isDryRun) {
+      console.log(`Could not find tags on ${target}. Falling back to HEAD.`);
+      latestTag = getLatestTag('HEAD');
+    } else {
+      throw err;
+    }
   }
 
-  let currentVersion: string;
-
-  if (!latestTag) {
-    console.log("⚠️ No tags found anywhere. Falling back to package.json version. This may be inaccurate for PR dry-runs.");
-    const pkgJson = JSON.parse(await fs.readFile(path.join(ROOT_DIR, "package.json"), "utf-8"));
-    currentVersion = pkgJson.version;
-  } else {
-    currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
-    console.log(`Found latest tag: ${latestTag}`);
-  }
+  console.log(`Found latest tag: ${latestTag}`);
+  const currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
 
   const newVersion = incrementVersion(currentVersion);
   console.log(`Next version will be: ${newVersion}`);
