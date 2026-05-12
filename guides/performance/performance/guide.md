@@ -1,6 +1,6 @@
 ---
 name: performance
-description: Actionable guidelines for optimizing modern web applications. Use this skill when auditing performance, optimizing loading metrics, fixing slow interactions and optimizing Core Web Vitals (LCP, INP, CLS)
+description: Actionable guidelines for optimizing modern web applications. Use this guide when auditing performance, optimizing loading metrics, fixing slow interactions and optimizing Core Web Vitals (LCP, INP, CLS)
 ---
 
 ## Critical Rendering Path (CRP) Optimization

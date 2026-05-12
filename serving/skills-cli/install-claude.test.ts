@@ -24,7 +24,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         const child = spawn('claude', [
             '--model', 'claude-sonnet-4-6',
             '--plugin-dir', distDir,
-            '-p', 'use the modern-web skill and tell me best practices on implementing an address form',
+            '-p', 'use the modern-web-guidance skill and tell me best practices on implementing an address form',
             '--dangerously-skip-permissions',
             '--verbose',
             '--output-format', 'stream-json'
@@ -76,7 +76,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
                 // Check for tool use
                 if (obj.type === 'assistant' && obj.message && Array.isArray(obj.message.content)) {
                     for (const item of obj.message.content) {
-                        if (item.type === 'tool_use' && item.name === 'Bash') {
+                         if (item.type === 'tool_use' && item.name === 'Bash') {
                             const command = item.input?.command;
                             if (typeof command === 'string') {
                                 if (command.includes('search') || command.includes('--search')) {
@@ -122,7 +122,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         console.log(`- Retrieve Called: ${retrieveCalled}\n`);
         
         // Assert all, but we get the log above first!
-        assert.ok(skillActivated, 'Skill should specify check for modern-web activation');
+        assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
         assert.ok(searchCalled, 'Modern web search should be called');
         assert.ok(searchSuccess, 'Modern web search should be successful');
         assert.ok(retrieveCalled, 'Modern web retrieve should be called');

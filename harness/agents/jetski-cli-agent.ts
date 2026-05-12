@@ -99,6 +99,7 @@ async function run() {
     // Capture trajectory
     const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
+    exportTrajectories(conversationsDir, '*.db', targetDir);
 
     console.log("Jetski CLI agent finished successfully.");
 
