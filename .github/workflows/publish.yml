@@ -2,7 +2,8 @@ name: Publish Skills
 
 on:
   push:
-    branches: [ main ]
+    # We currently want to publish manually.
+    # branches: [ main ]
     paths:
       - 'serving/skills-cli/**'
       - 'guides/**'
