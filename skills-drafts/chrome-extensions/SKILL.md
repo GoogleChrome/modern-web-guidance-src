@@ -42,7 +42,7 @@ These address the most common causes of broken extensions. Violating any produce
    (just remove the "icons" and "default_icon" fields — Chrome uses a default icon)
 ```
 
-**If you include icon references, you MUST create the actual image files.** Generate them with a script (see `references/icons.md`) or leave them out. Never reference non-existent files.
+**If you include icon references, you MUST create the actual image files.** Generate them with a script (see `references/extensions/icons.md`) or leave them out. Never reference non-existent files.
 
 #### 2. Side panel: you MUST provide a way to open it
 
@@ -56,7 +56,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 ```
 
-If the extension has both a popup AND side panel, add a button in the popup that calls `chrome.sidePanel.open()`. Alternatively, use `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` — but the property is `openPanelOnActionClick`, NOT `openPanelOnActionIconClick`; the "Icon" variant causes a synchronous TypeError that silently aborts the service worker. Do NOT also define `default_popup` when using `setPanelBehavior`. See `references/side-panel.md`.
+If the extension has both a popup AND side panel, add a button in the popup that calls `chrome.sidePanel.open()`. Alternatively, use `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` — but the property is `openPanelOnActionClick`, NOT `openPanelOnActionIconClick`; the "Icon" variant causes a synchronous TypeError that silently aborts the service worker. Do NOT also define `default_popup` when using `setPanelBehavior`. See `references/extensions/side-panel.md`.
 
 #### 3. Code execution: sandboxed iframes ONLY
 
@@ -82,7 +82,7 @@ iframe.src = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
 iframe.srcdoc = `<style>${css}</style>${html}<script>${js}<\/script>`;
 ```
 
-See `references/csp-sandbox.md` for full details.
+See `references/extensions/csp-sandbox.md` for full details.
 
 #### 4. `tab.url` requires the `tabs` permission
 
@@ -93,7 +93,7 @@ Without it, `tab.url` silently returns `undefined` — no error thrown.
 { "permissions": ["tabs"] }
 ```
 
-See `references/tab-management.md`.
+See `references/extensions/tab-management.md`.
 
 #### 5. Always use async/await — never `.then()` chains
 
@@ -137,7 +137,7 @@ async function highlightAll(elements) {
 }
 ```
 
-See `references/content-scripts.md`.
+See `references/extensions/content-scripts.md`.
 
 #### 7. Service workers are ephemeral — never store state in variables
 
@@ -155,7 +155,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
 });
 ```
 
-Use `chrome.alarms` instead of `setTimeout`/`setInterval`. See `references/service-worker.md`.
+Use `chrome.alarms` instead of `setTimeout`/`setInterval`. See `references/extensions/service-worker.md`.
 
 #### 8. chrome.identity: extension ID differs between dev and production
 
@@ -166,11 +166,11 @@ To stabilize the ID during development, add a `"key"` field to manifest.json:
 2. Extract the public key from the .crx
 3. Add `"key": "MIIBIjANBgkqh..."` to manifest.json
 
-Always document: "After publishing to the Chrome Web Store, update the OAuth client with the store-assigned extension ID." See `references/auth-identity.md`.
+Always document: "After publishing to the Chrome Web Store, update the OAuth client with the store-assigned extension ID." See `references/extensions/auth-identity.md`.
 
 #### 9. Context menus: show user feedback after action
 
-When a context menu item performs an action (save, copy, etc.), confirm it to the user. Use a notification, badge flash, or injected toast — don't let actions happen silently. See `references/context-menus.md` for a complete toast implementation.
+When a context menu item performs an action (save, copy, etc.), confirm it to the user. Use a notification, badge flash, or injected toast — don't let actions happen silently. See `references/extensions/context-menus.md` for a complete toast implementation.
 
 #### 10. Prompt API: available in service workers, popup, and side panel
 
@@ -181,7 +181,7 @@ const params = await LanguageModel.params();
 // { defaultTopK: 3, maxTopK: 128, defaultTemperature: 1, maxTemperature: 2 }
 ```
 
-For general Prompt API patterns (availability checks, session creation, streaming), use the `modern-web-guidance` skill. See `references/prompt-api.md` for the extension-specific wiring example.
+For general Prompt API patterns (availability checks, session creation, streaming), use the `modern-web-guidance` skill. See `references/extensions/prompt-api.md` for the extension-specific wiring example.
 
 #### 11. `chrome.action` API requires `action` in manifest
 
@@ -221,7 +221,7 @@ document.getElementById('summarize').addEventListener('click', async () => {
 // manifest.json: { "permissions": ["tabs", "scripting"], "host_permissions": ["<all_urls>"] }
 ```
 
-See `references/side-panel.md`.
+See `references/extensions/side-panel.md`.
 
 #### 13. DevTools panel URLs are relative to the extension root
 
@@ -236,7 +236,7 @@ chrome.devtools.panels.create("My Panel", "", "panel/panel.html");
 chrome.devtools.panels.create("My Panel", "", "devtools/panel/panel.html");
 ```
 
-See `references/devtools.md`.
+See `references/extensions/devtools.md`.
 
 #### 14. Offscreen documents have NO access to most chrome.* APIs
 
@@ -256,7 +256,7 @@ chrome.action.setBadgeText({ text: 'REC' }); // TypeError
 - `chrome.runtime.getURL`
 - Standard Web APIs (DOM, fetch, MediaRecorder, Canvas, Web Audio, etc.)
 
-**Rule of thumb:** Offscreen documents do the Web API work (recording, parsing, audio). The service worker does all chrome.* API work (downloads, badge updates, notifications). Use `chrome.runtime.sendMessage` to bridge between them. See `references/message-passing.md`.
+**Rule of thumb:** Offscreen documents do the Web API work (recording, parsing, audio). The service worker does all chrome.* API work (downloads, badge updates, notifications). Use `chrome.runtime.sendMessage` to bridge between them. See `references/extensions/message-passing.md`.
 
 #### 15. Notifications and badge icons must reference real image files
 
@@ -273,7 +273,7 @@ chrome.notifications.create('reminder', {
 });
 
 // ✅ Generate a data URL at runtime via OffscreenCanvas — no file needed.
-// See `references/icons.md` for a reusable implementation.
+// See `references/extensions/icons.md` for a reusable implementation.
 const iconUrl = await getIconDataUrl();
 chrome.notifications.create('reminder', { type: 'basic', iconUrl, title: 'Reminder', message: 'Time is up!' });
 ```
@@ -370,7 +370,7 @@ const current = await chrome.windows.getCurrent({ populate: true });
 const all     = await chrome.windows.getAll({ populate: true });
 ```
 
-**`chrome.windows` methods:** `getAll`, `getLastFocused`, `getCurrent`, `get(windowId)`, `create`, `update`, `remove`. See `references/tab-management.md`.
+**`chrome.windows` methods:** `getAll`, `getLastFocused`, `getCurrent`, `get(windowId)`, `create`, `update`, `remove`. See `references/extensions/tab-management.md`.
 
 ### Always Manifest V3
 
@@ -405,7 +405,7 @@ Create it the moment any of these happen:
 - You're building a new extension that will clearly end up on the store
 - The user asks about store listing requirements
 
-Use the template in `references/chromewebstore-template.md` as your starting point. Read it
+Use the template in `references/webstore/chromewebstore-template.md` as your starting point. Read it
 before generating the file.
 
 #### When to update CHROMEWEBSTORE.md
@@ -438,7 +438,7 @@ pass.
 
 ### CHROMEWEBSTORE.md Sections
 
-Read `references/chromewebstore-template.md` for the full template. Here's what each section
+Read `references/webstore/chromewebstore-template.md` for the full template. Here's what each section
 is for and why it matters:
 
 #### Store Listing
@@ -488,7 +488,7 @@ If the extension collects NO user data, say so explicitly.
 - If no data is collected, a minimal privacy policy is still recommended and may be
   required depending on permissions
 
-Read `references/privacy-policy.md` for guidance on generating a privacy policy.
+Read `references/webstore/privacy-policy.md` for guidance on generating a privacy policy.
 
 #### Version History
 Chronological changelog. Each entry has version, date, and what changed. This isn't
@@ -507,7 +507,7 @@ and how they were resolved.
 ### Pre-Publish Checklist
 
 Before the user submits to the Chrome Web Store, verify all of these. Read
-`references/review-checklist.md` for the full checklist with explanations.
+`references/webstore/review-checklist.md` for the full checklist with explanations.
 
 Quick version:
 - [ ] manifest.json `version` bumped
@@ -539,7 +539,7 @@ downloads and obscurity. Follow these principles:
 6. **Mention limitations honestly.** "Works on Chrome 120+ only" or "Does not work on
    chrome:// pages" builds trust
 
-See `references/store-listing.md` for extended examples and common rejection reasons.
+See `references/webstore/store-listing.md` for extended examples and common rejection reasons.
 
 ---
 
@@ -549,26 +549,26 @@ For detailed API patterns and publishing guidance, read the relevant file BEFORE
 
 | Topic | Reference |
 |-------|-----------|
-| Side panels | `references/side-panel.md` |
-| Content scripts & DOM | `references/content-scripts.md` |
-| Popups | `references/popup-ui.md` |
-| Service worker lifetime | `references/service-worker.md` |
-| Code execution & CSP | `references/csp-sandbox.md` |
-| API calls | `references/api-calling.md` |
-| Declarative Net Request | `references/declarative-net-request.md` |
-| Chrome Prompt API | `references/prompt-api.md` |
-| DevTools panels | `references/devtools.md` |
-| Authentication | `references/auth-identity.md` |
-| Context menus | `references/context-menus.md` |
-| Omnibox | `references/omnibox.md` |
-| Storage | `references/storage.md` |
-| Tab management | `references/tab-management.md` |
-| Message passing | `references/message-passing.md` |
-| Icons | `references/icons.md` |
-| CHROMEWEBSTORE.md template | `references/chromewebstore-template.md` |
-| Privacy policy guidance | `references/privacy-policy.md` |
-| Pre-publish review checklist | `references/review-checklist.md` |
-| Store listing tips & rejections | `references/store-listing.md` |
+| Side panels | `references/extensions/side-panel.md` |
+| Content scripts & DOM | `references/extensions/content-scripts.md` |
+| Popups | `references/extensions/popup-ui.md` |
+| Service worker lifetime | `references/extensions/service-worker.md` |
+| Code execution & CSP | `references/extensions/csp-sandbox.md` |
+| API calls | `references/extensions/api-calling.md` |
+| Declarative Net Request | `references/extensions/declarative-net-request.md` |
+| Chrome Prompt API | `references/extensions/prompt-api.md` |
+| DevTools panels | `references/extensions/devtools.md` |
+| Authentication | `references/extensions/auth-identity.md` |
+| Context menus | `references/extensions/context-menus.md` |
+| Omnibox | `references/extensions/omnibox.md` |
+| Storage | `references/extensions/storage.md` |
+| Tab management | `references/extensions/tab-management.md` |
+| Message passing | `references/extensions/message-passing.md` |
+| Icons | `references/extensions/icons.md` |
+| CHROMEWEBSTORE.md template | `references/webstore/chromewebstore-template.md` |
+| Privacy policy guidance | `references/webstore/privacy-policy.md` |
+| Pre-publish review checklist | `references/webstore/review-checklist.md` |
+| Store listing tips & rejections | `references/webstore/store-listing.md` |
 
 ## Output Checklist
 
