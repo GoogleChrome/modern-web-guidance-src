@@ -47,44 +47,54 @@
   <div id="status">Waiting for scroll...</div>
 
   <script>
-    const scroller = document.getElementById('scroller');
-    const status = document.getElementById('status');
+    function initializeDemo() {
+      const scroller = document.getElementById('scroller');
+      const status = document.getElementById('status');
 
-    // During scroll, avoid expensive work to keep animations smooth.
-    scroller.addEventListener('scroll', () => {
-      status.textContent = 'Scrolling... (deferring updates)';
-    });
+      // During scroll, avoid expensive work to keep animations smooth.
+      scroller.addEventListener('scroll', () => {
+        status.textContent = 'Scrolling... (deferring updates)';
+      });
 
-    // Once scrolling completes, perform the deferred expensive work.
-    // This replaces the old pattern of debouncing scroll events with
-    // setTimeout, which was unreliable and added arbitrary latency.
-    scroller.addEventListener('scrollend', () => {
-      // Determine which section is most visible.
-      const sections = scroller.querySelectorAll('.content-section');
-      const scrollTop = scroller.scrollTop;
-      const containerHeight = scroller.clientHeight;
-      let bestMatch = sections[0];
-      let bestOverlap = 0;
+      // Once scrolling completes, perform the deferred expensive work.
+      scroller.addEventListener('scrollend', () => {
+        // Determine which section is most visible.
+        const sections = scroller.querySelectorAll('.content-section');
+        const scrollTop = scroller.scrollTop;
+        const containerHeight = scroller.clientHeight;
+        let bestMatch = sections[0];
+        let bestOverlap = 0;
 
-      for (const section of sections) {
-        const top = section.offsetTop - scroller.offsetTop;
-        const bottom = top + section.offsetHeight;
-        const visibleTop = Math.max(top, scrollTop);
-        const visibleBottom = Math.min(bottom, scrollTop + containerHeight);
-        const overlap = Math.max(0, visibleBottom - visibleTop);
+        for (const section of sections) {
+          const top = section.offsetTop - scroller.offsetTop;
+          const bottom = top + section.offsetHeight;
+          const visibleTop = Math.max(top, scrollTop);
+          const visibleBottom = Math.min(bottom, scrollTop + containerHeight);
+          const overlap = Math.max(0, visibleBottom - visibleTop);
 
-        if (overlap > bestOverlap) {
-          bestOverlap = overlap;
-          bestMatch = section;
+          if (overlap > bestOverlap) {
+            bestOverlap = overlap;
+            bestMatch = section;
+          }
         }
-      }
 
-      // This is where you would perform expensive work such as:
-      // - Fetching data for the visible section
-      // - Updating complex DOM structures
-      // - Recalculating layout-dependent values
-      status.textContent = `Scroll ended. Visible: ${bestMatch.textContent}`;
-    });
+        // Simulate an expensive task like fetching data or recalculations
+        status.textContent = `Scroll ended. Visible: ${bestMatch.textContent}`;
+      });
+    }
+
+    if ('onscrollend' in window) {
+      initializeDemo();
+    } else {
+      initializeDemo();
+      const scroller = document.getElementById('scroller');
+      scroller.addEventListener('scroll', () => {
+        clearTimeout(window.scrollendtimer);
+        window.scrollendtimer = setTimeout(() => {
+          scroller.dispatchEvent(new CustomEvent('scrollend'));
+        }, 100);
+      });
+    }
   </script>
 </body>
 
