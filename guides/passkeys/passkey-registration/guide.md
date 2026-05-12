@@ -174,10 +174,6 @@ async function registerPasskey(isPromotion = false) {
 }
 ```
 
-## Conditional Create (Promotion Flow)
-
-To silently and automatically register a passkey for a user immediately following a successful password-based sign-in, refer to the dedicated {{ GUIDE_REF("passkey-conditional-create") }} guide.
-
 ## Fallback Strategies
 
 ### Signal API Synchronization Fallback
