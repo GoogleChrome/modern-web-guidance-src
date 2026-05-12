@@ -1,6 +1,0 @@
-- At least one element on the page has a non-zero computed `border-radius`.
-- At least one element on the page has a computed `corner-shape` (or per-corner `corner-*-shape` longhand) value that is not the initial `round`.
-- Every element that sets a non-`round` `corner-shape` (or longhand) also has a non-zero matching `border-radius` for the affected corner, otherwise the property is a no-op.
-- The page does NOT use `clip-path` as a substitute for shaping corners.
-- The page does NOT load any external JavaScript polyfill, library, or script claiming to implement `corner-shape`.
-- The `corner-shape` property is not applied via the universal selector (`*`).
