@@ -56,4 +56,7 @@ When content size varies, one can use an average value or make a guess at what t
 
 ## Fallback strategies
 
+{{ BASELINE_STATUS("content-visibility") }}
+{{ BASELINE_STATUS("contain-intrinsic-size") }}
+
 `content-visibility` can be applied as a progressive enhancement, so there is no fallback strategy necessary. Consequently, this means there is no fallback necessary for `contain-intrinsic-size` as the element will not have size containment applied to them.
