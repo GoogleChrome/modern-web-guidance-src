@@ -9,13 +9,14 @@
     "gd": "bin/gd.ts"
   },
   "scripts": {
-    "test": "pnpm -r test",
+    "test": "pnpm -r --parallel test",
     "install:gray-matter": "pnpm add -D -w gray-matter",
     "baselinestatus": "pnpm --filter serving baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",
-    "typecheck": "pnpm --filter serving build && tsc && pnpm --filter eval-view typecheck",
-    "preflight": "pnpm typecheck && pnpm lint && pnpm test",
-    "suite": "pnpm build:mcp && pnpm --filter harness suite",
+    "build": "pnpm -r run build",
+    "typecheck": "tsc && pnpm --filter eval-view typecheck",
+    "preflight": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
+    "suite": "pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
     "task": "pnpm --filter harness task",
     "run-agent": "gd agent",

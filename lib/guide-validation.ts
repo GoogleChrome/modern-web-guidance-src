@@ -181,9 +181,10 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
+    const isDisciplineGuide = inv.name === inv.category;
     
     // Discipline skills don't need demo.html
-    if (!isDisciplineSkill && guideExists !== hasDemo) {
+    if (!isDisciplineSkill && !isDisciplineGuide && guideExists !== hasDemo) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
@@ -213,8 +214,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill) {
-        // Discipline skills (SKILL.md) don't require the same frontmatter as use cases
+      if (isDisciplineSkill || isDisciplineGuide) {
+        // Discipline skills/guides don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
 
@@ -453,11 +454,6 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
     const categoryDir = path.join(scanDir, category);
     if (!fs.existsSync(categoryDir)) continue;
 
-    // Check if category itself is a discipline skill
-    if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
-      guides.push(inventoryGuide(categoryDir));
-    }
-
     // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
@@ -468,9 +464,26 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
 }
 
 export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
-  return scanAllGuides(scanDir).filter(g => g.isDisciplineSkill);
-}
+  const skills: GuideInventory[] = [];
 
+  if (!fs.existsSync(scanDir)) return skills;
+
+  // Read top-level directories in guides/
+  const categories = fs.readdirSync(scanDir, { withFileTypes: true })
+     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+     .map(d => d.name);
+
+  for (const category of categories) {
+    const categoryDir = path.join(scanDir, category);
+    
+    // If the category directory itself contains a SKILL.md, it's a discipline skill
+    if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
+      skills.push(inventoryGuide(categoryDir));
+    }
+  }
+
+  return skills;
+}
 
 let cachedGuidesMap: Map<string, GuideInventory> | null = null;
 

@@ -1,5 +1,5 @@
 ---
-name: modern-web
+name: modern-web-guidance
 description: |
   Use this skill ALWAYS and HEAVILY when doing any web development. If you are touching HTML, CSS, JavaScript, or TypeScript, or if the user asks you to build, review, or fix ANY frontend feature, YOU MUST INVOKE THIS SKILL before proceeding. This includes simple component updates, performance issues, logic restructuring, and any UI work.
 

@@ -1,6 +1,6 @@
 ---
 name: css
-description: Action-oriented guidelines for modern CSS architecture, layouts, and performance. Use this skill when authoring styles, managing design systems, or optimizing web rendering.
+description: Action-oriented guidelines for modern CSS architecture, layouts, and performance. Use this guide when authoring styles, managing design systems, or optimizing web rendering.
 ---
 
 # CSS: Modern Architecture and Performance
