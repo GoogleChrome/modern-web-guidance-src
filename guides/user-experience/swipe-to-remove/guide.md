@@ -216,6 +216,9 @@ Use `IntersectionObserver` rooted at the track, observing the content. As the us
 
 ```js
 function wireUpSwipe(item) {
+  // Skip items that are already wired up.
+  if (item.classList.contains('is-initialized')) return;
+
   const track = item.querySelector('.SwipeableItem-track');
   const content = track.querySelector('.SwipeableItem-content');
 
@@ -239,24 +242,30 @@ function wireUpSwipe(item) {
     const entry = entries.at(-1);
     const ratio = entry.intersectionRatio;
 
-    // boundingClientRect.x > 0 means the content is offset to the right
-    // of the track (the user is swiping right, revealing the left spacer);
-    // the leading icon lives on the left in that case.
-    const direction = entry.boundingClientRect.x > 0 ? 'left' : 'right';
+    // Direction the user is swiping toward. A positive offset from the
+    // track's left edge means the content has been pulled right (left
+    // spacer revealed), so the leading icon is on the left.
+    const direction = (entry.boundingClientRect.x - entry.rootBounds.x) > 0
+      ? 'left'
+      : 'right';
 
     if (ratio < commitThreshold) {
-      // Pass the rect so `removeItem` can compute both the pre-collapse
-      // height and the slide-off translate distance from a single
-      // measurement (taken at the IO callback's frame, the last reliable
-      // reading before the animation starts).
-      removeItem(item, content, direction, entry.boundingClientRect);
+      // The IO entry's boundingClientRect is the last reliable
+      // measurement before the animation starts; reuse it for both the
+      // pre-collapse height and the slide-off translate distance.
+      removeItem(item, content, direction, entry);
       obs.disconnect();
       return;
     }
 
-    if (entry.boundingClientRect.x !== 0) {
+    // Scale up the leading icon while the content is past the activate
+    // point; restore it at rest.
+    item.classList.toggle('is-activating', ratio < activateThreshold);
+
+    // Hold the previous direction at rest so the icon's exit animation
+    // finishes on the side the user was swiping toward.
+    if (entry.boundingClientRect.x !== entry.rootBounds.x) {
       item.dataset.swipeDirection = direction;
-      item.classList.toggle('is-activating', ratio < activateThreshold);
     }
   }, {
     // Root the observer at the track so vertical scrolling of the outer
@@ -268,13 +277,16 @@ function wireUpSwipe(item) {
   observer.observe(content);
 }
 
-async function removeItem(item, content, direction, rect) {
+async function removeItem(item, content, direction, entry) {
   const opts = { duration: 300, easing: 'ease', fill: 'forwards' };
 
+  const rect = entry.boundingClientRect;
+  // Content's pixel offset from the track's left edge.
+  const x = rect.x - entry.rootBounds.x;
   // Pixel distance the content needs to travel to be fully out of view.
   const translate = direction === 'left'
-    ? rect.width - rect.x
-    : -(rect.x + rect.width);
+    ? rect.width - x
+    : -(x + rect.width);
 
   // Use a combination of CSS transitions (for declarative styles) and
   // WAAPI animations (for computed values) to remove the element,
@@ -285,7 +297,7 @@ async function removeItem(item, content, direction, rect) {
   item.classList.add('is-removing');
   item.animate([{ height: `${rect.height}px` }, { height: '0px' }], opts);
   content.animate([{ translate: `${translate}px` }], opts);
-  await Promise.all(
+  await Promise.allSettled(
     item.getAnimations({ subtree: true }).map((a) => a.finished),
   );
 
@@ -382,23 +394,25 @@ With this setup, the spacers no longer need their own background-color (the trac
 
 ## Fallback strategies
 
+{{ FEATURE_FALLBACKS("scroll-snap") }}
+
 The scroll-snap mechanics that underpin this pattern (`scroll-snap-type`, `scroll-snap-align`), `IntersectionObserver`, and the Web Animations API are all Baseline Widely Available, so the gesture, commit detection, and removal animation work broadly. All newer features that are used are either not core to the experience or have robust fallbacks that can be reliably used now.
 
 ### Fallback for `overscroll-behavior`
 
-{{ BASELINE_STATUS("overscroll-behavior") }}
+{{ FEATURE_FALLBACKS("overscroll-behavior") }}
 
 No fallback is needed for this use case. `overscroll-behavior` was Baseline Widely Available but no longer is due to an interop issue that only manifests on containers without scrollable overflow. But the track here is always horizontally scrollable (three full-width columns inside a 100%-width container), so the property behaves consistently across browsers and the swipe gesture is reliably contained.
 
 ### Fallback for `scrollbar-width`
 
-{{ BASELINE_STATUS("scrollbar-width") }}
+{{ FEATURE_FALLBACKS("scrollbar-width") }}
 
 Hidden scrollbars are a visual enhancement, not the mechanism that makes swipe-to-remove work. If your Baseline target does not include `scrollbar-width`, the row still scrolls, snaps, detects commit, and removes correctly; the unsupported experience may simply show a horizontal scrollbar. If your product requires hidden scrollbars in older WebKit-derived browsers, you can add a narrowly scoped `::-webkit-scrollbar { display: none; }` rule for the swipe track.
 
 ### Fallback for `scroll-initial-target`
 
-{{ BASELINE_STATUS("scroll-initial-target") }}
+{{ FEATURE_FALLBACKS("scroll-initial-target") }}
 
 If your Baseline target does not include `scroll-initial-target`, scroll the track to the content programmatically. Detect with `CSS.supports`:
 
@@ -418,7 +432,9 @@ Some browsers (notably Safari) reset scroll position on resize, so re-apply the 
 ```js
 if (!CSS.supports('scroll-initial-target', 'nearest')) {
   addEventListener('resize', () => {
-    document.querySelectorAll('.SwipeableItem-track').forEach((track) => {
+    document.querySelectorAll(
+      '.SwipeableItem.is-initialized .SwipeableItem-track',
+    ).forEach((track) => {
       track.scrollLeft = track.clientWidth;
     });
   });

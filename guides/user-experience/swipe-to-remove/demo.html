@@ -30,6 +30,8 @@
 
       main {
         min-height: 100vh;
+        margin-left: 100px;
+        width: 300px;
       }
 
       ul {
@@ -145,12 +147,15 @@
   </style>
 
   <script type="module">
-    async function removeItem(item, content, direction, rect) {
+    async function removeItem(item, content, direction, entry) {
       // In a real application, you could perform a different action based on
       // the direction passed here (e.g., archive vs. snooze). For this demo,
       // we remove the item from the list regardless of direction.
       const opts = {duration: 300, easing: 'ease', fill: 'forwards'};
-      const translate = direction === 'left' ? rect.width - rect.x : -(rect.x + rect.width);
+      const rect = entry.boundingClientRect;
+      // Content's pixel offset from the track's left edge.
+      const x = rect.x - entry.rootBounds.x;
+      const translate = direction === 'left' ? rect.width - x : - (x + rect.width);
 
       // Use a combination of CSS transitions (for declarative styles) and
       // WAAPI animations (for computed values) to remove the element,
@@ -158,7 +163,7 @@
       item.classList.add('is-removing');
       item.animate([{height: `${rect.height}px`}, {height: '0px'}], opts);
       content.animate([{translate: `${translate}px`}], opts);
-      await Promise.all(
+      await Promise.allSettled(
         item.getAnimations({subtree: true}).map((a) => a.finished),
       );
 
@@ -167,76 +172,93 @@
       // would then start scrolling. Instead, we have to transition it
       // to `height:0` first (above) and then remove it only after the
       // swipe/scroll gesture has likely finished (e.g. 5 seconds).
+      // Set it to inert before removing to prevent interaction.
       if (globalThis.GestureEvent) {
+        item.inert = true;
         setTimeout(() => item.remove(), 5000);
       } else {
         item.remove();
       }
     }
 
-    async function init() {
-      const items = document.querySelectorAll('.SwipeableItem');
-      if (!items.length) return;
+    function setupItem(item) {
+      // Skip items that are already wired up.
+      if (item.classList.contains('is-initialized')) return;
 
-      items.forEach(async (item) => {
-        const track = item.querySelector('.SwipeableItem-track');
-        const content = track.querySelector('.SwipeableItem-content');
+      const track = item.querySelector('.SwipeableItem-track');
+      const content = track.querySelector('.SwipeableItem-content');
 
-        // Add a class to signal that the element is ready to be interacted with.
-        item.classList.add('is-initialized');
+      // Upgrade the row into "swipeable" mode. The track becomes a snap
+      // container and the action icons appear.
+      item.classList.add('is-initialized');
 
-        // If the browser doesn't support `scroll-initial-target: nearest` then
-        // programmatically scroll the content into view and wait for this to
-        // finish before continuing to ensure that the Intersection Observer
-        // doesn't start observing before the content is fully in view.
-        if (!CSS.supports('scroll-initial-target', 'nearest')) {
-          track.scrollLeft = track.clientWidth;
+      // If the browser doesn't support `scroll-initial-target: nearest`,
+      // programmatically scroll the content into view. This MUST happen
+      // AFTER `is-initialized` (so the track is actually scrollable) and
+      // BEFORE the IntersectionObserver is attached (so the initial scroll
+      // past the left spacer isn't interpreted as a commit).
+      if (!CSS.supports('scroll-initial-target', 'nearest')) {
+        track.scrollLeft = track.clientWidth;
+      }
+
+      // These are good defaults, but can be tweaked to taste.
+      const activateThreshold = 0.80;
+      const commitThreshold = 0.20;
+
+      // One observer per item, rooted at the item scroller, so the callback
+      // only fires for the horizontal swipe (vertical scrolling of the outer
+      // list moves root and target together and doesn't affect their
+      // intersection). The two thresholds split the IO callbacks into a
+      // visual-feedback band and a commit band.
+      const observer = new IntersectionObserver((entries, observer) => {
+        // Only the most recent entry is relevant.
+        const entry = entries.at(-1);
+        const ratio = entry.intersectionRatio;
+
+        // Direction the user is swiping toward. A positive offset from
+        // the track's left edge means the content has been pulled right
+        // (left spacer revealed), so the leading icon is on the left.
+        const direction = (entry.boundingClientRect.x - entry.rootBounds.x) > 0
+          ? 'left'
+          : 'right';
+
+        if (ratio < commitThreshold) {
+          removeItem(item, content, direction, entry);
+          observer.disconnect();
+          return;
         }
 
-        // These are good defaults, but can be tweaked to taste.
-        const activateThreshold = 0.80;
-        const commitThreshold = 0.20;
+        // Scale up the leading icon while the content is past the
+        // activate point; restore it at rest.
+        item.classList.toggle('is-activating', ratio < activateThreshold);
 
-        // One observer per item, rooted at the item scroller, so the callback
-        // only fires for the horizontal swipe (vertical scrolling of the outer
-        // list moves root and target together and doesn't affect their
-        // intersection). The two thresholds split the IO callbacks into a
-        // visual-feedback band and a commit band.
-        const observer = new IntersectionObserver((entries, observer) => {
-          // Only the most recent entry is relevant.
-          const entry = entries.at(-1);
-          const ratio = entry.intersectionRatio;
-
-          // boundingClientRect.x > 0 means the content is offset to the
-          // right of the track (the user swiped right, revealing the
-          // left spacer); the leading icon lives on the left.
-          const direction = entry.boundingClientRect.x > 0 ? 'left' : 'right';
-
-          if (ratio < commitThreshold) {
-            removeItem(item, content, direction, entry.boundingClientRect);
-            observer.disconnect();
-            return;
-          }
-
-          if (entry.boundingClientRect.x !== 0) {
-            item.dataset.swipeDirection = direction;
-            item.classList.toggle('is-activating', ratio < activateThreshold);
-          }
-        }, {
-          root: track,
-          threshold: [commitThreshold, activateThreshold],
-        });
-
-        observer.observe(content);
+        // Hold the previous direction at rest so the icon's exit
+        // animation finishes on the side the user was swiping toward.
+        if (entry.boundingClientRect.x !== entry.rootBounds.x) {
+          item.dataset.swipeDirection = direction;
+        }
+      }, {
+        root: track,
+        threshold: [commitThreshold, activateThreshold],
       });
 
-      // Safari will sometimes reset scroll position on resize, so update the
-      // scroll position on resize to avoid this bug.
+      observer.observe(content);
+    }
+
+    function init() {
+      document.querySelectorAll('.SwipeableItem').forEach(setupItem);
+
+      // Safari resets snap-container scroll position on resize (including
+      // URL-bar show/hide). Re-scroll each initialized track to its
+      // content column whenever the viewport changes size.
       if (!CSS.supports('scroll-initial-target', 'nearest')) {
-        addEventListener('resize', () => items.forEach((item) => {
-          const track = item.querySelector('.SwipeableItem-track');
-          track.scrollLeft = track.clientWidth;
-        }));
+        addEventListener('resize', () => {
+          document.querySelectorAll(
+            '.SwipeableItem.is-initialized .SwipeableItem-track',
+          ).forEach((track) => {
+            track.scrollLeft = track.clientWidth;
+          });
+        });
       }
     }
 
