@@ -68,21 +68,21 @@ Render a dedicated settings panel allowing users to easily audit and manage thei
     *   **Rename Button**: Triggers a rename text input modal.
     *   **Delete Button**: Triggers deletion.
 4.  **Conditional "Create Passkey" Button**:
-    *   `MANDATORY:` Offer a prominent "Create passkey" registration trigger button on the management page. Before rendering this UI element, the page MUST feature-detect capabilities using `PublicKeyCredential.getClientCapabilities()` to verify platform biometrics exist. If biometrics are unsupported, hide this button and gracefully encourage standard MFA enrollments instead.
+    *  Offer a prominent "Create passkey" registration trigger button on the management page. Before rendering this UI element, the page MUST feature-detect capabilities using `PublicKeyCredential.getClientCapabilities()` to verify platform biometrics exist. If biometrics are unsupported, hide this button and gracefully encourage standard MFA enrollments instead.
 
 ## Signal API Synchronization
 
 The Signal API lets the application communicate credential states to password managers, keeping the user's synced vaults and your backend database in lockstep.
 
 *   **Parameter Encoding Rule**:
-    *   `MANDATORY:` All `userId` and credential ID parameters passed to Signal API methods (`signalAllAcceptedCredentials`, `signalCurrentUserDetails`) MUST be **Base64URL-encoded strings**. Do NOT pass `Uint8Array` or `BufferSource` objects.
+    *  All `userId` and credential ID parameters passed to Signal API methods (`signalAllAcceptedCredentials`, `signalCurrentUserDetails`) MUST be **Base64URL-encoded strings**. Do NOT pass `Uint8Array` or `BufferSource` objects.
 *   **Initiating Page Load Sync**:
-    *   `MANDATORY:` The application MUST invoke `signalAllAcceptedCredentials()` automatically in a `DOMContentLoaded` page load event listener, passing the Base64URL UserID and valid credentials list.
+    *  The application MUST invoke `signalAllAcceptedCredentials()` automatically in a `DOMContentLoaded` page load event listener, passing the Base64URL UserID and valid credentials list.
 *   **Management Updates Sync**:
-    *   `MANDATORY:` The application MUST invoke `signalAllAcceptedCredentials()` immediately within your delete credential click handler post-fetch, passing the remaining valid credentials list.
-    *   `MANDATORY:` The application MUST invoke `signalCurrentUserDetails()` immediately within your rename click handler post-fetch, passing the updated Name details.
+    *  The application MUST invoke `signalAllAcceptedCredentials()` immediately within your delete credential click handler post-fetch, passing the remaining valid credentials list.
+    *  The application MUST invoke `signalCurrentUserDetails()` immediately within your username rename click handler post-fetch, passing the updated Name details.
 *   **Empty Array Synchronization Warning**:
-    *   `MANDATORY:` Passing an empty array `[]` to `signalAllAcceptedCredentials()` tells the password manager to **hide all passkeys** for this user on your site. Only invoke an empty list signal when you are 100% confident that the database contains zero valid passkeys for the user.
+    *  Passing an empty array `[]` to `signalAllAcceptedCredentials()` tells the password manager to **hide all passkeys** for this user on your site. Only invoke an empty list signal when you are 100% confident that the database contains zero valid passkeys for the user.
 
 ```javascript
 // Client-side management synchronization ES module
@@ -128,22 +128,21 @@ async function performDelete(credentialId) {
   }
 }
 
-async function performRename(credentialId, updatedName, updatedDisplayName) {
-  const response = await renameFetch(credentialId, { name: updatedName });
+async function performRename(rpId, userId, updatedName, updatedDisplayName) {
+  const response = await renameFetch({ name: updatedName, displayName: updatedDisplayName });
   if (response.ok) {
-    if (window.PublicKeyCredential && PublicKeyCredential.signalCurrentUserDetails) {
+    if (PublicKeyCredential.signalCurrentUserDetails) {
       try {
         await PublicKeyCredential.signalCurrentUserDetails({
-          rpId: window.location.hostname,
-          userId: base64UrlUserId,
-          name: updatedName, // Updated username (email)
+          rpId,
+          userId, // Base64URL-encoded user ID
+          name: updatedName, // Updated username
           displayName: updatedDisplayName // Updated display name
         });
       } catch (e) {
         console.error('SignalCurrentUserDetails sync failure:', e);
       }
     }
-    loadManagementPanel(); // Re-load UI
   }
 }
 ```

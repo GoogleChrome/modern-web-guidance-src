@@ -16,7 +16,7 @@ This guide details how to automatically and silently register a passkey for a us
 ## The Right Trigger Moment
 
 Automatic passkey creation (also known as Conditional Create or silent post-login promotion) MUST only be triggered **immediately after a successful, full sign-in that involved a password**. 
-* Do not attempt conditional creation for other passwordless flows (e.g., magic links, SMS OTP, or identity federation).
+* Do not attempt conditional creation for passwordless flows (e.g., magic links, SMS OTP, or identity federation).
 * If multi-factor authentication is required, you MUST wait until all factors have succeeded before initiating conditional creation.
 * Ensure a valid, authenticated user session is active before making requests to creation endpoints.
 
@@ -26,17 +26,29 @@ Automatic passkey creation (also known as Conditional Create or silent post-logi
 If the sign-in page utilizes form autofill (Conditional UI/Get), the active credential get call must be aborted to prevent browser conflicts.
 * Call `abortController.abort()` on the `AbortController` attached to the pending `navigator.credentials.get()` autofill request before calling `navigator.credentials.create()`.
 
-### 2. Call Creation with Conditional Mediation
-* Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the biometrics creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
-* Populate `excludeCredentials` with the user's existing passkey IDs to avoid registering duplicate keys.
+### 2. Feature Detection
+Determine whether Conditional Create is available by checking `conditionalCreate` with `PublicKeyCredential.getClientCapabilities()`.
 
-### 3. Silent Error Handling
-* Wrap the biometrics prompt (`navigator.credentials.create`) in a try/catch block. You MUST catch and silently ignore typical user-facing exceptions (`InvalidStateError`, `NotAllowedError`, `AbortError`) without rendering any error UI to the user.
+```javascript
+if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
+  const capabilities = await PublicKeyCredential.getClientCapabilities();
+  if (capabilities.conditionalCreate) {
+    // Conditional create is available
+  }
+}
+```
 
-### 4. Server-Side Presence Verification
+### 3. Call Creation with Conditional Mediation
+* Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the passkey creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
+* Populate `excludeCredentials` with the user's existing passkey credential IDs to avoid registering duplicate keys.
+
+### 4. Silent Error Handling
+* Wrap the passkey creation prompt (`navigator.credentials.create`) in a try/catch block. You MUST catch and silently ignore typical user-facing exceptions (`InvalidStateError`, `NotAllowedError`, `AbortError`) without rendering any error UI to the user.
+
+### 5. Server-Side Presence Verification
 * The server-side verification endpoint MUST relax the User Presence (UP) requirement (`requireUserPresence: false`) **ONLY** when verifying credentials produced by a conditional-create trigger. Strict presence verification must remain active for standard explicit creations.
 
-### 5. Handle Failed Server Verification gracefully
+### 6. Handle Failed Server Verification gracefully
 * If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential()` passing the Base64URL-encoded credential ID to prevent orphaned credentials from lingering in the password manager.
 
 ## Code Example
@@ -110,7 +122,7 @@ async function triggerConditionalCreate(loginAbortController) {
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
 Conditional passkey creation is an optional progressive optimization. If the device does not support `conditionalCreate`:
-*   **Fallback Experience**: The page should complete the login successfully and direct the user to their home feed normally, without displaying any fallback error or biometrics dialogs.
+*   **Fallback Experience**: The page should complete the login successfully and direct the user to their home feed normally, without displaying any fallback error or passkey dialogs.
 *   **Explicit Option**: You can optionally present an explicit "Add passkey" promotion banner later in their account home feed to encourage manual setup.
 
 ### Signal API Synchronization Fallback
