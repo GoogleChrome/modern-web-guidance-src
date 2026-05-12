@@ -116,10 +116,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   await acquireLock(lockFilePath);
 
   try {
-    fs.mkdirSync(publishRoot, { recursive: true });
-
-
-
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
 
     if (version) {
