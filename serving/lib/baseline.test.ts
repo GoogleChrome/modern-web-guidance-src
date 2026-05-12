@@ -37,7 +37,7 @@ describe('baseline data', () => {
     it('returns status message for a non-Baseline feature', () => {
       assert.strictEqual(
         getStatusMessage('accelerometer'),
-        "Accelerometer has limited availability.\nSupported by: Chrome 91 (May 2021), Edge 91 (May 2021)."
+        "Accelerometer has limited availability.\nSupported by: Chrome 91 (May 2021), Edge 91 (May 2021).\nUnsupported in: Firefox, Safari."
       );
     });
 

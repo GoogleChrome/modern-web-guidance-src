@@ -238,7 +238,8 @@ function formatVersionWithMonth(browserKey: string, version: string): string {
 
 function formatSupportMap(support: Record<string, any> | undefined): string {
   if (!support) return '';
-  const parts: string[] = [];
+  const supportedParts: string[] = [];
+  const unsupportedParts: string[] = [];
 
   const list = [
     { key: 'chrome', label: 'Chrome' },
@@ -255,12 +256,22 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
     const ver = support[item.key];
     if (ver && ver !== '-') {
       const formatted = formatVersionWithMonth(item.key, String(ver));
-      parts.push(`${item.label} ${formatted}`);
+      supportedParts.push(`${item.label} ${formatted}`);
+    } else {
+      if (item.key !== 'safari_ios') {
+        unsupportedParts.push(item.label);
+      }
     }
   }
 
-  if (parts.length === 0) return '';
-  return `\nSupported by: ${parts.join(', ')}.`;
+  let res = '';
+  if (supportedParts.length > 0) {
+    res += `\nSupported by: ${supportedParts.join(', ')}.`;
+  }
+  if (unsupportedParts.length > 0) {
+    res += `\nUnsupported in: ${unsupportedParts.join(', ')}.`;
+  }
+  return res;
 }
 
 /**
@@ -268,7 +279,8 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
  */
 function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string; support?: Record<string, any> }): string {
   const { baseline, releaseDate, shortLabel, support } = status;
-  const supportStr = formatSupportMap(support);
+  const resolvedSupport = (baseline === false && !support) ? {} : support;
+  const supportStr = formatSupportMap(resolvedSupport);
 
   if (baseline !== false && releaseDate && releaseDate !== "-") {
     return `Baseline status for ${featureName}: ${shortLabel}. It's been Baseline since ${releaseDate}.${supportStr}`;
