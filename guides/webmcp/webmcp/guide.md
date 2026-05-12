@@ -1,6 +1,6 @@
 ---
 name: webmcp
-description: Use this skill to implement WebMCP (Web Model Context Protocol) in browser applications, exposing client-side functionality as tools to AI agents via declarative or imperative APIs.
+description: Use this guide to implement WebMCP (Web Model Context Protocol) in browser applications, exposing client-side functionality as tools to AI agents via declarative or imperative APIs.
 ---
 
 # WebMCP (Web Model Context Protocol)

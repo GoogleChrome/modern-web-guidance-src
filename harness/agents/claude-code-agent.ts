@@ -1,11 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
+
+// NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
+// However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
+// into the test output directory to ensure uniform matching across the dashboard and metrics engine.
+const TRAJECTORY_GLOB = 'session-*.jsonl';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+}
 
 
 // Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -142,124 +151,91 @@ async function run() {
 }
 
 export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
-  const result = { retrievedGuides: [] as string[], fileReadGuides: [] as string[] };
-  try {
-    const files = fs.readdirSync(dirPath);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+  const retrievedGuides: string[] = [];
+  const fileReadGuides: string[] = [];
 
-    for (const file of sessionFiles) {
-      const sessionPath = path.join(dirPath, file);
-      const sessionContent = fs.readFileSync(sessionPath, 'utf8');
-      const lines = sessionContent.split('\n');
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const obj = JSON.parse(line);
-          if (obj.message && obj.message.content) {
-            for (const contentItem of obj.message.content) {
-              if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
-                const command = contentItem.input.command;
-                if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
-                  const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                  if (match) {
-                    const ids = match[1].split(',');
-                    for (const id of ids) {
-                      result.retrievedGuides.push(id.trim());
-                    }
-                  }
-                }
-              } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
-                const filePath = contentItem.input.file_path;
-                if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                  const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                  if (match) {
-                    result.fileReadGuides.push(match[1]);
-                  }
-                }
-              }
+  for (const file of getSessionFiles(dirPath)) {
+    const items = parseJsonlFile(path.join(dirPath, file));
+    for (const obj of items) {
+      const content = obj.message?.content;
+      for (const contentItem of Array.isArray(content) ? content : []) {
+        if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input?.command) {
+          const command = contentItem.input.command;
+          if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+            if (match) {
+              retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
             }
           }
-        } catch (e) {
-          console.error(`Failed to parse jsonl line in ${sessionPath}:`, e);
+        } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input?.file_path) {
+          const filePath = contentItem.input.file_path;
+          if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+            const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+            if (match) {
+              fileReadGuides.push(match[1]);
+            }
+          }
         }
       }
     }
-  } catch (e) {
-    console.error(`Error reading session files in ${dirPath}:`, e);
   }
-  
-  result.retrievedGuides = [...new Set(result.retrievedGuides)];
-  result.fileReadGuides = [...new Set(result.fileReadGuides)];
-  return result;
+  return {
+    retrievedGuides: [...new Set(retrievedGuides)],
+    fileReadGuides: [...new Set(fileReadGuides)]
+  };
 }
 
 export function extractClaudeCodeModel(resultsDir: string): string {
-  const sessionFiles = fs.globSync('**/session-*.jsonl', { cwd: resultsDir });
-  if (sessionFiles.length === 0) return 'unknown';
-
   const counts: Record<string, number> = {};
-  for (const relativePath of sessionFiles as string[]) {
-    const sessionPath = path.join(resultsDir, relativePath);
-    try {
-      const content = fs.readFileSync(sessionPath, 'utf8');
-      const lines = content.split('\n');
-      for (const line of lines) {
-        if (!line.trim() || !line.includes('"model"')) continue;
-        try {
-          const obj = JSON.parse(line);
-          if (obj.message && obj.message.model) {
-            const m = obj.message.model;
-            counts[m] = (counts[m] || 0) + 1;
-          }
-        } catch (e) {
-          console.warn(`Malformed JSONL line in ${sessionPath}:`, e);
-        }
+  for (const file of getSessionFiles(resultsDir, true)) {
+    const items = parseJsonlFile(path.join(resultsDir, file));
+    for (const obj of items) {
+      if (obj.message?.model) {
+        counts[obj.message.model] = (counts[obj.message.model] || 0) + 1;
       }
-    } catch (e) {
-      console.warn(`Failed to extract model from ${sessionPath}:`, e);
     }
   }
-
   const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  if (topModel) return topModel[0];
+  return topModel ? topModel[0] : 'unknown';
+}
 
-  return 'unknown';
+export function extractClaudeCodeTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  let total = 0;
+  let cached = 0;
+  let hasData = false;
+
+  for (const file of getSessionFiles(dir)) {
+    const items = parseJsonlFile(path.join(dir, file));
+    for (const obj of items) {
+      if (obj.message?.usage) {
+        const u = obj.message.usage;
+        total += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0);
+        cached += u.cache_read_input_tokens || 0;
+        hasData = true;
+      }
+    }
+  }
+  return hasData ? { total, cached } : undefined;
 }
 
 export function collectClaudeToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const sessionFiles = fs.globSync('**/*.jsonl', { cwd: dir });
-  const firstSession = sessionFiles[0];
-  if (!firstSession) return toolsUsed;
+  const sessionFiles = getSessionFiles(dir);
+  if (sessionFiles.length === 0) return toolsUsed;
 
-  try {
-    const sessionPath = path.join(dir, firstSession);
-    const content = fs.readFileSync(sessionPath, 'utf8');
-    const lines = content.split('\n');
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      try {
-        const obj = JSON.parse(line);
-        if (obj.message && Array.isArray(obj.message.content)) {
-          for (const item of obj.message.content) {
-            if (item.type === 'tool_use') {
-              if (item.name === 'Skill' && item.input?.skill) {
-                toolsUsed.push(item.input.skill);
-              } else if (item.name === 'activate_skill' && item.input?.name) {
-                toolsUsed.push(item.input.name);
-              }
-            }
-          }
+  const items = parseJsonlFile(path.join(dir, sessionFiles[0]));
+  for (const obj of items) {
+    const content = obj.message?.content;
+    for (const item of Array.isArray(content) ? content : []) {
+      if (item.type === 'tool_use') {
+        if (item.name === 'Skill' && item.input?.skill) {
+          toolsUsed.push(item.input.skill);
+        } else if (item.name === 'activate_skill' && item.input?.name) {
+          toolsUsed.push(item.input.name);
         }
-      } catch (e) {
-        console.error(`Failed to parse jsonl line in ${sessionPath}:`, e);
       }
     }
-  } catch (e) {
-    console.error(`Failed to collect guidance tools used for Claude Code:`, e);
   }
-
   return Array.from(new Set(toolsUsed));
 }
 

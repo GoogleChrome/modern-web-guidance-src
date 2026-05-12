@@ -38,7 +38,7 @@ export function parseArguments(argsString: string): string[] {
   return args;
 }
 
-export type BuildTarget = 'skills-cli' | 'skills-cli-npx' | 'mcp-server' | 'megaskill' | 'local-dev';
+export type BuildTarget = 'skills-cli' | 'mcp-server' | 'megaskill' | 'local-dev';
 
 type MacroHandler = (args: string[], filePath: string, options?: { target?: BuildTarget }) => string;
 
@@ -87,11 +87,7 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     const target = options?.target || 'local-dev';
 
     if (target === 'skills-cli') {
-      return `\`${guideId}\` (via \`node <modern-web-directory>/modern-web.mjs retrieve "${guideId}"\`)`;
-    }
-
-    if (target === 'skills-cli-npx') {
-      return `\`${guideId}\` (via \`npx -p modern-web-guidance@latest -- modern-web retrieve "${guideId}"\`)`;
+      return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
     }
 
     const relativePath = path.relative(path.dirname(filePath), getGuideMarkdownPath(guideInfo));

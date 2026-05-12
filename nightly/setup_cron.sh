@@ -26,7 +26,7 @@ EOF
 # Default values
 SCHEDULE="0 2 * * *"
 AGENTS="jetski_cli claude_code codex_cli"
-WORKERS=""
+WORKERS="20"
 
 # Parse flags
 while [[ $# -gt 0 ]]; do

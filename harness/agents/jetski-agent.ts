@@ -460,6 +460,7 @@ async function run(): Promise<void> {
     // Extract trajectory pb from isolated home
     const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
+    exportTrajectories(conversationsDir, '*.db', targetDir);
 
   } catch (err) {
     console.error("Error during execution:", err);
