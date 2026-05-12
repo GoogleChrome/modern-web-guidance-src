@@ -23,9 +23,10 @@ Usage: modern-web <command> [args]
 Commands:
   search <query>          Search use cases by query
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
-  install                 Install skills
+  install [options]       Install the modern-web-guidance skill
 
 Options:
+  --choose                Choose specific skills from the repository interactively
   -h, --help              Show this help
   -v, --version           Show version
 `);
@@ -88,7 +89,14 @@ async function main() {
       }
     }
   } else if (command === "install") {
-    const extraArgs = process.argv.slice(3);
+    const rawArgs = process.argv.slice(3);
+    const hasChoose = rawArgs.includes("--choose");
+    const extraArgs = rawArgs.filter((arg) => arg !== "--choose");
+
+    if (!hasChoose && !extraArgs.includes("--skill")) {
+      extraArgs.push("--skill", "modern-web-guidance");
+    }
+
     const result = spawnSync("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
       stdio: "inherit",
     });
