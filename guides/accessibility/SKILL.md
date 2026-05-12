@@ -158,7 +158,6 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 #### DOs
 - **Logical Tab Order**: Ensure tab order matches visual layouts (top-to-bottom).
 - **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide overrides with sufficient contrast.
-- **Lock Modal Focus**: Ensure focus cannot leave open modal dialogs.
 - **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements. When implementing a custom keyboard handler for button-like elements, `Enter` should be a `keydown` handler and `Space` should be a `keyup` handler (matching native `<button>` behavior where `Enter` repeats and `Space` triggers on release).
 - **Use `tabindex` deliberately**: Anything focusable — by keyboard or programmatically — should have an implicit or explicit ARIA role, so don't make every element focusable. When focus is needed, choose `tabindex="0"` to add the element to the tab order or `tabindex="-1"` to make it programmatically focusable only (e.g., a skip-link target).
 - **Manage Toggle States**: Utilize `aria-expanded` and `aria-pressed` to communicate toggle states for custom controls.
@@ -358,6 +357,7 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 - **Use `prefers-contrast` only when warranted**: Reach for `@media (prefers-contrast: more)` when the design uses low-contrast accents (e.g., subtle borders, muted secondary text) that need to be reinforced; most sites that already meet baseline contrast won't need it.
 
 #### DON'Ts
+- **Don't use color alone to indicate the presence of a user interface component or its state**: Use iconography and/or shape to help differentiate.
 - **Don't use Justified Text Alignment**: Avoid `text-align: justify`.
 - **Don't use Ornate fonts**: Omit cursive typefaces for main reading content.
 - **Don't rely on all-caps for emphasis**: Prefer bolding for visual emphasis, and use `<em>`/`<strong>` when the emphasis is semantic.
@@ -368,7 +368,6 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 ```css
 /* Good: Relative sizing and line caps */
 body {
-  font-size: 1rem;
   line-height: 1.5;
   text-align: start; /* Supports LTR and RTL */
 }
