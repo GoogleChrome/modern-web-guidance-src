@@ -6,16 +6,11 @@ description: >
   add-ons, or anything involving the Chrome Extensions API. Trigger on mentions of: 'Chrome
   extension', 'browser extension', 'manifest.json', 'content script', 'service worker' (in
   browser context), 'popup' (in browser extension context), 'side panel', 'chrome.* API',
-  'background script', 'declarativeNetRequest', 'chrome.identity', 'chrome.storage', 'DevTools
-  panel', 'omnibox', 'context menu' (in extension context), or any request to build functionality
-  that integrates with the Chrome browser UI. Also trigger when the user has an existing extension
-  and wants to migrate from Manifest V2 to V3, fix a service worker lifetime issue, debug CSP
-  errors, or add a new capability to their extension. Also trigger for publishing to the Chrome
-  Web Store: 'Chrome Web Store', 'publish extension', 'store listing', 'webstore', 'CWS',
-  'extension submission', 'permissions justification', 'privacy policy' (in extension context),
-  'store screenshots', 'extension review', 'publish to Chrome', 'update store listing', or when
-  preparing an extension for publishing, responding to a review rejection, writing permission
-  justifications, or drafting a privacy policy.
+  'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), or any request
+  to build functionality that integrates with the Chrome browser UI. Also trigger for
+  publishing to the Chrome Web Store: 'publish extension', preparing an extension for
+  publishing, responding to a review rejection, writing permission justifications, or
+  drafting a privacy policy.
 ---
 
 # Chrome Extensions
@@ -327,7 +322,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 This pattern applies to any chrome API that manages exclusive resources:
 `chrome.tabCapture`, `chrome.desktopCapture`, `chrome.offscreen.createDocument` (only one
-offscreen document allowed at a time).
+offscreen document allowed at a time). See `references/extensions/media-capture.md`.
 
 #### 17. `chrome.desktopCapture` requires a target tab with URL access
 
@@ -353,7 +348,7 @@ chrome.desktopCapture.chooseDesktopMedia(['screen', 'window'], tab, (streamId) =
 });
 ```
 
-**Note:** Prefer `chrome.tabCapture.getMediaStreamId()` for tab-only recording. Use `chrome.desktopCapture` only when the user should choose which screen/window to capture.
+**Note:** Prefer `chrome.tabCapture.getMediaStreamId()` for tab-only recording. Use `chrome.desktopCapture` only when the user should choose which screen/window to capture. See `references/extensions/media-capture.md`.
 
 #### 18. `chrome.windows` has NO `.query()` method — use `getAll`, `getLastFocused`, or `getCurrent`
 
@@ -438,108 +433,26 @@ pass.
 
 ### CHROMEWEBSTORE.md Sections
 
-Read `references/webstore/chromewebstore-template.md` for the full template. Here's what each section
-is for and why it matters:
-
-#### Store Listing
-- **Extension Name**: Must match manifest.json `name` (max 75 chars)
-- **Short Description**: The subtitle shown in search results (max 132 chars). Make it
-  count — this is the first thing users see.
-- **Detailed Description**: Up to 16,000 chars. Lead with what the extension does in one
-  sentence, then list key features, then explain how to use it. No marketing fluff.
-- **Category**: Pick the closest CWS category
-- **Single Purpose**: One sentence. Narrow and easy to understand. This is heavily
-  scrutinized during review.
-- **Language**: Primary language of the extension
-
-#### Graphics & Assets
-Track which assets exist and their status. Required assets:
-- Store icon: 128×128 PNG
-- Screenshots: 1280×800 or 640×400 (at least 1, up to 5 localized + 5 global)
-- Small promo tile: 440×280 (recommended)
-- Marquee promo tile: 1400×560 (optional)
-
-#### Permissions Justification
-This is the #1 reason for first-submission rejection. For every permission in manifest.json
-(`permissions` and `host_permissions`), write a clear justification:
-
-```
-| Permission | Justification |
-|------------|---------------|
-| storage | Saves user preferences and highlight data locally |
-| activeTab | Reads page content only when the user clicks the extension icon |
-| tabs | Displays tab titles in the extension popup for tab management |
-```
-
-Keep justifications specific. "Needed for the extension to work" will be rejected.
-
-#### Privacy & Data Use
-Map directly to the CWS data use disclosure form:
-- What data is collected (be exhaustive)
-- Whether data is transmitted off-device
-- Whether data is used for purposes unrelated to the extension's core functionality
-- Whether data is sold or shared with third parties
-- Whether data is used for creditworthiness or lending
-
-If the extension collects NO user data, say so explicitly.
-
-#### Privacy Policy
-- URL where the privacy policy is hosted
-- If no data is collected, a minimal privacy policy is still recommended and may be
-  required depending on permissions
-
-Read `references/webstore/privacy-policy.md` for guidance on generating a privacy policy.
-
-#### Version History
-Chronological changelog. Each entry has version, date, and what changed. This isn't
-published to the store, but it's essential for the developer to track what was submitted
-when, and helps when responding to rejections.
-
-#### Distribution
-- Visibility: Public / Unlisted / Private
-- Regions: Worldwide or specific countries
-- Pricing: Free or paid (note: paid extensions are rare and have extra requirements)
-
-#### Review Notes
-A scratch section for communicating with the review team or tracking rejection reasons
-and how they were resolved.
+Read `references/webstore/chromewebstore-template.md` before generating the file — it defines
+what each section covers and how to fill it out. The highest-risk section is Permissions
+Justification: write a specific plain-English reason per permission and per host_permission.
+"Needed for the extension to work" will be rejected. Read `references/webstore/privacy-policy.md`
+for guidance on generating a privacy policy.
 
 ### Pre-Publish Checklist
 
-Before the user submits to the Chrome Web Store, verify all of these. Read
-`references/webstore/review-checklist.md` for the full checklist with explanations.
-
-Quick version:
-- [ ] manifest.json `version` bumped
-- [ ] CHROMEWEBSTORE.md `Last Updated` date is current
-- [ ] All descriptions are specific and accurate (no vague marketing)
-- [ ] Single Purpose field is filled in and narrow
-- [ ] Every permission has a justification
-- [ ] host_permissions scoped as tightly as possible (not `<all_urls>` unless truly needed)
-- [ ] Privacy & Data Use section matches actual data practices
-- [ ] Privacy policy URL is live and accessible
-- [ ] Store icon is 128×128 PNG
-- [ ] At least 1 screenshot at correct dimensions
-- [ ] No placeholder text or TODO items remain
-- [ ] Version History has an entry for this release
-- [ ] ZIP package contains only necessary files (no .git, node_modules, .env, etc.)
-- [ ] Extension tested in Chrome with no console errors
+Before submission, run through `references/webstore/review-checklist.md`. The most common
+first-submission failures:
+- Every permission and host_permission must have a specific justification (not "needed to work")
+- Privacy policy URL must be live and match the data use disclosure form
+- At least 1 screenshot at 1280×800 or 640×400
+- ZIP must exclude `.git/`, `node_modules/`, `.env`, `CHROMEWEBSTORE.md`
 
 ### Store Listing Copy Guidelines
 
-Good store listing copy is the difference between approval and rejection, and between
-downloads and obscurity. Follow these principles:
-
-1. **Lead with function, not feeling.** "Blocks ads on YouTube" not "Enjoy YouTube again"
-2. **Be specific about what it does.** List concrete features, not abstract benefits
-3. **Explain permissions in the description.** Users who see scary permissions without
-   explanation will bounce. Pre-empt this.
-4. **Include usage instructions.** "Click the extension icon → select text → click Save"
-5. **No keyword stuffing.** The review team flags this
-6. **Mention limitations honestly.** "Works on Chrome 120+ only" or "Does not work on
-   chrome:// pages" builds trust
-
-See `references/webstore/store-listing.md` for extended examples and common rejection reasons.
+For copy guidelines and common rejection reasons, see `references/webstore/store-listing.md`.
+Key rule: lead with function ("Highlights search terms on any webpage"), not feeling ("Enjoy
+searching again").
 
 ---
 
@@ -562,7 +475,8 @@ For detailed API patterns and publishing guidance, read the relevant file BEFORE
 | Context menus | `references/extensions/context-menus.md` |
 | Omnibox | `references/extensions/omnibox.md` |
 | Storage | `references/extensions/storage.md` |
-| Tab management | `references/extensions/tab-management.md` |
+| Tab & window management | `references/extensions/tab-management.md` |
+| Tab/desktop capture | `references/extensions/media-capture.md` |
 | Message passing | `references/extensions/message-passing.md` |
 | Icons | `references/extensions/icons.md` |
 | CHROMEWEBSTORE.md template | `references/webstore/chromewebstore-template.md` |
