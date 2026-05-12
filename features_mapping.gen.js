@@ -268,13 +268,9 @@ window.__featuresMapping = {
     "view-transitions",
     "view-transition-class"
   ],
-  "improve-body-text-layout-and-legibility": [
-    "text-wrap",
+  "improve-text-layout-and-legibility": [
+    "text-wrap-balance",
     "text-wrap-pretty"
-  ],
-  "improve-heading-text-layout-and-legibility": [
-    "text-wrap",
-    "text-wrap-balance"
   ],
   "individual-transform-properties": [
     "individual-transforms"
