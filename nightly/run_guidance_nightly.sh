@@ -22,7 +22,7 @@ EOF
 
 # Default values
 AGENTS_TO_RUN="jetski_cli claude_code codex_cli"
-WORKERS=""
+WORKERS="20"
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
