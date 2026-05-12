@@ -65,31 +65,28 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 -   Note: if the `npx -y modern-web-guidance…` command hangs, try running again in offline mode: `npx --offline …`
 ### Browser Compatibility & Baseline Fallbacks
 
-#### Baseline Terms
+#### Baseline Status
+- **Limited Availability**: Lacks cross-browser interoperability.
+- **Newly Available**: Supported across all latest major browsers.
+- **Widely Available**: Supported across all major browsers for ≥ 30 months.
 
-Web features are labeled as one of:
+#### Support Floor Implementation
+Assume a default guaranteed audience floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)**. Enforce a support floor, not a ceiling:
+- **Supporting Browsers (Guaranteed Audience):** Features at or above the floor require **zero fallbacks**. Clients below the floor risk broken experiences.
+- **Supporting Features (Capability Integration):** Features below the floor **MUST** implement progressive enhancement and feature-detected fallbacks to protect the guaranteed audience.
+- **Implicit Context:** Read `AGENTS.md` constraints implicitly within the context window. Do **NOT** execute upfront status lookups or file-verification checks before engaging CLI tools.
+- **Risk Warnings:** Proactively warn users if low-maturity features risk breaking core functionality without perfect fallbacks.
 
-- **Limited Availability**: Not yet available across all browsers.
-- **Newly Available**: Works across the latest devices and browser versions, but may not work in older devices/browsers.
-- **Widely Available**: Well established and works across many devices and browser versions. It's been Newly Available for at least 30 months.
-
-#### Enforcing a Support Floor (The Inversion of Support)
-A baseline target enforces a **support floor** rather than a strict ceiling. Interpret this floor through two distinct lenses:
-- **Supporting Browsers (Guaranteed Audience):** Setting a target establishes the audience guaranteed to receive an unbroken UX. By default, assume projects target a guaranteed audience floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)** (supported across core engines for ≥ 30 months). For features *more mature* than this target audience floor, fallbacks are completely unnecessary. (Users running older browsers below this target floor receive no fallbacks and risk broken experiences).
-- **Supporting Features (Capability Integration):** Conversely, when integrating features *less mature* than the guaranteed audience floor, you MUST implement progressive enhancement and feature-detected fallbacks to protect users within the guaranteed audience.
-- **Implicit Context:** Constraints defined in `AGENTS.md` are included implicitly within your standard context window. Do **not** execute upfront status lookups or prerequisite file-verification checks before engaging with command-line tools.
-- **Limited Support Warnings:** If a guide relies on low-maturity features where site functionality could break without perfect fallbacks, proactively warn the user about compatibility risks.
-
-#### Feature Maturity & Risk (Rejecting the Ceiling)
-Enforcing a rigid "baseline ceiling" against newer features is counterproductive because many modern web APIs gracefully degrade or provide exceptional immediate value to supported clients. Evaluate newer features along a maturity spectrum:
-- **Single-Engine Support (e.g., Chrome-only):** Fair game by default in guidance. You will recommend these alongside robust feature detection and alternative code paths for unsupported engines.
-- **Origin Trials & Production Safety:** Highly immature APIs liable to breaking changes. Delivering a consistent experience across real production users is impossible, and smooth fallbacks are almost never available. When encountering a guide utilizing an Origin Trial feature, you MUST pause and have the user explicitly decide if they accept the risk and how to handle production users lacking support.
+#### Advanced Feature Handling
+- **Single-Engine APIs (e.g., Chrome-only):** Fair game by default. **MUST** include robust feature detection and alternative code paths for unsupported engines.
+- **Origin Trials:** Highly unstable. **PAUSE**. Prompt the user to explicitly accept the risk and define production fallback strategies before generating implementation code.
 
 #### Reactive Discovery & Persistence
-- **Reactive Discovery:** Do NOT proactively ask the user about their browser support target or risk appetite upfront. Only act reactively if you observe:
-  - The project is a browser monoculture (e.g., Electron/Tauri).
-  - The user explicitly states exclusions (e.g., "we don't support Desktop Safari").
-  - The user expresses hesitation about using polyfills.
-- **Clarify & Persist:** If you detect any of the triggers above, ask the user to clarify their specific constraints. Once clarified, suggest persisting this free-form policy into a project-level **`AGENTS.md`** file so future interactions remember it.
-  - For example: `**Browser Support:** We target Baseline Widely Available, but explicitly exclude Desktop Safari and do not use JS polyfills for CSS features.`
-- **Fallback Tuning:** Use the context of `AGENTS.md` to tune fallback implementations (e.g., avoiding specific polyfills).
+Do **NOT** ask for browser support targets upfront. Intervene reactively only when observing:
+- Browser monocultures (e.g., Electron/Tauri).
+- Explicit browser exclusions (e.g., "no Desktop Safari").
+- Hesitation around polyfill size/invasiveness.
+
+**Clarify & Persist:** When triggered, clarify constraints and suggest persisting them to a project-level **`AGENTS.md`** file.
+- *Format:* `**Browser Support:** We target Baseline Widely Available, but explicitly exclude Desktop Safari and do not use JS polyfills for CSS features.`
+- *Fallback Tuning:* Apply `AGENTS.md` context to tune fallback implementations (e.g., omitting specific polyfills).
