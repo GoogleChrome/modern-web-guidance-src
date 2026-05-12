@@ -143,8 +143,6 @@ const { positionals, values } = parseArgs({
 
 // --- Helpers ---
 
-
-
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const p = spawn(command, args, { stdio: 'inherit', cwd: rootDir, ...options });
@@ -310,13 +308,6 @@ async function main() {
 
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
-      if (values['ui']) {
-        process.env.LAUNCH_UI = 'true';
-        process.chdir(evalViewDir);
-        await import('../eval-view/server.js');
-        break;
-      }
-
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
       let buildCode = 0;
@@ -327,6 +318,13 @@ async function main() {
       }
 
       if (buildCode !== 0) process.exit(buildCode);
+
+      if (values['ui']) {
+        process.env.LAUNCH_UI = 'true';
+        process.chdir(evalViewDir);
+        await import('../eval-view/server.js');
+        break;
+      }
 
       const { runSuite } = await import('../harness/run_suite.ts');
 

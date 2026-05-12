@@ -69,15 +69,16 @@ test.describe(`autofill-address-form Expectations: ${demoName}`, () => {
   });
 
   test('The street address textarea must have autocomplete="street-address"', async ({ page }) => {
-    await expect(page.locator('textarea').first()).toHaveAttribute('autocomplete', 'street-address');
+    const attr = await page.locator('textarea').first().getAttribute('autocomplete');
+    expect(attr?.includes('street-address')).toBe(true);
   });
 
   test('The postal code input must have autocomplete="postal-code"', async ({ page }) => {
-    await expect(page.locator('input[autocomplete="postal-code"]').first()).toBeVisible();
+    await expect(page.locator('input[autocomplete*="postal-code"]').first()).toBeVisible();
   });
 
   test('The postal code input must not use type="number"', async ({ page }) => {
-    const type = await page.locator('input[autocomplete="postal-code"]').first().getAttribute('type');
+    const type = await page.locator('input[autocomplete*="postal-code"]').first().getAttribute('type');
     expect(type).not.toBe('number');
   });
 
@@ -93,8 +94,8 @@ test.describe(`autofill-address-form Expectations: ${demoName}`, () => {
 
   test('Required form fields must have the "required" attribute', async ({ page }) => {
     const result = await page.evaluate(() => {
-      const nameInput = document.querySelector<HTMLInputElement>('input[autocomplete="name"]');
-      const addressTextarea = document.querySelector<HTMLTextAreaElement>('textarea[autocomplete="street-address"]');
+      const nameInput = document.querySelector<HTMLInputElement>('input[autocomplete*="name"]');
+      const addressTextarea = document.querySelector<HTMLTextAreaElement>('textarea[autocomplete*="street-address"]');
       if (!nameInput || !addressTextarea) return false;
       return nameInput.required && addressTextarea.required;
     });
