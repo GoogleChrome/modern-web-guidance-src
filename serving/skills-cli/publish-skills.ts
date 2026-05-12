@@ -28,9 +28,9 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-const getLatestGitTag = () => {
+const getLatestGitTag = (target = 'HEAD') => {
   try {
-    return execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    return execSync(`git describe --tags --match "v*.*.*" --abbrev=0 ${target}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
   } catch {
     return '';
   }
@@ -39,12 +39,21 @@ const getLatestGitTag = () => {
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
 
-  // Get the latest tag that looks like v*.*.*
-  const latestTag = getLatestTag();
+  const target = isDryRun ? 'origin/main' : 'HEAD';
+  console.log(`Checking latest tag against ${target}...`);
+  
+  let latestTag = getLatestTag(target);
+  
+  // Fallback if origin/main failed or returned nothing (e.g. on PR branch not fully fetched)
+  if (!latestTag && isDryRun) {
+    console.log("Could not find tags on origin/main. Falling back to HEAD.");
+    latestTag = getLatestTag('HEAD');
+  }
+
   let currentVersion: string;
 
   if (!latestTag) {
-    console.log("No tags found merged into HEAD. Falling back to package.json version.");
+    console.log("⚠️ No tags found anywhere. Falling back to package.json version. This may be inaccurate for PR dry-runs.");
     const pkgJson = JSON.parse(await fs.readFile(path.join(ROOT_DIR, "package.json"), "utf-8"));
     currentVersion = pkgJson.version;
   } else {
