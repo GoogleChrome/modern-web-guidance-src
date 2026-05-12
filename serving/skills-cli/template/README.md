@@ -141,8 +141,8 @@ We grade both outputs and only release guides that demonstrate a massive, quanti
 
 # Available Skills
 
-* **`modern-web-guidance`**: (234 tok) Everything mentioned above  
-* **`chrome-extensions`**: (181 tok) Manifest V3 development, background service workers, content scripts, and extension APIs. Manage Chrome Web Store metadata, permissions justifications, privacy policies, and publishing readiness.
+* **`modern-web-guidance`**: (234 tokens) Everything mentioned above  
+* **`chrome-extensions`**: (181 tokens) Manifest V3 development, background service workers, content scripts, and extension APIs. Manage Chrome Web Store metadata, permissions justifications, privacy policies, and publishing readiness.
 
 \# Choose which skills you want  
-`npx modern-web-guidance install --interactive`
+`npx modern-web-guidance install --choose`
