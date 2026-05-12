@@ -42,15 +42,13 @@ export function bucketizeLatency(latencyMs: number): number {
 
 export class ClearcutLogger {
   #watchdog: WatchdogClient | null = null;
-  #enabled: boolean;
 
   constructor(options: {
     logFile?: string;
     clearcutEndpoint?: string;
     clearcutIncludePidHeader?: boolean;
   } = {}) {
-    this.#enabled = isTelemetryEnabled();
-    if (this.#enabled) {
+    if (isTelemetryEnabled()) {
       console.warn("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_TELEMETRY=1.");
       this.#watchdog = new WatchdogClient({
         parentPid: process.pid,
@@ -65,7 +63,7 @@ export class ClearcutLogger {
     searchItems: SearchItem[],
     metrics?: { latencyMs: number; success?: boolean }
   ): Promise<void> {
-    if (!this.#enabled) {
+    if (!this.#watchdog) {
       return;
     }
 
@@ -81,10 +79,6 @@ export class ClearcutLogger {
 
     console.warn(JSON.stringify(payload));
 
-    if (!this.#watchdog) {
-      return;
-    }
-
     this.#watchdog.send({
       type: WatchdogMessageType.LOG_EVENT,
       payload: payload,
@@ -95,7 +89,7 @@ export class ClearcutLogger {
     guideId: string,
     metrics?: { latencyMs: number; success?: boolean }
   ): Promise<void> {
-    if (!this.#enabled) {
+    if (!this.#watchdog) {
       return;
     }
 
@@ -111,10 +105,6 @@ export class ClearcutLogger {
 
     console.warn(JSON.stringify(payload));
 
-    if (!this.#watchdog) {
-      return;
-    }
-
     this.#watchdog.send({
       type: WatchdogMessageType.LOG_EVENT,
       payload: payload,
@@ -125,7 +115,7 @@ export class ClearcutLogger {
     skills: string[],
     metrics?: { latencyMs?: number; success?: boolean }
   ): Promise<void> {
-    if (!this.#enabled) {
+    if (!this.#watchdog) {
       return;
     }
 
@@ -140,10 +130,6 @@ export class ClearcutLogger {
     };
 
     console.warn(JSON.stringify(payload));
-
-    if (!this.#watchdog) {
-      return;
-    }
 
     this.#watchdog.send({
       type: WatchdogMessageType.LOG_EVENT,

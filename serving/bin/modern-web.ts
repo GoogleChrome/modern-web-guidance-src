@@ -118,7 +118,7 @@ async function main() {
     }
 
     if (hasError) {
-      process.exit(1);
+      process.exitCode = 1;
     }
   } else if (command === "install") {
     const extraArgs = process.argv.slice(3);
@@ -167,9 +167,6 @@ async function main() {
     process.exit(1);
   }
 }
-
-
-
 
 main().catch(err => {
   console.error("Execution failed:", err);
