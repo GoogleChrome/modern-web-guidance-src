@@ -99,8 +99,8 @@ test('README dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
   
   // Verify it contains the new headers and format
-  assert.match(readmeRaw, /#### Skill Coverage in `v\d+\.\d+\.\d+`/, 'README should contain the Skill Coverage header with the version');
-  assert.ok(readmeRaw.includes('web features with implementation guidance from Chrome\'s experts'), 'README should contain the feature count summary text');
+  assert.match(readmeRaw, /#### Full Skill Coverage \(v\d+\.\d+\.\d+\)/, 'README should contain the Skill Coverage header with the version');
+  assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
   assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
   
   // Quick sanity check that at least one feature name format works out, e.g. webstatus links

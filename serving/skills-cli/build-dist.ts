@@ -276,11 +276,17 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     if (pkgJson.version) version = pkgJson.version;
   } catch { }
 
-  let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
-  const featureNamesCsv = allFeaturesSorted.map(f => `\`${f.name.replace(/</g, '&lt;')}\``).join(', ');
+  let dynamicMd = `#### Full Skill Coverage (v${version})\n\n`;
 
-  dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} web features with implementation guidance from Chrome's experts</strong>: ${featureNamesCsv}</summary>\n\n`;
+  // Details block 1: Web features
+  dynamicMd += `<details>\n<summary>Includes expert guidance across <strong>${allFeaturesSorted.length} modern web features</strong></summary>\n\n`;
+  for (const f of allFeaturesSorted) {
+    dynamicMd += `- [${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})\n`;
+  }
+  dynamicMd += `</details>\n\n`;
 
+  // Details block 2: Use cases
+  dynamicMd += `<details>\n<summary>Covers <strong>${readyGuides.length} real-world developer use cases</strong> with production-ready code patterns</summary>\n\n`;
   for (const group of sortedGroups) {
     const featureLinks = group.features.map(f => `[${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})`).join(', ');
     dynamicMd += `- **${featureLinks}**\n`;
@@ -294,7 +300,11 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const readmePath = path.join(publishRoot, "README.md");
   if (fs.existsSync(readmePath)) {
     let readmeContent = fs.readFileSync(readmePath, "utf-8");
-    readmeContent = readmeContent.replace('## Installation', dynamicMd + '\n\n## Installation');
+    if (readmeContent.includes('<!-- INJECT_SKILL_COVERAGE -->')) {
+      readmeContent = readmeContent.replace('<!-- INJECT_SKILL_COVERAGE -->', dynamicMd.trimEnd());
+    } else {
+      readmeContent = readmeContent.replace('## Installation', dynamicMd + '## Installation');
+    }
     fs.writeFileSync(readmePath, readmeContent);
   }
 
