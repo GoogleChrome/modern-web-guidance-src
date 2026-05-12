@@ -1,4 +1,5 @@
-- The `h1` element has a computed `text-wrap` value of `balance`.
+- The `h1` and `h2` elements have a computed `text-wrap` value of `balance`.
+- The `p` and `blockquote` elements have a computed `text-wrap` value of `pretty`.
 - The `p` element does NOT have a computed `text-wrap` value of `balance`.
 - The `text-wrap` property is not applied to the `*` universal selector.
 - The `text-wrap` property is not applied to the `body` element.

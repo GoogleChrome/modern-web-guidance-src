@@ -80,6 +80,9 @@ importers:
       playwright:
         specifier: ^1.58.2
         version: 1.58.2
+      serving:
+        specifier: workspace:*
+        version: link:../serving
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -98,6 +101,9 @@ importers:
       marked:
         specifier: ^18.0.3
         version: 18.0.3
+      serving:
+        specifier: workspace:*
+        version: link:../serving
       web-features:
         specifier: latest
         version: 3.27.0
@@ -138,6 +144,9 @@ importers:
       '@google/gemini-cli-core':
         specifier: latest
         version: 0.41.2(encoding@0.1.13)(express@5.2.1)
+      serving:
+        specifier: workspace:*
+        version: link:../serving
 
   serving:
     dependencies:

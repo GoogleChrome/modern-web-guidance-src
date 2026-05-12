@@ -106,7 +106,7 @@ function buildMegaskill(): void {
   const guidesDir = path.join(repoRoot, 'guides');
   const distDir = path.join(repoRoot, 'skills', 'modern-web');
   const distRefsDir = path.join(distDir, 'references');
-  const existingSkillPath = path.join(guidesDir, 'modern-web-dev.md');
+  const existingSkillPath = path.join(repoRoot, 'serving/megaskill/megaskill.md');
 
   // Create fresh dist directory
   safeRmSync(distDir, 'skills/modern-web');
