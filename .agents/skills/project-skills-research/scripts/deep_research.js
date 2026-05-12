@@ -34,7 +34,7 @@ Options:
 }
 
 const discipline = values.discipline;
-const outputDir = path.resolve('skills-drafts/.research', discipline);
+const outputDir = path.resolve('skills-src/.research', discipline);
 const outputPath = path.join(outputDir, 'research.md');
 
 const prompt = `Thoroughly research best practices for '${discipline}' in modern web applications. 

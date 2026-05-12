@@ -47,11 +47,11 @@ export const config: SkillsConfiguration = {
     // Proposal A: Standalone, not bundled
     {
       name: "chrome-extensions",
-      sourcePath: "skills-drafts/chrome-extensions/SKILL.md"
+      sourcePath: "skills-src/chrome-extensions/SKILL.md"
     },
     {
       name: "chrome-webstore",
-      sourcePath: "skills-drafts/chrome-webstore/SKILL.md"
+      sourcePath: "skills-src/chrome-webstore/SKILL.md"
     },
     // Primary monoskill itself is also published as a skill definition
     {

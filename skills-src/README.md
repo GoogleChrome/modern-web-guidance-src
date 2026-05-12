@@ -1,13 +1,13 @@
-# Skills Drafts
+# Skills Source
 
-This directory contains experimental skill implementations that are not yet ready for production use. These skills will not be included in any of the evals or used in production unless they are moved to the `skills` directory.
+This directory contains standalone and discipline-level skill implementations. These skills are processed by the build pipeline based on explicit configuration.
 
 ## How to Use
 
 Create a subdirectory for your skill and add a `SKILL.md` file.
 
 ```
-skills-drafts/
+skills-src/
   my-skill/
     SKILL.md
 ```
@@ -19,7 +19,7 @@ For help creating the contents of the skill, see the [`skill-creator`](https://g
 There may only be one `SKILL.md` file per skill directory, however additional resources or examples could be added in a `resources` or `examples` subdirectory. For example:
 
 ```
-skills-drafts/
+skills-src/
   my-skill/
     SKILL.md
     resources/
