@@ -19,82 +19,104 @@ This pattern is particularly useful for preventing unwanted overflow on replaced
 
 ## How to Implement
 
-1. **Determine the Element Type**:
-   - **Non-Replaced Elements** (e.g., `<div>`, `<section>`): Setting `overflow: clip` is **mandatory** to enable extended margin control.
-   - **Replaced Elements** (e.g., `<img>`, `<video>`): In modern browsers, replaced elements default to `overflow: clip`, making the declaration **optional** but recommended for explicit code intent.
-2. **Apply `overflow: clip` (if applicable)**: Ensure the target element has `overflow: clip` enabled to allow `overflow-clip-margin` to take effect. This value clips content to the padding box by default and prevents all scrolling (both user-initiated and programmatic).
+1. **Determine the Element Type**: For non-replaced elements (e.g., `<div>`, `<section>`), setting `overflow: clip` is **mandatory** to enable extended margin control.
+2. **Apply `overflow: clip`**: Ensure the target container has `overflow: clip` enabled to allow `overflow-clip-margin` to take effect. This value clips content to the padding box by default and prevents all scrolling (both user-initiated and programmatic).
 3. **Define the clipping margin**: Use `overflow-clip-margin` to extend the boundary.
 4. **Specify by length**: Use a length value (e.g., `20px`) to expand the clipping box by that amount.
-5. **Specify by box edge**: Use keywords like `content-box`, `padding-box`, or `border-box` to align the clip to specific box edges. This is especially relevant for replaced elements like `<img>` which default to `content-box` clipping in modern browsers.
+5. **Specify by box edge**: Use keywords like `content-box`, `padding-box`, or `border-box` to align the clip to specific box edges.
 
-## Example Code: Controlled Image Clipping
+## Example Code: Controlled Clipping on Non-Replaced Containers
 
 ```css
 /**
- * Container with clip margin to allow some overflow.
- * For this non-replaced element, declaring `overflow: clip` is MANDATORY.
+ * Base Box Styles demonstrating core clipping fallback progression.
+ * For non-replaced elements, declaring `overflow: clip` is MANDATORY to enable margin control.
  */
 .box {
-  width: 200px;
-  height: 200px;
-  padding: 20px;
   border: 5px solid #333;
-  
-  /* MANDATORY: overflow must be 'clip' for margin to work on non-replaced elements */
-  overflow: clip;
-  
-  /* Extend the clipping boundary 10px beyond the padding box */
-  overflow-clip-margin: 10px;
+  width: 200px;
+  height: 100px;
+  padding: var(--box-padding);
+  box-sizing: content-box;
+  position: relative;
+  background: #fff;
+  /* Level 1 Fallback: Baseline */
+  overflow: hidden;
+}
+
+@supports (overflow: clip) {
+  .box {
+    /* Level 2: Modern Baseline (Safari 16+) */
+    overflow: clip;
+  }
 }
 
 /**
- * Replaced element respecting overflow.
- * Modern browsers default to content-box clipping for images.
- * For this replaced element, declaring `overflow: clip` is OPTIONAL.
+ * Target container variant applying an extended clipping margin.
+ * Demonstrates modern support overrides paired with manual (fallback) clip-path simulation.
  */
-.demo-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  
-  /* OPTIONAL: Modern browsers default to overflow: clip for images */
-  overflow: clip;
-  
-  /* Override default content-box clip if needed */
-  overflow-clip-margin: padding-box;
+.clip-20px {
+  overflow: visible;
+  clip-path: inset(-20px);
+}
+
+@supports (overflow-clip-margin: 20px) {
+  .clip-20px {
+    /* MANDATORY: overflow must be 'clip' for margin to work on non-replaced elements */
+    overflow: clip;
+    overflow-clip-margin: 20px;
+    clip-path: none;
+  }
 }
 ```
 
 ## Strategic Implementation & Best Practices
 
-- **DO** use `overflow: clip` when you want to ensure content is strictly contained on non-replaced elements, as it is **mandatory** for `overflow-clip-margin` to take effect.
-- **DO** remember that replaced elements default to `overflow: clip`, so declaring it explicitly is **optional** but recommended for cross-browser consistency and readability.
+- **DO** use `overflow: clip` when you want to ensure content is strictly contained on target containers, as it is **mandatory** for `overflow-clip-margin` to take effect.
 - **DO** use `overflow-clip-margin` to allow small visual elements (like box shadows or decorative elements) to overflow slightly without triggering scrollbars or being cut off abruptly.
-- **DO NOT** assume that setting `overflow: visible` on replaced elements like `<img>` will always behave as it did prior to Chrome 108. It may cause unexpected layout shifts if the image aspect ratio doesn't match the container.
-- **DO NOT** use `overflow: scroll` or `overflow: auto` on the target containers when the intent is to strictly clip content without scrolling.
+- **DO NOT** use `overflow: scroll` or `overflow: auto` on target containers when the intent is to strictly clip content without scrolling.
 - **DO** account for the **Precedence Hierarchy**: If `overflow-clip-margin` is specified along with `overflow: hidden`, the margin is ignored.
 
 ## Fallback Strategy
 
 {{ BASELINE_STATUS("overflow-clip-margin") }}
 
-For browsers that do not support `overflow: clip` or `overflow-clip-margin`, the standard fallback is `overflow: hidden`. This clips the content to the padding box but allows programmatic scrolling.
+For browsers that do not support `overflow: clip`, the standard fallback is `overflow: hidden`, which clips content to the padding box but permits programmatic scrolling. 
+
+Using `clip-path: inset()` is the most powerful way to simulate `overflow-clip-margin` for older browsers because it allows you to define exactly where the cut-off boundary is located. To make this work as a fallback, set `overflow: visible` on the container (so browsers do not preemptively clip at the padding box) and use `clip-path` to perform the clipping manually. Modern browsers can then override these styles using `@supports`.
 
 To implement a complete fallback experience:
-1. **Provide a fallback class**: Define a class that applies `overflow: hidden !important` to override the modern styles.
-2. **Create a notification banner**: Add a banner to inform the user that a fallback is active.
-3. **Feature detect with JavaScript**: Use `CSS.supports('overflow', 'clip')` to detect support and apply the fallback class and show the banner if unsupported.
+1. **Simulate margins via `clip-path`**: Author base rules using `clip-path: inset()` to simulate precise box edges or length margins, paired with `overflow: visible`.
+2. **Create notification banners**: Add specific banners to inform users when fallback clipping or margin simulations are active.
+3. **Feature detect with JavaScript**: Use `CSS.supports()` to verify native support, conditionally displaying notification banners and applying core fallback classes as needed.
 
 ```css
+/* Overflow Clip Fallback */
 .box {
-  /* Base property for modern browsers */
-  overflow: clip;
-  overflow-clip-margin: 20px;
+  padding: var(--box-padding);
+  overflow: hidden; 
 }
 
-/* Fallback class for non-supporting browsers */
-.overflow-fallback {
-  overflow: hidden !important;
+/* Applied for browsers with overflow: clip support */
+@supports (overflow: clip) {
+  .box {
+    overflow: clip;
+  }
+}
+
+/* 2. Content-Box Fallback */
+.clip-content {
+  overflow: visible; 
+  clip-path: inset(calc(var(--box-padding) + 5px)); 
+}
+
+/* Applied for browsers with overflow-clip-margin support */
+@supports (overflow-clip-margin: content-box) {
+  .clip-content {
+    overflow: clip;
+    overflow-clip-margin: content-box;
+    clip-path: none;
+  }
 }
 ```
 
@@ -103,19 +125,16 @@ To implement a complete fallback experience:
  * Progressive Enhancement Fallback
  */
 document.addEventListener("DOMContentLoaded", () => {
-  // Check for native CSS support
+  // Check for native support of overflow: clip
   if (!CSS.supports("overflow", "clip")) {
-    // Show fallback banner if it exists
     const banner = document.getElementById('fallback-banner');
-    if (banner) {
-      banner.style.display = 'block';
-    }
-    
-    // Apply fallback class to target containers
-    const boxes = document.querySelectorAll('.box');
-    boxes.forEach(box => {
-      box.classList.add('overflow-fallback');
-    });
+    if (banner) banner.style.display = 'block';
+  }
+
+  // Check for native support of overflow-clip-margin
+  if (!CSS.supports("overflow-clip-margin", "content-box")) {
+    const marginBanner = document.getElementById('margin-fallback-banner');
+    if (marginBanner) marginBanner.style.display = 'block';
   }
 });
 ```
