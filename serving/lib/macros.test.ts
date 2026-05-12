@@ -18,7 +18,7 @@ describe('replaceMacros (Functional with real data)', () => {
       );
     });
 
-    it('replaces macro with newly available status including detailed browser support', () => {
+    it('replaces macro with newly available status dynamically splitting out mobile targets when support diverges', () => {
       const content = "{{ BASELINE_STATUS('popover') }}";
       const result = replaceMacros(content, 'test.md');
       assert.strictEqual(
