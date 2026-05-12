@@ -7,22 +7,6 @@ import { rootDir } from "../../lib/paths.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
 
-function getCategoryTitle(cat: string): string {
-  const map: Record<string, string> = {
-    'accessibility': 'Accessibility',
-    'built-in-ai': 'Built-in AI',
-    'css': 'CSS',
-    'forms': 'Forms',
-    'html': 'HTML',
-    'javascript': 'JavaScript',
-    'performance': 'Performance',
-    'security': 'Security',
-    'user-experience': 'User Experience',
-    'webmcp': 'WebMCP',
-  };
-  return map[cat] || cat;
-}
-
 export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const guidesDir = path.join(publishRoot, 'skills/modern-web-guidance/guides');
   const readyGuides = scanAllGuides().filter(inv => {
@@ -63,8 +47,8 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     .map(fId => ({ id: fId, name: getFeatureName(fId) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Sort categories alphabetically by friendly title
-  const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => getCategoryTitle(a).localeCompare(getCategoryTitle(b)));
+  // Sort categories alphabetically by slug
+  const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => a.localeCompare(b));
 
   let version = "unknown";
   try {
@@ -84,7 +68,7 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   // Details block 2: Use cases
   dynamicMd += `<details>\n<summary>Covers <strong>${readyGuides.length} real-world developer use cases</strong> with production-ready code patterns</summary>\n\n`;
   for (const cat of sortedCategories) {
-    dynamicMd += `<h3>${getCategoryTitle(cat)}</h3>\n\n`;
+    dynamicMd += `<h3>${cat}</h3>\n\n`;
     const ucs = categoryMap.get(cat)!;
     ucs.sort((a, b) => a.id.localeCompare(b.id));
     for (const uc of ucs) {
