@@ -39,6 +39,19 @@ contain-intrinsic-block-size: auto 2lh;
 
 For scenarios that use different layouts, we can add the sizes of the elements as well as any spacing between them.
 
+```css
+/* Label block-size: font-size multiplied by its line-height */
+--label--block-size: 1rem * 1.5;
+/* Description block-size: font-size multiplied by its line-height */
+--description-block-size: 0.8rem * 1.2;
+/* Gap between the label and description */
+--gap: 8px;
+/* Intrinsic size adds all the values together */
+contain-intrinsic-block-size: calc(
+  var(--label-block-size) + var(--gap) + var(--description-block-size)
+);
+```
+
 When content size varies, one can use an average value or make a guess at what the could be. This won’t totally prevent a scrollbar from growing or shrinking, but it can reduce the negative effect.
 
 ## Fallback strategies
