@@ -12,26 +12,27 @@ This skill facilitates the "Differential Knowledge Refactor" of technical guides
 The goal is to aggressively "whittle down" a target guide (the **Target**) by removing any content that is natively understood by modern coding models.
 
 ### 1. Generate Knowledge Mirrors
-Use the provided script to generate "Redundancy Mirrors"—comprehensive guides of what Gemini, Claude, and Codex consider "Common Knowledge" for a given discipline.
+Use the provided script to generate "Redundancy Mirrors"—comprehensive guides of what Gemini, Claude, and Codex consider "Common Knowledge" for a given discipline, and intersect them into a single LCD mirror.
 
 ```bash
 # Ensure that model setup is configured (instructions are in the top level readme)
 node .agents/skills/project-discipline-guides/scripts/generate_mirrors.ts <discipline_name>
 ```
 
-This will create files in a `mirrors/` directory:
-- `mirrors/<discipline>_gemini_mirror.md` (via Gemini)
-- `mirrors/<discipline>_claude_mirror.md` (via Claude)
-- `mirrors/<discipline>_codex_mirror.md` (via Codex CLI)
+This will create files inside the `.agents/skills/project-discipline-guides/mirrors/` directory:
+- `mirrors/<discipline>/gemini_mirror.md` (via Gemini - temporary)
+- `mirrors/<discipline>/claude_mirror.md` (via Claude - temporary)
+- `mirrors/<discipline>/codex_mirror.md` (via Codex - temporary)
+- `mirrors/<discipline>/mirror.md` (Unified Redundancy Mirror intersection)
 
 > [!IMPORTANT]
-> Ensure that **all three** Knowledge Mirrors (Gemini, Claude, Codex) have been successfully generated and are present in the `mirrors/` directory. Incomplete mirrors increase the risk of false positives (removing critical guidance because it was missing from a failed mirror).
+> Ensure that the unified **Redundancy Mirror** (`.agents/skills/project-discipline-guides/mirrors/<discipline>/mirror.md`) has been successfully generated. This mirror represents the exact mathematical intersection of all three source models, preventing pruning errors and reducing context window overhead.
 
 ### 2. Perform the Inverse Filter (Agent Task)
-As the agent, read the **Target** guide and the available **Knowledge Mirrors**.
+As the agent, read the **Target** guide and the unified **Redundancy Mirror** (`.agents/skills/project-discipline-guides/mirrors/<discipline>/mirror.md`).
 
-- **Strict A - B Comparison**: Compare rules in the Target guide strictly against the generated Knowledge Mirrors. You should only remove a rule or pattern if it is consistently well-covered and documented in **all three** Knowledge Mirrors.
-- **No Subjective Self-Attestation**: Do not rely on your own subjective self-attestation of what you "know" or would do by default. Claude and other models frequently hallucinate awareness of features (like `Object.groupBy()`) that they get wrong in practice. Rely exclusively on the objective evidence in the generated mirrors.
+- **Strict A - B Comparison**: Compare rules in the Target guide strictly against the unified **Redundancy Mirror**. You should ONLY remove a rule or pattern from the Target guide if it is fully and clearly covered in the Redundancy Mirror.
+- **No Subjective Self-Attestation**: Rely exclusively on the literal content present in the Redundancy Mirror. Do not prune rules based on your own subjective self-attestation of what you "know" or would do by default. If a concept is not in the Redundancy Mirror, it remains in the Target guide.
 - **Avoid Blind Bullet-Point Deletions**: If a single bullet point or rule in the Target contains multiple guidelines or APIs, do **not** delete the entire bullet point just because some parts of it are common knowledge. Carefully split or dissect the rule, pruning only the redundant parts and explicitly retaining any differential knowledge (e.g., preserving instructions for `Object.groupBy()` even if standard DOM APIs like `document.querySelectorAll()` in the same bullet point are removed).
 - **Preserve Differential Knowledge**: Keep only what is unique to this project or necessary to guide the AI effectively. This generally includes:
     - Rules that counter common AI biases.
@@ -48,7 +49,7 @@ In your response, provide an explanation of the changes made and the rationale f
 
 ### 4. Verification Step
 After applying edits, perform a self-verification:
-- **Contrast Check**: Verify that none of the rules in the new guide are present in all three Knowledge Mirrors.
+- **Contrast Check**: Verify that none of the rules in the new guide are present in the Redundancy Mirror.
 - **Preservation Check**: Ensure that critical project-specific rules, behavioral steering, and any specific advanced APIs (such as `Object.groupBy()`) were not accidentally removed.
 
 ## Core Principles

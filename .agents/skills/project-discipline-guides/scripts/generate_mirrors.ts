@@ -71,20 +71,25 @@ async function main() {
   const promptTemplate = fs.readFileSync(promptTemplatePath, 'utf8');
   const prompt = promptTemplate.replace(/\{\{\s*discipline\s*\}\}/g, discipline);
 
+  // Create mirrors/ and discipline directory inside the project-discipline-guides folder
+  const mirrorsDir = path.resolve(scriptDir, '../mirrors');
+  const disciplineDir = path.join(mirrorsDir, discipline.toLowerCase());
+  if (!fs.existsSync(mirrorsDir)) fs.mkdirSync(mirrorsDir, { recursive: true });
+  if (!fs.existsSync(disciplineDir)) fs.mkdirSync(disciplineDir, { recursive: true });
+
+  const geminiFile = path.join(disciplineDir, 'gemini_mirror.md');
+  const claudeFile = path.join(disciplineDir, 'claude_mirror.md');
+  const codexFile = path.join(disciplineDir, 'codex_mirror.md');
+
   console.log(`--- Generating Knowledge Mirror for ${discipline} (Gemini) ---`);
   const geminiResult = await callCli(prompt, 'gemini');
-  const geminiFile = `mirrors/${discipline.toLowerCase()}_gemini_mirror.md`;
 
   console.log(`--- Generating Knowledge Mirror for ${discipline} (Claude) ---`);
   const claudeResult = await callCli(prompt, 'claude');
-  const claudeFile = `mirrors/${discipline.toLowerCase()}_claude_mirror.md`;
 
   console.log(`--- Generating Knowledge Mirror for ${discipline} (Codex) ---`);
   const codexResult = await callCli(prompt, 'codex');
-  const codexFile = `mirrors/${discipline.toLowerCase()}_codex_mirror.md`;
 
-  if (!fs.existsSync('mirrors')) fs.mkdirSync('mirrors');
-  
   const generatedFiles = [];
 
   if (geminiResult) {
@@ -113,6 +118,39 @@ async function main() {
     generatedFiles.forEach(file => console.log(`- ${file}`));
   } else {
     console.error(`\n❌ No Knowledge Mirrors were successfully generated.`);
+    process.exit(1);
+  }
+
+  // --- INTERSECTION STEP (all three are required core mirrors) ---
+  if (!geminiResult || !claudeResult || !codexResult) {
+    console.warn('⚠️ Skipping Redundancy Mirror generation because not all three mirrors were successfully generated.');
+    return;
+  }
+
+  console.log(`\n--- Generating Unified Redundancy Mirror for ${discipline} ---`);
+  const intersectionTemplatePath = path.join(scriptDir, '../intersection_prompt.md');
+  if (!fs.existsSync(intersectionTemplatePath)) {
+    console.error(`Intersection template not found at: ${intersectionTemplatePath}`);
+    process.exit(1);
+  }
+
+  const intersectionTemplate = fs.readFileSync(intersectionTemplatePath, 'utf8');
+  const intersectionPrompt = intersectionTemplate
+    .replace(/\{\{\s*discipline\s*\}\}/g, discipline)
+    .replace(/\{\{\s*gemini_mirror\s*\}\}/g, geminiResult)
+    .replace(/\{\{\s*claude_mirror\s*\}\}/g, claudeResult)
+    .replace(/\{\{\s*codex_mirror\s*\}\}/g, codexResult);
+
+  // Use Gemini to perform the intersection
+  const lcdResult = await callCli(intersectionPrompt, 'gemini');
+  const lcdFile = path.join(disciplineDir, 'mirror.md');
+
+  if (lcdResult) {
+    fs.writeFileSync(lcdFile, lcdResult);
+    console.log(`\n✅ Unified Redundancy Mirror generated:`);
+    console.log(`- ${lcdFile}`);
+  } else {
+    console.error(`\n❌ Failed to generate Unified Redundancy Mirror.`);
   }
 }
 

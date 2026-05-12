@@ -8,3 +8,6 @@ Focus on:
 
 This guide will be used as a "Redundancy Mirror" to prune a project-specific skill file. 
 We want to see exactly what you consider "Common Knowledge" so we can delete it from our local guides, so be as exhaustive as you can. Do not omit guidance for conciseness, do not prioritize.
+
+> [!IMPORTANT]
+> **Answer strictly from inherent knowledge**: Do **not** use any tools (such as file reading, directory listings, shell command execution, or web search). Do **not** read, inspect, or reference any local files in the workspace or repository. You must generate this guide based **solely** on your pre-trained knowledge.
