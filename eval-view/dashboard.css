@@ -646,14 +646,15 @@ dialog#modal.diff-modal {
   border-radius: 50%;
   position: absolute;
   top: -2px;
+  transform: translateX(-50%);
 }
 
 .mini-dumbbell-track .dot.unguided {
-  background: transparent;
+  background: var(--card-bg);
   border: 1.5px solid var(--color-outline);
   width: 6px;
   height: 6px;
-  top: -1.5px;
+  top: -1px;
 }
 
 .mini-dumbbell-track .dot.guided {
@@ -1027,14 +1028,14 @@ dialog#modal.diff-modal {
   width: 6px;
   height: 6px;
   border-width: 1.5px;
-  top: 0px;
+  top: -1px;
   transform: none; /* Reset vertical centered transform if needed or adjust */
 }
 
 .sparkline-dot.guided.small {
   width: 8px;
   height: 8px;
-  top: -1px;
+  top: -2px;
   transform: none;
 }
 
@@ -1048,7 +1049,7 @@ dialog#modal.diff-modal {
 
 .sparkline-range.small {
   height: 2px;
-  top: 2px;
+  top: 1px;
   transform: none;
 }
 

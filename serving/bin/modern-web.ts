@@ -1,13 +1,16 @@
 #!/usr/bin/env node --experimental-strip-types
 
-import { parseArgs } from "util";
-import { spawnSync } from "child_process";
+import { parseArgs } from "node:util";
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
     help: { type: "boolean", short: "h" },
+    version: { type: "boolean", short: "v" },
   },
   allowPositionals: true,
   strict: false,
@@ -24,10 +27,16 @@ Commands:
 
 Options:
   -h, --help              Show this help
+  -v, --version           Show version
 `);
 }
 
 async function main() {
+  if (values.version) {
+    console.log(getVersion());
+    process.exit(0);
+  }
+
   if (values.help || positionals.length === 0) {
     printUsage();
     process.exit(values.help ? 0 : 1);
@@ -94,6 +103,18 @@ async function main() {
     process.exit(1);
   }
 }
+
+function getVersion(): string {
+  try {
+    // Resolves to serving/package.json in dev, or dist/skills-cli/package.json in prod bundles
+    const pkgPath = join(import.meta.dirname, "../../package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+    return pkg.version || "unknown";
+  } catch (e) {
+    return "unknown";
+  }
+}
+
 
 main().catch(err => {
   console.error("Execution failed:", err);

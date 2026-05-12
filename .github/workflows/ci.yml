@@ -36,6 +36,7 @@ jobs:
           TEST_REPORTER: spec
         run: pnpm run preflight
 
+
       # Fail if any changes were written to any source files or generated untracked files
       - run: git add -A && git diff --cached --exit-code
 

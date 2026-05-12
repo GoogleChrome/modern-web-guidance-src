@@ -1,6 +1,6 @@
 ---
 name: javascript
-description: Modern JavaScript development - use this skill when writing, reviewing, or debugging client-side JavaScript code, including DOM manipulation, asynchronous logic, and performance optimization.
+description: Modern JavaScript development - use this guide when writing, reviewing, or debugging client-side JavaScript code, including DOM manipulation, asynchronous logic, and performance optimization.
 ---
 
 # JavaScript Development Standards
