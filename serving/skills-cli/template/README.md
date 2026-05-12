@@ -4,6 +4,12 @@ Inject web platform expertise, best practices, and modern API patterns directly 
 
 modern-web-guidance is an agent skill (aka [SKILL.md](http://SKILL.md)) to help ensure that when your coding agent works on a web application, it uses modern, high-performance, accessible, and secure APIs rather than legacy, outdated workarounds.
 
+## Quickstart
+
+```shell
+npx modern-web-guidance install
+```
+
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
 ## Why?
@@ -22,7 +28,7 @@ Every developer knows about the **knowledge cutoff**—but for coding agents, th
 
 ## What
 
-Our content is evergrowing, but we cover from the bleeding edge of the web platform, through the past several years of new features handling fallback strategies. But **we don't waste your tokens** on stuff models already know.
+Our content stays *up-to-date* to cover the gap, covering from the bleeding edge of the web platform, through the past several years of new features handling fallback strategies. But **we don't waste your tokens** on stuff models already know.
 
 ### Core disciplines
 
@@ -146,3 +152,6 @@ We grade both outputs and only release guides that demonstrate a massive, quanti
 
 \# Choose which skills you want  
 `npx modern-web-guidance install --interactive`
+
+\# To remove the skill
+`npx modern-web-guidance uninstall`
