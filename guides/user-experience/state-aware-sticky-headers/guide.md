@@ -31,7 +31,7 @@ You need a container that will act as the sticky element and the container for t
 ```
 
 ### 2. Apply CSS for Sticky Behavior and Container Type
-Define the container as `position: sticky` and set `container-type: scroll-state`. You can also combine it with size queries, e.g., `container-type: scroll-state inline-size`.
+Set `container-type: scroll-state` on the `position: sticky` element, not on its scrollable ancestor. Always specify a `container-name`, since these queries may be nested and unnamed containers will collide. You can also combine it with size queries, e.g., `container-type: scroll-state inline-size`.
 
 ```css
 .sticky-container {
@@ -72,16 +72,17 @@ Use the `@container scroll-state(...)` query to apply styles when the header is 
 
 ### Notes on Dimension Changes
 
-**MANDATORY:** **DO NOT change box-model properties (height, padding, border, font-size) when an element becomes stuck.**
-Because the browser performs a two-pass rendering update to resolve scroll-state queries, modifying any property that affects layout (even changing `font-size` from `100%` to `99%`) can cause the element to immediately become unstuck. This results in an infinite layout loop and severe visual flickering when users scroll slowly near the intersection point (specifically, within a 1-43px offset window).
+Without scroll anchoring disabled, changing layout-affecting properties (height, padding, font-size, transforms) when stuck can cause visual flickering. Scroll anchoring on the in-flow content below the sticky element adjusts the scroll offset to compensate for the layout change, which pushes the element back out of its stuck position and triggers an oscillation.
 
-Adding a `transition` does not fix this flashing; in fact, putting the `transition` inside the `@container` query makes it even worse. Only change non-layout affecting properties such as `background-color`, `color`, `opacity`, and `box-shadow`.
+Disable scroll anchoring on the scroll container to avoid this:
 
-If you absolutely *must* change the physical dimensions when stuck, you can use one of these workarounds, though both have significant downsides:
-1. **The `::after` counterweight**: Add a pseudo-element to the `.sticky-container` that perfectly negates the dimension loss of the `.sticky-header`. For example, if the header loses 20px of padding, the container's `::after` must gain exactly 20px of height. This is very brittle.
-2. **The `min-height` lock**: Explicitly set the `.sticky-container` to have a `min-height` equal to the unstuck height of the header.
+```css
+:root {
+  overflow-anchor: none;
+}
+```
 
-**Important Note for Workarounds:** If you use these dimension-shifting workarounds, the container will leave behind empty, scrollable space when stuck. To prevent users from hovering or clicking this ghost space, you must set `pointer-events: none` on the container, and `pointer-events: auto` on the `.sticky-header` itself.
+Apply it to whichever element is the scroll container (typically `:root` for the document scroller). With this in place, you can freely change any property in the stuck state, including box-model properties and transforms.
 
 ### Fallback strategies
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
