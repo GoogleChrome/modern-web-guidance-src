@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "node:util";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
@@ -123,14 +123,44 @@ async function main() {
     }
   } else if (command === "install") {
     const extraArgs = process.argv.slice(3);
-    const result = spawnSync("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
-      stdio: "inherit",
+    const child = spawn("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
+      stdio: ["inherit", "pipe", "inherit"],
+      env: { ...process.env, FORCE_COLOR: "1" }
     });
-    if (result.error) {
-      console.error("Install failed:", result.error);
-      process.exit(1);
+
+    let capturedStdout = "";
+    child.stdout?.on("data", (data) => {
+      capturedStdout += data.toString();
+      process.stdout.write(data);
+    });
+
+    const status = await new Promise<number>((resolve) => {
+      child.on("close", (code) => resolve(code ?? 0));
+      child.on("error", (err) => {
+        console.error("Install failed:", err);
+        resolve(1);
+      });
+    });
+
+    // Post-process capturedStdout to extract successfully installed skill names and log telemetry.
+    const cleanOutput = capturedStdout.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+    const skills: string[] = [];
+    
+    // Scope checkmark extraction strictly inside the "Installed skill(s)" summary box to avoid false matches.
+    const installedBoxMatch = cleanOutput.match(/Installed \d+ skill[\s\S]*?├─/);
+    if (installedBoxMatch) {
+      const boxContent = installedBoxMatch[0];
+      const regex = /✓\s*([a-zA-Z0-9_-]+)/g;
+      let match;
+      while ((match = regex.exec(boxContent)) !== null) {
+        skills.push(match[1]);
+      }
     }
-    process.exit(result.status ?? 0);
+
+    const logger = new ClearcutLogger();
+    await logger.logInstallation(skills, { success: status === 0 });
+
+    process.exit(status);
   } else {
     console.error(`Unknown command: ${command}`);
     printUsage();

@@ -11,6 +11,7 @@ import { WatchdogClient } from './WatchdogClient.js';
 import {
   type ChromeModernWebGuidance,
   type SearchItem,
+  type Installation,
   WatchdogMessageType,
   OsType,
 } from './types.js';
@@ -106,6 +107,32 @@ export class ClearcutLogger {
     const payload: ChromeModernWebGuidance = {
       retrieve_result: {
         guide_id: guideId,
+      },
+      os: detectOS(),
+      cli_version: getCliVersion(),
+      latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
+      success: metrics?.success,
+    };
+
+    console.warn(JSON.stringify(payload));
+
+    if (!this.#enabled || !this.#watchdog) {
+      return;
+    }
+
+    this.#watchdog.send({
+      type: WatchdogMessageType.LOG_EVENT,
+      payload: payload,
+    });
+  }
+
+  async logInstallation(
+    skills: string[],
+    metrics?: { latencyMs?: number; success?: boolean }
+  ): Promise<void> {
+    const payload: ChromeModernWebGuidance = {
+      installation: {
+        skills: skills,
       },
       os: detectOS(),
       cli_version: getCliVersion(),

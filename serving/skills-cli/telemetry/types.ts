@@ -18,6 +18,10 @@ export interface RetrieveResult {
   guide_id?: string;
 }
 
+export interface Installation {
+  skills?: string[];
+}
+
 export const OsType = {
   UNSPECIFIED: 0,
   WINDOWS: 1,
@@ -30,6 +34,7 @@ export type OsType = typeof OsType[keyof typeof OsType];
 export interface ChromeModernWebGuidance {
   search_result?: SearchResult;
   retrieve_result?: RetrieveResult;
+  installation?: Installation;
   os?: OsType;
   cli_version?: string;
   latency_ms?: number;
