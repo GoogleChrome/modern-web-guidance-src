@@ -1,4 +1,8 @@
+import { createRequire } from 'node:module';
 import { features } from 'web-features';
+
+const require = createRequire(import.meta.url);
+const bcd = require('@mdn/browser-compat-data');
 
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 
@@ -218,17 +222,59 @@ export function validateFeature(id: string): FeatureValidationResult {
   return { isValid: true };
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatVersionWithMonth(browserKey: string, version: string): string {
+  if (!version || version === '-') return '';
+  const release = bcd.browsers[browserKey]?.releases?.[version];
+  if (release?.release_date) {
+    const [year, month] = release.release_date.split('-');
+    const monthIndex = parseInt(month, 10) - 1;
+    const monthName = MONTHS[monthIndex] || '';
+    return `${version} (${monthName} ${year})`;
+  }
+  return version;
+}
+
+function formatSupportMap(support: Record<string, any> | undefined): string {
+  if (!support) return '';
+  const parts: string[] = [];
+
+  const list = [
+    { key: 'chrome', label: 'Chrome' },
+    { key: 'edge', label: 'Edge' },
+    { key: 'firefox', label: 'Firefox' },
+    { key: 'safari', label: 'Safari' },
+  ];
+
+  if (support.safari_ios && support.safari_ios !== support.safari) {
+    list.push({ key: 'safari_ios', label: 'Safari iOS' });
+  }
+
+  for (const item of list) {
+    const ver = support[item.key];
+    if (ver && ver !== '-') {
+      const formatted = formatVersionWithMonth(item.key, String(ver));
+      parts.push(`${item.label} ${formatted}`);
+    }
+  }
+
+  if (parts.length === 0) return '';
+  return `\nSupported by: ${parts.join(', ')}.`;
+}
+
 /**
  * Internal helper to format status messages consistently.
  */
-function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string }): string {
-  const { baseline, releaseDate, shortLabel } = status;
+function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string; support?: Record<string, any> }): string {
+  const { baseline, releaseDate, shortLabel, support } = status;
+  const supportStr = formatSupportMap(support);
 
   if (baseline !== false && releaseDate && releaseDate !== "-") {
-    return `Baseline status for ${featureName}: ${shortLabel}. It's been Baseline since ${releaseDate}.`;
+    return `Baseline status for ${featureName}: ${shortLabel}. It's been Baseline since ${releaseDate}.${supportStr}`;
   }
 
-  return `${featureName} has limited availability.`;
+  return `${featureName} has limited availability.${supportStr}`;
 }
 
 /**
@@ -243,7 +289,8 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
     const mapped = {
       baseline: status.baseline,
       shortLabel: mapBaseline(status.baseline),
-      releaseDate: status.baseline_low_date || '-'
+      releaseDate: status.baseline_low_date || '-',
+      support: status.support
     };
     return formatStatusMessage(`the ${bcdKey} capability`, mapped);
   }
@@ -254,13 +301,28 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   const baselineStatus = getFeatureStatus(featureId);
   if (!baselineStatus) return;
 
-  const subject = feature.kind === 'feature' ? feature.name : featureId;
-
-  if (baselineStatus.baseline === false) {
-    return formatStatusMessage(subject, { baseline: false });
+  const resolvedIds = resolveFeatureId(featureId);
+  let support: Record<string, any> | undefined;
+  for (const id of resolvedIds) {
+    const f = features[id] as Feature;
+    if (f?.kind === 'feature' && f.status?.support) {
+      support = f.status.support;
+      break;
+    }
   }
 
-  return formatStatusMessage(subject, baselineStatus);
+  const subject = feature.kind === 'feature' ? feature.name : featureId;
+
+  const mapped = {
+    ...baselineStatus,
+    support
+  };
+
+  if (baselineStatus.baseline === false) {
+    return formatStatusMessage(subject, { baseline: false, support });
+  }
+
+  return formatStatusMessage(subject, mapped);
 }
 
 type FeatureData = Extract<Feature, { kind: "feature" }>;
