@@ -13,7 +13,7 @@ const DIST_DIR = path.join(ROOT_DIR, "dist");
 // This controls what is published to https://github.com/GoogleChrome/modern-web-guidance.
 const GH_PUBLISH_PATTERNS = [
   '**/*',
-  '!**/guides/**',
+  '!**/.cache/**',
   '!**/tfjs_model_minilm/**',
   '!**/*.{js,mjs,ts,bin,map,gz}',
   '!THIRD_PARTY_NOTICES',

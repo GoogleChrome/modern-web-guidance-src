@@ -17,6 +17,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Needed for tag history
+          fetch-depth: 0
       - run: git fetch --tags
 
       - name: Setup pnpm

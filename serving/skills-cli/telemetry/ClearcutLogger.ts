@@ -78,6 +78,10 @@ export class ClearcutLogger {
     searchItems: SearchItem[],
     metrics?: { latencyMs: number; success?: boolean }
   ): Promise<void> {
+    if (!this.#enabled) {
+      return;
+    }
+
     const payload: ChromeModernWebGuidance = {
       search_result: {
         search_items: searchItems,
@@ -90,7 +94,7 @@ export class ClearcutLogger {
 
     console.warn(JSON.stringify(payload));
 
-    if (!this.#enabled || !this.#watchdog) {
+    if (!this.#watchdog) {
       return;
     }
 
@@ -104,6 +108,10 @@ export class ClearcutLogger {
     guideId: string,
     metrics?: { latencyMs: number; success?: boolean }
   ): Promise<void> {
+    if (!this.#enabled) {
+      return;
+    }
+
     const payload: ChromeModernWebGuidance = {
       retrieve_result: {
         guide_id: guideId,
@@ -116,7 +124,7 @@ export class ClearcutLogger {
 
     console.warn(JSON.stringify(payload));
 
-    if (!this.#enabled || !this.#watchdog) {
+    if (!this.#watchdog) {
       return;
     }
 
@@ -130,6 +138,10 @@ export class ClearcutLogger {
     skills: string[],
     metrics?: { latencyMs?: number; success?: boolean }
   ): Promise<void> {
+    if (!this.#enabled) {
+      return;
+    }
+
     const payload: ChromeModernWebGuidance = {
       installation: {
         skills: skills,
@@ -142,7 +154,7 @@ export class ClearcutLogger {
 
     console.warn(JSON.stringify(payload));
 
-    if (!this.#enabled || !this.#watchdog) {
+    if (!this.#watchdog) {
       return;
     }
 
