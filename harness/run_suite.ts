@@ -438,7 +438,7 @@ let graderStatus = null;
 
 if (result.status === 0) {
   const gradeStart = Date.now();
-  const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status;
 }

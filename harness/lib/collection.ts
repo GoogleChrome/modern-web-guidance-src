@@ -144,7 +144,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           console.warn("Failed to parse existing package.json, overwriting...");
         }
       }
-      pkgJsonObj.scripts["run-grader"] = `node grade.mjs --id ${relativeId}`;
+      pkgJsonObj.scripts["run-grader"] = `node --experimental-strip-types grade.mjs --id ${relativeId}`;
       fs.writeFileSync(targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
 
       pnpmWorkspacePackages.push(relativeId);
@@ -153,14 +153,31 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
   // --- PASS 1.5: Execute the accumulated grading runs in parallel ---
   if (pnpmWorkspacePackages.length > 0) {
-    console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
+    const rootPkgJsonPath = path.join(resultsDir, 'package.json');
+    let wroteRootPkgJson = false;
+    if (!fs.existsSync(rootPkgJsonPath)) {
+      fs.writeFileSync(rootPkgJsonPath, JSON.stringify({
+        name: "evaluation-suite-workspace",
+        private: true
+      }, null, 2));
+      wroteRootPkgJson = true;
+    }
+
     const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
     fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+
     try {
+      console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
+      spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit' });
+
+      console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
       spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit' });
     } finally {
       if (fs.existsSync(pnpmWorkspacePath)) {
         fs.unlinkSync(pnpmWorkspacePath);
+      }
+      if (wroteRootPkgJson && fs.existsSync(rootPkgJsonPath)) {
+        fs.unlinkSync(rootPkgJsonPath);
       }
     }
     console.log(`✅ Completed parallel grading pass\n`);
