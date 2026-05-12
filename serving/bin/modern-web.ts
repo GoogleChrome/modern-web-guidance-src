@@ -24,6 +24,7 @@ Commands:
   search <query>          Search use cases by query
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
   install                 Install skills
+  uninstall               Uninstall skills
 
 Options:
   -h, --help              Show this help
@@ -87,9 +88,10 @@ async function main() {
         process.exit(1);
       }
     }
-  } else if (command === "install") {
+  } else if (command === "install" || command === "uninstall" || command === "remove") {
+    const isInstall = command === "install";
     const extraArgs = process.argv.slice(3);
-    const child = spawn("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
+    const child = spawn("npx", ["skills", isInstall ? "add" : "remove", "GoogleChrome/modern-web-guidance", ...extraArgs], {
       stdio: ["inherit", "pipe", "inherit"],
       env: { ...process.env, FORCE_COLOR: "1" }
     });
@@ -103,7 +105,7 @@ async function main() {
     const status = await new Promise<number>((resolve) => {
       child.on("close", (code) => resolve(code ?? 0));
       child.on("error", (err) => {
-        console.error("Install failed:", err);
+        console.error(`${isInstall ? "Install" : "Uninstall"} failed:`, err);
         resolve(1);
       });
     });
