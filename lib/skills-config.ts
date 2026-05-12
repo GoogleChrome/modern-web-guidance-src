@@ -1,4 +1,8 @@
-
+/**
+ * Central configuration for skills bundling and publishing.
+ * 💡 TIP: Run `node --experimental-strip-types serving/scripts/audit-build.ts` 
+ * to preview exactly how this configuration maps across the repository files.
+ */
 export interface StandaloneSkill {
   /** Unique name of the skill */
   name: string;
