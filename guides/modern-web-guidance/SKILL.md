@@ -65,14 +65,19 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 -   Note: if the `npx -y modern-web-guidance…` command hangs, try running again in offline mode: `npx --offline …`
 ### Browser Compatibility & Baseline Fallbacks
 
-#### Baseline Status Types
-Features are labeled in the guide as:
-- **Widely Available**: High baseline status.
-- **Newly Available since YYYY-MM-DD**: Low baseline status with a specific "interoperable" date.
-- **Limited Availability**: Not yet interoperable.
+#### Baseline Terms
+
+Web features are labeled as one of:
+
+- **Limited Availability**: Not yet available across all browsers.
+- **Newly Available**: Works across the latest devices and browser versions, but may not work in older devices/browsers.
+- **Widely Available**: Well established and works across many devices and browser versions. It's been Newly Available for at least 30 months.
 
 #### Enforcing a Support Floor
-By default, assume the user's project targets a support floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)**. The [WebDX Community Group](https://www.w3.org/groups/cg/webdx/) defines this as features fully supported across the core browser set (Chrome, Edge, Firefox, Safari) for at least 30 months. This optimizes for production safety from the start.
+
+By default, assume the user's project targets a support floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)**. The W3C WebDX Community Group defines this as features fully supported across the core browser set (Chrome, Edge, Firefox, Safari) for at least 30 months. This optimizes for production safety from the start.
+
+-
 - **Implicit Context:** Constraints defined in `AGENTS.md` are included implicitly within your standard context window. Do **not** execute upfront status lookups or prerequisite file-verification checks before engaging with command-line tools.
 - **Expert Fallbacks:** Always implement the recommended progressive enhancements and fallback strategies provided in the guidance. Extended baseline macros provide detailed support info, and guide authors clarify contexts where fallbacks may be unnecessary.
 - **Limited Support Warnings:** If a guide relies on limited-availability features where site functionality could break without perfect fallbacks, proactively warn the user about compatibility risks.
