@@ -11,6 +11,7 @@ const { values, positionals } = parseArgs({
   options: {
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
+    choose: { type: "boolean" },
   },
   allowPositionals: true,
   strict: false,
@@ -89,15 +90,14 @@ async function main() {
       }
     }
   } else if (command === "install") {
-    const rawArgs = process.argv.slice(3);
-    const hasChoose = rawArgs.includes("--choose");
-    const extraArgs = rawArgs.filter((arg) => arg !== "--choose");
-
-    if (!hasChoose && !extraArgs.includes("--skill")) {
-      extraArgs.push("--skill", "modern-web-guidance");
+    const installArgs = ["add", "GoogleChrome/modern-web-guidance"];
+    if (values.choose) {
+      installArgs.push("--choose");
+    } else {
+      installArgs.push("--skill", "modern-web-guidance");
     }
 
-    const child = spawn("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
+    const child = spawn("npx", ["skills", ...installArgs], {
       stdio: ["inherit", "pipe", "inherit"],
       env: { ...process.env, FORCE_COLOR: "1" }
     });
