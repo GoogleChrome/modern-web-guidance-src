@@ -2,7 +2,6 @@
 - The track MUST have `scroll-snap-type: x mandatory` (not `proximity`) so the row always rests on a snap point and is never partially scrolled.
 - The track MUST have `overscroll-behavior-x: none` to prevent the swipe from chaining into the page scroll or the browser's back-navigation gesture.
 - The track MUST hide its scrollbar (e.g., `scrollbar-width: none`) so the gesture itself is the only affordance.
-- The implementation MUST be accompanied by an accessible alternative (e.g., a visible button, context menu, or edit mode) to ensure keyboard and screen reader users can perform the action without a swipe gesture.
 - The two spacer snap points MUST have `scroll-snap-align` set so they are valid snap targets (e.g., `scroll-snap-align: end` or `scroll-snap-align: start`).
 - The content element MUST have `scroll-snap-align` set (e.g., `scroll-snap-align: start`) so it is the resting snap target in the middle of the track.
 - The content element MUST have `scroll-initial-target: nearest` applied so the track renders scrolled to the content on first paint, hiding the leading spacer off-screen without a JS scroll jump.
