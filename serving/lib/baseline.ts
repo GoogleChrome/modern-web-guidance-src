@@ -225,7 +225,7 @@ export function validateFeature(id: string): FeatureValidationResult {
 /**
  * Native formatting instances leveraging built-in Intl APIs.
  * Note on Node.js Safety: Pre-built official Node.js binaries enable full ICU data by default
- * starting from v13.0.0+. Furthermore, under ECMA-402 specifications, native Intl constructors
+ * starting from v13.0.0+ (Oct 2019). Furthermore, under ECMA-402 specifications, native Intl constructors
  * are strictly designed for maximum resilience—invoking them in minimal environments lacking
  * extra locale data never throws exceptions, but instead gracefully defaults to root/English rules.
  */
