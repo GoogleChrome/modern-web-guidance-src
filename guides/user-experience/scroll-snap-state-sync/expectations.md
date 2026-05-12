@@ -1,7 +1,7 @@
 - The scroll container has `scroll-snap-type: y proximity` or `scroll-snap-type: y mandatory` applied.
 - The section headers (e.g., `h2`) within the container have `scroll-snap-align: start` applied.
 - When the user scrolls to a section, the corresponding link in the Table of Contents (TOC) is visually highlighted (e.g., is styled based on  `[aria-current=true]` class).
-- When a TOC link is selected, it should have appropriate accessibility attributes like `aria-current="true"`.
+- When a TOC link is selected, it should have appropriate accessibility attributes like `aria-current="true"` or  `aria-current="location"`.
 - When the user scrolls to a section, only one TOC link is highlighted as the active one.
 - The implementation uses the `scrollsnapchange` event listener on the scroll container to synchronize the TOC state when scroll settles.
 - The implementation includes a fallback (such as `IntersectionObserver`) for browsers that do not support the `scrollsnapchange` event.

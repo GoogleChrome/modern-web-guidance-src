@@ -54,7 +54,7 @@ main.addEventListener('scrollsnapchange', (event) => {
 
 Caution: While Scroll Snap Events make it possible to visually synchronize other content to the state of the scroller, it does not automatically expose that information programmatically. Relationships between elements, active states, and live content must be reflected in the Accessibility Tree.
 
-For a table of contents, ensure the sidebar links use `aria-current="true"` when they are active.
+For a table of contents, ensure the sidebar links use `aria-current="true"` or `aria-current="location"` when they are active.
 
 In addition, be careful when using the `mandatory` value for `scroll-snap-type`, as it can cause content in-between snap-points to become inaccessible when longer than the screen.
 
