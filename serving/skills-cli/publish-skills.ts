@@ -28,15 +28,29 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+const getLatestGitTag = () => {
+  try {
+    return execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+};
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
 
   // Get the latest tag that looks like v*.*.*
   const latestTag = getLatestTag();
-  const currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
-  console.log(`Found latest tag: ${latestTag}`);
+  let currentVersion: string;
+
+  if (!latestTag) {
+    console.log("No tags found merged into HEAD. Falling back to package.json version.");
+    const pkgJson = JSON.parse(await fs.readFile(path.join(ROOT_DIR, "package.json"), "utf-8"));
+    currentVersion = pkgJson.version;
+  } else {
+    currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
+    console.log(`Found latest tag: ${latestTag}`);
+  }
 
   const newVersion = incrementVersion(currentVersion);
   console.log(`Next version will be: ${newVersion}`);

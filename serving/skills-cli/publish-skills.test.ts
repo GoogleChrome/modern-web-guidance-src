@@ -8,3 +8,11 @@ test('getNextVersion derive from git tag', async () => {
   const version = await getNextVersion(mockGetTag);
   assert.strictEqual(version, '0.0.23');
 });
+
+test('getNextVersion fallback to package.json when no tags', async () => {
+  const mockGetTag = () => '';
+  
+  const version = await getNextVersion(mockGetTag);
+  assert.ok(version, 'Should return a version');
+  assert.match(version, /^\d+\.\d+\.\d+$/, 'Should be a valid semver');
+});
