@@ -16,7 +16,7 @@ import {
 } from './types.js';
 
 function isTelemetryEnabled(): boolean {
-  if (process.env.DISABLE_MWG_TELEMETRY === '1' || process.env.DISABLE_MWG_TELEMETRY === 'true') {
+  if (process.env.DISABLE_TELEMETRY === '1' || process.env.DISABLE_TELEMETRY === 'true') {
     return false;
   }
   return true; // Enabled by default!
@@ -63,7 +63,7 @@ export class ClearcutLogger {
   } = {}) {
     this.#enabled = isTelemetryEnabled();
     if (this.#enabled) {
-      console.warn("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_MWG_TELEMETRY=1.");
+      console.warn("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_TELEMETRY=1.");
       this.#watchdog = new WatchdogClient({
         parentPid: process.pid,
         logFile: options.logFile,

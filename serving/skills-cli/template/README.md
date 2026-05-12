@@ -43,10 +43,10 @@ Compatibility with VSCode forks: unknown.
 
 Google collects anonymous usage statistics (such as search and retrieve queries) to improve the reliability, relevance, and performance of the Modern Web Guidance tool.
 
-Data collection is enabled by default. You can opt-out completely at any time by setting the `DISABLE_MWG_TELEMETRY=1` environment variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
+Data collection is enabled by default. You can opt-out completely at any time by setting the `DISABLE_TELEMETRY=1` environment variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
 
 ```bash
-export DISABLE_MWG_TELEMETRY=1
+export DISABLE_TELEMETRY=1
 ```
 
 Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).

@@ -5,7 +5,7 @@ import { pathToFileURL } from 'url';
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
 // Disable telemetry globally for all evaluation and test harness runs
-process.env.DISABLE_MWG_TELEMETRY = '1';
+process.env.DISABLE_TELEMETRY = '1';
 
 try {
   process.loadEnvFile(path.join(rootDir, '.env'));
