@@ -61,6 +61,14 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   const marketplaceData = JSON.parse(fs.readFileSync(marketplacePath, 'utf8'));
   marketplaceData.plugins[0].version = newVersion;
   fs.writeFileSync(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
+
+
+  // Cursor Plugin
+  const cursorPluginPath = path.join(publishCliDir, ".cursor-plugin/plugin.json");
+  const cursorPluginData = JSON.parse(fs.readFileSync(cursorPluginPath, 'utf8'));
+  cursorPluginData.version = newVersion;
+  fs.writeFileSync(cursorPluginPath, JSON.stringify(cursorPluginData, null, 2) + '\n');
+
 }
 
 export function processSkills(publishRoot: string, scanDir = guidesDir) {
