@@ -217,7 +217,7 @@ function toggleWidgetState() {
 
 #### DOs
 - **Informative Visual Descriptions**: Describe the purpose of the image (e.g., "Search", not "Magnifying glass").
-- **Empty Alt properties for decorative visuals**: Use `alt=""` or `role="presentation"` to remove decorative images from the accessibility tree so they aren't announced.
+- **Empty Alt properties for decorative visuals**: Use `alt=""` to remove decorative images from the accessibility tree so they aren't announced.
 - **Synchronous Captions for videos**: Supply WebVTT captions for video tracks.
 - **Transcripts for audio**: Provide text transcripts for purely audio podcasts.
 - **Informative View Descriptions for inline SVGs**: Apply `role="img"` and a nested `<title>` tag for informative visuals.
@@ -233,7 +233,7 @@ function toggleWidgetState() {
 
 ```html
 <!-- Decorative -->
-<img src="divider.png" alt="" role="presentation">
+<img src="divider.png" alt="">
 
 <!-- Inline Decorative SVG (remove from tab flow) -->
 <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -272,7 +272,7 @@ function toggleWidgetState() {
 | Intent | Visual | Screen Reader | Focusable | Structural Pattern |
 | :--- | :--- | :--- | :--- | :--- |
 | **Visible to all** | Yes | Yes | Yes | Standard rendering |
-| **Screen Reader only** | No | Yes | Yes (if interactive) | `.visually-hidden` (`clip-path`) |
+| **Screen Reader only** | No | Yes | Yes (if interactive) | Visually hidden utility (e.g. `.visually-hidden`) |
 | **Visual only** | Yes | No | No | `aria-hidden="true"` / `role="presentation"` |
 | **Hidden for all** | No | No | No | `hidden` attribute / `display: none` |
 
@@ -425,16 +425,16 @@ article {
 
 ## 11. Modals and Native Dialogs
 
-Modern browsers provide native mechanisms for focus trapping and modal overlays that bypass the need for heavy manual JavaScript event tracking.
+Modern browsers provide native solutions for creating modal dialogs which avoid the need for focus traps, managing the accessibility of outside content, ensuring the content is on top, and dimming the background content — all of which can be error prone and require heavy JavaScript event tracking to maintain.
 
 ### Actionable Guidelines
 
 #### DOs
-- **Use the Native `<dialog>` Element**: Invoke the dialog using the `.showModal()` method to automatically lock focus into the popup and dim the background.
-- **Use the `inert` Attribute for Custom Overlays**: When `<dialog>` doesn't fit (e.g., non-modal overlays, framework constraints, or layouts where `<dialog>`'s top-layer/positioning behavior conflicts with the design), apply `inert` to background app-shells to isolate focus.
+- **Use the Native `<dialog>` Element**: Invoke the dialog using the `.showModal()` method to open it in a modal state. When in a modal state, the browser sets outside content as inert (i.e. the outside content is hidden from the accessibility tree and cannot be interacted with nor be focused).
+- **Use the `inert` Attribute for Custom Overlays**: When `<dialog>` cannot be used (e.g., some non-modal overlays, framework constraints, or layouts where `<dialog>`'s top-layer/positioning behavior conflicts with the design), apply `inert` to outside content to ensure it cannot be interacted with by keyboard, pointer, or assistive technology. This requires structuring elements in such a way that the custom overlay is not a descendant of the element with `inert` set on it.
 
 #### DON'Ts
-- **Don't rebuild focus traps manually**: Avoid using manual `keydown` listeners for focus loops.
+- **Don't implement focus traps for native modal dialogs**: When a `<dialog>` element is opened in a modal state, browsers set outside content as inert which is sufficient for ensuring only the dialog’s content can be focused.
 
 ### Code Examples
 
