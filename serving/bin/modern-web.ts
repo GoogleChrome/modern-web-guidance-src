@@ -90,14 +90,11 @@ async function main() {
       }
     }
   } else if (command === "install") {
-    const installArgs = ["add", "GoogleChrome/modern-web-guidance"];
-    if (!values.choose) {
-      installArgs.push("--skill", "modern-web-guidance");
-    }
+    const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+      .split(" ")
+      .filter(Boolean);
 
-    const result = spawnSync("npx", ["skills", ...installArgs], {
-      stdio: "inherit",
-    });
+    const result = spawnSync("npx", installArgs, {stdio: "inherit"});
 
     if (result.error) {
       console.error("Install failed:", result.error);
