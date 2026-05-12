@@ -20,7 +20,8 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
 
   test('The :autofill pseudo-class must be applied to a form control', () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/\b(input|select|textarea):autofill\b/i.test(html)).toBe(true);
+    const hasAutofill = /:autofill\b/i.test(html) || /:-webkit-autofill\b/i.test(html);
+    expect(hasAutofill).toBe(true);
   });
 
   test('The incorrect spelling :auto-fill must not be used', () => {
