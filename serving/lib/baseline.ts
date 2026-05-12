@@ -222,16 +222,29 @@ export function validateFeature(id: string): FeatureValidationResult {
   return { isValid: true };
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/**
+ * Native formatting instances leveraging built-in Intl APIs.
+ * Note on Node.js Safety: Pre-built official Node.js binaries enable full ICU data by default
+ * starting from v13.0.0+. Furthermore, under ECMA-402 specifications, native Intl constructors
+ * are strictly designed for maximum resilience—invoking them in minimal environments lacking
+ * extra locale data never throws exceptions, but instead gracefully defaults to root/English rules.
+ */
+const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const listFormatter = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
+
+function formatBrowserTitle(key: string): string {
+  return key
+    .split('_')
+    .map(word => word === 'ios' ? 'iOS' : word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 function formatVersionWithMonth(browserKey: string, version: string): string {
   if (!version || version === '-') return '';
   const release = bcd.browsers[browserKey]?.releases?.[version];
   if (release?.release_date) {
-    const [year, month] = release.release_date.split('-');
-    const monthIndex = parseInt(month, 10) - 1;
-    const monthName = MONTHS[monthIndex] || '';
-    return `${version} (${monthName} ${year})`;
+    const formattedDate = dateFormatter.format(new Date(release.release_date));
+    return `${version} (${formattedDate})`;
   }
   return version;
 }
@@ -241,35 +254,30 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
   const supportedParts: string[] = [];
   const unsupportedParts: string[] = [];
 
-  const list = [
-    { key: 'chrome', label: 'Chrome' },
-    { key: 'edge', label: 'Edge' },
-    { key: 'firefox', label: 'Firefox' },
-    { key: 'safari', label: 'Safari' },
-  ];
-
+  const keys = ['chrome', 'edge', 'firefox', 'safari'];
   if (support.safari_ios && support.safari_ios !== support.safari) {
-    list.push({ key: 'safari_ios', label: 'Safari iOS' });
+    keys.push('safari_ios');
   }
 
-  for (const item of list) {
-    const ver = support[item.key];
+  for (const key of keys) {
+    const label = formatBrowserTitle(key);
+    const ver = support[key];
     if (ver && ver !== '-') {
-      const formatted = formatVersionWithMonth(item.key, String(ver));
-      supportedParts.push(`${item.label} ${formatted}`);
+      const formatted = formatVersionWithMonth(key, String(ver));
+      supportedParts.push(`${label} ${formatted}`);
     } else {
-      if (item.key !== 'safari_ios') {
-        unsupportedParts.push(item.label);
+      if (key !== 'safari_ios') {
+        unsupportedParts.push(label);
       }
     }
   }
 
   let res = '';
   if (supportedParts.length > 0) {
-    res += `\nSupported by: ${supportedParts.join(', ')}.`;
+    res += `\nSupported by: ${listFormatter.format(supportedParts)}.`;
   }
   if (unsupportedParts.length > 0) {
-    res += `\nUnsupported in: ${unsupportedParts.join(', ')}.`;
+    res += `\nUnsupported in: ${listFormatter.format(unsupportedParts)}.`;
   }
   return res;
 }
