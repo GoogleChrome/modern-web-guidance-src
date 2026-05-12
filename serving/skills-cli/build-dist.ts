@@ -227,6 +227,22 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   }
 }
 
+function getCategoryTitle(cat: string): string {
+  const map: Record<string, string> = {
+    'accessibility': 'Accessibility',
+    'built-in-ai': 'Built-in AI',
+    'css': 'CSS',
+    'forms': 'Forms',
+    'html': 'HTML',
+    'javascript': 'JavaScript',
+    'performance': 'Performance',
+    'security': 'Security',
+    'user-experience': 'User Experience',
+    'webmcp': 'WebMCP',
+  };
+  return map[cat] || cat;
+}
+
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const guidesDir = path.join(publishRoot, 'skills/modern-web-guidance/guides');
   const readyGuides = scanAllGuides().filter(inv => {
@@ -236,8 +252,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     return fs.existsSync(guideBuildPath);
   });
 
-  const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
   const allFeatureIds = new Set<string>();
+  const categoryMap = new Map<string, { id: string; category: string; description: string }[]>();
 
   for (const guide of readyGuides) {
     const guidePath = path.join(guide.dir, "guide.md");
@@ -250,25 +266,25 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       if (data.description) description = data.description;
     } catch { }
 
-    const sortedFeatureIds = [...guide.featureIds].sort();
-    const signature = sortedFeatureIds.join(',');
+    guide.featureIds.forEach(id => allFeatureIds.add(id));
 
-    sortedFeatureIds.forEach(id => allFeatureIds.add(id));
-
-    if (!useCaseGroupMap.has(signature)) {
-      const features = sortedFeatureIds.map(fId => ({ id: fId, name: getFeatureName(fId) }));
-      useCaseGroupMap.set(signature, { features, useCases: [] });
+    if (!categoryMap.has(guide.category)) {
+      categoryMap.set(guide.category, []);
     }
-    useCaseGroupMap.get(signature)!.useCases.push({ id: guide.name, description });
+    categoryMap.get(guide.category)!.push({
+      id: guide.name,
+      category: guide.category,
+      description
+    });
   }
-
-  // Sort groups alphabetically by the name of their first feature
-  const sortedGroups = Array.from(useCaseGroupMap.values()).sort((a, b) => a.features[0].name.localeCompare(b.features[0].name));
 
   // Determine all features to generate the summary text
   const allFeaturesSorted = Array.from(allFeatureIds)
     .map(fId => ({ id: fId, name: getFeatureName(fId) }))
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Sort categories alphabetically by friendly title
+  const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => getCategoryTitle(a).localeCompare(getCategoryTitle(b)));
 
   let version = "unknown";
   try {
@@ -281,31 +297,35 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   // Details block 1: Web features
   dynamicMd += `<details>\n<summary>Includes expert guidance across <strong>${allFeaturesSorted.length} modern web features</strong></summary>\n\n`;
   for (const f of allFeaturesSorted) {
-    dynamicMd += `- [${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})\n`;
+    dynamicMd += `- [${f.name.replace(/</g, '&lt;')}](https://web-platform-dx.github.io/web-features-explorer/features/${f.id}/)\n`;
   }
   dynamicMd += `</details>\n\n`;
 
   // Details block 2: Use cases
   dynamicMd += `<details>\n<summary>Covers <strong>${readyGuides.length} real-world developer use cases</strong> with production-ready code patterns</summary>\n\n`;
-  for (const group of sortedGroups) {
-    const featureLinks = group.features.map(f => `[${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})`).join(', ');
-    dynamicMd += `- **${featureLinks}**\n`;
-    for (const uc of group.useCases) {
-      dynamicMd += `  - **${uc.id}**: ${uc.description}\n`;
+  for (const cat of sortedCategories) {
+    dynamicMd += `<h3>${getCategoryTitle(cat)}</h3>\n\n`;
+    const ucs = categoryMap.get(cat)!;
+    ucs.sort((a, b) => a.id.localeCompare(b.id));
+    for (const uc of ucs) {
+      const url = `https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/${uc.category}/${uc.id}.md`;
+      dynamicMd += `- **[${uc.id}](${url})**: ${uc.description}\n`;
     }
+    dynamicMd += `\n`;
   }
-  dynamicMd += `</details>\n\n`;
+  dynamicMd = dynamicMd.trimEnd() + `\n</details>\n\n`;
 
-  // Update README
-  const readmePath = path.join(publishRoot, "README.md");
-  if (fs.existsSync(readmePath)) {
-    let readmeContent = fs.readFileSync(readmePath, "utf-8");
+  // Update README idempotently from template source
+  const templateReadmePath = path.join(SERVING_DIR, "skills-cli/template/README.md");
+  const destReadmePath = path.join(publishRoot, "README.md");
+  if (fs.existsSync(templateReadmePath)) {
+    let readmeContent = fs.readFileSync(templateReadmePath, "utf-8");
     if (readmeContent.includes('<!-- INJECT_SKILL_COVERAGE -->')) {
       readmeContent = readmeContent.replace('<!-- INJECT_SKILL_COVERAGE -->', dynamicMd.trimEnd());
     } else {
       readmeContent = readmeContent.replace('## Installation', dynamicMd + '## Installation');
     }
-    fs.writeFileSync(readmePath, readmeContent);
+    fs.writeFileSync(destReadmePath, readmeContent);
   }
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
