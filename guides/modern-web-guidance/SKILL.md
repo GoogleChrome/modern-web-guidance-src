@@ -67,8 +67,8 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 
 #### Baseline Status
 - **Limited Availability**: Lacks cross-browser interoperability.
-- **Newly Available**: Supported across all latest major browsers.
-- **Widely Available**: Supported across all major browsers for ≥ 30 months.
+- **Newly Available**: The feature has emerged in all major browsers within the last 30 months.
+- **Widely Available**: The feature has been supported in all major browsers for ≥ 30 months.
 
 #### Support Floor Implementation
 Assume a default guaranteed audience floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)**. Enforce a support floor, not a ceiling:
