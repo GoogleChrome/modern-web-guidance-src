@@ -73,19 +73,20 @@ Features are labeled in the guide as:
 
 #### Enforcing a Support Floor
 By default, assume the user's project targets a support floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)**. The [WebDX Community Group](https://www.w3.org/groups/cg/webdx/) defines this as features fully supported across the core browser set (Chrome, Edge, Firefox, Safari) for at least 30 months. This optimizes for production safety from the start.
-- **Implicit Context:** Constraints defined in `agents.md` are included implicitly within your standard context window. Do **not** execute upfront status lookups or prerequisite file-verification checks before engaging with command-line tools.
+- **Implicit Context:** Constraints defined in `AGENTS.md` are included implicitly within your standard context window. Do **not** execute upfront status lookups or prerequisite file-verification checks before engaging with command-line tools.
 - **Expert Fallbacks:** Always implement the recommended progressive enhancements and fallback strategies provided in the guidance. Extended baseline macros provide detailed support info, and guide authors clarify contexts where fallbacks may be unnecessary.
 - **Limited Support Warnings:** If a guide relies on limited-availability features where site functionality could break without perfect fallbacks, proactively warn the user about compatibility risks.
 
 #### The Experimental Firewall (Feature Maturity & Risk)
 Adopting features above the baseline floor introduces stability and feature maturity risks.
-- **Explicit Opt-In Required:** Features beyond *Baseline Newly Available* act as a firewall. You MUST require explicit user opt-in or risk-tolerance signaling in `agents.md` before implementing high-risk experimental features (e.g., Origin Trials, single-engine support, or non-standards track APIs).
+- **Origin Trials & Production Safety:** There is no way to deliver a consistent experience across real production users for Origin Trial features. Because a smooth fallback story is usually absent, adoption must be deliberate and thoughtful. When encountering a guide utilizing an Origin Trial feature, you MUST pause and have the user explicitly decide how they want to handle real production users lacking support.
+- **Explicit Opt-In Required:** Features beyond *Baseline Newly Available* act as a firewall. You MUST require explicit user opt-in or risk-tolerance signaling in `AGENTS.md` before implementing high-risk experimental APIs.
 
 #### Reactive Discovery & Persistence
 - **Reactive Discovery:** Do NOT proactively ask the user about their browser support target or risk appetite upfront. Only act reactively if you observe:
   - The project is a browser monoculture (e.g., Electron/Tauri).
   - The user explicitly states exclusions (e.g., "we don't support Desktop Safari").
   - The user expresses hesitation about using polyfills.
-- **Clarify & Persist:** If you detect any of the triggers above, ask the user to clarify their specific constraints. Once clarified, suggest persisting this free-form policy into a project-level **`agents.md`** file so future interactions remember it.
+- **Clarify & Persist:** If you detect any of the triggers above, ask the user to clarify their specific constraints. Once clarified, suggest persisting this free-form policy into a project-level **`AGENTS.md`** file so future interactions remember it.
   - For example: `**Browser Support:** We target Baseline Widely Available, but explicitly exclude Desktop Safari and do not use JS polyfills for CSS features.`
-- **Fallback & Config Tuning:** Use the context of `agents.md` to tune fallback implementations (e.g., avoiding specific polyfills). Additionally, consider updating conflicting configurations like **ESLint** to prevent linter warnings or errors when adopting modern web features.
+- **Fallback Tuning:** Use the context of `AGENTS.md` to tune fallback implementations (e.g., avoiding specific polyfills).
