@@ -8,8 +8,8 @@ import process from 'node:process';
 import readline from 'node:readline';
 import { parseArgs } from 'node:util';
 
-import { WatchdogMessageType } from '../types.js';
-import { ClearcutSender } from './ClearcutSender.js';
+import { WatchdogMessageType } from '../types.ts';
+import { ClearcutSender } from './ClearcutSender.ts';
 
 interface WatchdogArgs {
   parentPid: number;

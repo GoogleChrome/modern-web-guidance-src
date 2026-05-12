@@ -5,33 +5,20 @@
  */
 
 import process from 'node:process';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { WatchdogClient } from './WatchdogClient.js';
+import { WatchdogClient } from './WatchdogClient.ts';
 import {
   type ChromeModernWebGuidance,
   type SearchItem,
-  type Installation,
   WatchdogMessageType,
   OsType,
-} from './types.js';
+} from './types.ts';
+import { getVersion } from '../../lib/version.ts';
 
 function isTelemetryEnabled(): boolean {
   if (process.env.DISABLE_TELEMETRY === '1' || process.env.DISABLE_TELEMETRY === 'true') {
     return false;
   }
   return true; // Enabled by default!
-}
-
-// TODO (micahjo): after the package install is updated to pull from NPM, update this so it finds the version in the right place
-function getCliVersion(): string {
-  try {
-    const pkgPath = fileURLToPath(new URL('./package.json', import.meta.url));
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-    return pkg.version || 'unknown';
-  } catch {
-    return 'unknown';
-  }
 }
 
 export function detectOS(): OsType {
@@ -87,7 +74,7 @@ export class ClearcutLogger {
         search_items: searchItems,
       },
       os: detectOS(),
-      cli_version: getCliVersion(),
+      version: getVersion(import.meta.dirname),
       latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
       success: metrics?.success,
     };
@@ -117,7 +104,7 @@ export class ClearcutLogger {
         guide_id: guideId,
       },
       os: detectOS(),
-      cli_version: getCliVersion(),
+      version: getVersion(import.meta.dirname),
       latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
       success: metrics?.success,
     };
@@ -147,7 +134,7 @@ export class ClearcutLogger {
         skills: skills,
       },
       os: detectOS(),
-      cli_version: getCliVersion(),
+      version: getVersion(import.meta.dirname),
       latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
       success: metrics?.success,
     };

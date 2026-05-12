@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { ChromeModernWebGuidance, LogRequest } from '../types.js';
+import type { ChromeModernWebGuidance, LogRequest } from '../types.ts';
 
 export interface ClearcutSenderConfig {
   clearcutEndpoint?: string;

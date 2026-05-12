@@ -36,7 +36,7 @@ export interface ChromeModernWebGuidance {
   retrieve_result?: RetrieveResult;
   installation?: Installation;
   os?: OsType;
-  cli_version?: string;
+  version?: string;
   latency_ms?: number;
   success?: boolean;
 }

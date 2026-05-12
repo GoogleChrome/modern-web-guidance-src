@@ -9,62 +9,59 @@ This skill is a baseline for writing clean, performant, and secure JavaScript. T
 
 This skill defers to specific use-case guidance found in the `/guides/` directory when applicable.
 
-## Modern Syntax and Variable Declarations
+## DOM Manipulation and Performance
 
-- **Use `const` by Default**: Use `const` for all variable declarations. Use `let` only when reassignment is strictly required. 
-- **Never Use `var`**: Deprecate the legacy `var` keyword to avoid function-scoping and hoisting bugs.
-- **Enforce Strict Mode**: Add `"use strict";` at the top of scripts or functions if not inside an ES module or class (which are strict by default).
-- **Prefer Primitives and Literals**: Avoid object wrappers (e.g., `new String()`, `new Number()`). Define variables using literals (e.g., `""`, `0`, `true`),  standard conversion functions (e.g., `Number()`, `String()`) for type conversion, and standard parse functions (e.g.,`parseInt()`, `parseFloat()`) for string-to-number parsing.
-- **Use Strict Equality `===`**: Always use `===` and `!==` over `==` and `!=` to bypass dangerous implicit type coercion. Use `Number.isNaN()` to check if a value is `NaN`.
-- **Nullish Operators for Safety**:
-    - Use Optional Chaining (`?.`) to safely traverse nested objects without throwing `TypeError`.
-    - Use Nullish Coalescing (`??`) for defaults instead of logical OR (`||`) to avoid accidentally overriding valid falsy values like `0` or `""`.
-- **Use Template Literals**: Use backticks `` ` `` and `${}` for string interpolation instead of concatenation `+`.
-- **Naming Conventions**: Use `camelCase` for variables and functions, `PascalCase` for classes.
-- **Use `structuredClone()` to Recursively Copy Objects**: Avoid using `JSON.parse(JSON.stringify(object))` to clone an object.
-- **Precise Calculations**: Use integers or whole numbers for precision-critical math (e.g., currency) to avoid floating-point issues (`0.1 + 0.2 !== 0.3`).
-- **Document with JSDoc**: Provide inline code documentation that integrates with tooling with JSDoc. DO include `@param` and `@returns` to document functions.
+- **Reduce Layout Thrashing (Reflows)**: Accessing geometric properties (`offsetHeight`, `clientWidth`) after a DOM write forces synchronous layout. Batch all DOM reads first, then all DOM writes.
+- **Offload Heavy Tasks with Web Workers**: Do not block the main thread with heavy computation. Offload non-DOM work like data manipulation or image rendering to Web Workers.
+- **Prevent Memory Leaks**: Remove event listeners when removing DOM elements, set detached DOM references to `null`, and clear timers to allow garbage collection. Use a shared AbortController signal to clean up multiple asynchronous events.
+- **Share Observer Instances**: If there are many elements to observe with a `ResizeObserver` or `IntersectionObserver`, attach them to a single shared Observer instance rather than spawning one per item.
+- **Disconnect Cleanup**: Always call `.unobserve(el)` or `.disconnect()` when elements or components unmount to prevent memory leaks.
+- **Use `DocumentFragment` for Batch Appends**: When inserting many elements, append them first to an in-memory `DocumentFragment` before a single insertion into the live DOM tree.
 
 ```javascript
-// ✅ GOOD
-const score = 0;
-const finalScore = score ?? 10; // 0
+// Clean up multiple items with a shared AbortController.
+const controller = new AbortController();
+const signal = controller.signal;
 
-// ❌ BAD
-const finalScoreLegacy = score || 10; // 10 (incorrectly overrides 0)
-```
-
-## Functions and Async Flow
-
-- **Prefer Rest and Default Parameters**: Use Rest parameters (`...args`) instead of the legacy `arguments` object. Define defaults inside the signature (`param = value`).
-- **Arrow Functions for Lexical `this`**: Use arrow functions when you want to preserve the surrounding context's `this` (e.g., inside callbacks or timers).
-- **Standard Functions for Dynamic `this`**: Use standard function syntax (`functionName() {}`) when you need `this` to bind dynamically (e.g., object methods or event handlers).
-- **Asynchronous Flow with `async/await`**: Use `async`/`await` for readable asynchronous code instead of heavy promise chains or callbacks. Always wrap with `try/catch` for error handling.
-- **Fail Fast with Early Returns**: Return early from functions to keep code flat and avoid deep `if-else` nesting.
-- **Use Ternary Statements for Conditional Variable Assignment**: Prefer standard `if/else` statements over side effects in a conditional ternary statement.(e.g., `condition ? doSomething() : doSomethingElse()`). Avoid nesting ternary operators, prefer `if-else` or switch statements.
-- **Throw Error Objects**: Don't throw strings or other literals (e.g., `throw "CustomError"`). Instead throw an `Error` or a subclass of `Error`, (e.g., `throw new Error('CustomError')`).
-
-```javascript
-// ✅ GOOD: Readable async flow
-async function fetchData(url) {
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Fetch failed:", error);
-    throw error; // Propagate or handle
-  }
+// Use the same `signal` when setting up event listeners and fetches.
+async function setup(){
+  button.addEventListener('click', ()=>{}, { signal })
+  const response = await fetch(url, { signal });
+}
+// Calling `abort()` cleans up all processes with a shared signal.
+function tearDown(){
+  controller.abort();
 }
 ```
 
-### Async Patterns Decision Matrix
+```javascript
+// ✅ Optimized Batch DOM Insertion
+const list = document.getElementById('myList');
+const fragment = document.createDocumentFragment();
 
-| Pattern | Best For | Error Behavior | Execution |
-| :--- | :--- | :--- | :--- |
-| **`async / await`** | Sequential dependencies | `try/catch` per call | Serial (One by one) |
-| **`Promise.all()`** | Parallel tasks, all required | Fails fast (rejects on first error) | Parallel |
-| **`Promise.allSettled()`** | Parallel tasks, independent | Never fails (returns status for all) | Parallel |
+for (let i = 0; i < 1000; i++) {
+    const li = document.createElement('li');
+    li.textContent = `Item ${i + 1}`;
+    fragment.appendChild(li); // Appended in-memory, no reflow
+}
+list.appendChild(fragment); // Single layout recalculation pass
+```
+
+## Modern Browser APIs
+
+- **Prefer HTML and CSS for UI over JavaScript** - Don't use JavaScript when a feature is possible without it, (e.g., `<details>` and `<summary>` for simple accordion components, Relative Color Syntax for color manipulation, `position:sticky` for sticky positioning, or native form validation).
+- **Prefer HTML and CSS features over Observers**: Use `<img loading="lazy" />` or scroll driven animations over `IntersectionObserver`, and container queries over `ResizeObserver`.
+- **Use JavaScript as a Progressive Enhancement**: Anticipate that JavaScript will not always be able to run, and ensure your site is functional without it.
+- **Avoid Extending CustomEvent**: Use native events like `TouchEvent` or `FocusEvent` when possible, or extend `Event`.
+- **Avoid Recreating Native Elements**: Use `<button>` to trigger events, `<a>` to navigate, etc. Avoid replicating their behavior by adding event listeners to `<div>` or other generic elements. Do use JavaScript to add required dynamic ARIA, for instance `aria-expanded` or `aria-selected`.
+
+## Security
+
+- **Prevent DOM-XSS with Trusted Types**: Enforce Trusted Types in CSP to reject direct raw string assignments to dangerous sinks (like `innerHTML`). Use standard sanitization libraries like **DOMPurify** with `RETURN_TRUSTED_TYPE: true`.
+
+## Delivery
+
+- **Use Import Maps**: Use `<script type="importmap">` to control how `import` statements resolve.
 
 **Heuristic Rule**: Use `Promise.all()` when you need all results to proceed (e.g., initial data load). Use `Promise.allSettled()` when results are independent (e.g., batching multiple analytics pings).
 

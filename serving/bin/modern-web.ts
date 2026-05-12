@@ -2,10 +2,9 @@
 
 import { parseArgs } from "node:util";
 import { spawn } from "node:child_process";
-import { join } from "node:path";
-import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
+import { getVersion } from "../lib/version.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -34,7 +33,7 @@ Options:
 
 async function main() {
   if (values.version) {
-    console.log(getVersion());
+    console.log(getVersion(import.meta.dirname));
     process.exit(0);
   }
 
@@ -143,9 +142,10 @@ async function main() {
     });
 
     // Post-process capturedStdout to extract successfully installed skill names and log telemetry.
+    /* eslint-disable-next-line no-control-regex */
     const cleanOutput = capturedStdout.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
     const skills: string[] = [];
-    
+
     // Scope checkmark extraction strictly inside the "Installed skill(s)" summary box to avoid false matches.
     const installedBoxMatch = cleanOutput.match(/Installed \d+ skill[\s\S]*?├─/);
     if (installedBoxMatch) {
@@ -168,16 +168,7 @@ async function main() {
   }
 }
 
-function getVersion(): string {
-  try {
-    // Resolves to serving/package.json in dev, or dist/skills-cli/package.json in prod bundles
-    const pkgPath = join(import.meta.dirname, "../../package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-    return pkg.version || "unknown";
-  } catch (e) {
-    return "unknown";
-  }
-}
+
 
 
 main().catch(err => {

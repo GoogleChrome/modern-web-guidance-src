@@ -7,7 +7,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import type { WatchdogMessage } from './types.js';
+import type { WatchdogMessage } from './types.ts';
 
 export class WatchdogClient {
   #childProcess: ChildProcess;
