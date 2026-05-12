@@ -1,5 +1,0 @@
-- The CSS contains at least one `@supports at-rule(@<at-keyword>) { ... }` block, where the argument is a single at-keyword token starting with `@`.
-- At least one `@supports at-rule(...)` block in the page evaluates to true at runtime (i.e., the named at-rule is recognized by the test browser), so the gate is not a permanent no-op.
-- The argument passed to `at-rule()` is a single at-keyword — no preludes, descriptors, or blocks (no extra parentheses, semicolons, or curly braces inside the function call).
-- The `at-rule()` function is only used inside `@supports` or `@import ... supports()` condition contexts, never as a standalone declaration, selector, or value.
-- Any JavaScript feature detection of an at-rule uses `CSS.supports("at-rule(@<keyword>)")` and not the invalid `'at-rule(@<keyword>)' in CSS` pattern.
