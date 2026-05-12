@@ -1,6 +1,6 @@
 ---
 name: forms
-description: Best practices for building accessible, secure, and user-friendly web forms. Use this skill when creating or modifying forms, inputs, and submission flows.
+description: Best practices for building accessible, secure, and user-friendly web forms. Use this guide when creating or modifying forms, inputs, and submission flows.
 ---
 
 ## 1. Semantic Structure and Form Element

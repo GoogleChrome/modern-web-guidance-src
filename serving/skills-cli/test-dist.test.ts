@@ -24,22 +24,6 @@ export function assertSearchResults(output: string) {
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
-if (process.env.SKIP_BUILD) {
-  console.log("Skipping build-dist as requested via SKIP_BUILD...");
-} else {
-  console.log("Running build-dist to ensure fresh build...");
-  try {
-    execSync('node --experimental-strip-types skills-cli/build-dist.ts', {
-      cwd: path.resolve(import.meta.dirname, '..'),
-      stdio: 'pipe'
-    });
-  } catch (error: any) {
-    console.error("\n❌ build-dist.ts failed!");
-    if (error.stdout) console.log(error.stdout.toString('utf8'));
-    if (error.stderr) console.error(error.stderr.toString('utf8'));
-    throw new Error("build-dist.ts failed");
-  }
-}
 
 test('Claude Plugin Config in Dist', async () => {
   const marketplaceJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/marketplace.json'), 'utf8');
@@ -79,19 +63,15 @@ test('SKILL.md validations', async () => {
   assert.strictEqual(data.name, 'modern-web-guidance', `Frontmatter name must match folder name`);
 });
 
-test('Generic skill validations (forms, performance)', async () => {
-  const checkSkill = async (skillName: string) => {
-    const skillPath = path.join(DIST_DIR, `skills/${skillName}/SKILL.md`);
-    await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in ${skillName}`);
-
-    const content = await fs.readFile(skillPath, 'utf8');
-    const { data } = matter(content);
-    assert.ok(data.name, `Missing 'name' field in frontmatter for ${skillName}`);
-    assert.strictEqual(data.name, skillName, `Frontmatter name must match folder name for ${skillName}`);
+test('Discipline guides present (forms, performance)', async () => {
+  const checkGuide = async (name: string) => {
+    const guidesDir = path.join(DIST_DIR, 'skills/modern-web-guidance/guides');
+    const guidePath = path.join(guidesDir, name, `${name}.md`);
+    await assert.doesNotReject(fs.access(guidePath), `Missing guide file in ${name}`);
   };
 
-  await checkSkill('forms');
-  await checkSkill('performance');
+  await checkGuide('forms');
+  await checkGuide('performance');
 });
 
 test('Manifest source paths resolve relative to dist directory', async () => {
@@ -137,6 +117,23 @@ test('modern-web CLI search and retrieve', async () => {
   // 2. Validate retrieve
   const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
+});
+
+test('modern-web CLI version flags', async () => {
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web-guidance/modern-web.mjs');
+  const pkgJsonRaw = await fs.readFile(path.join(DIST_DIR, 'package.json'), 'utf8');
+  const pkgJson = JSON.parse(pkgJsonRaw);
+  const expectedVersion = pkgJson.version;
+
+  assert.ok(expectedVersion, 'expectedVersion should exist in package.json');
+
+  // 1. Test --version
+  const versionOutLong = execSync(`node "${binaryPath}" --version`, { encoding: 'utf8' }).trim();
+  assert.strictEqual(versionOutLong, expectedVersion, '--version output should match package.json version');
+
+  // 2. Test -v
+  const versionOutShort = execSync(`node "${binaryPath}" -v`, { encoding: 'utf8' }).trim();
+  assert.strictEqual(versionOutShort, expectedVersion, '-v output should match package.json version');
 });
 
 // TODO: this has been failing locally from publish-skills.ts

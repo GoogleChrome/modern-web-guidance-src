@@ -1,6 +1,6 @@
 ---
 name: html
-description: Action-oriented guidelines for modern HTML architecture, semantics, native interactive APIs (Dialog, Popover, Details), focus management, and resource prioritization. Use this skill when structuring web documents, implementing native overlays, or optimizing resource loading order.
+description: Action-oriented guidelines for modern HTML architecture, semantics, native interactive APIs (Dialog, Popover, Details), focus management, and resource prioritization. Use this guide when structuring web documents, implementing native overlays, or optimizing resource loading order.
 ---
 
 ## Table of Contents

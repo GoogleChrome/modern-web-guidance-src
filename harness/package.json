@@ -10,7 +10,7 @@
     "task": "node run_suite.ts",
     "upload": "node --experimental-strip-types upload_suite.ts",
     "typecheck": "tsc --noEmit",
-    "full-run": "npm run suite && npm run report"
+    "full-run": "pnpm run suite && pnpm run report"
   },
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^2.1.126",
-    "@google/gemini-cli-core": "latest"
+    "@google/gemini-cli-core": "latest",
+    "serving": "workspace:*"
   }
 }
