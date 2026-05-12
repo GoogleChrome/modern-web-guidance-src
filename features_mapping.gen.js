@@ -165,7 +165,9 @@ window.__featuresMapping = {
   ],
   "browser-ui-color-theme": [
     "color-scheme",
-    "prefers-color-scheme"
+    "prefers-color-scheme",
+    "light-dark",
+    "accent-color"
   ],
   "calculate-event-differentials": [
     "temporal"
