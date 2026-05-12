@@ -153,6 +153,9 @@ importers:
       '@huggingface/transformers':
         specifier: ^3.8.1
         version: 3.8.1
+      '@mdn/browser-compat-data':
+        specifier: ^7.3.13
+        version: 7.3.14
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
