@@ -138,15 +138,28 @@
     /* 
        ===============================================================
        IMPLEMENTATION STEP 4: Create theme overrides
+       Force a component into a specific theme.
        ===============================================================
     */
-    .force-light { color-scheme: light; }
-    .force-dark { color-scheme: dark; }
+    /* MANDATORY: Apply color-scheme only to elements with backgrounds */
+    .themed-card.force-light { 
+      color-scheme: light;
+      /* Re-apply properties that use light-dark() variables to avoid the inheritance footgun */
+      background-color: var(--card-bg);
+      color: var(--card-text);
+    }
+    .themed-card.force-dark { 
+      color-scheme: dark;
+      /* Re-apply properties that use light-dark() variables to avoid the inheritance footgun */
+      background-color: var(--card-bg);
+      color: var(--card-text);
+    }
 
-    /* 
-       **Mandatory**: when nesting schemes, dynamic properties set with 
-       light-dark() must also be set on the element where the scheme changes. 
-    */
+    .themed-card h3 { 
+      margin: 0; 
+      /* This will re-resolve because it's set directly on the child of the scheme-changing element */
+      color: var(--accent); 
+    }
 
     .grid {
       display: grid;
@@ -156,13 +169,15 @@
 
     /* Demonstration of "Theme Island" (Nested Context) */
     .theme-island {
+      color-scheme: dark; /* Force dark context */
+      /* MANDATORY: Re-apply properties using light-dark() tokens where the scheme changes */
+      background-color: color-mix(in srgb, var(--accent), Canvas 90%);
       color: var(--page-text);
-      margin-top: 4rem;
+      
       padding: 2rem;
       border-radius: 16px;
-      background-color: color-mix(in srgb, var(--accent), Canvas 90%);
       border: 2px dashed var(--accent);
-      color-scheme: dark; /* Force dark context */
+      margin-top: 4rem;
     }
 
     .island-grid {
