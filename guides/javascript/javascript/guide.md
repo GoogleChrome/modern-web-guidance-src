@@ -49,6 +49,9 @@ list.appendChild(fragment); // Single layout recalculation pass
 
 ## Modern Browser APIs
 
+- **Use Native Modern Browser APIs**: Prefer modern native APIs over third-party libraries or manual helper methods:
+    - Use `Object.groupBy()` to group collection objects by criteria. Do **not** write custom loop-based grouping logic.
+    - Use `structuredClone()` to recursively deep-copy objects. Do **not** use the legacy `JSON.parse(JSON.stringify(obj))` pattern or custom deep-cloning functions.
 - **Prefer HTML and CSS for UI over JavaScript** - Don't use JavaScript when a feature is possible without it, (e.g., `<details>` and `<summary>` for simple accordion components, Relative Color Syntax for color manipulation, `position:sticky` for sticky positioning, or native form validation).
 - **Prefer HTML and CSS features over Observers**: Use `<img loading="lazy" />` or scroll driven animations over `IntersectionObserver`, and container queries over `ResizeObserver`.
 - **Use JavaScript as a Progressive Enhancement**: Anticipate that JavaScript will not always be able to run, and ensure your site is functional without it.
