@@ -78,14 +78,6 @@ export function processSkills(publishRoot: string) {
     const target = 'skills-cli';
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
 
-    if (skillName === config.monoskill.name) {
-      for (const kw of config.monoskill.requiredKeywords) {
-        if (!content.includes(kw)) {
-          throw new Error(`Monoskill ${skillName} description MUST explicitly include keyword: '${kw}'`);
-        }
-      }
-    }
-
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 

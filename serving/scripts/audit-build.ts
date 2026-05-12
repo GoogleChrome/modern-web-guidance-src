@@ -10,7 +10,7 @@ interface AuditRecord {
   filePath: string;
   name: string;
   category: string;
-  type: 'EXPOSED_DIST' | 'BUNDLED_GUIDE' | 'BUNDLED_INTERFACE' | 'UNMERGED_DRAFT' | 'INERT' | 'INTERNAL_AGENT';
+  type: 'EXPOSED_DIST' | 'BUNDLED_GUIDE' | 'BUNDLED_INTERFACE' | 'INERT' | 'INTERNAL_AGENT';
   description: string;
 }
 
@@ -38,8 +38,8 @@ function auditBuild() {
 
   const allFiles = [...skillFiles, ...disciplineGuides].sort();
 
-  const bundledSet = new Set(config.monoskill.bundledCategories);
   const standaloneSet = new Set(config.standaloneSkills.map(s => s.name));
+  const excludedSet = new Set(config.monoskill.excludeFromBundling || []);
 
   for (const relPath of allFiles) {
     const absPath = path.join(repoRoot, relPath);
@@ -50,7 +50,8 @@ function auditBuild() {
     const parts = relPath.split('/');
     const folderName = parts[parts.length - 2];
     const name = data.name || folderName;
-    const category = parts[1];
+    const rootNamespace = parts[0];
+    const subCategory = parts[1];
 
     let type: AuditRecord['type'] = 'INERT';
 
@@ -60,22 +61,23 @@ function auditBuild() {
       type = 'INERT';
     } else if (standaloneSet.has(folderName) || standaloneSet.has(name)) {
       type = 'EXPOSED_DIST';
-    } else if (!isSKILL && bundledSet.has(category)) {
-      type = 'BUNDLED_GUIDE';
-    } else if (isSKILL && (bundledSet.has(folderName) || bundledSet.has(name))) {
-      const targetCat = bundledSet.has(folderName) ? folderName : name;
-      const targetGuideDir = path.join(repoRoot, 'guides', targetCat);
+    } else if (rootNamespace === 'guides') {
+      if (excludedSet.has(subCategory) || excludedSet.has(folderName) || excludedSet.has(name)) {
+        type = 'INERT';
+      } else if (!isSKILL) {
+        type = 'BUNDLED_GUIDE';
+      }
+    } else if (isSKILL) {
+      const targetGuideDir = path.join(repoRoot, 'guides', folderName);
       if (fs.existsSync(targetGuideDir)) {
         type = 'BUNDLED_INTERFACE';
-      } else {
-        type = 'UNMERGED_DRAFT';
       }
     }
 
     records.push({
       filePath: relPath,
       name,
-      category,
+      category: subCategory,
       type,
       description: data.description ? data.description.trim().split('\n')[0] : 'No description',
     });
@@ -86,7 +88,6 @@ function auditBuild() {
     EXPOSED_DIST: { title: 'Exposed in dist/ Distribution (Standalone / Primary Monoskill)', symbol: '🟢' },
     BUNDLED_GUIDE: { title: 'Active Bundled Core Guides (Internalized Discipline Files)', symbol: '🔵' },
     BUNDLED_INTERFACE: { title: 'Active Source Interfaces for Bundled Guides', symbol: '🛡️' },
-    UNMERGED_DRAFT: { title: 'Unmerged Draft Disciplines (Configured but Missing guides/ Folder)', symbol: '🟡' },
     INERT: { title: 'Inert Files (Sub-skills / Drafts / Megaskill Experiments)', symbol: '⚪' },
     INTERNAL_AGENT: { title: 'Internal Repo-Maintenance Bot Skills (.agents/)', symbol: '⚙️' },
   };
@@ -103,25 +104,6 @@ function auditBuild() {
     console.log('');
   }
 
-  // Final consistency validation checks
-  console.log('--- Consistency Checks ---');
-  const missingKeywords = config.monoskill.requiredKeywords.filter(kw => {
-    const monoskillPath = path.join(repoRoot, 'guides/modern-web-guidance/SKILL.md');
-    if (!fs.existsSync(monoskillPath)) return true;
-    return !fs.readFileSync(monoskillPath, 'utf8').includes(kw);
-  });
-
-  if (missingKeywords.length > 0) {
-    console.log(`❌ Monoskill description missing mandatory keywords: ${missingKeywords.join(', ')}`);
-    process.exitCode = 1;
-  } else {
-    console.log('✅ Monoskill explicitly incorporates all mandatory keywords.');
-  }
-
-  const unmerged = records.filter(r => r.type === 'UNMERGED_DRAFT');
-  if (unmerged.length > 0) {
-    console.log(`⚠️  Found ${unmerged.length} configured categories lacking active guides/ folders (waiting on PRs).`);
-  }
 }
 
 auditBuild();

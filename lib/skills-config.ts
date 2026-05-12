@@ -13,10 +13,8 @@ export interface StandaloneSkill {
 export interface MonoskillConfig {
   /** Name of the primary monoskill */
   name: string;
-  /** Categories of use cases to bundle into this monoskill's vector store */
-  bundledCategories: string[];
-  /** Required keywords that must be explicitly present in the monoskill's description */
-  requiredKeywords: string[];
+  /** Optional: categories or specific guides inside guides/ to explicitly omit from vector store bundling */
+  excludeFromBundling?: string[];
 }
 
 export interface SkillsConfiguration {
@@ -26,26 +24,7 @@ export interface SkillsConfiguration {
 
 export const config: SkillsConfiguration = {
   monoskill: {
-    name: "modern-web-guidance",
-    bundledCategories: [
-      "accessibility",
-      "built-in-ai",
-      "css",
-      "forms",
-      "html",
-      "javascript",
-      "passkeys",
-      "performance",
-      "privacy",
-      "security",
-      "user-experience",
-      "webmcp"
-    ],
-    requiredKeywords: [
-      "passkeys",
-      "built-in-ai",
-      "webmcp"
-    ]
+    name: "modern-web-guidance"
   },
   standaloneSkills: [
     // Proposal A: Standalone, not bundled
