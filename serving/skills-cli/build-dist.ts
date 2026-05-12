@@ -95,7 +95,9 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   });
 
   if (skipped && fs.existsSync(modernWebMjs)) {
-    return { featuresCount: 0, useCasesCount: 0, skillsCount: 0, skillNames: [] };
+    const { skillsCount, skillNames } = processSkills(publishRoot);
+    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
+    return { featuresCount, useCasesCount, skillsCount, skillNames };
   }
 
   // Step 2: If we didn't short-circuit, we do a clean, purist build.

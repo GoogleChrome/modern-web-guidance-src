@@ -36,6 +36,8 @@ jobs:
           TEST_REPORTER: spec
         run: pnpm run preflight
 
+      - name: Verify publish-skills (Dry Run)
+        run: pnpm --filter serving run publish-skills --dry-run
 
       # Fail if any changes were written to any source files or generated untracked files
       - run: git add -A && git diff --cached --exit-code
