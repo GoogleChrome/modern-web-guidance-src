@@ -51,7 +51,7 @@ Securely verify the assertion Returned by the client to authenticate the user:
 
 ### HTML Form Annotation
 
-Annotate your username and password inputs to natively leverage Conditional UI. Autocomplete tokens combine the webauthn spec parameters, and autofocus triggers the browser autofill popup immediately when the input is focused:
+Annotate your username and password inputs to natively leverage Conditional UI. Autocomplete tokens combine the webauthn spec parameters, and autofocus triggers the browser autofill popup immediately when the input is focused.
 
 ```html
 <!-- Autocomplete tokens must contain webauthn space-separated -->
@@ -76,15 +76,17 @@ Trigger passkey authentication when a user clicks a "Sign in with passkey" butto
 
 Activate form autofill suggestions on page load to offer passkey authentication natively when users focus on sign-in fields:
 
-1.  **Decode options**: Decode fetched credential JSON object with `PublicKeyCredential.parseRequestOptionsFromJSON()`.
-2.  **Invoke Conditional Get**: Call `navigator.credentials.get()` with `mediation: "conditional"` and pass an `AbortController` signal. This registers autofill silently without rendering popups.
-3.  **Try/Catch Exception Segregation**: Wrap `navigator.credentials.get` call in try/catch block:
+1.  **Feature detect**: Call `PublicKeyCredential.getClientCapabilities()` on page load and **skip signing in with passkey** if `conditionalGet` is not available.
+2.  **Decode options**: Decode fetched credential JSON object with `PublicKeyCredential.parseRequestOptionsFromJSON()`.
+3.  **Invoke Conditional Get**: Call `navigator.credentials.get()` with `mediation: "conditional"` and pass an `AbortController` signal. This registers autofill silently without rendering popups.
+4.  **Try/Catch Exception Segregation**: Wrap `navigator.credentials.get` call in try/catch block:
     - `NotAllowedError`: The user cancelled or timed out the passkey login prompt.
     - `AbortError`: The programmatic authentication request was cancelled.
-4.  **Call Signal API**: Wrap server verification `fetch()` call in a try/catch block:
+5.  **Call Signal API**: Wrap server verification `fetch()` call in a try/catch block:
+    - Show an error message for the user to understand what went wrong.
     - Call `signalUnknownCredential()` ONLY when the server explicitly responds with HTTP status `404` (Credential not found) and the user is unauthenticated.
     - The `credentialId` parameter passed to `signalUnknownCredential()` MUST strictly be the Base64URL-encoded credential ID string (e.g., `encoded.id`), NOT the raw ArrayBuffer object `credential.rawId`.
-5.  **Encode the response**: Encode the credential `AuthenticatorAssertionResponse` with `.toJSON()` before sending it to the server for verification.
+6.  **Encode the response**: Encode the credential `AuthenticatorAssertionResponse` with `.toJSON()` before sending it to the server for verification.
 
 ```javascript
 // optionsFetch and loginVerifyFetch are app-defined HTTP methods

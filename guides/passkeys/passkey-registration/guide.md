@@ -99,7 +99,7 @@ const options = {
 ## Client-Side Logic
 
 1.  **Gate the UI on page load**:
-    - On page load, call `PublicKeyCredential.getClientCapabilities()` and **disable the "Create passkey" button** if `passkeyPlatformAuthenticator` is not available.
+    - On page load, call `PublicKeyCredential.getClientCapabilities()` and **disable the "Create passkey" button** if `conditionalGet` or `passkeyPlatformAuthenticator` is not available.
 2.  **Invoke creation & Serialize**: Decode server options with `PublicKeyCredential.parseCreationOptionsFromJSON()` and pass the resulting configuration to `navigator.credentials.create()`.
     - Call `credential.toJSON()` to encode the `AuthenticatorAttestationResponse` into a valid, JSON-serializable object before fetching the verification endpoint.
 3.  **Handle WebAuthn Exceptions**:
@@ -118,7 +118,10 @@ async function registerPasskey(isPromotion = false) {
   // Verify biometric platform capability exists on device
   if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
     const capabilities = await PublicKeyCredential.getClientCapabilities();
-    if (!capabilities.passkeyPlatformAuthenticator) {
+    if (
+      !capabilities.passkeyPlatformAuthenticator ||
+      !capabilities.conditionalGet
+    ) {
       // Hide "Create passkey" buttons and fall back to password flows instead
       showStandardPasswordFallbackUI();
       return;
