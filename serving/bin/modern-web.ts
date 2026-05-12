@@ -91,21 +91,13 @@ async function main() {
     }
   } else if (command === "install") {
     const installArgs = ["add", "GoogleChrome/modern-web-guidance"];
-    if (values.choose) {
-      installArgs.push("--choose");
-    } else {
+    if (!values.choose) {
       installArgs.push("--skill", "modern-web-guidance");
     }
 
     const child = spawn("npx", ["skills", ...installArgs], {
-      stdio: ["inherit", "pipe", "inherit"],
+      stdio: "inherit",
       env: { ...process.env, FORCE_COLOR: "1" }
-    });
-
-    let capturedStdout = "";
-    child.stdout?.on("data", (data) => {
-      capturedStdout += data.toString();
-      process.stdout.write(data);
     });
 
     const status = await new Promise<number>((resolve) => {
@@ -115,9 +107,6 @@ async function main() {
         resolve(1);
       });
     });
-
-    // You can now post-process capturedStdout here.
-    // e.g. if (capturedStdout.includes("...")) { ... }
 
     process.exit(status);
   } else {
