@@ -98,14 +98,8 @@ async function main() {
     }
 
     const child = spawn("npx", ["skills", ...installArgs], {
-      stdio: ["inherit", "pipe", "inherit"],
+      stdio: "inherit",
       env: { ...process.env, FORCE_COLOR: "1" }
-    });
-
-    let capturedStdout = "";
-    child.stdout?.on("data", (data) => {
-      capturedStdout += data.toString();
-      process.stdout.write(data);
     });
 
     const status = await new Promise<number>((resolve) => {
