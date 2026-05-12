@@ -40,11 +40,8 @@ contain-intrinsic-block-size: auto 2lh;
 For scenarios that use different layouts, we can add the sizes of the elements as well as any spacing between them.
 
 ```css
-/* Label block-size: font-size multiplied by its line-height */
---label--block-size: 1rem * 1.5;
-/* Description block-size: font-size multiplied by its line-height */
---description-block-size: 0.8rem * 1.2;
-/* Gap between the label and description */
+--label--block-size: 1lh;
+--description-block-size: 0.8lh;
 --gap: 8px;
 /* Intrinsic size adds all the values together */
 contain-intrinsic-block-size: calc(
