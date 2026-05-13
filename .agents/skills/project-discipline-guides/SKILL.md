@@ -33,7 +33,7 @@ As the agent, read the **Target** guide and the unified **Redundancy Mirror** (`
 
 - **Strict A - B Comparison**: Compare rules in the Target guide strictly against the unified **Redundancy Mirror**. You should ONLY remove a rule or pattern from the Target guide if it is fully and clearly covered in the Redundancy Mirror.
 - **No Subjective Self-Attestation**: Rely exclusively on the literal content present in the Redundancy Mirror. Do not prune rules based on your own subjective self-attestation of what you "know" or would do by default. If a concept is not in the Redundancy Mirror, it remains in the Target guide.
-- **Avoid Blind Bullet-Point Deletions**: If a single bullet point or rule in the Target contains multiple guidelines or APIs, do **not** delete the entire bullet point just because some parts of it are common knowledge. Carefully split or dissect the rule, pruning only the redundant parts and explicitly retaining any differential knowledge (e.g., preserving instructions for `Object.groupBy()` even if standard DOM APIs like `document.querySelectorAll()` in the same bullet point are removed).
+- **Avoid Blind Bullet-Point Deletions**: If a single bullet point or rule in the Target contains multiple guidelines or APIs, do **not** delete the entire bullet point just because some parts of it are common knowledge. Carefully split or dissect the rule, pruning only the redundant parts and explicitly retaining any differential knowledge.
 - **Preserve Differential Knowledge**: Keep only what is unique to this project or necessary to guide the AI effectively. This generally includes:
     - Rules that counter common AI biases.
     - Conventions chosen among valid alternatives.
