@@ -110,8 +110,7 @@ Force a component instance into a specific theme by setting its `color-scheme` p
 - **The `@property` Risk**:
   - **Mandatory**: Do not register properties meant to be design tokens that dynamically switch based on `light-dark()` as `<color>`. If you need to animate a color variable, use a separate property.
 - **Mandatory**: Do not set `color-scheme` on elements without a background.
-
-See {{ GUIDE_REF("browser-ui-color-theme") }} for more on handling **The `@property` Risk**, built-in inherited properties such as `color` and `accent-color`, and other best practices when changing the color scheme of a component.
+{{ FEATURE("browser-ui-color-theme", "best-practices") }}
 
 ## Fallback strategies
 
