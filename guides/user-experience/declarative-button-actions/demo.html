@@ -102,6 +102,25 @@
       color: #ef6c00;
       border-color: #ffe0b2;
     }
+
+    .status-controls {
+      margin-top: 2rem;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f5f5f5;
+    }
+
+    .status-controls .status {
+      margin-bottom: 0.5rem;
+    }
+
+    .fallback-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -115,65 +134,86 @@
       -->
       <button commandfor="action-target" command="--spin">Spin</button>
       <button commandfor="action-target" command="--grow">Grow</button>
-      <button commandfor="action-target" command="--round">Make Round</button>
       <button commandfor="action-target" command="--reset">Reset All</button>
     </div>
     
-    <!-- The target element that will receive the command event -->
     <div id="action-target" class="target">
       Action Target
     </div>
 
-    <!-- Indicator to show if the browser is using native support or a fallback -->
-    <div id="support-status" class="status">Checking support...</div>
+    <!-- 
+      DEMO CONTROLS: 
+      These help visualize and test both the native and fallback implementation.
+    -->
+    <div class="status-controls">
+      <div id="support-status" class="status">Checking support...</div>
+      <label class="fallback-label">
+        <input type="checkbox" id="force-fallback">
+        <strong>Force Fallback Mode</strong> (Simulate older browser)
+      </label>
+    </div>
   </div>
 
   <script type="module">
     const targetEl = document.getElementById('action-target');
     const statusEl = document.getElementById('support-status');
+    const forceFallbackCheckbox = document.getElementById('force-fallback');
+
+    // 1. Define a registry of requested actions for cleaner logic
+    const commandRegistry = {
+      '--spin': (target) => target.classList.toggle('is-spun'),
+      '--grow': (target) => target.classList.toggle('is-grown'),
+      '--reset': (target) => target.classList.remove('is-spun', 'is-grown'),
+    };
     
-    // Check for native Invoker Commands support
+    // 2. Feature Detection: Always check the prototype for maximum reliability
     const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
 
-    if (hasNativeSupport) {
-      statusEl.textContent = 'Native Invoker Commands supported';
-      statusEl.classList.add('supported');
-    } else {
-      statusEl.textContent = 'Invoker Commands not supported; loading invokers-polyfill...';
-      statusEl.classList.add('fallback');
+    /**
+     * DYNAMIC FALLBACK STRATEGY: 
+     * We use an async IIFE to ensure the polyfill is loaded BEFORE the rest 
+     * of the logic runs, while avoiding top-level await for older browser compatibility.
+     */
+    (async () => {
+      const isForced = forceFallbackCheckbox.checked;
 
-      /**
-       * DYNAMIC FALLBACK STRATEGY: 
-       * We only load the polyfill if the browser doesn't support the API natively.
-       * This saves bandwidth for users on modern browsers.
-       */
-      try {
-        await import('https://cdn.jsdelivr.net/npm/invokers-polyfill@latest/dist/index.min.js');
-        statusEl.textContent = 'Invoker Commands not supported; invokers-polyfill loaded';
-      } catch (err) {
-        statusEl.textContent = 'Error loading fallback strategy';
-        console.error('Polyfill load failed:', err);
+      if (hasNativeSupport && !isForced) {
+        statusEl.textContent = 'Status: Using Native Invoker Commands';
+        statusEl.className = 'status supported';
+      } else {
+        const reason = isForced ? '(Forced)' : '(Unsupported)';
+        statusEl.textContent = `Status: Using fallback strategy ${reason}...`;
+        statusEl.className = 'status fallback';
+
+        try {
+          // Conditionally load the polyfill only for browsers that need it (or when forced)
+          await import('https://esm.run/invokers-polyfill');
+          statusEl.textContent = `Status: Fallback strategy active ${reason}`;
+        } catch (err) {
+          statusEl.textContent = 'Error: Fallback strategy failed to load';
+          console.error('Polyfill load failed:', err);
+        }
       }
-    }
+    })();
+
+    // Handle 'Force Fallback' toggle
+    forceFallbackCheckbox.addEventListener('change', () => {
+      // Reload the page to reset the environment for the forced fallback test
+      window.location.reload();
+    });
     
-    // Unified listener for the command event on the target element.
+    // 3. Unified listener for the command event on the target element.
     // This works identically whether triggered natively or via the polyfill.
     targetEl.addEventListener('command', (event) => {
-      // Robustly handle both native API and manual/polyfill fallbacks
+      // Robustly handle both native API (event.command) and polyfill (event.detail.command)
       const command = event.command || event.detail?.command;
+      const target = event.currentTarget;
+      const action = commandRegistry[command];
 
-      // Check which custom command was dispatched
-      if (command === '--spin') {
-        targetEl.classList.toggle('is-spun');
-      } else if (command === '--grow') {
-        targetEl.classList.toggle('is-grown');
-      } else if (command === '--round') {
-        targetEl.classList.toggle('is-rounded');
-      } else if (command === '--reset') {
-        // Reset to initial state
-        targetEl.className = 'target';
+      if (action) {
+        action(target);
       }
-    });
+    }, { capture: true });
   </script>
 
 </body>

@@ -13,9 +13,7 @@ sources:
 ---
 
 # Declarative Button Actions
-The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. This approach reduces the need for manual event listeners and ensures interactivity as soon as the HTML is parsed.
-
-For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
+The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
 
 ## Implementation steps
 
@@ -63,7 +61,7 @@ const commandRegistry = {
     if (action) {
       action(target);
     }
-  });
+  }, {capture: true});
 </script>
 ```
 
@@ -91,7 +89,7 @@ const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
 if (!hasNativeSupport) {
   // Dynamically import the polyfill only when needed
   try {
-    await import('https://cdn.jsdelivr.net/npm/invokers-polyfill@latest/dist/index.min.js');
+    await import('https://esm.run/invokers-polyfill');
     console.log('Invoker Commands polyfill loaded');
   } catch (err) {
     console.error('Error loading fallback:', err);
@@ -147,5 +145,5 @@ document.getElementById('action-target').addEventListener('command', (event) => 
   if (action) {
     action(target);
   }
-});
+ }, {capture: true});
 ```
