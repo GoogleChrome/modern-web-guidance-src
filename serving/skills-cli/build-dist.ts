@@ -82,9 +82,6 @@ export function processSkills(publishRoot: string) {
     fs.mkdirSync(skillDestDir, { recursive: true });
 
     const target = 'skills-cli';
-    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
-
-    fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
 
     // Copy sibling directories and files (e.g., references)
     const sourceDir = path.dirname(source);
@@ -97,6 +94,25 @@ export function processSkills(publishRoot: string) {
         fs.cpSync(entrySrc, entryDest, { recursive: true });
       }
     }
+
+    // Versioning.
+    //
+    // - This identifier only changes when the SKILL.md does.
+    // - SKILL_VERSION.md is published to npm, and the modern-web-guidance CLI uses
+    //   it to know what version is the latest.
+    // - We replace "--skill-version SKILL_VERSION" in SKILL.md, such that agents will
+    //   call npx and pass along the agent's version.
+    // - If they differ, the CLI tool logs a warning to stderr with instructions on how
+    //   to update.
+    const skillVersion = execSync(
+      `git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" "${sourceDir}"`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+    ).trim();
+    fs.writeFileSync(path.join(skillDestDir, 'SKILL_VERSION.md'), skillVersion);
+
+    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
+      .replaceAll('SKILL_VERSION', skillVersion);
+    fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };

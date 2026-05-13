@@ -13,6 +13,7 @@ const { values, positionals } = parseArgs({
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
     choose: { type: "boolean" },
+    "skill-version": { type: "string" },
   },
   allowPositionals: true,
   strict: false,
@@ -30,6 +31,7 @@ Commands:
   update                  Update skills
 
 Options:
+  --skill-version <version> Internal use: version of the skill being executed
   --choose                Choose specific skills from the repository interactively
   -h, --help              Show this help
   -v, --version           Show version
@@ -45,6 +47,19 @@ async function main() {
   if (values.help || positionals.length === 0) {
     printUsage();
     process.exit(values.help ? 0 : 1);
+  }
+
+  const callerSkillVersion = values["skill-version"];
+  if (callerSkillVersion && callerSkillVersion != getSkillVersion()) {
+    const skillName = 'modern-web-guidance';
+    console.error([
+      `Warning: a new SKILL.md is available for ${skillName}. Please update.`,
+      '',
+      `Your version: ${callerSkillVersion}`,
+      `Latest version: ${getSkillVersion()}`,
+      '',
+      'To update, run: npx modern-web-guidance@latest update',
+    ].join('\n'));
   }
 
   const command = positionals[0];
@@ -104,7 +119,7 @@ async function main() {
       .split(" ")
       .filter(Boolean);
 
-    const result = spawnSync("npx", installArgs, {stdio: "inherit"});
+    const result = spawnSync("npx", installArgs, { stdio: "inherit" });
 
     if (result.error) {
       console.error("Install failed:", result.error);
@@ -127,6 +142,7 @@ async function main() {
   }
 }
 
+// This returns the npm version.
 function getVersion(): string {
   try {
     // Resolves to serving/package.json in dev, or dist/skills-cli/package.json in prod bundles
@@ -135,6 +151,18 @@ function getVersion(): string {
     return pkg.version || "unknown";
   } catch (e) {
     return "unknown";
+  }
+}
+
+// This returns our own "skill version", which is an identifier that only changes if
+// the SKILL.md did.
+function getSkillVersion(): string | null {
+  try {
+    const versionPath = join(import.meta.dirname, "SKILL_VERSION.md");
+    const version = readFileSync(versionPath, "utf8");
+    return version;
+  } catch (e) {
+    return null;
   }
 }
 
