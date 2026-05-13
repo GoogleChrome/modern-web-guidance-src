@@ -198,9 +198,6 @@ const character = await session.prompt([
   `LanguageModel.create()`.
 - **Security**: Use Permission Policies to control access in iframes:
   `<iframe src="..." allow="language-model"></iframe>`.
-- **Design**: Review the
-  [People + AI Guidebook](https://pair.withgoogle.com/guidebook/) to ensure
-  responsible AI implementation.
 
 By combining structured outputs with robust session management, developers can
 build complex, stateful AI applications that run entirely on the user's device.
