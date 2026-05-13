@@ -15,6 +15,18 @@
       font: 1em/1.5 system-ui, sans-serif;
       padding: 2rem;
       background: #f5f5f5;
+      color: #333;
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #111;
+    }
+
+    .intro {
+      max-width: 80ch;
+      margin-bottom: 2rem;
+      color: #555;
     }
 
     .grid {
@@ -22,6 +34,7 @@
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 2.5rem;
       margin-top: 2rem;
+      align-items: start;
     }
 
     .demo-item {
@@ -38,20 +51,86 @@
       padding: 0.2rem 0.5rem;
       border-radius: 0.25rem;
       display: inline-block;
+      font-size: 0.9rem;
     }
 
-    /* --- REPLACED ELEMENT STYLES --- */
+    .description {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+
+    /* --- 1. STANDARD BLOCK CONTAINER STYLES --- */
+    .card-wrapper-flex {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem 0;
+    }
+
+    .card-container-bleed {
+      position: relative;
+      width: 100%;
+      max-width: 260px;
+      padding: 1.5rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+      /* Level 1 Fallback: keep overflow visible to allow external bleeds */
+      overflow: visible;
+    }
+
+    .card-container-bleed h4 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      color: #222;
+    }
+
+    .card-container-bleed p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    /* Absolute badge styled to bleed outside the top-right corner */
+    .card-badge {
+      position: absolute;
+      top: -10px;
+      /* Bleeds 10px above the border edge */
+      right: -10px;
+      /* Bleeds 10px to the right */
+      background: #e52e71;
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    @supports (overflow-clip-margin: 15px) {
+      .card-container-bleed {
+        overflow: clip;
+        overflow-clip-margin: 15px;
+      }
+    }
+
+    /* --- 2. REPLACED ELEMENT STYLES --- */
     .profile-photo-container {
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 1rem 0;
+      padding: 1.5rem 0;
     }
 
-    .profile-photo {
+    .profile-photo-framed {
       width: 150px;
       height: 150px;
-      padding: 10px; /* The "Frame" gutter */
+      padding: 10px;
+      /* The "Frame" gutter */
       border: 5px solid #333;
       border-radius: 50%;
       object-fit: cover;
@@ -61,7 +140,7 @@
     }
 
     @supports (overflow-clip-margin: content-box) {
-      .profile-photo {
+      .profile-photo-framed {
         overflow: clip;
         overflow-clip-margin: content-box;
       }
@@ -96,6 +175,7 @@
       border: 1px solid #ffeeba;
       border-radius: 0.25rem;
       margin-bottom: 1rem;
+      font-size: 0.95rem;
     }
   </style>
 </head>
@@ -105,29 +185,50 @@
   <h1>Overflow Clipping Control</h1>
 
   <div id="fallback-banner">
-    <strong>Notice:</strong> Your browser does not support <code>overflow: clip</code> on replaced elements. Using
-    <code>overflow: hidden</code>.
+    <strong>Notice:</strong> Your browser does not support <code>overflow: clip</code>. Fallback containment active.
   </div>
   <div id="margin-fallback-banner">
     <strong>Notice:</strong> Your browser does not support <code>overflow-clip-margin</code>. Fallback rendering active.
   </div>
 
-  <p class="intro">This demo showcases controlled clipping directly on replaced elements (images) using <code>overflow: clip</code> and <code>overflow-clip-margin</code>. Modern browsers natively default replaced elements to clip as of Chrome 108. Setting extended margins enables protecting inner padding frames from sub-pixel rendering leakage or allowing decorative ink overflow (drop-shadows) to remain visible without layout expansion.
+  <p class="intro">This demo showcases controlled clipping across both standard block containers and replaced elements
+    (images) using <code>overflow: clip</code> and <code>overflow-clip-margin</code>. Modern browsers natively default
+    replaced elements to clip as of Chrome 108. Setting extended margins enables protecting inner padding frames from
+    sub-pixel rendering leakage or allowing absolute elements and drop-shadows to safely bleed outside bounding boxes
+    without layout geometry expansion.
   </p>
 
   <div class="grid">
     <div class="demo-item">
+      <h3>Block Container (Bleed Offset)</h3>
+      <p class="description">Applies <code>overflow-clip-margin: 15px</code> to a standard container, safely clipping
+        inner
+        text while permitting an absolute corner badge to bleed outside the boundary. Uses an <code>overflow: visible</code> baseline fallback.
+      </p>
+    
+      <div class="card-wrapper-flex">
+        <div class="card-container-bleed">
+          <h4>Special Feature</h4>
+          <p>Internal text clipped inside the padding box securely.</p>
+          <span class="card-badge">New</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-item">
       <h3>Replaced Element (content-box)</h3>
-      <p class="description">Applies directly to an <code>&lt;img&gt;</code> with padding to create a clean gutter frame, preventing sub-pixel image leakage over the inner padding edge.</p>
+      <p class="description">Applies directly to an <code>&lt;img&gt;</code> with padding to create a clean gutter
+        frame, preventing sub-pixel image leakage over the inner padding edge.</p>
 
       <div class="profile-photo-container">
-        <img class="profile-photo" src="test_pattern.svg" alt="Framed Demo">
+        <img class="profile-photo-framed" src="test_pattern.svg" alt="Framed Demo">
       </div>
     </div>
 
     <div class="demo-item">
       <h3>Replaced Element (Bleed Offset)</h3>
-      <p class="description">Applies <code>overflow-clip-margin: 15px</code> directly to an image to safely contain the element while allowing ink overflow (drop shadow) to remain visible.</p>
+      <p class="description">Applies <code>overflow-clip-margin: 15px</code> directly to an image to safely contain the
+        element while allowing ink overflow (drop shadow) to remain fully visible.</p>
 
       <div class="profile-photo-container">
         <img class="profile-photo-shadow" src="test_pattern.svg" alt="Shadow Demo">

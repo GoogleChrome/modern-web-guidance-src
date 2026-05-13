@@ -1,8 +1,8 @@
-- The implementation MUST demonstrate applying `overflow: clip` and `overflow-clip-margin` exclusively to replaced elements (e.g., images) to manage inner frame containment and ink overflow bleed.
-- The implementation MUST demonstrate multiple values for `overflow-clip-margin` on replaced elements, including at least one box edge (e.g., `content-box`) and one length value (e.g., `15px`).
-- The implementation MUST feature-detect support for `overflow: clip` and `overflow-clip-margin` using JavaScript (`CSS.supports`).
-- The implementation MUST use `overflow: hidden` as the default fallback style on replaced elements when strict framing containment is required.
-- The implementation MUST use `overflow: visible` as the base fallback style on replaced elements when preserving ink overflow (e.g., `filter: drop-shadow()`) is required.
-- The implementation MUST NOT use `overflow: scroll` or `overflow: auto` on replaced elements.
-- The implementation MUST document that `overflow: clip` defaults natively on replaced elements in modern user-agent styles (Chrome 108+) but is mandatory to explicitly declare for extended margin overrides in older browser baselines.
-- The implementation MUST document that `overflow: clip` disables all programmatic scrolling via JavaScript and applies to both axes simultaneously.
+- The implementation MUST demonstrate controlled clipping on standard block containers using a specified length offset bleed.
+- The implementation MUST demonstrate controlled clipping on replaced elements using inner box-edge alignment.
+- The implementation MUST apply a box-edge keyword (e.g., `content-box`) to configure inner clip margins on target frames.
+- The implementation MUST apply a length value (e.g., `15px`) to configure extended offset clip margins for external shadow or badge bleeds.
+- The implementation MUST feature-detect runtime support for `overflow: clip` and `overflow-clip-margin` using JavaScript (`CSS.supports`).
+- The implementation MUST apply `overflow: hidden` as the primary fallback style on containers requiring strict inner containment when `overflow: clip` is unsupported.
+- The implementation MUST apply `overflow: visible` as the primary fallback style on elements to preserve external ink overflow when extended clip margins are unsupported.
+- The implementation MUST NOT apply `overflow: scroll` or `overflow: auto` on target elements when the visual intent is strictly clipping content without enabling scrolling functionality.
