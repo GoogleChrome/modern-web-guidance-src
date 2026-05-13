@@ -3,8 +3,8 @@ import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import * as esbuild from "esbuild";
-import { scanDisciplineSkills } from "../../lib/guide-validation.ts";
-import { rootDir, guidesDir } from "../../lib/paths.ts";
+import { config } from "../../lib/skills-config.ts";
+import { rootDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
 import { replaceMacros } from "../lib/macros.ts";
 import { updateReadmeWithFeaturesAndUseCases } from "./build-readme.ts";
@@ -70,19 +70,33 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
 
 }
 
-export function processSkills(publishRoot: string, scanDir = guidesDir) {
-  const skills = scanDisciplineSkills(scanDir);
+export function processSkills(publishRoot: string) {
+  console.log("Processing standalone skills from configuration...");
+  const skills = config.standaloneSkills;
 
   for (const skill of skills) {
     const skillName = skill.name;
-    const source = path.join(skill.dir, "SKILL.md");
+    const source = path.join(rootDir, skill.sourcePath);
     const skillDestDir = path.join(publishRoot, "skills", skillName);
 
     fs.mkdirSync(skillDestDir, { recursive: true });
 
     const target = 'skills-cli';
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
+
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
+
+    // Copy sibling directories and files (e.g., references)
+    const sourceDir = path.dirname(source);
+    if (fs.existsSync(sourceDir)) {
+      const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name === "SKILL.md") continue;
+        const entrySrc = path.join(sourceDir, entry.name);
+        const entryDest = path.join(skillDestDir, entry.name);
+        fs.cpSync(entrySrc, entryDest, { recursive: true });
+      }
+    }
   }
 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
@@ -233,7 +247,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     }
   }
 }
-
 
 
 function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {

@@ -22,6 +22,20 @@ describe('Guides Validation (Single Source of Truth)', () => {
     return;
   }
 
+  it('ensures all guide IDs are unique', () => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const guide of guides) {
+      if (seen.has(guide.name)) {
+        duplicates.add(guide.name);
+      }
+      seen.add(guide.name);
+    }
+    if (duplicates.size > 0) {
+      assert.fail(`Duplicate guide IDs found: ${Array.from(duplicates).join(', ')}`);
+    }
+  });
+
   for (const guide of guides) {
     const relativeDir = path.relative(REPO_ROOT, guide.dir);
 
@@ -66,10 +80,10 @@ describe('Guides Validation (Single Source of Truth)', () => {
         assert.fail(`Marked parsing failed: ${e}`);
       }
 
-      // 4. Check for git conflict markers
+      // 4. Check for git conflict markers at the start of a line
       const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
       for (const marker of conflictMarkers) {
-        if (content.includes(marker)) {
+        if (lines.some(l => l.startsWith(marker))) {
           assert.fail(`File contains git conflict marker "${marker}" in ${relativeDir}`);
         }
       }
@@ -115,8 +129,9 @@ describe('Guides Validation (Single Source of Truth)', () => {
       const filePath = path.resolve(REPO_ROOT, file);
       try {
         const content = fs.readFileSync(filePath, 'utf8');
+        const fileLines = content.split('\n');
         for (const marker of conflictMarkers) {
-          if (content.includes(marker)) {
+          if (fileLines.some(l => l.startsWith(marker))) {
             failedFiles.push(`${file} (contains "${marker}")`);
             break;
           }
