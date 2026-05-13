@@ -170,11 +170,11 @@ window.addEventListener("DOMContentLoaded", initializeConditionalReauth);
 
 ## Fallback Strategies
 
-### Biometrics Authentication Fallback
+### Passkey feature detection fallback
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Passkey authentication is a progressive enhancement. If platform authenticators are unsupported by the device, the application MUST fallback immediately to standard forms.
+getClientCapabilities is a progressive enhancement. If `PublicKeyCredential.getClientCapabilities` is unsupported, the application MUST rely on a polyfill.
 *   **Fallback Experience**: Gracefully fallback to traditional password inputs or browser-stored password autofill flows natively.
 *   **Feature Detection**:
     ```javascript
