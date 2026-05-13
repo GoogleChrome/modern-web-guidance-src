@@ -1,0 +1,7 @@
+- The parent containers define semantic context flags using CSS custom properties (e.g., `--priority: standard` vs. `promo`).
+- The component uses `@container style()` queries to adapt its internal visual logic (e.g., button variant, badge visibility) based on these inherited properties.
+- When the context is `promo`, the component displays promotional elements (like a badge) and uses a more prominent "filled" button style.
+- When the context is `standard`, the component hides promotional elements and uses a more subtle "outlined" button style.
+- The component does NOT rely on size queries (`min-width` or `max-width`) for this semantic variation.
+- The implementation uses logical properties (e.g., `inline-size`, `inset-block-start`) for consistent layout.
+- A fallback strategy using standard CSS inheritance or `@supports` is provided for browsers that do not support style queries.
