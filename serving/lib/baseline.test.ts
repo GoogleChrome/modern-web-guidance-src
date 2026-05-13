@@ -21,15 +21,31 @@ describe('baseline data', () => {
 
   describe('getStatusMessage', () => {
     it('returns status message for a feature', () => {
-      assert.strictEqual(getStatusMessage('grid'), 'Baseline status for Grid: Widely available. It\'s been Baseline since 2017-10-17.');
+      assert.strictEqual(
+        getStatusMessage('grid'),
+        "Baseline status for Grid: Widely available. It's been Baseline since 2017-10-17.\nSupported by: Chrome 57 (Mar 2017), Edge 16 (Oct 2017), Firefox 52 (Mar 2017), Safari 10.1 (Mar 2017), and Safari iOS 10.3 (Mar 2017)."
+      );
     });
 
     it('returns status message for a BCD key', () => {
-      assert.strictEqual(getStatusMessage('grid', 'css.properties.grid-template-columns'), 'Baseline status for the css.properties.grid-template-columns capability: Widely available. It\'s been Baseline since 2017-10-17.');
+      assert.strictEqual(
+        getStatusMessage('grid', 'css.properties.grid-template-columns'),
+        "Baseline status for the css.properties.grid-template-columns capability: Widely available. It's been Baseline since 2017-10-17.\nSupported by: Chrome 57 (Mar 2017), Edge 16 (Oct 2017), Firefox 52 (Mar 2017), Safari 10.1 (Mar 2017), and Safari iOS 10.3 (Mar 2017)."
+      );
+    });
+
+    it('returns status message explicitly isolating mobile target when mobile support diverges', () => {
+      assert.strictEqual(
+        getStatusMessage('popover'),
+        "Baseline status for Popover: Newly available. It's been Baseline since 2025-01-27.\nSupported by: Chrome 116 (Aug 2023), Edge 116 (Aug 2023), Firefox 125 (Apr 2024), Safari 17 (Sep 2023), and Safari iOS 18.3 (Jan 2025)."
+      );
     });
 
     it('returns status message for a non-Baseline feature', () => {
-      assert.strictEqual(getStatusMessage('accelerometer'), 'Accelerometer has limited availability.');
+      assert.strictEqual(
+        getStatusMessage('accelerometer'),
+        "Accelerometer has limited availability.\nSupported by: Chrome 91 (May 2021) and Edge 91 (May 2021).\nUnsupported in: Firefox and Safari."
+      );
     });
 
     it('returns undefined for unknown features or keys', () => {
