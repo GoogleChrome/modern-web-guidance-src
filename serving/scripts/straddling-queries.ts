@@ -8,7 +8,7 @@ const QUERIES = [
   "defer rendering of offscreen content",
   "align text precisely in the vertical center",
   "validate password input only after user interaction",
-  
+
   // Borderline / Abstract candidate queries
   "make layout fast and smooth",
   "cool visual animations on scroll",
@@ -25,7 +25,7 @@ const QUERIES = [
   "physics based bounce and spring easing",
   "reparent dom node without losing iframe state",
   "prevent text wrap and overflow container cleanly",
-  
+
   // Low similarity / Out-of-scope candidate queries
   "how do I write code",
   "fix errors in my app",
@@ -46,14 +46,14 @@ async function main() {
   console.log("Sweeping straddling queries to evaluate similarity boundary...\n");
 
   const rows: string[] = [];
-  
+
   for (const query of QUERIES) {
     // Request lower boundary floor to capture actual scores
     const results = await searchUseCases(query, 3, -1.0);
-    
+
     const topMatch = results[0] || { id: "N/A", similarity: "0.0000", description: "No match" };
     const simScore = parseFloat(topMatch.similarity);
-    
+
     let status = "🔴 Very Low (<0.3)";
     if (simScore >= 0.6) {
       status = "🟢 High (>=0.6)";
