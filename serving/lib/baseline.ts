@@ -237,7 +237,7 @@ function formatBrowserTitle(key: string): string {
     .join(' ');
 }
 
-function formatVersionWithMonth(browserKey: string, version: string): string {
+function formatVersionWithMonth(browserKey: BrowserName, version: string): string {
   if (!version || version === '-') return '';
   const release = (bcd.browsers as Browsers)[browserKey]?.releases?.[version];
   if (release?.release_date) {
