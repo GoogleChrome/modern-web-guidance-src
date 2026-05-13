@@ -68,7 +68,7 @@ async function main() {
 
   const matrixContent = `# RAG Similarity Threshold Calibration Matrix
 
-This artifact evaluates how candidate queries score against the vector database using **Cosine Similarity**. Review the borderline cases below to determine if the default production threshold (\`minSimilarity = 0.45\`) successfully includes true positive intents while cleanly truncating vague fuzzy matches.
+This artifact evaluates how candidate queries score against the vector database using **Cosine Similarity**. Review the borderline cases below to determine if the default production threshold (\`minSimilarity = 0.3\`) successfully captures relevant abstract intents while remaining above pure background noise.
 
 ## Evaluation Sweep Results
 
@@ -78,9 +78,9 @@ ${rows.join("\n")}
 
 ## Observations & Next Steps
 - **High Confidence (\`sim >= 0.6\`)**: Queries matching explicit action-oriented terminology trigger top matches safely.
-- **Medium Relevance (\`0.45 <= sim < 0.6\`)**: Queries using conceptual phrasing score in this tier.
-- **Low Relevance (\`0.3 <= sim < 0.45\`)**: Highly abstract or vague queries fall into this spectrum. Review these cases to decide if the threshold should be relaxed to \`0.3\` to capture them.
-- **Very Low / Noise (\`sim < 0.3\`)**: Purely out-of-scope topics (e.g., iOS apps, database connection pools) score below \`0.3\`, establishing \`0.3\` as a firm lower bound above absolute background noise.
+- **Medium Relevance (\`0.45 <= sim < 0.6\`)**: Queries using conceptual phrasing score securely in this tier.
+- **Broad Intent (\`0.3 <= sim < 0.45\`)**: Setting the threshold to \`minSimilarity = 0.3\` captures abstract developer queries to maximize recall.
+- **Noise Cutoff (\`sim < 0.3\`)**: Purely out-of-scope topics (e.g., iOS apps, database connection pools) score below \`0.3\`, establishing \`0.3\` as the absolute safety floor.
 `;
 
   console.log(matrixContent);
