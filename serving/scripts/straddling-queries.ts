@@ -52,7 +52,7 @@ async function main() {
 
   const matrixContent = `# RAG Similarity Threshold Calibration Matrix
 
-This artifact evaluates how candidate queries score against the vector database using **Cosine Similarity**. Review the borderline cases below to determine if the default production threshold (\`minSimilarity = 0.6\`) successfully includes true positive intents while cleanly truncating vague fuzzy matches.
+This artifact evaluates how candidate queries score against the vector database using **Cosine Similarity**. Review the borderline cases below to determine if the default production threshold (\`minSimilarity = 0.45\`) successfully includes true positive intents while cleanly truncating vague fuzzy matches.
 
 ## Evaluation Sweep Results
 
@@ -62,8 +62,8 @@ ${rows.join("\n")}
 
 ## Observations & Next Steps
 - **High Confidence (\`sim >= 0.6\`)**: Queries matching explicit conceptual terminology trigger reliable top matches.
-- **Borderline (\`0.45 <= sim < 0.6\`)**: Queries using highly abstract phrasing fall slightly below the default cutoff. Shifting the boundary to include these would increase recall but risk fuzzy/irrelevant context injection.
-- **Recommendation**: Maintain \`minSimilarity = 0.6\` as the safe production standard. Client agents should be encouraged to invoke the \`list\` tool to inspect the active directory when natural language search fails.
+- **Borderline (\`0.45 <= sim < 0.6\`)**: Queries using highly abstract phrasing fall into this borderline range. Setting the boundary to \`minSimilarity = 0.45\` successfully captures these intents to optimize long-tail developer recall.
+- **Recommendation**: Maintain \`minSimilarity = 0.45\` as the production standard. Client agents should still be encouraged to invoke the \`list\` tool to inspect the active directory when search returns empty.
 `;
 
   const artifactPath = "/Users/paulirish/.gemini/jetski/brain/fc5c801a-ffd5-4d52-8f11-41eca1beb712/threshold_calibration_matrix.md";

@@ -30,7 +30,7 @@ function calculateNorm(v: number[]): number {
   return Math.sqrt(sum);
 }
 
-export async function searchUseCases(query: string, limit = 5, minSimilarity = 0.6, embedder?: any): Promise<UseCaseResult[]> {
+export async function searchUseCases(query: string, limit = 5, minSimilarity = 0.45, embedder?: any): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder || TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
   const queryNorm = calculateNorm(queryVector);
