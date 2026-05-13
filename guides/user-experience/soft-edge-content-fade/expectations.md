@@ -1,5 +1,5 @@
-- The element with class `.scroll-container` has the `mask-image` property applied with a `linear-gradient`.
-- The element with class `.scroll-container` has the `-webkit-mask-image` property applied with a `linear-gradient`.
+- The element with class `.paywall-container` has the `mask-image` property applied with a `linear-gradient`.
+- The element with class `.paywall-container` has the `-webkit-mask-image` property applied with a `linear-gradient`.
 - The gradient transitions from opaque (e.g., black) to transparent to create a fade effect.
 - A fallback strategy is included for browsers that do not support masking, such as a semi-transparent overlay or graceful degradation to sharp edges.
 - The content remains readable even if the mask is not applied.
