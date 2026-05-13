@@ -106,20 +106,21 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   const { publishRoot, version} = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
-  const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
+  // const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
 
   // Step 1: Check if we can short-circuit without wiping anything.
   // processGuides internally uses dist/.cache/ and evaluates the source hashes.
-  const skipped = await processGuides({
+  const _skipped = await processGuides({
     outputDir: DIST_DIR,
     target: 'skills-cli',
   });
 
-  if (skipped && fs.existsSync(modernWebMjs)) {
-    const { skillsCount, skillNames } = processSkills(publishRoot);
-    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
-    return { featuresCount, useCasesCount, skillsCount, skillNames };
-  }
+  // TODO: this code prevented modern-web.mjs from rebuilding on changes.
+  // if (skipped && fs.existsSync(modernWebMjs)) {
+  //   const { skillsCount, skillNames } = processSkills(publishRoot);
+  //   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
+  //   return { featuresCount, useCasesCount, skillsCount, skillNames };
+  // }
 
   // Step 2: If we didn't short-circuit, we do a clean, purist build.
   // Now we can safely wipe publishRoot completely!
