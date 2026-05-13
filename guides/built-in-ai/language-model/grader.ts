@@ -1,3 +1,9 @@
+/**
+ * The grader stubs out the built-in APIs. See
+ * https://github.com/GoogleChrome/guidance/pull/654#discussion_r3233433009
+ * for background.
+ */
+ 
 import { test, expect } from '@playwright/test';
 
 declare const process: any;

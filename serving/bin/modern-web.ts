@@ -11,6 +11,7 @@ const { values, positionals } = parseArgs({
   options: {
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
+    choose: { type: "boolean" },
   },
   allowPositionals: true,
   strict: false,
@@ -23,9 +24,10 @@ Usage: modern-web <command> [args]
 Commands:
   search <query>          Search use cases by query
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
-  install                 Install skills
+  install [options]       Install the modern-web-guidance skill
 
 Options:
+  --choose                Choose specific skills from the repository interactively
   -h, --help              Show this help
   -v, --version           Show version
 `);
@@ -88,10 +90,12 @@ async function main() {
       }
     }
   } else if (command === "install") {
-    const extraArgs = process.argv.slice(3);
-    const result = spawnSync("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
-      stdio: "inherit",
-    });
+    const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+      .split(" ")
+      .filter(Boolean);
+
+    const result = spawnSync("npx", installArgs, {stdio: "inherit"});
+
     if (result.error) {
       console.error("Install failed:", result.error);
       process.exit(1);

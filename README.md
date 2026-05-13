@@ -33,7 +33,7 @@ pnpm link --global && gd setup-completion
 
 ### 1. Serving
 
-#### modern-web
+#### modern-web-guidance
 
 Guidance is primarily served to AI agents as a **Skill** via a standalone CLI distribution (`skills_cli`). This allows agents to execute semantic searches and retrieve implementation patterns directly within their local environment.
 

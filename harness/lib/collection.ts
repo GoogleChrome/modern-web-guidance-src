@@ -4,9 +4,9 @@ import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
 import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
-import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
-import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
-import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
+import { extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gemini-cli-agent.ts';
+import { extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
+import { extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
 import { getGraderScriptContent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
@@ -23,6 +23,13 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   }
   // JETSKI impl does not support trajectory pb parsing, leave model as unknown
   return 'unknown';
+}
+
+export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | null {
+  if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir) ?? null;
+  if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;
+  if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir) ?? null;
+  return null;
 }
 
 function extractErrorMessage(dir: string, targetFile: string): string {
@@ -137,7 +144,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           console.warn("Failed to parse existing package.json, overwriting...");
         }
       }
-      pkgJsonObj.scripts["run-grader"] = `node grade.mjs --id ${relativeId}`;
+      pkgJsonObj.scripts["run-grader"] = `node --experimental-strip-types grade.mjs --id ${relativeId}`;
       fs.writeFileSync(targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
 
       pnpmWorkspacePackages.push(relativeId);
@@ -146,14 +153,31 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
   // --- PASS 1.5: Execute the accumulated grading runs in parallel ---
   if (pnpmWorkspacePackages.length > 0) {
-    console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
+    const rootPkgJsonPath = path.join(resultsDir, 'package.json');
+    let wroteRootPkgJson = false;
+    if (!fs.existsSync(rootPkgJsonPath)) {
+      fs.writeFileSync(rootPkgJsonPath, JSON.stringify({
+        name: "evaluation-suite-workspace",
+        private: true
+      }, null, 2));
+      wroteRootPkgJson = true;
+    }
+
     const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
     fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+
     try {
+      console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
+      spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit' });
+
+      console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
       spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit' });
     } finally {
       if (fs.existsSync(pnpmWorkspacePath)) {
         fs.unlinkSync(pnpmWorkspacePath);
+      }
+      if (wroteRootPkgJson && fs.existsSync(rootPkgJsonPath)) {
+        fs.unlinkSync(rootPkgJsonPath);
       }
     }
     console.log(`✅ Completed parallel grading pass\n`);
@@ -265,83 +289,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const testName = isDisciplineSkill ? `${guide} - ${taskName} - ${runType}` : `${taskName} - ${guide} - ${runType}`;
       const actualBaseApp = taskInfo.baseApp;
 
-      let totalTokens = 0;
-      let cachedTokens = 0;
-      let hasTokenData = false;
-
-      try {
-        const files = fs.readdirSync(dir);
-        
-        // Gemini sessions
-        const geminiSessions = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
-        for (const file of geminiSessions) {
-          const filePath = path.join(dir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const session = JSON.parse(content);
-          if (session.messages) {
-            const messagesWithTokens = session.messages.filter((m: any) => m.tokens);
-            const lastMsg = messagesWithTokens[messagesWithTokens.length - 1];
-            if (lastMsg) {
-              totalTokens += lastMsg.tokens.total || 0;
-              cachedTokens += lastMsg.tokens.cached || 0;
-              hasTokenData = true;
-            }
-          }
-        }
-
-        // JSONL sessions (Codex or Claude Code)
-        const jsonlSessions = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
-        for (const file of jsonlSessions) {
-          const filePath = path.join(dir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const lines = content.split('\n');
-          let lastTokenCount = 0;
-          let lastCachedTokens = 0;
-          let fileHasCodexTokens = false;
-          let claudeTokens = 0;
-          let claudeCachedTokens = 0;
-          let fileHasClaudeTokens = false;
-          
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (!trimmedLine) continue;
-            try {
-              const obj = JSON.parse(trimmedLine);
-              // Codex format (direct)
-              if (obj.type === 'token_count' && obj.info && obj.info.total_token_usage) {
-                lastTokenCount = obj.info.total_token_usage.total_tokens || 0;
-                lastCachedTokens = obj.info.total_token_usage.cached_input_tokens || 0;
-                fileHasCodexTokens = true;
-              }
-              // Codex format (payload)
-              if (obj.type === 'event_msg' && obj.payload && obj.payload.type === 'token_count' && obj.payload.info && obj.payload.info.total_token_usage) {
-                lastTokenCount = obj.payload.info.total_token_usage.total_tokens || 0;
-                lastCachedTokens = obj.payload.info.total_token_usage.cached_input_tokens || 0;
-                fileHasCodexTokens = true;
-              }
-              // Claude Code format
-              if (obj.message && obj.message.usage) {
-                claudeTokens += (obj.message.usage.output_tokens || 0) + (obj.message.usage.input_tokens || 0) + (obj.message.usage.cache_read_input_tokens || 0);
-                claudeCachedTokens += obj.message.usage.cache_read_input_tokens || 0;
-                fileHasClaudeTokens = true;
-              }
-            } catch (e) {
-              // Ignore parse errors
-            }
-          }
-          if (fileHasCodexTokens) {
-            totalTokens += lastTokenCount;
-            cachedTokens += lastCachedTokens;
-            hasTokenData = true;
-          } else if (fileHasClaudeTokens) {
-            totalTokens += claudeTokens;
-            cachedTokens += claudeCachedTokens;
-            hasTokenData = true;
-          }
-        }
-      } catch (e) {
-        console.error(`Failed to extract token usage in ${dir}:`, e);
-      }
+      const tokenUsage = extractTokenUsageFromResults(dir, suiteConfig.agent);
 
       if (!allResults[testName]) {
         allResults[testName] = [];
@@ -373,7 +321,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         prompt: taskInfo.prompt,
         files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
         runtime: runtimeData,
-        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
+        tokenUsage: tokenUsage,
       });
     }
   }
