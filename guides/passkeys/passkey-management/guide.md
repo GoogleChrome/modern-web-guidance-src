@@ -68,7 +68,7 @@ Render a dedicated settings panel allowing users to easily audit and manage thei
     *   **Rename Button**: Triggers a rename text input modal.
     *   **Delete Button**: Triggers deletion.
 4.  **Conditional "Create Passkey" Button**:
-    *  Offer a prominent "Create passkey" registration trigger button on the management page. Before rendering this UI element, the page MUST feature-detect capabilities using `PublicKeyCredential.getClientCapabilities()` to verify platform biometrics exist. If biometrics are unsupported, hide this button and gracefully encourage standard MFA enrollments instead.
+    *  Offer a prominent "Create passkey" registration trigger button on the management page. Before rendering this UI element, the page MUST feature-detect capabilities using `PublicKeyCredential.getClientCapabilities()` to verify platform authenticator is supported. If passkeys are unsupported, hide this button and gracefully encourage standard MFA enrollments instead.
 
 ## Signal API Synchronization
 

@@ -111,13 +111,11 @@ async function triggerConditionalCreate(loginAbortController) {
 
 ## Fallback Strategies
 
-### Conditional Create Fallback
+### Passkey feature detection fallback
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Conditional passkey creation is an optional progressive optimization. If the device does not support `conditionalCreate`:
-*   **Fallback Experience**: The page should complete the login successfully and direct the user to their home feed normally, without displaying any fallback error or passkey dialogs.
-*   **Explicit Option**: You can optionally present an explicit "Add passkey" promotion banner later in their account home feed to encourage manual setup.
+getClientCapabilities is a progressive enhancement. Install https://github.com/MasterKale/webauthn-polyfills as a polyfill so that `PublicKeyCredential.getClientCapabilities` is always supported.
 
 ### Signal API Synchronization Fallback
 
@@ -128,7 +126,6 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 ### Easy JSON Serialization Fallback
 
-{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseCreationOptionsFromJSON_static") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-The WebAuthn JSON serialization helper methods represent progressive optimizations.
-*   **Fallback Experience**: If `PublicKeyCredential.parseCreationOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.
+The WebAuthn JSON serialization is a progressive enhancement. Install https://github.com/MasterKale/webauthn-polyfills as a polyfill so that `PublicKeyCredential.parseRequestOptionsFromJSON` and `credential.toJSON` are always supported.

@@ -44,9 +44,9 @@ export interface StoredPasskeyCredential {
 Create an endpoint that generates WebAuthn creation parameters. Rely on a vetted library per category standards instead of hand-rolling cryptography.
 
 1.  **Create a secure Challenge**: Generate a high-entropy, cryptographically secure random buffer on the server, store it securely in the user's session, and encode it as Base64URL for options delivery.
-2.  **Avoid Duplicate Passkeys**: Map the user's existing pre-registered passkey IDs to the `excludeCredentials` options array. This prevents the authenticator from registering duplicate credentials on the same biometric device or password manager account.
+2.  **Avoid Duplicate Passkeys**: Map the user's existing pre-registered credential IDs to the `excludeCredentials` options array. This prevents the authenticator from registering duplicate credentials on the same password manager account.
 3.  **Enforce Resident and Discoverable Keys**: Set `requireResidentKey: true` and `residentKey: "required"` in the `authenticatorSelection` options to request a discoverable resident key, which is necessary for discoverable form autofill sign-ins.
-4.  **Configure User Verification**: Specify `userVerification: "preferred"` or `userVerification: "required"`. Many compliance use cases (e.g., finance, healthcare) require `'required'` to enforce hardware biometrics or PIN entry on creation.
+4.  **Configure User Verification**: Specify `userVerification: "preferred"` or `userVerification: "required"`. Many compliance use cases (e.g., finance, healthcare) require `'required'` to enforce user verification on creation.
 5.  **Determine Attachment Scope**:
     - **Promotion Flow**: When proposing passkey auto-creation right after standard password sign-ins or post-signup promotions, set `authenticatorAttachment: "platform"` to enforce platform authenticator and bypass external security key prompts.
     - **Management Flow**: When called from a dedicated settings or security panel where external security keys are supported in addition to platform authenticator, omit the `authenticatorAttachment` property entirely.
@@ -92,7 +92,7 @@ const options = {
 2.  **Verify User Presence**:
     - Ensure that the User Present (UP) flag returned in the parsed authenticator data is `true` to confirm physical user presence at the time of creation.
 3.  **Relaxing Verification for 'preferred'**:
-    - When the creation options specified `userVerification: "preferred"`, the server-side verification call MUST be configured with `requireUserVerification: false`. Otherwise, authenticators that register without user biometrics (e.g., screen locks disabled) will trigger spurious server verification failures.
+    - When the creation options specified `userVerification: "preferred"`, the server-side verification call MUST be configured with `requireUserVerification: false`. Otherwise, authenticators that register without user verification (e.g., screen locks disabled) will trigger spurious server verification failures.
 4.  **Determine the passkey provider**: Fetch the AAGUID string from the attestation data and look it up to populate metadata:
     - Passkey providers return a zeroed AAGUID (`00000000-0000-0000-0000-000000000000`) for certain platform settings. When encountered, skip registry lookups entirely. Fall back to user-agent parsing or "Unknown passkey provider" and leave `providerIcon` undefined.
 
@@ -104,7 +104,7 @@ const options = {
     - Call `credential.toJSON()` to encode the `AuthenticatorAttestationResponse` into a valid, JSON-serializable object before fetching the verification endpoint.
 3.  **Handle WebAuthn Exceptions**:
     - `InvalidStateError`: A matching passkey already exists (matched by `excludeCredentials`).
-    - `NotAllowedError`: The user cancelled or timed out the authentication biometrics dialog.
+    - `NotAllowedError`: The user cancelled or timed out the authentication passkey dialog.
     - `AbortError`: The operation has been aborted.
     - `SecurityError`: Secure origins (HTTPS) or RP ID mismatch errors (configuration issues).
 4.  **Try/Catch Segregation for Signal API**:
@@ -115,7 +115,7 @@ const options = {
 import { optionsFetch, registerVerifyFetch } from "./api.js";
 
 async function registerPasskey(isPromotion = false) {
-  // Verify biometric platform capability exists on device
+  // Verify passkey capability and conditional UI are available
   const capabilities = await PublicKeyCredential.getClientCapabilities();
   if (
     !capabilities.passkeyPlatformAuthenticator ||
@@ -140,7 +140,7 @@ async function registerPasskey(isPromotion = false) {
     } else if (err.name === "SecurityError") {
       console.error("Configuration RP ID or Secure Context error.");
     } else if (err.name === "NotAllowedError") {
-      console.log("User cancelled the biometrics dialog.");
+      console.log("User cancelled the passkey dialog.");
     } else if (err.name === "AbortError") {
       console.log("The creation operation has been aborted.");
     }
@@ -180,8 +180,6 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 ### Easy JSON Serialization Fallback
 
-{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseCreationOptionsFromJSON_static") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-The WebAuthn JSON serialization helper methods represent progressive optimizations.
-
-- **Fallback Experience**: If `PublicKeyCredential.parseCreationOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.
+The WebAuthn JSON serialization is a progressive enhancement. Install https://github.com/MasterKale/webauthn-polyfills as a polyfill so that `PublicKeyCredential.parseRequestOptionsFromJSON` and `credential.toJSON` are always supported.

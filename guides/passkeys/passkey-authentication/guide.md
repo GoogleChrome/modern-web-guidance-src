@@ -185,15 +185,7 @@ window.addEventListener("DOMContentLoaded", initializeConditionalAutofill);
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-getClientCapabilities is a progressive enhancement. If `PublicKeyCredential.getClientCapabilities` is unsupported, the application MUST rely on a polyfill.
-*   **Fallback Experience**: Gracefully fallback to traditional password inputs or browser-stored password autofill flows natively.
-*   **Feature Detection**:
-    ```javascript
-    if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
-      // Fallback immediately to traditional password field forms
-      showStandardPasswordFields();
-    }
-    ```
+getClientCapabilities is a progressive enhancement. Install https://github.com/MasterKale/webauthn-polyfills as a polyfill so that `PublicKeyCredential.getClientCapabilities` is always supported.
 
 ### Signal API Synchronization Fallback
 
@@ -207,6 +199,4 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-The WebAuthn JSON serialization helper methods represent progressive optimizations.
-
-- **Fallback Experience**: If `PublicKeyCredential.parseRequestOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.
+The WebAuthn JSON serialization is a progressive enhancement. Install https://github.com/MasterKale/webauthn-polyfills as a polyfill so that `PublicKeyCredential.parseRequestOptionsFromJSON` and `credential.toJSON` are always supported.
