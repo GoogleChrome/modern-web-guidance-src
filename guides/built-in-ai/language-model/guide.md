@@ -66,7 +66,7 @@ const stream = session.promptStreaming('Write a long story about a robot.');
 let completeResult = '';
 for await (const chunk of stream) {
 	completeResult += chunk;
-	outputEl.append(text);
+	outputEl.append(chunk);
 }
 console.log('Full story:', completeResult);
 ```
