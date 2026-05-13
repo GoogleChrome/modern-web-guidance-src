@@ -51,7 +51,7 @@ OPTIONAL: To help prevent a "flash of un-themed content" (FOUC), place a `<meta>
 ```
 
 ### 2. Enable `color-scheme` support
-OPTIONAL: Enable global support for both color schemes by setting `color-scheme: light dark;` on the `:root`. If `color-scheme` is not set on `:root` (or an ancestor) the `light-dark()` function will not work as expected.
+OPTIONAL: Enable global support for both color schemes by setting `color-scheme: light dark;` on the `:root`.
 
 ```css
 :root {

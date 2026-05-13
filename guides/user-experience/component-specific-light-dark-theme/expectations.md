@@ -1,6 +1,6 @@
 - **OPTIONAL**: The document includes a `<meta name="color-scheme" content="light dark">` tag in the `<head>` to declare theme support early and minimize the risk of un-themed content flashes.
 - **MANDATORY**: The document or the component has `color-scheme: light dark` (or includes both) set on the `:root` or a common ancestor to enable the resolution of the `light-dark()` function.
-- **MANDATORY**: The implementation uses custom properties as a **semantic abstraction layer** for theme-aware variables (e.g., `--card-bg` is the semantic variable, while `--card-bg-light` and `--card-bg-dark` are the raw tokens).
+- **MANDATORY**: Outside of `@supports` feature detection, `light-dark()` is used with var() references for the two color arguments, not raw color values (e.g., `--card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark))` while `--card-bg-light` and `--card-bg-dark` are the raw tokens that contain the actual color values).
 - **MANDATORY**: The `light-dark()` function is used to define the values of these semantic custom properties.
 - **MANDATORY**: The implementation uses the `color-scheme` property (e.g., `color-scheme: light` or `color-scheme: dark`) to force a specific theme on a component or section.
 - **MANDATORY**: `color-scheme` overrides are only applied to elements that also have a `background-color` (or where a background is clearly intended), as per the guide's recommendation.

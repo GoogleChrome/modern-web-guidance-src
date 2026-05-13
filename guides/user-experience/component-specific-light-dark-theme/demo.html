@@ -62,12 +62,12 @@
        ===============================================================
     */
     .themed-card {
-      /* 1. Define raw brand colors (tokens) */
+      /* 1. Define raw brand colors for each mode (tokens) */
       --card-bg-light: #ffffff;
       --card-bg-dark: #2d2e31;
 
-      --card-text-light: var(--page-text-light);
-      --card-text-dark: var(--page-text-dark);
+      --card-text-light: #202124;
+      --card-text-dark: #f8f9fa;
       
 
       /* 2. Assign default (light) values for fallback */
@@ -87,10 +87,22 @@
         --card-text: light-dark(var(--card-text-light), var(--card-text-dark));
       }
 
+      /* 
+         MANDATORY: Dynamic custom properties meant to switch based on 
+         light-dark() must NOT be registered using @property with a <color> type.
+      */
+
       /* Apply custom properties to the component */
       background-color: var(--card-bg);
+
+      /* 
+         MANDATORY: Dynamic built-in properties that inherit (like color and 
+         accent-color) and are set with light-dark() must be applied on the 
+         element where the scheme changes to avoid the "inheritance footgun".
+      */
       color: var(--card-text);
       accent-color: var(--accent);
+
       border: 1px solid color-mix(in srgb, var(--card-text), transparent 80%);
       border-radius: 12px;
       padding: 1.5rem;
