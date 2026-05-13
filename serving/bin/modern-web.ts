@@ -1,9 +1,9 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "node:util";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { USE_CASES } from "../lib/use-cases.gen.ts";
 
@@ -27,6 +27,7 @@ Commands:
   list                    List all available use cases
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
   install [options]       Install the modern-web-guidance skill
+  update                  Update skills
 
 Options:
   --choose                Choose specific skills from the repository interactively
@@ -110,6 +111,15 @@ async function main() {
       process.exit(1);
     }
     process.exit(result.status ?? 0);
+  } else if (command === "update") {
+    const extraArgs = process.argv.slice(3);
+    const skills = getOurSkills();
+    const result = spawnSync("npx", ["skills", "update", ...skills, ...extraArgs], {
+      stdio: "inherit",
+    });
+    if (result.error) {
+      console.error("Update failed:", result.error);
+    }
   } else {
     console.error(`Unknown command: ${command}`);
     printUsage();
@@ -128,6 +138,16 @@ function getVersion(): string {
   }
 }
 
+function getOurSkills(): string[] {
+  try {
+    // Resolves to serving/package.json in dev, or dist/skills-cli/package.json in prod bundles
+    const skillsPath = join(import.meta.dirname, "../../skills");
+    const listing = readdirSync(skillsPath);
+    return listing.filter(name => existsSync(join(skillsPath, name, 'SKILL.md')));
+  } catch (e) {
+    return [];
+  }
+}
 
 main().catch(err => {
   console.error("Execution failed:", err);
