@@ -82,19 +82,36 @@ This polyfill fully supports custom actions (starting with `--`) and dispatches 
 
 For the best performance, you should only load the polyfill if the browser doesn't support the API natively. This saves bandwidth and reduces script execution time for users on modern browsers.
 
+**NOTE:** This polyfill does not manage ARIA states (like `aria-expanded`) for custom commands. You must manually synchronize these states in your event listener to ensure your site is accessible.
+
 ```javascript
-// Check for native support first
+// 1. Conditionally load the polyfill
 const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
 
 if (!hasNativeSupport) {
-  // Dynamically import the polyfill only when needed
-  try {
-    await import('https://esm.run/invokers-polyfill');
-    console.log('Invoker Commands polyfill loaded');
-  } catch (err) {
-    console.error('Error loading fallback:', err);
-  }
+  // Wrap in an async IIFE to avoid top-level await issues in older browsers
+  (async () => {
+    try {
+      await import('https://esm.run/invokers-polyfill');
+    } catch (err) {
+      console.error('Error loading fallback:', err);
+    }
+  })();
 }
+
+// 2. Manually manage ARIA states in your listener
+document.getElementById('action-target').addEventListener('command', (event) => {
+  const command = event.command || event.detail?.command;
+  const target = event.currentTarget;
+  const source = event.source; // The button that triggered the command
+
+  if (command === '--spin') {
+    const isSpun = target.classList.toggle('is-spun');
+    
+    // Polyfill tip: Manually update ARIA to match the new state
+    source?.setAttribute('aria-expanded', isSpun);
+  }
+}, { capture: true });
 ```
 
 ### Manual fallback (Traditional pattern)
