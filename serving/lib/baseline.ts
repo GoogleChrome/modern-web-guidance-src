@@ -1,5 +1,6 @@
 import { features } from 'web-features';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
+import type { Browsers, BrowserName } from '@mdn/browser-compat-data';
 
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 
@@ -38,7 +39,7 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
       overallBaseline = false;
       continue;
     }
-    
+
     const status = feature.status;
     if (status.baseline === false) overallBaseline = false;
     else if (status.baseline === 'low' && overallBaseline === 'high') overallBaseline = 'low';
@@ -49,9 +50,9 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
   }
 
   const baseline_low_date = latestLowDate === "0000-00-00" ? undefined : latestLowDate;
-  
+
   const shortLabel = mapBaseline(overallBaseline);
-  
+
   const releaseDate = (overallBaseline !== false && baseline_low_date) ? baseline_low_date : '-';
 
   return {
@@ -64,7 +65,7 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
 
 /**
  * Gets the detailed Baseline status for a specific feature.
- * @param featureId - The ID of the web feature 
+ * @param featureId - The ID of the web feature
  * @returns The detailed status of the feature
  */
 export function getDetailedBaselineStatus(featureId: string): DetailedBaselineStatus | undefined {
@@ -95,15 +96,15 @@ export function getBaselineStatus(featureId: string): BaselineStatus | undefined
 
 /**
  * Checks if a feature satisfies a specific Baseline target.
- * Supports standard statuses and date-based targets by resolving 
+ * Supports standard statuses and date-based targets by resolving
  * everything to a required "Baseline low date".
- * 
+ *
  * - "Limited": Always true (if feature exists, or even if not, consistent with legacy behavior)
  * - "Newly" / "Baseline": Requires baseline_low_date <= today
  * - "Widely": Requires baseline_low_date <= today - 30 months
  * - "Baseline YYYY": Requires baseline_low_date <= YYYY-12-31
  * - "Baseline Widely available on YYYY-MM-DD": Requires baseline_low_date <= TargetDate - 30 months
- * 
+ *
  * @param target - The Baseline target string
  * @param featureId - The ID of the feature to check
  * @returns true if the feature meets the target criteria
@@ -238,7 +239,7 @@ function formatBrowserTitle(key: string): string {
 
 function formatVersionWithMonth(browserKey: string, version: string): string {
   if (!version || version === '-') return '';
-  const release = (bcd.browsers as Record<string, any>)[browserKey]?.releases?.[version];
+  const release = (bcd.browsers as Browsers)[browserKey]?.releases?.[version];
   if (release?.release_date) {
     const formattedDate = dateFormatter.format(new Date(release.release_date));
     return `${version} (${formattedDate})`;
@@ -258,9 +259,9 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
   const supportedParts: string[] = [];
   const unsupportedParts: string[] = [];
 
-  const keys = ['chrome', 'edge', 'firefox', 'safari'];
+  const keys = ['chrome', 'edge', 'firefox', 'safari'] as BrowserName[];
   if (support.safari_ios && support.safari_ios !== support.safari) {
-    keys.push('safari_ios');
+    keys.push('safari_ios' as BrowserName);
   }
 
   for (const key of keys) {
