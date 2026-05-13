@@ -19,7 +19,7 @@ For custom, application-specific actions, you can define your own command names.
 
 ## Implementation steps
 
-1.  **Define the target element**: Identify the element that will respond to the action. It must have a unique `id`.
+1.  **Define the target element**: Identify the element that will respond to the action. If it doesn’t have a unique `id`, add one.
 2.  **Configure the invoker button**: Use the `commandfor` attribute to point to the target's `id`, and the `command` attribute to specify the custom command name (prefixed with `--`).
 3.  **Handle the command event**: Attach a `command` event listener to the `document` (or a common parent). This ensures that the event is captured even if it is dispatched by a polyfill or from a child element. The event object contains a `command` property and a `target` property (referring to the element identified by `commandfor`).
 
@@ -110,10 +110,18 @@ const commandRegistry = {
   '--reset': (target) => target.classList.remove('is-spun', 'is-grown'),
 };
 
-const supportsInvokers = 'commandForElement' in HTMLButtonElement.prototype;
+// 2. If CommandEvent doesn't exist, we assume no native support and provide the fallback
+if (!globalThis.CommandEvent) {
+  globalThis.CommandEvent = class CommandEvent extends Event {
+    constructor(type, { source, command, ...options } = {}) {
+      super(type, options);
+      this.source = source;
+      this.command = command;
+    }
+  }
+}
 
-// 2. The fallback: Dispatch events manually if native support is missing
-if (!supportsInvokers) {
+// 3. The fallback: Dispatch events manually if native support is missing
   document.addEventListener('click', (event) => {
     const button = event.target.closest('button[commandfor]');
     if (!button) return;
@@ -122,15 +130,14 @@ if (!supportsInvokers) {
     const command = button.getAttribute('command');
 
     if (target && command) {
-      target.dispatchEvent(new CustomEvent('command', {
-        bubbles: true,
-        detail: { command }
+      target.dispatchEvent(new CommandEvent('command', { 
+        command, 
+        source: button,
       }));
     }
   });
-}
 
-// 3. The unified listener: Registered directly on the target element
+// 4. The unified listener: Registered directly on the target element
 document.getElementById('action-target').addEventListener('command', (event) => {
   const command = event.command || event.detail?.command;
   const target = event.currentTarget;
