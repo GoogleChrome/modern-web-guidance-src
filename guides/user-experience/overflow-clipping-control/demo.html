@@ -94,6 +94,13 @@
       color: #666;
     }
 
+    @supports (overflow-clip-margin: 15px) {
+      .card-container-bleed {
+        overflow: clip;
+        overflow-clip-margin: 15px;
+      }
+    }
+
     /* Absolute badge styled to bleed outside the top-right corner */
     .card-badge {
       position: absolute;
@@ -109,13 +116,6 @@
       font-weight: bold;
       letter-spacing: 0.5px;
       text-transform: uppercase;
-    }
-
-    @supports (overflow-clip-margin: 15px) {
-      .card-container-bleed {
-        overflow: clip;
-        overflow-clip-margin: 15px;
-      }
     }
 
     /* --- 2. REPLACED ELEMENT STYLES --- */

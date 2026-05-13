@@ -5,4 +5,3 @@
 - The implementation MUST feature-detect runtime support for `overflow: clip` and `overflow-clip-margin` using JavaScript (`CSS.supports`).
 - The implementation MUST apply `overflow: hidden` as the primary fallback style on containers requiring strict inner containment when `overflow: clip` is unsupported.
 - The implementation MUST apply `overflow: visible` as the primary fallback style on elements to preserve external ink overflow when extended clip margins are unsupported.
-- The implementation MUST NOT apply `overflow: scroll` or `overflow: auto` on target elements when the visual intent is strictly clipping content without enabling scrolling functionality.

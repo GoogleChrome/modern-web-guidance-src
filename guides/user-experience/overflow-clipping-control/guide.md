@@ -23,7 +23,7 @@ As of Chrome 108, `overflow: clip` and `overflow-clip-margin: content-box` are t
 
 1. **Apply `overflow: clip`**: Ensure the target element has `overflow: clip` enabled. Setting `overflow: clip` is **mandatory** on non-replaced elements for `overflow-clip-margin` to take effect, and highly recommended to explicitly declare on replaced elements for robust cross-browser consistency. If `overflow` is set to `hidden`, `auto`, or `scroll`, the `overflow-clip-margin` property is ignored by the browser. `overflow: clip` prevents all scrolling (both user-initiated and programmatic via JavaScript).
 2. **Align to a Box-Edge**: Use keywords to precisely align the clipping boundary to inner box-model edges:
-   - `content-box`: Clips content exactly where the content area begins, leaving the padding area completely clean. Excellent for replaced elements with padding frames.
+   - `content-box`: Clips content exactly where the content area begins, leaving the padding area completely clean. Image or content stops right at the padding's edge. Excellent for replaced elements with padding frames.
    - `padding-box` (Default): Clips content at the inner edge of the border.
    - `border-box`: Clips content at the outer edge of the border, allowing content to sit under or partially overlap a translucent border.
 3. **Define a Specified Offset (The Bleed)**: Provide a length value (e.g., `15px` or `5px`) to create a safety zone before cutting pixels. This allows decorative glows, absolute badges, or ink overflow (shadows) to stick out past the edge without expanding layout geometry.
@@ -174,13 +174,6 @@ For target environments lacking native support for `overflow: clip` or `overflow
 ### Complete Progressive Enhancement Fallback Implementation
 
 ```html
-<div id="fallback-banner" style="display: none;">
-  Notice: overflow: clip is not supported. Fallback containment active.
-</div>
-<div id="margin-fallback-banner" style="display: none;">
-  Notice: overflow-clip-margin is not supported. Fallback rendering active.
-</div>
-
 <!-- 1. Standard block container bleed fallback -->
 <div class="demo-container-fallback">
   <h3>Contained Header</h3>
