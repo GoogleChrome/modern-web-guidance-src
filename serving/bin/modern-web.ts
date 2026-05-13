@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "node:util";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
@@ -99,17 +99,39 @@ async function main() {
       }
     }
   } else if (command === "install") {
-    const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const baseInstallArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean);
 
-    const result = spawnSync("npx", installArgs, {stdio: "inherit"});
+    // On macOS, we use 'script' to provide a pseudo-terminal (PTY) to the child process.
+    // This maintains interactivity (arrow keys, colors, etc.) while allowing us to capture stdout.
+    const isDarwin = process.platform === "darwin";
+    const cmd = isDarwin ? "script" : "npx";
+    const args = isDarwin 
+      ? ["-q", "/dev/null", "npx", ...baseInstallArgs]
+      : baseInstallArgs;
 
-    if (result.error) {
-      console.error("Install failed:", result.error);
-      process.exit(1);
-    }
-    process.exit(result.status ?? 0);
+    const child = spawn(cmd, args, {
+      stdio: ["inherit", "pipe", "inherit"],
+      env: { ...process.env, FORCE_COLOR: "1" }
+    });
+
+    let capturedStdout = "";
+    child.stdout?.on("data", (data) => {
+      const str = data.toString();
+      capturedStdout += str;
+      process.stdout.write(str);
+    });
+
+    const status = await new Promise<number>((resolve) => {
+      child.on("close", (code) => resolve(code ?? 0));
+      child.on("error", (err) => {
+        console.error("Install failed:", err);
+        resolve(1);
+      });
+    });
+
+    process.exit(status);
   } else {
     console.error(`Unknown command: ${command}`);
     printUsage();
