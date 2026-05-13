@@ -30,11 +30,9 @@ If the sign-in page utilizes form autofill (Conditional UI/Get), the active cred
 Determine whether Conditional Create is available by checking `conditionalCreate` with `PublicKeyCredential.getClientCapabilities()`.
 
 ```javascript
-if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
-  const capabilities = await PublicKeyCredential.getClientCapabilities();
-  if (capabilities.conditionalCreate) {
-    // Conditional create is available
-  }
+const capabilities = await PublicKeyCredential.getClientCapabilities();
+if (capabilities.conditionalCreate) {
+  // Conditional create is available
 }
 ```
 
@@ -58,10 +56,6 @@ if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
 import { optionsFetch, registerVerifyFetch } from './api.js';
 
 async function triggerConditionalCreate(loginAbortController) {
-  if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
-    return; // Fallback gracefully if APIs are missing
-  }
-
   const capabilities = await PublicKeyCredential.getClientCapabilities();
   if (capabilities.conditionalCreate !== true) {
     return; // Platform does not support conditional creation

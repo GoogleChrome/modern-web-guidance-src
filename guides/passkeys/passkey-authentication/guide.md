@@ -96,40 +96,38 @@ let autofillAbortController = new AbortController();
 
 async function initializeConditionalAutofill() {
   // Feature detect Conditional Get autofill support
-  if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
-    const capabilities = await PublicKeyCredential.getClientCapabilities();
-    if (capabilities.conditionalGet === true) {
-      const loginOptionsJSON = await optionsFetch();
-      const publicKey =
-        PublicKeyCredential.parseRequestOptionsFromJSON(loginOptionsJSON);
+  const capabilities = await PublicKeyCredential.getClientCapabilities();
+  if (capabilities.conditionalGet === true) {
+    const loginOptionsJSON = await optionsFetch();
+    const publicKey =
+      PublicKeyCredential.parseRequestOptionsFromJSON(loginOptionsJSON);
 
-      try {
-        // Initiate Conditional UI form autofill suggestions
-        const credential = await navigator.credentials.get({
-          publicKey,
-          signal: autofillAbortController.signal,
-          mediation: "conditional",
-        });
+    try {
+      // Initiate Conditional UI form autofill suggestions
+      const credential = await navigator.credentials.get({
+        publicKey,
+        signal: autofillAbortController.signal,
+        mediation: "conditional",
+      });
 
-        // Segregated verification fetch
-        const encoded = credential.toJSON();
-        const response = await loginVerifyFetch(encoded);
-        if (!response.ok && response.status === 404) {
-          // Note: this code path runs pre-authentication, satisfying the unauth precondition
-          if (PublicKeyCredential.signalUnknownCredential) {
-            await PublicKeyCredential.signalUnknownCredential({
-              rpId: window.location.hostname,
-              credentialId: encoded.id,
-            });
-          }
+      // Segregated verification fetch
+      const encoded = credential.toJSON();
+      const response = await loginVerifyFetch(encoded);
+      if (!response.ok && response.status === 404) {
+        // Note: this code path runs pre-authentication, satisfying the unauth precondition
+        if (PublicKeyCredential.signalUnknownCredential) {
+          await PublicKeyCredential.signalUnknownCredential({
+            rpId: window.location.hostname,
+            credentialId: encoded.id,
+          });
         }
-      } catch (err) {
-        // Silently swallow expected client WebAuthn exceptions
-        if (["NotAllowedError", "AbortError"].includes(err.name)) {
-          return;
-        }
-        console.error("Unexpected conditional get error:", err);
       }
+    } catch (err) {
+      // Silently swallow expected client WebAuthn exceptions
+      if (["NotAllowedError", "AbortError"].includes(err.name)) {
+        return;
+      }
+      console.error("Unexpected conditional get error:", err);
     }
   }
 }
@@ -167,12 +165,10 @@ async function triggerButtonAuthentication() {
     const response = await loginVerifyFetch(encoded);
     if (!response.ok && response.status === 404) {
       // Note: this code path runs pre-authentication, satisfying the unauth precondition
-      if (PublicKeyCredential.signalUnknownCredential) {
-        await PublicKeyCredential.signalUnknownCredential({
-          rpId: window.location.hostname, // RP ID
-          credentialId: encoded.id, // Base64URL-encoded credential ID
-        });
-      }
+      await PublicKeyCredential.signalUnknownCredential({
+        rpId: window.location.hostname, // RP ID
+        credentialId: encoded.id, // Base64URL-encoded credential ID
+      });
     }
   } catch (serverErr) {
     console.error("Verification request error:", serverErr);
@@ -184,6 +180,20 @@ window.addEventListener("DOMContentLoaded", initializeConditionalAutofill);
 ```
 
 ## Fallback Strategies
+
+### Passkey feature detection fallback
+
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
+
+getClientCapabilities is a progressive enhancement. If `PublicKeyCredential.getClientCapabilities` is unsupported, the application MUST rely on a polyfill.
+*   **Fallback Experience**: Gracefully fallback to traditional password inputs or browser-stored password autofill flows natively.
+*   **Feature Detection**:
+    ```javascript
+    if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
+      // Fallback immediately to traditional password field forms
+      showStandardPasswordFields();
+    }
+    ```
 
 ### Signal API Synchronization Fallback
 

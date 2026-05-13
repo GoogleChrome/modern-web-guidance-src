@@ -92,18 +92,16 @@ import { listFetch, renameFetch, deleteFetch } from './api.js';
 const base64UrlUserId = "M2YPl-KGnA8";
 
 async function syncAcceptedCredentials(currentCredentialsList) {
-  if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
-    try {
-      const credentialIds = currentCredentialsList.map(c => c.id); // Map of Base64URL credential ID strings
-      
-      await PublicKeyCredential.signalAllAcceptedCredentials({
-        rpId: window.location.hostname,
-        userId: base64UrlUserId, // User ID Base64URL-encoded string
-        allAcceptedCredentialIds: credentialIds
-      });
-    } catch (e) {
-      console.error('SignalAllAcceptedCredentials sync failure:', e);
-    }
+  try {
+    const credentialIds = currentCredentialsList.map(c => c.id); // Map of Base64URL credential ID strings
+    
+    await PublicKeyCredential.signalAllAcceptedCredentials({
+      rpId: window.location.hostname,
+      userId: base64UrlUserId, // User ID Base64URL-encoded string
+      allAcceptedCredentialIds: credentialIds
+    });
+  } catch (e) {
+    console.error('SignalAllAcceptedCredentials sync failure:', e);
   }
 }
 
@@ -131,17 +129,15 @@ async function performDelete(credentialId) {
 async function performRename(rpId, userId, updatedName, updatedDisplayName) {
   const response = await renameFetch({ name: updatedName, displayName: updatedDisplayName });
   if (response.ok) {
-    if (PublicKeyCredential.signalCurrentUserDetails) {
-      try {
-        await PublicKeyCredential.signalCurrentUserDetails({
-          rpId,
-          userId, // Base64URL-encoded user ID
-          name: updatedName, // Updated username
-          displayName: updatedDisplayName // Updated display name
-        });
-      } catch (e) {
-        console.error('SignalCurrentUserDetails sync failure:', e);
-      }
+    try {
+      await PublicKeyCredential.signalCurrentUserDetails({
+        rpId,
+        userId, // Base64URL-encoded user ID
+        name: updatedName, // Updated username
+        displayName: updatedDisplayName // Updated display name
+      });
+    } catch (e) {
+      console.error('SignalCurrentUserDetails sync failure:', e);
     }
   }
 }
@@ -200,17 +196,17 @@ if (aaguid === '00000000-0000-0000-0000-000000000000') {
 
 ## Fallback Strategies
 
-### Biometrics Management Fallback
+### Passkey feature detection fallback
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Passkey management is a progressive enhancement. If browser or device environments do not support platform capabilities, the application MUST fallback immediately to standard profile options.
-*   **Fallback Experience**: Surface standard profile panels allowing users to manage MFA devices, passwords, or security questions natively.
+getClientCapabilities is a progressive enhancement. If `PublicKeyCredential.getClientCapabilities` is unsupported, the application MUST rely on a polyfill.
+*   **Fallback Experience**: Gracefully fallback to traditional password inputs or browser-stored password autofill flows natively.
 *   **Feature Detection**:
     ```javascript
     if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
-      // Hide Passkey management UI options and fall back to standard panels
-      hidePasskeysSection();
+      // Fallback immediately to traditional password field forms
+      showStandardPasswordFields();
     }
     ```
 

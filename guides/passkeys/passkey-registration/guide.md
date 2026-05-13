@@ -116,16 +116,14 @@ import { optionsFetch, registerVerifyFetch } from "./api.js";
 
 async function registerPasskey(isPromotion = false) {
   // Verify biometric platform capability exists on device
-  if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
-    const capabilities = await PublicKeyCredential.getClientCapabilities();
-    if (
-      !capabilities.passkeyPlatformAuthenticator ||
-      !capabilities.conditionalGet
-    ) {
-      // Hide "Create passkey" buttons and fall back to password flows instead
-      showStandardPasswordFallbackUI();
-      return;
-    }
+  const capabilities = await PublicKeyCredential.getClientCapabilities();
+  if (
+    !capabilities.passkeyPlatformAuthenticator ||
+    !capabilities.conditionalGet
+  ) {
+    // Hide "Create passkey" buttons and fall back to password flows instead
+    showStandardPasswordFallbackUI();
+    return;
   }
 
   const creationOptionsJSON = await optionsFetch({ promotion: isPromotion });
@@ -134,7 +132,7 @@ async function registerPasskey(isPromotion = false) {
 
   let credential;
   try {
-    // Biometrics prompt execution
+    // passkey prompt execution
     credential = await navigator.credentials.create({ publicKey });
   } catch (err) {
     if (err.name === "InvalidStateError") {
@@ -155,21 +153,17 @@ async function registerPasskey(isPromotion = false) {
     const response = await registerVerifyFetch(encodedResponse);
     if (!response.ok) {
       // Server verification failed to verify/authenticate the credential (orphaned)
-      if (PublicKeyCredential.signalUnknownCredential) {
-        await PublicKeyCredential.signalUnknownCredential({
-          rpId: window.location.hostname, // RP ID
-          credentialId: encodedResponse.id, // Base64URL-encoded credential ID
-        });
-      }
-    }
-  } catch (serverErr) {
-    console.error("Server verification network failure:", serverErr);
-    if (PublicKeyCredential.signalUnknownCredential) {
       await PublicKeyCredential.signalUnknownCredential({
         rpId: window.location.hostname, // RP ID
         credentialId: encodedResponse.id, // Base64URL-encoded credential ID
       });
     }
+  } catch (serverErr) {
+    console.error("Server verification network failure:", serverErr);
+    await publickeycredential.signalunknowncredential({
+      rpid: window.location.hostname, // rp id
+      credentialid: encodedresponse.id, // base64url-encoded credential id
+    });
   }
 }
 ```

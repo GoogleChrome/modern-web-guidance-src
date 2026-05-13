@@ -127,41 +127,39 @@ If the sensitive transaction panel includes a password/re-auth input form (Progr
 
 ```javascript
 async function initializeConditionalReauth() {
-  if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
-    const capabilities = await PublicKeyCredential.getClientCapabilities();
-    if (
-      capabilities.passkeyPlatformAuthenticator &&
-      capabilities.conditionalGet === true
-    ) {
-      const optionsResponse = await fetch("/api/reauth/options", {
-        method: "POST",
-      });
-      const optionsJSON = await optionsResponse.json();
-      const publicKey =
-        PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
+  const capabilities = await PublicKeyCredential.getClientCapabilities();
+  if (
+    capabilities.passkeyPlatformAuthenticator &&
+    capabilities.conditionalGet === true
+  ) {
+    const optionsResponse = await fetch("/api/reauth/options", {
+      method: "POST",
+    });
+    const optionsJSON = await optionsResponse.json();
+    const publicKey =
+      PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
 
-      try {
-        const credential = await navigator.credentials.get({
-          publicKey,
-          mediation: "conditional",
-          signal: reauthAbortController.signal,
+    try {
+      const credential = await navigator.credentials.get({
+        publicKey,
+        mediation: "conditional",
+        signal: reauthAbortController.signal,
+      });
+
+      if (credential) {
+        const verifyResponse = await fetch("/api/reauth/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(credential.toJSON()),
         });
 
-        if (credential) {
-          const verifyResponse = await fetch("/api/reauth/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(credential.toJSON()),
-          });
-
-          if (verifyResponse.ok) {
-            showTransactionSuccessUI();
-          }
+        if (verifyResponse.ok) {
+          showTransactionSuccessUI();
         }
-      } catch (err) {
-        if (!["NotAllowedError", "AbortError"].includes(err.name)) {
-          console.error("Unexpected reauth error:", err);
-        }
+      }
+    } catch (err) {
+      if (!["NotAllowedError", "AbortError"].includes(err.name)) {
+        console.error("Unexpected reauth error:", err);
       }
     }
   }
@@ -171,6 +169,20 @@ window.addEventListener("DOMContentLoaded", initializeConditionalReauth);
 ```
 
 ## Fallback Strategies
+
+### Biometrics Authentication Fallback
+
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
+
+Passkey authentication is a progressive enhancement. If platform authenticators are unsupported by the device, the application MUST fallback immediately to standard forms.
+*   **Fallback Experience**: Gracefully fallback to traditional password inputs or browser-stored password autofill flows natively.
+*   **Feature Detection**:
+    ```javascript
+    if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
+      // Fallback immediately to traditional password field forms
+      showStandardPasswordFields();
+    }
+    ```
 
 ### Easy JSON Serialization Fallback
 
