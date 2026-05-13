@@ -9,7 +9,7 @@ description: |
   - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.
   - System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.
   - Frameworks: Adapting layout/styles in React, Vue, Angular.
-  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states.
+  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
 
   DO NOT trigger for:
   - Backend: Database SQL, ORMs, Express API routes.
