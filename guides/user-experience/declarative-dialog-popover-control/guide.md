@@ -44,7 +44,7 @@ If you need to control opening and closing with separate buttons, you can use th
   Show Popover
 </button>
 
-<div id="my-explicit-popover" popover>
+<div id="my-explicit-popover" popover="manual">
   <p>This popover is explicitly opened and closed by separate buttons.</p>
 
   <!-- MANDATORY: Use 'hide-popover' to explicitly close the targeted popover. -->
@@ -85,6 +85,7 @@ Because Invoker Commands and Popovers are not yet universally supported, you MUS
 ### Polyfilling Invoker Commands
 
 MANDATORY: Feature detect support by checking for the `commandForElement` property on the `HTMLButtonElement` prototype. Do NOT check the window or document object. You MUST dynamically import the polyfill only when the native feature is missing. DO NOT unconditionally load the polyfill.
+Mandatory: Listen for the 'command' event directly on the target element because the native 'command' event does not bubble.
 
 **Option 1: Using a bundler**
 Install the polyfill via npm (`npm install invokers-polyfill`). This approach is for projects using a bundler (like Vite or Webpack) or import maps. For all other setups, use the CDN option below.
