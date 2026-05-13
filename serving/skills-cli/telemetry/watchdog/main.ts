@@ -63,20 +63,16 @@ function main() {
   });
 
   let isShuttingDown = false;
+
   function onParentDeath() {
     if (isShuttingDown) {
       return;
     }
 
     isShuttingDown = true;
-    sender
-      .sendShutdownEvent()
-      .then(() => {
-        process.exit(0);
-      })
-      .catch(() => {
-        process.exit(1);
-      });
+    sender.sendShutdownEvent()
+      .then(() => process.exit(0))
+      .catch(() => process.exit(1));
   }
 
   process.stdin.on('end', () => onParentDeath());

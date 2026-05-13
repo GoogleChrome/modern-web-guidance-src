@@ -7,7 +7,7 @@
 // Protobuf message interfaces for Chrome Modern Web Guidance
 export interface SearchItem {
   guide_id?: string;
-  score?: number;
+  similarity?: number;
 }
 
 export interface SearchResult {
@@ -18,8 +18,17 @@ export interface RetrieveResult {
   guide_id?: string;
 }
 
-export interface Installation {
-  skills?: string[];
+export const CommandType = {
+  UNSPECIFIED: 0,
+  INSTALL: 1,
+  INSTALL_CHOOSE: 2,
+  UPDATE: 3,
+} as const;
+
+export type CommandType = typeof CommandType[keyof typeof CommandType];
+
+export interface ToolCommand {
+  command_type?: CommandType;
 }
 
 export const OsType = {
@@ -34,7 +43,7 @@ export type OsType = typeof OsType[keyof typeof OsType];
 export interface ChromeModernWebGuidance {
   search_result?: SearchResult;
   retrieve_result?: RetrieveResult;
-  installation?: Installation;
+  tool_command?: ToolCommand;
   os?: OsType;
   version?: string;
   latency_ms?: number;

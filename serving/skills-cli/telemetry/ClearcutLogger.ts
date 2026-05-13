@@ -9,6 +9,7 @@ import { WatchdogClient } from './WatchdogClient.ts';
 import {
   type ChromeModernWebGuidance,
   type SearchItem,
+  type CommandType,
   WatchdogMessageType,
   OsType,
 } from './types.ts';
@@ -29,7 +30,7 @@ export function detectOS(): OsType {
   return OsType.UNSPECIFIED;
 }
 
-const LATENCY_BUCKETS = [50, 100, 250, 500, 1000, 2500, 5000, 10000];
+const LATENCY_BUCKETS = [5, 15, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
 
 export function bucketizeLatency(latencyMs: number): number {
   for (const bucket of LATENCY_BUCKETS) {
@@ -39,6 +40,8 @@ export function bucketizeLatency(latencyMs: number): number {
   }
   return LATENCY_BUCKETS[LATENCY_BUCKETS.length - 1];
 }
+
+export type Metrics = { latencyMs?: number; success?: boolean };
 
 export class ClearcutLogger {
   #watchdog: WatchdogClient | null = null;
@@ -59,10 +62,7 @@ export class ClearcutLogger {
     }
   }
 
-  async logSearchResult(
-    searchItems: SearchItem[],
-    metrics?: { latencyMs: number; success?: boolean }
-  ): Promise<void> {
+  async logSearchResult(searchItems: SearchItem[], metrics?: Metrics): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
@@ -85,10 +85,7 @@ export class ClearcutLogger {
     });
   }
 
-  async logRetrieveResult(
-    guideId: string,
-    metrics?: { latencyMs: number; success?: boolean }
-  ): Promise<void> {
+  async logRetrieveResult(guideId: string, metrics?: Metrics): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
@@ -111,17 +108,14 @@ export class ClearcutLogger {
     });
   }
 
-  async logInstallation(
-    skills: string[],
-    metrics?: { latencyMs?: number; success?: boolean }
-  ): Promise<void> {
+  async logToolCommand(commandType: CommandType, metrics?: Metrics): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
 
     const payload: ChromeModernWebGuidance = {
-      installation: {
-        skills: skills,
+      tool_command: {
+        command_type: commandType,
       },
       os: detectOS(),
       version: getVersion(import.meta.dirname),

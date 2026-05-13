@@ -4,7 +4,9 @@ import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
+import { CommandType } from "../skills-cli/telemetry/types.ts";
 import { getVersion } from "../lib/version.ts";
+import { USE_CASES } from "../lib/use-cases.gen.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -23,6 +25,7 @@ Usage: modern-web <command> [args]
 
 Commands:
   search <query>          Search use cases by query
+  list                    List all available use cases
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
   install [options]       Install the modern-web-guidance skill
 
@@ -71,7 +74,7 @@ async function main() {
         // Log search results
         const searchItems = results.map(r => ({
           guide_id: r.id,
-          score: parseFloat((1 - parseFloat(r.distance)).toFixed(4)),
+          similarity: parseFloat(r.similarity),
         }));
         await logger.logSearchResult(searchItems, { latencyMs, success: true });
 
@@ -87,6 +90,13 @@ async function main() {
       console.error("Search failed:", error);
       process.exit(1);
     }
+  } else if (command === "list") {
+    const catalog = USE_CASES.map(u => ({
+      id: u.id,
+      category: u.category,
+      description: u.description,
+    }));
+    console.log(JSON.stringify(catalog, null, 2));
   } else if (command === "retrieve") {
     if (!arg) {
       const logger = new ClearcutLogger();
@@ -131,7 +141,8 @@ async function main() {
 
     const success = !result.error && result.status === 0;
     const logger = new ClearcutLogger();
-    await logger.logInstallation([], { success });
+    const commandType = values.choose ? CommandType.INSTALL_CHOOSE : CommandType.INSTALL;
+    await logger.logToolCommand(commandType, { success });
 
     if (result.error) {
       console.error("Install failed:", result.error);
