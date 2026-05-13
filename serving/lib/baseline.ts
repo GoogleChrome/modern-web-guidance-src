@@ -1,8 +1,5 @@
-import { createRequire } from 'node:module';
 import { features } from 'web-features';
-
-const require = createRequire(import.meta.url);
-const bcd = require('@mdn/browser-compat-data');
+import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 
