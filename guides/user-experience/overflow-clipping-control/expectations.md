@@ -1,8 +1,8 @@
-- The implementation MUST demonstrate multiple values for `overflow-clip-margin`, including at least one box edge (e.g., `content-box`) and one length value (e.g., `20px`).
-- The implementation MUST feature-detect support for `overflow: clip` using JavaScript (`CSS.supports`).
-- The implementation MUST use `overflow: hidden` as the default fallback style on target containers if `overflow: clip` is not supported.
-- The implementation MUST document or demonstrate simulating `overflow-clip-margin` fallback using `clip-path: inset()` combined with `overflow: visible`.
-- The implementation MUST feature-detect support for `overflow:clip` or `overflow-clip-margin` using JavaScript (`CSS.supports`).
-- The implementation MUST display a notification banner if `overflow:clip` or `overflow-clip-margin` are not supported.
-- The implementation MUST NOT use `overflow: scroll` or `overflow: auto` on the target containers when the intent is to strictly clip content without scrolling.
-- The implementation MUST document that `overflow: clip` is mandatory on non-replaced elements for `overflow-clip-margin` to take effect.
+- The implementation MUST demonstrate applying `overflow: clip` and `overflow-clip-margin` exclusively to replaced elements (e.g., images) to manage inner frame containment and ink overflow bleed.
+- The implementation MUST demonstrate multiple values for `overflow-clip-margin` on replaced elements, including at least one box edge (e.g., `content-box`) and one length value (e.g., `15px`).
+- The implementation MUST feature-detect support for `overflow: clip` and `overflow-clip-margin` using JavaScript (`CSS.supports`).
+- The implementation MUST use `overflow: hidden` as the default fallback style on replaced elements when strict framing containment is required.
+- The implementation MUST use `overflow: visible` as the base fallback style on replaced elements when preserving ink overflow (e.g., `filter: drop-shadow()`) is required.
+- The implementation MUST NOT use `overflow: scroll` or `overflow: auto` on replaced elements.
+- The implementation MUST document that `overflow: clip` defaults natively on replaced elements in modern user-agent styles (Chrome 108+) but is mandatory to explicitly declare for extended margin overrides in older browser baselines.
+- The implementation MUST document that `overflow: clip` disables all programmatic scrolling via JavaScript and applies to both axes simultaneously.

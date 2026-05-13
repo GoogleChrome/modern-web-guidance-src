@@ -9,7 +9,6 @@
     :root {
       --scrollbar-thumb: rgba(0, 0, 0, 0.2);
       --scrollbar-track: transparent;
-      --box-padding: 30px;
     }
 
     body {
@@ -41,124 +40,51 @@
       display: inline-block;
     }
 
-    /* --- BASE BOX STYLES --- */
-    .box {
+    /* --- REPLACED ELEMENT STYLES --- */
+    .profile-photo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem 0;
+    }
+
+    .profile-photo {
+      width: 150px;
+      height: 150px;
+      padding: 10px; /* The "Frame" gutter */
       border: 5px solid #333;
-      width: 200px;
-      height: 100px;
-      padding: var(--box-padding);
-      box-sizing: content-box;
-      position: relative;
+      border-radius: 50%;
+      object-fit: cover;
       background: #fff;
-      /* Level 1 Fallback: Baseline */
+      /* Level 1 Fallback */
       overflow: hidden;
-    }
-
-    @supports (overflow: clip) {
-      .box {
-        /* Level 2: Modern Baseline (Safari 16+) */
-        overflow: clip;
-      }
-    }
-
-    /* 1. Content-box Fallback */
-    .box.clip-content {
-      overflow: visible;
-      clip-path: inset(calc(var(--box-padding) + 5px));
     }
 
     @supports (overflow-clip-margin: content-box) {
-      .box.clip-content {
+      .profile-photo {
         overflow: clip;
         overflow-clip-margin: content-box;
-        clip-path: none;
       }
     }
 
-    /* 2. Padding-box Fallback (Default behavior) */
-    .box.clip-padding {
-      overflow: hidden;
-      clip-path: none;
-    }
-
-    @supports (overflow-clip-margin: padding-box) {
-      .box.clip-padding {
-        overflow: clip;
-        overflow-clip-margin: padding-box;
-      }
-    }
-
-    /* 3. Border-box Fallback */
-    .box.clip-border {
+    .profile-photo-shadow {
+      width: 150px;
+      height: 150px;
+      padding: 10px;
+      border: 5px solid #333;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #fff;
+      filter: drop-shadow(0 0 12px rgba(0, 120, 255, 0.6));
+      /* Fallback to keep shadow visible in older browsers */
       overflow: visible;
-      clip-path: inset(0);
     }
 
-    @supports (overflow-clip-margin: border-box) {
-      .box.clip-border {
+    @supports (overflow-clip-margin: 15px) {
+      .profile-photo-shadow {
         overflow: clip;
-        overflow-clip-margin: border-box;
-        clip-path: none;
+        overflow-clip-margin: 15px;
       }
-    }
-
-    /* 4. 20px Margin Fallback */
-    .box.clip-20px {
-      overflow: visible;
-      clip-path: inset(-20px);
-    }
-
-    @supports (overflow-clip-margin: 20px) {
-      .box.clip-20px {
-        overflow: clip;
-        overflow-clip-margin: 20px;
-        clip-path: none;
-      }
-    }
-
-    /* 5. Content-box 15px Fallback */
-    .box.clip-content-15px {
-      overflow: visible;
-      clip-path: inset(calc(var(--box-padding)/2));
-    }
-
-    @supports (overflow-clip-margin: content-box 15px) {
-      .box.clip-content-15px {
-        overflow: clip;
-        overflow-clip-margin: content-box 15px;
-        clip-path: none;
-      }
-    }
-
-    .box::before {
-      content: 'Padding Box';
-      position: absolute;
-      inset: 0;
-      border: 2px dashed red;
-      pointer-events: none;
-      font-size: 0.7rem;
-      color: red;
-      z-index: 10;
-    }
-
-    .box::after {
-      content: 'Content Box';
-      position: absolute;
-      inset: var(--box-padding);
-      border: 2px dashed blue;
-      pointer-events: none;
-      font-size: 0.7rem;
-      color: blue;
-      z-index: 10;
-    }
-
-    .demo-image {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 300px;
-      height: 200px;
-      opacity: 0.8;
     }
 
     #fallback-banner,
@@ -179,79 +105,43 @@
   <h1>Overflow Clipping Control</h1>
 
   <div id="fallback-banner">
-    <strong>Notice:</strong> Your browser does not support <code>overflow: clip</code>. Using
+    <strong>Notice:</strong> Your browser does not support <code>overflow: clip</code> on replaced elements. Using
     <code>overflow: hidden</code>.
-    </div>
-    <div id="margin-fallback-banner">
-      <strong>Notice:</strong> Your browser does not support <code>overflow-clip-margin</code>. <strong>CSS Fallback
-        (clip-path) active.</strong>
+  </div>
+  <div id="margin-fallback-banner">
+    <strong>Notice:</strong> Your browser does not support <code>overflow-clip-margin</code>. Fallback rendering active.
   </div>
 
-  <p class="intro">This demo uses a high-contrast test image to clearly show where clipping occurs. The blue dashed line
-    is the content box edge, and the red dashed line is the padding box edge. For non-replaced elements (like the
-    container <code>&lt;div&gt;</code>), declaring <code>overflow: clip</code> is <strong>mandatory</strong> for
-    <code>overflow-clip-margin</code> to work.
+  <p class="intro">This demo showcases controlled clipping directly on replaced elements (images) using <code>overflow: clip</code> and <code>overflow-clip-margin</code>. Modern browsers natively default replaced elements to clip as of Chrome 108. Setting extended margins enables protecting inner padding frames from sub-pixel rendering leakage or allowing decorative ink overflow (drop-shadows) to remain visible without layout expansion.
   </p>
 
   <div class="grid">
     <div class="demo-item">
-      <h3>content-box</h3>
-      <p class="description">Clips content strictly at the content box boundary (blue line). The padding area remains
-        white.</p>
+      <h3>Replaced Element (content-box)</h3>
+      <p class="description">Applies directly to an <code>&lt;img&gt;</code> with padding to create a clean gutter frame, preventing sub-pixel image leakage over the inner padding edge.</p>
 
-      <div class="box clip-content">
-        <img class="demo-image" src="test_pattern.svg" alt="Demo">
+      <div class="profile-photo-container">
+        <img class="profile-photo" src="test_pattern.svg" alt="Framed Demo">
       </div>
     </div>
 
     <div class="demo-item">
-      <h3>padding-box</h3>
-      <p class="description">Clips content at the padding box boundary (red line). The image fills the padding area
-        but stops at the border.</p>
+      <h3>Replaced Element (Bleed Offset)</h3>
+      <p class="description">Applies <code>overflow-clip-margin: 15px</code> directly to an image to safely contain the element while allowing ink overflow (drop shadow) to remain visible.</p>
 
-      <div class="box clip-padding">
-        <img class="demo-image" src="test_pattern.svg" alt="Demo">
-      </div>
-    </div>
-
-    <div class="demo-item">
-      <h3>border-box</h3>
-      <p class="description">Clips content at the outer edge of the border. You might see the image bleed into the
-        border area if the border has some transparency or if we used a thinner border, but here it stops at the outer
-        edge.</p>
-
-      <div class="box clip-border">
-        <img class="demo-image" src="test_pattern.svg" alt="Demo">
-      </div>
-    </div>
-
-    <div class="demo-item">
-      <h3>20px (Length)</h3>
-      <p class="description">Clips content 20px outside the padding box edge. The image extends 20px into the border
-        and beyond.</p>
-
-      <div class="box clip-20px">
-        <img class="demo-image" src="test_pattern.svg" alt="Demo">
-      </div>
-    </div>
-
-    <div class="demo-item">
-      <h3>content-box 15px</h3>
-      <p class="description">Clips content 15px outside the content box edge (halfway through the 30px padding).</p>
-
-      <div class="box clip-content-15px">
-        <img class="demo-image" src="test_pattern.svg" alt="Demo">
+      <div class="profile-photo-container">
+        <img class="profile-photo-shadow" src="test_pattern.svg" alt="Shadow Demo">
       </div>
     </div>
   </div>
 
   <script>
-            if (!CSS.supports('overflow', 'clip')) {
-            document.getElementById('fallback-banner').style.display = 'block';
-            }
-            if (!CSS.supports('overflow-clip-margin', 'content-box')) {
-              document.getElementById('margin-fallback-banner').style.display = 'block';
-            }
+    if (!CSS.supports('overflow', 'clip')) {
+      document.getElementById('fallback-banner').style.display = 'block';
+    }
+    if (!CSS.supports('overflow-clip-margin', 'content-box')) {
+      document.getElementById('margin-fallback-banner').style.display = 'block';
+    }
   </script>
 </body>
 
