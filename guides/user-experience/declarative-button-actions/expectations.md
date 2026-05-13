@@ -10,3 +10,8 @@
 - The `command` event listener uses the `{ capture: true }` option.
 - The `command` event listener uses a command registry to map command names to actions.
 - The `command` event listener identifies the action via the `command` property of the event object.
+- Clicking the "Make Round" button toggles the "is-rounded" class on the target element.
+- Clicking the "Reset All" button removes the "is-spun", "is-grown", and "is-rounded" classes from the target element.
+- The demo checks for native support of the Invoker Commands API before deciding to load a fallback.
+- If native support is missing, the `invokers-polyfill` is dynamically imported from a CDN.
+- The `command` event listener handles both native (`event.command`) and polyfilled (`event.detail.command`) event data.

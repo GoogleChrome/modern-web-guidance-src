@@ -2,13 +2,12 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
-import matter from "gray-matter";
 import * as esbuild from "esbuild";
-import { scanAllGuides, scanDisciplineSkills } from "../../lib/guide-validation.ts";
-import { getFeatureName } from "../lib/baseline.ts";
+import { scanDisciplineSkills } from "../../lib/guide-validation.ts";
 import { rootDir, guidesDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
 import { replaceMacros } from "../lib/macros.ts";
+import { updateReadmeWithFeaturesAndUseCases } from "./build-readme.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
@@ -61,6 +60,14 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   const marketplaceData = JSON.parse(fs.readFileSync(marketplacePath, 'utf8'));
   marketplaceData.plugins[0].version = newVersion;
   fs.writeFileSync(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
+
+
+  // Cursor Plugin
+  const cursorPluginPath = path.join(publishCliDir, ".cursor-plugin/plugin.json");
+  const cursorPluginData = JSON.parse(fs.readFileSync(cursorPluginPath, 'utf8'));
+  cursorPluginData.version = newVersion;
+  fs.writeFileSync(cursorPluginPath, JSON.stringify(cursorPluginData, null, 2) + '\n');
+
 }
 
 export function processSkills(publishRoot: string, scanDir = guidesDir) {
@@ -95,7 +102,9 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   });
 
   if (skipped && fs.existsSync(modernWebMjs)) {
-    return { featuresCount: 0, useCasesCount: 0, skillsCount: 0, skillNames: [] };
+    const { skillsCount, skillNames } = processSkills(publishRoot);
+    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
+    return { featuresCount, useCasesCount, skillsCount, skillNames };
   }
 
   // Step 2: If we didn't short-circuit, we do a clean, purist build.
@@ -225,79 +234,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   }
 }
 
-function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
-  const guidesDir = path.join(publishRoot, 'skills/modern-web-guidance/guides');
-  const readyGuides = scanAllGuides().filter(inv => {
-    if (!inv.hasGuide || inv.featureIds.length === 0) return false;
 
-    const guideBuildPath = path.join(guidesDir, inv.category, `${inv.name}.md`);
-    return fs.existsSync(guideBuildPath);
-  });
-
-  const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
-  const allFeatureIds = new Set<string>();
-
-  for (const guide of readyGuides) {
-    const guidePath = path.join(guide.dir, "guide.md");
-    if (!fs.existsSync(guidePath)) continue;
-
-    let description = guide.name;
-    try {
-      const content = fs.readFileSync(guidePath, "utf-8");
-      const { data } = matter(content);
-      if (data.description) description = data.description;
-    } catch { }
-
-    const sortedFeatureIds = [...guide.featureIds].sort();
-    const signature = sortedFeatureIds.join(',');
-
-    sortedFeatureIds.forEach(id => allFeatureIds.add(id));
-
-    if (!useCaseGroupMap.has(signature)) {
-      const features = sortedFeatureIds.map(fId => ({ id: fId, name: getFeatureName(fId) }));
-      useCaseGroupMap.set(signature, { features, useCases: [] });
-    }
-    useCaseGroupMap.get(signature)!.useCases.push({ id: guide.name, description });
-  }
-
-  // Sort groups alphabetically by the name of their first feature
-  const sortedGroups = Array.from(useCaseGroupMap.values()).sort((a, b) => a.features[0].name.localeCompare(b.features[0].name));
-
-  // Determine all features to generate the summary text
-  const allFeaturesSorted = Array.from(allFeatureIds)
-    .map(fId => ({ id: fId, name: getFeatureName(fId) }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  let version = "unknown";
-  try {
-    const pkgJson = JSON.parse(fs.readFileSync(path.join(publishRoot, "package.json"), "utf8"));
-    if (pkgJson.version) version = pkgJson.version;
-  } catch { }
-
-  let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
-  const featureNamesCsv = allFeaturesSorted.map(f => `\`${f.name.replace(/</g, '&lt;')}\``).join(', ');
-
-  dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} web features with implementation guidance from Chrome's experts</strong>: ${featureNamesCsv}</summary>\n\n`;
-
-  for (const group of sortedGroups) {
-    const featureLinks = group.features.map(f => `[${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})`).join(', ');
-    dynamicMd += `- **${featureLinks}**\n`;
-    for (const uc of group.useCases) {
-      dynamicMd += `  - **${uc.id}**: ${uc.description}\n`;
-    }
-  }
-  dynamicMd += `</details>\n\n`;
-
-  // Update README
-  const readmePath = path.join(publishRoot, "README.md");
-  if (fs.existsSync(readmePath)) {
-    let readmeContent = fs.readFileSync(readmePath, "utf-8");
-    readmeContent = readmeContent.replace('## Installation', dynamicMd + '\n\n## Installation');
-    fs.writeFileSync(readmePath, readmeContent);
-  }
-
-  return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
-}
 
 function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
   const allowedLicenses = ['MIT', 'Apache 2.0', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', 'ISC', '0BSD'];

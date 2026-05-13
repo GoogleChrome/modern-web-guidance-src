@@ -116,7 +116,7 @@ are optional but improve listing quality and approval odds.
 
 
 <!-- Host this at a publicly accessible URL. GitHub Pages, your website, or a
-     Notion page all work. See references/privacy-policy.md for a template. -->
+     Notion page all work. See references/webstore/privacy-policy.md for a template. -->
 
 
 ## Distribution
