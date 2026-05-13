@@ -17,11 +17,11 @@ importers:
   .:
     dependencies:
       '@mdn/browser-compat-data':
-        specifier: ^7.3.13
-        version: 7.3.14
+        specifier: ^7.3.15
+        version: 7.3.15
       '@webref/css':
-        specifier: ^8.5.3
-        version: 8.5.4(css-tree@3.2.1)
+        specifier: ^8.5.6
+        version: 8.5.6(css-tree@3.2.1)
       '@webref/elements':
         specifier: ^2.7.1
         version: 2.7.1
@@ -41,8 +41,8 @@ importers:
         specifier: ^0.4.17
         version: 0.4.17
       web-features:
-        specifier: ^3.25.0
-        version: 3.26.0
+        specifier: ^3.27.0
+        version: 3.27.0
     devDependencies:
       '@types/node':
         specifier: ^25.6.0
@@ -765,8 +765,8 @@ packages:
   '@lydell/node-pty@1.1.0':
     resolution: {integrity: sha512-VDD8LtlMTOrPKWMXUAcB9+LTktzuunqrMwkYR1DMRBkS6LQrCt+0/Ws1o2rMml/n3guePpS7cxhHF7Nm5K4iMw==}
 
-  '@mdn/browser-compat-data@7.3.14':
-    resolution: {integrity: sha512-Mqll0z0todYcAOqr+2hnYZRFe7+CwyU14lj86vzAGDJVeqnp618ybGzwHTI7sxyhd/46FFtJAlZNUmL1YHSX+Q==}
+  '@mdn/browser-compat-data@7.3.15':
+    resolution: {integrity: sha512-8YoG52J2ZsR+T4p0JsAuoWeztBgJsAtGY+LeGEAHvyJBojJzJtLb8o1fRsIbc0v6EHKRLIrCU3VoAIK1olntag==}
 
   '@modelcontextprotocol/sdk@1.29.0':
     resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
@@ -1351,8 +1351,8 @@ packages:
   '@webgpu/types@0.1.38':
     resolution: {integrity: sha512-7LrhVKz2PRh+DD7+S+PVaFd5HxaWQvoMqBbsV9fNJO1pjUs1P8bM2vQVNfk+3URTqbuTI7gkXi0rfsN0IadoBA==}
 
-  '@webref/css@8.5.4':
-    resolution: {integrity: sha512-3t4LuTww0lNpJRi3k/Obb74xWc9+YVGcO0DNoc5k3+dmqIklcj3KHKBk4GHMwj4+zMwJXLpK7F2R9r3qTZg2Ag==}
+  '@webref/css@8.5.6':
+    resolution: {integrity: sha512-gc3L5Rm4Sa1fFuLk3AAZN+uQecJ65HegiaTyEdZCrjxHK4xE91gdrLZ+dQH13qB89TczYpTuk9OiHA3Tpt+kEQ==}
     peerDependencies:
       css-tree: ^3.2.1
 
@@ -3234,9 +3234,6 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  web-features@3.26.0:
-    resolution: {integrity: sha512-1qXkBvgi2H1uZ3AmP9GOOF5+LrlO94bJxgh6Kh12yW6wYQQtjXv7ou3ADo3dIuHB98WlHtGp8bjd/w8UQI6tHw==}
-
   web-features@3.27.0:
     resolution: {integrity: sha512-Usye0RO960BDWH+cnE2TBnzKkoYhLAETSpuO5A8yFnbg67gjr0EquN1f0/suO8iruDFHP9W9oAU2hGsoyoxotA==}
 
@@ -3907,7 +3904,7 @@ snapshots:
       '@lydell/node-pty-win32-x64': 1.1.0
     optional: true
 
-  '@mdn/browser-compat-data@7.3.14': {}
+  '@mdn/browser-compat-data@7.3.15': {}
 
   '@modelcontextprotocol/sdk@1.29.0(zod@3.25.76)':
     dependencies:
@@ -4529,7 +4526,7 @@ snapshots:
 
   '@webgpu/types@0.1.38': {}
 
-  '@webref/css@8.5.4(css-tree@3.2.1)':
+  '@webref/css@8.5.6(css-tree@3.2.1)':
     dependencies:
       css-tree: 3.2.1
 
@@ -6575,8 +6572,6 @@ snapshots:
       spdx-expression-parse: 3.0.1
 
   vary@1.1.2: {}
-
-  web-features@3.26.0: {}
 
   web-features@3.27.0: {}
 

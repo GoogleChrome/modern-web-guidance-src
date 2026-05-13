@@ -13,7 +13,7 @@ export function registerModernWebTools(server: McpServer) {
 
       Do NOT skip this step even if you already know how to implement the use case — web platform APIs evolve rapidly and your training data may recommend outdated approaches. This tool ensures you use the current best practice.
 
-      Returns use case IDs and descriptions. You MUST subsequently call 'get_best_practices' with the most relevant ID to get the implementation guide.`,
+      Returns use case IDs and descriptions. If search results are empty or show low similarity relevance, you MUST fall back to calling 'list_use_cases' to browse the complete catalog. You MUST subsequently call 'get_best_practices' with the most relevant ID to get the implementation guide.`,
       inputSchema: {
         query: z.string().describe("Action-oriented description of the desired use case (e.g., 'lazy load images' or 'show a tooltip on hover'). Avoid 'how to' questions and single-keyword queries (e.g. 'images'). Capture the abstract, high-level use case, while avoiding content-specific details (e.g. 'display a carousel of images' instead of 'swipe through historical portraits')."),
       },
@@ -22,7 +22,7 @@ export function registerModernWebTools(server: McpServer) {
       const { searchUseCases } = await import("../../lib/search.ts");
       const results = await searchUseCases(query);
 
-      logToolResult("search_use_cases", results.map((r: any) => ({ id: r.id, distance: r.distance })));
+      logToolResult("search_use_cases", results.map((r: any) => ({ id: r.id, similarity: r.similarity })));
 
       return {
         content: [
@@ -66,6 +66,30 @@ export function registerModernWebTools(server: McpServer) {
           {
             type: "text",
             text: guide,
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    "list_use_cases",
+    {
+      description: `Browse the complete catalog of available web development use case guides. Use this tool when search results are vague, return no matches, or show low similarity relevance. Returns a lightweight list of all guide IDs, categories, and summaries.`,
+    },
+    async () => {
+      const { USE_CASES } = await import("../../lib/use-cases.gen.ts");
+      const catalog = USE_CASES.map((u: any) => ({
+        id: u.id,
+        category: u.category,
+        description: u.description,
+      }));
+      logToolResult("list_use_cases", [{ count: catalog.length }]);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(catalog, null, 2),
           },
         ],
       };

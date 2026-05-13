@@ -18,7 +18,7 @@ export function assertSearchResults(output: string) {
     const topResult = results[0];
     assert.ok(topResult.id, 'Top result should have an id');
     assert.ok(topResult.description, 'Top result should have a description');
-    assert.ok(topResult.distance, 'Top result should have a distance');
+    assert.ok(topResult.similarity, 'Top result should have a similarity');
 }
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
@@ -99,12 +99,14 @@ test('README dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
   
   // Verify it contains the new headers and format
-  assert.match(readmeRaw, /#### Skill Coverage in `v\d+\.\d+\.\d+`/, 'README should contain the Skill Coverage header with the version');
-  assert.ok(readmeRaw.includes('web features with implementation guidance from Chrome\'s experts'), 'README should contain the feature count summary text');
+  assert.match(readmeRaw, /#### Full Skill Coverage \(v\d+\.\d+\.\d+\)/, 'README should contain the Skill Coverage header with the version');
+  assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
   assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
+  assert.ok(readmeRaw.includes('<h3>'), 'README should contain category h3 headings');
   
-  // Quick sanity check that at least one feature name format works out, e.g. webstatus links
-  assert.match(readmeRaw, /https:\/\/webstatus\.dev\/features\//, 'README should contain links to webstatus.dev');
+  // Quick sanity check that at least one feature name format works out, e.g. explorer links
+  assert.match(readmeRaw, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'README should contain links to Web Features Explorer');
+  assert.match(readmeRaw, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'README should contain GitHub blob links for use cases');
 });
 
 test('modern-web CLI search and retrieve', async () => {
@@ -117,6 +119,13 @@ test('modern-web CLI search and retrieve', async () => {
   // 2. Validate retrieve
   const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
+
+  // 3. Validate list
+  const listOut = execSync(`node "${binaryPath}" list`, { encoding: 'utf8' });
+  assert.ok(listOut.includes('accessible-error-announcement'), 'List output should contain known guide IDs');
+  const catalog = JSON.parse(listOut);
+  assert.ok(Array.isArray(catalog), 'List output should be a JSON array');
+  assert.ok(catalog.length > 100, 'Catalog should contain all documented guidelines');
 });
 
 test('modern-web CLI version flags', async () => {

@@ -11,7 +11,7 @@ The primary goal of this skill is to define the process for researching and gene
 
 When tasked with researching a discipline to generate a `SKILL.md` file, you must execute a sequence combining both `web.dev` curriculum synthesis and automated deep research. They are not alternatives; you should always do both.
 
-**Check Existing Research First**: Before beginning any new data collection, verify if raw research reports already exist in `skills-drafts/.research/<discipline>/` (e.g., `web_dev.md`, `deep_research.md`). If these files exist, skip the automated steps below and proceed directly to **Synthesis** using these files as your source material.
+**Check Existing Research First**: Before beginning any new data collection, verify if raw research reports already exist in `skills-src/.research/<discipline>/` (e.g., `web_dev.md`, `deep_research.md`). If these files exist, skip the automated steps below and proceed directly to **Synthesis** using these files as your source material.
 
 **Parallel Execution Strategy**: To optimize time, launch the Automated Deep Research (Step 1) in a background subagent (or background task) *first*, and then proceed with the manual `web.dev` chapter reading (Step 2) in parallel.
 
@@ -40,7 +40,7 @@ Run the automated deep research tool to identify edge cases beyond the standard 
      node --env-file=.env .agents/skills/project-skills-research/scripts/resolve_sources.js --discipline <name>
      ```
 2. **Save Research Artifact**
-   - Save the Tool output to `skills-drafts/.research/<discipline>/deep_research.md`.
+   - Save the Tool output to `skills-src/.research/<discipline>/deep_research.md`.
 
 ### Step 2: Establish `web.dev` Scaffolding (Course Reading)
 Identify a seed URL for the discipline (e.g., `https://web.dev/learn/accessibility/`).
@@ -48,12 +48,12 @@ Identify a seed URL for the discipline (e.g., `https://web.dev/learn/accessibili
 1. **Content Fetching & TOC Generation**
    - Fetch the Table of Contents natively (using `read_url_content`).
    - **Fallback Mechanism**: If no specific course is found on `web.dev`, skip the rest of Step 2 and proceed directly to **Synthesis** (relying on Step 1 research). Do not attempt to synthesize a generic Table of Contents or read third-party courses for Step 2.
-   - **Save TOC**: Save the Table of Contents to `skills-drafts/.research/<discipline>/toc.md`. Use this file to track which chapters you have processed.
+   - **Save TOC**: Save the Table of Contents to `skills-src/.research/<discipline>/toc.md`. Use this file to track which chapters you have processed.
 2. **User Check-in & TOC Approval**
    - **MANDATORY**: Present the proposed TOC to the user for feedback before proceeding. **Point the user to the saved `toc.md` file and/or print the Table of Contents in your response. Do not ask for approval of a TOC that the user cannot view.** Wait for explicit user confirmation.
 3. **Chapter-by-Chapter Research**
    - For each chapter in the approved TOC, read the content to extract actionable guidelines.
-   - Save output incrementally to `skills-drafts/.research/<discipline>/web_dev.md`.
+   - Save output incrementally to `skills-src/.research/<discipline>/web_dev.md`.
    - Use Google Search grounding to ensure standard compliance.
 
 
@@ -128,4 +128,4 @@ Before finalizing the draft, conduct a final quality pass to ensure accuracy, co
 
 ## Finalization
 
-Once the synthesized draft meets all quality standards, save it to the `skills-drafts/<discipline>/SKILL.md` directory.
+Once the synthesized draft meets all quality standards, save it to the `skills-src/<discipline>/SKILL.md` directory.
