@@ -9,6 +9,34 @@ This skill is a baseline for writing clean, performant, and secure JavaScript. T
 
 This skill defers to specific use-case guidance found in the `/guides/` directory when applicable.
 
+## Objects, Classes, and Prototypes
+
+- **Safe Property Checks**: Use `Object.hasOwn(obj, "prop")` instead of `obj.hasOwnProperty("prop")`.
+- **Avoid Prototype Poisoning**: Use `Object.getPrototypeOf()` and `Object.setPrototypeOf()` instead of the legacy `__proto__`.
+- **Use Getters and Setters**: Encapsulate custom logic, value validation and formatting using `get` and `set`. 
+
+```javascript
+class UserService {
+  #privateToken; // Encapsulated
+
+  constructor(token) {
+    this.#privateToken = token;
+  }
+
+  set privateToken(token){
+    if(!validateToken(token)){
+      console.log('Invalid Token');
+    } else {
+      this.#privateToken = token;
+    }
+  }
+
+  get hasValidToken(){
+    return validateToken(this.#privateToken)
+  }
+}
+```
+
 ## DOM Manipulation and Performance
 
 - **Reduce Layout Thrashing (Reflows)**: Accessing geometric properties (`offsetHeight`, `clientWidth`) after a DOM write forces synchronous layout. Batch all DOM reads first, then all DOM writes.
@@ -49,9 +77,7 @@ list.appendChild(fragment); // Single layout recalculation pass
 
 ## Modern Browser APIs
 
-- **Use Native Modern Browser APIs**: Prefer modern native APIs over third-party libraries or manual helper methods:
-    - Use `Object.groupBy()` to group collection objects by criteria. Do **not** write custom loop-based grouping logic.
-    - Use `structuredClone()` to recursively deep-copy objects. Do **not** use the legacy `JSON.parse(JSON.stringify(obj))` pattern or custom deep-cloning functions.
+- **Use Object.groupBy()**: Prefer the native modern `Object.groupBy()` to group collection objects by criteria. Do **not** use Lodash `groupBy` or manual loop-based grouping logic.
 - **Prefer HTML and CSS for UI over JavaScript** - Don't use JavaScript when a feature is possible without it, (e.g., `<details>` and `<summary>` for simple accordion components, Relative Color Syntax for color manipulation, `position:sticky` for sticky positioning, or native form validation).
 - **Prefer HTML and CSS features over Observers**: Use `<img loading="lazy" />` or scroll driven animations over `IntersectionObserver`, and container queries over `ResizeObserver`.
 - **Use JavaScript as a Progressive Enhancement**: Anticipate that JavaScript will not always be able to run, and ensure your site is functional without it.
