@@ -238,7 +238,7 @@ function formatBrowserTitle(key: string): string {
 
 function formatVersionWithMonth(browserKey: string, version: string): string {
   if (!version || version === '-') return '';
-  const release = bcd.browsers[browserKey]?.releases?.[version];
+  const release = (bcd.browsers as Record<string, any>)[browserKey]?.releases?.[version];
   if (release?.release_date) {
     const formattedDate = dateFormatter.format(new Date(release.release_date));
     return `${version} (${formattedDate})`;
