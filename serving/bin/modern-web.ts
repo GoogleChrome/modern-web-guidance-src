@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "node:util";
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
