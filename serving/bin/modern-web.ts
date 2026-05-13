@@ -127,9 +127,8 @@ async function main() {
     }
     process.exit(result.status ?? 0);
   } else if (command === "update") {
-    const extraArgs = process.argv.slice(3);
     const skills = getOurSkills();
-    const result = spawnSync("npx", ["skills", "update", ...skills, ...extraArgs], {
+    const result = spawnSync("npx", ["skills", "update", ...skills], {
       stdio: "inherit",
     });
     if (result.error) {
