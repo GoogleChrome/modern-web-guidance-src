@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
+import { USE_CASES } from "../lib/use-cases.gen.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -23,6 +24,7 @@ Usage: modern-web <command> [args]
 
 Commands:
   search <query>          Search use cases by query
+  list                    List all available use cases
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
   install [options]       Install the modern-web-guidance skill
 
@@ -68,6 +70,13 @@ async function main() {
       console.error("Search failed:", error);
       process.exit(1);
     }
+  } else if (command === "list") {
+    const catalog = USE_CASES.map(u => ({
+      id: u.id,
+      category: u.category,
+      description: u.description,
+    }));
+    console.log(JSON.stringify(catalog, null, 2));
   } else if (command === "retrieve") {
     if (!arg) {
       console.error("No IDs provided for retrieve.");
