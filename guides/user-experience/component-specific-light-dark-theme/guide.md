@@ -26,8 +26,7 @@ The `light-dark()` function allows you to define two colors for a single propert
 While most element's should follow the page-wide color scheme, there are several scenarios where you need more granular control over an element's theme:
 
 - **Content-Driven Aesthetics**: Certain components work best in a specific mode. For example, **code editors**, **video players**, and **photo galleries** often use a particular theme to minimize distraction and make colors "pop," regardless of the user's OS setting.
-- **User Preference Overrides**: You can empower users to manually toggle the theme of a specific component. This allows them to view a component in the mode that fits their environment or eye comfort.
-- **Native Browser UI Consistency**: If a component contains built-in browser UI, such as **scrollbars**, **form controls**, or **dropdown menus**, you can decide in which color scheme they should be viewed.
+- **User Preference Overrides**: You can empower users to manually toggle the theme of a specific component, like a chat box or a music player for example. This allows them to view a component in the mode that fits their environment or eye comfort.
 
 ## When to Change Colors vs. When to Force `color-scheme`
 
@@ -44,7 +43,7 @@ While most element's should follow the page-wide color scheme, there are several
 ## Implementation Steps
 
 ### 1. Declare supported schemes in HTML
-MANDATORY: To help prevent a "flash of un-themed content" (FOUC), place a `<meta>` tag in your `<head>` to ensure the browser knows which themes you support before it even starts rendering. While this `<meta>` tag helps to avoid FOUC by setting the initial canvas color early, it may not completely eliminate flashes in all browsers or loading conditions.
+OPTIONAL: To help prevent a "flash of un-themed content" (FOUC), place a `<meta>` tag in your `<head>` to ensure the browser knows which themes you support before it even starts rendering. While this `<meta>` tag helps to avoid FOUC by setting the initial canvas color early, it may not completely eliminate flashes in all browsers or loading conditions.
 
 ```html
 <!-- Optional: Declare support for both light and dark themes -->
@@ -52,7 +51,7 @@ MANDATORY: To help prevent a "flash of un-themed content" (FOUC), place a `<meta
 ```
 
 ### 2. Enable `color-scheme` support
-MANDATORY: Enable global support for both color schemes by setting `color-scheme: light dark;` on the `:root`. If `color-scheme` is not set on `:root` (or an ancestor) the `light-dark()` function will not work as expected.
+OPTIONAL: Enable global support for both color schemes by setting `color-scheme: light dark;` on the `:root`. If `color-scheme` is not set on `:root` (or an ancestor) the `light-dark()` function will not work as expected.
 
 ```css
 :root {
@@ -78,11 +77,9 @@ Using custom properties creates a **semantic abstraction layer** for your compon
 
   /* 3. Apply custom properties on relevant properties values */
   
-    /* **Mandatory**: Dynamic properties set with 
-        light-dark() must be applied on the element where 
-        the scheme changes. 
-    */
   background-color: var(--card-bg);
+  /* **Mandatory**: Dynamic built-in properties that inherit (like color and accent-color) and are set with light-dark() must be applied on the element where the scheme changes. 
+  */
   color: var(--card-text);
   padding: 1.5rem;
   border-radius: 8px;
@@ -96,12 +93,14 @@ Force a component instance into a specific theme by setting its `color-scheme` p
 /* Force this specific card into dark mode */
 .themed-card.force-dark {
   /* Dynamic custom properties don't need to be reapplied here since they were already defined on `.themed-card` */
+  /* **Mandatory**: force component to use a particular color mode */
   color-scheme: dark;
 }
 
 /* Force this specific card into light mode */
 .themed-card.force-light {
   /* Dynamic custom properties don't need to be reapplied here since they were already defined on `.themed-card` */
+   /* **Mandatory**: Force component to use a particular color mode */
   color-scheme: light;
 }
 ```
@@ -111,34 +110,6 @@ Force a component instance into a specific theme by setting its `color-scheme` p
 - **The `@property` Risk**:
   - **Mandatory**: Do not register properties meant to be design tokens that dynamically switch based on `light-dark()` as `<color>`. If you need to animate a color variable, use a separate property.
 - **Mandatory**: Do not set `color-scheme` on elements without a background.
-- **The "Inheritance Footgun"**
-
-### The Problem
-If you define a variable on the `:root`, the browser resolves it to a specific color (e.g., the light version) immediately. Descendant elements that change their `color-scheme` will inherit the *already-resolved color* rather than re-resolving the `light-dark()` function.
-
-- **Example: Handling Resolution Gaps**
-  ```css
-  /* ⚠️ PROBLEM: Variable resolves at :root (light) and stays 'yellow' */
-  :root {
-    color-scheme: light dark;
-    --color-accent: light-dark(yellow, blue);
-  }
-
-  /* ❌ FAILURE: The card remains yellow even in dark mode */
-  .dark-section {
-    color-scheme: dark;
-  }
-
-  .dark-section .card {
-    background-color: var(--color-accent); 
-  }
-
-  /* ✅ FIX: Reapply the token where the scheme changes (e.g. background-color: var(--color-accent), **Not** `--color-accent: light-dark(black, white);`) */
-  .dark-section {
-    color-scheme: dark;
-    background-color: var(--color-accent); /* Forces re-resolution */
-  }
-  ```
 
 See {{ GUIDE_REF("browser-ui-color-theme") }} for more on handling **The `@property` Risk**, built-in inherited properties such as `color` and `accent-color`, and other best practices when changing the color scheme of a component.
 
@@ -165,10 +136,9 @@ See {{ GUIDE_REF("browser-ui-color-theme") }} for more on handling **The `@prope
 
   /* 3. Apply custom properties on relevant properties (light) values */
   
-    /* **Mandatory**: when nesting schemes, dynamic properties set with 
-    light-dark() must also be applied on the element where the scheme changes. 
-  */
   background-color: var(--card-bg);
+    /* **Mandatory**: Dynamic built-in properties that inherit (like color and accent-color) and are set with light-dark() must be applied on the element where the scheme changes. 
+  */
   color: var(--card-text);
   padding: 1.5rem;
   border-radius: 8px;

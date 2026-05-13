@@ -1,10 +1,10 @@
-- The document includes a `<meta name="color-scheme" content="light dark">` tag in the `<head>` to declare theme support early and minimize the risk of un-themed content flashes.
+- **OPTIONAL**: The document includes a `<meta name="color-scheme" content="light dark">` tag in the `<head>` to declare theme support early and minimize the risk of un-themed content flashes.
 - **MANDATORY**: The document or the component has `color-scheme: light dark` (or includes both) set on the `:root` or a common ancestor to enable the resolution of the `light-dark()` function.
 - **MANDATORY**: The implementation uses custom properties as a **semantic abstraction layer** for theme-aware variables (e.g., `--card-bg` is the semantic variable, while `--card-bg-light` and `--card-bg-dark` are the raw tokens).
 - **MANDATORY**: The `light-dark()` function is used to define the values of these semantic custom properties.
 - **MANDATORY**: The implementation uses the `color-scheme` property (e.g., `color-scheme: light` or `color-scheme: dark`) to force a specific theme on a component or section.
 - **MANDATORY**: `color-scheme` overrides are only applied to elements that also have a `background-color` (or where a background is clearly intended), as per the guide's recommendation.
-- **MANDATORY**: When a component or section forces a `color-scheme`, properties that use `light-dark()` tokens (like `background-color` or `color`) are explicitly re-applied on that same element to ensure they re-resolve correctly and avoid the "inheritance footgun".
+- **MANDATORY**: When a component or section forces a `color-scheme`, inherited properties that use `light-dark()` tokens (like `color` or `accent-color`) are explicitly re-applied on that same element to ensure they re-resolve correctly and avoid the "inheritance footgun".
 - **OPTIONAL**: The component's internal elements (like scrollbars or form controls) correctly adapt their native browser styling when `color-scheme` is overridden.
 - **MANDATORY**: Fallback strategies are provided for browsers that do not support `light-dark()`, using manual variable overrides and `@media (prefers-color-scheme)` queries.
 - **MANDATORY**: Progressive enhancement is used via `@supports (color: light-dark(white, black))` to ensure that the `light-dark()` logic is preferred and used when available, allowing per-component overrides to work as intended.

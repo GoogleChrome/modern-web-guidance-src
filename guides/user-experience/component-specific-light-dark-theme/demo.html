@@ -5,14 +5,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- 
-    MANDATORY: Declare support for both light and dark themes early.
+    OPTIONAL: Declare support for both light and dark themes early.
     This helps the browser set the initial canvas color before CSS is parsed.
   -->
   <meta name="color-scheme" content="light dark">
   <title>Component-Specific Light/Dark Theme Demo</title>
   <style>
     :root {
-      /* MANDATORY: Enable global support for both color schemes */
+      /* OPTIONAL: Enable global support for both color schemes */
       color-scheme: light dark;
 
       --accent-light: #1a73e8;
@@ -90,6 +90,7 @@
       /* Apply custom properties to the component */
       background-color: var(--card-bg);
       color: var(--card-text);
+      accent-color: var(--accent);
       border: 1px solid color-mix(in srgb, var(--card-text), transparent 80%);
       border-radius: 12px;
       padding: 1.5rem;
@@ -147,12 +148,14 @@
       /* Re-apply properties that use light-dark() variables to avoid the inheritance footgun */
       background-color: var(--card-bg);
       color: var(--card-text);
+      accent-color: var(--accent);
     }
     .themed-card.force-dark { 
       color-scheme: dark;
       /* Re-apply properties that use light-dark() variables to avoid the inheritance footgun */
       background-color: var(--card-bg);
       color: var(--card-text);
+      accent-color: var(--accent);
     }
 
     .themed-card h3 { 
@@ -213,6 +216,7 @@
     .theme-island .themed-card {
       background-color: var(--card-bg);
       color: var(--card-text);
+      accent-color: var(--accent);
     }
   </style>
 </head>
