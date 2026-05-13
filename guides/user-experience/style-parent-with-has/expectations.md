@@ -4,3 +4,4 @@
 - "Force Fallback Mode" must replicate this parent-styling behavior using JS class toggling.
 - DO NOT assert on exact RGB color codes in the grader. Assume the agent will pick an appropriate error color (e.g., red hues). Use a helper function like `isRed()` instead of strict string equality.
 - DO NOT assume specific class names like `.card` or require a `.status-icon` unless explicitly requested. Use relational locators (e.g., finding the nearest parent or ancestor container of the input).
+- Standalone code examples MUST document or assume a complete, accessible document heading hierarchy outline.

@@ -162,4 +162,9 @@ test.describe(`defer-rendering-heavy-content Expectations: ${demoName}`, () => {
     expect(hasFeatureDetection, 'Missing explicit fallback strategy or feature detection for beforematch').toBe(true);
   });
 
+  test('The beforematch event handler must programmatically update aria-expanded on the controlling trigger button', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/aria-expanded/i.test(html)).toBe(true);
+  });
+
 });

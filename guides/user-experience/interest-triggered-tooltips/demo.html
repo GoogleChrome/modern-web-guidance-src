@@ -73,20 +73,20 @@
   <body>
     <h1>Interest-Triggered Tooltips</h1>
     <p>
-      The document <button interestfor="tooltip-dom">DOM</button> is a tree
+      The document <button interestfor="tooltip-dom" aria-describedby="tooltip-dom">DOM</button> is a tree
       structure that represents the content of a web page. Each node in the tree
       corresponds to an element, and nodes can have
-      <button interestfor="tooltip-attrs">attributes</button> that provide
+      <button interestfor="tooltip-attrs" aria-describedby="tooltip-attrs">attributes</button> that provide
       additional information about the element.
     </p>
 
-    <div id="tooltip-dom" popover="hint">
+    <div id="tooltip-dom" popover="hint" role="tooltip">
       Document Object Model — the browser's in-memory representation of a web
       page's structure.
     </div>
-    <div id="tooltip-attrs" popover="hint">
+    <div id="tooltip-attrs" popover="hint" role="tooltip">
       Key-value pairs on HTML elements that configure behavior or provide
-      metadata, such as <code>class</code> or <code>id</code>.
+      metadata, such as class or id.
     </div>
   </body>
 </html>

@@ -11,3 +11,4 @@
 - The `.sidebar-text` must not have any `display` or `visibility` CSS properties applied to it directly.
 - The `.sidebar-text` `aria-expanded` attribute must be stay in sync with the `hidden` attribute using a `beforematch` event listener.
 - The `.sidebar-text` must use a fallback strategy for unsupported browsers. The implementation must include an explicit JavaScript feature detection check for native support (e.g., `if (!('onbeforematch' in HTMLElement.prototype))`) and execute a fallback UI strategy for unsupported browsers.
+- The `beforematch` event handler MUST programmatically update assistive technology properties, such as updating `aria-expanded="true"` on the controlling trigger button.

@@ -3,3 +3,5 @@
 - Typing into the field MUST remove the error state immediately.
 - Clicking "Submit" with empty fields MUST trigger the error state on all of them.
 - "Force Fallback Mode" must replicate this exact behavior.
+- The implementation MUST dynamically synchronize the `aria-invalid="true"` attribute via JavaScript when an element enters an error state, and remove it when the field becomes valid.
+- Visual error feedback MUST incorporate multiple state indicators (e.g. an icon alongside the error text) to avoid communicating state through color alone.

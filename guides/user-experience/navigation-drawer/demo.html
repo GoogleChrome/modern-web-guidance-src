@@ -200,6 +200,7 @@
     function onDrawerOpened() {
       main.inert = true;
       openBtn.setAttribute('aria-expanded', 'true');
+      openBtn.setAttribute('aria-label', 'Close menu');
       sheet.focus();
     }
 
@@ -207,6 +208,7 @@
       drawer.hidePopover();
       main.inert = false;
       openBtn.setAttribute('aria-expanded', 'false');
+      openBtn.setAttribute('aria-label', 'Open menu');
     }
 
     function observeButtonClicks() {

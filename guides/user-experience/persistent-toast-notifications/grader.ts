@@ -81,4 +81,16 @@ test.describe(`persistent-toast-notifications Expectations: ${demoName}`, () => 
 
     await expect(toast).toBeHidden({ timeout: 4000 });
   });
+
+  test(`5. The toast container must set role="status" and define aria-live="polite"`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/role=["']status["']/i.test(html)).toBe(true);
+    expect(/aria-live=["']polite["']/i.test(html)).toBe(true);
+  });
+
+  test(`6. The auto-dismissal timer must pause on pointerenter or focusin`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/pointerenter|focusin/i.test(html)).toBe(true);
+  });
+
 });

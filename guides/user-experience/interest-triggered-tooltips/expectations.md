@@ -10,3 +10,7 @@
 * Polyfills for interestfor, popover, and anchor positioning must be conditionally installed.
 * Do not display tooltip content using `::before` and `::after` pseudo-elements.
 * Do not put tooltip content into attributes on the trigger.
+* The tooltip element MUST define `role="tooltip"`.
+* The trigger element MUST programmatically associate the tooltip by setting `aria-describedby` matching the tooltip's ID.
+* The implementation MUST adhere to WCAG 1.4.13 guidelines, ensuring the tooltip is dismissible (e.g. via `Esc`), hoverable, and persistent.
+* The tooltip container MUST contain plaintext content only, avoiding interactive descendant elements.

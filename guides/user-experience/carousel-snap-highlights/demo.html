@@ -72,15 +72,22 @@
           box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
         }
       }
+
+      @media (prefers-reduced-motion: reduce) {
+        .card {
+          transition: none !important;
+          scale: 1 !important;
+        }
+      }
     </style>
   </head>
   <body>
-    <div class="carousel">
-      <div class="carousel-item"><div class="card">1</div></div>
-      <div class="carousel-item"><div class="card">2</div></div>
-      <div class="carousel-item"><div class="card">3</div></div>
-      <div class="carousel-item"><div class="card">4</div></div>
-      <div class="carousel-item"><div class="card">5</div></div>
+    <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Highlighted showcase">
+      <div class="carousel-item" aria-roledescription="slide" aria-label="Item 1"><div class="card">1</div></div>
+      <div class="carousel-item" aria-roledescription="slide" aria-label="Item 2"><div class="card">2</div></div>
+      <div class="carousel-item" aria-roledescription="slide" aria-label="Item 3"><div class="card">3</div></div>
+      <div class="carousel-item" aria-roledescription="slide" aria-label="Item 4"><div class="card">4</div></div>
+      <div class="carousel-item" aria-roledescription="slide" aria-label="Item 5"><div class="card">5</div></div>
     </div>
     <script>
       if (!CSS.supports("container-type", "scroll-state")) {

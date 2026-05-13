@@ -147,12 +147,12 @@
     <div class="layout">
         <div class="feed" id="feed">
             <!-- First cards are in the initial viewport, NO off-screen-card class -->
-            <div class="card" data-id="1">
+            <div class="card" data-id="1" aria-expanded="false">
                 <h2>Card #1 (Initial View)</h2>
                 <p>This card is visible immediately and renders normally without deferred layout logic.</p>
                 <div class="card-img"></div>
             </div>
-            <div class="card" data-id="2">
+            <div class="card" data-id="2" aria-expanded="false">
                 <h2>Card #2 (Initial View)</h2>
                 <p>Another card perfectly in the initial viewport or immediately following.</p>
                 <div class="card-img"></div>
@@ -160,7 +160,7 @@
 
 
             <!-- Followed by off-screen cards -->
-            <div class="card off-screen-card" data-id="3">
+            <div class="card off-screen-card" data-id="3" aria-expanded="false">
                 <h2>Card #3 (Deferred)</h2>
                 <p>Scroll down! This card is completely deferred using <code>content-visibility: auto</code>.</p>
                 <div class="card-img"></div>
@@ -205,6 +205,7 @@
             const card = document.createElement('div');
             card.className = 'card off-screen-card';
             card.dataset.id = i;
+            card.setAttribute('aria-expanded', 'false');
             card.innerHTML = `
                 <h2>Card #${i} (Deferred)</h2>
                 <p>This heavy content is cleanly deferred dynamically.</p>
@@ -230,10 +231,13 @@
             document.getElementById('debug-panel').classList.toggle('active');
         });
 
-        // Test Requirement: 'beforematch' state synchronization for aria-expanded
+        // Test Requirement: 'beforematch' state synchronization for aria-expanded on trigger
         document.querySelectorAll('.sidebar-text').forEach(el => {
             el.addEventListener('beforematch', () => {
                 el.setAttribute('aria-expanded', 'true');
+                const id = el.id.replace('info-', '');
+                const card = document.querySelector(`.card[data-id="${id}"]`);
+                card?.setAttribute('aria-expanded', 'true');
             });
         });
 
@@ -274,9 +278,11 @@
                     if (cardText.hasAttribute('hidden')) {
                         cardText.removeAttribute('hidden');
                         cardText.setAttribute('aria-expanded', 'true');
+                        card.setAttribute('aria-expanded', 'true');
                     } else if (cardText.classList.contains('sidebar-text-fallback')) {
                         cardText.classList.remove('sidebar-text-fallback');
                         cardText.setAttribute('aria-expanded', 'true');
+                        card.setAttribute('aria-expanded', 'true');
                     }
                 }
             }

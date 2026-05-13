@@ -53,17 +53,39 @@
 <body>
   <button id="toast-trigger" onclick="showToast()">Trigger Toast</button>
   <div class="toast-container">
-    <div id="toast" popover="manual">
+    <div id="toast" popover="manual" role="status" aria-live="polite">
       Success!
       <button popovertarget="toast" popovertargetaction="hide" aria-label="close">x</button>
     </div>
   </div>
   <script>
-    function showToast() {
-      const t = document.getElementById('toast');
-      t.showPopover();
-      setTimeout(() => { if (t.matches(':popover-open')) t.hidePopover(); }, 3000);
+    let timerId;
+    let remainingTime = 3000;
+    let startTime;
+    const t = document.getElementById('toast');
+
+    function startTimer() {
+      startTime = Date.now();
+      timerId = setTimeout(() => {
+        if (t.matches(':popover-open')) t.hidePopover();
+      }, remainingTime);
     }
+
+    function pauseTimer() {
+      clearTimeout(timerId);
+      remainingTime -= (Date.now() - startTime);
+    }
+
+    function showToast() {
+      remainingTime = 3000;
+      t.showPopover();
+      startTimer();
+    }
+
+    t.addEventListener('pointerenter', pauseTimer);
+    t.addEventListener('focusin', pauseTimer);
+    t.addEventListener('pointerleave', startTimer);
+    t.addEventListener('focusout', startTimer);
   </script>
 </body>
 </html>

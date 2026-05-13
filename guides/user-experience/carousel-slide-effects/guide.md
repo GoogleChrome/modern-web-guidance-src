@@ -20,10 +20,12 @@ Here’s how to create carousel slide effects:
 1.  **Create a scroller:** This element will act as the container for your carousel slides. In this example it uses `overflow-x: scroll` to allow horizontal scrolling.
 
     ```html
-    <ul class="scroller">
-      <li class="entry">1</li>
-      <li class="entry">2</li>
-      <li class="entry">3</li>
+    <!-- MANDATORY: Wrap the carousel container in role="region" and set aria-roledescription="carousel" along with an accessible name -->
+    <ul class="scroller" role="region" aria-roledescription="carousel" aria-label="Visual slide showcases">
+      <!-- MANDATORY: Set aria-roledescription="slide" on individual slides -->
+      <li class="entry" aria-roledescription="slide" aria-label="Slide 1 of 3">1</li>
+      <li class="entry" aria-roledescription="slide" aria-label="Slide 2 of 3">2</li>
+      <li class="entry" aria-roledescription="slide" aria-label="Slide 3 of 3">3</li>
       …
     </ul>
     ```
@@ -67,24 +69,22 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 
 ```css
 @keyframes animate {
-  0% {
-    scale: 0.5;
-  }
-
-  50% {
-    scale: 1;
-  }
-
-  100% {
-    scale: 0.5;
-  }
+  0% { scale: 0.5; }
+  50% { scale: 1; }
+  100% { scale: 0.5; }
 }
 
 .scroller > * {
-  /* Applies the animation using an `auto` duration */
   animation: animate auto linear both;
-  /* Sets the animation timeline to use an anonymous view progress timeline, tracking the element's progress through the scroller on the inline axis */
   animation-timeline: view(inline);
+}
+
+/* MANDATORY Copy-Paste Safety: Wrap continuous animation properties in a reduced motion check directly inside the code block */
+@media (prefers-reduced-motion: reduce) {
+  .scroller > * {
+    animation: none !important;
+    scale: 1 !important;
+  }
 }
 ```
 
@@ -92,27 +92,23 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 
 ```css
 @keyframes animate {
-  0% {
-    scale: 0.5;
-  }
-
-  50% {
-    scale: 1;
-  }
-
-  100% {
-    scale: 0.5;
-  }
+  0% { scale: 0.5; }
+  50% { scale: 1; }
+  100% { scale: 0.5; }
 }
 
-/* This creates a named view-timeline on each carousel item. The timeline is used to drive the animation that is applied on the same element. */
 .scroller > * {
-  /* Applies the animation using an `auto` duration */
   animation: animate auto linear both;
-  /* Defines a named view progress timeline, tracking the element's progress through the scroller on the inline axis */
   view-timeline: --item inline;
-  /* Sets the animation timeline to use the named view progress timeline defined above */
   animation-timeline: --item;
+}
+
+/* MANDATORY Copy-Paste Safety: Disable motion for sensitive users */
+@media (prefers-reduced-motion: reduce) {
+  .scroller > * {
+    animation: none !important;
+    scale: 1 !important;
+  }
 }
 ```
 
@@ -140,9 +136,12 @@ When using the `view-timeline` property to create a scroll-driven animation:
 - **OPTIONAL** be explicit about the axis to track: When not targeting the default `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `view-timeline-axis`.
 - **DO** make sure the scope of the lookup works: When the element that is declaring the `view-timeline` is not a flat tree ancestor of the animated element, hoist up the visibility of the `view-timeline`’s name by using `timeline-scope` on a shared ancestor.
 
-## Browser support and fallback strategies
+### Autoplay Considerations
+If your carousel automatically advances or auto-scrolls through slides using continuous timers, you MUST provide a visible, accessible button allowing users to pause the autoplay mechanism. Additionally, default the carousel to a static, paused state if the user has `prefers-reduced-motion: reduce` enabled.
 
-{{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
+## Fallback strategies
+
+{{ FEATURE_FALLBACKS("scroll-driven-animations") }}
 
 For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 

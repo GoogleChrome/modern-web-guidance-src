@@ -103,11 +103,13 @@ The `hidden="until-found"` attribute forces the browser to apply an internal `co
 ```
 
 ```javascript
-// Optional: Handle state synchronization
+// MANDATORY: Handle state synchronization for assistive technologies
 const heavySection = document.querySelector('.heavy-section');
+const triggerBtn = document.querySelector('[aria-controls="heavy-section-id"]');
 
-heavySection.addEventListener('beforematch', (event) => {
-  // Logic to execute immediately before the browser reveals the match
+heavySection.addEventListener('beforematch', () => {
+  // Synchronize related controls immediately before the browser reveals the match
+  triggerBtn?.setAttribute('aria-expanded', 'true');
 });
 ```
 
@@ -117,12 +119,13 @@ heavySection.addEventListener('beforematch', (event) => {
 - **DO NOT** apply `content-visibility: auto` to elements inside the initial fold viewport, as this delays critical page rendering.
 - **DO NOT** apply standard `display: none` or `visibility: hidden` to elements designed to use `hidden="until-found"`, as this permanently excludes them from search discovery.
 - **DO** verify that `hidden="until-found"` handles interactive states gracefully on trigger.
+- **MANDATORY Accessibility Verification**: When applying `content-visibility: auto`, you MUST verify sequential keyboard reachability. In certain assistive technology configurations, off-screen nodes utilizing `content-visibility: auto` may be excluded from the accessibility tree or sequential navigation routes until focus is forcibly moved inside them. Test linear navigation across off-screen boundaries using keyboard alone.
 
 ## Fallback strategies
 
 ### `content-visibility` fallback
 
-{{ BASELINE_STATUS("content-visibility") }}
+{{ FEATURE_FALLBACKS("content-visibility") }}
 
 When `content-visibility` is not supported it will be ignored by the browser. In most cases `content-visibility: auto` will not need a fallback, though without it performance gains will be lost. An unsupported browser will leave `content-visibility: hidden` elements completely visible. Use feature detection to implement a fallback.
 

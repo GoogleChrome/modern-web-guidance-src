@@ -357,6 +357,7 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 - **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`. The `controls` attribute must also be omitted to make sure the video is not focusable.  
 
 - **DON'T** rely on JS for basic video controls if native `controls` attribute is sufficient.
+- **DON'T** apply `role="none"` or `aria-hidden="true"` to focusable elements (such as embedded interactive `<iframe>` components). Hiding elements from the assistive technology tree while leaving them accessible to sequential keyboard navigation violates core accessibility heuristics. The background video exception holds solely because omitting the `controls` attribute renders the `<video>` element fully non-focusable.
 
 ### Code Example
 

@@ -25,22 +25,29 @@ It also provides light dismiss behavior, so when a user clicks or otherwise focu
 The tooltip element must have an `id` attribute with a unique value:
 
 ```html
-<!-- MANDATORY: The tooltip container `<div>` must have a `popover` attribute.
+<!-- MANDATORY: The tooltip container `<div>` must have a `popover` attribute, `role="tooltip"`, and plain text content only.
      the value of `"hint"` ensures it can be "light dismissed". -->
-<div popover="hint" id="tooltip">Tooltip content</div>
+<div popover="hint" role="tooltip" id="tooltip">Tooltip content</div>
 ```
 
 A user expresses interest in the additional information by hovering or focusing on an `<a>` or `<button>` element. The element must have an `interestfor` attribute that matches the `id` attribute of the tooltip.
 
 ```html
-<!-- The `interestfor` attribute can be applied to a `<button>` element: -->
-<button interestfor="tooltip">Tooltip trigger</button>
+<!-- MANDATORY: Programmatically associate the trigger with the tooltip using aria-describedby for assistive technology support -->
+<button interestfor="tooltip" aria-describedby="tooltip">Tooltip trigger</button>
 
-<!-- The `interestfor` attribute can also be applied to an `<a>` element: -->
-<a interestfor="tooltip" href="">Tooltip trigger</a>
+<a interestfor="tooltip" aria-describedby="tooltip" href="">Tooltip trigger</a>
 ```
 
-The trigger must have a visual indicator to indicate that there is additional information available by interacting with the trigger. 
+The trigger must have a visual indicator to indicate that there is additional information available by interacting with the trigger.
+
+### Accessibility Constraints (WCAG 1.4.13)
+
+To ensure hover-triggered popovers comply with WCAG 1.4.13 (Content on Hover or Focus), your implementation MUST guarantee three core behaviors:
+- **Dismissible:** Users must be able to dismiss the tooltip without moving pointer hover or keyboard focus (e.g., by pressing the `Escape` key). The native `popover` attribute manages this binding automatically.
+- **Hoverable:** The pointer must be able to move over the tooltip content itself without the tooltip disappearing. This allows users with magnification tools to read the tooltip text safely.
+- **Persistent:** The tooltip must remain visible until the hover or focus trigger is removed, the user explicitly dismisses it, or its content is no longer valid.
+- **Plaintext Content Only:** Do not place interactive elements (links, buttons) inside a tooltip referenced by `aria-describedby`. 
 
 ### Positioning the tooltip
 
@@ -72,9 +79,9 @@ Also, the polyfill does not support `position-area` on popovers, so **MANDATORY:
 
 ### Fallback strategies
 
-{{ BASELINE_STATUS("interest-invokers") }}
+{{ FEATURE_FALLBACKS("interest-invokers") }}
 
-Interest invokers must be conditionally polyfilled with the `interestfor` polyfill, available at https://github.com/mfreed7/interestfor or on NPM. Do prefer bundling the polyfill over using the CDN.
+Interest invokers must be conditionally polyfilled using the `interestfor` polyfill package from NPM. Do prefer bundling the polyfill over using the CDN.
 
 ```html
 <script type="module">

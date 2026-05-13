@@ -103,4 +103,14 @@ test.describe(`Autofill Payment Form Expectations: ${demoName}`, () => {
     expect(result).toBe(true);
   });
 
+  test('Input format hints must be positioned above their corresponding input elements in the markup', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/class=["'][^"']*hint[^"']*["'][\s\S]*?<input/i.test(html)).toBe(true);
+  });
+
+  test('The placeholder attribute must not be used to convey data entry constraints or format examples', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/placeholder=["']MM\/YY["']/i.test(html)).toBe(false);
+  });
+
 });

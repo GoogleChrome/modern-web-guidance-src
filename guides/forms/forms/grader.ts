@@ -394,4 +394,16 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
     await expect(progress.first()).toBeAttached();
   });
 
+  test('The password toggle button must expose state via aria-pressed and link warning via aria-describedby', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/aria-pressed/i.test(html)).toBe(true);
+    expect(/aria-describedby/i.test(html)).toBe(true);
+  });
+
+  test('The implementation must not use <section> elements as individual form field layout containers', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    const formSectionMatch = /<form[^>]*>[\s\S]*?<section/i.test(html);
+    expect(formSectionMatch).toBe(false);
+  });
+
 });

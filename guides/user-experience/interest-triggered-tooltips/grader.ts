@@ -128,6 +128,26 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     expect(hasPseudoTooltip).toBe(false);
   });
 
+  test('Tooltip elements must programmatically associate with triggers using aria-describedby', async () => {
+    expect(/aria-describedby/i.test(html)).toBe(true);
+  });
+
+  test('Tooltips must define role="tooltip"', async () => {
+    expect(/role=["']tooltip["']/i.test(html)).toBe(true);
+  });
+
+  test('Tooltips must be hoverable and persistent per WCAG 1.4.13 guidelines', async () => {
+    expect(/popover=["']hint["']/i.test(html)).toBe(true);
+  });
+
+  test('Tooltips must contain plain text strings only without rich interactive controls', async ({ page }) => {
+    const hasInteractiveChildren = await page.evaluate(() => {
+      const popovers = Array.from(document.querySelectorAll('[popover]'));
+      return popovers.some(p => p.querySelector('button, a, input, select, textarea'));
+    });
+    expect(hasInteractiveChildren).toBe(false);
+  });
+
   test('Tooltip should become visible on hover', async ({ page }) => {
     const trigger = page.locator('[interestfor], .tooltip').first();
     await expect(trigger).toBeVisible();

@@ -182,7 +182,7 @@ input {
 - **DO** use `accent-color` for quick branding of native radios/checkboxes.
 - **DO** use `appearance: none` for custom dropdown arrows without breaking semantics.
 - **DO** ensure inputs are clearly visible with adequate border contrast (e.g., `#ccc` or darker on white backgrounds).
-- **DO** hide inputs visually using `position: absolute; opacity: 0` (NOT `display: none`) to keep them accessible.
+- **DO** hide inputs visually using the canonical `.visually-hidden` recipe (`clip-path: inset(50%)` with 1px dimensions) — NOT `display: none`, which removes them from the accessibility tree.
 
 ### Code Example
 
@@ -195,10 +195,14 @@ input {
 <style>
   .visually-hidden {
     position: absolute;
-    opacity: 0;
-    width: 1rem;
-    height: 1rem;
-    z-index: 1;
+    clip-path: inset(50%);
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    white-space: nowrap;
   }
   .checkbox-label::before {
     content: "";
@@ -258,22 +262,23 @@ form.addEventListener('submit', (e) => {
 
   <h1>Sign up</h1>
 
-  <section>        
+  <div class="form-group">        
     <label for="name">Full name</label>
     <input id="name" name="name" autocomplete="name" required pattern="[\p{L}\.\- ]+">
-  </section>
+  </div>
 
-  <section>        
+  <div class="form-group">        
     <label for="email">Email</label>
     <input id="email" name="email" type="email" autocomplete="username" required>
-  </section>
+  </div>
 
-  <section>
+  <div class="form-group">
     <label for="password">Password</label>
-    <button id="toggle-password" type="button" aria-label="Show password as plain text. Warning: this will display your password on the screen.">Show password</button>
+    <button id="toggle-password" type="button" aria-pressed="false" aria-describedby="toggle-warning">Show password</button>
+    <span id="toggle-warning" class="visually-hidden">Warning: this will display your password on the screen.</span>
     <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" aria-describedby="password-constraints" required>
     <div id="password-constraints">Eight or more characters.</div>
-  </section>
+  </div>
 
   <button id="sign-up">Sign up</button>
 </form>

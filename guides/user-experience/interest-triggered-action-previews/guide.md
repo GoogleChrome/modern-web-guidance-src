@@ -27,19 +27,31 @@ An interest relationship is created by setting the `interestfor` attribute on a 
 <button interestfor="interestingElement" data-effect="A">Some effect</button>
 <button interestfor="interestingElement" data-effect="B">Some other effect</button>
 <div id="interestingElement">Something interesting</div>
+
+<!-- MANDATORY: Supply a centralized polite live region to ensure preview state updates are accessible to screen readers -->
+<div id="preview-announcer" role="status" aria-live="polite" class="visually-hidden"></div>
 ```
 
 For the sake of this use case, we can leverage the `interest` and `loseinterest` events to preview various effects for an interest target. Both of these events are `InterestEvent`s which has a `source` property which is the source of the interest (i.e. the element with the `interestfor` attribute).
 
 ```javascript
+const previewAnnouncer = document.getElementById('preview-announcer');
+
 interestingElement.addEventListener("interest", event => {
   // Apply the preview based on `event.source`
   event.target.dataset.preview = event.source.dataset.effect;
+  // MANDATORY: Expose preview state programmatically to assistive technologies
+  if (previewAnnouncer) {
+    previewAnnouncer.textContent = `Previewing effect: ${event.source.dataset.effect}`;
+  }
 });
 
 interestingElement.addEventListener("loseinterest", event => {
   // Unapply the preview
   delete event.target.dataset.preview;
+  if (previewAnnouncer) {
+    previewAnnouncer.textContent = '';
+  }
 });
 ```
 
@@ -62,9 +74,9 @@ The start and end delay for an interest invoker (i.e. the element with the `inte
 
 ### Fallback strategies
 
-{{ BASELINE_STATUS("interest-invokers") }}
+{{ FEATURE_FALLBACKS("interest-invokers") }}
 
-Interest invokers must be conditionally polyfilled with the `interestfor` polyfill, available at https://github.com/mfreed7/interestfor or on NPM. Do prefer bundling the polyfill over using the CDN.
+Interest invokers must be conditionally polyfilled using the `interestfor` polyfill package from NPM. Do prefer bundling the polyfill over using the CDN.
 
 ```html
 <script type="module">

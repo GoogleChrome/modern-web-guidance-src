@@ -34,6 +34,8 @@ MANDATORY: Rely on standard HTML5 attributes for email fields. The error message
 <form>
   <div class="field">
     <label for="email">Email Address</label>
+    <!-- MANDATORY: Place format hints above the input so autocomplete popovers don't cover them during editing -->
+    <span id="email-hint" class="hint">Format: you@example.com</span>
     <!-- DO: Use standard HTML validation attributes like type="email" and required -->
     <input
       type="email"
@@ -41,17 +43,24 @@ MANDATORY: Rely on standard HTML5 attributes for email fields. The error message
       name="email"
       required
       autocomplete="email"
-      placeholder="you@example.com"
+      aria-describedby="email-hint"
       aria-errormessage="email-error"
     >
     <div id="email-error" class="error-msg">
-      Please enter a valid email address (e.g. name@domain.com).
+      <span aria-hidden="true">❌</span> Please enter a valid email address.
     </div>
   </div>
 </form>
 ```
 
 ```css
+.hint {
+  display: block;
+  color: #5f6368;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
 .error-msg {
   display: none;
   color: #d93025;
@@ -61,7 +70,7 @@ MANDATORY: Rely on standard HTML5 attributes for email fields. The error message
 
 /*
   DO: Only show error styles after user interaction.
-  This prevents the "angry red border" on page load.
+  Use multiple indicators (border/background shift + icon/text) to avoid color-only states.
 */
 input:user-invalid {
   border-color: #d93025;
@@ -73,7 +82,7 @@ input:user-invalid + .error-msg {
   display: block;
 }
 
-/* DO: Optionally provide a green success state on :user-valid */
+/* DO: Provide a clear success indication on :user-valid */
 input:user-valid {
   border-color: #188038;
 }
@@ -81,19 +90,21 @@ input:user-valid {
 
 ### Use Case 2: Password Complexity
 
-MANDATORY: Define the complexity rule using a Regex Lookahead pattern in the `pattern` attribute. The rules list is shown to guide the user, and highlighted if there's an error.
+MANDATORY: Define the complexity rule using a Regex Lookahead pattern in the `pattern` attribute. The rules list is shown above the input to guide the user, and highlighted if there's an error.
 
 ```html
 <form>
   <div class="field">
     <label for="password">New Password</label>
+    <!-- MANDATORY: Place hints and rules above the input so mobile keyboards do not obscure them -->
+    <ul id="password-rules" class="rules-list">
+      <li>At least 8 characters</li>
+      <li>One uppercase letter</li>
+      <li>One number</li>
+      <li>One special character</li>
+    </ul>
     <!-- DO: Use pattern and minlength for complex password validation
          DO: Match all constraints with lookaheads via pattern attribute
-         (?=.*\d)       : Must contain at least one digit
-         (?=.*[a-z])    : Must contain at least one lowercase letter
-         (?=.*[A-Z])    : Must contain at least one uppercase letter
-         (?=.*[\W_])    : Must contain at least one special char
-         .{8,}          : Must be at least 8 chars long
      -->
     <input
       type="password"
@@ -104,20 +115,16 @@ MANDATORY: Define the complexity rule using a Regex Lookahead pattern in the `pa
       minlength="8"
       aria-describedby="password-rules"
     >
-    <!-- DO NOT: Hide the rules initially. Users need them to know what to type. -->
-    <ul id="password-rules" class="rules-list">
-      <li>At least 8 characters</li>
-      <li>One uppercase letter</li>
-      <li>One number</li>
-      <li>One special character</li>
-    </ul>
   </div>
 </form>
 ```
 
 ```css
 /* DO: State the default styling as neutral */
-.rules-list { color: #5f6368; }
+.rules-list { 
+  color: #5f6368; 
+  margin-bottom: 0.5rem;
+}
 
 /* DO: Show invalid state (After interaction): Error */
 input:user-invalid {
@@ -125,17 +132,19 @@ input:user-invalid {
   background-color: #fce8e6;
 }
 
-/* DO: Highlight rules list when error is shown */
-input:user-invalid + .rules-list {
+/* DO: Highlight rules list when error is shown using the modern :has() selector */
+.field:has(input:user-invalid) .rules-list {
   color: #d93025;
+  font-weight: 600;
 }
 
 /* DO: Add success indications for :user-valid state */
 input:user-valid {
   border-color: #188038;
 }
-/* DO: Hide rules or turn them green once satisfied */
-input:user-valid + .rules-list {
+
+/* DO: Hide rules once satisfied */
+.field:has(input:user-valid) .rules-list {
   display: none;
 }
 ```

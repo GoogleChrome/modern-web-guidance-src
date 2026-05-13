@@ -46,6 +46,11 @@ test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
     }
   });
 
+  test('Standalone code examples must document or assume a complete heading hierarchy outline', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/Assume an <h1>|<h1>/i.test(html)).toBe(true);
+  });
+
   // Browser tests
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {

@@ -402,7 +402,8 @@
           <div class="form-group password-wrapper">
             <label for="password">Password <span class="required-indicator" aria-hidden="true">*</span></label>
             <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8" aria-required="true" aria-describedby="passwordHint">
-            <button type="button" id="togglePassword" class="password-toggle" aria-label="Show password">Show</button>
+            <button type="button" id="togglePassword" class="password-toggle" aria-pressed="false" aria-describedby="toggleWarning">Show</button>
+            <span id="toggleWarning" class="visually-hidden">Warning: this will display your password on the screen.</span>
             <span id="passwordHint" class="hint">Must be at least 8 characters long.</span>
             <span id="passwordError" class="error-message" role="alert"></span>
           </div>
@@ -595,10 +596,10 @@
     const passwordInput = document.getElementById('password');
     
     togglePassword.addEventListener('click', () => {
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
-      togglePassword.textContent = type === 'password' ? 'Show' : 'Hide';
-      togglePassword.setAttribute('aria-label', type === 'password' ? 'Show password' : 'Hide password');
+      const isPassword = passwordInput.getAttribute('type') === 'password';
+      passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+      togglePassword.textContent = isPassword ? 'Hide' : 'Show';
+      togglePassword.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
     });
     
     // Validation Logic

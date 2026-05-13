@@ -19,8 +19,10 @@ Onboarding tours require overlays that persist while users interact with the hig
 ```html
 <div id="feature-target">Highlight this feature</div>
 
-<div id="tour-step" popover="manual">
-  <h3>Step 1</h3>
+<!-- MANDATORY: Enforce overlay dialog semantics and accessible name bindings -->
+<div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title">
+  <!-- Assume an <h1> precedes this element in the full document outline -->
+  <h2 id="tour-title">Step 1</h2>
   <p>Learn how to use this feature.</p>
   <button popovertarget="tour-step" popovertargetaction="hide">Got it</button>
 </div>
@@ -47,20 +49,23 @@ Onboarding tours require overlays that persist while users interact with the hig
 
 #### JavaScript
 ```javascript
-document.getElementById('tour-step').showPopover();
+const tourStep = document.getElementById('tour-step');
+tourStep.showPopover();
+// MANDATORY: Programmatically route focus into the non-modal popover so keyboard/assistive technology users immediately perceive the new context
+tourStep.querySelector('button').focus();
 ```
 
 ### Implementation Guidelines
 
 * **MANDATORY:** Use `popover="manual"` to prevent the tour step from closing accidentally during user interaction.
+* **MANDATORY:** Mark the container with `role="dialog"` and link its heading via `aria-labelledby`.
+* **MANDATORY:** Shift programmatic focus inside the popover immediately after opening to prevent focus abandonment.
 * **DO** use CSS Anchor Positioning to tether the tour step to the specific feature being explained.
 * **DO** provide an explicit "Close" or "Next" button within the popover that uses `popovertargetaction="hide"`.
 
 ### Fallback strategies
 
-#### popover
-
-{{ BASELINE_STATUS("popover") }}
+{{ FEATURE_FALLBACKS("popover") }}
 
 If the browser does not support Popover, use the `@oddbird/popover-polyfill`:
 

@@ -25,7 +25,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 
 ### 1. HTML Structure
 ```html
-<form>
+<form id="feedback-form">
   <div class="field">
     <label for="full-name">Full Name</label>
     <input
@@ -35,8 +35,9 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
       required
       aria-errormessage="name-error"
     >
+    <!-- MANDATORY: Include an icon or distinct non-color indicator alongside error text -->
     <div id="name-error" class="error-msg">
-      This field is required.
+      <span aria-hidden="true">❌</span> This field is required.
     </div>
   </div>
 </form>
@@ -53,6 +54,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 
 /*
   Only highlight empty required fields AFTER the user visits them.
+  MANDATORY: Provide multiple indicators (border shift + helper text/icon) to avoid color-only state communication.
 */
 input:user-invalid {
   border-color: #d93025;
@@ -68,6 +70,41 @@ input:required:user-valid {
   border-color: #188038;
   border-width: 2px;
 }
+```
+
+### 3. JavaScript State Synchronization
+
+MANDATORY: Because `:user-invalid` is a visual state, you MUST provide a JavaScript bridge to sync `aria-invalid="true"` dynamically for assistive technologies when a user blurs an invalid field or attempts submission.
+
+```javascript
+const form = document.getElementById('feedback-form');
+
+const syncAriaInvalid = (input) => {
+  if (!input.checkValidity()) {
+    input.setAttribute('aria-invalid', 'true');
+  } else {
+    input.removeAttribute('aria-invalid');
+  }
+};
+
+// Sync on blur when a user finishes interacting
+form.addEventListener('blur', (e) => {
+  if (e.target.matches('input[required]')) {
+    syncAriaInvalid(e.target);
+  }
+}, true);
+
+// Sync all required fields when submission is attempted
+form.addEventListener('submit', () => {
+  form.querySelectorAll('input[required]').forEach(syncAriaInvalid);
+});
+
+// Remove error state immediately upon correction
+form.addEventListener('input', (e) => {
+  if (e.target.matches('input[required]') && e.target.checkValidity()) {
+    e.target.removeAttribute('aria-invalid');
+  }
+});
 ```
 
 ## Fallbacking & Browser Support

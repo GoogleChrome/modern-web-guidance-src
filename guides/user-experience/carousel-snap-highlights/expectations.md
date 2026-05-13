@@ -8,3 +8,6 @@
 * When the carousel is scrolled so a different item is snapped, the highlight styles move to the new snapped item's card.
 * Non-snapped items remain in their default state (grey background, no scale)
 * If scroll-state is not supported, the `.is-snapped` class is correctly toggled by JavaScript.
+* The carousel container MUST set `role="region"`, define `aria-roledescription="carousel"`, and provide an accessible name via `aria-label` or `aria-labelledby`.
+* Individual carousel items MUST set `aria-roledescription="slide"`.
+* If an autoplay mechanism is implemented, a visible button to pause the auto-advancing slides MUST be provided.

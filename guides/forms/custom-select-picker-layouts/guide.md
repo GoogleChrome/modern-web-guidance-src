@@ -71,9 +71,11 @@ To implement a custom select picker layout:
   border-radius: 6px;
 }
 
+/* MANDATORY: Use multiple visual indicators (distinct border thickness, background shift, and font weight) for the checked state to avoid color-only state communication */
 .grid-picker option:checked {
-  border-color: #007bff;
+  border: 2px solid #007bff;
   background-color: #f0f7ff;
+  font-weight: 700;
 }
 ```
 
@@ -81,7 +83,7 @@ To implement a custom select picker layout:
 
 - **DO** use `appearance: base-select` when you need to change the visual layout of options from a standard list to a 2D grid or custom flex flow.
 - **DO NOT** assume the styles apply to all browsers equally yet; verify support and provide a fallback.
-- **DO NOT** confuse visual layout with keyboard navigation. Standard select uses linear navigation. If you arrange options in a grid, ensure visual order matches DOM order so tab/arrow navigation makes sense.
+- **MANDATORY Accessibility Routing**: A native `<select>` element enforces one-dimensional linear arrow-key navigation (Up/Down). Arranging options in a 2D visual grid creates a spatial mismatch where pressing Left/Right arrows does not move focus horizontally between adjacent columns. If true two-dimensional keyboard navigation is essential for usability, do not use a native `<select>`; implement a custom ARIA `role="listbox"` composite widget with manual JavaScript matrix-based arrow key navigation instead.
 - **DO** use `<selectedcontent>` if you want the trigger button to show images or icons from the selected option automatically.
 - **DO** use standard `value` attributes on options to ensure form submission works exactly as before.
 - **DO** ensure your `<select>` has a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.

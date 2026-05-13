@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Resilient Context Menu</title>
+    <title>Resilient Action Panel</title>
 
     <!-- Polyfill for CSS Anchor Positioning -->
     <script type="module">
@@ -79,7 +79,7 @@
         background-color: #e0e0e0;
       }
 
-      .menu {
+      .panel {
         /* Native popover styles reset / setup */
         padding: 8px 0;
         border: 1px solid #d0d7de;
@@ -100,7 +100,7 @@
         position-try-fallbacks: flip-block, flip-inline;
       }
 
-      .submenu {
+      .subpanel {
         padding: 8px 0;
         border: 1px solid #d0d7de;
         border-radius: 8px;
@@ -108,7 +108,7 @@
         box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
         min-width: 140px;
 
-        position-anchor: --submenu-trigger;
+        position-anchor: --subpanel-trigger;
 
         /* Mandatory: use insets rather that position-area for positioning */
         bottom: auto;
@@ -120,7 +120,7 @@
         position-try-fallbacks: flip-inline, flip-block;
       }
 
-      .menu-item {
+      .action-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -134,23 +134,23 @@
         color: #24292f;
       }
 
-      .menu-item:hover,
-      .menu-item:focus-visible {
+      .action-item:hover,
+      .action-item:focus-visible {
         background-color: #f3f4f6;
       }
 
-      .menu-item::after {
+      .action-item::after {
         content: "›";
         font-size: 18px;
         color: #768390;
         display: none;
       }
 
-      .has-submenu > .menu-item::after {
+      .has-subpanel > .action-item::after {
         display: block;
       }
-      .submenu-trigger {
-        anchor-name: --submenu-trigger;
+      .subpanel-trigger {
+        anchor-name: --subpanel-trigger;
       }
     </style>
   </head>
@@ -161,31 +161,32 @@
       <button
         id="trigger-btn"
         class="kebab-button"
-        popovertarget="dropdown-menu"
-        aria-label="Open context menu"
+        popovertarget="action-panel"
+        aria-haspopup="true"
+        aria-label="Open action panel"
       >
         &#8942;
       </button>
     </div>
 
-    <!-- The actual dropdown menu (Popover API) -->
-    <div id="dropdown-menu" class="menu" popover="auto">
-      <button class="menu-item" type="button">Edit</button>
-      <div class="has-submenu">
+    <!-- The actual action panel (Popover API) -->
+    <div id="action-panel" class="panel" popover="auto">
+      <button class="action-item" type="button">Edit</button>
+      <div class="has-subpanel">
         <button
-          class="menu-item submenu-trigger"
+          class="action-item subpanel-trigger"
           type="button"
-          popovertarget="submenu-options"
+          popovertarget="subpanel-options"
         >
           Share
         </button>
-        <div id="submenu-options" class="submenu" popover="auto">
-          <button class="menu-item" type="button">Copy Link</button>
-          <button class="menu-item" type="button">Email</button>
+        <div id="subpanel-options" class="subpanel" popover="auto">
+          <button class="action-item" type="button">Copy Link</button>
+          <button class="action-item" type="button">Email</button>
         </div>
       </div>
-      <button class="menu-item" type="button">Duplicate</button>
-      <button class="menu-item" type="button" style="color: #cf222e">
+      <button class="action-item" type="button">Duplicate</button>
+      <button class="action-item" type="button" style="color: #cf222e">
         Delete
       </button>
     </div>

@@ -80,4 +80,16 @@ test.describe(`Carousel Item Effects Expectations: ${demoName}`, () => {
     expect(html).toContain('prefers-reduced-motion');
   });
 
+  test(`MANDATORY: The carousel container must set role="region", define aria-roledescription="carousel", and provide an accessible name`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/role=["']region["']/i.test(html)).toBe(true);
+    expect(/aria-roledescription=["']carousel["']/i.test(html)).toBe(true);
+    expect(/aria-label/i.test(html)).toBe(true);
+  });
+
+  test(`MANDATORY: Individual slides must set aria-roledescription="slide"`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/aria-roledescription=["']slide["']/i.test(html)).toBe(true);
+  });
+
 });

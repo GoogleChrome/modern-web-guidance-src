@@ -37,8 +37,8 @@ The following example demonstrates a custom select styled with standard page ani
     <selectedcontent></selectedcontent>
   </button>
   <option value="system">
-    <!-- SVGs are allowed inside options when appearance: base-select is active -->
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- MANDATORY: Decorative inline SVGs MUST set aria-hidden="true" to prevent redundant screen reader announcement -->
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
       <line x1="8" y1="21" x2="16" y2="21"></line>
       <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -46,7 +46,7 @@ The following example demonstrates a custom select styled with standard page ani
     System Default
   </option>
   <option value="light">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
       <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -138,6 +138,20 @@ The following example demonstrates a custom select styled with standard page ani
   flex-shrink: 0; /* Prevent icons from shrinking */
   width: 1.25rem;
   height: 1.25rem;
+}
+
+/* MANDATORY: Provide multiple indicators (e.g. bold font and distinct background) for the checked state to avoid color-only state communication */
+.animated-select option:checked {
+  font-weight: 700;
+  background-color: #f1f5f9;
+}
+
+/* Ensure copy-paste safety for users with motion sensitivities */
+@media (prefers-reduced-motion: reduce) {
+  .animated-select::picker(select),
+  .animated-select::picker-icon {
+    transition: none !important;
+  }
 }
 ```
 
