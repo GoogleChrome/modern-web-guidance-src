@@ -13,6 +13,7 @@ declare global {
     __LM_LOGS__: {
       calls: any[];
       innerHTMLUsed: boolean;
+      sessionCounter: number;
     };
     LanguageModel: any;
     ai: any;
@@ -26,6 +27,7 @@ test.beforeEach(async ({ page }) => {
     window.__LM_LOGS__ = {
       calls: [],
       innerHTMLUsed: false,
+      sessionCounter: 0,
     };
 
     // Track innerHTML usage
@@ -44,9 +46,11 @@ test.beforeEach(async ({ page }) => {
       contextUsage = 10;
       contextWindow = 1024;
       __source: string;
+      __id: number;
       constructor(source: string) {
         this.__source = source;
-        window.__LM_LOGS__.calls.push({ method: 'LanguageModel.create', source });
+        this.__id = ++window.__LM_LOGS__.sessionCounter;
+        window.__LM_LOGS__.calls.push({ method: 'LanguageModel.create', source, sessionId: this.__id });
       }
       async prompt(text: any, options: any) {
         window.__LM_LOGS__.calls.push({ method: 'session.prompt', text, options, source: this.__source });
@@ -72,10 +76,10 @@ test.beforeEach(async ({ page }) => {
         });
       }
       async destroy() {
-        window.__LM_LOGS__.calls.push({ method: 'session.destroy', source: this.__source });
+        window.__LM_LOGS__.calls.push({ method: 'session.destroy', source: this.__source, sessionId: this.__id });
       }
       async clone() {
-        window.__LM_LOGS__.calls.push({ method: 'session.clone', source: this.__source });
+        window.__LM_LOGS__.calls.push({ method: 'session.clone', source: this.__source, sessionId: this.__id });
         return new MockSession(this.__source);
       }
     }
@@ -302,11 +306,20 @@ test('15. session.clone() usage and base destruction', async ({ page }) => {
   if (await cloneBtn.isVisible()) await cloneBtn.click();
   const runBtn = page.locator('#run');
   if (await runBtn.isVisible()) await runBtn.click();
-  
+
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const cloneCalls = logs.calls.filter(c => c.method === 'session.clone' && c.source === 'window.LanguageModel');
   expect(cloneCalls.length).toBeGreaterThan(0);
+
+  // Verify each cloned base session is subsequently destroyed
+  for (const cloneCall of cloneCalls) {
+    const cloneIdx = logs.calls.findIndex(c => c.method === 'session.clone' && c.sessionId === cloneCall.sessionId);
+    const destroyAfterClone = logs.calls.slice(cloneIdx + 1).find(c =>
+      c.method === 'session.destroy' && c.sessionId === cloneCall.sessionId
+    );
+    expect(destroyAfterClone).toBeDefined();
+  }
 });
 
 test('16. contextUsage and contextWindow should be used', async ({ page }) => {
