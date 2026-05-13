@@ -1,17 +1,14 @@
 - Buttons use the "commandfor" and "command" attributes to trigger actions.
 - All custom command names start with "--".
+- Invoker buttons have initial accessibility attributes (e.g., `aria-expanded="false"`) where appropriate.
 - Clicking the "Spin" button toggles the "is-spun" class on the target element.
 - Clicking the "Grow" button toggles the "is-grown" class on the target element.
 - Clicking the "Reset All" button removes the "is-spun" and "is-grown" classes from the target element.
+- When an action is triggered, the `aria-expanded` attribute of the source button is manually updated to reflect the new state.
 - The demo checks for native support of the Invoker Commands API before deciding to load a fallback strategy.
 - The demo includes a "Force Fallback Mode" to allow testing the fallback strategy in supporting browsers.
-- The fallback strategy uses an async IIFE to load the polyfill conditionally and avoid top-level await issues.
+- The fallback strategy uses an async IIFE and the `https://esm.run/invokers-polyfill` CDN link to load the polyfill conditionally and avoid top-level await issues.
 - The `command` event listener is attached directly to the target element.
 - The `command` event listener uses the `{ capture: true }` option.
 - The `command` event listener uses a command registry to map command names to actions.
-- The `command` event listener identifies the action via the `command` property of the event object.
-- Clicking the "Make Round" button toggles the "is-rounded" class on the target element.
-- Clicking the "Reset All" button removes the "is-spun", "is-grown", and "is-rounded" classes from the target element.
-- The demo checks for native support of the Invoker Commands API before deciding to load a fallback.
-- If native support is missing, the `invokers-polyfill` is dynamically imported from a CDN.
-- The `command` event listener handles both native (`event.command`) and polyfilled (`event.detail.command`) event data.
+- The `command` event listener handles both native (`event.command`) and polyfilled/manual (`event.detail.command`) event data.

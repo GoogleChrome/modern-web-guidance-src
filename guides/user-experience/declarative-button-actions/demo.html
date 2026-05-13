@@ -132,8 +132,8 @@
         using the 'commandfor' attribute. They dispatch custom 
         commands (e.g. '--spin') to that element when clicked. 
       -->
-      <button commandfor="action-target" command="--spin">Spin</button>
-      <button commandfor="action-target" command="--grow">Grow</button>
+      <button commandfor="action-target" command="--spin" aria-expanded="false">Spin</button>
+      <button commandfor="action-target" command="--grow" aria-expanded="false">Grow</button>
       <button commandfor="action-target" command="--reset">Reset All</button>
     </div>
     
@@ -161,9 +161,22 @@
 
     // 1. Define a registry of requested actions for cleaner logic
     const commandRegistry = {
-      '--spin': (target) => target.classList.toggle('is-spun'),
-      '--grow': (target) => target.classList.toggle('is-grown'),
-      '--reset': (target) => target.classList.remove('is-spun', 'is-grown'),
+      '--spin': (target, source) => {
+        const isSpun = target.classList.toggle('is-spun');
+        // Manually sync ARIA states as the polyfill does not handle this automatically
+        source?.setAttribute('aria-expanded', isSpun);
+      },
+      '--grow': (target, source) => {
+        const isGrown = target.classList.toggle('is-grown');
+        source?.setAttribute('aria-expanded', isGrown);
+      },
+      '--reset': (target) => {
+        target.classList.remove('is-spun', 'is-grown');
+        // Reset all associated buttons' ARIA states
+        document.querySelectorAll(`button[commandfor="${target.id}"]`).forEach(btn => {
+          btn.setAttribute('aria-expanded', 'false');
+        });
+      },
     };
     
     // 2. Feature Detection: Always check the prototype for maximum reliability
@@ -208,10 +221,11 @@
       // Robustly handle both native API (event.command) and polyfill (event.detail.command)
       const command = event.command || event.detail?.command;
       const target = event.currentTarget;
+      const source = event.source; // event.source refers to the triggering button
       const action = commandRegistry[command];
 
       if (action) {
-        action(target);
+        action(target, source);
       }
     }, { capture: true });
   </script>
