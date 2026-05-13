@@ -21,7 +21,7 @@ For custom, application-specific actions, you can define your own command names.
 
 1.  **Define the target element**: Identify the element that will respond to the action. If it doesn’t have a unique `id`, add one.
 2.  **Configure the invoker button**: Use the `commandfor` attribute to point to the target's `id`, and the `command` attribute to specify the custom command name (prefixed with `--`).
-3.  **Handle the command event**: Attach a `command` event listener to the `document` (or a common parent). This ensures that the event is captured even if it is dispatched by a polyfill or from a child element. The event object contains a `command` property and a `target` property (referring to the element identified by `commandfor`).
+3.  **Handle the command event**: Attach a `command` event listener directly on the target element. The event object contains a `command` property and a `target` property (referring to the element identified by `commandfor`).
 
 ## Example: Custom Animation Controls
 
@@ -46,21 +46,22 @@ For custom, application-specific actions, you can define your own command names.
 </button>
 
 <script>
-  // Listen for the 'command' event directly on the target element
+  // 1. **Optional:** Define a registry of requested actions for cleaner logic
+const commandRegistry = {
+  '--spin': (target) => target.classList.toggle('is-spun'),
+  '--grow': (target) => target.classList.toggle('is-grown'),
+  '--reset': (target) => target.classList.remove('is-spun', 'is-grown'),
+};
+
+  // 2. **Mandatory:** Listen for the 'command' event directly on the target element
   // (This is necessary because the native 'command' event does not bubble)
   document.getElementById('action-target').addEventListener('command', (event) => {
-    // Robustly handle both native API and manual/polyfill fallbacks
-    const command = event.command || event.detail?.command;
+    const command = event.command;
     const target = event.currentTarget;
+    const action = commandRegistry[command];
 
-    // Custom commands are checked to identify the requested action
-    if (command === '--spin') {
-      target.classList.toggle('is-spun');
-    } else if (command === '--grow') {
-      target.classList.toggle('is-grown');
-    } else if (command === '--reset') {
-      // Clear all custom classes to return to initial state
-      target.classList.remove('is-spun', 'is-grown');
+    if (action) {
+      action(target);
     }
   });
 </script>
@@ -103,7 +104,7 @@ if (!hasNativeSupport) {
 If you prefer not to use a polyfill, you can use a combination of **event delegation** to dispatch events and a **command registry** to handle the actions. This is a common architectural pattern in traditional JavaScript development that remains highly efficient and scalable.
 
 ```javascript
-// 1. Define a registry of requested actions for cleaner logic
+// 1. **Optional:** Define a registry of requested actions for cleaner logic
 const commandRegistry = {
   '--spin': (target) => target.classList.toggle('is-spun'),
   '--grow': (target) => target.classList.toggle('is-grown'),
@@ -137,7 +138,7 @@ if (!globalThis.CommandEvent) {
     }
   });
 
-// 4. The unified listener: Registered directly on the target element
+// 4. **Mandatory:** Register the unified listener directly on the target element
 document.getElementById('action-target').addEventListener('command', (event) => {
   const command = event.command || event.detail?.command;
   const target = event.currentTarget;
