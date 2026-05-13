@@ -36,6 +36,18 @@ describe('replaceMacros (Functional with real data)', () => {
       );
     });
 
+    it('replaces macro with declarative-webmcp status', () => {
+      const content = '{{ BASELINE_STATUS("declarative-webmcp") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.ok(result.includes('WebMCP') && result.includes('limited availability'));
+    });
+
+    it('replaces macro with canvas-html status', () => {
+      const content = '{{ BASELINE_STATUS("canvas-html") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.ok(result.includes('HTML in canvas') && result.includes('limited availability'));
+    });
+
     it('throws error for non-existent feature', () => {
       const content = '{{ BASELINE_STATUS("non-existent-feature-xyz") }}';
       assert.throws(() => replaceMacros(content, 'test.md'), /Web feature ID "non-existent-feature-xyz" not found/);
