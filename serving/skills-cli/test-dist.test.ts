@@ -18,7 +18,7 @@ export function assertSearchResults(output: string) {
     const topResult = results[0];
     assert.ok(topResult.id, 'Top result should have an id');
     assert.ok(topResult.description, 'Top result should have a description');
-    assert.ok(topResult.distance, 'Top result should have a distance');
+    assert.ok(topResult.similarity, 'Top result should have a similarity');
 }
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
@@ -119,6 +119,13 @@ test('modern-web CLI search and retrieve', async () => {
   // 2. Validate retrieve
   const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
+
+  // 3. Validate list
+  const listOut = execSync(`node "${binaryPath}" list`, { encoding: 'utf8' });
+  assert.ok(listOut.includes('accessible-error-announcement'), 'List output should contain known guide IDs');
+  const catalog = JSON.parse(listOut);
+  assert.ok(Array.isArray(catalog), 'List output should be a JSON array');
+  assert.ok(catalog.length > 100, 'Catalog should contain all documented guidelines');
 });
 
 test('modern-web CLI version flags', async () => {
