@@ -17,12 +17,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Needed for tag history
+          fetch-depth: 0
+      - run: git fetch --tags
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -34,6 +38,9 @@ jobs:
         env:
           TEST_REPORTER: spec
         run: pnpm run preflight
+
+      - name: Verify publish-skills (Dry Run)
+        run: pnpm --filter serving run publish-skills --dry-run
 
       # Fail if any changes were written to any source files or generated untracked files
       - run: git add -A && git diff --cached --exit-code
@@ -53,12 +60,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+      - run: git fetch --tags
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
           cache: 'pnpm'

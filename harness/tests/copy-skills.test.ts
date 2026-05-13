@@ -29,10 +29,10 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         homeDir = createIsolatedHome('test-copy-skills');
         
         // 2. Run copySkills (cli = true). This might trigger a build if dist is missing
-        const success = copySkills(homeDir, Agents.JETSKI, true);
+        const success = copySkills(homeDir, Agents.JETSKI, true, ['modern-web-guidance']);
         assert.ok(success, 'copySkills should succeed');
 
-        const skillDir = path.join(homeDir, '.gemini', 'jetski', 'skills', 'modern-web-use-cases');
+        const skillDir = path.join(homeDir, '.gemini', 'jetski', 'skills', 'modern-web-guidance');
         assert.ok(fs.existsSync(skillDir), 'Skill directory should exist');
         
         const mjsPath = path.join(skillDir, 'modern-web.mjs');
@@ -55,7 +55,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
 
         // 4. Run the CLI to search
         // We need to extend PATH to make sure node is available if needed, but it should be
-        const cmd = `node ${mjsPath} --search "address form"`;
+        const cmd = `node ${mjsPath} search "address form"`;
         const output = execSync(cmd, { encoding: 'utf8' });
         assertSearchResults(output);
         
@@ -96,7 +96,7 @@ test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip:
         };
 
         const agentScript = path.resolve(import.meta.dirname, '../agents/gemini-cli-agent.ts');
-        const cmd = `node ${agentScript} "use modern-web to search for address form" guided "${targetDir}" "${templateDir}"`;
+        const cmd = `node ${agentScript} "use modern-web-guidance to search for address form" guided "${targetDir}" "${templateDir}"`;
 
         execSync(cmd, { env, stdio: 'inherit' });
         
@@ -112,7 +112,7 @@ test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip:
         console.log(`- Retrieve Called: ${retrieveCalled}\n`);
         
         // Assert all, but we get the log above first!
-        assert.ok(skillActivated, 'Skill should specify check for modern-web-use-cases activation');
+        assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
         assert.ok(searchCalled, 'Modern web search should be called');
         assert.ok(retrieveCalled, 'Modern web retrieve should be called');
 

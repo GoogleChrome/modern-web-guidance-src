@@ -56,9 +56,9 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string,
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
     await runCommand('node', [
-      '--experimental-strip-types', 
-      agentScript, 
-      JSON.stringify(promptContent), 
+      '--experimental-strip-types',
+      agentScript,
+      JSON.stringify(promptContent),
       'guided', // Default to guided for ad-hoc tool execution
       targetDir,
       templateDir
@@ -104,6 +104,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   // Setup logging to file
   const logFilePath = path.join(testDir, 'test_suite.log');
   const originalConsoleMethods = setupLogging(logFilePath);
+  const suiteStart = Date.now();
 
   console.log(`\n=== Test Suite Starting with ID: ${testID} ===`);
   console.log(`Results will be saved to: ${testDir}\n`);
@@ -117,7 +118,6 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     console.log(`\nStarting execution for ${numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
-
       console.log(`\n${'='.repeat(60)}`);
       console.log(`>>> STARTING RUN ${runNumber} <<<`);
       console.log(`${'='.repeat(60)}\n`);
@@ -160,7 +160,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
         const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-        
+
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
           generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath);
@@ -184,6 +184,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           const pnpmArgs = ['-r', '--no-bail'];
           if (agent === Agents.JETSKI) {
             pnpmArgs.push('--workspace-concurrency', '1');
+          } else if (suiteConfig.workerCount) {
+            pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }
           pnpmArgs.push('run-agent');
           const suiteConfigPath = path.resolve(testDir, 'suite_config.json');
@@ -207,7 +209,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (!options.skipEval) {
-      await evaluateSuite(testDir, testID);
+      await evaluateSuite(testDir, testID, suiteStart);
+    } else {
+      const totalRuntime = Date.now() - suiteStart;
+      console.log(`Total runtime: ${totalRuntime}ms`);
     }
 
     if (hasErrors) {
@@ -384,6 +389,22 @@ function generateTransientPackage(
   const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
+  // Create npx wrapper to intercept modern-web-guidance calls during evals
+  const rootDir = path.resolve(harnessDir, '..');
+  const templatePath = path.join(harnessDir, 'npx-intercept.template.ts');
+  const localCliPath = path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs');
+
+  if (fs.existsSync(templatePath)) {
+    let templateContent = fs.readFileSync(templatePath, 'utf8');
+    templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
+
+    const npxWrapperPath = path.join(targetDir, 'npx');
+    fs.writeFileSync(npxWrapperPath, templateContent);
+    fs.chmodSync(npxWrapperPath, 0o755); // Make executable
+  } else {
+    console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
+  }
+
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
@@ -403,14 +424,33 @@ const args = [
   workspaceBaseAppDir
 ])}
 ];
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+
+// Intercept npx by prepending targetDir to PATH
+const env = { ...process.env };
+env.PATH = \`${targetDir}:\${env.PATH}\`;
+
+const start = Date.now();
+const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
+const runtime = Date.now() - start;
+
+let graderRuntime = null;
+let graderStatus = null;
 
 if (result.status === 0) {
-  console.log("Agent finished successfully. Running grader immediately...");
-  const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
-  process.exit(gradeResult.status ?? 0);
+  const gradeStart = Date.now();
+  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  graderRuntime = Date.now() - gradeStart;
+  graderStatus = gradeResult.status;
 }
-process.exit(result.status ?? 0);
+
+fs.writeFileSync(path.join(${JSON.stringify(targetDir)}, 'runtime.json'), JSON.stringify({
+  agentRuntime: runtime,
+  graderRuntime: graderRuntime,
+  agentStatus: result.status,
+  graderStatus: graderStatus
+}, null, 2));
+
+process.exit(graderStatus !== null ? graderStatus : result.status ?? 0);
 `.trim();
 
   fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);

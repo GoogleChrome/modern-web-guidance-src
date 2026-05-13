@@ -3,10 +3,10 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { getTaskMap } from '../../lib/guide-validation.ts';
-import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
-import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
-import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
+import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
+import { extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gemini-cli-agent.ts';
+import { extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
+import { extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
 import { getGraderScriptContent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
@@ -23,6 +23,13 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   }
   // JETSKI impl does not support trajectory pb parsing, leave model as unknown
   return 'unknown';
+}
+
+export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | null {
+  if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir) ?? null;
+  if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;
+  if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir) ?? null;
+  return null;
 }
 
 function extractErrorMessage(dir: string, targetFile: string): string {
@@ -137,7 +144,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           console.warn("Failed to parse existing package.json, overwriting...");
         }
       }
-      pkgJsonObj.scripts["run-grader"] = `node grade.mjs --id ${relativeId}`;
+      pkgJsonObj.scripts["run-grader"] = `node --experimental-strip-types grade.mjs --id ${relativeId}`;
       fs.writeFileSync(targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
 
       pnpmWorkspacePackages.push(relativeId);
@@ -146,14 +153,31 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
   // --- PASS 1.5: Execute the accumulated grading runs in parallel ---
   if (pnpmWorkspacePackages.length > 0) {
-    console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
+    const rootPkgJsonPath = path.join(resultsDir, 'package.json');
+    let wroteRootPkgJson = false;
+    if (!fs.existsSync(rootPkgJsonPath)) {
+      fs.writeFileSync(rootPkgJsonPath, JSON.stringify({
+        name: "evaluation-suite-workspace",
+        private: true
+      }, null, 2));
+      wroteRootPkgJson = true;
+    }
+
     const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
     fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+
     try {
+      console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
+      spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit' });
+
+      console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
       spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit' });
     } finally {
       if (fs.existsSync(pnpmWorkspacePath)) {
         fs.unlinkSync(pnpmWorkspacePath);
+      }
+      if (wroteRootPkgJson && fs.existsSync(rootPkgJsonPath)) {
+        fs.unlinkSync(rootPkgJsonPath);
       }
     }
     console.log(`✅ Completed parallel grading pass\n`);
@@ -202,11 +226,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         continue;
       }
 
-      let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      const isSkill = taskCategory === 'guides';
+      const isDisciplineSkill = isDisciplineSkillDir(taskInfo.guideDir);
+      let taskCategory = isDisciplineSkill ? path.basename(taskInfo.guideDir) : path.basename(path.dirname(taskInfo.guideDir));
       let expectedToolPrefixes = ['modern-web'].filter(Boolean);
-      if (isSkill) {
-        taskCategory = path.basename(taskInfo.guideDir);
+      if (isDisciplineSkill) {
         expectedToolPrefixes = [taskCategory].filter(Boolean);
       }
 
@@ -261,12 +284,27 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         }
       }
 
-      const testName = `${taskName} - ${guide} - ${runType}`;
+      // For skills, placing the discipline name (`guide`) first ensures it is correctly identified 
+      // and displayed as the main category in the dashboard's transposed layout.
+      const testName = isDisciplineSkill ? `${guide} - ${taskName} - ${runType}` : `${taskName} - ${guide} - ${runType}`;
       const actualBaseApp = taskInfo.baseApp;
+
+      const tokenUsage = extractTokenUsageFromResults(dir, suiteConfig.agent);
 
       if (!allResults[testName]) {
         allResults[testName] = [];
       }
+
+      const runtimeJsonPath = path.join(dir, 'runtime.json');
+      let runtimeData = undefined;
+      if (fs.existsSync(runtimeJsonPath)) {
+        try {
+          runtimeData = JSON.parse(fs.readFileSync(runtimeJsonPath, 'utf-8'));
+        } catch (e) {
+          console.error(`Error parsing runtime.json for ${dir}:`, e);
+        }
+      }
+
       allResults[testName].push({
         runNumber: parseInt(runDir),
         results: scenarioResults,
@@ -275,16 +313,48 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         fileReadGuides: fileReadGuides,
         guidanceToolsUsed: guidanceToolsUsedResult,
         discipline: taskCategory,
-        isSkill: isSkill,
+        isDisciplineSkill: isDisciplineSkill,
         expectedToolPrefixes: expectedToolPrefixes,
         guideName: guide,
-        taskName: taskName,
         baseApp: actualBaseApp,
+        taskName: taskName,
         prompt: taskInfo.prompt,
-        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory())
+        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
+        runtime: runtimeData,
+        tokenUsage: tokenUsage,
       });
     }
   }
 
-  return { allResults, numRuns: runDirs.length };
+  let estimatedRuntime: number | undefined = undefined;
+  const evalsJsonPath = path.join(resultsDir, 'evals.json');
+  if (fs.existsSync(evalsJsonPath)) {
+    try {
+      const evalsContent = fs.readFileSync(evalsJsonPath, 'utf-8');
+      const timestampMatch = evalsContent.match(/"timestamp":\s*"([^"]+)"/);
+      
+      let startTimestamp: Date | null = null;
+      if (timestampMatch) {
+        startTimestamp = new Date(timestampMatch[1]);
+      } else {
+        const logPath = path.join(resultsDir, 'test_suite.log');
+        if (fs.existsSync(logPath)) {
+          const logContent = fs.readFileSync(logPath, 'utf-8');
+          const firstLineMatch = logContent.match(/\[LOG\s([^\]]+)\]/);
+          if (firstLineMatch) {
+            startTimestamp = new Date(firstLineMatch[1]);
+          }
+        }
+      }
+
+      if (startTimestamp) {
+        const endTimestamp = fs.statSync(evalsJsonPath).mtime;
+        estimatedRuntime = endTimestamp.getTime() - startTimestamp.getTime();
+      }
+    } catch (e) {
+      console.error('Failed to estimate runtime during collection:', e);
+    }
+  }
+
+  return { allResults, numRuns: runDirs.length, totalRuntime: estimatedRuntime };
 }

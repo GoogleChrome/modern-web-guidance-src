@@ -12,12 +12,14 @@ export interface RunResult {
   guidanceToolsUsed?: string[];
   expectedToolPrefixes?: string[];
   guideName?: string;
-  isSkill?: boolean;
+  isDisciplineSkill?: boolean;
   taskName?: string;
   baseApp?: string;
   prompt?: string;
-  files?: string[];
+  tokenUsage?: { total: number; cached: number };
 }
+
+
 
 export interface Metrics {
   summary: {
@@ -39,11 +41,15 @@ export interface Metrics {
     totalGuidedNonDisciplineRuns?: number;
     toolActivationRate?: number;
     toolActivationCount?: number;
+
     unguidedEarlyFailures?: number;
     unguidedEarlyFailureRate?: number;
     guidedEarlyFailures?: number;
     guidedEarlyFailureRate?: number;
     guidedNonDisciplineEarlyFailures?: number;
+    totalTokens?: { total: number; cached: number };
+    unguidedTotalTokens?: { total: number; cached: number };
+    guidedTotalTokens?: { total: number; cached: number };
   };
   testStats: Record<string, {
     medianPassRate: number;
@@ -53,8 +59,10 @@ export interface Metrics {
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
-    isSkill?: boolean;
+
+    isDisciplineSkill?: boolean;
     earlyFailures?: number;
+    avgTokens?: { total: number; cached: number };
   }>;
   sortedKeys: string[];
 }
@@ -68,6 +76,7 @@ export interface EvalsReport {
   agent: string;
   serving: string;
   model: string;
+  totalRuntime?: number;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
@@ -95,17 +104,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     return runTypeA.localeCompare(runTypeB);
   });
 
-  const testStats: Record<string, {
-    medianPassRate: number;
-    runPassRates: number[];
-    runsUsingGuide?: number;
-    runsWithToolActivation?: number;
-    runCount?: number;
-    passedChecks: number;
-    totalChecks: number;
-    isSkill?: boolean;
-    earlyFailures?: number;
-  }> = {};
+  const testStats: Metrics['testStats'] = {};
 
   for (const name of sortedKeys) {
     const runs = allResults[name];
@@ -140,7 +139,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         const guidesUsed = run.guidesUsed || [];
         const expectedGuide = run.guideName;
         // For skills, we track guides used but there is no expected guide
-        if (!run.isSkill && expectedGuide && guidesUsed.includes(expectedGuide)) {
+        if (!run.isDisciplineSkill && expectedGuide && guidesUsed.includes(expectedGuide)) {
           guideUsageCount++;
         }
 
@@ -152,16 +151,33 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       });
     }
 
+
+
+    let totalTokensForConfig = 0;
+    let cachedTokensForConfig = 0;
+    let runsWithTokenData = 0;
+
+    runs.forEach(run => {
+      if (run.tokenUsage) {
+        totalTokensForConfig += run.tokenUsage.total || 0;
+        cachedTokensForConfig += run.tokenUsage.cached || 0;
+        runsWithTokenData++;
+      }
+    });
     testStats[name] = {
       medianPassRate: Math.round(median),
       runPassRates: passRates.map(r => Math.round(r)),
       runsUsingGuide: runType === 'guided' ? guideUsageCount : undefined,
       runsWithToolActivation: runType === 'guided' ? toolActivationCount : undefined,
       runCount: runs.length,
-      isSkill: runs[0]?.isSkill,
+      isDisciplineSkill: runs[0]?.isDisciplineSkill,
       passedChecks,
       totalChecks,
-      earlyFailures
+      earlyFailures,
+      avgTokens: runsWithTokenData > 0 ? {
+        total: Math.round(totalTokensForConfig / runsWithTokenData),
+        cached: Math.round(cachedTokensForConfig / runsWithTokenData)
+      } : undefined
     };
   }
 
@@ -185,6 +201,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let guidedEarlyFailures = 0;
     let earlyFailures = 0;
     let totalRuns = 0;
+    let totalTokens = 0;
+    let cachedTokens = 0;
+    let configsWithTokenData = 0;
 
     keys.forEach(k => {
       const [, , runType] = k.split(' - ');
@@ -196,12 +215,18 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         earlyFailures += stats.earlyFailures || 0;
         totalRuns += stats.runCount || 0;
 
+        if (stats.avgTokens) {
+          totalTokens += stats.avgTokens.total * (stats.runCount || 1);
+          cachedTokens += stats.avgTokens.cached * (stats.runCount || 1);
+          configsWithTokenData++;
+        }
+
         if (runType === 'guided') {
           guideUsageCount += stats.runsUsingGuide || 0;
           toolActivationCount += stats.runsWithToolActivation || 0;
           totalGuidedRuns += stats.runCount || 0;
 
-          if (!stats.isSkill) {
+          if (!stats.isDisciplineSkill) {
             totalGuidedNonDisciplineRuns += stats.runCount || 0;
             guidedNonDisciplineEarlyFailures += stats.earlyFailures || 0;
           }
@@ -228,6 +253,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       toolActivationRate: completedGuidedRuns ? Math.round((toolActivationCount / completedGuidedRuns) * 100) : 0,
       guideUsageRate: completedGuidedNonDisciplineRuns ? Math.round((guideUsageCount / completedGuidedNonDisciplineRuns) * 100) : 0,
       guidedNonDisciplineEarlyFailures,
+      totalTokens: configsWithTokenData > 0 ? { total: totalTokens, cached: cachedTokens } : undefined
     };
   };
 
@@ -241,6 +267,11 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
   });
   const numberOfTasks = uniqueTasks.size;
   const expectedTotalRuns = numberOfTasks * runsPerTest;
+
+  const totalTokensSum = (uStats.totalTokens?.total || 0) + (gStats.totalTokens?.total || 0);
+  const cachedTokensSum = (uStats.totalTokens?.cached || 0) + (gStats.totalTokens?.cached || 0);
+
+
 
   return {
     summary: {
@@ -262,11 +293,15 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       totalGuidedNonDisciplineRuns: gStats.totalGuidedNonDisciplineRuns,
       toolActivationRate: gStats.toolActivationRate,
       toolActivationCount: gStats.toolActivationCount,
+
       unguidedEarlyFailures: uStats.earlyFailures,
       unguidedEarlyFailureRate: uStats.earlyFailureRate,
       guidedEarlyFailures: gStats.earlyFailures,
       guidedEarlyFailureRate: gStats.earlyFailureRate,
-      guidedNonDisciplineEarlyFailures: gStats.guidedNonDisciplineEarlyFailures
+      guidedNonDisciplineEarlyFailures: gStats.guidedNonDisciplineEarlyFailures,
+      totalTokens: totalTokensSum > 0 ? { total: totalTokensSum, cached: cachedTokensSum } : undefined,
+      unguidedTotalTokens: uStats.totalTokens,
+      guidedTotalTokens: gStats.totalTokens
     },
     testStats,
     sortedKeys

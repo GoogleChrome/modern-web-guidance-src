@@ -1,8 +1,7 @@
 {
   "name": "modern-web-guidance",
   "displayName": "Modern Web Guidance",
-  "private": true,
-  "description": "Curated collection of agent skills for modern web development.",
+  "description": "Keep your agent up to date on the latest web best practices.",
   "version": "0.0.26",
   "publisher": "GoogleChrome",
   "engines": {
@@ -16,11 +15,11 @@
   "contributes": {
     "chatSkills": [
       {
-        "path": "./skills/modern-web-use-cases/SKILL.md"
+        "path": "./skills/modern-web-guidance/SKILL.md"
       }
     ]
   },
   "bin": {
-    "modern-web": "./skills/modern-web-use-cases/modern-web.mjs"
+    "modern-web-guidance": "skills/modern-web-guidance/modern-web.mjs"
   }
 }

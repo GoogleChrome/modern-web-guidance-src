@@ -6,23 +6,23 @@
   "type": "module",
   "private": true,
   "bin": {
-    "gd": "./bin/gd.ts"
+    "gd": "bin/gd.ts"
   },
   "scripts": {
-    "test": "pnpm -r test",
+    "test": "pnpm -r --parallel test",
     "install:gray-matter": "pnpm add -D -w gray-matter",
     "baselinestatus": "pnpm --filter serving baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",
-    "typecheck": "pnpm --filter serving build && tsc && pnpm --filter eval-view typecheck",
-    "preflight": "pnpm typecheck && pnpm lint && pnpm test",
-    "suite": "pnpm build:mcp && pnpm --filter harness suite",
+    "build": "pnpm -r run build",
+    "typecheck": "tsc && pnpm --filter eval-view typecheck",
+    "preflight": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
+    "suite": "pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
     "task": "pnpm --filter harness task",
     "run-agent": "gd agent",
     "report": "pnpm --filter harness report",
     "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
-    "dashboard:static": "STRICT_STATIC=true pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter serving build",
     "build:megaskill": "pnpm --filter serving build:megaskill",
     "test:mcp": "pnpm --filter serving test",
@@ -40,6 +40,7 @@
   "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@github/keytar",
       "esbuild",
       "gpt4all",
       "keytar",
@@ -47,8 +48,15 @@
       "onnxruntime-node",
       "protobufjs",
       "sharp",
-      "tree-sitter-bash"
+      "tree-sitter-bash",
+      "@anthropic-ai/claude-code"
     ],
+    "overrides": {
+      "@opentelemetry/otlp-transformer>protobufjs": "^8.0.1",
+      "@tootallnate/once": "^3.0.1",
+      "simple-git": "^3.36.0",
+      "ip-address": "^10.1.1"
+    },
     "packageExtensions": {
       "@google/gemini-cli": {
         "dependencies": {
@@ -58,7 +66,7 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "@types/omelette": "^0.4.5",
     "gh-pages": "^6.3.0",
     "gray-matter": "^4.0.3",
@@ -66,7 +74,14 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@mdn/browser-compat-data": "^7.3.13",
+    "@webref/css": "^8.5.3",
+    "@webref/elements": "^2.7.1",
+    "@webref/idl": "^3.75.3",
+    "caniuse-lite": "^1.0.30001791",
     "glob": "^13.0.6",
-    "omelette": "^0.4.17"
+    "mdn-data": "^2.28.0",
+    "omelette": "^0.4.17",
+    "web-features": "^3.25.0"
   }
 }

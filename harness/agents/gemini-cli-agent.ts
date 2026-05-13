@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
 
 import type { ConversationRecord } from '@google/gemini-cli-core';
 
@@ -12,7 +12,14 @@ export interface GuidedUsage {
   retrievedGuides: string[];
   fileReadGuides: string[];
 }
+
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+
+const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+}
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
@@ -42,6 +49,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
 
   // Set environment variables
   process.env.HOME = tempHome;
+  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -49,7 +57,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
     const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI);
+      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(geminiDest, 'settings.json'),
@@ -106,6 +114,7 @@ async function run() {
 
     const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
+    exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
 
     console.log("Gemini CLI agent finished successfully.");
 
@@ -118,6 +127,10 @@ async function run() {
 }
 
 function readTrajectory(filePath: string): ConversationRecord {
+  if (filePath.endsWith('.jsonl')) {
+    const messages = parseJsonlFile(filePath);
+    return { messages } as unknown as ConversationRecord;
+  }
   const content = fs.readFileSync(filePath, 'utf8');
   return JSON.parse(content) as ConversationRecord;
 }
@@ -126,8 +139,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {
-    const files = fs.readdirSync(dirPath);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+    const sessionFiles = getSessionFiles(dirPath);
 
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
@@ -151,7 +163,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
                 }
               } else if (tc.name === 'run_shell_command' && tc.args?.command) {
                 const command = tc.args.command as string;
-                const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
+                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
                 if (match) {
                   retrievedGuides.push(...match[1].split(',').map(s => s.trim()));
                 }
@@ -171,7 +183,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
 }
 
 export function extractGeminiCliModel(resultsDir: string): string {
-  const sessionFiles = fs.globSync('**/session-*.json', { cwd: resultsDir });
+  const sessionFiles = getSessionFiles(resultsDir, true);
   if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
@@ -197,10 +209,37 @@ export function extractGeminiCliModel(resultsDir: string): string {
   return 'unknown';
 }
 
+export function extractGeminiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  let total = 0;
+  let cached = 0;
+  let hasData = false;
+  try {
+    const sessionFiles = getSessionFiles(dir);
+    for (const file of sessionFiles) {
+      try {
+        const session = readTrajectory(path.join(dir, file));
+        if (session.messages) {
+          const messagesWithTokens = (session.messages as any[]).filter(m => m && typeof m === 'object' && 'tokens' in m) as Array<{ tokens: { total?: number; cached?: number } }>;
+          const lastMsg = messagesWithTokens[messagesWithTokens.length - 1];
+          if (lastMsg) {
+            total += lastMsg.tokens.total || 0;
+            cached += lastMsg.tokens.cached || 0;
+            hasData = true;
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    }
+  } catch {
+    // Ignore
+  }
+  return hasData ? { total, cached } : undefined;
+}
+
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const files = fs.readdirSync(dir);
-  const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+  const sessionFiles = getSessionFiles(dir);
   const firstSession = sessionFiles[0];
   if (!firstSession) return toolsUsed;
 
@@ -212,7 +251,7 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
         if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
           for (const tc of msg.toolCalls) {
             if (tc.name.includes('get_best_practices')) {
-              toolsUsed.push('modern-web');
+              toolsUsed.push('modern-web-guidance');
             } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
               toolsUsed.push(tc.args.name as string);
             }
@@ -227,7 +266,7 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   return Array.from(new Set(toolsUsed));
 }
 
-export function parseGeminiStreamOutput(outputStr: string, skillName: string = 'modern-web-use-cases'): {
+export function parseGeminiStreamOutput(outputStr: string, _skillName: string = 'modern-web-guidance'): {
     skillActivated: boolean;
     searchCalled: boolean;
     retrieveCalled: boolean;
@@ -242,15 +281,15 @@ export function parseGeminiStreamOutput(outputStr: string, skillName: string = '
         try {
             const event = JSON.parse(line);
             if (event.type === 'tool_use') {
-                if (event.tool_name === 'activate_skill' && event.parameters?.name === skillName) {
+                if (event.tool_name === 'activate_skill' && event.parameters?.name && event.parameters.name.startsWith('modern-web')) {
                     skillActivated = true;
                 }
                 if (event.tool_name === 'run_shell_command') {
                     const command = event.parameters?.command || '';
-                    if (command.includes('--search')) {
+                    if (command.includes('search') || command.includes('--search')) {
                         searchCalled = true;
                     }
-                    if (command.includes('--retrieve')) {
+                    if (command.includes('retrieve') || command.includes('--retrieve')) {
                         retrieveCalled = true;
                     }
                 }

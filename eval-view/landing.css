@@ -1,12 +1,154 @@
+
 /* Base Layout */
+.insights-drawer {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  padding: 15px;
+}
+
+.insights-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  user-select: none;
+}
+
+.insights-grid {
+  display: flex;
+  gap: 20px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.insights-panel {
+  flex: 1;
+  min-width: 250px;
+  background: var(--color-surface-container-low);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.insights-panel-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-on-surface);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.insights-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.insights-table td {
+  padding: 8px 4px;
+  font-size: 0.85rem;
+  color: var(--color-on-surface);
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-outline-variant);
+  cursor: pointer;
+}
+
+.insights-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.insight-dumbbell-cell {
+  width: 150px;
+  vertical-align: middle;
+}
+
+.insight-dumbbell-track {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  position: relative;
+  width: 130px;
+}
+
+.suite-dumbbell-track {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  position: relative;
+}
+
+.agent-badge {
+  margin-right: 4px;
+}
+.agent-badge.gemini {
+  color: #8B5CF6;
+}
+.agent-badge.openai {
+  color: #10A37F;
+}
+.agent-badge.claude {
+  color: #E06A3B;
+}
+
+.insight-dumbbell-track .dot,
+.suite-dumbbell-track .dot {
+  position: absolute;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.insight-dumbbell-track .dot.unguided,
+.suite-dumbbell-track .dot.unguided {
+  border: 1.5px solid #8b949e;
+  background: transparent;
+}
+
+.insight-dumbbell-track .dot.guided,
+.suite-dumbbell-track .dot.guided {
+  background: var(--color-primary);
+}
+
+.insight-dumbbell-track .connector,
+.suite-dumbbell-track .connector {
+  position: absolute;
+  background: var(--color-primary);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.insight-dumbbell-track .dot.unguided {
+  width: 4px;
+  height: 4px;
+}
+.insight-dumbbell-track .dot.guided {
+  width: 6px;
+  height: 6px;
+}
+.insight-dumbbell-track .connector {
+  height: 1.5px;
+}
+
+.suite-dumbbell-track .dot.unguided {
+  width: 6px;
+  height: 6px;
+}
+.suite-dumbbell-track .dot.guided {
+  width: 8px;
+  height: 8px;
+}
+.suite-dumbbell-track .connector {
+  height: 2px;
+}
+
 .suites-table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .suites-table th {
-  padding: 12px 10px;
-  background-color: var(--bg-tertiary);
+  padding: 6px 2px;
   border-bottom: 2px solid var(--border-color);
   color: var(--text-secondary);
   font-weight: 600;
@@ -14,14 +156,32 @@
 }
 
 .suites-table td {
-  padding: 0 10px;
   border-bottom: 1px solid var(--border-color);
   text-align: center;
+}
+
+.suite-table-row {
+  position: relative;
 }
 
 .suite-table-row:hover {
   background-color: var(--bg-tertiary);
   transition: background-color 0.2s;
+}
+
+.suite-table-row.faulty {
+  opacity: 0.2;
+}
+
+/* Stretched link: expands the clickable area of the first column's <a> tag to cover the entire row (<tr>). */
+.suite-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
 }
 
 .header-filter-select {
@@ -45,7 +205,7 @@
   background-position: right 8px center;
   background-size: 1em;
   padding-right: 28px;
-  width: auto;
+  width: 100px; /* if its auto then columns are way too wide */ 
   min-width: 90px;
 }
 
@@ -78,16 +238,14 @@
 .landing-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0 20px;
 }
 
 .header-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
 }
 
 .landing-title {
@@ -442,7 +600,7 @@
   top: 100%;
   right: 0;
   margin-top: 8px;
-  background: var(--bg-secondary);
+  background: var(--color-surface-container-lowest);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   width: 450px;
@@ -553,11 +711,11 @@
   position: fixed;
   z-index: 2000;
   max-width: 300px;
-  background: rgba(13, 17, 23, 0.95);
+  background: var(--card-bg);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   pointer-events: none;
   padding: 15px;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -573,6 +731,11 @@
   opacity: 1;
   transform: translateY(0);
   display: block;
+}
+
+#tooltip-chart {
+  max-height: 250px;
+  overflow: hidden;
 }
 
 .tooltip-title {

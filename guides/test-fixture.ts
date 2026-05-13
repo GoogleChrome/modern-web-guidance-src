@@ -102,7 +102,7 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
     if (serverProcess.pid) {
       try { process.kill(-serverProcess.pid); } catch (e) {}
     }
-  }, { scope: 'worker', timeout: 120000 }]
+  }, { scope: 'worker', timeout: 60000 }]
 });
 
 export { expect } from '@playwright/test';
