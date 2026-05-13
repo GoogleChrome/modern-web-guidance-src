@@ -36,6 +36,22 @@ describe('bucketizeLatency', () => {
 });
 
 describe('ClearcutLogger', () => {
+  it('disables telemetry case-insensitively when DISABLE_TELEMETRY is set to True', () => {
+    const originalEnv = process.env.DISABLE_TELEMETRY;
+    try {
+      process.env.DISABLE_TELEMETRY = 'True';
+      const logger = new ClearcutLogger();
+      // @ts-expect-error inspecting private property for test verification
+      assert.strictEqual(logger['#watchdog'], null);
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env.DISABLE_TELEMETRY = originalEnv;
+      } else {
+        delete process.env.DISABLE_TELEMETRY;
+      }
+    }
+  });
+
   it('logs tool command results correctly to console.warn', async () => {
     const originalWarn = console.warn;
     const warnings: string[] = [];

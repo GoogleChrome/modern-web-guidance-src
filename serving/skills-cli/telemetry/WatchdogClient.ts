@@ -13,8 +13,6 @@ export class WatchdogClient {
   #childProcess: ChildProcess;
 
   constructor(config: {
-    parentPid: number;
-    logFile?: string;
     clearcutEndpoint?: string;
     clearcutIncludePidHeader?: boolean;
   }) {
@@ -22,14 +20,8 @@ export class WatchdogClient {
       new URL('./watchdog/main.js', import.meta.url)
     );
 
-    const args = [
-      watchdogPath,
-      `--parent-pid=${config.parentPid}`,
-    ];
+    const args = [watchdogPath];
 
-    if (config.logFile) {
-      args.push(`--log-file=${config.logFile}`);
-    }
     if (config.clearcutEndpoint) {
       args.push(`--clearcut-endpoint=${config.clearcutEndpoint}`);
     }

@@ -12,8 +12,6 @@ import { WatchdogMessageType } from '../types.ts';
 import { ClearcutSender } from './ClearcutSender.ts';
 
 interface WatchdogArgs {
-  parentPid: number;
-  logFile?: string;
   clearcutEndpoint?: string;
   clearcutIncludePidHeader?: boolean;
 }
@@ -21,31 +19,16 @@ interface WatchdogArgs {
 function parseWatchdogArgs(): WatchdogArgs {
   const { values } = parseArgs({
     options: {
-      'parent-pid': { type: 'string' },
-      'log-file': { type: 'string' },
       'clearcut-endpoint': { type: 'string' },
       'clearcut-include-pid-header': { type: 'boolean' },
     },
     strict: true,
   });
 
-  const parentPid = parseInt(values['parent-pid'] ?? '', 10);
-
-  if (isNaN(parentPid)) {
-    console.error(
-      'Invalid arguments provided for watchdog process: ',
-      JSON.stringify({ parentPid })
-    );
-    process.exit(1);
-  }
-
-  const logFile = values['log-file'];
   const clearcutEndpoint = values['clearcut-endpoint'];
   const clearcutIncludePidHeader = values['clearcut-include-pid-header'];
 
   return {
-    parentPid,
-    logFile,
     clearcutEndpoint,
     clearcutIncludePidHeader,
   };
