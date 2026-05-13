@@ -36,10 +36,15 @@ npx -y modern-web-guidance@latest search "<query>"
     "id": "content-vis",
     "description": "Defer rendering of offscreen content using content-visibility.",
     "category": "performance",
-    "distance": "0.85"
+    "similarity": "0.85"
   }
 ]
 ```
+
+> **Note**: If search results are vague, return no matches, or show low similarity scores, run the `list` command to browse the complete catalog directory:
+> ```sh
+> npx -y modern-web-guidance@latest list
+> ```
 
 ---
 
@@ -63,6 +68,8 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 
 
 -   Note: if the `npx -y modern-web-guidance…` command hangs, try running again in offline mode: `npx --offline …`
+
+
 ### Browser Compatibility & Baseline Fallbacks
 
 #### Baseline Status

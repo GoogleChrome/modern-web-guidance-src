@@ -17,10 +17,10 @@ importers:
   .:
     dependencies:
       '@mdn/browser-compat-data':
-        specifier: ^7.3.13
+        specifier: ^7.3.15
         version: 7.3.15
       '@webref/css':
-        specifier: ^8.5.3
+        specifier: ^8.5.6
         version: 8.5.6(css-tree@3.2.1)
       '@webref/elements':
         specifier: ^2.7.1
@@ -41,7 +41,7 @@ importers:
         specifier: ^0.4.17
         version: 0.4.17
       web-features:
-        specifier: ^3.25.0
+        specifier: ^3.27.0
         version: 3.27.0
     devDependencies:
       '@types/node':
