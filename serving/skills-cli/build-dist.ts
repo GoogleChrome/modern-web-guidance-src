@@ -98,17 +98,17 @@ export function processSkills(publishRoot: string) {
     // Versioning.
     //
     // - This identifier only changes when the SKILL.md does.
-    // - SKILL_VERSION.md is published to npm, and the modern-web-guidance CLI uses
+    // - skill-version.txt is published to npm, and the modern-web-guidance CLI uses
     //   it to know what version is the latest.
     // - We replace "--skill-version SKILL_VERSION" in SKILL.md, such that agents will
     //   call npx and pass along the agent's version.
     // - If they differ, the CLI tool logs a warning to stderr with instructions on how
     //   to update.
     const skillVersion = execSync(
-      `git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" "${sourceDir}"`,
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+      'git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" SKILL.md',
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], cwd: sourceDir }
     ).trim();
-    fs.writeFileSync(path.join(skillDestDir, 'SKILL_VERSION.md'), skillVersion);
+    fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
 
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
       .replaceAll('SKILL_VERSION', skillVersion);
