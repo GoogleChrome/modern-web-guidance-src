@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "node:util";
-import { spawn } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
 import { getVersion } from "../lib/version.ts";
@@ -11,6 +11,7 @@ const { values, positionals } = parseArgs({
   options: {
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
+    choose: { type: "boolean" },
   },
   allowPositionals: true,
   strict: false,
@@ -23,9 +24,10 @@ Usage: modern-web <command> [args]
 Commands:
   search <query>          Search use cases by query
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
-  install                 Install skills
+  install [options]       Install the modern-web-guidance skill
 
 Options:
+  --choose                Choose specific skills from the repository interactively
   -h, --help              Show this help
   -v, --version           Show version
 `);
@@ -121,46 +123,21 @@ async function main() {
       process.exitCode = 1;
     }
   } else if (command === "install") {
-    const extraArgs = process.argv.slice(3);
-    const child = spawn("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
-      stdio: ["inherit", "pipe", "inherit"],
-      env: { ...process.env, FORCE_COLOR: "1" }
-    });
+    const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+      .split(" ")
+      .filter(Boolean);
 
-    let capturedStdout = "";
-    child.stdout?.on("data", (data) => {
-      capturedStdout += data.toString();
-      process.stdout.write(data);
-    });
+    const result = spawnSync("npx", installArgs, {stdio: "inherit"});
 
-    const status = await new Promise<number>((resolve) => {
-      child.on("close", (code) => resolve(code ?? 0));
-      child.on("error", (err) => {
-        console.error("Install failed:", err);
-        resolve(1);
-      });
-    });
-
-    // Post-process capturedStdout to extract successfully installed skill names and log telemetry.
-    /* eslint-disable-next-line no-control-regex */
-    const cleanOutput = capturedStdout.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
-    const skills: string[] = [];
-
-    // Scope checkmark extraction strictly inside the "Installed skill(s)" summary box to avoid false matches.
-    const installedBoxMatch = cleanOutput.match(/Installed \d+ skill[\s\S]*?├─/);
-    if (installedBoxMatch) {
-      const boxContent = installedBoxMatch[0];
-      const regex = /✓\s*([a-zA-Z0-9_-]+)/g;
-      let match;
-      while ((match = regex.exec(boxContent)) !== null) {
-        skills.push(match[1]);
-      }
-    }
-
+    const success = !result.error && result.status === 0;
     const logger = new ClearcutLogger();
-    await logger.logInstallation(skills, { success: status === 0 });
+    await logger.logInstallation([], { success });
 
-    process.exit(status);
+    if (result.error) {
+      console.error("Install failed:", result.error);
+      process.exit(1);
+    }
+    process.exit(result.status ?? 0);
   } else {
     console.error(`Unknown command: ${command}`);
     printUsage();
