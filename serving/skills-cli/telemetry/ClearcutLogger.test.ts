@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { detectOS, bucketizeLatency, ClearcutLogger } from './ClearcutLogger.ts';
-import { OsType } from './types.ts';
+import { OsType, CommandType } from './types.ts';
 
 describe('detectOS', () => {
   const expectedOS =
@@ -20,6 +20,8 @@ describe('detectOS', () => {
 
 describe('bucketizeLatency', () => {
   it('groups latency into correct discrete buckets', () => {
+    assert.strictEqual(bucketizeLatency(3), 5);
+    assert.strictEqual(bucketizeLatency(10), 15);
     assert.strictEqual(bucketizeLatency(25), 50);
     assert.strictEqual(bucketizeLatency(50), 50);
     assert.strictEqual(bucketizeLatency(75), 100);
@@ -34,7 +36,7 @@ describe('bucketizeLatency', () => {
 });
 
 describe('ClearcutLogger', () => {
-  it('logs installation results correctly to console.warn', async () => {
+  it('logs tool command results correctly to console.warn', async () => {
     const originalWarn = console.warn;
     const warnings: string[] = [];
     console.warn = (msg: string) => {
@@ -43,11 +45,11 @@ describe('ClearcutLogger', () => {
 
     try {
       const logger = new ClearcutLogger();
-      await logger.logInstallation(['skill-a', 'skill-b'], { latencyMs: 120, success: true });
+      await logger.logToolCommand(CommandType.INSTALL, { latencyMs: 120, success: true });
 
       assert.ok(warnings.length > 0, 'Should print at least one warning message');
       const payload = JSON.parse(warnings[warnings.length - 1]);
-      assert.deepStrictEqual(payload.installation, { skills: ['skill-a', 'skill-b'] });
+      assert.deepStrictEqual(payload.tool_command, { command_type: CommandType.INSTALL });
       assert.strictEqual(payload.success, true);
       assert.strictEqual(payload.latency_ms, 250); // 120 bucketized to 250
     } finally {
