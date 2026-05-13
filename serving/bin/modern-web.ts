@@ -49,18 +49,7 @@ async function main() {
     process.exit(values.help ? 0 : 1);
   }
 
-  const callerSkillVersion = values["skill-version"];
-  if (callerSkillVersion && callerSkillVersion != getSkillVersion()) {
-    const skillName = 'modern-web-guidance';
-    console.error([
-      `Warning: a new SKILL.md is available for ${skillName}. Please update.`,
-      '',
-      `Your version: ${callerSkillVersion}`,
-      `Latest version: ${getSkillVersion()}`,
-      '',
-      'To update, run: npx modern-web-guidance@latest update',
-    ].join('\n'));
-  }
+  maybeEmitUpdateMessage(typeof values["skill-version"] === 'string' ? values["skill-version"] : null);
 
   const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
@@ -127,7 +116,7 @@ async function main() {
     }
     process.exit(result.status ?? 0);
   } else if (command === "update") {
-    const skills = getOurSkills();
+    const skills = getOurCLIAdjacentSkillIDs();
     const result = spawnSync("npx", ["skills", "update", ...skills], {
       stdio: "inherit",
     });
@@ -155,9 +144,9 @@ function getVersion(): string {
 
 // This returns our own "skill version", which is an identifier that only changes if
 // the SKILL.md did.
-function getSkillVersion(): string | null {
+function getCLISkillVersion(): string | null {
   try {
-    const versionPath = join(import.meta.dirname, "SKILL_VERSION.md");
+    const versionPath = join(import.meta.dirname, "skill-version.txt");
     const version = readFileSync(versionPath, "utf8");
     return version;
   } catch (e) {
@@ -165,15 +154,30 @@ function getSkillVersion(): string | null {
   }
 }
 
-function getOurSkills(): string[] {
+function getOurCLIAdjacentSkillIDs(): string[] {
   try {
-    // Resolves to serving/package.json in dev, or dist/skills-cli/package.json in prod bundles
     const skillsPath = join(import.meta.dirname, "../../skills");
     const listing = readdirSync(skillsPath);
     return listing.filter(name => existsSync(join(skillsPath, name, 'SKILL.md')));
   } catch (e) {
     return [];
   }
+}
+
+function maybeEmitUpdateMessage(callerSkillVersion: string|null): void {
+  if (!callerSkillVersion || callerSkillVersion === getCLISkillVersion()) {
+    return;
+  }
+
+  const skillName = 'modern-web-guidance';
+  console.error([
+    `Warning: a new SKILL.md is available for ${skillName}. Please update.`,
+    '',
+    `Your version: ${callerSkillVersion}`,
+    `Latest version: ${getCLISkillVersion()}`,
+    '',
+    'To update, run: npx modern-web-guidance@latest update',
+  ].join('\n'));
 }
 
 main().catch(err => {
