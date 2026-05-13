@@ -1,5 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
+
 import { searchUseCases } from "../lib/search.ts";
 
 const QUERIES = [
@@ -64,7 +63,7 @@ async function main() {
       status = "🟠 Low (0.3-0.45)";
     }
 
-    rows.push(`| \`${query}\` | [${topMatch.id}](file:///Users/paulirish/code/.worktrees/rag-similarity-refactor/serving/build/guides/${topMatch.category || 'general'}/${topMatch.id}.md) | **${topMatch.similarity}** | ${status} |`);
+    rows.push(`| \`${query}\` | ${topMatch.id} | **${topMatch.similarity}** | ${status} |`);
   }
 
   const matrixContent = `# RAG Similarity Threshold Calibration Matrix
@@ -84,9 +83,7 @@ ${rows.join("\n")}
 - **Very Low / Noise (\`sim < 0.3\`)**: Purely out-of-scope topics (e.g., iOS apps, database connection pools) score below \`0.3\`, establishing \`0.3\` as a firm lower bound above absolute background noise.
 `;
 
-  const artifactPath = "/Users/paulirish/.gemini/jetski/brain/fc5c801a-ffd5-4d52-8f11-41eca1beb712/threshold_calibration_matrix.md";
-  fs.writeFileSync(artifactPath, matrixContent);
-  console.log(`\n✅ Calibration matrix artifact successfully compiled to:\nfile://${artifactPath}`);
+  console.log(matrixContent);
 }
 
 main().catch(console.error);
