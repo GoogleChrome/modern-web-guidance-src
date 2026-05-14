@@ -1,11 +1,11 @@
 ---
 name: project-discipline-guides
-description: Workflow for refactoring discipline-level guides (e.g., JavaScript, CSS) to remove "Common Knowledge" by generating and comparing against model-specific "Knowledge Mirrors".
+description: Workflow for refactoring discipline-level guides (e.g., performance, CSS) to remove "Common Knowledge" by generating and comparing against model-specific "Knowledge Mirrors".
 ---
 
 # Project Discipline Guides
 
-This skill facilitates the "Differential Knowledge Refactor" of technical guides. It ensures that `SKILL.md` files for specific disciplines are lean, context-efficient, and strictly additive to what modern AI models already know natively.
+This skill facilitates the "Differential Knowledge Refactor" of technical guides. It ensures that `guide.md` files for specific disciplines are lean, context-efficient, and strictly additive to what modern AI models already know natively.
 
 ## Workflow: The Inverse Knowledge Filter
 

@@ -45,8 +45,7 @@ Be allergic to knowledge duplication. Prefer variables over repetition, but when
 - `em` units instead of `font-size: var(--size)`
 - `cqw`/`cqh` (or their logical versions — `cqi`/`cqb`) units instead of repeating box model values.
 - Code duplication is not knowledge duplication. The goal is robustness and maintainability, not saving characters.
-- Prefer **logical properties and values** over physical ones (e.g. `margin-inline-start` instead of `margin-left`) so that styles adapt to different writing modes and orientations. Even if the page author does not plan to localize, external translation tools often display translated text in context.
-- Do not use logical properties indiscriminately — ask yourself "would I want this to flip in RTL?" — if the answer is no, use the physical property instead.
+- When using logical properties, do not use them indiscriminately — ask yourself "would I want this to flip in RTL?" — if the answer is no, use the physical property instead.
 - Consider different viewing modes (dark mode, high contrast mode), different viewport sizes, and different input modes (touch, keyboard, pointer).
 
 ## 2. Inheritance and The Cascade
@@ -54,8 +53,7 @@ Be allergic to knowledge duplication. Prefer variables over repetition, but when
 **Avoid** introducing BEM naming conventions to manage specificity.
 Instead, use modern CSS features such as cascade layers and `:where()` to make cascade behavior predictable and follow author intent.
 
-Use cascade layers (`@layer`) to define explicit priority zones (e.g., `reset`, `base`, `theme`, `components`, `utilities`), and declare their order upfront (e.g. `@layer reset, base, theme, components, utilities;`).
-Within each layer, use `:where()` to make selectors only compete based on meaningful signals, not incidental filters (`:not()` edge cases, remote ancestors, etc.) or for one-off easily overridable defaults.
+When using cascade layers (`@layer`), within each layer, use `:where()` to make selectors only compete based on meaningful signals, not incidental filters (`:not()` edge cases, remote ancestors, etc.) or for one-off easily overridable defaults.
 
 Use keywords like `inherit`, `initial`, `unset`, or `revert` instead of explicit values to improve maintainability and better express intent.
 Examples:
@@ -212,8 +210,6 @@ Using `@scope` fixes this:
 
 ### Focus management
 
-- Use `:focus-visible` to define custom focus rings, not `:focus`.
-- Do not remove the browser's default focus rings (via `outline: none`) without providing an alternative visible focus style.
 - Prefer `outline` over other properties (e.g. `box-shadow`) for focus rings. If you must rely on `box-shadow` for focus rings, provide an `outline`-based fallback for High Contrast Mode using the `forced-colors` media query.
 - Pair focus outlines with `outline-offset` to visually separate the ring from the element.
 
@@ -306,10 +302,6 @@ For most styling purposes (e.g. colors, borders, backgrounds, typography, etc) t
 
 ## 6. Responsive design
 
-- Use `@container` queries to create component-driven responsive layouts that adapt to their parent container's size rather than the viewport.
-- Use dynamic viewport units (`dvh`, `dvw`) instead of `vh`/`vw` to prevent layout breakage when mobile browser UI elements (like address bars) appear or disappear.
-- Use `aspect-ratio` for media elements (like `<img>` and `<video>`) to reserve space during loading and prevent Cumulative Layout Shift (CLS).
-
 ### Responsive Typography
 
 - **DO** combine viewport-relative and font-relative units in `clamp()` for font sizes that scale with the viewport size while ensuring they stay within a desired range. For example, `clamp(2rem, 1rem + 5vw, 4rem)`. Adjust the proportion of viewport-relative and font-relative units to control how quickly the font-size changes.
@@ -319,12 +311,9 @@ For most styling purposes (e.g. colors, borders, backgrounds, typography, etc) t
 
 - Use unitless numbers for `line-height` (e.g., `1.5`) to ensure relative scaling during font-size inheritance.
 - Use `overflow-wrap: break-word` (or `anywhere`) to contain long URLs.
-- **DON'T** use `px` for font-size. Prefer `rem` to honor the user's browser font-size preferences (root font size), or `em` for contextual sizing.
 
 ### Text wrapping
 
-- Use `text-wrap: balance` for balanced headlines and headline-like content (e.g. `<th>`)
-- Use `text-wrap: pretty` for long-form body text (paragraphs, blockquotes, etc.)
 - Use `text-wrap: balance` or `text-wrap: pretty` deliberately, **DO NOT** apply it on `*` as it does have a performance cost.
 - Avoid `text-wrap: balance` on elements with a visible box (backgrounds, borders, shadows, etc) as it does not change the container's width, it only affects how text wraps *within* that width. This can leave empty space at the end of the container, which is usually undesirable.
 
@@ -437,14 +426,11 @@ Simple pie chart:
 ## 9. Transitions & animations
 
 - Use `clip-path` and `mask-image` for custom geometric reveals and smooth fade-outs.
-- Use **Scroll-Driven Animations** (`animation-timeline: scroll()`) for non-essential scroll-bound effects instead of JS listeners.
-- Use **View Transitions** to animate between complex layout states seamlessly.
 
 ### Performance
 
 Rendering performance is critical for smooth user experiences, especially in heavy DOM trees.
 
-- Prefer to animate `opacity` and `transform` (including individual transform properties, e.g. `translate` instead of `left/right/top/bottom`) to ensure animations stay on the compositor thread.
 - Use `transition-behavior: allow-discrete` + `@starting-style` to animate layout properties like `display` or `<dialog>` state natively.
 - Always pair `content-visibility` with `contain-intrinsic-size` to prevent scrollbar jumps (CLS).
 - Use `contain: layout style paint` to isolate component rendering updates.

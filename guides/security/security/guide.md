@@ -16,8 +16,7 @@ Guidelines for implementing preventative security measures on the web safely and
   - 1.1 Secure Contexts
   - 1.2 Avoid Dangerous DOM Sinks
   - 1.3 Secure Cookies
-  - 1.4 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
-  - 1.5 Secure Window Messaging (postMessage)
+  - 1.4 Secure Window Messaging (postMessage)
 - Phase 2: Discovery & Data Collection (Prerequisites)
   - 2.1 Inspect the Application
   - 2.2 Deploy Report-Only Policies
@@ -35,7 +34,6 @@ Guidelines for implementing preventative security measures on the web safely and
   - Companion policies (deploy in parallel)
     - HTTP Strict Transport Security (HSTS)
     - X-Content-Type-Options
-    - Referrer Policy
     - Permissions Policy
     - Subresource Integrity (SRI)
     - Cross-Origin Resource Sharing (CORS)
@@ -58,14 +56,9 @@ If you are unsure which case applies, default to Phase 1 → 2 → 3 in order.
 Before attempting to deploy global security policies, focus on code-level hygiene and immediate fixes that do not risk breaking the application.
 
 ### 1.1 Secure Contexts
-- **DO**: Deliver resources over HTTPS to protect against both passive and active network attackers.
-- **DO**: Serve a header like `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` to force HTTPS whenever possible.
 - **TIP**: In production rollout, start with a short `max-age` (e.g., 300 seconds) and incrementally increase to 1 year. A misconfigured HSTS with a long max-age can render the site permanently inaccessible until the cache expires in every browser that saw it.
 
 ### 1.2 Avoid Dangerous DOM Sinks
-- **DO**: Prefer `textContent` or `innerText` over `innerHTML` when setting text content.
-- **DO**: Use `setHTML` (part of the Sanitizer API) when available to safely insert HTML.
-- **DO NOT**: Use `innerHTML` or `setHTMLUnsafe` with untrusted or unsanitized input.
 - **DO**: Use DOMParser or create elements programmatically (`document.createElement`) instead of concatenating HTML strings.
 
 **Dangerous sinks to grep for**: `innerHTML`, `outerHTML`, `document.write`, `eval`, `setTimeout` with a string argument, `script.src`.
@@ -83,9 +76,7 @@ Trusted Types can enforce this pattern at runtime by blocking string assignments
 
 ### 1.3 Secure Cookies
 Ensure new cookies are configured securely by default.
-- **DO**: Prefer naming cookies with the `__Host-` prefix when they'll only be used by one domain. This requires the `Secure` and `Path=/` attributes to be set, and the `Domain` attribute to be omitted. This protects against same-site and network attackers.
-- **DO**: Prefer naming cookies with the `__Secure-` prefix when `__Host-` isn't appropriate. This requires the `Secure` attribute, and protects against network attackers.
-- **DO**: Explicitly set `SameSite=Lax` for standard first-party cookies.
+- **DO**: When naming cookies with the `__Host-` prefix, ensure the `Secure` and `Path=/` attributes are set, and the `Domain` attribute is omitted.
 - **DO**: If your application will be embedded as an iframe in third-party contexts, use `SameSite=None; Secure; Partitioned`.
 - **DO NOT**: Rely on unpartitioned `SameSite=None` — these are being systematically blocked for tracking prevention.
 
@@ -94,17 +85,7 @@ Set-Cookie: __Host-session_id=value; SameSite=Lax; HttpOnly; Secure; Path=/
 Set-Cookie: third_party_var=value; SameSite=None; Secure; Partitioned
 ```
 
-### 1.4 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
-Clickjacking protection is easy to deploy, carries extremely low risk of breaking legitimate functionality, and provides immediate defense against malicious UI redressing.
-- **DO**: Set the `X-Frame-Options: SAMEORIGIN` header to prevent other sites from embedding your pages in an iframe (or use `DENY` if you should never be embedded).
-- **DO**: For fine-grained control, use `frame-ancestors 'self'` (or specified trusted domains) in your CSP header.
-
-```http
-X-Frame-Options: SAMEORIGIN
-Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
-```
-
-### 1.5 Secure Window Messaging (postMessage)
+### 1.4 Secure Window Messaging (postMessage)
 If your application communicates with other origins using `window.postMessage`, you must strictly validate the sender and receiver.
 - **DO**: Always validate the `event.origin` of incoming messages on the receiver side using strict equality against a list of trusted origins. Do **not** trust wildcards (`*`) or unverified payloads.
 - **DO**: Always specify a target origin (rather than the wildcard `*`) when calling `postMessage` to send sensitive data, ensuring only the intended origin can receive it.
@@ -262,13 +243,6 @@ Set CORP explicitly on each response based on whether it should be embeddable in
 Highest deployment breakage risk. You only need to deploy this infrastructure if the application requires features relying on `SharedArrayBuffer` (e.g., WebAssembly multi-threading or shared memory architectures). If not required, skip this policy group.
 
 - **Preferred path (Chromium environments)**: Enable `Document-Isolation-Policy: isolate-and-credentialless`. This provides client-side isolation comparable to COEP while instructing the browser to strip cookies and authentication credentials from non-CORS cross-origin resource fetches rather than blocking them outright. Note that this is supported primarily in Chrome (142+) and other vendors have not yet shown interest, so evaluate carefully based on your target audience. Apps that need to *block* cross-origin resources lacking explicit CORP opt-in (rather than load them with credentials stripped) can adopt `isolate-and-require-corp` instead. This is stricter and harder to deploy — it requires the same subresource audit as the cross-browser path below.
-- **Cross-browser path (Complex enforcement)**: Require `Cross-Origin-Opener-Policy: same-origin` coupled with `Cross-Origin-Embedder-Policy: require-corp`. Every embedded subresource (images, styles, external media) MUST serve an explicit `Cross-Origin-Resource-Policy` header or the browser will prevent it from loading.
-
-```http
-Cross-Origin-Opener-Policy: same-origin
-Cross-Origin-Embedder-Policy: require-corp
-Cross-Origin-Resource-Policy: same-origin
-```
 
 #### 3.7 Fetch Metadata (Resource Isolation)
 Server-side enforcement that uses `Sec-Fetch-*` request headers to reject suspicious cross-site requests. Requires the cross-site integration mapping from §2.1 before enforcing.
@@ -303,43 +277,27 @@ app.use((req, res, next) => {
 These carry significantly lower breakage risk than the core enforcement track. They can be deployed alongside — or before — the CSP and isolation rollouts.
 
 #### HTTP Strict Transport Security (HSTS)
-- **DO**: `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` to force HTTPS.
 - **TIP**: In production rollout, start with a short `max-age` (e.g., 300 seconds) and incrementally increase to 1 year. A misconfigured HSTS with a long max-age can render the site permanently inaccessible until the cache expires in every browser that saw it.
 
 #### X-Content-Type-Options
-- **DO**: Set `X-Content-Type-Options: nosniff` to block MIME-type sniffing.
 - **DO**: Ensure the server serves correct `Content-Type` headers for all resources (`application/javascript` for scripts, `application/json` for APIs, `text/html` for documents, etc.) so the browser can strictly enforce the `nosniff` constraint.
 
-#### Referrer Policy
-- **DO**: Use `Referrer-Policy: strict-origin-when-cross-origin` as a safe default.
-
 #### Permissions Policy
-- **DO**: Disable unused browser features (camera, geolocation, microphone) for the page and iframes using Structured Fields syntax.
 - **DO**: When delegating features to an iframe, use the `allow` attribute in HTML *in addition* to the header.
 - **CAUTION**: Unintentionally blocking a delegated feature will cause silent failures in third-party widgets (like embedded video players or payment gateways). Audit third-party dependencies before blocking.
-
-```http
-Permissions-Policy: camera=(), geolocation=(), microphone=()
-```
 
 ```html
 <iframe src="https://trusted-video.com/player" allow="fullscreen; camera"></iframe>
 ```
 
 #### Subresource Integrity (SRI)
-- **DO**: Use the `integrity` attribute with a cryptographic hash (preferring `sha256` or `sha512`) when loading third-party scripts, combined with `crossorigin="anonymous"`.
 - **DO**: Ensure the server/CDN sends an appropriate `Access-Control-Allow-Origin` header so the browser can compute the hash.
 - **DO NOT**: Use SRI for dynamic or unversioned assets — silent updates will cause script execution to fail. SRI is strictly for immutable, versioned assets.
-
-```html
-<script src="https://cdn.example.com/lib.js" integrity="sha256-H8df...39v" crossorigin="anonymous"></script>
-```
 
 #### Cross-Origin Resource Sharing (CORS)
 CORS is a permission grant, not a defense — it tells the browser which cross-origin reads to allow. The risk is misconfiguring it as too permissive.
 
 - **DO**: Validate the `Origin` header on the server and set `Access-Control-Allow-Origin` dynamically to specific origins (rather than wildcard `*`).
-- **DO NOT**: Use wildcard `*` for `Access-Control-Allow-Origin` if `Access-Control-Allow-Credentials: true` is required — the browser will reject the response.
 - **DO**: Handle preflight (`OPTIONS`) requests by returning appropriate headers before processing data.
 
 ```http

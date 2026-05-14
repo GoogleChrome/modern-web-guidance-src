@@ -7,17 +7,12 @@ description: Best practices for building accessible, secure, and user-friendly w
 
 ### Guidelines
 
-- **DO** use the `<form>` element to wrap interactive controls for data collection.
 - **DO** use `method="POST"` for sensitive data and mutations; use `method="GET"` for idempotent requests (e.g., search).
 - **DO** specify the `action` attribute for the destination URL.
-- **DO** specify a `name` attribute for every form control to identify data on submission.
-- **DO** use semantic tags like `<button type="submit">`, `<textarea>`, and `<select>`.
-- **DO** use `<fieldset>` and `<legend>` to group related controls.
 - **DO** use actionable language on submit buttons (e.g., "Save changes").
 
 - **DON'T** use `GET` for sensitive data (it exposes data in history/logs).
 - **DON'T** use generic `<div>` or `<span>` for form controls.
-- **DON'T** use `type="button"` for primary submission buttons.
 - **DON'T** disable textarea resizing without alternate layout provisions.
 
 ### Code Example
@@ -48,17 +43,12 @@ description: Best practices for building accessible, secure, and user-friendly w
 
 ### Guidelines
 
-- **DO** always associate `<label>` with its input using `for` and `id`.
 - **DO** place labels above form controls to enable faster scanning.
-- **DO** use visible labels; do not rely on `placeholder` alone.
 - **DO** ensure the vertical margin between a label and its input is less than the margin between form groups (**Gestalt Proximity Rule**).
-- **DO** use `aria-describedby` to link inputs with help text or error messages.
 - **DO** define the `lang` attribute on `<html>` for proper device translation.
 - **DO** use non-color visual cues (icons, text) to communicate state (don't rely on color alone).
 - **DO** indicate clearly which fields are required.
-- **DO** use `aria-live` for dynamic error announcements.
 
-- **DON'T** use `placeholder` as a replacement for labels.
 - **DON'T** use `aria-label` as the sole text description if translation is needed.
 - **DON'T** disable focus outlines without providing a high-contrast alternative.
 
@@ -83,9 +73,6 @@ description: Best practices for building accessible, secure, and user-friendly w
 
 ### Guidelines
 
-- **DO** use the `autocomplete` attribute to specify expected data (e.g., `email`, `tel`, `current-password`, `new-password`).
-- **DO** use `inputmode` to optimize on-screen keyboards (e.g., `inputmode="numeric"` for PINs).
-- **DO** use `enterkeyhint` to set the Enter key label (e.g., `next`, `done`).
 - **DO** use single-field inputs for complex numbers (credit cards, phones) to help autofill.
 
 - **DON'T** use `type="number"` for credit cards or ZIP codes (causes UI scroll issues and removes leading zeros).
@@ -100,10 +87,6 @@ description: Best practices for building accessible, secure, and user-friendly w
 ## 4. Constraints and Validation
 
 ### Guidelines
-
-- **DO** use native constraints: `required`, `minlength`, `maxlength`, `pattern`.
-- **DO** use CSS pseudo-classes `:invalid:user-invalid` for non-intrusive styling.
-- **DO** use the ValidityState API (`setCustomValidity`) for custom messaging.
 
 - **DON'T** disable submit buttons to block validation; let users submit and highlight errors. However, **DO** disable the button *after* a valid submission is clicked to prevent double-posts.
 
@@ -179,8 +162,6 @@ input {
 
 ### Guidelines
 
-- **DO** use `accent-color` for quick branding of native radios/checkboxes.
-- **DO** use `appearance: none` for custom dropdown arrows without breaking semantics.
 - **DO** ensure inputs are clearly visible with adequate border contrast (e.g., `#ccc` or darker on white backgrounds).
 - **DO** hide inputs visually using `position: absolute; opacity: 0` (NOT `display: none`) to keep them accessible.
 
@@ -218,7 +199,6 @@ input {
 ### Guidelines
 
 - **DO** prevent default navigation on form submit for AJAX (`e.preventDefault()`).
-- **DO** use `ValidityState` interfaces for real-time validation checks.
 - **DO** use `aria-expanded` and `aria-controls` for dynamic UI reveals.
 
 - **DON'T** block page submission if JS fails; ensure server-side fallback.
@@ -237,7 +217,6 @@ form.addEventListener('submit', (e) => {
 
 ### Guidelines
 
-- **DO** use `autocomplete="new-password"` for sign-up and `autocomplete="current-password"` for sign-in.
 - **DO** allow pasting into password fields.
 - **DO** provide a toggle capability allowing users to unmask password input.
 - **DO** indicate exact amounts on pay buttons (e.g., "Pay $100").
@@ -285,7 +264,6 @@ form.addEventListener('submit', (e) => {
 ### Guidelines
 
 - **DO** use a single field for names.
-- **DO** use `autocomplete="street-address"`.
 - If the site has users in different countries, **DO** use the `<textarea>` element for addresses, to accommodate different address formats in different geographical regions. If the form uses separate inputs for address parts (e.g. Street, City), **DO** use `autocomplete` values `address-line1`, `address-line2`, etc.
 - **DO** make postal codes optional.
 

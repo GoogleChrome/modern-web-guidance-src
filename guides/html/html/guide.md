@@ -19,22 +19,13 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 ### Guidelines
 
-- **DO** use the standard HTML5 doctype `<!DOCTYPE html>` to prevent quirky rendering modes. 
-- **DO** set the `lang` attribute on the `<html>` element for screen reader pronunciation and translation tools.
-- **DO** use the `<meta name="viewport">` element with the `content` attribute set to `"width=device-width, initial-scale=1.0"` to ensure page responsiveness.
 - **DO** use a single `<h1>` per page/view representing the main topic. Exceptions can be made for modal dialogs, which can also use a single `<h1>`.
-- **DO** maintain a sequential, non-skipping heading hierarchy (`<h2>` to `<h3>`, but not `<h2>` to `<h4>`).
-- **DO** use semantic landmarks (`<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`) to create regional navigation for assistive technologies.
 - **DO** use `<search>` to enclose search and filtering mechanisms (eliminates the need for `role="search"`).
-- **DO** use `<button>` for triggered actions (JS, Modals, Forms) and `<a>` strictly for URL navigation. Set `type="button"` for non-submit buttons in forms to prevent unintended submission.
 - **DO** use `<ul>`, `<ol>`, and `<dl>` elements for list content. 
-- **DO** ensure that all interactive elements like links and buttons have accessible names.  
-- **DO** hide purely decorative SVG images from assistive technology using `aria-hidden="true"`. If using a decorative `<img>`, always include an empty `alt` attribute (e.g. `alt=""`). 
 - **DO** ensure that informative SVGs like logos, data visualizations, or icon buttons have a proper accessible name. 
 
 - **DON'T** use generic `<div>` or `<span>` when semantic elements exist, for instance for interactive elements, headings, or independently reusable self-contained content.
 - **DON'T** use boolean attributes with redundant values (e.g., use `disabled`, not `disabled="disabled"`).
-- **DON'T** use generic elements with added ARIA roles or states when native elements with built-in semantics and behavior exist.
 - **DON'T** change the native semantics of elements with ARIA unless it is a critical requirement. 
 - **DON'T** use `role="presentation"` or `aria-hidden="true"` on focusable elements or their parents and ancestors. 
 - **DON'T** disable page zooming capabilities.
@@ -83,7 +74,6 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** use `<figure>` to group self-contained content (images, code snippets, or quotes) that is referenced from the main flow but could be moved to an appendix or sidebar without affecting the document's meaning.
 - **DO** use `<figcaption>` as the first or last child of a `<figure>` to provide a human-readable caption or attribution.
 - **DO** use the `<cite>` element inside a caption or attribution to identify the **title** of a work (e.g., a book or website name), not the author's name.
-- **DO** use the `<code>` element for short fragments of computer code (e.g., variable names, file paths, or inline snippets).
 - **DO** wrap `<code>` inside a `<pre>` element when displaying blocks of code to preserve whitespace and line breaks.
 - **DO** ensure that code blocks are accessible by adding `tabindex="0"` to the `<pre>` element if it becomes scrollable, allowing keyboard users to reach the content.
 
@@ -138,10 +128,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 - **DO** use `fetchpriority="high"` for the Largest Contentful Paint (LCP) element (e.g., hero image) to elevate network priority.
 - **DO** use `<link rel="preload" as="image">` with `fetchpriority="high"` for LCP background images defined in CSS.
-- **DO** apply `loading="lazy"` to off-screen images and iframes to defer bandwidth.
-- **DO** specify `width` and `height` on all `<img>` tags to preserve aspect ratio and prevent Layout Shifts (CLS).
-- **DO** use the `srcset` attribute on `<img>`s for adding multiple versions of the same image at different sizes.
-- **DO** use the `<picture>` element with a fallback `<img>` for more fine-grained image control like switching between image formats, image sizes, and cropping images at different device sizes. 
+- **DO** specify `width` and `height` on all `<img>` tags to preserve aspect ratio and prevent Layout Shifts (CLS). 
 
 - **DON'T** apply `loading="lazy"` to above-the-fold or hero images. This delays LCP.
 - **DON'T** overuse `fetchpriority="high"`; prioritization is a zero-sum mechanism. Use `fetchpriority="low"` to demote non-critical trackers or carousel items.
@@ -205,9 +192,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ### Guidelines
 
 See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallback strategies for using the Popover API in a cross-browser way.
-- **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`. Use the `closedby="any"` attribute to enable native "light-dismiss" (closing on backdrop click) without custom JavaScript.
-- **DO** utilize the Popover API (`popover` attribute) for non-modal UI (menus, tooltips) that do not require focus traps.
-- **DO** use `::backdrop` to style modal backgrounds.
+- When using `<dialog>` for modal overlays, use the `closedby="any"` attribute to enable native "light-dismiss" (closing on backdrop click) without custom JavaScript.
 - **DO** use `<form method="dialog">` to dismiss dialogs without manual JS handlers. Combined button `formmethod="dialog"` yields the button's value to the dialog `.returnValue`.
 
 - **DON'T** use `show()` for modals where keyboard traps are expected (use `showModal()`).
@@ -327,8 +312,7 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 - **DO** utilize the `form="form-id"` attribute to decouple inputs from the physical `<form>` tree.
 - **DO** use `<datalist>` coupled with `<input list="id">` for lightweight auto-suggestions (note: visually unstylable and has screen-reader quirks). 
 - **DON'T** use `autocomplete="off"` on credential, address, payment, or contact fields. Browsers and password managers ignore it there by design. Use a specific token instead (`autocomplete="email"`, `"street-address"`, `"cc-number"`, etc.).
-- **DON'T** use `autocomplete="off"` unless handling highly sensitive tracking tokens (violates standard password manager overrides). Use standard inputs `type="email"`, `type="tel"`.
-- **DO** distinguish `autocomplete="current-password"` (sign-in) from `autocomplete="new-password"` (registration / password change) so password managers offer the right action.                                                    
+- **DON'T** use `autocomplete="off"` unless handling highly sensitive tracking tokens (violates standard password manager overrides). Use standard inputs `type="email"`, `type="tel"`.                                                    
 - **DO** match `autocomplete` tokens with appropriate `inputmode` and `type` (`type="email"` + `inputmode="email"` + `autocomplete="email"`). They control different things — keyboard, validation, and autofill respectively — and reinforce each other.
 
 ### Code Example
@@ -352,8 +336,6 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 ### Guidelines
 
 - **DO** set `width` and `height` to prevent layout shifts (CLS) on `<video>` elements.
-- **DO** provide a `poster` image fallback for videos.
-- **DO** include subtitles and captions with `<track>`.
 - **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`. The `controls` attribute must also be omitted to make sure the video is not focusable.  
 
 - **DON'T** rely on JS for basic video controls if native `controls` attribute is sufficient.
