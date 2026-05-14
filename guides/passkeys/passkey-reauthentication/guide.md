@@ -95,7 +95,7 @@ async function triggerButtonReauth() {
         showTransactionSuccessUI();
       } else if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
         await PublicKeyCredential.signalUnknownCredential({
-          rpId,
+          rpId, // RP ID must match the one defined on the server
           credentialId: encodedCredential.id
         });
       }

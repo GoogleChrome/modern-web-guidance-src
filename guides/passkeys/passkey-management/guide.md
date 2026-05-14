@@ -94,7 +94,7 @@ async function syncAcceptedCredentials(currentCredentialsList) {
     const credentialIds = currentCredentialsList.map(c => c.id); // Map of Base64URL credential ID strings
     
     await PublicKeyCredential.signalAllAcceptedCredentials({
-      rpId: window.location.hostname,
+      rpId, // RP ID must match the one defined on the server
       userId: base64UrlUserId, // User ID Base64URL-encoded string
       allAcceptedCredentialIds: credentialIds
     });
@@ -129,7 +129,7 @@ async function performRename(rpId, userId, updatedName, updatedDisplayName) {
   if (response.ok) {
     try {
       await PublicKeyCredential.signalCurrentUserDetails({
-        rpId,
+        rpId, // RP ID must match the one defined on the server
         userId, // Base64URL-encoded user ID
         name: updatedName, // Updated username
         displayName: updatedDisplayName // Updated display name

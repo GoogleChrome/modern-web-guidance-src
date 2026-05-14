@@ -118,7 +118,7 @@ async function initializeConditionalAutofill() {
         // Note: this code path runs pre-authentication, satisfying the unauth precondition
         if (PublicKeyCredential.signalUnknownCredential) {
           await PublicKeyCredential.signalUnknownCredential({
-            rpId: window.location.hostname,
+            rpId, // RP ID must match the one defined on the server
             credentialId: encoded.id,
           });
         }
@@ -167,7 +167,7 @@ async function triggerButtonAuthentication() {
     if (!response.ok && response.status === 404) {
       // Note: this code path runs pre-authentication, satisfying the unauth precondition
       await PublicKeyCredential.signalUnknownCredential({
-        rpId: window.location.hostname, // RP ID
+        rpId, // RP ID must match the one defined on the server
         credentialId: encoded.id, // Base64URL-encoded credential ID
       });
     }

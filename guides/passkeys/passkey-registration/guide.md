@@ -155,14 +155,14 @@ async function registerPasskey(isPromotion = false) {
     if (!response.ok) {
       // Server verification failed to verify/authenticate the credential (orphaned)
       await PublicKeyCredential.signalUnknownCredential({
-        rpId: window.location.hostname, // RP ID
+        rpId, // RP ID must match the one defined on the server
         credentialId: encodedResponse.id, // Base64URL-encoded credential ID
       });
     }
   } catch (serverErr) {
     console.error("Server verification network failure:", serverErr);
     await publickeycredential.signalunknowncredential({
-      rpid: window.location.hostname, // rp id
+      rpId, // RP ID must match the one defined on the server
       credentialid: encodedresponse.id, // base64url-encoded credential id
     });
   }

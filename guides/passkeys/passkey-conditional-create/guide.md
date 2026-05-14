@@ -92,7 +92,7 @@ async function triggerConditionalCreate(loginAbortController) {
       // If the server verification fails, clean up using Signal API
       if (PublicKeyCredential.signalUnknownCredential) {
         await PublicKeyCredential.signalUnknownCredential({
-          rpId: window.location.hostname,
+          rpId, // RP ID must match the one defined on the server
           credentialId: encodedResponse.id
         });
       }
@@ -101,7 +101,7 @@ async function triggerConditionalCreate(loginAbortController) {
     console.error('Verification network failure:', serverErr);
     if (PublicKeyCredential.signalUnknownCredential) {
       await PublicKeyCredential.signalUnknownCredential({
-        rpId: window.location.hostname,
+        rpId, // RP ID must match the one defined on the server
         credentialId: encodedResponse.id
       });
     }
