@@ -431,6 +431,16 @@ window.__featuresMapping = {
   "support-global-calendar-systems": [
     "temporal"
   ],
+  "swipe-to-remove": [
+    "scroll-snap",
+    "scroll-initial-target",
+    "overscroll-behavior",
+    "scrollbar-width",
+    "intersection-observer",
+    "mutationobserver",
+    "resize-observer",
+    "web-animations"
+  ],
   "theme-within-theme": [
     "color-scheme"
   ],
