@@ -22,7 +22,8 @@ export const CommandType = {
   UNSPECIFIED: 0,
   INSTALL: 1,
   INSTALL_CHOOSE: 2,
-  UPDATE: 3,
+  UPDATE_MANUAL: 3,
+  UPDATE_AUTO: 4,
 } as const;
 
 export type CommandType = typeof CommandType[keyof typeof CommandType];
@@ -46,6 +47,7 @@ export interface ChromeModernWebGuidance {
   tool_command?: ToolCommand;
   os?: OsType;
   version?: string;
+  skill_version?: string;
   latency_ms?: number;
   success?: boolean;
 }

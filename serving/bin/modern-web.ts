@@ -2,6 +2,8 @@
 
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
+import { readdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
 import { CommandType } from "../skills-cli/telemetry/types.ts";
@@ -14,6 +16,8 @@ const { values, positionals } = parseArgs({
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
     choose: { type: "boolean" },
+    "skill-version": { type: "string" },
+    auto: { type: "boolean" },
   },
   allowPositionals: true,
   strict: false,
@@ -28,12 +32,25 @@ Commands:
   list                    List all available use cases
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
   install [options]       Install the modern-web-guidance skill
+  update                  Update skills
 
 Options:
+  --skill-version <version> Internal use: version of the skill being executed
+  --auto                    Internal use: identifies background automated update
   --choose                Choose specific skills from the repository interactively
   -h, --help              Show this help
   -v, --version           Show version
 `);
+}
+
+function getOurCLIAdjacentSkillIDs(): string[] {
+  try {
+    const skillsPath = join(import.meta.dirname, "../../skills");
+    const listing = readdirSync(skillsPath);
+    return listing.filter(name => existsSync(join(skillsPath, name, 'SKILL.md')));
+  } catch (e) {
+    return [];
+  }
 }
 
 async function main() {
@@ -47,13 +64,15 @@ async function main() {
     process.exit(values.help ? 0 : 1);
   }
 
+  const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
+
   const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
 
   if (command === "search") {
     if (!arg) {
       const logger = new ClearcutLogger();
-      await logger.logSearchResult([], { latencyMs: 0, success: false });
+      await logger.logSearchResult([], { latencyMs: 0, success: false, skillVersion });
       console.error("No search query provided.");
       process.exit(1);
     }
@@ -66,7 +85,7 @@ async function main() {
 
       if (results.length === 0) {
         const logger = new ClearcutLogger();
-        await logger.logSearchResult([], { latencyMs, success: true });
+        await logger.logSearchResult([], { latencyMs, success: true, skillVersion });
         console.log("[]");
       } else {
         // Instantiate logger
@@ -76,7 +95,7 @@ async function main() {
           guide_id: r.id,
           similarity: parseFloat(r.similarity),
         }));
-        await logger.logSearchResult(searchItems, { latencyMs, success: true });
+        await logger.logSearchResult(searchItems, { latencyMs, success: true, skillVersion });
 
         // Do a ~compressed output so users can see some of the results in their coding agent.
         // Also fewer tokens. :p
@@ -86,7 +105,7 @@ async function main() {
     } catch (error) {
       const latencyMs = Date.now() - startTime;
       const logger = new ClearcutLogger();
-      await logger.logSearchResult([], { latencyMs, success: false });
+      await logger.logSearchResult([], { latencyMs, success: false, skillVersion });
       console.error("Search failed:", error);
       process.exit(1);
     }
@@ -100,14 +119,14 @@ async function main() {
   } else if (command === "retrieve") {
     if (!arg) {
       const logger = new ClearcutLogger();
-      await logger.logRetrieveResult("", { latencyMs: 0, success: false });
+      await logger.logRetrieveResult("", { latencyMs: 0, success: false, skillVersion });
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
     const ids = arg.split(",").map(id => id.trim()).filter(Boolean);
     if (ids.length === 0) {
       const logger = new ClearcutLogger();
-      await logger.logRetrieveResult("", { latencyMs: 0, success: false });
+      await logger.logRetrieveResult("", { latencyMs: 0, success: false, skillVersion });
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
@@ -121,11 +140,11 @@ async function main() {
         const guide = await retrieveUseCase(id);
         console.log(`\n--- Guide for ${id} ---`);
         console.log(guide);
-        await logger.logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: true });
+        await logger.logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: true, skillVersion });
       } catch (error) {
         hasError = true;
         console.error(`Retrieve failed for ${id}:`, error);
-        await logger.logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: false });
+        await logger.logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: false, skillVersion });
       }
     }
 
@@ -142,13 +161,26 @@ async function main() {
     const success = !result.error && result.status === 0;
     const logger = new ClearcutLogger();
     const commandType = values.choose ? CommandType.INSTALL_CHOOSE : CommandType.INSTALL;
-    await logger.logToolCommand(commandType, { success });
+    await logger.logToolCommand(commandType, { success, skillVersion });
 
     if (result.error) {
       console.error("Install failed:", result.error);
       process.exit(1);
     }
     process.exit(result.status ?? 0);
+  } else if (command === "update") {
+    const skills = getOurCLIAdjacentSkillIDs();
+    const startTime = Date.now();
+    const result = spawnSync("npx", ["skills", "update", ...skills], {
+      stdio: "inherit",
+    });
+    const success = !result.error && result.status === 0;
+    const logger = new ClearcutLogger();
+    const commandType = values.auto ? CommandType.UPDATE_AUTO : CommandType.UPDATE_MANUAL;
+    await logger.logToolCommand(commandType, { success, latencyMs: Date.now() - startTime, skillVersion });
+    if (result.error) {
+      console.error("Update failed:", result.error);
+    }
   } else {
     console.error(`Unknown command: ${command}`);
     printUsage();

@@ -42,7 +42,7 @@ export function bucketizeLatency(latencyMs: number): number {
   return LATENCY_BUCKETS[LATENCY_BUCKETS.length - 1];
 }
 
-export type Metrics = { latencyMs?: number; success?: boolean };
+export type Metrics = { latencyMs?: number; success?: boolean; skillVersion?: string | null };
 
 export class ClearcutLogger {
   #watchdog: WatchdogClient | null = null;
@@ -71,6 +71,7 @@ export class ClearcutLogger {
       },
       os: detectOS(),
       version: getVersion(import.meta.dirname),
+      skill_version: metrics?.skillVersion ?? undefined,
       latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
       success: metrics?.success,
     };
@@ -94,6 +95,7 @@ export class ClearcutLogger {
       },
       os: detectOS(),
       version: getVersion(import.meta.dirname),
+      skill_version: metrics?.skillVersion ?? undefined,
       latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
       success: metrics?.success,
     };
@@ -117,6 +119,7 @@ export class ClearcutLogger {
       },
       os: detectOS(),
       version: getVersion(import.meta.dirname),
+      skill_version: metrics?.skillVersion ?? undefined,
       latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
       success: metrics?.success,
     };
