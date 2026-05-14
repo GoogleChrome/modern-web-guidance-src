@@ -3,10 +3,6 @@ name: language-model
 description: Run on-device natural language inference in the browser using the Prompt API, with streaming output, structured JSON responses, and multi-turn session management.
 web-feature-ids:
   - languagemodel
-sources:
-  - https://developer.chrome.com/docs/ai/prompt-api
-  - https://developer.chrome.com/docs/ai/session-management
-  - https://developer.chrome.com/docs/ai/structured-output-for-prompt-api
 ---
 
 The Prompt API allows developers to run natural language processing tasks directly in the browser using **Gemini Nano**. This built-in AI approach ensures user privacy, reduces server costs, and enables offline functionality.

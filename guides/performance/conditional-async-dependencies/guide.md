@@ -3,9 +3,6 @@ name: conditional-async-dependencies
 description: Conditionally load or initialize async dependencies (such as importing polyfills for missing web features) without requiring complex orchestration across all of a page's script dependencies.
 web-feature-ids:
   - top-level-await
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/await
-  - https://bugs.webkit.org/show_bug.cgi?id=242740
 ---
 
 Top-level `await` allows modules to act as asynchronous functions, meaning they can pause module execution to await promises. This is extremely useful for conditionally loading async dependencies—like polyfills or heavy secondary libraries—only when required by the browser. 

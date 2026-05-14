@@ -4,13 +4,6 @@ description: Create interactive reveal effects, such as a spotlight that follows
 web-feature-ids:
   - masks
   - registered-custom-properties
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/mask-image
-  - https://web.dev/articles/css-masking
-  - https://www.gperrucci.com/blog/css/mask-image
-  - https://web.dev/learn/css/paths-shapes-clipping-masking#masking
-  - https://frontendmasters.com/blog/css-spotlight-effect/
-  - https://css-tricks.com/image-fragmentation-effect-with-css-masks-and-custom-properties/
 ---
 
 Add performant, interactive reveal effects to your site with CSS masks and registered custom properties. By using a radial gradient as a mask and registering its stop values, we can smoothly transition the entry and exit, while following a user's pointer with minimal JavaScript. 

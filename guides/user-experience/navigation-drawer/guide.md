@@ -9,14 +9,6 @@ web-feature-ids:
   - scroll-driven-animations
   - scroll-initial-target
   - scroll-snap
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll_snap
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Properties_and_values_API/Registering_properties
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll-driven_animations
-  - https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
-  - https://developer.mozilla.org/en-US/docs/Web/API/Popover_API
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/inert
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
 ---
 
 ## Overview

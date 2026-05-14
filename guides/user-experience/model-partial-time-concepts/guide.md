@@ -3,8 +3,6 @@ name: model-partial-time-concepts
 description: Model date and time concepts that inherently lack a standard component (such as a specific year, day, or date) without using arbitrary placeholder values that introduce calculation errors.
 web-feature-ids:
   - temporal
-sources:
-  - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
 ---
 
 # Modeling Partial Time Concepts with Temporal

@@ -3,12 +3,6 @@ name: prevent-text-wrapping
 description: Ensure the browser does not insert line breaks into text and will allow text to overflow its container.
 web-feature-ids:
   - text-wrap
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/text-wrap
-  - https://12daysofweb.dev/2024/css-text-wrap/
-  - https://css-tricks.com/almanac/properties/t/text-wrap-mode/
-  - https://web.dev/learn/css/typography
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/overflow
 ---
 
 # Prevent text wrapping

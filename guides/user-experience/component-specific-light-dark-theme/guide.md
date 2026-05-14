@@ -4,17 +4,6 @@ description: Create component-specific themes by forcing explicit color schemes 
 web-feature-ids:
   - color-scheme
   - light-dark
-sources:
-  - https://web.dev/articles/light-dark
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark
-  - https://web.dev/articles/baseline-in-action-color-theme?hl=en
-  - https://web.dev/articles/building/a-theme-switch-component?hl=en
-  - https://nerdy.dev/page-and-component-light-dark-strategies
-  - https://www.bram.us/2023/10/09/the-future-of-css-easy-light-dark-mode-color-switching-with-light-dark/
-  - https://css-tricks.com/almanac/functions/l/light-dark/
-  - https://www.bram.us/2020/04/26/the-quest-for-the-perfect-dark-mode-using-vanilla-javascript/
-  - https://css-tricks.com/come-to-the-light-dark-side/
 ---
 
 # Component-Specific Light/Dark Themes

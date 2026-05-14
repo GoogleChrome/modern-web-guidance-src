@@ -5,13 +5,6 @@ web-feature-ids:
   - blocking-render
   - link-rel-expect
   - cross-document-view-transitions
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/View_Transition_API/Using
-  - https://developer.chrome.com/docs/web-platform/view-transitions/cross-document
-  - https://github.com/WICG/view-transitions/blob/main/document-render-blocking.md
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/link#blocking
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script#blocking
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#expect
 ---
 
 # Consistent Cross-Document Transitions

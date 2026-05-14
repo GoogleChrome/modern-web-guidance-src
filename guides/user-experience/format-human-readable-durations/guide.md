@@ -4,9 +4,6 @@ description: Present elapsed time or durations to users in a readable, localized
 web-feature-ids:
   - temporal
   - intl-duration-format
-sources:
-  - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
-  - https://www.npmjs.com/package/@js-temporal/polyfill
 ---
 
 # Formatting Human-Readable Durations with Temporal
