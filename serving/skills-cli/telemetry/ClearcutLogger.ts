@@ -51,13 +51,14 @@ export class ClearcutLogger {
     clearcutEndpoint?: string;
     clearcutIncludePidHeader?: boolean;
   } = {}) {
-    if (isTelemetryEnabled()) {
-      console.warn("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_TELEMETRY=1.");
-      this.#watchdog = new WatchdogClient({
-        clearcutEndpoint: options.clearcutEndpoint,
-        clearcutIncludePidHeader: options.clearcutIncludePidHeader,
-      });
+    if (!isTelemetryEnabled()) {
+      return;
     }
+    console.warn("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_TELEMETRY=1.");
+    this.#watchdog = new WatchdogClient({
+      clearcutEndpoint: options.clearcutEndpoint,
+      clearcutIncludePidHeader: options.clearcutIncludePidHeader,
+    });
   }
 
   async logSearchResult(searchItems: SearchItem[], metrics?: Metrics): Promise<void> {

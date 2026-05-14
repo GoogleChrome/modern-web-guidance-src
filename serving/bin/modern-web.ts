@@ -16,7 +16,6 @@ const { values, positionals } = parseArgs({
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
     choose: { type: "boolean" },
-    auto: { type: "boolean" },
     "skill-version": { type: "string" },
   },
   allowPositionals: true,
@@ -36,7 +35,6 @@ Commands:
 
 Options:
   --skill-version <version> Internal use: version of the skill being executed
-  --auto                    Internal use: identifies background automated update
   --choose                  Choose specific skills from the repository interactively
   -h, --help                Show this help
   -v, --version             Show version
@@ -57,13 +55,14 @@ async function main() {
   const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
   maybeEmitUpdateMessage(skillVersion);
 
+  let loggerInstance: ClearcutLogger | undefined;
+  const getLogger = () => loggerInstance ??= new ClearcutLogger();
   const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
 
   if (command === "search") {
     if (!arg) {
-      const logger = new ClearcutLogger();
-      await logger.logSearchResult([], { latencyMs: 0, success: false, skillVersion });
+      await getLogger().logSearchResult([], { latencyMs: 0, success: false, skillVersion });
       console.error("No search query provided.");
       process.exit(1);
     }
@@ -74,20 +73,15 @@ async function main() {
       const results = await searchUseCases(arg);
       const latencyMs = Date.now() - startTime;
 
+      const searchItems = results.map(r => ({
+        guide_id: r.id,
+        similarity: parseFloat(r.similarity),
+      }));
+      await getLogger().logSearchResult(searchItems, { latencyMs, success: true, skillVersion });
+
       if (results.length === 0) {
-        const logger = new ClearcutLogger();
-        await logger.logSearchResult([], { latencyMs, success: true, skillVersion });
         console.log("[]");
       } else {
-        // Instantiate logger
-        const logger = new ClearcutLogger();
-        // Log search results
-        const searchItems = results.map(r => ({
-          guide_id: r.id,
-          similarity: parseFloat(r.similarity),
-        }));
-        await logger.logSearchResult(searchItems, { latencyMs, success: true, skillVersion });
-
         // Do a ~compressed output so users can see some of the results in their coding agent.
         // Also fewer tokens. :p
         const jsonLines = results.map(r => JSON.stringify(r));
@@ -95,8 +89,7 @@ async function main() {
       }
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      const logger = new ClearcutLogger();
-      await logger.logSearchResult([], { latencyMs, success: false, skillVersion });
+      await getLogger().logSearchResult([], { latencyMs, success: false, skillVersion });
       console.error("Search failed:", error);
       process.exit(1);
     }
@@ -108,21 +101,13 @@ async function main() {
     }));
     console.log(JSON.stringify(catalog, null, 2));
   } else if (command === "retrieve") {
-    if (!arg) {
-      const logger = new ClearcutLogger();
-      await logger.logRetrieveResult("", { latencyMs: 0, success: false, skillVersion });
-      console.error("No IDs provided for retrieve.");
-      process.exit(1);
-    }
-    const ids = arg.split(",").map(id => id.trim()).filter(Boolean);
+    const ids = arg ? arg.split(",").map(id => id.trim()).filter(Boolean) : [];
     if (ids.length === 0) {
-      const logger = new ClearcutLogger();
-      await logger.logRetrieveResult("", { latencyMs: 0, success: false, skillVersion });
+      await getLogger().logRetrieveResult("", { latencyMs: 0, success: false, skillVersion });
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
 
-    const logger = new ClearcutLogger();
     let hasError = false;
 
     for (const id of ids) {
@@ -131,16 +116,16 @@ async function main() {
         const guide = await retrieveUseCase(id);
         console.log(`\n--- Guide for ${id} ---`);
         console.log(guide);
-        await logger.logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: true, skillVersion });
+        await getLogger().logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: true, skillVersion });
       } catch (error) {
         hasError = true;
         console.error(`Retrieve failed for ${id}:`, error);
-        await logger.logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: false, skillVersion });
+        await getLogger().logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: false, skillVersion });
       }
     }
 
     if (hasError) {
-      process.exitCode = 1;
+      process.exit(1);
     }
   } else if (command === "install") {
     const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
@@ -150,9 +135,8 @@ async function main() {
     const result = spawnSync("npx", installArgs, { stdio: "inherit", shell: process.platform === "win32" });
 
     const success = !result.error && result.status === 0;
-    const logger = new ClearcutLogger();
     const commandType = values.choose ? CommandType.INSTALL_CHOOSE : CommandType.INSTALL;
-    await logger.logToolCommand(commandType, { success, skillVersion });
+    await getLogger().logToolCommand(commandType, { success, skillVersion });
 
     if (result.error) {
       console.error("Install failed:", result.error);
@@ -167,9 +151,7 @@ async function main() {
       shell: process.platform === "win32",
     });
     const success = !result.error && result.status === 0;
-    const logger = new ClearcutLogger();
-    const commandType = values.auto ? CommandType.UPDATE_AUTO : CommandType.UPDATE_MANUAL;
-    await logger.logToolCommand(commandType, { success, latencyMs: Date.now() - startTime, skillVersion });
+    await getLogger().logToolCommand(CommandType.UPDATE, { success, latencyMs: Date.now() - startTime, skillVersion });
     if (result.error) {
       console.error("Update failed:", result.error);
     }
@@ -240,8 +222,6 @@ function maybeEmitUpdateMessage(callerSkillVersion: string|null): void {
     '',
     `Your version: ${callerSkillVersion}`,
     `Latest version: ${latestSkillVersion}`,
-    '',
-    'To update, run: npx modern-web-guidance@latest update --auto',
   ].join('\n'));
 }
 
