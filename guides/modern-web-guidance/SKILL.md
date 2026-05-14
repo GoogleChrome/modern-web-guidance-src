@@ -41,7 +41,7 @@ npx -y modern-web-guidance@latest search "<query>"
 ]
 ```
 
-> **Note**: If search results are vague, return no matches, or show low similarity scores, run the `list` command to browse the complete catalog directory:
+> **Note**: If search results are vague, return no matches, or show low similarity scores, run the `list` command to browse all guides:
 > ```sh
 > npx -y modern-web-guidance@latest list
 > ```
@@ -65,46 +65,35 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 -   Always search **first** to find the most relevant guides.
 -   These guides are usually framework-agnostic; adapt them correctly to your setup.
 -   Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
-
-
 -   Note: if the `npx -y modern-web-guidance…` command hangs, try running again in offline mode: `npx --offline …`
-
-
-### Browser Compatibility & Baseline Fallbacks
-
-#### Baseline Status
-- **Limited Availability**: Lacks cross-browser interoperability.
-- **Newly Available**: The feature has emerged in all major browsers within the last 30 months.
-- **Widely Available**: The feature has been supported in all major browsers for ≥ 30 months.
-
-#### Support Floor Implementation
-Assume a default guaranteed audience floor of **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)**. Enforce a support floor, not a ceiling:
-- **Supporting Browsers (Guaranteed Audience):** Features at or above the floor require **zero fallbacks**. Clients below the floor risk broken experiences.
-- **Supporting Features (Capability Integration):** Features below the floor **MUST** implement progressive enhancement and feature-detected fallbacks to protect the guaranteed audience.
-- **Implicit Context:** Read `AGENTS.md` constraints implicitly within the context window. Do **NOT** execute upfront status lookups or file-verification checks before engaging CLI tools.
-- **Risk Warnings:** Proactively warn users if low-maturity features risk breaking core functionality without perfect fallbacks.
-
-#### Advanced Feature Handling
-- **Single-Engine APIs (e.g., Chrome-only):** Fair game by default. **MUST** include robust feature detection and alternative code paths for unsupported engines.
-- **Origin Trials:** Highly unstable. **PAUSE**. Prompt the user to explicitly accept the risk and define production fallback strategies before generating implementation code.
 
 
 ## Interpreting Browser Support & Fallbacks
 
-Every retrieved guide includes a Baseline status macro. Implement fallbacks by filtering the guide's suggestions through the user's established `AGENTS.md` policy.
+#### Baseline Status
 
-### Execution Rules
-*   **Policy Overrides Guide:** Explicit project constraints (e.g., line-count limits, dependency bans, targeted monocultures) always override the guide's fallback section. Confidently omit or adapt suggested fallbacks to respect the developer's rules.
-*   **Default Baseline Logic (If unconfigured):**
-    *   **Widely Available:** Natively supported. Omit all fallback code.
-    *   **Newly / Limited Available:** Implement fallbacks for **core functionality** (state, routing, structural layouts). For **enhancements/UI polish**, omit fallbacks and rely on native progressive enhancement (e.g., `@supports`, inline feature detection) to degrade silently.
-*   **Framework Idioms:** Never paste imperative vanilla snippets directly into frameworks. Translate fallbacks into idiomatic equivalents.
+- **Limited Availability**: Lacks cross-browser interoperability.
+- **Newly Available**: The feature has emerged in all major browsers within the last 30 months.
+- **Widely Available**: The feature has been supported in all major browsers for ≥ 30 months.
 
-### Reactive Discovery & Persistence
-Do **NOT** ask for browser support targets upfront. Intervene reactively only when observing:
-- Browser monocultures (e.g., Electron/Tauri).
-- Explicit browser exclusions (e.g., "no Desktop Chrome").
-- Hesitation around polyfill size/invasiveness.
+By default, the guides operate on the assumption that Baseline Widely Available features require no safety nets. The W3C WebDX Community Group defines this as features fully supported across the core browser set (Chrome, Edge, Firefox, Safari) for at least 30 months. Features meeting this standard are assumed safe to use natively, while **newer APIs include production-ready fallback strategies** to bridge the gap.
 
-**Clarify & Persist:** When triggered, clarify constraints interactively and suggest persisting them to a project-level **`AGENTS.md`** file.
-- *Format:* `**Browser Support:** Require Widely Available features for all state management and DOM work, but freely use newer features for visual enhancements and non-critical interactions. Do not use JS polyfills for CSS features.`
+The user may have established a **Browser Support Policy** in their context (typically via an `AGENTS.md` file) that alters this default stance. A policy dictates the appetite for dependency weight, graceful degradation, or targeted environments. Examples of policies:
+- *"Never recommend or implement polyfills; if a Baseline Newly Available feature is required for core functionality, provide a lightweight custom fallback or redesign the approach."*
+- *"Assume a modern execution environment where Baseline Newly Available features can be used natively, provided they are strictly feature-detected and degrade gracefully."*
+
+When reading a guide's fallback section, adapt the code using these constraints:
+- **Respect Custom Policies:** Explicit project rules always override the guide's default instructions.
+- **Translate Framework Idioms:** Translate vanilla fallback snippets into idiomatic equivalents.
+
+### Document Unwritten Support Policies if needed
+
+Watch for environmental cues during conversation to see if a custom policy if needed. Suggest adding one to **`AGENTS.md`** if the developer:
+- Mentions building for a restricted runtime (e.g., Electron, Tauri, or custom webviews).
+- Explicitly excludes specific targets (e.g., "we don't need to support mobile Chrome").
+- Expresses hesitation about the complexity, bundle size, or performance cost of a recommended fallback strategy.
+- Questions [if a feature is truly safe to use without fallbacks](https://web.dev/articles/baseline-and-polyfills).
+
+When proposing the update, draft a clear, single-sentence tailored policy and confirm it with the user first.
+- *Example format:* `**Browser Support:** Green-light enhancement and additive features, but only adopt custom fallback code that adds <= 20 lines and does not require external dependencies.`
+
