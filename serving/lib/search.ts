@@ -9,10 +9,11 @@ export interface UseCaseResult {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount: number;
   similarity: string;
 }
 
-let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; vector: number[]; norm: number }[] | null = null;
+let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; tokenCount: number; vector: number[]; norm: number }[] | null = null;
 
 function dotProduct(a: number[], b: number[]): number {
   let dotProduct = 0;
@@ -30,7 +31,7 @@ function calculateNorm(v: number[]): number {
   return Math.sqrt(sum);
 }
 
-export async function searchUseCases(query: string, limit = 5, minSimilarity = 0.3, embedder?: any): Promise<UseCaseResult[]> {
+export async function searchUseCases(query: string, limit = 10, minSimilarity = 0.3, embedder?: any): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder || TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
   const queryNorm = calculateNorm(queryVector);
@@ -50,6 +51,7 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
       description: item.description,
       category: item.category,
       featuresUsed: item.featuresUsed || [],
+      tokenCount: item.tokenCount || 0,
       vector: item.vector,
       norm: item.vector ? calculateNorm(item.vector) : 0
     })).filter(item => item.vector);
@@ -80,6 +82,7 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
     description: r.item.description,
     category: r.item.category,
     featuresUsed: r.item.featuresUsed,
+    tokenCount: r.item.tokenCount,
     similarity: r.similarity.toFixed(4)
   }));
 

@@ -10,6 +10,7 @@ export interface StoreUseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount?: number;
   chunkContent?: string;
   vector?: number[];
   distance?: number;
@@ -28,6 +29,7 @@ interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount?: number;
 }
 
 export interface BuildOptions {
@@ -182,6 +184,7 @@ export interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount: number;
 }
 
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
@@ -249,12 +252,14 @@ async function processSingleGuideFile(
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
+  const tokenCount = Math.ceil(processedMarkdown.length / 4);
 
   useCases.push({
     id,
     description: data.description,
     category,
     featuresUsed,
+    tokenCount,
   });
 
   const chunks = IS_NO_CHUNKING
@@ -270,6 +275,7 @@ async function processSingleGuideFile(
       description: data.description,
       category,
       featuresUsed,
+      tokenCount,
       chunkContent: chunk,
       vector
     });

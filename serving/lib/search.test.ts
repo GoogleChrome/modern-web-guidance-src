@@ -12,5 +12,6 @@ describe("searchUseCases", () => {
     
     const similarity = parseFloat(bestMatch.similarity as unknown as string);
     assert.ok(similarity > 0.3, `Similarity ${similarity} should be greater than 0.3`);
+    assert.ok(bestMatch.tokenCount > 0, 'Best match should have tokenCount > 0');
   });
 });
