@@ -3,21 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Passkey Management Demo</title>
-  <style>
-    body { font-family: sans-serif; padding: 2rem; background: #fafafa; color: #333; }
-    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 500px; }
-    .credential-list { margin-top: 1rem; }
-    .credential-item { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; padding: 1rem 0; }
-    .credential-info { display: flex; align-items: center; gap: 12px; }
-    .provider-details { display: flex; flex-direction: column; }
-    .provider-name { font-weight: bold; }
-    .timestamp { font-size: 0.8rem; color: #777; }
-    button { background: #cc0000; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
-    button:hover { background: #a30000; }
-    button.rename-btn { background: #0066cc; margin-right: 0.5rem; }
-    button.rename-btn:hover { background: #0052a3; }
-    .empty-state { text-align: center; padding: 2rem 0; color: #777; }
-  </style>
 </head>
 <body>
   <div class="card">
@@ -33,19 +18,13 @@
   </div>
 
   <script type="module">
-    // Local registry dataset mapping
-    const mockAaguids = {
-      'adce0002-35bc-c60a-2b7b-40b2fed21711': {
-        name: 'iCloud Keychain',
-        icon_light: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==...'
-      }
-    };
+      import aaguids from '/aaguids.json' with { type: 'json' };
 
     const base64UrlUserId = "M2YPl-KGnA8"; // Base64URL string User ID
 
     async function gateCreatePasskeyButton() {
       const btn = document.getElementById('create-btn');
-      if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
+      if (window.PublicKeyCredential) {
         const capabilities = await PublicKeyCredential.getClientCapabilities();
         if (capabilities?.passkeyPlatformAuthenticator) {
           btn.style.display = 'inline-block';
@@ -90,7 +69,7 @@
           // Zeroed AAGUID bypass lookup fallback rule
           let provider = { name: 'Unknown passkey provider' };
           if (cred.aaguid !== '00000000-0000-0000-0000-000000000000') {
-            provider = mockAaguids[cred.aaguid] || { name: 'Unknown passkey provider' };
+            provider = aaguids[cred.aaguid] || { name: 'Unknown passkey provider' };
           }
 
           const item = document.createElement('div');

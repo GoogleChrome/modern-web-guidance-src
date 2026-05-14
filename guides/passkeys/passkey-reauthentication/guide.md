@@ -84,14 +84,20 @@ async function triggerButtonReauth() {
     });
 
     if (credential) {
+      const encodedCredential = credential.toJSON();
       const verifyResponse = await fetch("/api/reauth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credential.toJSON()),
+        body: JSON.stringify(encodedCredential),
       });
 
       if (verifyResponse.ok) {
         showTransactionSuccessUI();
+      } else if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
+        await PublicKeyCredential.signalUnknownCredential({
+          rpId,
+          credentialId: encodedCredential.id
+        });
       }
     }
   } catch (err) {
