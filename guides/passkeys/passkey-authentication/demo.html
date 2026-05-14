@@ -99,7 +99,7 @@
     }
 
     async function initializeConditionalAutofill() {
-      if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
+      if (window.PublicKeyCredential) {
         const capabilities = await PublicKeyCredential.getClientCapabilities();
         if (capabilities.passkeyPlatformAuthenticator && capabilities.conditionalGet === true) {
           await performAuth('conditional');

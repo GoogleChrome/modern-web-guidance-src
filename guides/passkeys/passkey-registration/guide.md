@@ -24,8 +24,8 @@ export interface StoredPasskeyCredential {
   id: string; // Base64URL-encoded credential ID (unique lookup key)
   passkeyUserId: string; // Associated application user ID
   credentialPublicKey: string; // Base64URL-encoded public key used to verify assertion signatures
-  credentialType: 'public-key'; 
-  credentialDeviceType: 'singleDevice' | 'multiDevice'; // Helps distinguish device-bound vs cloud-synced passkeys
+  credentialType: "public-key";
+  credentialDeviceType: "singleDevice" | "multiDevice"; // Helps distinguish device-bound vs cloud-synced passkeys
   credentialBackedUp: boolean; // Boolean backup state reported by the authenticator
   aaguid: string; // Authenticator Attestation GUID
   providerIcon?: string; // Provider icon derived from the AAGUID registry (dark or light theme URLs)
@@ -41,16 +41,17 @@ export interface StoredPasskeyCredential {
 
 ### Options Generation
 
-Create a `/register/options` endpoint that generates WebAuthn creation parameters. Developers MUST rely on a vetted library per category standards instead of hand-rolling cryptography.
+Create an endpoint that generates WebAuthn creation parameters. Rely on a vetted library per category standards instead of hand-rolling cryptography.
 
-1.  **Create a secure Challenge**: Generate a high-entropy, cryptographically secure random buffer on the server, store it securely in the user's session, and encode it as Base64URL for options delivery.
-2.  **Avoid Duplicate Passkeys**: Map the user's existing pre-registered passkey IDs to the `excludeCredentials` options array. This prevents the authenticator from registering duplicate credentials on the same biometric device or password manager account.
-3.  **Enforce Resident and Discoverable Keys**: Set `requireResidentKey: true` and `residentKey: "required"` in the `authenticatorSelection` options to request a discoverable resident key, which is necessary for discoverable form autofill sign-ins.
-4.  **Configure User Verification**: Specify `userVerification: "preferred"` or `userVerification: "required"`. Many compliance use cases (e.g., finance, healthcare) require `'required'` to enforce hardware biometrics or PIN entry on creation.
-5.  **Determine Attachment Scope**:
-    *   **Promotion Flow**: When proposing passkey auto-creation right after standard password sign-ins or post-signup promotions, set `authenticatorAttachment: "platform"` to enforce built-in biometric hardware and bypass hardware key prompts.
-    *   **Management Flow**: When called from a dedicated settings or security panel where external hardware security keys (e.g., YubiKeys) are supported in addition to biometrics, omit the `authenticatorAttachment` property entirely.
-    *   *Tip*: Accept a `promotion: boolean` request flag to conditionally handle both flows with a single endpoint.
+1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string.
+2.  **Create a secure Challenge**: Generate a high-entropy, cryptographically secure random buffer on the server, store it securely in the user's session, and encode it as Base64URL for options delivery.
+3.  **Avoid Duplicate Passkeys**: Map the user's existing pre-registered credential IDs to the `excludeCredentials` options array. This prevents the authenticator from registering duplicate credentials on the same passkey provider account.
+4.  **Enforce Discoverable Credentials**: Set `requireResidentKey: true` and `residentKey: "required"` in the `authenticatorSelection` options to request a discoverable credential, which is necessary for discoverable sign-ins.
+5.  **Configure User Verification**: Specify `userVerification: "preferred"` or `userVerification: "required"`. Many compliance use cases (e.g., finance, healthcare) require `'required'` to enforce user verification on creation.
+6.  **Determine Attachment Scope**:
+    - **Promotion Flow**: When proposing passkey creation right after standard password sign-ins or post-signup promotions, set `authenticatorAttachment: "platform"` to enforce platform authenticator and bypass external security key prompts.
+    - **Management Flow**: When called from a dedicated settings or security panel where external security keys are supported in addition to platform authenticator, omit the `authenticatorAttachment` property entirely.
+    - _Tip_: Accept a `promotion: boolean` request flag to conditionally handle both flows with a single endpoint.
 
 ```javascript
 // Options generation example
@@ -60,96 +61,89 @@ const options = {
   user: {
     id: userBase64UrlId, // Unique base64url string identifying the account
     name: "user@example.com",
-    displayName: "Jane Doe"
+    displayName: "Jane Doe",
   },
-  pubKeyCredParams: [{ type: "public-key", alg: -7 }], // Enforce ES256 (standard platform algorithm)
-  excludeCredentials: userExistingCredentials.map(cred => ({
+  pubKeyCredParams: [
+    {
+      type: "public-key",
+      alg: -7,
+    },
+    {
+      type: "public-key",
+      alg: -257,
+    },
+  ],
+  excludeCredentials: userExistingCredentials.map((cred) => ({
     type: "public-key",
-    id: cred.id
+    id: cred.id,
+    transports: cred.transports,
   })),
   authenticatorSelection: {
     residentKey: "required",
     requireResidentKey: true,
-    userVerification: "preferred", // Fallback to PIN if biometrics aren't ready
-    // Biometric platform attachment only used during promotion workflows
-    ...(isPromotionFlow && { authenticatorAttachment: "platform" })
-  }
+    userVerification: "preferred",
+    ...(isPromotionFlow && { authenticatorAttachment: "platform" }),
+  },
 };
 ```
 
-### Verification & AAGUID Lookup
+### Verification
 
-1.  **Challenge Verification**: Securely verify the attestation challenge against the expected session bound challenge.
+1.  **Challenge Verification**: Securely verify the challenge against the expected session bound challenge.
 2.  **Verify User Presence**:
-    *   `MANDATORY:` Ensure that the User Present (UP) flag returned in the parsed authenticator data is `true` to confirm physical user presence at the time of creation.
-3.  **Relaxing Verification for 'preferred'**: 
-    *   `MANDATORY:` When the creation options specified `userVerification: "preferred"`, the server-side verification call MUST be configured with `requireUserVerification: false`. Otherwise, authenticators that register without user biometrics (e.g., screen locks disabled) will trigger spurious server verification failures.
-4.  **AAGUID Resolution**: Fetch the AAGUID UUID string from the attestation data and look it up against the AAGUID registry to populate metadata:
-    *   `MANDATORY:` Authenticator providers return a zeroed AAGUID (`00000000-0000-0000-0000-000000000000`) for certain platform settings. When encountered, skip registry lookups entirely. Fall back to user-agent parsing or "Unknown passkey provider" and leave `providerIcon` undefined. Do NOT pass a zeroed AAGUID to the registry.
-5.  **Transports Persistence**: Persist `response.getTransports()` as the `transports` field inside the database record; this list is required for excluding existing credentials in subsequent flows.
-6.  **Return HTTP 404 on Missing Keys**:
-    *   `MANDATORY:` If the credential public key matching the Returned ID is missing or cannot be found in the database, the verification endpoint MUST respond with an explicit HTTP `404` status to safely trigger the Signal API.
+    - Ensure that the User Present (UP) flag returned in the parsed authenticator data is `true` to confirm physical user presence at the time of creation.
+3.  **Relaxing Verification for 'preferred'**:
+    - When the creation options specified `userVerification: "preferred"`, the server-side verification call MUST be configured with `requireUserVerification: false`. Otherwise, authenticators that register without user verification (e.g., screen locks disabled) will trigger spurious server verification failures.
 
 ## Client-Side Logic
 
 1.  **Gate the UI on page load**:
-    *   `MANDATORY:` On page load, call `PublicKeyCredential.getClientCapabilities()` and **hide the "Create passkey" button** if `passkeyPlatformAuthenticator` is not available. Do NOT render an enabled registration entry-point that the user cannot fulfill — this surfaces broken UI on devices without a platform authenticator. Hide via `style.display = 'none'` (or equivalent) and surface the standard password fallback in its place.
+    - On page load, call `PublicKeyCredential.getClientCapabilities()` and **disable the "Create passkey" button** if `conditionalGet` or `passkeyPlatformAuthenticator` is not available.
 2.  **Invoke creation & Serialize**: Decode server options with `PublicKeyCredential.parseCreationOptionsFromJSON()` and pass the resulting configuration to `navigator.credentials.create()`.
-    *   `MANDATORY:` Standard `PublicKeyCredential` DOM objects contain raw ArrayBuffers and do NOT serialize natively under standard `JSON.stringify()`. Developers MUST call `credential.toJSON()` to encode the `AuthenticatorAttestationResponse` into a valid, JSON-serializable object before fetching the verification endpoint.
+    - Call `credential.toJSON()` to encode the `AuthenticatorAttestationResponse` into a valid, JSON-serializable object before fetching the verification endpoint.
 3.  **Handle WebAuthn Exceptions**:
-    *   `InvalidStateError`: A matching passkey already exists (matched by `excludeCredentials`).
-    *   `NotAllowedError`: The user cancelled or timed out the authentication biometrics dialog.
-    *   `AbortError`: The operation has been aborted.
-    *   `SecurityError`: Secure origins (HTTPS) or RP ID mismatch errors (configuration issues).
+    - `InvalidStateError`: A matching passkey already exists (matched by `excludeCredentials`).
+    - `NotAllowedError`: The user cancelled or timed out the authentication passkey dialog.
+    - `AbortError`: The operation has been aborted.
+    - `SecurityError`: Secure origins (HTTPS) or RP ID mismatch errors (configuration issues).
 4.  **Try/Catch Segregation for Signal API**:
-    *   `MANDATORY:` Wrap `navigator.credentials.create` and the subsequent server verification `fetch()` call in distinct try/catch blocks. Call `signalUnknownCredential()` ONLY when the server verification fetch fails (any status `response.ok === false` or network throws), not during standard WebAuthn API exceptions. Broadly catching all server errors ensures credentials aren't left orphaned and out-of-sync in password managers.
-
-```javascript
-// Page-load gating — runs once when the document loads, NOT on click.
-// Hides the registration button on devices that can't satisfy the prompt.
-async function gateRegistrationUI() {
-  const button = document.querySelector('[data-testid="register-button"]');
-  if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
-    const capabilities = await PublicKeyCredential.getClientCapabilities();
-    if (!capabilities.passkeyPlatformAuthenticator) {
-      button.style.display = 'none'; // Hide; surface password fallback instead
-    }
-  }
-}
-gateRegistrationUI();
-```
+    - Wrap server verification `fetch()` call in a try/catch block. Call `signalUnknownCredential()` when the server verification fetch fails (any status `response.ok === false` or network throws).
 
 ```javascript
 // optionsFetch and registerVerifyFetch are app-defined HTTP methods
-import { optionsFetch, registerVerifyFetch } from './api.js';
+import { optionsFetch, registerVerifyFetch } from "./api.js";
 
 async function registerPasskey(isPromotion = false) {
-  // Verify biometric platform capability exists on device
-  if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
-    const capabilities = await PublicKeyCredential.getClientCapabilities();
-    if (!capabilities.passkeyPlatformAuthenticator) {
-      // Hide "Create passkey" buttons and fall back to password flows instead
-      showStandardPasswordFallbackUI();
-      return;
-    }
+  // Verify passkey capability and conditional UI are available
+  const capabilities = await PublicKeyCredential.getClientCapabilities();
+  if (
+    !capabilities.passkeyPlatformAuthenticator ||
+    !capabilities.conditionalGet
+  ) {
+    // Hide "Create passkey" buttons and fall back to password flows instead
+    showStandardPasswordFallbackUI();
+    return;
   }
 
   const creationOptionsJSON = await optionsFetch({ promotion: isPromotion });
-  const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
+  const publicKey =
+    PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
 
   let credential;
   try {
-    // Biometrics prompt execution
+    // passkey prompt execution
     credential = await navigator.credentials.create({ publicKey });
   } catch (err) {
-    if (err.name === 'InvalidStateError') {
-      console.log('A passkey already exists for this account.');
-    } else if (err.name === 'SecurityError') {
-      console.error('Configuration RP ID or Secure Context error.');
-    } else if (err.name === 'NotAllowedError') {
-      console.log('User cancelled the biometrics dialog.');
-    } else if (err.name === 'AbortError') {
-      console.log('The creation operation has been aborted.');
+    if (err.name === "InvalidStateError") {
+      console.log("A passkey already exists for this account.");
+      alert("A passkey already exists for this account.");
+    } else if (err.name === "SecurityError") {
+      console.error("Configuration RP ID or Secure Context error.");
+      alert("Configuration RP ID or Secure Context error.");
+    } else if (err.name === "NotAllowedError") {
+      console.log("User cancelled the passkey dialog.");
+    } else if (err.name === "AbortError") {
+      console.log("The creation operation has been aborted.");
     }
     return; // Safe API exit, do not signal unknown for standard WebAuthn cancels
   }
@@ -160,56 +154,38 @@ async function registerPasskey(isPromotion = false) {
     const response = await registerVerifyFetch(encodedResponse);
     if (!response.ok) {
       // Server verification failed to verify/authenticate the credential (orphaned)
-      if (PublicKeyCredential.signalUnknownCredential) {
-        await PublicKeyCredential.signalUnknownCredential({
-          rpId: window.location.hostname,
-          credentialId: encodedResponse.id
-        });
-      }
-    }
-  } catch (serverErr) {
-    console.error('Server verification network failure:', serverErr);
-    if (PublicKeyCredential.signalUnknownCredential) {
       await PublicKeyCredential.signalUnknownCredential({
-        rpId: window.location.hostname,
-        credentialId: encodedResponse.id
+        rpId, // RP ID must match the one defined on the server
+        credentialId: encodedResponse.id, // Base64URL-encoded credential ID
       });
     }
+  } catch (serverErr) {
+    console.error("Server verification network failure:", serverErr);
+    await publickeycredential.signalunknowncredential({
+      rpId, // RP ID must match the one defined on the server
+      credentialid: encodedresponse.id, // base64url-encoded credential id
+    });
   }
 }
 ```
 
-## Conditional Create (Promotion Flow)
-
-To silently and automatically register a passkey for a user immediately following a successful password-based sign-in, refer to the dedicated {{ GUIDE_REF("passkey-conditional-create") }} guide.
-
-
 ## Fallback Strategies
-
-### Biometrics Registration Fallback
-
-{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
-
-Passkey registration is a progressive enhancement. If biometrics or platform authenticators are unsupported by the browser or device, the application MUST fall back immediately to standard forms.
-*   **Fallback Experience**: Gracefully fallback to traditional secure password flows (with optional Multi-Factor authentication) or standard credential fields.
-*   **Feature Detection**:
-    ```javascript
-    if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
-      // Fallback immediately to standard passwords form
-      showStandardPasswordFields();
-    }
-    ```
 
 ### Signal API Synchronization Fallback
 
 {{ BASELINE_STATUS("webauthn-signals") }}
 
 The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used to keep password managers in sync with the server credential state.
-*   **Fallback Experience**: If `PublicKeyCredential.signalUnknownCredential` is unsupported by the browser, the call MUST be bypassed safely via feature detection gating (`if (PublicKeyCredential.signalUnknownCredential)`), and the server-side verification simply logs the failure without triggering manager updates.
+
+- **Fallback Experience**: If `PublicKeyCredential.signalUnknownCredential` is unsupported by the browser, the call MUST be bypassed safely via feature detection gating (`if (PublicKeyCredential.signalUnknownCredential)`), and the server-side verification simply logs the failure without triggering manager updates.
 
 ### Easy JSON Serialization Fallback
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseCreationOptionsFromJSON_static") }}
 
-The WebAuthn JSON serialization helper methods represent progressive optimizations.
-*   **Fallback Experience**: If `PublicKeyCredential.parseCreationOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.
+Always install 'webauthn-polyfills' and import it in the context.
+Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.parseCreationOptionsFromJSON` and `PublicKeyCredential.prototype.toJSON` are also supported. 
+
+```js 
+import 'webauthn-polyfills';
+``` 

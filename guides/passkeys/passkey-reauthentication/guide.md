@@ -11,50 +11,44 @@ sources:
 
 # Passkey Reauthentication Guide
 
-This delta-focused guide details how to implement step-up authentication or re-verification for a signed-in user before they perform sensitive account changes (e.g. passwords updates, email re-routes, financial transfers).
+This delta-focused guide details how to implement step-up authentication or re-verification for a signed-in user before they perform sensitive account changes (e.g. passwords updates, financial transfers).
 
 ## Delta Flow Architecture
 
-Unlike discoverable authentication which permits discoverable logins from an empty array, Passkey Reauthentication constrains biometrics dialog prompts strictly to the logged-in user's pre-registered credentials to prevent account-mixing or biometrics spoofing during active sessions.
+Unlike regular authentication, passkey reauthentication constrains passkey dialog prompts strictly to the logged-in user's pre-registered credentials to prevent account-mixing or passkey spoofing during active sessions.
 
 ## Server-Side
 
 ### Options Generation Delta
 
-Create a `/reauth/options` endpoint that populates the allowed credentials parameters specifically for the active, known user:
+Create an endpoint that populates the allowed credentials parameters specifically for the active, known user:
 
-1.  **Constrain Allow Credentials**:
-    *   `MANDATORY:` Populate the `allowCredentials` options array with specific `PublicKeyCredentialDescriptor` records mapping all registered passkey IDs for the signed-in user. Leaving this empty or omitting it regresses to discoverable logins, violating session safety.
-2.  **Require Biometric Verification**: Set `userVerification: "required"` in the options to ensure the biometric or PIN step cannot be bypassed during sensitive transactions.
+**Constrain Credentials**: Populate the `allowCredentials` options array with specific `PublicKeyCredentialDescriptor` records mapping all registered credential IDs for the signed-in user. Leaving this empty or omitting it regresses to discoverable credentials, violating session safety.
 
 ```javascript
 // Node.js step-up options generation example
-router.post('/api/reauth/options', enforceActiveSession, async (req, res) => {
+router.post("/api/reauth/options", enforceActiveSession, async (req, res) => {
   const userPasskeys = await db.findCredentialsByUserId(req.user.id);
-  
+
   const options = {
     challenge: serverGeneratedBase64UrlChallenge, // Random challenge stored in user session
     rpId: "example.com",
     // Enforce allowance strictly limited to the user's credentials list
-    allowCredentials: userPasskeys.map(cred => ({
+    allowCredentials: userPasskeys.map((cred) => ({
       type: "public-key",
       id: cred.id,
-      transports: cred.transports // Speeds up resolution by indicating platform transports
+      transports: cred.transports, // Speeds up resolution by indicating platform transports
     })),
-    userVerification: "required" // Force biometrics validation
   };
-  
-  req.session.expectedUserVerification = "required";
   return res.json(options);
 });
 ```
 
 ### Verification Endpoint Delta
 
-Verify the returned re-authentication assertion returned by the client:
+Verify the assertion returned by the client:
 
-1.  **Verify Account Ownership**:
-    *   `MANDATORY:` The verification endpoint MUST explicitly verify that the resulting authenticated credential ID returned by the client resolves to a stored credential record whose associated user ID strictly matches the active signed-in user (`storedCredential.passkeyUserId === req.user.id`). If a valid passkey of a *different* user is returned, authentication MUST be rejected immediately.
+**Verify Account Ownership**: The verification endpoint MUST explicitly verify that the resulting authenticated credential ID returned by the client resolves to a stored credential record whose associated user ID strictly matches the active signed-in user (`storedCredential.passkeyUserId === req.user.id`). If a valid passkey of a _different_ user is returned, authentication MUST be rejected immediately.
 
 ## Client-Side Flow Deltas
 
@@ -62,7 +56,7 @@ Applications choose from two reauthentication interfaces depending on the transa
 
 ### A. Button Flow (No Input Fields)
 
-Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button. Ongoing form autofills (Conditional Gets) MUST be aborted prior to starting the biometric dialog.
+Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button.
 
 ```html
 <button id="reauth-btn" data-testid="reauth-button">Confirm Transaction</button>
@@ -72,110 +66,72 @@ Trigger reauthentication when a user presses a "Verify Identity" or "Proceed wit
 let reauthAbortController = new AbortController();
 
 async function triggerButtonReauth() {
-  // Abort any background suggestion flows to avoid biometrics prompt collisions
+  // Abort any background suggestion flows to avoid passkey prompt collisions
   reauthAbortController.abort();
   reauthAbortController = new AbortController();
 
-  const optionsResponse = await fetch('/api/reauth/options', { method: 'POST' });
+  const optionsResponse = await fetch("/api/reauth/options", {
+    method: "POST",
+  });
   const optionsJSON = await optionsResponse.json();
-  const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
+  const publicKey =
+    PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
 
   try {
     const credential = await navigator.credentials.get({
       publicKey,
-      signal: reauthAbortController.signal
+      signal: reauthAbortController.signal,
     });
 
     if (credential) {
-      const verifyResponse = await fetch('/api/reauth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credential.toJSON())
+      const encodedCredential = credential.toJSON();
+      const verifyResponse = await fetch("/api/reauth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(encodedCredential),
       });
 
       if (verifyResponse.ok) {
         showTransactionSuccessUI();
+      } else if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
+        await PublicKeyCredential.signalUnknownCredential({
+          rpId, // RP ID must match the one defined on the server
+          credentialId: encodedCredential.id
+        });
       }
     }
   } catch (err) {
-    if (err.name === 'NotAllowedError') {
-      console.log('User cancelled reauthentication biometrics.');
+    if (err.name === "NotAllowedError") {
+      console.log("User cancelled reauthentication.");
     }
   }
 }
 
-document.getElementById('reauth-btn').addEventListener('click', triggerButtonReauth);
-```
-
-### B. Conditional Mediation Flow (Autofill UI Form)
-
-If the sensitive transaction panel includes a password/re-auth input form (Progressive Step-Up fallback), you can leverage Conditional UI to allow users to select their pre-registered passkeys directly from browser suggestions:
-
-```html
-<form id="reauth-form">
-  <!-- Autofill username field annotated with autocomplete token webauthn -->
-  <input type="text" name="username" autocomplete="username webauthn" autofocus data-testid="reauth-username">
-  <input type="password" name="password" autocomplete="current-password">
-  <button type="submit">Confirm Password</button>
-</form>
-```
-
-```javascript
-async function initializeConditionalReauth() {
-  if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
-    const capabilities = await PublicKeyCredential.getClientCapabilities();
-    if (capabilities.passkeyPlatformAuthenticator && capabilities.conditionalGet === true) {
-      const optionsResponse = await fetch('/api/reauth/options', { method: 'POST' });
-      const optionsJSON = await optionsResponse.json();
-      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
-
-      try {
-        const credential = await navigator.credentials.get({
-          publicKey,
-          mediation: 'conditional',
-          signal: reauthAbortController.signal
-        });
-
-        if (credential) {
-          const verifyResponse = await fetch('/api/reauth/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(credential.toJSON())
-          });
-
-          if (verifyResponse.ok) {
-            showTransactionSuccessUI();
-          }
-        }
-      } catch (err) {
-        if (!['NotAllowedError', 'AbortError'].includes(err.name)) {
-          console.error('Unexpected reauth error:', err);
-        }
-      }
-    }
-  }
-}
-
-window.addEventListener('DOMContentLoaded', initializeConditionalReauth);
+document
+  .getElementById("reauth-btn")
+  .addEventListener("click", triggerButtonReauth);
 ```
 
 ## Fallback Strategies
 
+### Passkey feature detection fallback
+
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Passkey reauthentication is a progressive enhancement. If platform authenticators or biometric devices are unsupported:
-*   **Fallback Experience**: Gracefully degrade to standard session reauthentication panels (requiring the user to enter their standard accounts passwords or answer registered security questions).
-*   **Feature Detection**:
-    ```javascript
-    if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
-      // Bypasses passkeys prompts and surfaces traditional password verification panels
-      showTraditionalReauthFields();
-    }
-    ```
+Always install 'webauthn-polyfills' and import it in the context.
+Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.getClientCapabilities` is also supported. 
+
+```js 
+import 'webauthn-polyfills';
+``` 
 
 ### Easy JSON Serialization Fallback
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-The WebAuthn JSON serialization helper methods represent progressive optimizations.
-*   **Fallback Experience**: If `PublicKeyCredential.parseRequestOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.
+Always install 'webauthn-polyfills' and import it in the context.
+Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.parseRequestOptionsFromJSON` and `PublicKeyCredential.prototype.toJSON` are also supported. 
+
+```js 
+import 'webauthn-polyfills';
+``` 
