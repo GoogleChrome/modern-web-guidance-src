@@ -1,5 +1,9 @@
 # `color-scheme` property
 
+## Issues
+
+- Chrome and Firefox will respect `color-scheme` for iframes, and will render embedded websites in the correct color scheme and adjust the  `prefers-color-scheme` media query to reflect the embedding context's `color-scheme`. Safari will not, and will resolve `prefers-color-scheme` to the system setting even on iframes.
+
 ## Fallbacks
 
 The `color-scheme` property is **progressive Enhancement**.

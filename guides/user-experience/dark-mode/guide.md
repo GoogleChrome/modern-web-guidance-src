@@ -1,6 +1,6 @@
 ---
 name: dark-mode
-description: Implement dark mode in a way that respects the user's light/dark theme preference, adapts browser UI (e.g. scrollbars, form controls, etc) and respects the user's light/dark theme preference.
+description: Implement dark mode support in a way that respects the user's light/dark theme preference and adapts browser UI (e.g. scrollbars, form controls, etc)
 web-feature-ids:
 - color-scheme
 - prefers-color-scheme
@@ -170,6 +170,14 @@ pre, code {
 ```
 
 For more information about component-specific overrides and their gotchas, see {{ GUIDE_REF("component-specific-light-dark )}}.
+
+## Known issues to be aware of
+
+{{ FEATURE_ISSUES("color-scheme")}};
+{{ FEATURE_ISSUES("prefers-color-scheme")}};
+{{ FEATURE_ISSUES("light-dark")}};
+{{ FEATURE_ISSUES("accent-color")}};
+{{ FEATURE_ISSUES("scrollbar-color")}};
 
 ## Fallback strategies
 

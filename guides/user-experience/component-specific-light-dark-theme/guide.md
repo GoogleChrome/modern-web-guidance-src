@@ -101,6 +101,8 @@ pre, code {
 }
 ```
 
+{{ FEATURE_ISSUES("color-scheme")}};
+
 ## Fallback strategies
 
 {{ FEATURE_FALLBACKS("color-scheme")}}
