@@ -415,6 +415,13 @@ window.__featuresMapping = {
   "stabilize-reactive-state": [
     "temporal"
   ],
+  "stack-drill-down": [
+    "inert",
+    "intersection-observer",
+    "scroll-driven-animations",
+    "scroll-snap",
+    "scroll-snap-events"
+  ],
   "stencil-cutouts": [
     "masks"
   ],
