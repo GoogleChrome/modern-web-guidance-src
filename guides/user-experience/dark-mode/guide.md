@@ -137,10 +137,23 @@ For website-specific customization, a manual toggle could be provided to allow u
 
 If a user-facing toggle to override it is desired, it should:
 - Update the `<meta name="color-scheme">` element to reflect the chosen theme (`light dark` for system default, `light` for light, and `dark` for dark).
-- Set a class on `<html>` to match the theme preference. While `:root:has(> head > meta[name="color-scheme"][content~="dark"])` would technically work, it is slower and confers no benefit, since we are already using JS to update the `<meta>` element.
+- If branching is desired for non-color values, set a class on `<html>` to match the theme preference and use descendant selectors. While `:root:has(> head > meta[name="color-scheme"][content="dark"])` would technically work, it is slower and confers no benefit, since we are already using JS to update the `<meta>` element.
 - Persist user choice in `localStorage`.
 - **IMPORTANT**: The CSS should be written to default to the system preference, with overrides for user-specified color-schemes. That way, if JS fails to execute, the site still defaults to the system color-scheme.
 - The system-level OS theme can change at any time. If you are using JS to read `matchMedia("(prefers-color-scheme: dark)").matches`, you MUST also use `addEventListener("change", fn)` to react to changes. CSS automatically adapts to changes.
+- **IMPORTANT**: To avoid a Flash of Unstyled Content (FOUC) for users who have pinned a different color scheme than their system default, use an inline script (NOT `type=module`, NOT `defer`) to set it when the page loads:
+
+```html
+<meta name="color-scheme" content="light dark">
+<script>
+{
+  const colorScheme = localStorage.getItem("color-scheme");
+  if (colorScheme) {
+    document.querySelector('meta[name="color-scheme"]').content = colorScheme;
+  }
+}
+</script>
+```
 
 ### UX considerations
 
