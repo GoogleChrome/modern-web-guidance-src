@@ -17,8 +17,6 @@ While `overflow: hidden` is a "blunt instrument" that almost always clips conten
 
 Specify exactly where clipping occurs with `overflow: clip` and `overflow-clip-margin`. You can align the boundary precisely with inner box-model edges or extend the clipping boundary beyond the element's box by a specified offset (a safety margin). This modern approach is highly performant and eliminates the legacy requirement of adding extra wrapper containers with custom padding and negative margins just to let visual effects (like prominent child element shadows) render unclipped.
 
-Explicitly declaring `overflow: clip` on block layout containers enables high-performance containment while unlocking inner nested curve alignment and custom offset clip margins.
-
 ## How to Implement
 
 1. **Apply `overflow: clip`**: Ensure the target element has `overflow: clip` enabled. Setting `overflow: clip` is **mandatory** on block layout containers for `overflow-clip-margin` to take effect. If `overflow` is set to `hidden`, `auto`, or `scroll`, the `overflow-clip-margin` property is ignored by the browser. `overflow: clip` prevents all scrolling (both user-initiated and programmatic via JavaScript).
@@ -54,11 +52,10 @@ Apply `overflow-clip-margin: content-box` to a parent container with rounded cor
   overflow: hidden;
 }
 
-/* Inner footer component with 10px rounded to visually demonstrate automatic concentric corner clipping */
+/* Inner footer component with 12px rounded to visually demonstrate automatic concentric corner clipping */
 .nested-curve-footer {
   background: #111;
   color: #fff;
-  ...
 }
 
 @supports (overflow-clip-margin: content-box) {
@@ -80,7 +77,7 @@ Applying prominent box-shadows to inner child elements (like buttons or sub-card
   <h4>Clipped Container</h4>
   <p>Inner content boundaries safely contained.</p>
   <!-- Child button element positioned inside with a prominent shadow -->
-  <button class="glowing-child-btn">Submit</button>
+  <button class="demo-glowing-btn">Submit</button>
 </div>
 ```
 
@@ -95,9 +92,9 @@ Applying prominent box-shadows to inner child elements (like buttons or sub-card
 }
 
 /* Child button element positioned inside with an expanded shadow */
-.glowing-child-btn {
+.demo-glowing-btn {
   display: block;
-  box-shadow: 0 8px 20px rgba(229, 46, 113, 0.65);
+  box-shadow: 0 8px 13px rgba(229, 46, 113, 0.7);
 }
 
 @supports (overflow-clip-margin: 15px) {

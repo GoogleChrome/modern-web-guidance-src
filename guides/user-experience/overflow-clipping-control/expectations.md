@@ -2,5 +2,5 @@
 - The implementation MUST apply a box-edge keyword (e.g., `content-box`) to configure inner curved clip margins on target layout containers.
 - The implementation MUST apply a length value (e.g., `15px`) to configure extended offset clip margins establishing a visible safety zone to protect child element shadows from border box truncation.
 - The implementation MUST apply `overflow: hidden` as the primary fallback style on containers requiring strict inner boundary containment when `overflow: clip` is unsupported.
-- The implementation MUST apply `overflow: visible` as the primary fallback style on elements to preserve expanded shadow rendering when extended clip margins are unsupported.
+- The implementation MUST apply `overflow: visible` as the primary fallback style on target containers to ensure prominent child element box-shadows remain visible when extended clip margins are unsupported.
 - The implementation MUST NOT apply `overflow: scroll` or `overflow: auto` on target elements when the visual intent is strictly clipping content without enabling scrolling functionality.
