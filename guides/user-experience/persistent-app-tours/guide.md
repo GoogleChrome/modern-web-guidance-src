@@ -4,9 +4,6 @@ description: Create persistent onboarding walkthroughs using tethered native ove
 web-feature-ids:
   - popover
   - anchor-positioning
-sources:
-  - https://developer.mozilla.org/docs/Web/API/Popover_API/Using
-  - https://developer.chrome.com/blog/introducing-popover-api
 ---
 
 # Creating Persistent App Tours

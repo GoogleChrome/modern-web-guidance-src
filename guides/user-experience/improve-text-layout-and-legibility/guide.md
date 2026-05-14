@@ -4,12 +4,6 @@ description: Improve the layout and legibility of short standalone text content,
 web-feature-ids:
   - text-wrap-balance
   - text-wrap-pretty
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/text-wrap
-  - https://developer.chrome.com/blog/css-text-wrap-balance/
-  - https://developer.chrome.com/blog/css-text-wrap-pretty/
-  - https://web.dev/learn/css/typography
-  - https://webkit.org/blog/16547/better-typography-with-text-wrap-pretty/
 ---
 
 # Improve Text Layout and Legibility

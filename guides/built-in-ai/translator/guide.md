@@ -4,8 +4,6 @@ description:
   Translate text between languages using the on-device Translator API.
 web-feature-ids:
   - translator
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/Translator
 ---
 
 The **Translator API** allows developers to perform client-side text translation using built-in AI models in Chrome. This approach eliminates the need for cloud-based translation services for ephemeral content, reducing costs and improving privacy by keeping data on the user's device.

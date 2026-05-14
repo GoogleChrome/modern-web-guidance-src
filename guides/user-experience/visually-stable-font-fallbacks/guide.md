@@ -3,9 +3,6 @@ name: visually-stable-font-fallbacks
 description: Define font styles such that text remains readable and visually consistent in the event that there's a swap between the perferred font and one of the fallbacks (or vise versa).
 web-feature-ids:
   - font-size-adjust
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust
-  - https://web.dev/blog/font-size-adjust
 ---
 
 When web fonts load, they often replace a fallback font that has different dimensions, even if both are set to the same `font-size`. This causes "layout shift" (Cumulative Layout Shift) and can make text illegible if the fallback's lowercase letters (x-height) are significantly different than the preferred font.

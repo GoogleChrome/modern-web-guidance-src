@@ -3,8 +3,8 @@ import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import * as esbuild from "esbuild";
-import { scanDisciplineSkills } from "../../lib/guide-validation.ts";
-import { rootDir, guidesDir } from "../../lib/paths.ts";
+import { config } from "../../lib/skills-config.ts";
+import { rootDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
 import { replaceMacros } from "../lib/macros.ts";
 import { updateReadmeWithFeaturesAndUseCases } from "./build-readme.ts";
@@ -70,18 +70,48 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
 
 }
 
-export function processSkills(publishRoot: string, scanDir = guidesDir) {
-  const skills = scanDisciplineSkills(scanDir);
+export function processSkills(publishRoot: string) {
+  console.log("Processing standalone skills from configuration...");
+  const skills = config.standaloneSkills;
 
   for (const skill of skills) {
     const skillName = skill.name;
-    const source = path.join(skill.dir, "SKILL.md");
+    const source = path.join(rootDir, skill.sourcePath);
     const skillDestDir = path.join(publishRoot, "skills", skillName);
 
     fs.mkdirSync(skillDestDir, { recursive: true });
 
     const target = 'skills-cli';
-    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
+
+    // Copy sibling directories and files (e.g., references)
+    const sourceDir = path.dirname(source);
+    if (fs.existsSync(sourceDir)) {
+      const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name === "SKILL.md") continue;
+        const entrySrc = path.join(sourceDir, entry.name);
+        const entryDest = path.join(skillDestDir, entry.name);
+        fs.cpSync(entrySrc, entryDest, { recursive: true });
+      }
+    }
+
+    // Versioning.
+    //
+    // - This identifier only changes when the SKILL.md does.
+    // - skill-version.txt is published to npm, and the modern-web-guidance CLI uses
+    //   it to know what version is the latest.
+    // - We replace "--skill-version SKILL_VERSION" in SKILL.md, such that agents will
+    //   call npx and pass along the agent's version.
+    // - If they differ, the CLI tool logs a warning to stderr with instructions on how
+    //   to update.
+    const skillVersion = execSync(
+      'git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" SKILL.md',
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], cwd: sourceDir }
+    ).trim();
+    fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
+
+    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
+      .replaceAll('SKILL_VERSION', skillVersion);
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 
@@ -222,7 +252,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     }
   }
 }
-
 
 
 function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {

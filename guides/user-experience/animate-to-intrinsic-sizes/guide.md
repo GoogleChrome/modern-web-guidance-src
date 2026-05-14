@@ -4,15 +4,6 @@ description: Smoothly animate interactive components (like accordions, menus, an
 web-feature-ids:
   - calc-size
   - interpolate-size
-sources:
-  - https://developer.chrome.com/docs/css-ui/animate-to-height-auto
-  - https://developer.chrome.com/blog/styling-details
-  - https://12daysofweb.dev/2024/calc-size-and-interpolate-size/
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/interpolate-size
-  - https://www.bram.us/2024/12/24/animatable-accordions-2024-11-27-devs-gent/
-  - https://css-tricks.com/almanac/properties/i/interpolate-size/
-  - https://nerdy.dev/interpolate-size
-  - https://www.joshwcomeau.com/snippets/html/interpolate-size/
 ---
 
 # Animate to Intrinsic Sizes
