@@ -134,21 +134,59 @@
       }
     }
 
-    .profile-photo-shadow {
-      width: 150px;
-      height: 150px;
-      padding: 10px;
-      border: 5px solid #333;
-      border-radius: 50%;
+    /* --- 3. CHILD ELEMENT SHADOW BLEED STYLES --- */
+    .safety-zone-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem 0;
+    }
+
+    .safety-zone-parent {
+      position: relative;
+      width: 100%;
+      max-width: 240px;
+      padding: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 16px;
       background: #fff;
-      filter: drop-shadow(0 0 12px rgba(0, 120, 255, 0.6));
-      /* Fallback to keep shadow visible in older browsers */
-      overflow: visible;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+      /* Level 1 Fallback: clips overflowing text/content but truncates child shadows */
+      overflow: hidden;
+    }
+
+    .safety-zone-parent h4 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      color: #222;
+    }
+
+    .safety-zone-parent p {
+      margin: 0 0 1.2rem 0;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    /* Child button element positioned inside with a prominent shadow */
+    .glowing-child-btn {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      background: #e52e71;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      /* Prominent box-shadow rendered perfectly unclipped inside the visible safety zone */
+      box-shadow: 0 8px 20px rgba(229, 46, 113, 0.65);
     }
 
     @supports (overflow-clip-margin: 15px) {
-      .profile-photo-shadow {
+      .safety-zone-parent {
         overflow: clip;
+        /* Establishes a visible safety zone allowing child element shadows to render safely outside */
         overflow-clip-margin: 15px;
       }
     }
@@ -215,14 +253,14 @@
     </div>
 
     <div class="demo-item">
-      <h3>Bleed Offset 15px</h3>
-      <p class="description">Applies <code>overflow-clip-margin: 15px</code> to a parent element of an image to safely contain
-        the
-        element while allowing ink overflow (drop shadow) to remain fully visible.</p>
+      <h3>Child Element Shadow Bleed</h3>
+      <p class="description">Applying prominent box-shadows to inner child elements (like buttons or sub-cards) within a clipped parent container normally results in sharp boundary cutoff under <code>overflow: hidden</code>. Replacing it with <code>overflow: clip</code> and setting an <code>overflow-clip-margin</code> creates a visible safety zone permitting the child's shadow to render beautifully unclipped.</p>
 
-      <div class="profile-photo-container">
-        <div class="profile-photo-shadow">
-          <img src="test_pattern.svg" alt="Shadow Demo">
+      <div class="safety-zone-wrapper">
+        <div class="safety-zone-parent">
+          <h4>Clipped Container</h4>
+          <p>Inner boundaries securely contained.</p>
+          <button class="glowing-child-btn">Submit</button>
         </div>
       </div>
     </div>

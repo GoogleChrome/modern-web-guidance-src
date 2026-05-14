@@ -131,39 +131,69 @@ Applies directly to the parent element of an `<img>` with padding to create a cl
 }
 ```
 
-### Parent Wrapper Frames: Ink Overflow (Shadow Bleed)
+### Block Containers: Child Element Shadow Bleed
 
-Applies a specified offset bleed (`15px`) to the image wrapper. This keeps the layout dimensions completely locked down while giving external ink overflow—like vibrant drop-shadow filters—plenty of breathing room to sit outside the box unclipped.
+Applying prominent box-shadows to inner child elements (like buttons or sub-cards) within a clipped parent container normally results in sharp boundary cutoff under `overflow: hidden`. Replacing it with `overflow: clip` and defining an extended `overflow-clip-margin` length offset creates a visible safety zone permitting the child's shadow to render beautifully unclipped outside the parent container without altering layout geometry.
 
 ```html
-<div class="profile-photo-shadow">
-  <img src="avatar.jpg" alt="Profile with Shadow">
+<div class="safety-zone-parent">
+  <h4>Clipped Container</h4>
+  <p>Inner content boundaries safely contained.</p>
+  <!-- Child button element positioned inside with a prominent shadow -->
+  <button class="glowing-child-btn">Submit</button>
 </div>
 ```
 
 ```css
 /**
- * Parent wrapper element with external drop-shadow.
- * Allows the shadow to bleed past the image edge without clipping.
+ * Standard block layout container clipping inner content.
+ * Base fallback uses overflow: hidden, which abruptly slices child element shadows.
  */
-.profile-photo-shadow {
+.safety-zone-parent {
+  position: relative;
   /* Example placeholder sizing */
-  width: 200px;
-  height: 200px;
-  padding: 10px;
-  border: 5px solid #333;
-  border-radius: 50%;
+  width: 100%;
+  max-width: 240px;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 16px;
   background: #fff;
-  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.5));
-  
-  /* Fallback to keep shadow visible in older browsers */
-  overflow: visible;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  /* Level 1 Fallback: clips overflowing content but truncates child shadows */
+  overflow: hidden;
+}
+
+.safety-zone-parent h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: #222;
+}
+
+.safety-zone-parent p {
+  margin: 0 0 1.2rem 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Child button element positioned inside with an expanded shadow */
+.glowing-child-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: #e52e71;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(229, 46, 113, 0.65);
 }
 
 @supports (overflow-clip-margin: 15px) {
-  .profile-photo-shadow {
+  .safety-zone-parent {
     overflow: clip;
-    /* Example placeholder offset: allows shadow ink overflow up to 15px */
+    /* Establishes a visible safety zone allowing child element shadows to render safely outside */
     overflow-clip-margin: 15px;
   }
 }
@@ -198,8 +228,11 @@ For target environments lacking native support for `overflow: clip` or `overflow
 <div class="demo-image-framed">
   <img src="example.jpg" alt="Framed Fallback">
 </div>
-<div class="demo-image-bleed">
-  <img src="example.jpg" alt="Bleed Fallback">
+<!-- 3. Child element shadow bleed fallback -->
+<div class="demo-safety-parent">
+  <h4>Container</h4>
+  <p>Inner boundaries contained.</p>
+  <button class="demo-glowing-btn">Submit</button>
 </div>
 ```
 
@@ -269,20 +302,48 @@ For target environments lacking native support for `overflow: clip` or `overflow
 }
 
 /**
- * 3. Parent Wrapper Shadow Bleed Fallback
- * Keeps overflow visible as base fallback to avoid truncating drop-shadows.
+ * 3. Child Element Shadow Bleed Fallback
+ * Base fallback clips content using overflow: hidden, abruptly truncating child element shadows.
  */
-.demo-image-bleed {
+.demo-safety-parent {
+  position: relative;
   /* Example placeholder sizing */
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
-  overflow: visible;
+  width: 200px;
+  padding: 12px;
+  border: 2px solid #333;
+  border-radius: 12px;
+  background: #fff;
+  
+  /* Level 1 Fallback */
+  overflow: hidden;
+}
+
+.demo-safety-parent h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #222;
+}
+
+.demo-safety-parent p {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  color: #666;
+}
+
+.demo-glowing-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: #e52e71;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  box-shadow: 0 6px 14px rgba(229, 46, 113, 0.65);
 }
 
 @supports (overflow-clip-margin: 15px) {
-  .demo-image-bleed {
+  .demo-safety-parent {
     overflow: clip;
     overflow-clip-margin: 15px;
   }
