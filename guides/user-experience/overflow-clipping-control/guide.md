@@ -74,7 +74,7 @@ Applies `overflow-clip-margin: content-box` to a parent container with rounded c
   background: #fff;
 }
 
-/* Inner footer component left flat to visually demonstrate automatic concentric corner clipping */
+/* Inner footer component with 10px rounded to visually demonstrate automatic concentric corner clipping */
 .nested-curve-footer {
   background: #111;
   color: #fff;
@@ -82,6 +82,8 @@ Applies `overflow-clip-margin: content-box` to a parent container with rounded c
   text-align: center;
   font-size: 0.8rem;
   font-weight: bold;
+  border-radius: 12px;
+  margin-top: 5px;
 }
 
 @supports (overflow-clip-margin: content-box) {
@@ -271,6 +273,8 @@ For target environments lacking native support for `overflow: clip` or `overflow
   text-align: center;
   font-size: 10px;
   font-weight: bold;
+  border-radius: 12px;
+  margin-top: 5px;
 }
 
 @supports (overflow-clip-margin: content-box) {
