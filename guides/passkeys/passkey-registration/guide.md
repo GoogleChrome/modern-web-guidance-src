@@ -43,12 +43,13 @@ export interface StoredPasskeyCredential {
 
 Create an endpoint that generates WebAuthn creation parameters. Rely on a vetted library per category standards instead of hand-rolling cryptography.
 
-1.  **Create a secure Challenge**: Generate a high-entropy, cryptographically secure random buffer on the server, store it securely in the user's session, and encode it as Base64URL for options delivery.
-2.  **Avoid Duplicate Passkeys**: Map the user's existing pre-registered credential IDs to the `excludeCredentials` options array. This prevents the authenticator from registering duplicate credentials on the same password manager account.
-3.  **Enforce Resident and Discoverable Keys**: Set `requireResidentKey: true` and `residentKey: "required"` in the `authenticatorSelection` options to request a discoverable resident key, which is necessary for discoverable form autofill sign-ins.
-4.  **Configure User Verification**: Specify `userVerification: "preferred"` or `userVerification: "required"`. Many compliance use cases (e.g., finance, healthcare) require `'required'` to enforce user verification on creation.
-5.  **Determine Attachment Scope**:
-    - **Promotion Flow**: When proposing passkey auto-creation right after standard password sign-ins or post-signup promotions, set `authenticatorAttachment: "platform"` to enforce platform authenticator and bypass external security key prompts.
+1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string.
+2.  **Create a secure Challenge**: Generate a high-entropy, cryptographically secure random buffer on the server, store it securely in the user's session, and encode it as Base64URL for options delivery.
+3.  **Avoid Duplicate Passkeys**: Map the user's existing pre-registered credential IDs to the `excludeCredentials` options array. This prevents the authenticator from registering duplicate credentials on the same passkey provider account.
+4.  **Enforce Discoverable Credentials**: Set `requireResidentKey: true` and `residentKey: "required"` in the `authenticatorSelection` options to request a discoverable credential, which is necessary for discoverable sign-ins.
+5.  **Configure User Verification**: Specify `userVerification: "preferred"` or `userVerification: "required"`. Many compliance use cases (e.g., finance, healthcare) require `'required'` to enforce user verification on creation.
+6.  **Determine Attachment Scope**:
+    - **Promotion Flow**: When proposing passkey creation right after standard password sign-ins or post-signup promotions, set `authenticatorAttachment: "platform"` to enforce platform authenticator and bypass external security key prompts.
     - **Management Flow**: When called from a dedicated settings or security panel where external security keys are supported in addition to platform authenticator, omit the `authenticatorAttachment` property entirely.
     - _Tip_: Accept a `promotion: boolean` request flag to conditionally handle both flows with a single endpoint.
 
@@ -86,15 +87,13 @@ const options = {
 };
 ```
 
-### Verification & AAGUID Lookup
+### Verification
 
-1.  **Challenge Verification**: Securely verify the attestation challenge against the expected session bound challenge.
+1.  **Challenge Verification**: Securely verify the challenge against the expected session bound challenge.
 2.  **Verify User Presence**:
     - Ensure that the User Present (UP) flag returned in the parsed authenticator data is `true` to confirm physical user presence at the time of creation.
 3.  **Relaxing Verification for 'preferred'**:
     - When the creation options specified `userVerification: "preferred"`, the server-side verification call MUST be configured with `requireUserVerification: false`. Otherwise, authenticators that register without user verification (e.g., screen locks disabled) will trigger spurious server verification failures.
-4.  **Determine the passkey provider**: Fetch the AAGUID string from the attestation data and look it up to populate metadata:
-    - Passkey providers return a zeroed AAGUID (`00000000-0000-0000-0000-000000000000`) for certain platform settings. When encountered, skip registry lookups entirely. Fall back to user-agent parsing or "Unknown passkey provider" and leave `providerIcon` undefined.
 
 ## Client-Side Logic
 
@@ -137,8 +136,10 @@ async function registerPasskey(isPromotion = false) {
   } catch (err) {
     if (err.name === "InvalidStateError") {
       console.log("A passkey already exists for this account.");
+      alert("A passkey already exists for this account.");
     } else if (err.name === "SecurityError") {
       console.error("Configuration RP ID or Secure Context error.");
+      alert("Configuration RP ID or Secure Context error.");
     } else if (err.name === "NotAllowedError") {
       console.log("User cancelled the passkey dialog.");
     } else if (err.name === "AbortError") {

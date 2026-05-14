@@ -20,9 +20,10 @@ This guide details how to implement returning user authentication using discover
 
 Create an endpoint that generates WebAuthn request parameters using a vetted library per standards.
 
-1.  **Generate assertion Challenge**: Generate a high-entropy, cryptographically secure random buffer, store it securely in the user's session, and encode it as Base64URL.
-2.  **Discoverable Credentials mapping**: Specify an empty array `[]` for `allowCredentials`. This requests discoverable credentials, meaning the user does not need to enter their username first; the passkey provider will present available accounts.
-3.  **User Verification level**: Set `userVerification: "preferred"` (or `"required"` if explicitly mandated by corporate compliance policies).
+1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string.
+2.  **Generate challenge**: Generate a high-entropy, cryptographically secure random buffer, store it securely in the user's session, and encode it as Base64URL.
+3.  **Discoverable Credentials mapping**: Specify an empty array `[]` for `allowCredentials`. This requests discoverable credentials, meaning the user does not need to enter their username first; the passkey provider will present available accounts.
+4.  **User Verification level**: Set `userVerification: "preferred"` (or `"required"` if explicitly mandated by corporate compliance policies).
     - The requested `userVerification` constraint level MUST be persisted inside the server session record at the options endpoint, rather than passed back from the client via query strings. This allows the verification endpoint to enforce strict matching constraints safely without risk of client manipulation.
 
 ```javascript
@@ -40,7 +41,7 @@ req.session.expectedUserVerification = "preferred";
 
 ### Verification Endpoint
 
-Securely verify the assertion Returned by the client to authenticate the user:
+Securely verify the assertion returned by the client to authenticate the user:
 
 1.  **Validate session challenge**: Enforce strict challenge matching between the client response and the expected challenge stored in the session.
 2.  **Enforce UV Preferences**:
@@ -78,10 +79,10 @@ Activate form autofill suggestions on page load to offer passkey authentication 
 
 1.  **Feature detect**: Call `PublicKeyCredential.getClientCapabilities()` on page load and **skip signing in with passkey** if `conditionalGet` is not available.
 2.  **Decode options**: Decode fetched credential JSON object with `PublicKeyCredential.parseRequestOptionsFromJSON()`.
-3.  **Invoke Conditional Get**: Call `navigator.credentials.get()` with `mediation: "conditional"` and pass an `AbortController` signal. This registers autofill silently without rendering popups.
+3.  **Invoke Conditional Get**: Call `navigator.credentials.get()` with `mediation: "conditional"` and pass an `AbortController` signal. This registers autofill silently without rendering a passkey dialog.
 4.  **Try/Catch Exception Segregation**: Wrap `navigator.credentials.get` call in try/catch block:
     - `NotAllowedError`: The user cancelled or timed out the passkey login prompt.
-    - `AbortError`: The programmatic authentication request was cancelled.
+    - `AbortError`: The authentication request was cancelled programmatically.
 5.  **Call Signal API**: Wrap server verification `fetch()` call in a try/catch block:
     - Show an error message for the user to understand what went wrong.
     - Call `signalUnknownCredential()` ONLY when the server explicitly responds with HTTP status `404` (Credential not found) and the user is unauthenticated.

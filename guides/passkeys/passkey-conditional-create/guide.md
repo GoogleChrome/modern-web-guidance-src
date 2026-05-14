@@ -36,18 +36,18 @@ if (capabilities.conditionalCreate) {
 }
 ```
 
-### 3. Call Creation with Conditional Mediation
+### 3. Create a passkey with Conditional Create
 * Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the passkey creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
 * Populate `excludeCredentials` with the user's existing passkey credential IDs to avoid registering duplicate keys.
 
 ### 4. Silent Error Handling
 * Wrap the passkey creation prompt (`navigator.credentials.create`) in a try/catch block. You MUST catch and silently ignore typical user-facing exceptions (`InvalidStateError`, `NotAllowedError`, `AbortError`) without rendering any error UI to the user.
 
-### 5. Server-Side Presence Verification
+### 5. Server-Side User Presence Verification
 * The server-side verification endpoint MUST relax the User Presence (UP) requirement (`requireUserPresence: false`) **ONLY** when verifying credentials produced by a conditional-create trigger. Strict presence verification must remain active for standard explicit creations.
 
 ### 6. Handle Failed Server Verification gracefully
-* If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential()` passing the Base64URL-encoded credential ID to prevent orphaned credentials from lingering in the password manager.
+* If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential()` to prevent orphaned credentials from lingering in the passkey provider.
 
 ## Code Example
 

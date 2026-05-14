@@ -11,11 +11,11 @@ sources:
 
 # Passkey Reauthentication Guide
 
-This delta-focused guide details how to implement step-up authentication or re-verification for a signed-in user before they perform sensitive account changes (e.g. passwords updates, email re-routes, financial transfers).
+This delta-focused guide details how to implement step-up authentication or re-verification for a signed-in user before they perform sensitive account changes (e.g. passwords updates, financial transfers).
 
 ## Delta Flow Architecture
 
-Unlike discoverable authentication which permits discoverable logins from an empty array, Passkey Reauthentication constrains passkey dialog prompts strictly to the logged-in user's pre-registered credentials to prevent account-mixing or passkey spoofing during active sessions.
+Unlike regular authentication, passkey reauthentication constrains passkey dialog prompts strictly to the logged-in user's pre-registered credentials to prevent account-mixing or passkey spoofing during active sessions.
 
 ## Server-Side
 
@@ -23,7 +23,7 @@ Unlike discoverable authentication which permits discoverable logins from an emp
 
 Create an endpoint that populates the allowed credentials parameters specifically for the active, known user:
 
-**Constrain Allow Credentials**: Populate the `allowCredentials` options array with specific `PublicKeyCredentialDescriptor` records mapping all registered credential IDs for the signed-in user. Leaving this empty or omitting it regresses to discoverable logins, violating session safety.
+**Constrain Credentials**: Populate the `allowCredentials` options array with specific `PublicKeyCredentialDescriptor` records mapping all registered credential IDs for the signed-in user. Leaving this empty or omitting it regresses to discoverable credentials, violating session safety.
 
 ```javascript
 // Node.js step-up options generation example
@@ -46,7 +46,7 @@ router.post("/api/reauth/options", enforceActiveSession, async (req, res) => {
 
 ### Verification Endpoint Delta
 
-Verify the returned re-authentication assertion returned by the client:
+Verify the assertion returned by the client:
 
 **Verify Account Ownership**: The verification endpoint MUST explicitly verify that the resulting authenticated credential ID returned by the client resolves to a stored credential record whose associated user ID strictly matches the active signed-in user (`storedCredential.passkeyUserId === req.user.id`). If a valid passkey of a _different_ user is returned, authentication MUST be rejected immediately.
 
@@ -56,7 +56,7 @@ Applications choose from two reauthentication interfaces depending on the transa
 
 ### A. Button Flow (No Input Fields)
 
-Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button. Ongoing form autofills (Conditional Gets) MUST be aborted prior to starting the passkey dialog.
+Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button.
 
 ```html
 <button id="reauth-btn" data-testid="reauth-button">Confirm Transaction</button>
@@ -104,68 +104,6 @@ async function triggerButtonReauth() {
 document
   .getElementById("reauth-btn")
   .addEventListener("click", triggerButtonReauth);
-```
-
-### B. Conditional Mediation Flow (Autofill UI Form)
-
-If the sensitive transaction panel includes a password/re-auth input form (Progressive Step-Up fallback), you can leverage Conditional UI to allow users to select their pre-registered passkeys directly from browser suggestions:
-
-```html
-<form id="reauth-form">
-  <!-- Autofill username field annotated with autocomplete token webauthn -->
-  <input
-    type="text"
-    name="username"
-    autocomplete="username webauthn"
-    autofocus
-    data-testid="reauth-username"
-  />
-  <input type="password" name="password" autocomplete="current-password" />
-  <button type="submit">Confirm Password</button>
-</form>
-```
-
-```javascript
-async function initializeConditionalReauth() {
-  const capabilities = await PublicKeyCredential.getClientCapabilities();
-  if (
-    capabilities.passkeyPlatformAuthenticator &&
-    capabilities.conditionalGet === true
-  ) {
-    const optionsResponse = await fetch("/api/reauth/options", {
-      method: "POST",
-    });
-    const optionsJSON = await optionsResponse.json();
-    const publicKey =
-      PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
-
-    try {
-      const credential = await navigator.credentials.get({
-        publicKey,
-        mediation: "conditional",
-        signal: reauthAbortController.signal,
-      });
-
-      if (credential) {
-        const verifyResponse = await fetch("/api/reauth/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(credential.toJSON()),
-        });
-
-        if (verifyResponse.ok) {
-          showTransactionSuccessUI();
-        }
-      }
-    } catch (err) {
-      if (!["NotAllowedError", "AbortError"].includes(err.name)) {
-        console.error("Unexpected reauth error:", err);
-      }
-    }
-  }
-}
-
-window.addEventListener("DOMContentLoaded", initializeConditionalReauth);
 ```
 
 ## Fallback Strategies

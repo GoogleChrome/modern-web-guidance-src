@@ -57,9 +57,8 @@ router.delete('/api/credential/:id', checkUserAuthenticated, async (req, res) =>
 
 Render a dedicated settings panel allowing users to easily audit and manage their registered authentication options:
 
-1.  **Display saved list**: Fetch list from your GET endpoint and render individual credential rows. If the response is empty, render a helpful empty-state message (e.g., "No passkeys found").
-2.  **Map AAGUID Metadata**: For each passkey, lookup its `aaguid` property against your local registry to render its provider details.
-    *   *Warning*: Skip registry lookups entirely if the `aaguid` is the zeroed AAGUID (`00000000-0000-0000-0000-000000000000`). Default to browser-agent naming (or "Unknown passkey provider") and set the icon to `undefined`.
+1.  **Display saved list**: Fetch list from your endpoint and render individual credential rows. If the response is empty, render a helpful empty-state message (e.g., "No passkeys found").
+2.  **Map AAGUID Metadata**: For each passkey, lookup its `aaguid` property against your local registry to render its provider details. See [Determine the passkey provider from AAGUID](#aaguid) section for more details.
 3.  **Per-Item UI Requirements**: Every row inside the list container MUST render:
     *   **Provider Icon**: AAGUID-derived image or data URI.
     *   **Provider/Custom Name**: AAGUID-derived name or user-renamed string.
@@ -69,20 +68,19 @@ Render a dedicated settings panel allowing users to easily audit and manage thei
     *   **Delete Button**: Triggers deletion.
 4.  **Conditional "Create Passkey" Button**:
     *  Offer a prominent "Create passkey" registration trigger button on the management page. Before rendering this UI element, the page MUST feature-detect capabilities using `PublicKeyCredential.getClientCapabilities()` to verify platform authenticator is supported. If passkeys are unsupported, hide this button and gracefully encourage standard MFA enrollments instead.
+    *  Allow registering a security key by omitting `authenticatorSelection.authenticatorAttachment` on `navigator.credentials.create()` call.
 
 ## Signal API Synchronization
 
 The Signal API lets the application communicate credential states to password managers, keeping the user's synced vaults and your backend database in lockstep.
 
 *   **Parameter Encoding Rule**:
-    *  All `userId` and credential ID parameters passed to Signal API methods (`signalAllAcceptedCredentials`, `signalCurrentUserDetails`) MUST be **Base64URL-encoded strings**. Do NOT pass `Uint8Array` or `BufferSource` objects.
+    *  All `userId` and credential ID parameters passed to Signal API methods (`signalAllAcceptedCredentials`, `signalCurrentUserDetails`) MUST be **Base64URL-encoded strings**.
 *   **Initiating Page Load Sync**:
-    *  The application MUST invoke `signalAllAcceptedCredentials()` automatically in a `DOMContentLoaded` page load event listener, passing the Base64URL UserID and valid credentials list.
+    *  The application MUST invoke `signalAllAcceptedCredentials()` automatically in a `DOMContentLoaded` page load event listener.
 *   **Management Updates Sync**:
-    *  The application MUST invoke `signalAllAcceptedCredentials()` immediately within your delete credential click handler post-fetch, passing the remaining valid credentials list.
-    *  The application MUST invoke `signalCurrentUserDetails()` immediately within your username rename click handler post-fetch, passing the updated Name details.
-*   **Empty Array Synchronization Warning**:
-    *  Passing an empty array `[]` to `signalAllAcceptedCredentials()` tells the password manager to **hide all passkeys** for this user on your site. Only invoke an empty list signal when you are 100% confident that the database contains zero valid passkeys for the user.
+    *  The application MUST invoke `signalAllAcceptedCredentials()` immediately within your delete credential click handler post-fetch.
+    *  The application MUST invoke `signalCurrentUserDetails()` immediately within your username rename click handler post-fetch.
 
 ```javascript
 // Client-side management synchronization ES module
@@ -143,7 +141,7 @@ async function performRename(rpId, userId, updatedName, updatedDisplayName) {
 }
 ```
 
-## Determine the passkey provider from AAGUID
+## Determine the passkey provider from AAGUID {: #aaguid }
 
 An AAGUID (Authenticator Attestation Globally Unique Identifier) is a 128-bit identifier that represents the model of the authenticator, not a specific instance. It is included in the authenticator data during passkey registration and can be used to determine which passkey provider (e.g. Google Password Manager, iCloud Keychain, 1Password) created a credential.
 
