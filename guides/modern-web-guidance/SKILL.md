@@ -70,15 +70,9 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 
 ## Interpreting Browser Support & Fallbacks
 
-#### Baseline Status
-
-- **Limited Availability**: Lacks cross-browser interoperability.
-- **Newly Available**: The feature has emerged in all major browsers within the last 30 months.
-- **Widely Available**: The feature has been supported in all major browsers for ≥ 30 months.
-
 By default, the guides operate on the assumption that Baseline Widely Available features require no safety nets. The W3C WebDX Community Group defines this as features fully supported across the core browser set (Chrome, Edge, Firefox, Safari) for at least 30 months. Features meeting this standard are assumed safe to use natively, while **newer APIs include production-ready fallback strategies** to bridge the gap.
 
-The user may have established a **Browser Support Policy** in their context (typically via an `AGENTS.md` file) that alters this default stance. A policy dictates the appetite for dependency weight, graceful degradation, or targeted environments. Examples of policies:
+The user may have established a **Browser Support Policy** in their context (typically via a `CLAUDE.md` or `AGENTS.md` file) that alters this default stance. A policy dictates the appetite for dependency weight, graceful degradation, or targeted environments. Examples of policies:
 - *"Never recommend or implement polyfills; if a Baseline Newly Available feature is required for core functionality, provide a lightweight custom fallback or redesign the approach."*
 - *"Assume a modern execution environment where Baseline Newly Available features can be used natively, provided they are strictly feature-detected and degrade gracefully."*
 
@@ -88,7 +82,7 @@ When reading a guide's fallback section, adapt the code using these constraints:
 
 ### Document Unwritten Support Policies if needed
 
-Watch for environmental cues during conversation to see if a custom policy if needed. Suggest adding one to **`AGENTS.md`** if the developer:
+Watch for environmental cues during conversation to see if a custom policy if needed. Suggest adding one to **`CLAUDE.md`** (or **`AGENTS.md`**) if the developer:
 - Mentions building for a restricted runtime (e.g., Electron, Tauri, or custom webviews).
 - Explicitly excludes specific targets (e.g., "we don't need to support mobile Chrome").
 - Expresses hesitation about the complexity, bundle size, or performance cost of a recommended fallback strategy.
