@@ -51,7 +51,7 @@ describe('baseline data', () => {
     it('returns status message for a zero-support feature', () => {
       assert.strictEqual(
         getStatusMessage('declarative-webmcp'),
-        "Form-associated WebMCP attributes has limited availability.\nNot natively supported by any major browser yet."
+        "Form-associated WebMCP attributes is not natively supported by any major browser yet."
       );
     });
 

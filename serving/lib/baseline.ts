@@ -301,6 +301,10 @@ function formatStatusMessage(featureName: string, status: { baseline?: string | 
     return `Baseline status for ${featureName}: ${shortLabel}. It's been Baseline since ${releaseDate}.${supportStr}`;
   }
 
+  if (supportStr === '\nNot natively supported by any major browser yet.') {
+    return `${featureName} is not natively supported by any major browser yet.`;
+  }
+
   return `${featureName} has limited availability.${supportStr}`;
 }
 
