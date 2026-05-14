@@ -80,7 +80,7 @@ The Signal API lets the application communicate credential states to password ma
     *  The application MUST invoke `signalAllAcceptedCredentials()` automatically in a `DOMContentLoaded` page load event listener.
 *   **Management Updates Sync**:
     *  The application MUST invoke `signalAllAcceptedCredentials()` immediately within your delete credential click handler post-fetch.
-    *  The application MUST invoke `signalCurrentUserDetails()` immediately within your username rename click handler post-fetch.
+    *  The application MUST invoke `signalCurrentUserDetails()` immediately within your username or display name rename click handler post-fetch.
 
 ```javascript
 // Client-side management synchronization ES module
