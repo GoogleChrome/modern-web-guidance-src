@@ -134,6 +134,12 @@ window.__featuresMapping = {
   "sequence-distributed-events": [
     "temporal"
   ],
+  "privacy": [
+    "permissions-policy",
+    "partitioned-cookies",
+    "fedcm",
+    "ua-client-hints"
+  ],
   "adapt-scrollbar-to-contrast-preferences": [
     "scrollbar-color",
     "prefers-contrast"
