@@ -1,8 +1,6 @@
 - The implementation MUST demonstrate controlled clipping on block layout containers using `content-box` alignment to automatically apply concentric curved boundaries on inner child media and footer components.
-- The implementation MUST demonstrate controlled clipping on parent wrapper elements of images using inner box-edge alignment to prevent sub-pixel frame leakage.
-- The implementation MUST apply a box-edge keyword (e.g., `content-box`) to configure inner curved clip margins on target layout containers or padded frames.
-- The implementation MUST apply a length value (e.g., `15px`) to configure extended offset clip margins for external shadow ink bleeds.
-- The implementation MUST feature-detect runtime support for `overflow: clip` and `overflow-clip-margin` using JavaScript (`CSS.supports`).
+- The implementation MUST apply a box-edge keyword (e.g., `content-box`) to configure inner curved clip margins on target layout containers.
+- The implementation MUST apply a length value (e.g., `15px`) to configure extended offset clip margins establishing a visible safety zone to protect child element shadows from border box truncation.
 - The implementation MUST apply `overflow: hidden` as the primary fallback style on containers requiring strict inner boundary containment when `overflow: clip` is unsupported.
-- The implementation MUST apply `overflow: visible` as the primary fallback style on elements to preserve external ink overflow when extended clip margins are unsupported.
+- The implementation MUST apply `overflow: visible` as the primary fallback style on elements to preserve expanded shadow rendering when extended clip margins are unsupported.
 - The implementation MUST NOT apply `overflow: scroll` or `overflow: auto` on target elements when the visual intent is strictly clipping content without enabling scrolling functionality.

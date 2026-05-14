@@ -18,6 +18,10 @@
       color: #111;
     }
 
+    img {
+      background: #fff;
+    }
+
     .intro {
       max-width: 80ch;
       margin-bottom: 2rem;
@@ -35,8 +39,6 @@
     .demo-item {
       background: white;
       padding: 1.5rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
     h3 {
@@ -67,25 +69,13 @@
       display: flex;
       flex-direction: column;
       width: 100%;
-      max-width: 240px;
-      aspect-ratio: 4/3;
       padding: 16px;
       border: 2px solid #e0e0e0;
       border-radius: 32px;
       background: #737373;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-
       /* Level 1 Fallback: clips child roughly at the padding box */
       overflow: hidden;
-    }
-
-    /* Separate image sizing for flex scaling in nested curves vs replacement wrapper frames */
-    .nested-curve-parent img {
-      width: 100%;
-      flex: 1;
-      object-fit: cover;
-      display: block;
-      background: #fff;
     }
 
     /* Inner footer component with 10px rounded to visually demonstrate automatic concentric corner clipping */
@@ -96,8 +86,6 @@
       text-align: center;
       font-size: 0.8rem;
       font-weight: bold;
-      border-radius: 12px;
-      margin-top: 5px;
     }
 
     @supports (overflow-clip-margin: content-box) {
@@ -108,66 +96,14 @@
       }
     }
 
-    /* --- 2. PARENT WRAPPER STYLES --- */
-    .profile-photo-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 1.5rem 0;
-      background: beige;
-    }
-
-    .profile-photo-framed {
-      width: 150px;
-      height: 150px;
-      padding: 10px;
-      /* The "Frame" gutter */
-      border: 5px solid #333;
-      border-radius: 50%;
-      background: #fff;
-      /* Level 1 Fallback */
-      overflow: hidden;
-    }
-
-    @supports (overflow-clip-margin: content-box) {
-      .profile-photo-framed {
-        overflow: clip;
-        overflow-clip-margin: content-box;
-      }
-    }
-
-    /* --- 3. CHILD ELEMENT SHADOW BLEED STYLES --- */
-    .safety-zone-wrapper {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 1.5rem 0;
-    }
-
+    /* --- 2. CHILD ELEMENT SHADOW BLEED STYLES --- */
     .safety-zone-parent {
-      position: relative;
-      width: 100%;
-      max-width: 240px;
-      padding: 16px;
+      padding: 10px;
       border: 2px solid #e0e0e0;
       border-radius: 16px;
-      background: #fff;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
       /* Level 1 Fallback: clips overflowing text/content but truncates child shadows */
       overflow: hidden;
-    }
-
-    .safety-zone-parent h4 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.1rem;
-      color: #222;
-    }
-
-    .safety-zone-parent p {
-      margin: 0 0 1.2rem 0;
-      font-size: 0.85rem;
-      color: #666;
     }
 
     /* Child button element positioned inside with a prominent shadow */
@@ -182,7 +118,7 @@
       font-weight: bold;
       cursor: pointer;
       /* Prominent box-shadow rendered perfectly unclipped inside the visible safety zone */
-      box-shadow: 0 8px 20px rgba(229, 46, 113, 0.65);
+      box-shadow: 0 8px 13px rgba(229, 46, 113, 0.7);
     }
 
     @supports (overflow-clip-margin: 15px) {
@@ -216,12 +152,10 @@
     <strong>Notice:</strong> Your browser does not support <code>overflow-clip-margin</code>. Fallback rendering active.
   </div>
 
-  <p class="intro">This demo showcases controlled clipping across standard block layout containers and replaced element
-    frames
-    using <code>overflow: clip</code> and <code>overflow-clip-margin</code>. Modern browsers natively default
-    replaced elements to clip as of Chrome 108. Setting inner clip margins enables mathematically perfect nested border
-    radii without explicit child curve calculations or protecting padded frames from sub-pixel rendering leakage, while
-    extended bleeds allow external drop-shadows to sit past bounding boxes without layout geometry expansion.
+  <p class="intro">This demo showcases dynamic container layout controls using <code>overflow: clip</code> combined with
+    <code>overflow-clip-margin</code>. Setting inner clip margins enables mathematically perfect nested border radii
+    without writing custom child subtraction calculations, while extended length offsets establish a visible safety zone
+    allowing prominent child element drop-shadows to render beautifully unclipped past container boundaries.
   </p>
 
   <div class="grid">
@@ -236,20 +170,6 @@
         <div class="nested-curve-parent">
           <img src="test_pattern.svg" alt="Nested Curve Demo">
           <div class="nested-curve-footer">Card Footer</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="demo-item">
-      <h3>Gutter Protection</h3>
-      <p class="description">Applies directly to the parent element of an <code>&lt;img&gt;</code> with padding to create a
-        clean
-        gutter
-        frame, preventing sub-pixel image leakage over the inner padding edge.</p>
-
-      <div class="profile-photo-container">
-        <div class="profile-photo-framed">
-          <img src="test_pattern.svg" alt="Framed Demo">
         </div>
       </div>
     </div>
