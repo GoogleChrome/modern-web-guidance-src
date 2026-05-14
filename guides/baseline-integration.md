@@ -1,26 +1,54 @@
-# Baseline & Modern Web Guidance: Our Approach
+# Baseline & Browser Support Philosophy
 
-### 1. The Inversion of "Support": Browsers vs. Features
-A baseline target enforces a **support floor** rather than a ceiling. Understanding this floor requires separating two complementary perspectives:
-* **Supporting Browsers (The Audience Floor):** Setting a baseline target establishes the minimum browser versions guaranteed to work based on a developer's tolerance for broken user experiences. By defaulting to **Baseline Widely Available**, guidance optimizes for production safety without bloat. For features *more mature* than this target floor, fallback code is omitted entirely because the guaranteed audience natively supports them. (Consequently, users running older browsers below this floor receive no fallbacks and risk broken experiences).
-* **Supporting Features (The Capability Axis):** Conversely, when adopting features *less mature* than the target audience floor, guidance relies on documented progressive enhancements and feature detection to protect users within the guaranteed target window. Guide authors clarify specific fallback contexts and explain when fallbacks are unnecessary.
+The Modern Web Guidance project integrates **[Baseline](https://web-platform-dx.github.io/baseline/)** directly into its documentation and agent tooling to balance cutting-edge web platform capabilities with out-of-the-box production safety.
 
-### 2. Feature Maturity & Risk (Rejecting the Ceiling)
-Enforcing a strict "baseline ceiling" (blocking all newer features) fails because many modern web features gracefully degrade or provide massive immediate benefits to supported clients. The decision to adopt newer features maps to a feature maturity model:
-* **Single-Engine Support (e.g., Chrome-only):** Totally fair game by default in guidance. Recommended alongside robust feature detection and alternative pathways for unsupported browsers.
-* **Origin Trials (The Experimental Firewall):** Highly immature APIs liable to breaking changes. Delivering a consistent experience across real production users is impossible, and smooth fallbacks are almost never available. When encountering a guide utilizing an Origin Trial feature, the agent MUST pause and have the user explicitly decide if they accept the risk and how to handle production users lacking support.
+Rather than maintaining static lists of supported browser names and version numbers, our guidance relies on feature capability and maturity. This document outlines how we categorize web standards, evaluate implementation risks, and instruct coding agents to deploy fallback strategies.
 
-### 3. Streamlined Agent Workflow (Implicit Context)
-To prevent dangerous distractions that delay value delivery, agents avoid added prerequisite verification steps before engaging with the command-line interface.
-* **No Prerequisite Status Checks:** By default, agents implicitly assume the *Widely Available* target, skipping explicit upfront checks for baseline configuration files.
-* **Context Window Integration:** Constraints defined in `AGENTS.md` are included implicitly within the standard context window, requiring no dedicated file-reading tasks.
+## The Assumption of Safety
 
-### 4. Reactive Discovery & Fallback Tuning
-Agents avoid upfront configuration questionnaires, acting reactively only when specific project constraints surface during normal workflows:
-* **Triggers:** Single-environment targets (e.g., Electron/Tauri monocultures), explicit exclusions (e.g., neglecting desktop Safari), or expressed hesitation around polyfill size and invasiveness.
-* **Fallback Tuning:** When custom constraints are detected, agents tune the fallback implementation accordingly (e.g., omitting JavaScript polyfills for CSS features if requested).
-* **Limited Support Warnings:** If a guide involves features with limited support where site functionality could break without proper fallbacks, the agent proactively warns the user about compatibility risks.
+By default, our guides operate on the assumption that **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)** features require no safety nets. Defined by the W3C WebDX Community Group, a feature reaches this status when it has been fully supported across all core browser engines (Chrome, Edge, Firefox, Safari) for at least 30 months.
 
-### 5. Persistence & Roadmap (`AGENTS.md` vs. `baseline-config.json`)
-* **Immediate Context (`AGENTS.md`):** Agents suggest persisting custom support policies as free-form text inside a project-level `AGENTS.md` file for persistent memory across sessions.
-* **Future Roadmap (`baseline-config.json`):** To provide a unified, machine-readable source of truth for tools and agents alike, we emphasize investing in a dedicated `baseline-config.json` file updated automatically by tooling.
+* **Benchmark for Unassisted Production Safety:** Features meeting this standard are treated as cured infrastructure. They are universally trusted to execute safely without assistance.
+* **Zero Overhead:** If a guide's implementation relies entirely on Widely Available features, it requires no feature detection, no polyfills, and no developer discussion. Implement it natively and move on.
+
+## Navigating the In-Between: Scale × Depth
+
+Web platform APIs evolve rapidly. Restricting a codebase strictly to Widely Available features leaves massive performance, ergonomic, and UI benefits on the table.
+
+When a guide utilizes a feature designated as **Newly Available** (supported in all latest core engines) or **Limited Availability** (supported in only some engines), we determine the necessity of a fallback by evaluating total user impact: **Scale** (percentage of users affected) × **Depth** (severity of failure per user).
+
+To operationalize this for developers and coding agents, features are evaluated across three concise criticality tiers:
+
+1. **Critical Features (Core Functionality)** - The API drives load-bearing application logic, fundamental routing, state management, or structural layouts.
+   - **Stance:** **Mandatory Redundancy.** If a missing feature causes runtime errors or breaks the core use case, you must implement a robust fallback strategy—such as lightweight custom logic (<50 lines) or a conditionally loaded polyfill—to guarantee structural integrity.
+2. **Additive Features** - The API introduces high-fidelity visual or layout characteristics (e.g., CSS Subgrid, modern color spaces).
+   - **Stance:** **Lean Graceful Degradation.** Prioritize performance over pixel-perfect parity. Avoid heavy polyfills; allow unsupported engines to render a slightly degraded but fully functional baseline experience that stakeholders find acceptable.
+3. **Enhancement Features** - The API provides pure UX polish or background optimization (e.g., scroll-driven indicators, `fetchpriority`, view transitions).
+   - **Stance:** **Progressive Enhancement.** Wrap the implementation in native feature detection (`@supports` or inline JS checks) and let older environments drop the code silently. Pay zero byte or performance tax for unsupported browsers.
+
+## Fallback Hygiene & Best Practices
+
+When a fallback strategy is necessary to bridge support gaps, our guides enforce strict implementation hygiene:
+
+* **Fallback Independence:** Fallbacks must execute independently. Code should never assume that if Polyfill A is active, Polyfill B is also present, unless engine support profiles map as strict sub/supersets (e.g., safely using standard CSS nesting inside `@starting-style` fallbacks).
+* **Conditional Execution:** Heavy polyfills must never be bundled globally. They must be isolated behind native feature detection and injected via dynamic imports only when native capabilities are missing.
+* **Native Preference:** Once an engine natively supports a feature, the fallback path must yield entirely to the browser's optimized internal implementation.
+
+## Custom Policies & Agent Interpretation
+
+While our guides default to optimizing for universal production safety, individual project requirements vary. A team building an unconstrained public site faces different trade-offs than a team compiling a targeted Desktop Electron app.
+
+Coding agents consuming Modern Web Guidance are instructed to treat the project's **`AGENTS.md`** file as the ultimate source of truth.
+
+* **Policy Overrides:** If a project defines a custom support constraint (e.g., *"No polyfills allowed for CSS features"* or *"Targeting Chromium webviews only"*), the agent dynamically strips out, adapts, or omits the guide's default fallback instructions to respect the developer's boundaries.
+* **Framework Translation:** Guides provide fallback patterns written in vanilla JavaScript and raw DOM manipulation to remain environment-agnostic. When implementing these patterns inside frameworks (React, Vue, Svelte), agents and developers must translate imperative logic into declarative idioms—moving global listeners into lifecycle hooks, replacing DOM queries with component refs, and leveraging framework-native code splitting.
+* **Origin Trials:** Highly unstable. **PAUSE**. Prompt the user to explicitly accept the risk and define production fallback strategies before generating implementation code.
+
+---
+
+## See also
+
+- https://web.dev/articles/baseline-and-polyfills
+- https://browsersupport.clearleft.com/
+- https://github.com/GoogleChrome/guidance/pull/708
+- https://github.com/GoogleChrome/guidance/blob/main/.agents/skills/project-guides/SKILL.md#5-fallback-strategies
