@@ -157,6 +157,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
 
   try {
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
+    fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
     if (version) {
       updateVersionsInDir(publishRoot, version);
