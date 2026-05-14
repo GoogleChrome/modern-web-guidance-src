@@ -42,10 +42,21 @@ npx -y modern-web-guidance@latest --skill-version SKILL_VERSION search "<query>"
 ```json
 [
   {
+    "id": "optimize-image-priority",
+    "description": "Optimize the loading priority of Largest Contentful Paint (LCP) candidate images.",
+    "category": "performance",
+    "featuresUsed": [
+      "Fetch priority"
+    ],
+    "tokenCount": 985,
+    "similarity": 0.7289
+  },
+  {
     "id": "content-vis",
     "description": "Defer rendering of offscreen content using content-visibility.",
     "category": "performance",
-    "similarity": "0.85"
+    "tokenCount": 1250,
+    "similarity": 0.6961
   }
 ]
 ```
