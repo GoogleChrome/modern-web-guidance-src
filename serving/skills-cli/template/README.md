@@ -110,7 +110,7 @@ If you installed the skill using `npx modern-web-guidance@latest install`, then 
 npx modern-web-guidance@latest update
 ```
 
-Otherwise, consult your agent's documentation for how to update skills.
+Otherwise, consult your agent's documentation for updating plugins and skills.
 
 ## Evals to prove this works well ;)
 
