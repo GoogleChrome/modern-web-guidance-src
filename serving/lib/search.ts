@@ -31,7 +31,7 @@ function calculateNorm(v: number[]): number {
   return Math.sqrt(sum);
 }
 
-export async function searchUseCases(query: string, limit = 10, minSimilarity = 0.3, embedder?: any): Promise<UseCaseResult[]> {
+export async function searchUseCases(query: string, limit = 5, minSimilarity = 0.3, embedder?: any): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder || TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
   const queryNorm = calculateNorm(queryVector);
