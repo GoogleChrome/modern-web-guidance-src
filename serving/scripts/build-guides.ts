@@ -40,11 +40,13 @@ export interface BuildOptions {
   targetGuidePath?: string;
   modelName?: string;
   noChunking?: boolean;
+  realTokens?: boolean;
 }
 
 // Global variables to be set by processGuides
 let BUILD_GUIDES_DIR: string;
 let IS_NO_CHUNKING = false;
+let IS_REAL_TOKENS = false;
 let TARGET: BuildTarget = 'local-dev';
 
 
@@ -67,13 +69,14 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   };
 }
 
-async function computePipelineHash(guides: GuideInventory[], target: string, noChunking: boolean): Promise<string> {
+async function computePipelineHash(guides: GuideInventory[], target: string, noChunking: boolean, realTokens: boolean): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
 
   hash.update(fs.readFileSync(import.meta.filename, "utf-8"));
   hash.update(target);
   hash.update(noChunking.toString());
+  hash.update(realTokens.toString());
 
   for (const inv of guides) {
     const guidePath = getGuideMarkdownPath(inv);
@@ -121,10 +124,11 @@ function prepareCleanCacheDir(paths: CachePaths): void {
 }
 
 export async function processGuides(opts: BuildOptions): Promise<boolean> {
-  const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
+  const { outputDir, target, force, targetGuidePath, modelName, noChunking, realTokens } = opts;
 
   TARGET = target || 'local-dev';
   IS_NO_CHUNKING = !!noChunking;
+  IS_REAL_TOKENS = realTokens !== undefined ? realTokens : true;
 
   // 1. Configuration & Paths
   const cachePaths = resolveCachePaths(TARGET);
@@ -135,7 +139,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     const excluded = config.monoskill.excludeFromBundling || [];
     return inv.hasGuide && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
-  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
+  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING, IS_REAL_TOKENS);
 
   // 3. Cache Evaluation
   const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash);
@@ -256,7 +260,9 @@ async function processSingleGuideFile(
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
-  const tokenCount = Math.ceil(processedMarkdown.length / 4);
+  const tokenCount = IS_REAL_TOKENS 
+    ? await embedder.countTokens(processedMarkdown)
+    : Math.ceil(processedMarkdown.length / 4);
 
   useCases.push({
     id,
@@ -302,6 +308,7 @@ if (process.argv[1] === import.meta.filename) {
     force: { type: 'boolean' as const },
     model: { type: 'string' as const },
     'no-chunking': { type: 'boolean' as const },
+    'real-tokens': { type: 'boolean' as const },
   };
 
   const { values, positionals } = parseArgs({ options, allowPositionals: true });
@@ -309,6 +316,7 @@ if (process.argv[1] === import.meta.filename) {
   const targetGuidePath = positionals[0];
   const force = values.force;
   const noChunking = values['no-chunking'];
+  const realTokens = values['real-tokens'];
   const modelName = values.model;
 
   processGuides({
@@ -316,6 +324,7 @@ if (process.argv[1] === import.meta.filename) {
     force,
     targetGuidePath,
     modelName,
-    noChunking
+    noChunking,
+    realTokens
   }).catch(console.error);
 }
