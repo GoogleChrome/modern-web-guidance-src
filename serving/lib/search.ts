@@ -8,7 +8,7 @@ export interface UseCaseResult {
   id: string;
   description: string;
   category: string;
-  featuresUsed: string[];
+  featuresUsed?: string[];
   tokenCount: number;
   similarity: number;
 }
@@ -81,7 +81,7 @@ export async function searchUseCases(query: string, limit = 10, minSimilarity = 
     id: r.item.id,
     description: r.item.description,
     category: r.item.category,
-    featuresUsed: r.item.featuresUsed,
+    featuresUsed: r.item.featuresUsed?.length ? r.item.featuresUsed : undefined,
     tokenCount: r.item.tokenCount,
     similarity: parseFloat(r.similarity.toFixed(4))
   }));
