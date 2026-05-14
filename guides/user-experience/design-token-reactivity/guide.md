@@ -5,7 +5,7 @@ web-feature-ids:
   - container-style-queries
 sources:
   - https://developer.mozilla.org/docs/Web/CSS/Reference/At-rules/@container#container_style_queries
-  - https://developer.chrome.com/docs/css-ui/style-queries 
+  - https://developer.chrome.com/docs/css-ui/style-queries
 ---
 
 ## Background & Overview
@@ -98,6 +98,10 @@ For core features, an alternate approach using selectors should be used. This ex
 }
 ```
 
+A major limitation of this fallback approach is that it does not support nesting elements with the `data-density` attribute set, since the selector specificity is the same, order of appearance will be used to determine the styles (i.e. `[data-density="spacious"]` will always take precendence over `[data-density="compact"]`).
+
+### Using style queries as a progressive enhancement
+
 While it’s NOT RECOMMENDED, if you want to use style queries as a progressive enhancement for a core feature, then to avoid duplication you can create some custom properties, then include the style queries after. Make sure the fallback approach uses `:where()` when selecting the container elements to avoid increasing the specificity.
 
 ```css
@@ -128,43 +132,6 @@ While it’s NOT RECOMMENDED, if you want to use style queries as a progressive 
   }
 }
 ```
-
-One limitation of this approach is that it does not support nesting elements with the `data-density` attribute set as order of appearance will be used to determine the styles (i.e. `[data-density="spacious"]` will always take precendence over `[data-density="compact"]`). If your browser support permits it, you can use `@scope` to apply the styles using proximity instead of order of appearance.
-
-{{ BASELINE_STATUS("scope") }}
-
-When using this approach, to ensure the style queries are used instead of the fallback, you’ll need to wrap them with a `@scope` rule that has equal or stronger proximity:
-
-```css
-@scope ([data-density="compact"]) {
-  .card {
-    padding: var(--card-padding-compact);
-  }
-}
-
-@scope ([data-density="spacious"]) {
-  .card {
-    padding: var(--card-padding-spacious);
-  }
-}
-
-/* A direct parent selector using `:has()` will have equal or stronger proximity, causing the style queries to be used when supported */
-@scope (:has(> .card)) {
-  @container style(--density: compact) {
-    .card {
-      padding: var(--card-padding-compact);
-    }
-  }
-
-  @container style(--density: spacious) {
-    .card {
-      padding: var(--card-padding-spacious);
-    }
-  }
-}
-```
-
-If you need wider support you can use this approach as a progressive enhancement for the prior approach that does not use `@scope`.
 
 ### Feature-checking with just CSS
 
@@ -213,3 +180,4 @@ if (getComputedStyle(document.body).getPropertyValue("--style-queries-supported"
   // Use fallback strategy
 }
 ```
+
