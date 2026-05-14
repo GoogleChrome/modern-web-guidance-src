@@ -101,21 +101,6 @@ We don't recommend this method, but it will work.
 npx modern-web-guidance@latest update
 ```
 
-**(Claude Code): auto-check on session start.** Add a `SessionStart` hook to your Claude Code `settings.json` to keep these skills up-to-date:
-
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "type": "command",
-        "command": "npx modern-web-guidance@latest update -g -y 2>/dev/null"
-      }
-    ]
-  }
-}
-```
-
 ## This isn't slop. We've got the evals to prove it. ;)
 
 Every piece of guidance in this pack isn't just a tutorial—it is **empirically proven and continuously calibrated** to guarantee AI agents write better code. We test every guide using an automated quality-assurance harness to ensure correct agent behavior.
