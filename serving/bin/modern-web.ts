@@ -1,4 +1,4 @@
-#!/usr/bin/env node --experimental-strip-types
+#!/usr/bin/env -S node --experimental-strip-types
 
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
@@ -104,11 +104,11 @@ async function main() {
       }
     }
   } else if (command === "install") {
-    const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean);
 
-    const result = spawnSync("npx", installArgs, { stdio: "inherit" });
+    const result = spawnSync("npx", installArgs, { stdio: "inherit", shell: process.platform === "win32" });
 
     if (result.error) {
       console.error("Install failed:", result.error);
@@ -117,8 +117,9 @@ async function main() {
     process.exit(result.status ?? 0);
   } else if (command === "update") {
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["skills", "update", ...skills], {
+    const result = spawnSync("npx", ["-y", "skills", "update", ...skills], {
       stdio: "inherit",
+      shell: process.platform === "win32",
     });
     if (result.error) {
       console.error("Update failed:", result.error);

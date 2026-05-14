@@ -282,7 +282,7 @@ async function runCommand(command: string, args: string[] = [], envOverrides?: R
   return new Promise((resolve, reject) => {
     const childProcess = spawn(command, args, {
       stdio: 'inherit',
-      shell: true,
+      shell: process.platform === 'win32',
       cwd,
       env: envOverrides ? { ...process.env, ...envOverrides } : process.env
     });
