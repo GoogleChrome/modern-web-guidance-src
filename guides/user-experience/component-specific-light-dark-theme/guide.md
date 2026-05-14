@@ -1,6 +1,6 @@
 ---
 name: component-specific-light-dark-theme
-description: Apply a different color-scheme on certain elements (e.g. code blocks, media players, etc) independently of the page's color-scheme.
+description: Force certain elements to be in light mode or dark mode (e.g. code blocks, media players, etc) independently of the page's color-scheme.
 web-feature-ids:
   - color-scheme
   - light-dark
