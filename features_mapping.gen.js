@@ -61,6 +61,25 @@ window.__featuresMapping = {
   "validate-input-after-interaction": [
     "user-pseudos"
   ],
+  "passkey-authentication": [
+    "webauthn",
+    "webauthn-signals"
+  ],
+  "passkey-conditional-create": [
+    "webauthn",
+    "webauthn-signals"
+  ],
+  "passkey-management": [
+    "webauthn",
+    "webauthn-signals"
+  ],
+  "passkey-reauthentication": [
+    "webauthn"
+  ],
+  "passkey-registration": [
+    "webauthn",
+    "webauthn-signals"
+  ],
   "batch-analytics-events": [
     "fetchlater",
     "aborting"
