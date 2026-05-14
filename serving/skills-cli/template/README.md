@@ -103,10 +103,14 @@ We don't recommend this method, but it will work.
 
 ## Updating
 
+If you installed the skill using `npx modern-web-guidance@latest install`, then you can update with this command:
+
 ```sh
 # Update all installed skills
 npx modern-web-guidance@latest update
 ```
+
+Otherwise, consult your agent's documentation for how to update skills.
 
 ## Evals to prove this works well ;)
 
