@@ -88,12 +88,23 @@ Assume a default guaranteed audience floor of **[Baseline Widely Available](http
 - **Single-Engine APIs (e.g., Chrome-only):** Fair game by default. **MUST** include robust feature detection and alternative code paths for unsupported engines.
 - **Origin Trials:** Highly unstable. **PAUSE**. Prompt the user to explicitly accept the risk and define production fallback strategies before generating implementation code.
 
-#### Reactive Discovery & Persistence
+
+## Interpreting Browser Support & Fallbacks
+
+Every retrieved guide includes a Baseline status macro. Implement fallbacks by filtering the guide's suggestions through the user's established `AGENTS.md` policy.
+
+### Execution Rules
+*   **Policy Overrides Guide:** Explicit project constraints (e.g., line-count limits, dependency bans, targeted monocultures) always override the guide's fallback section. Confidently omit or adapt suggested fallbacks to respect the developer's rules.
+*   **Default Baseline Logic (If unconfigured):**
+    *   **Widely Available:** Natively supported. Omit all fallback code.
+    *   **Newly / Limited Available:** Implement fallbacks for **core functionality** (state, routing, structural layouts). For **enhancements/UI polish**, omit fallbacks and rely on native progressive enhancement (e.g., `@supports`, inline feature detection) to degrade silently.
+*   **Framework Idioms:** Never paste imperative vanilla snippets directly into frameworks. Translate fallbacks into idiomatic equivalents.
+
+### Reactive Discovery & Persistence
 Do **NOT** ask for browser support targets upfront. Intervene reactively only when observing:
 - Browser monocultures (e.g., Electron/Tauri).
-- Explicit browser exclusions (e.g., "no Desktop Safari").
+- Explicit browser exclusions (e.g., "no Desktop Chrome").
 - Hesitation around polyfill size/invasiveness.
 
-**Clarify & Persist:** When triggered, clarify constraints and suggest persisting them to a project-level **`AGENTS.md`** file.
-- *Format:* `**Browser Support:** We target Baseline Widely Available, but explicitly exclude Desktop Safari and do not use JS polyfills for CSS features.`
-- *Fallback Tuning:* Apply `AGENTS.md` context to tune fallback implementations (e.g., omitting specific polyfills).
+**Clarify & Persist:** When triggered, clarify constraints interactively and suggest persisting them to a project-level **`AGENTS.md`** file.
+- *Format:* `**Browser Support:** Require Widely Available features for all state management and DOM work, but freely use newer features for visual enhancements and non-critical interactions. Do not use JS polyfills for CSS features.`
