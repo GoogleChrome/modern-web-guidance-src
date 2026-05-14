@@ -38,6 +38,7 @@ export interface BuildOptions {
   targetGuidePath?: string;
   modelName?: string;
   noChunking?: boolean;
+  additionalFilesToHash?: string[];
 }
 
 // Global variables to be set by processGuides
@@ -65,13 +66,22 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   };
 }
 
-async function computePipelineHash(guides: GuideInventory[], target: string, noChunking: boolean): Promise<string> {
+async function computePipelineHash(guides: GuideInventory[], target: string, noChunking: boolean, additionalFiles?: string[]): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
 
   hash.update(fs.readFileSync(import.meta.filename, "utf-8"));
   hash.update(target);
   hash.update(noChunking.toString());
+
+  if (additionalFiles) {
+    for (const file of additionalFiles) {
+      if (fs.existsSync(file)) {
+        hash.update(path.relative(WORKSPACE_ROOT, file));
+        hash.update(fs.readFileSync(file, "utf-8"));
+      }
+    }
+  }
 
   for (const inv of guides) {
     const guidePath = getGuideMarkdownPath(inv);
@@ -119,7 +129,7 @@ function prepareCleanCacheDir(paths: CachePaths): void {
 }
 
 export async function processGuides(opts: BuildOptions): Promise<boolean> {
-  const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
+  const { outputDir, target, force, targetGuidePath, modelName, noChunking, additionalFilesToHash } = opts;
 
   TARGET = target || 'local-dev';
   IS_NO_CHUNKING = !!noChunking;
@@ -133,7 +143,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     const excluded = config.monoskill.excludeFromBundling || [];
     return inv.hasGuide && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
-  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
+  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING, additionalFilesToHash);
 
   // 3. Cache Evaluation
   const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash);

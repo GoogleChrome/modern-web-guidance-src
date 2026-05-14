@@ -122,21 +122,33 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   const { publishRoot, version} = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
-  // const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
+  const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
+
+  const cliSourceFiles = [
+    path.join(SERVING_DIR, "bin/modern-web.ts"),
+    path.join(SERVING_DIR, "lib/search.ts"),
+    path.join(SERVING_DIR, "lib/tfjs-embedder.ts"),
+    path.join(SERVING_DIR, "lib/transformers-embedder.ts"),
+    path.join(SERVING_DIR, "lib/macros.ts"),
+    path.join(SERVING_DIR, "lib/baseline.ts"),
+    path.join(SERVING_DIR, "skills-cli/build-dist.ts"),
+    path.join(SERVING_DIR, "skills-cli/build-readme.ts"),
+    path.join(rootDir, "package.json"),
+  ];
 
   // Step 1: Check if we can short-circuit without wiping anything.
   // processGuides internally uses dist/.cache/ and evaluates the source hashes.
-  const _skipped = await processGuides({
+  const skipped = await processGuides({
     outputDir: DIST_DIR,
     target: 'skills-cli',
+    additionalFilesToHash: cliSourceFiles,
   });
 
-  // TODO: this code prevented modern-web.mjs from rebuilding on changes.
-  // if (skipped && fs.existsSync(modernWebMjs)) {
-  //   const { skillsCount, skillNames } = processSkills(publishRoot);
-  //   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
-  //   return { featuresCount, useCasesCount, skillsCount, skillNames };
-  // }
+  if (skipped && fs.existsSync(modernWebMjs)) {
+    const { skillsCount, skillNames } = processSkills(publishRoot);
+    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
+    return { featuresCount, useCasesCount, skillsCount, skillNames };
+  }
 
   // Step 2: If we didn't short-circuit, we do a clean, purist build.
   // Now we can safely wipe publishRoot completely!
@@ -148,6 +160,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   await processGuides({
     outputDir: DIST_DIR,
     target: 'skills-cli',
+    additionalFilesToHash: cliSourceFiles,
   });
 
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
