@@ -245,6 +245,7 @@ Check for any existing conventions around naming and levels before inventing you
 Typically this happens in Tier 2 or Tier 3 tokens.
 - IMPORTANT: When using `light-dark()` on an inherited `<color>` property, it will resolve to a specific color based on that element's `color-scheme` and inherit as that resolved color, not as a `light-dark()` value. It will NOT adapt to any descendant-specific `color-scheme` overrides. To keep `light-dark()` color tokens dynamic resolve them as late as possible by only passing them around as unregistered custom properties.
 
+See {{ GUIDE_REF("dark-mode") }} for more tips & best practices on supporting dark mode switching.
 
 ### Forced Colors Mode
 
