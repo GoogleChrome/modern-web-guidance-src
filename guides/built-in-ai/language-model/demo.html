@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Language Model Demo</title>
+</head>
+
+<body>
+  <h1>Language Model (Prompt API)</h1>
+
+  <section>
+    <h2>Download Progress</h2>
+    <p id="download-progress">Checking…</p>
+  </section>
+
+  <section>
+    <h2>Availability</h2>
+    <p id="availability">Checking…</p>
+  </section>
+
+  <section>
+    <h2>Streaming Prompt</h2>
+    <textarea id="prompt-input" rows="3" cols="60">Write a short poem about the ocean.</textarea>
+    <br>
+    <button id="prompt-btn">Send (streaming)</button>
+    <pre id="prompt-output"></pre>
+  </section>
+
+  <section>
+    <h2>Structured Output (Sentiment)</h2>
+    <textarea id="sentiment-input" rows="2" cols="60">The pizza was absolutely amazing!</textarea>
+    <br>
+    <button id="sentiment-btn">Analyze sentiment</button>
+    <pre id="sentiment-output"></pre>
+  </section>
+
+  <section>
+    <h2>Session Clone</h2>
+    <button id="clone-btn">Ask both clones a question</button>
+    <pre id="clone-output"></pre>
+  </section>
+
+  <script type="module">
+    const availabilityEl = document.getElementById('availability');
+    const downloadProgressEl = document.getElementById('download-progress');
+    const promptInput = document.getElementById('prompt-input');
+    const promptBtn = document.getElementById('prompt-btn');
+    const promptOutput = document.getElementById('prompt-output');
+    const sentimentInput = document.getElementById('sentiment-input');
+    const sentimentBtn = document.getElementById('sentiment-btn');
+    const sentimentOutput = document.getElementById('sentiment-output');
+    const cloneBtn = document.getElementById('clone-btn');
+    const cloneOutput = document.getElementById('clone-output');
+
+    if (!('LanguageModel' in window)) {
+      availabilityEl.textContent = 'LanguageModel API not available in this browser.';
+      throw new Error('LanguageModel not found');
+    }
+
+    const availability = await LanguageModel.availability();
+    availabilityEl.textContent = `Status: ${availability}`;
+
+    if (availability === 'unavailable') {
+      throw new Error('LanguageModel is unavailable on this device.');
+    }
+
+    const session = await LanguageModel.create({
+      expectedInputs: [{type: 'text', languages: ['en']}],
+      expectedOutputs: [{type: 'text', languages: ['en']}],
+      monitor(m) {
+        m.addEventListener('downloadprogress', (e) => {
+          downloadProgressEl.textContent = `Downloading model: ${Math.round(e.loaded * 100)}%`;
+        });
+      },
+    });
+
+    function updateTokenDisplay() {
+      availabilityEl.textContent = `Status: ready (context ${session.contextUsage}/${session.contextWindow} tokens used)`;
+    }
+    updateTokenDisplay();
+
+    // Streaming prompt
+    promptBtn.addEventListener('click', async () => {
+      promptOutput.textContent = '';
+      promptBtn.disabled = true;
+      try {
+        const stream = session.promptStreaming(promptInput.value);
+        for await (const chunk of stream) {
+          promptOutput.append(chunk)
+        }
+      } finally {
+        promptBtn.disabled = false;
+        updateTokenDisplay();
+      }
+    });
+
+    // Structured output: sentiment analysis
+    const sentimentSchema = {
+      type: 'object',
+      properties: {
+        rating: { type: 'number', minimum: 1, maximum: 5 },
+        is_positive: { type: 'boolean' },
+        summary: { type: 'string' },
+      },
+      required: ['rating', 'is_positive', 'summary'],
+    };
+
+    sentimentBtn.addEventListener('click', async () => {
+      sentimentOutput.textContent = 'Analyzing…';
+      sentimentBtn.disabled = true;
+      try {
+        const result = await session.prompt(
+          `Rate this feedback: "${sentimentInput.value}"`,
+          { responseConstraint: sentimentSchema },
+        );
+        sentimentOutput.textContent = JSON.stringify(JSON.parse(result), null, 2);
+      } finally {
+        sentimentBtn.disabled = false;
+        updateTokenDisplay();
+      }
+    });
+
+    // Session cloning: two personas share the same base context
+    cloneBtn.addEventListener('click', async () => {
+      cloneOutput.textContent = 'Asking both clones…';
+      cloneBtn.disabled = true;
+      try {
+        const base = await LanguageModel.create({
+          expectedInputs: [{type: 'text', languages: ['en']}],
+          expectedOutputs: [{type: 'text', languages: ['en']}],
+          initialPrompts: [
+            { role: 'system', content: 'You are a helpful assistant. Keep answers to one sentence.' },
+          ],
+        });
+
+        const optimist = await base.clone();
+        const pessimist = await base.clone();
+        base.destroy();
+
+        const [a, b] = await Promise.all([
+          optimist.prompt('What do you think about AI?'),
+          pessimist.prompt('What do you think about AI? Answer as a pessimist.'),
+        ]);
+
+        optimist.destroy();
+        pessimist.destroy();
+
+        cloneOutput.textContent = `Optimist: ${a}\n\nPessimist: ${b}`;
+      } finally {
+        cloneBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+
+</html>

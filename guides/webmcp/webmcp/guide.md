@@ -7,7 +7,7 @@ description: Use this guide to implement WebMCP (Web Model Context Protocol) in 
 
 WebMCP is a browser-native JavaScript API that allows web pages to expose their client-side functionality as structured "tools" to AI agents, browser assistants, and assistive technologies. 
 
-IMPORTANT: WebMCP is currently **Chrome-only** (Early Preview). It requires Chrome `146.0.7672.0` or higher and the `#enable-webmcp-testing` flag.
+IMPORTANT: WebMCP is currently in Early Preview on Chromium-based browsers (such as Chrome and Edge). It requires Chromium version `146.0.7672.0` or higher and the `#enable-webmcp-testing` flag.
 
 **Crucial Distinction:** WebMCP runs entirely **client-side** in the browser tab. It is *not* a backend server, and it does *not* use HTTP, Server-Sent Events (SSE), or `stdio` transports. The web page itself acts as the tool registry.
 
@@ -28,7 +28,7 @@ Currently, WebMCP **only supports Tools**. It does not support the "Resources" o
 
 ### When to Discourage WebMCP
 
-* **Backend Operations**: If the operation requires intensive compute, access to secure databases, or requires API keys that shouldn't be exposed to the client, use a standard backend MCP server instead of WebMCP.
+* **Direct Database/Secure Access**: If the operation requires intensive compute, direct access to secure databases, or requires API keys that shouldn't be exposed to the client. In these cases, the client-side tool's executor function should make a standard HTTP request (e.g., via `fetch()`) to a backend API endpoint, rather than attempting to perform these actions directly on the client.
 * **High-Risk Actions without Guardrails**: Avoid auto-submitting tools for destructive or irreversible actions (e.g., deleting data) unless the UI requires manual user confirmation outside the agent's control.
 * **Hyper-Dynamic State**: If data changes faster than the agent can react, it may work with stale context.
 
@@ -41,9 +41,9 @@ Currently, WebMCP **only supports Tools**. It does not support the "Resources" o
 
 ## Implementation Status
 
-WebMCP is currently in early preview in Chrome browser:
+WebMCP is currently in early preview in Chromium-based browsers (e.g., Chrome, Edge):
 
 * **Current Status**: Early preview.
-* **Required Version**: Chrome `146.0.7672.0` or higher.
-* **Activation**: Requires enabling the flag `chrome://flags/#enable-webmcp-testing`.
+* **Required Version**: Chromium `146.0.7672.0` or higher.
+* **Activation**: Requires enabling the flag `chrome://flags/#enable-webmcp-testing` or `edge://flags/#enable-webmcp-testing`.
 * **Specification**: Evolving [Draft Community Group specification](https://webmachinelearning.github.io/webmcp/); not yet a standards-track recommendation.

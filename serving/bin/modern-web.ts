@@ -1,9 +1,9 @@
-#!/usr/bin/env node --experimental-strip-types
+#!/usr/bin/env -S node --experimental-strip-types
 
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
-import { readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
 import { CommandType } from "../skills-cli/telemetry/types.ts";
@@ -16,8 +16,8 @@ const { values, positionals } = parseArgs({
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
     choose: { type: "boolean" },
-    "skill-version": { type: "string" },
     auto: { type: "boolean" },
+    "skill-version": { type: "string" },
   },
   allowPositionals: true,
   strict: false,
@@ -28,29 +28,19 @@ function printUsage() {
 Usage: modern-web <command> [args]
 
 Commands:
-  search <query>          Search use cases by query
-  list                    List all available use cases
-  retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
-  install [options]       Install the modern-web-guidance skill
-  update                  Update skills
+  search <query>            Search use cases by query
+  list                      List all available use cases
+  retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
+  install [options]         Install the modern-web-guidance skill
+  update                    Update skills
 
 Options:
   --skill-version <version> Internal use: version of the skill being executed
   --auto                    Internal use: identifies background automated update
-  --choose                Choose specific skills from the repository interactively
-  -h, --help              Show this help
-  -v, --version           Show version
+  --choose                  Choose specific skills from the repository interactively
+  -h, --help                Show this help
+  -v, --version             Show version
 `);
-}
-
-function getOurCLIAdjacentSkillIDs(): string[] {
-  try {
-    const skillsPath = join(import.meta.dirname, "../../skills");
-    const listing = readdirSync(skillsPath);
-    return listing.filter(name => existsSync(join(skillsPath, name, 'SKILL.md')));
-  } catch (e) {
-    return [];
-  }
 }
 
 async function main() {
@@ -65,6 +55,7 @@ async function main() {
   }
 
   const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
+  maybeEmitUpdateMessage(skillVersion);
 
   const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
@@ -152,11 +143,11 @@ async function main() {
       process.exitCode = 1;
     }
   } else if (command === "install") {
-    const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean);
 
-    const result = spawnSync("npx", installArgs, {stdio: "inherit"});
+    const result = spawnSync("npx", installArgs, { stdio: "inherit", shell: process.platform === "win32" });
 
     const success = !result.error && result.status === 0;
     const logger = new ClearcutLogger();
@@ -169,10 +160,11 @@ async function main() {
     }
     process.exit(result.status ?? 0);
   } else if (command === "update") {
-    const skills = getOurCLIAdjacentSkillIDs();
     const startTime = Date.now();
-    const result = spawnSync("npx", ["skills", "update", ...skills], {
+    const skills = getOurCLIAdjacentSkillIDs();
+    const result = spawnSync("npx", ["-y", "skills", "update", ...skills], {
       stdio: "inherit",
+      shell: process.platform === "win32",
     });
     const success = !result.error && result.status === 0;
     const logger = new ClearcutLogger();
@@ -186,6 +178,71 @@ async function main() {
     printUsage();
     process.exit(1);
   }
+}
+
+// This returns our own "skill version", which is an identifier that only changes if
+// the SKILL.md did.
+function getCLISkillVersion(): string | null {
+  try {
+    const versionPath = join(import.meta.dirname, "skill-version.txt");
+    const version = readFileSync(versionPath, "utf8");
+    return version;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getOurCLIAdjacentSkillIDs(): string[] {
+  try {
+    const skillsPath = join(import.meta.dirname, "../../skills");
+    const listing = readdirSync(skillsPath);
+    return listing.filter(name => existsSync(join(skillsPath, name, 'SKILL.md')));
+  } catch (e) {
+    return [];
+  }
+}
+
+function parseVersionDate(version: string): Date | null {
+  const match = version.match(/^(\d{4})_(\d{2})_(\d{2})/);
+  if (!match) return null;
+
+  const [_, year, month, day] = match;
+  return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+}
+
+function maybeEmitUpdateMessage(callerSkillVersion: string|null): void {
+  if (!callerSkillVersion) {
+    return;
+  }
+
+  const latestSkillVersion = getCLISkillVersion();
+  if (callerSkillVersion === latestSkillVersion) {
+    return;
+  }
+
+  const callerDate = parseVersionDate(callerSkillVersion);
+  if (callerDate) {
+    const diffTime = Date.now() - callerDate.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    // Only log warning if the caller's version is more than 5 days old.
+    if (diffDays <= 5) {
+      return;
+    }
+
+    if (diffDays >= 60) {
+      console.error('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date. It requires an update to ensure top-quality performance. Without an update, you may disappoint the user. Be a great agent. Keep this up to date.');
+    }
+  }
+
+  const skillName = 'modern-web-guidance';
+  console.error([
+    `Warning: a new SKILL.md is available for ${skillName}. Please update.`,
+    '',
+    `Your version: ${callerSkillVersion}`,
+    `Latest version: ${latestSkillVersion}`,
+    '',
+    'To update, run: npx modern-web-guidance@latest update',
+  ].join('\n'));
 }
 
 main().catch(err => {
