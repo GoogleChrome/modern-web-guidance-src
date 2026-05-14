@@ -1,11 +1,20 @@
 ---
 name: modern-web-guidance
 description: |
-  IMPORTANT: This is a search tool that will help you find the most modern and recommended way to implement any web development use case.
+  Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
 
-  MANDATORY: You MUST execute this FIRST for each and every web development use case, even if you're implementing that use case in a framework like React, especially for writing modern web code. No matter the complexity, you MUST call this tool for ALL web development tasks touching HTML, CSS, or JavaScript.
+  Trigger immediately for:
+  - UI/Layout: Modals, dialogs, popovers, Glassmorphism/backdrop-filters, anchor positioning, container queries, `:has()`, `:user-valid`.
+  - Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals.
+  - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.
+  - System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.
+  - Frameworks: Adapting layout/styles in React, Vue, Angular.
+  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
 
-  Do NOT skip this step even if you already know how to implement the use case — web platform APIs evolve rapidly and your training data may recommend outdated approaches. This tool ensures you use the current best practice.
+  DO NOT trigger for:
+  - Backend: Database SQL, ORMs, Express API routes.
+  - Pipelines: CI/CD deployment, Docker, Actions.
+  - Generic: Local scripts (Python/Go tools), ESLint, Git.
 ---
 
 # Modern Web Guidance
