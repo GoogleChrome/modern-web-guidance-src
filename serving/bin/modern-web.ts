@@ -190,6 +190,10 @@ function maybeEmitUpdateMessage(callerSkillVersion: string|null): void {
     if (diffDays <= 5) {
       return;
     }
+
+    if (diffDays >= 60) {
+      console.error('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date. It requires an update to ensure top-quality performance. Without an update, you may disappoint the user. Be a great agent. Keep this up to date.');
+    }
   }
 
   const skillName = 'modern-web-guidance';
