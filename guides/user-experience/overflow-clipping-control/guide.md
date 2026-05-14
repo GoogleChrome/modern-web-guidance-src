@@ -15,7 +15,7 @@ sources:
 
 While `overflow: hidden` is a "blunt instrument" that almost always clips content strictly at the padding-box, `overflow: clip` combined with `overflow-clip-margin` provides the "scalpel" for fine-grained layout control across both standard block containers and replaced elements.
 
-By using `overflow: clip` and `overflow-clip-margin`, developers can specify exactly where clipping occurs—aligning the boundary precisely with inner box-model edges—or extend the clipping boundary beyond the element's box by a specified offset (a safety margin or "bleed"). This modern approach is highly performant and eliminates the legacy requirement of adding extra wrapper elements with custom padding and negative margins just to let visual effects (like drop-shadows or absolute decorative badges) bleed outside a container.
+By using `overflow: clip` and `overflow-clip-margin`, developers can specify exactly where clipping occurs—aligning the boundary precisely with inner box-model edges—or extend the clipping boundary beyond the element's box by a specified offset (a safety margin). This modern approach is highly performant and eliminates the legacy requirement of adding extra wrapper elements with custom padding and negative margins just to let visual effects (like drop-shadows or absolute decorative badges) bleed outside a container.
 
 As of Chrome 108, `overflow: clip` and `overflow-clip-margin: content-box` are the default user-agent styles for replaced elements (`<img>`, `<video>`, `<canvas>`), making this pattern essential for cleanly containing images that use `object-fit`, `border-radius`, or CSS filters without sub-pixel leakage. On standard block containers, explicitly declaring `overflow: clip` enables high-performance containment while unlocking custom offset clip margins.
 
@@ -26,16 +26,16 @@ As of Chrome 108, `overflow: clip` and `overflow-clip-margin: content-box` are t
    - `content-box`: Clips content exactly where the content area begins, leaving the padding area completely clean. Image or content stops right at the padding's edge. Excellent for replaced elements with padding frames.
    - `padding-box` (Default): Clips content at the inner edge of the border.
    - `border-box`: Clips content at the outer edge of the border, allowing content to sit under or partially overlap a translucent border.
-3. **Define a Specified Offset (The Bleed)**: Provide a length value (e.g., `15px` or `5px`) to create a safety zone before cutting pixels. This allows decorative glows, absolute badges, or ink overflow (shadows) to stick out past the edge without expanding layout geometry.
+3. **Define a Specified Offset (The Bleed)**: Provide a length value (e.g., `15px` or `5px`) to create a safety zone before cutting pixels. This allows decorative glows, absolute badges, or shadows to stick out past the edge without expanding layout geometry.
 4. **Combine Box-Edge and Offset**: Specify both a box edge and a length offset simultaneously (e.g., `content-box 15px`) if multi-boundary targeting is required.
 
 ## Example Code
 
-The following examples demonstrate controlled clipping on standard block layout containers and replaced element frames, showcasing inner content curve nested framing, parent wrapper frame protection, and drop-shadow ink bleeds alongside progressive enhancement fallbacks.
+The following examples demonstrate controlled clipping on standard block layout containers and replaced element frames, showcasing inner content curve nested framing, parent wrapper frame protection, and drop-shadow alongside progressive enhancement fallbacks.
 
 ### Block Containers: Nested Rounded Curves
 
-Applies `overflow-clip-margin: content-box` to a parent container with rounded corners and custom padding. Automatically applies similar rounded corners on inner child media and footer components along the concentric inner content box boundary, solving awkward nesting curves without custom `calc()` logic.
+Applies `overflow-clip-margin: content-box` to a parent container with rounded corners and custom padding. This also applies similar rounded corners on inner child media and footer components along the concentric inner content box boundary, solving awkward nesting curves without custom `calc()` logic.
 
 ```html
 <div class="nested-curve-parent">
@@ -213,7 +213,7 @@ Applying prominent box-shadows to inner child elements (like buttons or sub-card
 
 For target environments lacking native support for `overflow: clip` or `overflow-clip-margin`, progressive enhancement fallback strategies depend directly on the visual intent:
 - **Strict Containment**: Fallback to `overflow: hidden` as the base experience to guarantee core boundaries are maintained.
-- **Ink Overflow / Bleed Preservation**: Fallback to `overflow: visible` on elements where drop-shadows or external corner badges must not be truncated.
+- **Drop Shadow Preservation**: Fallback to `overflow: visible` on elements where drop-shadows or external corner badges must not be truncated.
 
 ### Complete Progressive Enhancement Fallback Implementation
 
