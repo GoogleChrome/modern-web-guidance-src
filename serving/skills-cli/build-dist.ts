@@ -95,7 +95,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
 
   // TODO(paulirish): Refactor this build script to be less convoluted:
   // 1. Separate cache checking from execution in processGuides.
-  // 2. Use better function names (e.g. generateGuidesDatabase, isCacheValid).
+  // 2. Use better function names (e.g. prepareGuidesAndEmbeddings, isCacheValid).
   // 3. Avoid the double-call pattern to processGuides.
   // We skip the short-circuit here to ensure modern-web.mjs is always
   // rebundled by esbuild, while processGuides still handles embedding cache.
