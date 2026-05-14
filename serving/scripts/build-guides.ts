@@ -271,7 +271,7 @@ async function processSingleGuideFile(
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
   for (const chunk of chunks) {
-    const embeddingText = `${id} (${category})\n\n${chunk}`;
+    const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({

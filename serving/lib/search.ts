@@ -10,7 +10,7 @@ export interface UseCaseResult {
   category: string;
   featuresUsed: string[];
   tokenCount: number;
-  similarity: string;
+  similarity: number;
 }
 
 let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; tokenCount: number; vector: number[]; norm: number }[] | null = null;
@@ -83,7 +83,7 @@ export async function searchUseCases(query: string, limit = 10, minSimilarity = 
     category: r.item.category,
     featuresUsed: r.item.featuresUsed,
     tokenCount: r.item.tokenCount,
-    similarity: r.similarity.toFixed(4)
+    similarity: parseFloat(r.similarity.toFixed(4))
   }));
 
   // Log the result
