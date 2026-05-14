@@ -187,7 +187,7 @@ function maybeEmitUpdateMessage(callerSkillVersion: string|null): void {
   if (callerDate) {
     const diffTime = Date.now() - callerDate.getTime();
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    // Only log warning if the caller's version is more than 7 days old.
+    // Only log warning if the caller's version is more than 5 days old.
     if (diffDays <= 5) {
       return;
     }
