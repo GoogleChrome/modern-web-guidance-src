@@ -23,7 +23,7 @@ Options:
 }
 
 const discipline = values.discipline;
-const researchPath = path.resolve('skills-drafts/.research', discipline, 'research.md');
+const researchPath = path.resolve('skills-src/.research', discipline, 'research.md');
 
 async function resolveUrl(url) {
   try {

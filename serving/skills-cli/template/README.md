@@ -61,7 +61,7 @@ Token-efficient, targeted, and private guidance injected right into the context 
 ## Get started
 
 ```shell
-npx modern-web-guidance install
+npx modern-web-guidance@latest install
 ```
 
 This will run a quick interactive wizard to install the modern-web-guidance-skill to your preferences, and for your configured agents.
@@ -92,6 +92,13 @@ We don't recommend this method, but it will work.
 /plugin install modern-web-guidance@googlechrome
 /plugin  # Select GoogleChrome marketplace, hit enter, enable AutoUpdate
 /reload-plugins
+```
+
+## Updating
+
+```sh
+# Update all installed skills
+npx modern-web-guidance@latest update
 ```
 
 ## This isn't slop. We've got the evals to prove it. ;)
@@ -141,8 +148,8 @@ We grade both outputs and only release guides that demonstrate a massive, quanti
 
 # Available Skills
 
-* **`modern-web-guidance`**: (234 tok) Everything mentioned above  
-* **`chrome-extensions`**: (181 tok) Manifest V3 development, background service workers, content scripts, and extension APIs. Manage Chrome Web Store metadata, permissions justifications, privacy policies, and publishing readiness.
+* **`modern-web-guidance`**: (234 tokens) Everything mentioned above  
+* **`chrome-extensions`**: (181 tokens) Manifest V3 development, background service workers, content scripts, and extension APIs. Manage Chrome Web Store metadata, permissions justifications, privacy policies, and publishing readiness.
 
 \# Choose which skills you want  
-`npx modern-web-guidance install --interactive`
+`npx modern-web-guidance@latest install --choose`

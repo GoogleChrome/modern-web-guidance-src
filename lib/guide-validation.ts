@@ -456,7 +456,7 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
 
     // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
+      if (!entry.isDirectory() || entry.name.startsWith('.') || ['node_modules', 'test-app-results', 'grade-report', 'test-results'].includes(entry.name)) continue;
       guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
     }
   }
