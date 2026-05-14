@@ -1,6 +1,11 @@
 ---
-name: web-privacy
+name: privacy
 description: Action-oriented guidelines for web developers to implement privacy by design, data minimization, third-party audits, and secure data handling. Use this skill when designing applications, integrating third-party services, handling user data, or configuring security headers.
+web-feature-ids:
+  - permissions-policy
+  - partitioned-cookies
+  - fedcm
+  - ua-client-hints
 ---
 
 # Web Privacy Guidelines for Developers
@@ -8,8 +13,6 @@ description: Action-oriented guidelines for web developers to implement privacy 
 Web application developers must treat privacy as a foundational architectural requirement, not just a legal compliance checkbox. As the web ecosystem shifts away from passive tracking toward explicit, user-consented interactions, building privacy-preserving applications is critical for user trust and security.
 
 This document provides high-level principles and detailed, actionable guidelines with code examples for web developers.
-
----
 
 ## High-Level Overview
 
@@ -20,8 +23,6 @@ These core themes should guide your approach to privacy in web development:
 3.  **Purpose Limitation**: Data collected for one purpose must not be used for another without fresh consent. Repurposing data without explicit agreement violates the trust relationship with the user.
 4.  **Transparency by Default**: Be honest and clear about why data is collected, where it goes, and how long it is kept. Transparency builds trust and can be a unique selling point for your application.
 5.  **Trustworthy Agency**: Treat your application as an agent acting in the user's best interest. This means protecting them from intrusive behaviors, unnecessary data exposure, and acting as a loyal fiduciary to the user rather than serving third-party interests.
-
----
 
 ## Detailed Guidelines
 
@@ -52,8 +53,6 @@ Instead of asking for exact age:
 </select>
 ```
 
----
-
 ### 2. Transparency and Trust
 
 Build trust by being open about your data practices and providing easy ways for users to control their data.
@@ -61,7 +60,7 @@ Build trust by being open about your data practices and providing easy ways for 
 #### DOs:
 *   **DO** provide inline explanations for why data is requested. Place the explanation directly next to the input field.
 *   **DO** provide a clear reason and context *before* requesting powerful browser permissions (e.g., camera, location).
-*   **DO** consider the **Page Embedded Permission Control (PEPC)** approach (using specific elements like `<geolocation>`) to make requests declarative, user-initiated, and act as data mediators.
+*   **DO** consider using the **Page Embedded Permission Control (PEPC)** `<permission>` element, if supported, to make permission requests declarative, user-initiated, and act as data mediators.
 *   **DO** use the `Clear-Site-Data` header when a user logs out to ensure no lingering data remains in the browser.
 *   **DO** make it as easy to opt-out or delete an account as it was to sign up.
 
@@ -93,15 +92,13 @@ Clear-Site-Data: "*"
 **Page Embedded Permission Control (HTML)**
 ```html
 <!-- Declarative permission element with fallback -->
-<geolocation onlocation="updateMap(event)">
+<permission type="geolocation" onpromptdismiss="updateMap()">
   <!-- Fallback for unsupported browsers -->
   <button onclick="navigator.geolocation.getCurrentPosition(updateMap)">
     Use my location
   </button>
-</geolocation>
+</permission>
 ```
-
----
 
 ### 3. Security and Data Handling for Privacy
  
@@ -128,8 +125,6 @@ Set-Cookie: session_id=xyz123; Secure; HttpOnly; SameSite=Lax
 ```http
 Set-Cookie: theme_pref=dark; SameSite=None; Secure; Path=/; Partitioned; HttpOnly
 ```
-
----
 
 ### 4. Third-Party Audits and Mitigations
 
@@ -190,8 +185,6 @@ try {
 }
 ```
 
----
-
 ### 5. Privacy-Preserving Headers
 
 Use standard HTTP headers to instruct the browser to enforce privacy boundaries.
@@ -213,16 +206,13 @@ Disables powerful features for all origins by default.
 Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=()
 ```
 
----
-
-
 ### 6. Fingerprinting and User-Agent Reduction
 
 Avoid techniques that attempt to uniquely identify users covertly based on their device configuration. Fingerprinting takes away user control because it relies on unchanging characteristics and happens invisibly, preventing users from opting out or clearing their identifier.
 
 #### DOs:
 *   **DO** use **Feature Detection** instead of User-Agent sniffing to determine if a browser supports a capability.
-*   **DO** use **User-Agent Client Hints** (UA-CH) if it supported by the browser, when specific device targeting is required.
+*   **DO** use **User-Agent Client Hints** (UA-CH) if supported by the browser, when specific device targeting is required.
 
 #### DON'Ts:
 *   **DON'T** use canvas rendering, font lists, or audio/video device enumerations to build a device fingerprint.
@@ -252,8 +242,6 @@ if (navigator.userAgentData) {
     });
 }
 ```
-
----
 
 ### 7. Data Rights and User Control
 
