@@ -25,10 +25,9 @@ Currently, WebMCP **only supports Tools**. It does not support the "Resources" o
 * **Reliability**: Validate constraints in code and return descriptive errors for retries. Handle rate limiting gracefully. Ensure the function returns *after* UI state updates for consistency.
 * **Tool Strategy**: Tools should be atomic, composable, and distinct. Do not force flow control instructions ("Don't call B after A") — let the agent decide. Register/unregister tools dynamically depending on the current page context. Use `annotations: { readOnlyHint: true }` (placed after `execute`) for tools that do not modify state to inform the agent of safe execution.
 * **Clean Up**: Always use `AbortSignal` to unregister tools when pages transition or resources are released to avoid leaks and collisions. Do not use `unregisterTool`.
+* **Web Development Best Practices**: WebMCP tools run as client-side JavaScript in the browser tab. They must adhere to regular web development best practices (e.g., keeping secrets out of client-side code, accessing backend databases through secure API layers, and using Web Workers, WASM, or WebGPU for heavy compute).
 
 ### When to Discourage WebMCP
-
-* **Direct Database/Secure Access**: If the operation requires intensive compute, direct access to secure databases, or requires API keys that shouldn't be exposed to the client. In these cases, the client-side tool's executor function should make a standard HTTP request (e.g., via `fetch()`) to a backend API endpoint, rather than attempting to perform these actions directly on the client.
 * **High-Risk Actions without Guardrails**: Avoid auto-submitting tools for destructive or irreversible actions (e.g., deleting data) unless the UI requires manual user confirmation outside the agent's control.
 * **Hyper-Dynamic State**: If data changes faster than the agent can react, it may work with stale context.
 
