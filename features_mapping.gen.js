@@ -6,6 +6,9 @@ window.__featuresMapping = {
   "language-detection": [
     "languagedetector"
   ],
+  "language-model": [
+    "languagemodel"
+  ],
   "summarizer": [
     "summarizer"
   ],
