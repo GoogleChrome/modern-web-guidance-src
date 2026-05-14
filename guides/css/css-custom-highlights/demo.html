@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSS Custom Highlights – Search Demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.6;
+        color: #222;
+        background: #fafafa;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+        border: 2px solid #ccc;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        box-sizing: border-box;
+      }
+
+      article {
+        background: #fff;
+        padding: 1.25rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+
+      /* Style highlights using the ::highlight() pseudo-element */
+      ::highlight(search-results) {
+        background-color: #ffdd00;
+        color: black;
+      }
+
+      /* Fallback style for <mark> elements when API is unsupported */
+      mark.search-match {
+        background-color: #ffdd00;
+        color: black;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Search Highlight Demo</h1>
+
+    <label for="search-input">Search within text</label>
+    <input id="search-input" type="text" placeholder="Type to highlight…" />
+
+    <article id="content">
+      <p>
+        The CSS Custom Highlight API provides a mechanism for styling arbitrary
+        text ranges in a document by using JavaScript to create the ranges and
+        CSS to style them. This avoids the need to modify the DOM structure,
+        which can break event listeners or interfere with accessibility.
+      </p>
+      <p>
+        Common use cases include highlighting search results, marking spelling
+        or grammar errors in text editors, and showing collaborative editing
+        cursors. Because the API works at the rendering level rather than the
+        DOM level, highlights are lightweight and can be updated frequently
+        without triggering layout recalculations.
+      </p>
+      <p>
+        The API introduces three key primitives: Range objects that define
+        character spans, Highlight objects that group ranges together, and the
+        HighlightRegistry that maps names to highlights so CSS can target them
+        with the ::highlight() pseudo-element.
+      </p>
+    </article>
+
+    <script>
+      const searchInput = document.getElementById("search-input");
+      const article = document.getElementById("content");
+
+      // Collect all text nodes in the article once.
+      const treeWalker = document.createTreeWalker(
+        article,
+        NodeFilter.SHOW_TEXT,
+      );
+      const allTextNodes = [];
+      let currentNode = treeWalker.nextNode();
+      while (currentNode) {
+        allTextNodes.push(currentNode);
+        currentNode = treeWalker.nextNode();
+      }
+
+      // Store original text content for the DOM fallback.
+      const originalHTML = article.innerHTML;
+
+      searchInput.addEventListener("input", () => {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+
+        if (CSS.highlights) {
+          // ---- CSS Custom Highlight API path ----
+          CSS.highlights.clear();
+
+          if (!searchTerm) return;
+
+          const ranges = [];
+          for (const textNode of allTextNodes) {
+            const text = textNode.textContent.toLowerCase();
+            let startPos = 0;
+            while (startPos < text.length) {
+              const index = text.indexOf(searchTerm, startPos);
+              if (index === -1) break;
+              const range = new Range();
+              range.setStart(textNode, index);
+              range.setEnd(textNode, index + searchTerm.length);
+              ranges.push(range);
+              startPos = index + searchTerm.length;
+            }
+          }
+
+          if (ranges.length > 0) {
+            const highlight = new Highlight(...ranges);
+            CSS.highlights.set("search-results", highlight);
+          }
+        } else {
+          // ---- DOM fallback: wrap matches in <mark> ----
+          if (!searchTerm) {
+            article.innerHTML = originalHTML;
+            return;
+          }
+
+          // Escape user input to avoid regex injection / XSS.
+          const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const regex = new RegExp(`(${escaped})`, "gi");
+
+          // Restore original HTML, then wrap matches.
+          article.innerHTML = originalHTML.replace(
+            regex,
+            '<mark class="search-match">$1</mark>',
+          );
+        }
+      });
+    </script>
+  </body>
+</html>
