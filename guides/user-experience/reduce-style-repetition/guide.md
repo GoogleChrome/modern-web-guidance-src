@@ -3,11 +3,6 @@ name: reduce-style-repetition
 description: Reduce excessive style repetition by encapsulating complex or dynamic styling logic into reusable functions (such as a function that computes a gradient based on a set of input parameters).
 web-feature-ids:
   - function
-sources:
-  - https://web.dev/en/learn/css/custom-properties
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@function
-  - https://una.im/5-css-functions/
-  - https://css-tricks.com/functions-in-css/
 ---
 
 # Reduce Style Repetition with CSS Functions

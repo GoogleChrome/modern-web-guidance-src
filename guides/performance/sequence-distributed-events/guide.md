@@ -3,10 +3,6 @@ name: sequence-distributed-events
 description: Log and sequence operations in distributed microservices or high-throughput tracing environments by recording timestamps with nanosecond resolution.
 web-feature-ids:
     - temporal
-sources:
-  - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
-  - https://tc39.es/proposal-temporal/docs/
-  - https://www.w3schools.com/js/js_temporal.asp
 ---
 
 

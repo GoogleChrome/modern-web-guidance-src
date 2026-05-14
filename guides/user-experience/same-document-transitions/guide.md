@@ -3,11 +3,6 @@ name: same-document-transitions
 description: Visually connect persisting elements across different page states or navigations in a Single Page Application (SPA) (e.g. expanding a product thumbnail into a full-bleed hero image) by smoothly morphing their size, position, or other styling properties.
 web-feature-ids:
   - view-transitions
-sources:
-  - https://jakearchibald.com/2024/view-transitions-handling-aspect-ratio-changes/
-  - https://developer.chrome.com/docs/web-platform/view-transitions/same-document
-  - https://developer.mozilla.org/en-US/docs/Web/API/View_Transition_API/Using
-  - https://web.dev/learn/css/view-transitions-spas
 ---
 
 # Same Document Transitions

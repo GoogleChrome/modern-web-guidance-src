@@ -4,9 +4,6 @@ description: Transition an element seamlessly between two target element positio
 web-feature-ids:
   - anchor-positioning
   - prefers-reduced-motion
-sources:
-  - https://una.im/follow-the-anchor
-  - https://css-tricks.com/fancy-menu-navigation-using-anchor-positioning/
 ---
 
 In a tab menu, you should provide visual hints to users about what page they are on. One option is by underlining the tab. With anchor positioning, you can create a smooth animation between the positions of the underline. This does not work when changing the active tab loads a new web page.

@@ -7,13 +7,6 @@ web-feature-ids:
   - scroll-driven-animations
   - scroll-snap
   - scroll-snap-events
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/inert
-  - https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll-driven_animations
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll_snap
-  - https://drafts.csswg.org/css-scroll-snap-2/#scrollsnapchange-and-scrollsnapchanging
-  - https://developer.mozilla.org/en-US/docs/Web/API/History_API
 ---
 
 # Stack Drill Down

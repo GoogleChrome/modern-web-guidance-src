@@ -3,13 +3,6 @@ name: individual-transform-properties
 description: Animate or override individual CSS transform properties (e.g. translate, rotate, scale) independently of other transform properties on a single element.
 web-feature-ids:
   - individual-transforms
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/translate
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/rotate
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/scale
-  - https://webkit.org/blog/11420/individual-css-transform-properties/
-  - https://web.dev/articles/css-individual-transform-properties?hl=en
-  - https://web.dev/learn/css/functions#scale
 ---
 
 The `transform` property allows you to apply multiple transformations in a specified order, but any changes to a single transformation require re-specifying the entire transformation chain. This makes it tricky to animate or transition a single transformation.

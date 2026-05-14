@@ -1,0 +1,5 @@
+- Update the canvas component so the text and form elements are fully accessible to screen readers. Make sure the underlying DOM elements stay synchronized with the canvas rendering so focus states and click interactions work perfectly.
+- Make the text inside the canvas graphic discoverable by native browser tools like find-in-page and translation services.
+- Embed the interactive HTML UI overlay directly into the canvas rendering context so it scales correctly with device pixels while preserving native browser accessibility features.
+- A complex form is rendered inside a WebGL canvas and is not accessible to screen readers. Update the canvas rendering to expose the form elements to assistive technologies.
+- Add support for browser autofill and password manager integration to the form rendered inside a canvas. The form needs to behave like a standard HTML form so users can save and autofill their credentials.

@@ -5,8 +5,6 @@ web-feature-ids:
   - enterkeyhint
   - input-email-tel-url
   - inputmode
-sources:
-  - https://web.dev/articles/payment-and-address-form-best-practices
 ---
 
 # Build a payment form that follows best practice

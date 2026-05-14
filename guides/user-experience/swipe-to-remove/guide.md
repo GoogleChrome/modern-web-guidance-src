@@ -10,15 +10,6 @@ web-feature-ids:
   - mutationobserver
   - resize-observer
   - web-animations
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll_snap
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/overscroll-behavior
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scrollbar-width
-  - https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
-  - https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
-  - https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
-  - https://developer.mozilla.org/en-US/docs/Web/API/Element/animate
 ---
 
 # Swipe to remove
