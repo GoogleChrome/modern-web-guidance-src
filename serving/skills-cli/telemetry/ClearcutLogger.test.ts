@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { detectOS, bucketizeLatency, ClearcutLogger } from './ClearcutLogger.ts';
 import { OsType, CommandType } from './types.ts';
+import { WatchdogClient } from './WatchdogClient.ts';
 
 describe('detectOS', () => {
   const expectedOS =
@@ -36,14 +37,21 @@ describe('bucketizeLatency', () => {
 });
 
 describe('ClearcutLogger', () => {
-  it('disables telemetry case-insensitively when DISABLE_TELEMETRY is set to True', () => {
+  it('disables telemetry case-insensitively when DISABLE_TELEMETRY is set to True', async () => {
     const originalEnv = process.env.DISABLE_TELEMETRY;
+    const originalSend = WatchdogClient.prototype.send;
+    let sendCalled = false;
+    WatchdogClient.prototype.send = () => {
+      sendCalled = true;
+    };
+
     try {
       process.env.DISABLE_TELEMETRY = 'True';
       const logger = new ClearcutLogger();
-      // @ts-expect-error inspecting private property for test verification
-      assert.strictEqual(logger['#watchdog'], null);
+      await logger.logToolCommand(120, true, CommandType.INSTALL);
+      assert.strictEqual(sendCalled, false, 'WatchdogClient.send should not be called when telemetry is disabled');
     } finally {
+      WatchdogClient.prototype.send = originalSend;
       if (originalEnv !== undefined) {
         process.env.DISABLE_TELEMETRY = originalEnv;
       } else {
@@ -52,45 +60,47 @@ describe('ClearcutLogger', () => {
     }
   });
 
-  it('logs tool command results correctly to console.warn', async () => {
-    const originalWarn = console.warn;
-    const warnings: string[] = [];
-    console.warn = (msg: string) => {
-      warnings.push(msg);
+  it('logs tool command results correctly via watchdog', async () => {
+    const originalSend = WatchdogClient.prototype.send;
+    const sentMessages: any[] = [];
+    WatchdogClient.prototype.send = (msg: any) => {
+      sentMessages.push(msg);
     };
 
     try {
-      const logger = new ClearcutLogger();
-      await logger.logToolCommand(CommandType.INSTALL, { latencyMs: 120, success: true });
+      const logger = new ClearcutLogger({ skillVersion: '2026_05_14-abc' });
+      await logger.logToolCommand(120, true, CommandType.INSTALL);
 
-      assert.ok(warnings.length > 0, 'Should print at least one warning message');
-      const payload = JSON.parse(warnings[warnings.length - 1]);
+      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      const payload = sentMessages[sentMessages.length - 1].payload;
       assert.deepStrictEqual(payload.tool_command, { command_type: CommandType.INSTALL });
       assert.strictEqual(payload.success, true);
       assert.strictEqual(payload.latency_ms, 250); // 120 bucketized to 250
+      assert.strictEqual(payload.skill_version, '2026_05_14-abc');
     } finally {
-      console.warn = originalWarn;
+      WatchdogClient.prototype.send = originalSend;
     }
   });
 
-  it('logs retrieve results correctly to console.warn', async () => {
-    const originalWarn = console.warn;
-    const warnings: string[] = [];
-    console.warn = (msg: string) => {
-      warnings.push(msg);
+  it('logs retrieve results correctly via watchdog', async () => {
+    const originalSend = WatchdogClient.prototype.send;
+    const sentMessages: any[] = [];
+    WatchdogClient.prototype.send = (msg: any) => {
+      sentMessages.push(msg);
     };
 
     try {
-      const logger = new ClearcutLogger();
-      await logger.logRetrieveResult('guide-id-1', { latencyMs: 300, success: false });
+      const logger = new ClearcutLogger({ skillVersion: '2026_05_14-xyz' });
+      await logger.logRetrieveResult(300, false, 'guide-id-1');
 
-      assert.ok(warnings.length > 0, 'Should print at least one warning message');
-      const payload = JSON.parse(warnings[warnings.length - 1]);
+      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      const payload = sentMessages[sentMessages.length - 1].payload;
       assert.strictEqual(payload.retrieve_result.guide_id, 'guide-id-1');
       assert.strictEqual(payload.success, false);
       assert.strictEqual(payload.latency_ms, 500); // 300 bucketized to 500
+      assert.strictEqual(payload.skill_version, '2026_05_14-xyz');
     } finally {
-      console.warn = originalWarn;
+      WatchdogClient.prototype.send = originalSend;
     }
   });
 });

@@ -56,13 +56,13 @@ async function main() {
   maybeEmitUpdateMessage(skillVersion);
 
   let loggerInstance: ClearcutLogger | undefined;
-  const getLogger = () => loggerInstance ??= new ClearcutLogger();
+  const getLogger = () => loggerInstance ??= new ClearcutLogger({ skillVersion });
   const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
 
   if (command === "search") {
     if (!arg) {
-      await getLogger().logSearchResult([], { latencyMs: 0, success: false, skillVersion });
+      await getLogger().logSearchResult(0, false, []);
       console.error("No search query provided.");
       process.exit(1);
     }
@@ -77,7 +77,7 @@ async function main() {
         guide_id: r.id,
         similarity: parseFloat(r.similarity),
       }));
-      await getLogger().logSearchResult(searchItems, { latencyMs, success: true, skillVersion });
+      await getLogger().logSearchResult(latencyMs, true, searchItems);
 
       if (results.length === 0) {
         console.log("[]");
@@ -89,7 +89,7 @@ async function main() {
       }
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      await getLogger().logSearchResult([], { latencyMs, success: false, skillVersion });
+      await getLogger().logSearchResult(latencyMs, false, []);
       console.error("Search failed:", error);
       process.exit(1);
     }
@@ -103,7 +103,7 @@ async function main() {
   } else if (command === "retrieve") {
     const ids = arg ? arg.split(",").map(id => id.trim()).filter(Boolean) : [];
     if (ids.length === 0) {
-      await getLogger().logRetrieveResult("", { latencyMs: 0, success: false, skillVersion });
+      await getLogger().logRetrieveResult(0, false, "");
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
@@ -116,11 +116,11 @@ async function main() {
         const guide = await retrieveUseCase(id);
         console.log(`\n--- Guide for ${id} ---`);
         console.log(guide);
-        await getLogger().logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: true, skillVersion });
+        await getLogger().logRetrieveResult(Date.now() - startTime, true, id);
       } catch (error) {
         hasError = true;
         console.error(`Retrieve failed for ${id}:`, error);
-        await getLogger().logRetrieveResult(id, { latencyMs: Date.now() - startTime, success: false, skillVersion });
+        await getLogger().logRetrieveResult(Date.now() - startTime, false, id);
       }
     }
 
@@ -128,6 +128,7 @@ async function main() {
       process.exit(1);
     }
   } else if (command === "install") {
+    const startTime = Date.now();
     const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean);
@@ -136,7 +137,7 @@ async function main() {
 
     const success = !result.error && result.status === 0;
     const commandType = values.choose ? CommandType.INSTALL_CHOOSE : CommandType.INSTALL;
-    await getLogger().logToolCommand(commandType, { success, skillVersion });
+    await getLogger().logToolCommand(Date.now() - startTime, success, commandType);
 
     if (result.error) {
       console.error("Install failed:", result.error);
@@ -151,7 +152,7 @@ async function main() {
       shell: process.platform === "win32",
     });
     const success = !result.error && result.status === 0;
-    await getLogger().logToolCommand(CommandType.UPDATE, { success, latencyMs: Date.now() - startTime, skillVersion });
+    await getLogger().logToolCommand(Date.now() - startTime, success, CommandType.UPDATE);
     if (result.error) {
       console.error("Update failed:", result.error);
     }

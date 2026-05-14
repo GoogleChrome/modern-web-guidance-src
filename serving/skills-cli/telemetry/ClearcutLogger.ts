@@ -42,26 +42,27 @@ export function bucketizeLatency(latencyMs: number): number {
   return LATENCY_BUCKETS[LATENCY_BUCKETS.length - 1];
 }
 
-export type Metrics = { latencyMs?: number; success?: boolean; skillVersion?: string | null };
-
 export class ClearcutLogger {
   #watchdog: WatchdogClient | null = null;
+  #skillVersion?: string;
 
   constructor(options: {
     clearcutEndpoint?: string;
     clearcutIncludePidHeader?: boolean;
+    skillVersion?: string | null;
   } = {}) {
     if (!isTelemetryEnabled()) {
       return;
     }
     console.warn("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_TELEMETRY=1.");
+    this.#skillVersion = options.skillVersion ?? undefined;
     this.#watchdog = new WatchdogClient({
       clearcutEndpoint: options.clearcutEndpoint,
       clearcutIncludePidHeader: options.clearcutIncludePidHeader,
     });
   }
 
-  async logSearchResult(searchItems: SearchItem[], metrics?: Metrics): Promise<void> {
+  async logSearchResult(latencyMs: number, success: boolean, searchItems: SearchItem[]): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
@@ -72,9 +73,9 @@ export class ClearcutLogger {
       },
       os: detectOS(),
       version: getVersion(import.meta.dirname),
-      skill_version: metrics?.skillVersion ?? undefined,
-      latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
-      success: metrics?.success,
+      skill_version: this.#skillVersion,
+      latency_ms: bucketizeLatency(latencyMs),
+      success,
     };
 
     this.#watchdog.send({
@@ -83,7 +84,7 @@ export class ClearcutLogger {
     });
   }
 
-  async logRetrieveResult(guideId: string, metrics?: Metrics): Promise<void> {
+  async logRetrieveResult(latencyMs: number, success: boolean, guideId: string): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
@@ -94,9 +95,9 @@ export class ClearcutLogger {
       },
       os: detectOS(),
       version: getVersion(import.meta.dirname),
-      skill_version: metrics?.skillVersion ?? undefined,
-      latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
-      success: metrics?.success,
+      skill_version: this.#skillVersion,
+      latency_ms: bucketizeLatency(latencyMs),
+      success,
     };
 
     this.#watchdog.send({
@@ -105,7 +106,7 @@ export class ClearcutLogger {
     });
   }
 
-  async logToolCommand(commandType: CommandType, metrics?: Metrics): Promise<void> {
+  async logToolCommand(latencyMs: number, success: boolean, commandType: CommandType): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
@@ -116,9 +117,9 @@ export class ClearcutLogger {
       },
       os: detectOS(),
       version: getVersion(import.meta.dirname),
-      skill_version: metrics?.skillVersion ?? undefined,
-      latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
-      success: metrics?.success,
+      skill_version: this.#skillVersion,
+      latency_ms: bucketizeLatency(latencyMs),
+      success,
     };
 
     this.#watchdog.send({
