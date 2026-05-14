@@ -239,6 +239,12 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         metafile: true,
       });
 
+      const modernWebMjsPath = path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs");
+      const modernWebContent = fs.readFileSync(modernWebMjsPath, "utf8");
+      const updatedModernWebContent = modernWebContent.replace(/^#!.*node.*--experimental-strip-types.*\n/, "#!/usr/bin/env node\n");
+      fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
+      console.log("Fixed shebang in modern-web.mjs");
+
       generateThirdPartyNotices(
         [resultSearch.metafile, resultModernWeb.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
