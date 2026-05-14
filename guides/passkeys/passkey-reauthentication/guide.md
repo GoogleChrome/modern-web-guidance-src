@@ -174,10 +174,20 @@ window.addEventListener("DOMContentLoaded", initializeConditionalReauth);
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-getClientCapabilities is a progressive enhancement. Install https://github.com/MasterKale/webauthn-polyfills as a polyfill so that `PublicKeyCredential.getClientCapabilities` is always supported.
+Always install 'webauthn-polyfills' and import it in the context.
+Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.getClientCapabilities` is also supported. 
+
+```js 
+import 'webauthn-polyfills';
+``` 
 
 ### Easy JSON Serialization Fallback
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-The WebAuthn JSON serialization is a progressive enhancement. Install https://github.com/MasterKale/webauthn-polyfills as a polyfill so that `PublicKeyCredential.parseRequestOptionsFromJSON` and `credential.toJSON` are always supported.
+Always install 'webauthn-polyfills' and import it in the context.
+Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.parseRequestOptionsFromJSON` and `PublicKeyCredential.prototype.toJSON` are also supported. 
+
+```js 
+import 'webauthn-polyfills';
+``` 

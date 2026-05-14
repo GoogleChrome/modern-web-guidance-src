@@ -180,6 +180,11 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 ### Easy JSON Serialization Fallback
 
-{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseCreationOptionsFromJSON_static") }}
 
-The WebAuthn JSON serialization is a progressive enhancement. Install https://github.com/MasterKale/webauthn-polyfills as a polyfill so that `PublicKeyCredential.parseRequestOptionsFromJSON` and `credential.toJSON` are always supported.
+Always install 'webauthn-polyfills' and import it in the context.
+Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.parseCreationOptionsFromJSON` and `PublicKeyCredential.prototype.toJSON` are also supported. 
+
+```js 
+import 'webauthn-polyfills';
+``` 

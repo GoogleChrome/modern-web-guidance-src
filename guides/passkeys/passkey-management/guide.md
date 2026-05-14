@@ -200,19 +200,24 @@ if (aaguid === '00000000-0000-0000-0000-000000000000') {
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-getClientCapabilities is a progressive enhancement. If `PublicKeyCredential.getClientCapabilities` is unsupported, the application MUST rely on a polyfill.
-*   **Fallback Experience**: Gracefully fallback to traditional password inputs or browser-stored password autofill flows natively.
-*   **Feature Detection**:
-    ```javascript
-    if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
-      // Fallback immediately to traditional password field forms
-      showStandardPasswordFields();
-    }
-    ```
+Always install 'webauthn-polyfills' and import it in the context.
+Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.getClientCapabilities` is also supported. 
+
+```js 
+import 'webauthn-polyfills';
+``` 
 
 ### Signal API Synchronization Fallback
 
 {{ BASELINE_STATUS("webauthn-signals") }}
+If the browser does not support `PublicKeyCredential.parseRequestOptionsFromJSON`, use the 'webauthn-polyfills': 
+  
+```html 
+<script type="module"> 
+  if (!PublicKeyCredential.parseRequestOptionsFromJSON) { 
+     await import('https://unpkg.com/webauthn-polyfills'); 
+   } 
+ </script> 
+ ``` 
 
-The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used to keep password managers in sync with the server credential state.
-*   **Fallback Experience**: Gated via `if (PublicKeyCredential.signalAllAcceptedCredentials)` and `if (PublicKeyCredential.signalCurrentUserDetails)`. If unsupported, the background synchronization signals are bypassed gracefully without throwing browser exceptions.
+This will also add support for `PublicKeyCredential.prototype.toJSON`.
