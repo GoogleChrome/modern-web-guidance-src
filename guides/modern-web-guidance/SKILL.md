@@ -95,4 +95,4 @@ npx -y modern-web-guidance@latest retrieve "<id>"
   - Expresses hesitation about polyfill complexity, bundle size, or performance cost.
   - Questions if a feature is safe to use without fallbacks.
 
-  *Example Policy:* `**Browser Support:** Green-light Newly Available features, but do not use JS polyfills for CSS.`
+  *Example Policy:* `**Browser Support:** Green-light Newly Available features, but only adopt custom fallback code that adds <= 20 lines and does not require external dependencies.`
