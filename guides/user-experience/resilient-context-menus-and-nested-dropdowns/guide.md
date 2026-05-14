@@ -4,11 +4,6 @@ description: Build accessible, responsive menus, tooltips, dropdowns, or context
 web-feature-ids:
   - anchor-positioning
   - popover
-sources:
-  - https://web.dev/learn/css/anchor-positioning
-  - https://css-tricks.com/css-anchor-positioning-guide/
-  - https://webkit.org/blog/17240/a-gentle-introduction-to-anchor-positioning/
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Anchor_positioning
 ---
 
 A dropdown menu is a useful pattern for users to access additional functionality while taking up minimal space. This overlay pattern comes with layout complexity, as the menu must remain tethered to a trigger element while adapting to the viewport constraints. Traditionally, this required complex JavaScript libraries (like Popper.js or Floating UI) to calculate positions and handle collisions. 

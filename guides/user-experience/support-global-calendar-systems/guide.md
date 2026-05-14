@@ -3,11 +3,6 @@ name: support-global-calendar-systems
 description: Display and calculate dates in non-Gregorian calendar systems (e.g., Islamic, Hebrew, or Chinese) accurately for international users.
 web-feature-ids:
   - temporal
-sources:
-  - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
-  - https://tc39.es/proposal-temporal/docs/
-  - https://tc39.es/proposal-temporal/docs/calendars.html
-  - https://www.w3schools.com/js/js_temporal.asp
 ---
 
 # Supporting Global Calendar Systems with Temporal

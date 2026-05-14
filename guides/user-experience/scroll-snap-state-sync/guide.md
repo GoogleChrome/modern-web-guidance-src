@@ -4,11 +4,6 @@ description: Synchronize navigation indicators, linked content panels, and analy
 web-feature-ids:
   - scroll-snap-events
   - scroll-snap
-sources:
-  - https://developer.chrome.com/blog/scroll-snap-events
-  - https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollsnapchange_event
-  - https://developer.mozilla.org/en-US/docs/Web/API/SnapEvent
-  - https://blog.logrocket.com/javascript-scroll-snap-events-scroll-triggered-animations/
 ---
 
 Synchronizing UI state with a scrollable container's snap position traditionally required complex scroll event listeners, manual calculations of scroll offsets, and intersection observers. The `scrollsnapchange` event provides a native, efficient way to detect when a scroller has settled on a new snap target, making it useful for synchronizing sidebars or highlighting the active section in a table of contents.

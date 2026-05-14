@@ -5,12 +5,6 @@ web-feature-ids:
   - invoker-commands
   - popover
   - dialog
-sources:
-  - https://developer.chrome.com/blog/command-and-commandfor
-  - https://developer.mozilla.org/en-US/docs/Web/API/Invoker_Commands_API
-  - https://open-ui.org/components/invokers.explainer/
-  - https://html.spec.whatwg.org/multipage/form-elements.html#attr-button-command
-  - https://css-tricks.com/invoker-commands-additional-ways-to-work-with-dialog-popover-and-more/
 ---
 
 # Overview
