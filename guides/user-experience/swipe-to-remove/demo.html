@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swipe to remove demo</title>
+
+  <style>
+    @layer base {
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font: 1em/1.5 system-ui, sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      header {
+        display: grid;
+        gap: 1.5em;
+        padding: 1.5em;
+
+        background: #0001;
+        font-size: 1.25em;
+        font-weight: 400;
+      }
+
+      main {
+        min-height: 100vh;
+      }
+    }
+
+    @layer demo {
+      .SwipeableList {
+        list-style: none;
+      }
+
+      .SwipeableList-item {
+        contain: content;
+
+        /* Top-level configuration: action color + icon per swipe direction.
+           `--left-*` is revealed when the user swipes RIGHT (left edge of
+           the row, archive here). `--right-*` is revealed when the user
+           swipes LEFT (right edge, snooze here). Override these on a
+           per-item basis to get different actions per row. */
+        --left-action-color: hsl(140 50% 40%); /* archive (green) */
+        --left-action-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' fill='white'><path d='m480-240 160-160-56-56-64 64v-168h-80v168l-64-64-56 56 160 160ZM200-640v440h560v-440H200Zm0 520q-33 0-56.5-23.5T120-200v-499q0-14 4.5-27t13.5-24l50-61q11-14 27.5-21.5T250-840h460q18 0 34.5 7.5T772-811l50 61q9 11 13.5 24t4.5 27v499q0 33-23.5 56.5T760-120H200Zm16-600h528l-34-40H250l-34 40Zm264 300Z'/></svg>");
+
+        --right-action-color: hsl(210 75% 50%); /* snooze (blue) */
+        --right-action-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' fill='white'><path d='M380-334h200v-60H468l112-126v-54H380v60h114L380-386v52Zm-40.5 225.5q-65.5-28.5-114-77t-77-114Q120-365 120-440t28.5-140.5q28.5-65.5 77-114t114-77Q405-800 480-800t140.5 28.5q65.5 28.5 114 77t77 114Q840-515 840-440t-28.5 140.5q-28.5 65.5-77 114t-114 77Q555-80 480-80t-140.5-28.5ZM480-440ZM224-866l56 56-170 170-56-56 170-170Zm512 0 170 170-56 56-170-170 56-56ZM480-160q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720q-117 0-198.5 81.5T200-440q0 117 81.5 198.5T480-160Z'/></svg>");
+      }
+
+      .SwipeableList-item.is-initialized::before,
+      .SwipeableList-item.is-initialized::after {
+        content: '';
+        position: absolute;
+        z-index: 1;
+        width: 1.5em;
+        aspect-ratio: 1;
+        transition: scale 0.2s, opacity 0.2s;
+        background: center / contain no-repeat;
+        translate: 0 -50%;
+        top: 50%;
+      }
+
+      .SwipeableList-item.is-initialized::before {
+        background-image: var(--left-action-icon);
+        left: 1.5em;
+      }
+
+      .SwipeableList-item.is-initialized::after {
+        background-image: var(--right-action-icon);
+        right: 1.5em;
+      }
+
+      .SwipeableList-item.is-activating::before,
+      .SwipeableList-item.is-activating::after {
+        scale: 1.333;
+      }
+
+      .SwipeableList-item.is-removing::before,
+      .SwipeableList-item.is-removing::after {
+        scale: .5;
+        opacity: 0;
+      }
+
+      .SwipeableList-item.is-activating[data-swipe-direction="left"]::after,
+      .SwipeableList-item.is-activating[data-swipe-direction="right"]::before {
+        visibility: hidden;
+      }
+
+      .SwipeableList-item.is-initialized .SwipeableList-track {
+        display: grid;
+        grid-template-columns: 100% 100% 100%;
+        overflow: scroll clip;
+        overscroll-behavior-x: none;
+        scrollbar-width: none;
+        scroll-snap-type: x mandatory;
+
+        /* Split reveal color: left-action color on the left half of the
+           scrollable area (everything left of the resting content's
+           center), right-action color on the right half.
+           `background-attachment: local` makes the gradient's positioning
+           area the scrollable area (3x the visible width), so the default
+           size fills it and the 50% hard stop lines up exactly with the
+           midpoint of the content column at rest. */
+        background-image: linear-gradient(
+          to right,
+          var(--left-action-color) 50%,
+          var(--right-action-color) 50%
+        );
+        background-attachment: local;
+      }
+
+      .SwipeableList-item.is-initialized .SwipeableList-track::before,
+      .SwipeableList-item.is-initialized .SwipeableList-track::after {
+        content: '';
+        scroll-snap-align: start;
+      }
+
+      .SwipeableList-content {
+        position: relative;
+        z-index: 2;
+        scroll-initial-target: nearest;
+        scroll-snap-align: start;
+
+        /* Ensure a background so it covers spacer and remove icons */
+        border-bottom: 1px solid #eee;
+        background: Canvas;
+        padding: 1.5em;
+      }
+
+      /* Ensure some focus affordance is visible when the track is focused.
+         Since this element has a z-index above the track, and paint outside
+         the track is clipped, ensure this element shows focus. */
+      .SwipeableList-track:focus-visible .SwipeableList-content {
+        outline: auto;
+        outline-offset: -2px;
+      }
+    }
+  </style>
+
+  <script type="module">
+    // Per-item handles: the inner (swipe) observer and the content element
+    // it watches. Populated by setupItem(), read by the viewport observer
+    // to start/stop observation as items move in and out of the viewport.
+    const swipeObservers = new WeakMap();
+
+    // When `scroll-initial-target: nearest` is supported, the browser both
+    // positions the content at the scrollport center on initial layout and
+    // preserves it across resizes — no JS workaround needed. Everything below
+    // this flag is the polyfill path for browsers without it.
+    const needsScrollWorkaround = !CSS.supports('scroll-initial-target', 'nearest');
+
+    // Safari resets snap-container scroll position whenever the track resizes
+    // (URL-bar show/hide, viewport resize, container queries, etc.). A shared
+    // ResizeObserver re-scrolls each track to its content column as needed.
+    // The initial callback after observe() is harmless — the sync scroll in
+    // setupItem already put it there.
+    const trackResizeObserver = needsScrollWorkaround
+      ? new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            entry.target.scrollLeft = entry.target.clientWidth;
+          }
+        })
+      : null;
+
+    // Outer observer: drives the entire swipe lifecycle off viewport
+    // visibility. On first entry, lazily wire the item up — setupItem reads
+    // layout-dependent values like clientWidth, which return 0 until the item
+    // is rendered (e.g. while an ancestor is hidden). After setup, start the
+    // inner observer; on exit, stop it so offscreen items don't track scroll
+    // positions.
+    const viewportObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const item = entry.target;
+        if (entry.isIntersecting) {
+          const handle = swipeObservers.get(item) ?? setupItem(item);
+          handle.observer.observe(handle.content);
+        } else {
+          const handle = swipeObservers.get(item);
+          if (handle) handle.observer.unobserve(handle.content);
+        }
+      }
+    });
+
+    async function removeItem(item, content, direction, entry) {
+      // In a real application, you could perform a different action based on
+      // the direction passed here (e.g., archive vs. snooze). For this demo,
+      // we remove the item from the list regardless of direction.
+      const opts = {duration: 300, easing: 'ease', fill: 'forwards'};
+      const rect = entry.boundingClientRect;
+      // Content's pixel offset from the track's left edge.
+      const x = rect.x - entry.rootBounds.x;
+      const translate = direction === 'left' ? rect.width - x : - (x + rect.width);
+
+      // Use a combination of CSS transitions (for declarative styles) and
+      // WAAPI animations (for computed values) to remove the element,
+      // then await the completion of all of them.
+      item.classList.add('is-removing');
+      item.animate([{height: `${rect.height}px`}, {height: '0px'}], opts);
+      content.animate([{translate: `${translate}px`}], opts);
+      await Promise.allSettled(
+        item.getAnimations({subtree: true}).map((a) => a.finished),
+      );
+
+      // Due to a Safari bug with scroll latching, we can't just remove the
+      // item, because the item below that slides in its place would then
+      // start scrolling. Instead, we have to transition it to `height:0`
+      // first (above) and then remove it only after the swipe/scroll gesture
+      // has likely finished (e.g. 5 seconds). Set it to inert before removing
+      // to prevent interaction.
+      if (globalThis.GestureEvent) {
+        item.inert = true;
+        setTimeout(() => item.remove(), 5000);
+      } else {
+        item.remove();
+      }
+    }
+
+    function setupItem(item) {
+      const track = item.querySelector('.SwipeableList-track');
+      const content = track.querySelector('.SwipeableList-content');
+
+      // Upgrade the row into "swipeable" mode. The track becomes a snap
+      // container and the action icons appear.
+      item.classList.add('is-initialized');
+
+      // Polyfill `scroll-initial-target: nearest`: scroll the content column
+      // into view. This MUST happen AFTER `is-initialized` (so the track is
+      // actually scrollable) and BEFORE the IntersectionObserver is attached
+      // (so the initial scroll past the left spacer isn't interpreted as a
+      // commit). It also depends on `track.clientWidth`, which is why
+      // setupItem runs from the viewport observer — by then the item is laid
+      // out. After this sync setup, trackResizeObserver keeps the scroll
+      // position correct across subsequent track resizes.
+      if (needsScrollWorkaround) {
+        track.scrollLeft = track.clientWidth;
+        trackResizeObserver.observe(track);
+      }
+
+      // These are good defaults, but can be tweaked to taste.
+      const activateThreshold = 0.80;
+      const commitThreshold = 0.20;
+
+      // One observer per item, rooted at the item scroller, so the callback
+      // only fires for the horizontal swipe (vertical scrolling of the outer
+      // list moves root and target together and doesn't affect their
+      // intersection). The two thresholds split the IO callbacks into a
+      // visual-feedback band and a commit band.
+      const observer = new IntersectionObserver((entries, observer) => {
+        // Only the most recent entry is relevant.
+        const entry = entries.at(-1);
+        const ratio = entry.intersectionRatio;
+
+        // Direction the user is swiping toward. A positive offset from the
+        // track's left edge means the content has been pulled right (left
+        // spacer revealed), so the leading icon is on the left.
+        const direction = (entry.boundingClientRect.x - entry.rootBounds.x) > 0
+          ? 'left'
+          : 'right';
+
+        if (ratio < commitThreshold) {
+          removeItem(item, content, direction, entry);
+          if (needsScrollWorkaround) trackResizeObserver.unobserve(track);
+          viewportObserver.unobserve(item);
+          observer.disconnect();
+          return;
+        }
+
+        // Scale up the leading icon while the content is past the activate
+        // point; restore it at rest.
+        item.classList.toggle('is-activating', ratio < activateThreshold);
+
+        // Hold the previous direction at rest so the icon's exit animation
+        // finishes on the side the user was swiping toward.
+        if (entry.boundingClientRect.x !== entry.rootBounds.x) {
+          item.dataset.swipeDirection = direction;
+        }
+      }, {
+        root: track,
+        threshold: [commitThreshold, activateThreshold],
+      });
+
+      const handle = {observer, content};
+      swipeObservers.set(item, handle);
+      return handle;
+    }
+
+    function setupList(list) {
+      // Observe items already in the list. The viewport observer fires
+      // asynchronously, so setupItem runs after layout has settled.
+      for (const item of list.children) {
+        if (item.matches('.SwipeableList-item')) {
+          viewportObserver.observe(item);
+        }
+      }
+
+      // In a real app, items are typically added over time (initial render,
+      // infinite scroll, server push). A MutationObserver on the list keeps
+      // the viewport observer in sync without callers needing to know about
+      // it. Removals are handled by the swipe commit path, which unobserves
+      // before the item is removed from the DOM.
+      new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE &&
+                node.matches('.SwipeableList-item')) {
+              viewportObserver.observe(node);
+            }
+          }
+        }
+      }).observe(list, {childList: true});
+    }
+
+    function init() {
+      document.querySelectorAll('.SwipeableList').forEach(setupList);
+    }
+
+    init();
+  </script>
+</head>
+<body>
+  <main>
+    <header>
+      Swipe to remove demo
+    </header>
+    <ul class="SwipeableList">
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item One</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Two</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Three</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Four</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Five</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Six</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Seven</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Eight</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Nine</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Ten</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Eleven</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Twelve</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Thirteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Fourteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Fifteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Sixteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Seventeen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Eighteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Nineteen</div>
+        </div>
+      </li>
+      <li class="SwipeableList-item">
+        <div class="SwipeableList-track">
+          <div class="SwipeableList-content">Item Twenty</div>
+        </div>
+      </li>
+    </ul>
+  </main>
+</body>
+</html>
