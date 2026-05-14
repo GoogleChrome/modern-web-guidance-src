@@ -38,7 +38,8 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
       cwd: tempDir,
       stdio: 'inherit',
       env,
-      timeout: 10000
+      timeout: 10000,
+      shell: process.platform === 'win32'
     });
 
     assert.strictEqual(result.status, 0, 'Intercepted command should succeed');
@@ -56,7 +57,8 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
       cwd: tempDir,
       stdio: 'inherit',
       env,
-      timeout: 10000
+      timeout: 10000,
+      shell: process.platform === 'win32'
     });
 
     assert.strictEqual(resultFallback.status, 0, 'Fallback command should succeed');

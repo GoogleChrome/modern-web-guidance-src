@@ -108,7 +108,7 @@ async function main() {
       .split(" ")
       .filter(Boolean);
 
-    const result = spawnSync("npx", installArgs, { stdio: "inherit" });
+    const result = spawnSync("npx", installArgs, { stdio: "inherit", shell: process.platform === "win32" });
 
     if (result.error) {
       console.error("Install failed:", result.error);
@@ -119,6 +119,7 @@ async function main() {
     const skills = getOurCLIAdjacentSkillIDs();
     const result = spawnSync("npx", ["skills", "update", ...skills], {
       stdio: "inherit",
+      shell: process.platform === "win32",
     });
     if (result.error) {
       console.error("Update failed:", result.error);
