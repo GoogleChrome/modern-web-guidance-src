@@ -4,10 +4,6 @@ description: Authenticate a returning user with a passkey for primary sign-in.
 web-feature-ids:
   - webauthn
   - webauthn-signals
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
-  - https://www.w3.org/TR/webauthn-3/
-  - https://web.dev/articles/passkey-form-autofill
 ---
 
 # Passkey Authentication Guide

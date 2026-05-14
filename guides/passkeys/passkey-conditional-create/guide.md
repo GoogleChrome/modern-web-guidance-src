@@ -4,9 +4,6 @@ description: Silently register a passkey for an existing user after a successful
 web-feature-ids:
   - webauthn
   - webauthn-signals
-sources:
-  - https://web.dev/articles/passkey-registration
-  - https://www.w3.org/TR/webauthn-3/
 ---
 
 # Passkey Conditional Create (Post-Login Promotion)

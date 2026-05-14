@@ -3,10 +3,6 @@ name: passkey-reauthentication
 description: Verify a signed-in user's identity using their existing passkeys before a sensitive action.
 web-feature-ids:
   - webauthn
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
-  - https://www.w3.org/TR/webauthn-3/
-  - https://web.dev/articles/passkey-form-autofill
 ---
 
 # Passkey Reauthentication Guide

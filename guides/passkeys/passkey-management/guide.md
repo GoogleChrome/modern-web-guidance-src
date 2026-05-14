@@ -4,11 +4,6 @@ description: Let users view and manage the passkeys registered to their account.
 web-feature-ids:
   - webauthn
   - webauthn-signals
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
-  - https://www.w3.org/TR/webauthn-3/
-  - https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/refs/heads/main/combined_aaguid.json
-  - https://web.dev/articles/passkey-management
 ---
 
 # Passkey Management Guide
