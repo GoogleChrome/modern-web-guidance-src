@@ -75,6 +75,13 @@ button.primary {
 }
 ```
 
+#### OPTIONAL: Tailor color pairs to context
+
+Even when overriding the system default, it can be useful to use the `prefers-color-scheme` media query to define **different** color pairs that take into account the colors of the browser and OS chrome around the page (or of the surrounding page, when the page is used as an iframe).
+
+For example, use a slightly dimmer light theme when the system setting is `dark`, or a more contrasting dark theme when the system setting is `light`, so the page is not visually overpowered by the surrounding UI.
+
+
 ## Fine-grained browser UI customization
 
 Setting `color-scheme` already adapts browser UI to the used color scheme, but this will use OS defaults and/or system colors that may not perfectly align with the website design.
@@ -88,23 +95,25 @@ This resolves to the OS setting by default, but you can use the `accent-color` p
 
 ```css
 html {
-  accent-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
+  accent-color: light-dark(var(--color-accent-light), var(--color-accent-dark));
 }
 ```
 
-{{ FEATURE_ISSUES("accent-color" )}}
+{{ FEATURE_ISSUES("accent-color") }}
 
 ### Scrollbar colors
 
-You can use `scrollbar-color` together with `light-dark()` to set custom custom scrollbar colors that adapt to the color-scheme used.
+You can use `scrollbar-color` together with `light-dark()` to set custom scrollbar colors that adapt to the color scheme used.
 
 ```css
---scrollbar-track: var(--background-color);
---scrollbar-thumb: light-dark(var(--background-color-darker), var(--background-color-lighter));
-scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+:root {
+  --color-scrollbar-track: light-dark(#eee, #222);
+  --color-scrollbar-thumb: light-dark(#999, #666);
+  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+}
 ```
 
-{{ FEATURE_ISSUES("scrollbar-color" )}}
+{{ FEATURE_ISSUES("scrollbar-color") }}
 
 ### Further customization
 
@@ -127,37 +136,27 @@ The default color-scheme MUST be the user's system preference, which happens aut
 For website-specific customization, a manual toggle could be provided to allow users to choose between light, dark, or system-default modes.
 
 If a user-facing toggle to override it is desired, it should:
-- Update the `<meta name="color-scheme" ...>` element to reflect the chosen theme (`light dark` for system default, `light` for light, and `dark` for dark)
-- Set a class on `<html>` to match the theme preference. While `:has(> head > meta[name="color-scheme"][content~="dark"])` would technically work, it is slower and confers no benefit, since we are already using JS to update the `<meta>` element.
-- Persist user choice in `localStorage`
-- **IMPORTANT**: If no JS runs on the page, the CSS should still work and adapt to the system preference.
-Do not write CSS in such a way that it relies on JS running for default functionality (e.g. depending on a `.system-dark` class for convenience instead of using `prefers-color-scheme`)
-- The system-level OS theme can change at any time. CSS automatically adapts to changes. If you are using JS to read `matchMedia("(prefers-color-scheme: dark)").matches`, you MUST also use `addEventListener("change", fn)` to react to changes.
+- Update the `<meta name="color-scheme">` element to reflect the chosen theme (`light dark` for system default, `light` for light, and `dark` for dark).
+- Set a class on `<html>` to match the theme preference. While `:root:has(> head > meta[name="color-scheme"][content~="dark"])` would technically work, it is slower and confers no benefit, since we are already using JS to update the `<meta>` element.
+- Persist user choice in `localStorage`.
+- **IMPORTANT**: The CSS should be written to default to the system preference, with overrides for user-specified color-schemes. That way, if JS fails to execute, the site still defaults to the system color-scheme.
+- The system-level OS theme can change at any time. If you are using JS to read `matchMedia("(prefers-color-scheme: dark)").matches`, you MUST also use `addEventListener("change", fn)` to react to changes. CSS automatically adapts to changes.
 
 ### UX considerations
 
-Use a two state control:
-1. System setting,
+Use a two-state control:
+1. System setting.
 2. The opposite (e.g. light when the system setting is dark, and dark when the system setting is light). Selecting this setting must pin that exact color scheme, not a dynamically computed "opposite of system setting" value. Example scenario:
-  1. The OS is set to light mode
-  2. The user selects the opposite setting for this website (dark)
-  3. The user changes their system setting to dark
-  4. The website should remain dark
+    1. The OS is set to light mode.
+    2. The user selects the opposite setting for this website (dark).
+    3. The user changes their system setting to dark.
+    4. The website should remain dark.
 
+**DON'T** expose all three states (system, light, dark). While the rationale is plausible — "Follow system (currently dark)" is a distinct user intent from "Always dark" — it provides suboptimal UX:
+- Users cannot meaningfully express intent for problems they don't currently have. A manual toggle is a temporary comfort adjustment ("it's too bright right now"), not a long-term preference ("make sure this never changes").
+- Two of the three options always produce the same visual result, violating the principle of feedback.
 
-**DON'T** expose all three states (system, light, dark).
-While it is common, it provides suboptimal user experience.
-
-The rationale for a tri-state control is plausible: "Follow system (currently dark)" is a fundamentally distinct user intent than "Always dark" and the control should be able to support expressing all three user intents.
-
-However, users cannot meaningfully express intent for problems they don't currently have, and exposing latent complexity before users encounter the problem is a UX antipattern.
-Having three states complicates the control's UI for everyone, at all times, for a scenario that never occurs in real usage.
-A manual toggle is a temporary comfort adjustment. The actual intent expressed is "it's too bright right now", not "I like the current color scheme, make sure it doesn't change.".
-Additionally, having all three options means that two of them produce exactly the same visual result, violating the principle of feedback.
-
-OPTIONAL: Even when overridding the system default, it can be useful to use the `prefers-color-scheme` media query to define **different** color pairs that take into account the colors of the browser and OS chrome around the page. For example, have a more dimmed light theme if the system setting is `dark` or make the page dark theme more contrasting if the system setting is `light` to prevent UI elements from being overshined by the bright browser chrome.
-
-## Component-Specific Overrides
+## Component-specific overrides
 
 You can override the global theme for specific elements by setting `color-scheme` on them.
 This is useful for "dark mode" sections within a light-themed site, such as code blocks or media players.
@@ -169,22 +168,18 @@ pre, code {
 }
 ```
 
-For more information about component-specific overrides and their gotchas, see {{ GUIDE_REF("component-specific-light-dark )}}.
+For more information about component-specific overrides and their gotchas, see {{ GUIDE_REF("component-specific-light-dark-theme") }}.
 
 ## Known issues to be aware of
 
-{{ FEATURE_ISSUES("color-scheme")}};
-{{ FEATURE_ISSUES("prefers-color-scheme")}};
-{{ FEATURE_ISSUES("light-dark")}};
-{{ FEATURE_ISSUES("accent-color")}};
-{{ FEATURE_ISSUES("scrollbar-color")}};
+{{ FEATURE_ISSUES("color-scheme") }}
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("color-scheme")}}
+{{ FEATURE_FALLBACKS("color-scheme") }}
 
-{{ FEATURE_FALLBACKS("light-dark")}}
+{{ FEATURE_FALLBACKS("light-dark") }}
 
-{{ FEATURE_FALLBACKS("scrollbar-color")}}
+{{ FEATURE_FALLBACKS("scrollbar-color") }}
 
-{{ FEATURE_FALLBACKS("accent-color")}}
+{{ FEATURE_FALLBACKS("accent-color") }}

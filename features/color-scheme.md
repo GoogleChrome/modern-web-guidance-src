@@ -2,11 +2,13 @@
 
 ## Issues
 
-- Chrome and Firefox will respect `color-scheme` for iframes, and will render embedded websites in the correct color scheme and adjust the  `prefers-color-scheme` media query to reflect the embedding context's `color-scheme`. Safari will not, and will resolve `prefers-color-scheme` to the system setting even on iframes.
+- Chrome and Firefox respect `color-scheme` for iframes: they render embedded pages in the correct color scheme and adjust the embedded page's `prefers-color-scheme` media query to reflect the embedding context's `color-scheme`. Safari does not, and resolves `prefers-color-scheme` to the system setting even inside iframes.
+  - **If you control both parent and iframe:** pass the parent's color scheme to the iframe explicitly — via a URL parameter (`?theme=dark`) at iframe construction time, or via `postMessage()` (which also lets you react to runtime changes). In the iframe, set a class on `<html>` (and/or `color-scheme` on `:root`) from that signal instead of relying on `prefers-color-scheme`.
+  - **If you only control the embedded page:** there is no reliable way to detect the embedding context's `color-scheme` from inside the iframe in Safari. Expose an explicit theme parameter on your embed API (e.g. a query string or `postMessage` protocol) and document it for embedders.
 
 ## Fallbacks
 
-The `color-scheme` property is **progressive Enhancement**.
+The `color-scheme` property is **progressive enhancement**.
 Browsers that do not support it will ignore this property and use their default light-mode UI.
 
 To adapt to the user's preferences in older browsers, use `prefers-color-scheme` media queries to provide different colors when dark mode is preferred.
