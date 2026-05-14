@@ -164,9 +164,32 @@ function getOurCLIAdjacentSkillIDs(): string[] {
   }
 }
 
+function parseVersionDate(version: string): Date | null {
+  const match = version.match(/^(\d{4})_(\d{2})_(\d{2})/);
+  if (!match) return null;
+
+  const [_, year, month, day] = match;
+  return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+}
+
 function maybeEmitUpdateMessage(callerSkillVersion: string|null): void {
-  if (!callerSkillVersion || callerSkillVersion === getCLISkillVersion()) {
+  if (!callerSkillVersion) {
     return;
+  }
+
+  const latestSkillVersion = getCLISkillVersion();
+  if (callerSkillVersion === latestSkillVersion) {
+    return;
+  }
+
+  const callerDate = parseVersionDate(callerSkillVersion);
+  if (callerDate) {
+    const diffTime = Date.now() - callerDate.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    // Only log warning if the caller's version is more than 7 days old.
+    if (diffDays <= 5) {
+      return;
+    }
   }
 
   const skillName = 'modern-web-guidance';
@@ -174,7 +197,7 @@ function maybeEmitUpdateMessage(callerSkillVersion: string|null): void {
     `Warning: a new SKILL.md is available for ${skillName}. Please update.`,
     '',
     `Your version: ${callerSkillVersion}`,
-    `Latest version: ${getCLISkillVersion()}`,
+    `Latest version: ${latestSkillVersion}`,
     '',
     'To update, run: npx modern-web-guidance@latest update',
   ].join('\n'));
