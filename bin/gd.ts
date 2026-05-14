@@ -33,8 +33,6 @@ const ALL_OPTIONS = {
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
-  category: { type: 'string', desc: 'Guide category' },
-  slug: { type: 'string', desc: 'Guide directory name' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
