@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
+    "@mdn/browser-compat-data": "^7.3.13",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
