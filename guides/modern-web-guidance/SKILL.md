@@ -100,7 +100,7 @@ When reading a guide's fallback section, adapt the code using these constraints:
 ### Document Unwritten Support Policies if needed
 
 Watch for environmental cues during conversation to see if a custom policy if needed. Suggest adding one to **`CLAUDE.md`** (or **`AGENTS.md`**) if the developer:
-- Mentions building for a restricted runtime (e.g., Electron, Tauri, or custom webviews).
+- Mentions building for a restricted runtime (e.g., Electron or Tauri).
 - Explicitly excludes specific targets (e.g., "we don't need to support mobile Chrome").
 - Expresses hesitation about the complexity, bundle size, or performance cost of a recommended fallback strategy.
 - Questions [if a feature is truly safe to use without fallbacks](https://web.dev/articles/baseline-and-polyfills).
