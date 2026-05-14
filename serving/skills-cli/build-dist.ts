@@ -92,20 +92,13 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   const { publishRoot, version} = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
-  const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
 
-  // Step 1: Check if we can short-circuit without wiping anything.
-  // processGuides internally uses dist/.cache/ and evaluates the source hashes.
-  const skipped = await processGuides({
-    outputDir: DIST_DIR,
-    target: 'skills-cli',
-  });
-
-  if (skipped && fs.existsSync(modernWebMjs)) {
-    const { skillsCount, skillNames } = processSkills(publishRoot);
-    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
-    return { featuresCount, useCasesCount, skillsCount, skillNames };
-  }
+  // TODO(paulirish): Refactor this build script to be less convoluted:
+  // 1. Separate cache checking from execution in processGuides.
+  // 2. Use better function names (e.g. generateGuidesDatabase, isCacheValid).
+  // 3. Avoid the double-call pattern to processGuides.
+  // We skip the short-circuit here to ensure modern-web.mjs is always
+  // rebundled by esbuild, while processGuides still handles embedding cache.
 
   // Step 2: If we didn't short-circuit, we do a clean, purist build.
   // Now we can safely wipe publishRoot completely!
