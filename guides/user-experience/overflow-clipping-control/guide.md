@@ -17,6 +17,8 @@ While `overflow: hidden` is a "blunt instrument" that almost always clips conten
 
 Specify exactly where clipping occurs with `overflow: clip` and `overflow-clip-margin`. You can align the boundary precisely with inner box-model edges or extend the clipping boundary beyond the element's box by a specified offset (a safety margin). This modern approach is highly performant and eliminates the legacy requirement of adding extra wrapper containers with custom padding and negative margins just to let visual effects (like prominent child element shadows) render unclipped.
 
+Replaced elements (`<img>`, `<video>`, `<canvas>`, etc.) default to `overflow: clip` and `overflow-clip-margin: content-box`, giving you control to cleanly contain images that use `object-fit` or `border-radius`. 
+
 ## How to Implement
 
 1. **Apply `overflow: clip`**: Ensure the target element has `overflow: clip` enabled. Setting `overflow: clip` is **mandatory** on block layout containers for `overflow-clip-margin` to take effect. If `overflow` is set to `hidden`, `auto`, or `scroll`, the `overflow-clip-margin` property is ignored by the browser. `overflow: clip` prevents all scrolling (both user-initiated and programmatic via JavaScript).
@@ -33,7 +35,8 @@ The following examples demonstrate dynamic container layout controls, showcasing
 
 ### Block Containers: Nested Rounded Curves
 
-Apply `overflow-clip-margin: content-box` to a parent container with rounded corners and custom padding. This also applies similar rounded corners on inner child media and footer components along the concentric inner content box boundary, solving awkward nesting curves without custom `calc()` logic.
+* Apply `overflow-clip-margin: content-box` to a parent container with rounded corners and custom padding.
+* Apply similar rounded corners on inner child media and footer components along the concentric inner content box boundary, solving awkward nesting curves without custom `calc()` logic.
 
 ```html
 <div class="nested-curve-parent">
@@ -70,7 +73,7 @@ Apply `overflow-clip-margin: content-box` to a parent container with rounded cor
 
 ### Block Containers: Child Element Shadow Bleed
 
-Applying prominent box-shadows to inner child elements (like buttons or sub-cards) within a clipped parent container normally results in sharp boundary cutoff under `overflow: hidden`. Replacing it with `overflow: clip` and defining an extended `overflow-clip-margin` length offset creates a visible safety zone permitting the child's shadow to render beautifully unclipped outside the parent container without altering layout geometry.
+* Apply `overflow: clip` and define an extended `overflow-clip-margin` length offset to create a visible safety zone permitting the child's shadow to render unclipped outside the parent container without altering layout geometry. Without this, the child's shadow is clipped at the parent's boundary.
 
 ```html
 <div class="safety-zone-parent">
@@ -111,6 +114,7 @@ Applying prominent box-shadows to inner child elements (like buttons or sub-card
 - **DO** apply `overflow: clip` on target elements when utilizing `overflow-clip-margin`, as setting `overflow` strictly to `clip` is **mandatory** on standard block layout containers to activate custom or inner curved clip margins.
 - **DO** set `overflow-clip-margin: content-box` on padded containers with rounded corners to automatically clip unrounded internal child elements into mathematically perfect nested border curves without manual padding subtraction logic.
 - **DO** configure `overflow-clip-margin` with a specified length offset when applying external visual effects (like `filter: drop-shadow()`) to prevent sharp bounding box truncation without altering or expanding layout geometry.
+- **DO NOT** apply `overflow: clip` if the container requires programmatic scroll manipulation via JavaScript or serves as the immediate layout context for `position: sticky` elements, as `clip` completely disables scrolling.
 
 ## Fallback Strategies
 
