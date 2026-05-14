@@ -48,6 +48,13 @@ describe('baseline data', () => {
       );
     });
 
+    it('returns status message for a zero-support feature', () => {
+      assert.strictEqual(
+        getStatusMessage('declarative-webmcp'),
+        "Form-associated WebMCP attributes has limited availability.\nNot natively supported by any major browser yet."
+      );
+    });
+
     it('returns undefined for unknown features or keys', () => {
       assert.strictEqual(getStatusMessage('non-existent'), undefined);
       assert.strictEqual(getStatusMessage('grid', 'unknown.key'), undefined);

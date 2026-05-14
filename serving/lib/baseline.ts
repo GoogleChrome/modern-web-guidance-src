@@ -280,9 +280,11 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
   let res = '';
   if (supportedParts.length > 0) {
     res += `\nSupported by: ${listFormatter.format(supportedParts)}.`;
-  }
-  if (unsupportedParts.length > 0) {
-    res += `\nUnsupported in: ${listFormatter.format(unsupportedParts)}.`;
+    if (unsupportedParts.length > 0) {
+      res += `\nUnsupported in: ${listFormatter.format(unsupportedParts)}.`;
+    }
+  } else {
+    res += `\nNot natively supported by any major browser yet.`;
   }
   return res;
 }

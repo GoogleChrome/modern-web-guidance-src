@@ -41,7 +41,7 @@ describe('replaceMacros (Functional with real data)', () => {
       const result = replaceMacros(content, 'test.md');
       assert.strictEqual(
         result,
-        "Form-associated WebMCP attributes has limited availability.\nUnsupported in: Chrome, Edge, Firefox, and Safari."
+        "Form-associated WebMCP attributes has limited availability.\nNot natively supported by any major browser yet."
       );
     });
 
@@ -50,7 +50,7 @@ describe('replaceMacros (Functional with real data)', () => {
       const result = replaceMacros(content, 'test.md');
       assert.strictEqual(
         result,
-        "HTML in canvas has limited availability.\nUnsupported in: Chrome, Edge, Firefox, and Safari."
+        "HTML in canvas has limited availability.\nNot natively supported by any major browser yet."
       );
     });
 
