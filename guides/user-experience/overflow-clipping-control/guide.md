@@ -178,7 +178,7 @@ For target environments lacking native support for `overflow: clip` or `overflow
   width: 100%;
   padding: 6px 12px;
   background: #e52e71;
-  box-shadow: 0 6px 14px rgba(229, 46, 113, 0.65);
+  box-shadow: 0 8px 13px rgba(229, 46, 113, 0.65);
 }
 
 @supports (overflow-clip-margin: 15px) {
