@@ -38,6 +38,8 @@ Search with an action-oriented query summarizing what you want to achieve using 
 npx -y modern-web-guidance@latest --skill-version SKILL_VERSION search "<query>"
 ```
 
+IMPORTANT: on Windows, using `npx` may fail. Use `npx.cmd ...` instead.
+
 **Example Output**:
 ```json
 [
@@ -64,6 +66,8 @@ Once you have a relevant `id` from the search results, call this script using th
 ```sh
 npx -y modern-web-guidance@latest retrieve "<id>"
 ```
+
+IMPORTANT: on Windows, using `npx` may fail. Use `npx.cmd ...` instead.
 
 
 **Example Output**:
