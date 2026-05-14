@@ -89,7 +89,7 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 
 * **Default Behavior**: All guides assume **Baseline Widely available** features are safe to use without fallbacks. For features that are not Baseline widely available, you **MUST** follow the fallback recommendations in the guide.
 * **Custom Policies**: If the user has defined explicit browser support requirements (via `CLAUDE.md`, `AGENTS.md`, or in the prompt), use the browser compatibility data in the guide to determine if a fallback can be safely ignored.
-* **Reactive Discovery**: Watch for environmental cues to suggest documenting a policy in `CLAUDE.md` (preferred for Claude) or `AGENTS.md`. Suggest this if the developer:
+* **Reactive Policy Discovery**: Watch for environmental cues to suggest documenting a policy in `CLAUDE.md` (preferred for Claude) or `AGENTS.md`. Suggest this if the developer:
   - Mentions building for a restricted runtime (e.g., Electron or Tauri).
   - Explicitly excludes specific targets (e.g., "we don't support Safari").
   - Expresses hesitation about polyfill complexity, bundle size, or performance cost.
