@@ -4,4 +4,3 @@
 - The rendering logic MUST use `drawElementImage`, `texElementImage2D`, or `copyElementImageToTexture` to draw HTML elements onto the canvas.
 - The CSS `transform` property of the descendant HTML element MUST be updated based on the transform matrix calculated during rendering.
 - Screen size changes MUST be observed to update the canvas size to match device pixels to prevent blurriness.
-- A fallback UI strategy MUST be implemented for browsers that do not support HTML-in-Canvas.

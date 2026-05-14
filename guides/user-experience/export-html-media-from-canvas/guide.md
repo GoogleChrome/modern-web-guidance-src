@@ -35,10 +35,22 @@ if ('requestPaint' in HTMLCanvasElement.prototype) {
 
 ```js
 const observer = new ResizeObserver(([entry]) => {
-  canvas.width = entry.devicePixelContentBoxSize[0].inlineSize;
-  canvas.height = entry.devicePixelContentBoxSize[0].blockSize;
+  const dpc = entry.devicePixelContentBoxSize;
+  canvas.width = dpc
+    ? dpc[0].inlineSize
+    : Math.round(entry.contentRect.width * window.devicePixelRatio);
+  canvas.height = dpc
+    ? dpc[0].blockSize
+    : Math.round(entry.contentRect.height * window.devicePixelRatio);
 });
-observer.observe(canvas, { box: "device-pixel-content-box" });
+
+const supportsDevicePixelContentBox =
+  typeof ResizeObserverEntry !== "undefined" &&
+  "devicePixelContentBoxSize" in ResizeObserverEntry.prototype;
+const options = supportsDevicePixelContentBox
+  ? { box: "device-pixel-content-box" }
+  : {};
+observer.observe(canvas, options);
 ```
 
 4. Render the HTML content to the canvas inside a `canvas.onpaint` event handler:
@@ -154,13 +166,11 @@ canvas.onpaint = () => {
       targetHTMLElement,
       screenSpaceTransform,
     );
-    if (computedTransform) {
-      targetHTMLElement.style.transform = computedTransform.toString();
-    }
+    targetHTMLElement.style.transform = computedTransform.toString();
   }
   ```
 
-6. [Optional] If the developer is experiencing a mismatch in the DOM logical layout in 3D even after applying the CSS transform from step 5, check if `transform.is2D` is correctly set to false for a 3D DOMMatrix. If not, re-initialize the DOMMatrix which corrects `is2D` to be false before applying the transform to the target HTML element:
+6. [Troubleshooting] If the developer is experiencing a mismatch in the DOM logical layout in 3D even after applying the CSS transform from step 5, check if the developer is experiencing the issue in Chromium 148 or earlier. If that's the case, check if `transform.is2D` is correctly set to false for a 3D DOMMatrix. If not, re-initialize the DOMMatrix which corrects `is2D` to be false before applying the transform to the target HTML element. This issue is fixed in Chromium 149+, and if the developer is experiencing it in newer Chromium versions, the is2D value is not the cause:
 
 ```js
 if (transform.is2D) {
@@ -210,11 +220,16 @@ targetHTMLElement.style.transform = computedTransform.toString();
 
         // Re-initialize canvas size on screen resize
         const observer = new ResizeObserver(([entry]) => {
-            canvas.width = entry.devicePixelContentBoxSize[0].inlineSize;
-            canvas.height = entry.devicePixelContentBoxSize[0].blockSize;
+            const dpc = entry.devicePixelContentBoxSize;
+            canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
+            canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
             canvas.requestPaint();
         });
-        observer.observe(canvas, {box: 'device-pixel-content-box'});
+        const supportsDevicePixelContentBox = 
+            typeof ResizeObserverEntry !== 'undefined' && 
+            'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
+        const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
+        observer.observe(canvas, options);
     </script>
 </body>
 ```
@@ -236,3 +251,8 @@ targetHTMLElement.style.transform = computedTransform.toString();
 
 The HTML-in-Canvas API is not currently supported in all modern browsers, thus a fallback strategy is typically required. However, given the improved performance benefits of this API, HTML-in-Canvas should be used if the browser supports it.
 
+For the use case where HTML content needs to be exported from a canvas, use libraries like `html2canvas`, `dom-to-image`, or `snapdom`. 
+
+To capture HTML interactions frame by frame, for example, for streaming, capture DOM mutations using libraries like `rrweb`. 
+
+Alternatively, implement a warning that HTML media export is not supported in the browser because it doesn't support HTML-in-Canvas.

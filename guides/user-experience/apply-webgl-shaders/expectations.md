@@ -3,5 +3,5 @@
 - Canvas rendering MUST be executed inside an `onpaint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.
 - The rendering logic MUST use `texElementImage2D` to draw HTML elements onto the canvas.
 - The CSS `transform` property of the descendant HTML element MUST be updated based on the transform matrix calculated during rendering.
-- A `ResizeObserver` MUST be used to observe the canvas size with `device-pixel-content-box` and update its dimensions to prevent blurriness.
+- A `ResizeObserver` MUST be used to observe the canvas size and update its dimensions to prevent blurriness.
 - A fallback UI strategy MUST be implemented for browsers that do not support HTML-in-Canvas.
