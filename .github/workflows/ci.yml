@@ -18,7 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          # Needed for tag history
           fetch-depth: 0
       - run: git fetch --tags
 
@@ -34,26 +33,22 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+
       - name: Preflight (Typecheck, Lint, Tests)
         env:
           TEST_REPORTER: spec
         run: pnpm run preflight
 
-      - name: Verify publish-skills (Dry Run)
-        run: pnpm --filter serving run publish-skills --dry-run
+      - name: Compare built (post-macro) guides 
+        run: |
+          pnpm --filter serving build
+          REPORT_OUTPUT_PATH=/tmp/built-guides-diff.md node serving/scripts/compare-built-guides.ts --base-ref "origin/${{ github.base_ref || github.event.repository.default_branch }}"
+          if [ -f /tmp/built-guides-diff.md ]; then
+            cat /tmp/built-guides-diff.md >> $GITHUB_STEP_SUMMARY
+          fi
 
       # Fail if any changes were written to any source files or generated untracked files
       - run: git add -A && git diff --cached --exit-code
-
-      #  TODO(paulirish): restore this after fixing:
-      #      fatal: You are not currently on a branch. To push the history leading to the current (detached HEAD) state now, use git push origin HEAD:<name-of-remote-branch>       
-      #
-      # - name: Generate guides diagram and commit
-      #   run: |
-      #     node guides/guide-features-diagram.mjs
-      #     git config user.name "github-actions[bot]"
-      #     git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      #     git add guides/features-and-use-cases.md
 
   browser:
     runs-on: ubuntu-latest
