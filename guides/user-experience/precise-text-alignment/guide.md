@@ -3,10 +3,6 @@ name: precise-text-alignment
 description: Achieve precise vertical alignment with text of any font. For example, exactly equal visual padding above and below text, or aligning text perfectly flush with adjacent icons or images.
 web-feature-ids:
   - text-box
-sources:
-  - https://developer.chrome.com/blog/css-text-box-trim
-  - https://webkit.org/blog/16301/webkit-features-in-safari-18-2/
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/text-box-trim
 ---
 
 # Precise Text Alignment

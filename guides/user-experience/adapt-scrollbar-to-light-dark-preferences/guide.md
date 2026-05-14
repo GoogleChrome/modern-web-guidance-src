@@ -5,11 +5,6 @@ web-feature-ids:
   - scrollbar-color
   - color-scheme
   - prefers-color-scheme
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-color-scheme
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-color
-  - https://developer.chrome.com/en/docs/css-ui/scrollbar-styling
 ---
 
 # Adapt scrollbar colors to light/dark preferences

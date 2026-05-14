@@ -4,11 +4,6 @@ description: Animate visual state changes to reflect the direction of a user's n
 web-feature-ids:
   - view-transitions
   - active-view-transition
-sources:
-  - https://developer.chrome.com/docs/web-platform/view-transitions/same-document
-  - https://developer.mozilla.org/en-US/docs/Web/API/View_Transition_API/Using
-  - https://web.dev/learn/css/view-transitions-spas
-  - https://www.smashingmagazine.com/2024/01/view-transitions-api-ui-animations-part2/
 ---
 
 Single Page Applications (SPAs) provide the appearance of navigation by replacing the content of the page without navigating to a new page. By default, the content is simply replaced, without any transitions. Directional transitions can visually reinforce a spatial relationship between views. 

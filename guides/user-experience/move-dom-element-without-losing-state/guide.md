@@ -3,10 +3,6 @@ name: move-dom-element-without-losing-state
 description: Move or reparent a DOM element without losing important element state, such as interactivity states (:focus/:active), <iframe> loading state, animation/transition state, etc
 web-feature-ids:
 - move-before
-sources:
-- https://developer.mozilla.org/en-US/docs/Web/API/Element/moveBefore
-- https://developer.mozilla.org/en-US/docs/Web/API/Document/moveBefore
-- https://developer.chrome.com/blog/movebefore-api
 ---
 
 When reparenting DOM elements using traditional methods like `appendChild()` or `insertBefore()`, the browser implicitly removes the element from the DOM and then inserts it into its new location. This "remove and insert" operation resets many internal states, causing `<iframe>` elements to reload, CSS animations to restart, and input fields to lose focus.

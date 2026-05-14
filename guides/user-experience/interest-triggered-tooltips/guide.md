@@ -6,10 +6,6 @@ web-feature-ids:
   - popover
   - popover-hint
   - anchor-positioning
-sources:
-  - https://open-ui.org/components/interest-invokers.explainer/
-  - https://developer.mozilla.org/en-US/docs/Web/API/Popover_API/Using_interest_invokers
-  - https://css-tricks.com/a-first-look-at-the-interest-invoker-api-for-hover-triggered-popovers/
 ---
 
 # Show a tooltip when hovering
