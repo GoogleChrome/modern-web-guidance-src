@@ -100,13 +100,11 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   // We skip the short-circuit here to ensure modern-web.mjs is always
   // rebundled by esbuild, while processGuides still handles embedding cache.
 
-  // Step 2: If we didn't short-circuit, we do a clean, purist build.
-  // Now we can safely wipe publishRoot completely!
+  // Wipe publishRoot completely to ensure a clean build.
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, { recursive: true });
 
-  // Step 3: Because we just wiped publishRoot, we restore the fresh vectors/guides 
-  // from .cache/ into DIST_DIR.
+  // Restore the fresh vectors/guides from .cache/ into DIST_DIR.
   await processGuides({
     outputDir: DIST_DIR,
     target: 'skills-cli',
