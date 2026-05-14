@@ -76,8 +76,6 @@ export class ClearcutLogger {
       success: metrics?.success,
     };
 
-    console.warn(JSON.stringify(payload));
-
     this.#watchdog.send({
       type: WatchdogMessageType.LOG_EVENT,
       payload: payload,
@@ -100,8 +98,6 @@ export class ClearcutLogger {
       success: metrics?.success,
     };
 
-    console.warn(JSON.stringify(payload));
-
     this.#watchdog.send({
       type: WatchdogMessageType.LOG_EVENT,
       payload: payload,
@@ -123,8 +119,6 @@ export class ClearcutLogger {
       latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
       success: metrics?.success,
     };
-
-    console.warn(JSON.stringify(payload));
 
     this.#watchdog.send({
       type: WatchdogMessageType.LOG_EVENT,

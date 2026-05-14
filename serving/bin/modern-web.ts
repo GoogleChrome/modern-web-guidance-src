@@ -241,7 +241,7 @@ function maybeEmitUpdateMessage(callerSkillVersion: string|null): void {
     `Your version: ${callerSkillVersion}`,
     `Latest version: ${latestSkillVersion}`,
     '',
-    'To update, run: npx modern-web-guidance@latest update',
+    'To update, run: npx modern-web-guidance@latest update --auto',
   ].join('\n'));
 }
 

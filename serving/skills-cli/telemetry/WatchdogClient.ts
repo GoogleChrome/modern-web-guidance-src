@@ -33,15 +33,15 @@ export class WatchdogClient {
       stdio: ['pipe', 'ignore', 'ignore'],
       detached: true,
     });
-    
+
     this.#childProcess.unref();
-    
-    this.#childProcess.on('error', err => {
-      console.error('Watchdog process error:', err);
+
+    this.#childProcess.on('error', () => {
+      // Fail silently: internal telemetry errors should not affect the user
     });
-    
-    this.#childProcess.on('exit', (code, signal) => {
-      console.warn(`Watchdog exited with code ${code} and signal ${signal}`);
+
+    this.#childProcess.on('exit', () => {
+      // Silently handle watchdog termination
     });
   }
 
@@ -54,11 +54,9 @@ export class WatchdogClient {
       try {
         const line = JSON.stringify(message) + '\n';
         this.#childProcess.stdin.write(line);
-      } catch (err) {
-        console.error('Failed to write to watchdog stdin', err);
+      } catch {
+        // Fail silently if writing to watchdog stdin fails
       }
-    } else {
-      console.warn('Watchdog stdin not available, dropping message');
     }
   }
 }
