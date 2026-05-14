@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it, mock } from 'node:test';
 import assert from 'node:assert';
 import { detectOS, bucketizeLatency, ClearcutLogger } from './ClearcutLogger.ts';
 import { OsType, CommandType } from './types.ts';
@@ -39,19 +39,15 @@ describe('bucketizeLatency', () => {
 describe('ClearcutLogger', () => {
   it('disables telemetry case-insensitively when DISABLE_TELEMETRY is set to True', async () => {
     const originalEnv = process.env.DISABLE_TELEMETRY;
-    const originalSend = WatchdogClient.prototype.send;
-    let sendCalled = false;
-    WatchdogClient.prototype.send = () => {
-      sendCalled = true;
-    };
+    const sendMock = mock.method(WatchdogClient.prototype, 'send', () => {});
 
     try {
       process.env.DISABLE_TELEMETRY = 'True';
       const logger = new ClearcutLogger();
       await logger.logToolCommand(120, true, CommandType.INSTALL);
-      assert.strictEqual(sendCalled, false, 'WatchdogClient.send should not be called when telemetry is disabled');
+      assert.strictEqual(sendMock.mock.calls.length, 0, 'WatchdogClient.send should not be called when telemetry is disabled');
     } finally {
-      WatchdogClient.prototype.send = originalSend;
+      sendMock.mock.restore();
       if (originalEnv !== undefined) {
         process.env.DISABLE_TELEMETRY = originalEnv;
       } else {
@@ -61,11 +57,10 @@ describe('ClearcutLogger', () => {
   });
 
   it('logs tool command results correctly via watchdog', async () => {
-    const originalSend = WatchdogClient.prototype.send;
     const sentMessages: any[] = [];
-    WatchdogClient.prototype.send = (msg: any) => {
+    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
       sentMessages.push(msg);
-    };
+    });
 
     try {
       const logger = new ClearcutLogger({ skillVersion: '2026_05_14-abc' });
@@ -78,16 +73,15 @@ describe('ClearcutLogger', () => {
       assert.strictEqual(payload.latency_ms, 250); // 120 bucketized to 250
       assert.strictEqual(payload.skill_version, '2026_05_14-abc');
     } finally {
-      WatchdogClient.prototype.send = originalSend;
+      sendMock.mock.restore();
     }
   });
 
   it('logs retrieve results correctly via watchdog', async () => {
-    const originalSend = WatchdogClient.prototype.send;
     const sentMessages: any[] = [];
-    WatchdogClient.prototype.send = (msg: any) => {
+    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
       sentMessages.push(msg);
-    };
+    });
 
     try {
       const logger = new ClearcutLogger({ skillVersion: '2026_05_14-xyz' });
@@ -100,7 +94,7 @@ describe('ClearcutLogger', () => {
       assert.strictEqual(payload.latency_ms, 500); // 300 bucketized to 500
       assert.strictEqual(payload.skill_version, '2026_05_14-xyz');
     } finally {
-      WatchdogClient.prototype.send = originalSend;
+      sendMock.mock.restore();
     }
   });
 });
