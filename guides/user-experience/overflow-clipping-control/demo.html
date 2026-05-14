@@ -217,21 +217,27 @@
 
     <div class="demo-item">
       <h3>Replaced Element (content-box)</h3>
-      <p class="description">Applies directly to an <code>&lt;img&gt;</code> with padding to create a clean gutter
+      <p class="description">Applies directly to the parent element of<code>&lt;img&gt;</code> with padding to create a clean
+        gutter
         frame, preventing sub-pixel image leakage over the inner padding edge.</p>
 
       <div class="profile-photo-container">
-        <img class="profile-photo-framed" src="test_pattern.svg" alt="Framed Demo">
+        <div class="profile-photo-framed">
+          <img src="test_pattern.svg" alt="Framed Demo">
+        </div>
       </div>
     </div>
 
     <div class="demo-item">
       <h3>Replaced Element (Bleed Offset)</h3>
-      <p class="description">Applies <code>overflow-clip-margin: 15px</code> directly to an image to safely contain the
+      <p class="description">Applies <code>overflow-clip-margin: 15px</code> to a parent element of an image to safely contain
+        the
         element while allowing ink overflow (drop shadow) to remain fully visible.</p>
 
       <div class="profile-photo-container">
-        <img class="profile-photo-shadow" src="test_pattern.svg" alt="Shadow Demo">
+        <div class="profile-photo-shadow">
+          <img src="test_pattern.svg" alt="Shadow Demo">
+        </div>
       </div>
     </div>
   </div>
