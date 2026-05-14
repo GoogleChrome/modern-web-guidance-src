@@ -104,7 +104,7 @@ async function main() {
       }
     }
   } else if (command === "install") {
-    const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean);
 
@@ -117,7 +117,7 @@ async function main() {
     process.exit(result.status ?? 0);
   } else if (command === "update") {
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["skills", "update", ...skills], {
+    const result = spawnSync("npx", ["-y", "skills", "update", ...skills], {
       stdio: "inherit",
     });
     if (result.error) {
