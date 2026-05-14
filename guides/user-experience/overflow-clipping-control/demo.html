@@ -6,11 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Overflow Clipping Control Demo</title>
   <style>
-    :root {
-      --scrollbar-thumb: rgba(0, 0, 0, 0.2);
-      --scrollbar-track: transparent;
-    }
-
     body {
       font: 1em/1.5 system-ui, sans-serif;
       padding: 2rem;
@@ -60,70 +55,64 @@
       margin-bottom: 1.5rem;
     }
 
-    /* --- 1. STANDARD BLOCK CONTAINER STYLES --- */
-    .card-wrapper-flex {
+    /* --- 1. NESTED BORDER CURVES STYLES --- */
+    .nested-curve-wrapper {
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 1.5rem 0;
     }
 
-    .card-container-bleed {
-      position: relative;
+    .nested-curve-parent {
+      display: flex;
+      flex-direction: column;
       width: 100%;
-      max-width: 260px;
-      padding: 1.5rem;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      background: #fff;
+      max-width: 240px;
+      aspect-ratio: 4/3;
+      padding: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 32px;
+      background: #737373;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 
-      /* Level 1 Fallback: keep overflow visible to allow external bleeds */
-      overflow: visible;
+      /* Level 1 Fallback: clips child roughly at the padding box */
+      overflow: hidden;
     }
 
-    .card-container-bleed h4 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.1rem;
-      color: #222;
+    /* Separate image sizing for flex scaling in nested curves vs replacement wrapper frames */
+    .nested-curve-parent img {
+      width: 100%;
+      flex: 1;
+      object-fit: cover;
+      display: block;
+      background: #fff;
     }
 
-    .card-container-bleed p {
-      margin: 0;
-      font-size: 0.85rem;
-      color: #666;
+    /* Inner footer component with 10px rounded to visually demonstrate automatic concentric corner clipping */
+    .nested-curve-footer {
+      background: #111;
+      color: #fff;
+      padding: 8px 12px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: bold;
     }
 
-    @supports (overflow-clip-margin: 15px) {
-      .card-container-bleed {
+    @supports (overflow-clip-margin: content-box) {
+      .nested-curve-parent {
         overflow: clip;
-        overflow-clip-margin: 15px;
+        /* Automatically curves clipping edge to match inner content-box radius */
+        overflow-clip-margin: content-box;
       }
     }
 
-    /* Absolute badge styled to bleed outside the top-right corner */
-    .card-badge {
-      position: absolute;
-      top: -10px;
-      /* Bleeds 10px above the border edge */
-      right: -10px;
-      /* Bleeds 10px to the right */
-      background: #e52e71;
-      color: #fff;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: bold;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
-    /* --- 2. REPLACED ELEMENT STYLES --- */
+    /* --- 2. PARENT WRAPPER STYLES --- */
     .profile-photo-container {
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 1.5rem 0;
+      background: beige;
     }
 
     .profile-photo-framed {
@@ -133,7 +122,6 @@
       /* The "Frame" gutter */
       border: 5px solid #333;
       border-radius: 50%;
-      object-fit: cover;
       background: #fff;
       /* Level 1 Fallback */
       overflow: hidden;
@@ -152,7 +140,6 @@
       padding: 10px;
       border: 5px solid #333;
       border-radius: 50%;
-      object-fit: cover;
       background: #fff;
       filter: drop-shadow(0 0 12px rgba(0, 120, 255, 0.6));
       /* Fallback to keep shadow visible in older browsers */
@@ -181,9 +168,7 @@
 </head>
 
 <body>
-
   <h1>Overflow Clipping Control</h1>
-
   <div id="fallback-banner">
     <strong>Notice:</strong> Your browser does not support <code>overflow: clip</code>. Fallback containment active.
   </div>
@@ -191,33 +176,34 @@
     <strong>Notice:</strong> Your browser does not support <code>overflow-clip-margin</code>. Fallback rendering active.
   </div>
 
-  <p class="intro">This demo showcases controlled clipping across both standard block containers and replaced elements
-    (images) using <code>overflow: clip</code> and <code>overflow-clip-margin</code>. Modern browsers natively default
-    replaced elements to clip as of Chrome 108. Setting extended margins enables protecting inner padding frames from
-    sub-pixel rendering leakage or allowing absolute elements and drop-shadows to safely bleed outside bounding boxes
-    without layout geometry expansion.
+  <p class="intro">This demo showcases controlled clipping across standard block layout containers and replaced element
+    frames
+    using <code>overflow: clip</code> and <code>overflow-clip-margin</code>. Modern browsers natively default
+    replaced elements to clip as of Chrome 108. Setting inner clip margins enables mathematically perfect nested border
+    radii without explicit child curve calculations or protecting padded frames from sub-pixel rendering leakage, while
+    extended bleeds allow external drop-shadows to sit past bounding boxes without layout geometry expansion.
   </p>
 
   <div class="grid">
     <div class="demo-item">
-      <h3>Block Container (Bleed Offset)</h3>
-      <p class="description">Applies <code>overflow-clip-margin: 15px</code> to a standard container, safely clipping
-        inner
-        text while permitting an absolute corner badge to bleed outside the boundary. Uses an <code>overflow: visible</code> baseline fallback.
+      <h3>Nested Rounded Curves</h3>
+      <p class="description">Applies <code>overflow-clip-margin: content-box</code> to a parent container with rounded corners
+        and custom padding. Automatically applies similar rounded corners on inner child media and footer components along the
+        concentric inner content box boundary, solving awkward nesting curves without custom <code>calc()</code> logic.
       </p>
     
-      <div class="card-wrapper-flex">
-        <div class="card-container-bleed">
-          <h4>Special Feature</h4>
-          <p>Internal text clipped inside the padding box securely.</p>
-          <span class="card-badge">New</span>
+      <div class="nested-curve-wrapper">
+        <div class="nested-curve-parent">
+          <img src="test_pattern.svg" alt="Nested Curve Demo">
+          <div class="nested-curve-footer">Card Footer</div>
         </div>
       </div>
     </div>
 
     <div class="demo-item">
-      <h3>Replaced Element (content-box)</h3>
-      <p class="description">Applies directly to the parent element of<code>&lt;img&gt;</code> with padding to create a clean
+      <h3>Gutter Protection</h3>
+      <p class="description">Applies directly to the parent element of an <code>&lt;img&gt;</code> with padding to create a
+        clean
         gutter
         frame, preventing sub-pixel image leakage over the inner padding edge.</p>
 
@@ -229,7 +215,7 @@
     </div>
 
     <div class="demo-item">
-      <h3>Replaced Element (Bleed Offset)</h3>
+      <h3>Bleed Offset 15px</h3>
       <p class="description">Applies <code>overflow-clip-margin: 15px</code> to a parent element of an image to safely contain
         the
         element while allowing ink overflow (drop shadow) to remain fully visible.</p>

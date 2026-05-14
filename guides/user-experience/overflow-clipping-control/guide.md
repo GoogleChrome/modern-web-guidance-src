@@ -31,72 +31,82 @@ As of Chrome 108, `overflow: clip` and `overflow-clip-margin: content-box` are t
 
 ## Example Code
 
-The following examples demonstrate controlled clipping on both standard block containers and replaced elements, showcasing clean inner gutter framing, extended bleed offset containment, and robust progressive enhancement fallbacks.
+The following examples demonstrate controlled clipping on standard block layout containers and replaced element frames, showcasing inner content curve nested framing, parent wrapper frame protection, and drop-shadow ink bleeds alongside progressive enhancement fallbacks.
 
-### Standard Block Containers: Offset Bleed Containment
+### Block Containers: Nested Rounded Curves
 
-Standard block elements (like card containers) often clip internal scrolling content or background elements while needing external graphic badges or focus rings to remain visible. Applying `overflow-clip-margin` with a specified length creates an extended clipping boundary.
+Applies `overflow-clip-margin: content-box` to a parent container with rounded corners and custom padding. Automatically applies similar rounded corners on inner child media and footer components along the concentric inner content box boundary, solving awkward nesting curves without custom `calc()` logic.
 
 ```html
-<div class="card-container-bleed">
-  <h2>Card Title</h2>
-  <p>Card content contained safely inside.</p>
-  <!-- Absolute badge bleeding outside the container bounds -->
-  <span class="card-badge">New</span>
+<div class="nested-curve-parent">
+  <img src="avatar.jpg" alt="Nested Curve Demo">
+  <div class="nested-curve-footer">Card Footer</div>
 </div>
 ```
 
 ```css
 /**
- * Standard block container with an external bleed margin.
- * Allows absolute children or focus rings to bleed past the box edge safely.
+ * Standard block layout container with outer corner radii and padding.
+ * Keeps base level 1 fallback clipping roughly at the inner padding box.
  */
-.card-container-bleed {
-  position: relative;
-  /* Example placeholder sizing */
-  width: 300px;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
+.nested-curve-parent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 4/3;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 32px;
+  background: #737373;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  /* Level 1 Fallback: clips child roughly at the padding box */
+  overflow: hidden;
+}
+
+/* Separate image sizing for flex scaling in nested curves vs replacement wrapper frames */
+.nested-curve-parent img {
+  width: 100%;
+  flex: 1;
+  object-fit: cover;
+  display: block;
   background: #fff;
-  
-  /* Level 1 Fallback: keep overflow visible to allow external bleeds */
-  overflow: visible;
 }
 
-/* Absolute badge styled to sit outside the top-right corner */
-.card-badge {
-  position: absolute;
-  top: -10px; /* Bleeds 10px above the border edge */
-  right: -10px; /* Bleeds 10px to the right */
-  background: #e52e71;
+/* Inner footer component left flat to visually demonstrate automatic concentric corner clipping */
+.nested-curve-footer {
+  background: #111;
   color: #fff;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: bold;
 }
 
-@supports (overflow-clip-margin: 15px) {
-  .card-container-bleed {
+@supports (overflow-clip-margin: content-box) {
+  .nested-curve-parent {
     /* MANDATORY: overflow: clip is required on non-replaced elements */
     overflow: clip;
-    /* Example placeholder offset: permits up to 15px of external bleed */
-    overflow-clip-margin: 15px;
+    /* Automatically curves clipping edge to match inner content-box radius */
+    overflow-clip-margin: content-box;
   }
 }
 ```
 
-### Replaced Elements: Framed Gutter Protection
+### Parent Wrapper Frames: Gutter Protection
 
-Modern browsers treat images as replaced elements, applying `overflow: clip` and `overflow-clip-margin: content-box` by default as of Chrome 108. When using `object-fit: cover` and a `border-radius` on an image with custom padding, explicitly declaring `overflow-clip-margin: content-box` reinforces strict containment to prevent sub-pixel leakage into the padding frame across all environments.
+Applies directly to the parent element of an `<img>` with padding to create a clean gutter frame, preventing sub-pixel image leakage over the inner padding edge. Setting `overflow-clip-margin: content-box` reinforces strict inner containment across all environments.
 
 ```html
-<img class="profile-photo-framed" src="avatar.jpg" alt="Framed User Profile">
+<div class="profile-photo-framed">
+  <img src="avatar.jpg" alt="Framed User Profile">
+</div>
 ```
 
 ```css
 /**
- * Replaced Element with inner frame padding.
+ * Parent wrapper element with inner frame padding.
  * Ensures image pixels do not leak into the padding gutter.
  */
 .profile-photo-framed {
@@ -106,7 +116,7 @@ Modern browsers treat images as replaced elements, applying `overflow: clip` and
   padding: 10px; /* The "Frame" gutter */
   border: 5px solid black;
   border-radius: 50%;
-  object-fit: cover;
+  background: #fff;
   
   /* Level 1 Fallback */
   overflow: hidden;
@@ -121,28 +131,32 @@ Modern browsers treat images as replaced elements, applying `overflow: clip` and
 }
 ```
 
-### Replaced Elements: Ink Overflow (Shadow Bleed)
+### Parent Wrapper Frames: Ink Overflow (Shadow Bleed)
 
-Images utilizing visual effects like `filter: drop-shadow()` are normally truncated strictly at the padding-box by `overflow: hidden`. Using a specified offset bleed permits the shadow to remain fully visible without altering layout geometry.
+Applies a specified offset bleed (`15px`) to the image wrapper. This keeps the layout dimensions completely locked down while giving external ink overflow—like vibrant drop-shadow filters—plenty of breathing room to sit outside the box unclipped.
 
 ```html
-<img class="profile-photo-shadow" src="avatar.jpg" alt="Profile with Shadow">
+<div class="profile-photo-shadow">
+  <img src="avatar.jpg" alt="Profile with Shadow">
+</div>
 ```
 
 ```css
 /**
- * Replaced Element with external drop-shadow.
+ * Parent wrapper element with external drop-shadow.
  * Allows the shadow to bleed past the image edge without clipping.
  */
 .profile-photo-shadow {
   /* Example placeholder sizing */
   width: 200px;
   height: 200px;
+  padding: 10px;
+  border: 5px solid #333;
   border-radius: 50%;
-  object-fit: cover;
+  background: #fff;
   filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.5));
   
-  /* Fallback to keep shadow visible in non-supporting browsers */
+  /* Fallback to keep shadow visible in older browsers */
   overflow: visible;
 }
 
@@ -157,9 +171,9 @@ Images utilizing visual effects like `filter: drop-shadow()` are normally trunca
 
 ## Strategic Implementation & Best Practices
 
-- **DO** apply `overflow: clip` on target elements when utilizing `overflow-clip-margin`, as setting `overflow` strictly to `clip` is **mandatory** on standard block containers for custom clip margins to take effect.
-- **DO** configure `overflow-clip-margin` with a specified length offset when applying external visual effects (like `filter: drop-shadow()`) or absolute graphic corner badges to prevent sharp bounding box truncation without altering or expanding layout geometry.
-- **DO** set `overflow-clip-margin: content-box` on replaced elements featuring internal padding frames alongside `object-fit: cover` to guarantee content pixels are strictly protected from sub-pixel rendering leakage into the padded border region.
+- **DO** apply `overflow: clip` on target elements when utilizing `overflow-clip-margin`, as setting `overflow` strictly to `clip` is **mandatory** on standard block layout containers to activate custom or inner curved clip margins.
+- **DO** set `overflow-clip-margin: content-box` on padded containers with rounded corners to automatically clip unrounded internal child elements into mathematically perfect nested border curves without manual padding subtraction logic.
+- **DO** configure `overflow-clip-margin` with a specified length offset when applying external visual effects (like `filter: drop-shadow()`) to prevent sharp bounding box truncation without altering or expanding layout geometry.
 - **DO** utilize `overflow: clip` instead of `overflow: hidden` on complex layouts or rounded media galleries to optimize rendering performance, as `clip` avoids computationally expensive scrolling stencils by simply painting pixels inside the designated clip margin.
 - **DO NOT** apply `overflow: clip` if the container requires programmatic scroll manipulation via JavaScript or serves as the immediate layout context for `position: sticky` elements, as `clip` completely disables all scrollability and locks containment across both axes simultaneously.
 
@@ -174,56 +188,67 @@ For target environments lacking native support for `overflow: clip` or `overflow
 ### Complete Progressive Enhancement Fallback Implementation
 
 ```html
-<!-- 1. Standard block container bleed fallback -->
+<!-- 1. Nested rounded edges fallback -->
 <div class="demo-container-fallback">
-  <h3>Contained Header</h3>
-  <p>Inner elements safely wrapped inside.</p>
-  <span class="demo-badge-fallback">Bleed</span>
+  <img src="example.jpg" alt="Nested Curve Fallback">
+  <div class="demo-footer-fallback">Footer</div>
 </div>
 
-<!-- 2. Replaced element fallbacks -->
-<img class="demo-image-framed" src="example.jpg" alt="Framed Fallback">
-<img class="demo-image-bleed" src="example.jpg" alt="Bleed Fallback">
+<!-- 2. Parent wrapper fallbacks -->
+<div class="demo-image-framed">
+  <img src="example.jpg" alt="Framed Fallback">
+</div>
+<div class="demo-image-bleed">
+  <img src="example.jpg" alt="Bleed Fallback">
+</div>
 ```
 
 ```css
 /**
- * 1. Standard Block Container Bleed Fallback
- * Keeps overflow visible as base fallback to avoid clipping corner badges.
+ * 1. Block Container Nested Curves Fallback
+ * Keeps base level 1 fallback clipping roughly at the inner padding box.
  */
 .demo-container-fallback {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   /* Example placeholder sizing */
-  width: 250px;
-  padding: 15px;
-  border: 1px solid #333;
-  border-radius: 8px;
-  background: #fff;
+  width: 200px;
+  aspect-ratio: 4/3;
+  padding: 12px;
+  border: 2px solid #333;
+  border-radius: 24px;
+  background: #737373;
   
-  /* Level 1 Fallback: keep overflow visible */
-  overflow: visible;
+  /* Level 1 Fallback: clip child roughly at padding box */
+  overflow: hidden;
 }
 
-.demo-badge-fallback {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: #ff7a18;
+.demo-container-fallback img {
+  width: 100%;
+  flex: 1;
+  object-fit: cover;
+  display: block;
+  background: #fff;
+}
+
+.demo-footer-fallback {
+  background: #111;
   color: #fff;
-  padding: 2px 6px;
-  border-radius: 8px;
+  padding: 6px;
+  text-align: center;
   font-size: 10px;
+  font-weight: bold;
 }
 
-@supports (overflow-clip-margin: 15px) {
+@supports (overflow-clip-margin: content-box) {
   .demo-container-fallback {
     overflow: clip;
-    overflow-clip-margin: 15px;
+    overflow-clip-margin: content-box;
   }
 }
 
 /**
- * 2. Replaced Element Frame Fallback
+ * 2. Parent Wrapper Frame Fallback
  * Level 1 Fallback uses overflow: hidden to ensure core containment.
  */
 .demo-image-framed {
@@ -233,7 +258,6 @@ For target environments lacking native support for `overflow: clip` or `overflow
   padding: 10px;
   border: 5px solid #333;
   border-radius: 50%;
-  object-fit: cover;
   overflow: hidden;
 }
 
@@ -245,7 +269,7 @@ For target environments lacking native support for `overflow: clip` or `overflow
 }
 
 /**
- * 3. Replaced Element Shadow Bleed Fallback
+ * 3. Parent Wrapper Shadow Bleed Fallback
  * Keeps overflow visible as base fallback to avoid truncating drop-shadows.
  */
 .demo-image-bleed {
@@ -253,7 +277,6 @@ For target environments lacking native support for `overflow: clip` or `overflow
   width: 150px;
   height: 150px;
   border-radius: 50%;
-  object-fit: cover;
   filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
   overflow: visible;
 }
