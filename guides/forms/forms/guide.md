@@ -274,7 +274,10 @@ form.addEventListener('submit', (e) => {
 
   <div class="form-group">
     <label for="password">Password</label>
-    <button id="toggle-password" type="button" aria-pressed="false" aria-describedby="toggle-warning">Show password</button>
+    <button id="toggle-password" type="button" aria-pressed="false" aria-label="Show password" aria-describedby="toggle-warning">
+      <img class="icon-eye" src="/icons/eye.svg" alt="" width="20" height="20">
+      <img class="icon-eye-off" src="/icons/eye-off.svg" alt="" width="20" height="20">
+    </button>
     <span id="toggle-warning" class="visually-hidden">Warning: this will display your password on the screen.</span>
     <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" aria-describedby="password-constraints" required>
     <div id="password-constraints">Eight or more characters.</div>
