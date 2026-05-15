@@ -65,13 +65,13 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
     expect(hasInlineStyles).toBe(false);
   });
 
-  test('Multiple visual state indicators must be used to style the autofilled state', async ({ page }) => {
+  test('Multiple visual state indicators must be used to style the autofilled state', () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const hasMultipleIndicators = /border(?:-width|-style)?:|box-shadow:/i.test(html);
     expect(hasMultipleIndicators).toBe(true);
   });
 
-  test('The focus indicator must be preserved on autofilled elements', async ({ page }) => {
+  test('The focus indicator must be preserved on autofilled elements', () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     if (/outline:\s*none/i.test(html)) {
       expect(/:focus-visible/i.test(html)).toBe(true);
