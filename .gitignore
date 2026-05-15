@@ -50,6 +50,7 @@ project-gleam/
 # Local agent stuff
 .gemini/
 .claude/
+.antigravitycli/
 GEMINI.md
 
 # Research drafts
