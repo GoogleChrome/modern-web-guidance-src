@@ -1,7 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { replaceMacros } from './macros.ts';
 import { slugify } from './include.ts';
@@ -107,7 +106,7 @@ describe('INCLUDE', () => {
   let repoFixtureRelPath: string;
 
   before(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'macros-test-'));
+    tmpDir = fs.mkdtempSync(path.join(rootDir, 'macros-test-'));
     FIXTURE_CALLER = path.join(tmpDir, 'caller.md');
     // A second tmp dir inside the repo root, so we can test bare-path resolution
     // (which always resolves from rootDir).
@@ -268,6 +267,21 @@ describe('INCLUDE', () => {
         () => replaceMacros('{{ INCLUDE() }}', 'test.md'),
         /Missing path in INCLUDE/
       );
+    });
+
+    it('throws on circular includes (cycle detection)', () => {
+      const fileA = path.join(tmpDir, 'circular-a.md');
+      const fileB = path.join(tmpDir, 'circular-b.md');
+      fs.writeFileSync(fileA, '{{ INCLUDE("./circular-b.md") }}');
+      fs.writeFileSync(fileB, '{{ INCLUDE("./circular-a.md") }}');
+
+      assert.throws(
+        () => replaceMacros(fs.readFileSync(fileA, 'utf8'), fileA),
+        /Circular dependency detected/
+      );
+
+      fs.unlinkSync(fileA);
+      fs.unlinkSync(fileB);
     });
   });
 

@@ -68,8 +68,25 @@ if (STATIC) {
   });
 } else {
 
+const evalViewRoot = fs.realpathSync(path.resolve('.'));
+const harnessRoot = fs.realpathSync(path.resolve('../harness'));
+const guidesRoot = fs.realpathSync(path.resolve('../guides'));
+
+function isPathAllowed(filePath) {
+  let absolutePath;
+  try {
+    absolutePath = fs.realpathSync(filePath);
+  } catch {
+    absolutePath = path.resolve(filePath);
+  }
+  return absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep) ||
+         absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep) ||
+         absolutePath === guidesRoot || absolutePath.startsWith(guidesRoot + path.sep);
+}
+
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
+  __proto__: null,
   '.html': 'text/html',
   '.js': 'text/javascript',
   '.css': 'text/css',
@@ -94,14 +111,35 @@ const MIME_TYPES = {
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
   
-  // Handle CORS and Private Network Access for Playwright Trace Viewer
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  let isLocalOrigin = !origin;
+  if (origin) {
+    try {
+      const parsedOrigin = new URL(origin);
+      const hostname = parsedOrigin.hostname;
+      isLocalOrigin = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]' || parsedOrigin.protocol === 'chrome-extension:';
+    } catch {
+      isLocalOrigin = false;
+    }
+  }
+  const allowedOrigins = ['https://trace.playwright.dev', 'https://playwright.dev'];
+  const isAllowedOrigin = isLocalOrigin || (origin && allowedOrigins.includes(origin));
+
+  if (origin && isAllowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', '*');
-    res.setHeader('Access-Control-Allow-Private-Network', 'true');
-    res.writeHead(204);
-    res.end();
+    if (origin && isAllowedOrigin) {
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      res.setHeader('Access-Control-Allow-Private-Network', 'true');
+      res.writeHead(204);
+      res.end();
+    } else {
+      res.writeHead(403);
+      res.end('403 Forbidden: CORS request blocked');
+    }
     return;
   }
 
@@ -241,10 +279,21 @@ const server = http.createServer(async (req, res) => {
 
   // --- /api/eval-launch : spawns an evaluation run in background ---
   if (decodedPath === '/api/eval-launch' && req.method === 'POST') {
+    if (!isLocalOrigin) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: '403 Forbidden: Cross-origin API executions are not allowed.' }));
+      return;
+    }
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
+        const options = JSON.parse(body);
+        if (!options || !Array.isArray(options.tasks) || !options.tasks.every(t => typeof t === 'string')) {
+          console.error('Invalid tasks options:', options);
+          return;
+        }
+
         // Return 200 immediately so UI can track the run
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
@@ -254,7 +303,6 @@ const server = http.createServer(async (req, res) => {
         });
 
         const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${Math.random().toString(36).substring(2, 10)}.ts`);
-        const options = JSON.parse(body);
         fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(options, null, 2)};`);
 
         console.log(`\n>>> Launching UI Eval Suite in background...`);
@@ -305,6 +353,28 @@ const server = http.createServer(async (req, res) => {
     if (source === 'local') {
       const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
       const targetDir = path.join(resultsDir, relativePath);
+
+      let absoluteTargetDir;
+      try {
+        absoluteTargetDir = fs.realpathSync(targetDir);
+      } catch {
+        absoluteTargetDir = path.resolve(targetDir);
+      }
+
+      let absoluteResultsDir;
+      try {
+        absoluteResultsDir = fs.realpathSync(resultsDir);
+      } catch {
+        absoluteResultsDir = path.resolve(resultsDir);
+      }
+
+      const isInsideResults = absoluteTargetDir === absoluteResultsDir || absoluteTargetDir.startsWith(absoluteResultsDir + path.sep);
+      if (!isInsideResults) {
+        res.writeHead(403);
+        res.end('403 Forbidden: Access outside allowed directories is not allowed');
+        return;
+      }
+
       try {
         if (fs.existsSync(targetDir)) {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
@@ -345,9 +415,12 @@ const server = http.createServer(async (req, res) => {
       filePath = path.join(resultsDir, checkPath);
     }
 
-    const absolutePath = path.resolve(filePath);
-    const evalViewRoot = path.resolve('.');
-    const harnessRoot = path.resolve('../harness');
+    let absolutePath;
+    try {
+      absolutePath = fs.realpathSync(filePath);
+    } catch {
+      absolutePath = path.resolve(filePath);
+    }
     const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
     const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
 
@@ -419,18 +492,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Final check: Resolve the absolute path and ensure it's within allowed directories
-  const absolutePath = path.resolve(filePath);
-  const evalViewRoot = path.resolve('.');
-  const harnessRoot = path.resolve('../harness');
-  const guidesRoot = path.resolve('../guides');
-
-  // Use path.sep to ensure we match whole directory names
-  const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
-  const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
-  const isInsideGuides = absolutePath === guidesRoot || absolutePath.startsWith(guidesRoot + path.sep);
-
-  if (!isInsideEvalView && !isInsideHarness && !isInsideGuides) {
-    console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${reqUrl} -> ${absolutePath}`);
+  if (!isPathAllowed(filePath)) {
+    console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${reqUrl} -> ${filePath}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access outside allowed directories is not allowed');
     return;
@@ -447,6 +510,11 @@ const server = http.createServer(async (req, res) => {
       if (err.code === 'EISDIR') {
         // It's a directory, try serving index.html
         const indexPath = path.join(filePath, 'index.html');
+        if (!isPathAllowed(indexPath)) {
+          res.writeHead(403);
+          res.end('403 Forbidden: Access outside allowed directories is not allowed');
+          return;
+        }
         fs.readFile(indexPath, (err2, content2) => {
           if (err2) {
             res.writeHead(404);
@@ -468,6 +536,11 @@ const server = http.createServer(async (req, res) => {
             if (runBaseIndex !== -1) {
                 const basePath = pathParts.slice(0, runBaseIndex + 1).join(path.sep);
                 const indexPath = path.join(basePath, 'index.html');
+                if (!isPathAllowed(indexPath)) {
+                  res.writeHead(403);
+                  res.end('403 Forbidden: Access outside allowed directories is not allowed');
+                  return;
+                }
                 if (fs.existsSync(indexPath)) {
                     res.writeHead(200, { 'Content-Type': 'text/html' });
                     res.end(fs.readFileSync(indexPath), 'utf-8');

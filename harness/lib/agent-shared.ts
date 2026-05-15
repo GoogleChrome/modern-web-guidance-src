@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync, spawn, type SpawnOptions } from 'child_process';
+import { execSync, execFileSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
@@ -364,11 +364,26 @@ export async function sleep(ms: number): Promise<void> {
  * @param port The port number to check and kill processes on
  */
 export function killProcessOnPort(port: number | string): void {
+  const portStr = String(port).trim();
+  if (!/^\d+$/.test(portStr)) {
+    console.warn(`Warning: Invalid port passed to killProcessOnPort: ${port}`);
+    return;
+  }
+
   try {
-    const pid = execSync(`lsof -t -i :${port}`).toString().trim();
+    const pid = execFileSync("lsof", ["-t", "-i", `:${portStr}`], { encoding: "utf-8" }).trim();
     if (pid) {
-      console.log(`Killing process ${pid} on port ${port}...`);
-      execSync(`kill -9 ${pid}`);
+      if (/^\d+(\s+\d+)*$/.test(pid)) {
+        console.log(`Killing process ${pid} on port ${portStr}...`);
+        const pids = pid.split(/\s+/);
+        for (const p of pids) {
+          try {
+            execFileSync("kill", ["-9", p]);
+          } catch (err) {
+            console.warn(`Warning: Failed to kill process ${p}:`, err instanceof Error ? err.message : err);
+          }
+        }
+      }
     }
   } catch {
     // Ignore error if no process found (grep/lsof returns exit code 1 if empty)
@@ -431,7 +446,7 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     return workDir;
   }
   // For the suite run, copy the template directory to the isolated home directory, following symlinks
-  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
+  fs.cpSync(templateDir, path.join(homeDir, path.basename(templateDir)), { recursive: true, dereference: true });
   console.log(`Copied ${templateDir} to ${homeDir}...`);
   return path.join(homeDir, path.basename(templateDir));
 }
@@ -444,7 +459,7 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
  */
 export function copyResultsToTarget(workDir: string, targetDir: string, subPath: string = '.'): void {
   const sourceDir = path.join(workDir, subPath);
-  execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
+  fs.cpSync(sourceDir, targetDir, { recursive: true });
   console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
 }
 

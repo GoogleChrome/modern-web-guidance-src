@@ -160,7 +160,12 @@ export function checkBaseline(target: string, featureId: string): boolean {
  * @param featureId - The feature ID to resolve
  * @returns An array of canonical feature IDs (multiple if split)
  */
-export function resolveFeatureId(featureId: string): string[] {
+export function resolveFeatureId(featureId: string, visited: Set<string> = new Set()): string[] {
+  if (visited.has(featureId)) {
+    console.warn(`Warning: Circular redirect detected for feature ID "${featureId}". Path: ${Array.from(visited).join(" -> ")} -> ${featureId}`);
+    return [];
+  }
+
   const feature = features[featureId] as Feature | undefined;
   if (!feature) {
     return [];
@@ -168,11 +173,14 @@ export function resolveFeatureId(featureId: string): string[] {
   if (feature.kind === "feature") {
     return [featureId];
   }
+
+  const nextVisited = new Set(visited).add(featureId);
+
   if (feature.kind === "moved") {
-    return resolveFeatureId(feature.redirect_target);
+    return resolveFeatureId(feature.redirect_target, nextVisited);
   }
   if (feature.kind === "split") {
-    return feature.redirect_targets.flatMap(resolveFeatureId);
+    return feature.redirect_targets.flatMap(id => resolveFeatureId(id, nextVisited));
   }
   return [];
 }
@@ -406,7 +414,15 @@ export function getStatus(
  * @returns The date string after subtracting the specified number of months
  */
 function subtractMonths(dateStr: string, months: number): string {
-  const date = new Date(dateStr);
-  date.setMonth(date.getMonth() - months);
-  return date.toISOString().split('T')[0];
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      throw new RangeError("Invalid time value");
+    }
+    date.setMonth(date.getMonth() - months);
+    return date.toISOString().split('T')[0];
+  } catch (err) {
+    console.warn(`Warning: Failed to subtract months from invalid date "${dateStr}":`, err instanceof Error ? err.message : err);
+    return "0000-00-00";
+  }
 }

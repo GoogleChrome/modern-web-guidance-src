@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 import { parseArgs } from "util";
 import { fileURLToPath } from "node:url";
 
@@ -26,21 +26,21 @@ delete safeEnv.GIT_WORK_TREE;
 
 let mergeBase = "";
 
-function runCommand(cmd: string, cwd?: string): string {
-  return execSync(cmd, { cwd, env: safeEnv, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+function runGit(args: string[], cwd?: string): string {
+  return execFileSync("git", args, { cwd, env: safeEnv, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
 function setupBaselineWorkspace() {
-  mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
+  mergeBase = runGit(["merge-base", TARGET_REF, "HEAD"]);
   console.log(`Resolved base git merge ancestor: ${mergeBase}`);
 
   try {
-    runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
+    runGit(["worktree", "remove", "-f", TEMP_REPO_DIR]);
   } catch (e) {}
 
   try {
     console.log(`Setting up baseline worktree at "${TEMP_REPO_DIR}"...`);
-    runCommand(`git worktree add --detach "${TEMP_REPO_DIR}" "${mergeBase}"`);
+    runGit(["worktree", "add", "--detach", TEMP_REPO_DIR, mergeBase]);
 
     console.log("Compiling baseline visual guides...");
     execSync("pnpm install --frozen-lockfile", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
@@ -54,7 +54,7 @@ function setupBaselineWorkspace() {
     process.exit(1);
   } finally {
     try {
-      runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
+      runGit(["worktree", "remove", "-f", TEMP_REPO_DIR]);
     } catch (e) {}
   }
 }
@@ -62,7 +62,7 @@ function setupBaselineWorkspace() {
 function getModifiedGuides(): string[] {
   try {
     const modified = Array.from(new Set(
-      runCommand(`git diff --name-only ${mergeBase} HEAD`)
+      runGit(["diff", "--name-only", mergeBase, "HEAD"])
         .split("\n")
         .filter(f => f.startsWith("guides/"))
         .map(f => f.split("/"))
@@ -107,7 +107,7 @@ export function compareGuides(modifiedGuides: string[], baseline: string = BASEL
     } else {
       const anchor = guide.replace(/\//g, "-");
       try {
-        execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
+        execFileSync("git", ["diff", "--no-index", "--ignore-space-change", "--ignore-blank-lines", beforeFile, afterFile], { env: safeEnv, encoding: "utf-8" });
         // If no difference is resolved, classify as verbatim changes only
         verbatimCount++;
         verbatimList += `- \`${guide}\` (whitespace changes only)\n`;

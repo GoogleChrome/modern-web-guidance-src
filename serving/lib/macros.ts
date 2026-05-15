@@ -38,9 +38,12 @@ export function parseArguments(argsString: string): string[] {
   return args;
 }
 
-export type BuildTarget = 'skills-cli' | 'mcp-server' | 'megaskill' | 'local-dev';
+export interface MacroOptions {
+  target?: BuildTarget;
+  visited?: Set<string>;
+}
 
-type MacroHandler = (args: string[], filePath: string, options?: { target?: BuildTarget }) => string;
+type MacroHandler = (args: string[], filePath: string, options?: MacroOptions) => string;
 
 
 
@@ -57,7 +60,7 @@ export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
 
 
 const MACRO_HANDLERS: Record<string, MacroHandler> = {
-  INCLUDE: (args, filePath) => {
+  INCLUDE: (args, filePath, options) => {
     const [rawArg] = args;
     if (!rawArg) {
       throw new MacroError(`Missing path in INCLUDE macro (${filePath}).`);
@@ -69,9 +72,17 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     }
     if (!result.content) return ""; // silent miss: file or section not found
 
-    // NOTE: no cycle detection. If files INCLUDE each other in a loop, this
-    // will overflow the call stack. Add a visited set if it becomes a problem.
-    return replaceMacros(result.content, result.absolutePath!);
+    const targetPath = result.absolutePath!;
+    const visited = options?.visited || new Set<string>();
+    if (visited.has(targetPath)) {
+      const cycle = Array.from(visited).concat(targetPath).join(" -> ");
+      throw new MacroError(`Circular dependency detected: ${cycle}`);
+    }
+
+    const nextVisited = new Set(visited).add(targetPath);
+    const nextOptions = { ...options, visited: nextVisited };
+
+    return replaceMacros(result.content, targetPath, nextOptions);
   },
   GUIDE_REF: (args, filePath, options) => {
     const [guideId] = args;
@@ -112,21 +123,21 @@ defineFeatureMacro("BASELINE_STATUS", {
 
 
 defineFeatureMacro("FEATURE", {
-  content: (args, filePath) => {
+  content: (args, filePath, options) => {
     const [featureId, section] = args;
     let url = `features/${featureId}.md`;
     if (section) {
       url += `#${section}`;
     }
-    return MACRO_HANDLERS.INCLUDE([url], filePath);
+    return MACRO_HANDLERS.INCLUDE([url], filePath, options);
   }
 });
 
 defineFeatureMacro("FEATURE_FALLBACKS", {
-  content: (args, filePath) => {
+  content: (args, filePath, options) => {
     const [featureId] = args;
-    const fallbacks = MACRO_HANDLERS.FEATURE([featureId, "fallbacks"], filePath);
-    const baselineStatus = MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath);
+    const fallbacks = MACRO_HANDLERS.FEATURE([featureId, "fallbacks"], filePath, options);
+    const baselineStatus = MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
     if (!fallbacks) {
       return baselineStatus;
     }
@@ -140,9 +151,9 @@ defineFeatureMacro("FEATURE_FALLBACKS", {
 });
 
 defineFeatureMacro("FEATURE_ISSUES", {
-  content: (args, filePath) => {
+  content: (args, filePath, options) => {
     const [featureId] = args;
-    const included = MACRO_HANDLERS.FEATURE([featureId, "issues"], filePath);
+    const included = MACRO_HANDLERS.FEATURE([featureId, "issues"], filePath, options);
     if (!included) return "";
     return [
       `### Issues to be aware of when using ${getFeatureName(featureId)}`,
@@ -156,10 +167,9 @@ function defineFeatureMacro(name: string, {
   content,
 }: {
   recursive?: boolean;
-  // Producer: may return anything; we coerce to string below.
-  content: (args: string[], filePath: string) => any;
+  content: (args: string[], filePath: string, options?: MacroOptions) => any;
 }): MacroHandler {
-  const fn: MacroHandler = (args, filePath) => {
+  const fn: MacroHandler = (args, filePath, options) => {
     const [featureId] = args;
     if (!featureId) {
       throw new MacroError(`Missing feature ID in ${name} macro (${filePath}).`);
@@ -169,10 +179,10 @@ function defineFeatureMacro(name: string, {
       throw new MacroError(`${validation.errorMessage} (referenced in ${name} macro in ${filePath}).`);
     }
 
-    let result = content(args, filePath);
+    let result = content(args, filePath, options);
     if (!result && result !== 0) return "";
     if (typeof result !== "string") result = String(result);
-    if (recursive) result = replaceMacros(result, filePath);
+    if (recursive) result = replaceMacros(result, filePath, options);
     return result.trim();
   };
   return (MACRO_HANDLERS[name] = fn);
@@ -217,10 +227,15 @@ export function validateMacros(content: string, filePath: string): string[] {
   return errors;
 }
 
-export function replaceMacros(content: string, filePath: string, options: { target?: BuildTarget } = {}): string {
+export function replaceMacros(content: string, filePath: string, options: MacroOptions = {}): string {
+  const canonicalPath = path.resolve(filePath);
+  const visited = options.visited || new Set<string>([canonicalPath]);
+  
+  const nextOptions: MacroOptions = { ...options, visited };
+
   return processMacros(content, (handler, args, match) => {
     try {
-      return handler(args, filePath, options);
+      return handler(args, filePath, nextOptions);
     } catch (err: any) {
       if (err instanceof MacroError) {
         throw err;

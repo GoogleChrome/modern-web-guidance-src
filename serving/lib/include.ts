@@ -28,6 +28,8 @@ export function slugify(text: string): string {
     .replace(/\s+/g, "-");
 }
 
+const canonicalRootDir = fs.realpathSync(rootDir);
+
 /**
  * Resolve and load an INCLUDE argument. Returns `{ isValid: false, errorMessage }`
  * for programmer errors (currently: absolute paths). Returns
@@ -46,11 +48,24 @@ export function resolveInclude(rawArg: string, callerPath: string): IncludeResol
   const sectionId = rest.join("#");
   const absolutePath = rawPath.startsWith("./") || rawPath.startsWith("../")
     ? path.resolve(path.dirname(callerPath), rawPath)
-    : path.resolve(rootDir, rawPath);
+    : path.resolve(canonicalRootDir, rawPath);
 
-  const file = loadFile(absolutePath);
+  // Harden against directory traversal
+  let canonicalPath = absolutePath;
+  try {
+    if (fs.existsSync(absolutePath)) {
+      canonicalPath = fs.realpathSync(absolutePath);
+    }
+  } catch {}
+
+  const isInsideRoot = canonicalPath === canonicalRootDir || canonicalPath.startsWith(canonicalRootDir + path.sep);
+  if (!isInsideRoot) {
+    return { isValid: false, errorMessage: `Path traversal detected: "${rawArg}" resolves outside the repository root.` };
+  }
+
+  const file = loadFile(canonicalPath);
   const content = sectionId ? extractSection(file, sectionId) : file.body;
-  return { isValid: true, content, absolutePath };
+  return { isValid: true, content, absolutePath: canonicalPath };
 }
 
 interface ParsedFile {

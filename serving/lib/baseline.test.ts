@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
 import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature } from './baseline.ts';
+import { features } from 'web-features';
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
     it('returns Baseline since YYYY-MM-DD for known widely available features', () => {
@@ -115,6 +116,17 @@ describe('baseline data', () => {
       assert.ok(resolved.includes('gradients'));
       assert.ok(resolved.includes('conic-gradients'));
       assert.ok(resolved.length >= 2);
+    });
+
+    it('handles circular redirects gracefully by returning empty array', () => {
+      (features as any)['circular-redirect-test-a'] = { kind: 'moved', redirect_target: 'circular-redirect-test-b' };
+      (features as any)['circular-redirect-test-b'] = { kind: 'moved', redirect_target: 'circular-redirect-test-a' };
+
+      const resolved = resolveFeatureId('circular-redirect-test-a');
+      assert.deepStrictEqual(resolved, []);
+
+      delete (features as any)['circular-redirect-test-a'];
+      delete (features as any)['circular-redirect-test-b'];
     });
   });
 
