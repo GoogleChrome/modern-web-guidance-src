@@ -2,19 +2,13 @@
   <img src="assets/modern-web-guidance.svg" alt="Modern Web Guidance Logo" width="150" />
 </p>
 
-<p align="center">
-  <a href="https://github.com/GoogleChrome/modern-web-guidance"><img src="https://img.shields.io/npm/v/modern-web-guidance.svg" alt="npm version"></a>
-  <a href="https://github.com/GoogleChrome/modern-web-guidance/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/modern-web-guidance.svg" alt="license"></a>
-  <a href="https://github.com/GoogleChrome/modern-web-guidance"><img src="https://img.shields.io/github/stars/GoogleChrome/modern-web-guidance.svg" alt="github stars"></a>
-</p>
-
 # Modern Web Guidance
 
 Inject web platform expertise, best practices, and modern API patterns directly into your AI coding agents.
 
 modern-web-guidance is an agent skill (aka [SKILL.md](http://SKILL.md)) that helps your coding agent build better web apps. It uses modern, high-performance, accessible, and secure APIs rather than legacy, outdated workarounds. This project is supported by the Google Chrome team, the Microsoft Edge team, and the web development community.
 
-Find the source code and contribute on [GitHub](https://github.com/GoogleChrome/modern-web-guidance).
+(We build the project in the [modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src) repo.)
 
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
