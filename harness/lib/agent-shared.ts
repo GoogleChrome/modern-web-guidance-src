@@ -52,7 +52,7 @@ export function createIsolatedHome(prefix: string): string {
   const originalHome = process.env.HOME || process.cwd();
   copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
-  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/guidance/pull/479
+  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/modern-web-guidance-src/pull/479
   try {
     const geminiDir = path.join(tempHome, '.gemini');
     fs.mkdirSync(geminiDir, { recursive: true });

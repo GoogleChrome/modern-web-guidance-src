@@ -297,7 +297,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 
     if (pkgJsonPath && pkgJsonPath.includes('node_modules')) {
       const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-      if (pkg.name && pkg.name !== 'guidance') nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
+      if (pkg.name && pkg.name !== 'modern-web-guidance-src') nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
     }
   }
 
