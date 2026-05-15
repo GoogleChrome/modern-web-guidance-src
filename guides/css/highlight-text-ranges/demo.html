@@ -128,20 +128,44 @@
           }
         } else {
           // ---- DOM fallback: wrap matches in <mark> ----
-          if (!searchTerm) {
-            article.innerHTML = originalHTML;
-            return;
+          // Restore original markup before re-wrapping.
+          article.innerHTML = originalHTML;
+          if (!searchTerm) return;
+
+          // Re-collect text nodes from the restored DOM.
+          const walker = document.createTreeWalker(
+            article,
+            NodeFilter.SHOW_TEXT,
+          );
+          const nodes = [];
+          let node = walker.nextNode();
+          while (node) {
+            nodes.push(node);
+            node = walker.nextNode();
           }
 
-          // Escape user input to avoid regex injection / XSS.
-          const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const regex = new RegExp(`(${escaped})`, "gi");
+          // Wrap matches within each text node, preserving structure.
+          for (const textNode of nodes) {
+            const text = textNode.textContent;
+            const lower = text.toLowerCase();
+            if (!lower.includes(searchTerm)) continue;
 
-          // Restore original HTML, then wrap matches.
-          article.innerHTML = originalHTML.replace(
-            regex,
-            '<mark class="search-match">$1</mark>',
-          );
+            const frag = document.createDocumentFragment();
+            let last = 0;
+            let pos = lower.indexOf(searchTerm);
+            while (pos !== -1) {
+              frag.append(text.slice(last, pos));
+              const mark = document.createElement("mark");
+              mark.className = "search-match";
+              // textContent assignment — no HTML parsing, no XSS risk.
+              mark.textContent = text.slice(pos, pos + searchTerm.length);
+              frag.append(mark);
+              last = pos + searchTerm.length;
+              pos = lower.indexOf(searchTerm, last);
+            }
+            frag.append(text.slice(last));
+            textNode.replaceWith(frag);
+          }
         }
       });
     </script>

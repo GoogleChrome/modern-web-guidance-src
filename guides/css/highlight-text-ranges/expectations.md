@@ -7,5 +7,5 @@
 * Text nodes are collected using `TreeWalker` with `NodeFilter.SHOW_TEXT`, rather than manipulating `innerHTML` or wrapping text in extra DOM elements.
 * Feature detection checks for `CSS.highlights` before using the API.
 * A fallback strategy is implemented for browsers that do not support the API (e.g., wrapping text in `<mark>` elements).
-* If the fallback uses `innerHTML`, user input is escaped to prevent XSS.
+* If the fallback builds matches dynamically, search input is either escaped before use in a `RegExp` or inserted via `textContent` (not `innerHTML`) to avoid injection.
 * The highlight visually changes the appearance of matched text (e.g., different background color or text decoration).

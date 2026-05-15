@@ -1,11 +1,8 @@
 ---
-name: css-custom-highlights
-description: Highlight arbitrary text ranges on a page without modifying the DOM, using the CSS Custom Highlight API. For example, highlighting search results, spelling errors, or collaborative editing cursors.
+name: highlight-text-ranges
+description: Highlight arbitrary text ranges on a page such as search results, spelling errors, or collaborative editing cursors.
 web-feature-ids:
   - highlight
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::highlight
 ---
 
 The CSS Custom Highlight API lets you style arbitrary text ranges on a page without modifying the DOM structure. This enables search-result highlighting, syntax coloring, collaborative editing cursors, or spelling and grammar error markers without wrapping text in extra elements or relying on `innerHTML` manipulation.
@@ -89,11 +86,11 @@ Custom highlights are purely presentational and are not exposed to the accessibi
 Highlights should not rely solely on color to convey meaning. If a highlight indicates an error, pair it with another visual indicator such as `text-decoration: wavy underline` or an adjacent text label. Ensure sufficient contrast between the highlight background and text color to meet WCAG 2.1 requirements (at least 4.5:1 for normal text).
 
 ### Fallback strategies
-{{ BASELINE_STATUS("highlight") }}
+
+{{ FEATURE_FALLBACKS("highlight") }}
 
 For browsers that do not support the CSS Custom Highlight API, you should provide a functional base experience where text is still legible, even without the visual highlight.
 
-#### Feature detection
 You can detect support before using the API:
 
 ```javascript
@@ -104,18 +101,34 @@ if (CSS.highlights) {
 }
 ```
 
-#### DOM-based fallback
-
 If the highlight is critical for the user experience, fall back to wrapping matched text in `<mark>` elements. This modifies the DOM, so take care to preserve event listeners and avoid breaking the document structure.
 
 ```javascript
 if (!CSS.highlights) {
-  // IMPORTANT: Escape user input to prevent XSS when using innerHTML.
-  const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(${escaped})`, "gi");
-  article.innerHTML = article.textContent.replace(
-    regex,
-    "<mark>$1</mark>"
-  );
+  // Walk text nodes and wrap matches in <mark>, preserving structure.
+  const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
+
+  const term = searchTerm.toLowerCase();
+  for (const textNode of nodes) {
+    const text = textNode.textContent;
+    let pos = text.toLowerCase().indexOf(term);
+    if (pos === -1) continue;
+
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    while (pos !== -1) {
+      frag.append(text.slice(last, pos));
+      const mark = document.createElement("mark");
+      // textContent assignment avoids HTML injection.
+      mark.textContent = text.slice(pos, pos + term.length);
+      frag.append(mark);
+      last = pos + term.length;
+      pos = text.toLowerCase().indexOf(term, last);
+    }
+    frag.append(text.slice(last));
+    textNode.replaceWith(frag);
+  }
 }
 ```
