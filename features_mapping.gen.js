@@ -15,6 +15,9 @@ window.__featuresMapping = {
   "translator": [
     "translator"
   ],
+  "css-custom-highlights": [
+    "highlight"
+  ],
   "animated-select-picker": [
     "customizable-select"
   ],
