@@ -4,4 +4,4 @@
 - When the context is `standard`, the component hides promotional elements and uses a more subtle "outlined" button style.
 - The component does NOT rely on size queries (`min-width` or `max-width`) for this semantic variation.
 - The implementation uses logical properties (e.g., `inline-size`, `inset-block-start`) for consistent layout.
-- A fallback strategy using standard CSS inheritance or `@supports` is provided for browsers that do not support style queries.
+- A fallback strategy using `@supports` is provided for browsers that do not support style queries.
