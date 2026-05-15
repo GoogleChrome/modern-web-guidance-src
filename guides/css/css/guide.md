@@ -459,7 +459,7 @@ Rendering performance is critical for smooth user experiences, especially in hea
 }
 
 .row {
-  --row-gap: 8px;
+  --row-gap: .4rem;
   --title-height: 1lh;
   --description-height: 0.85lh;
 
