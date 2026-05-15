@@ -22,18 +22,12 @@ pnpm install
 pnpm setup:playwright
 ```
 
-For a detailed walkthrough of the project architecture and contributor workflow, see [CONTEXT.md](./CONTEXT.md).
+For a walkthrough of the project architecture, see [CONTEXT.md](./CONTEXT.md).
 
 ## Quality Control
 
-Before submitting a pull request, please ensure your changes pass the quality control suite. Run the following command from the root:
+Before submitting a pull request, please ensure your changes pass lint, typecheck, tests, etc:
 
 ```bash
 pnpm preflight
 ```
-
-This command will:
-- Build all packages.
-- Typecheck the codebase.
-- Lint the code using `oxlint`.
-- Run all tests.
