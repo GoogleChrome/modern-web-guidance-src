@@ -208,3 +208,7 @@ Active contributors are what keep this project moving forward. Thanks to everyon
 <a href="https://github.com/GoogleChrome/modern-web-guidance/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance" />
 </a>
+
+## Attribution
+
+Portions of the documentation and compatibility data used in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors, and [W3C](https://www.w3.org/) specifications.
