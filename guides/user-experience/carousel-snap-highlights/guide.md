@@ -18,13 +18,11 @@ To highlight snapped items, you must establish a scroll-snap container, define t
 The parent container must have `scroll-snap-type` enabled.
 
 ```html
-<!-- MANDATORY: Wrap the carousel container in role="region" and set aria-roledescription="carousel" along with an accessible name -->
-<div class="carousel" role="region" aria-roledescription="carousel" aria-label="Highlighted products">
-  <!-- MANDATORY: Set aria-roledescription="slide" on individual items -->
-  <div class="carousel-item" aria-roledescription="slide" aria-label="Product 1 of 3">
+<div class="carousel">
+  <div class="carousel-item">
     <div class="card">Product 1 content</div>
   </div>
-  <div class="carousel-item" aria-roledescription="slide" aria-label="Product 2 of 3">
+  <div class="carousel-item">
     <div class="card">Product 2 content</div>
   </div>
 </div>
@@ -102,8 +100,9 @@ Visual highlights for snapped items can improve the UX, but the snapped item is 
 
 Snapping occurs due to scrolling, which does not move keyboard focus. However, keyboard focus may cause the scroll container to move, causing a change in the snapped item, which may or may not be the focused item. This will likely be a source of confusion for users and is discouraged.
 
-### Autoplay Considerations
-If your carousel automatically advances or auto-scrolls through slides using continuous timers, you MUST provide a visible, accessible button allowing users to pause the autoplay mechanism. Additionally, default the carousel to a static, paused state if the user has `prefers-reduced-motion: reduce` enabled.
+> [!NOTE]
+> Detailed accessibility requirements for carousels (such as ARIA roles, slide attributes, and complex keyboard patterns) have been intentionally omitted from this guide. Carousel accessibility is highly nuanced and context-dependent; refer to established accessibility standards and perform thorough user testing for production environments.
+
 
 ## Fallback strategies
 
