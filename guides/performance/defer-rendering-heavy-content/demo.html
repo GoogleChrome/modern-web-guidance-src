@@ -27,26 +27,9 @@
             border-bottom: 1px solid #e2e8f0;
         }
 
-        .layout {
-            display: flex;
-            gap: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-            align-items: flex-start;
-        }
-
         .feed {
-            flex: 1;
-        }
-
-        .sidebar {
-            width: 350px;
-            position: sticky;
-            top: 20px;
-            background: #fff;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            max-width: 800px;
+            margin: 0 auto;
         }
 
         .card {
@@ -56,7 +39,6 @@
             margin-bottom: 2rem;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             min-height: 200px;
-            cursor: pointer;
         }
 
         .card h2 {
@@ -71,10 +53,6 @@
             margin-top: 1rem;
         }
 
-        .spacer {
-            height: 1500px;
-        }
-
         /* Test Requirement: .off-screen-card set to content-visibility: auto */
         .off-screen-card {
             content-visibility: auto;
@@ -83,7 +61,7 @@
 
         /* Test Requirement: .debug-panel hidden using content-visibility: hidden */
         .debug-panel {
-            max-width: 1200px;
+            max-width: 800px;
             margin: 2rem auto;
             padding: 2rem;
             background: #1e293b;
@@ -111,25 +89,6 @@
                 min-height: 260px;
             }
         }
-
-        .sidebar-text {
-            margin-bottom: 1rem;
-            padding: 1rem;
-            background: #f1f5f9;
-            border-left: 4px solid var(--primary);
-            border-radius: 4px;
-        }
-
-        .sidebar-text-fallback {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            margin: -1px;
-            padding: 0;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-        }
     </style>
 </head>
 
@@ -137,57 +96,31 @@
     <header>
         <h1>Deferring Rendering Best Practices</h1>
         <p>This demo applies <code>content-visibility: auto</code> for off-screen cards,
-            <code>content-visibility: hidden</code> for the debug panel, and <code>hidden="until-found"</code> for
-            searchable sidebar details.</p>
+            and <code>content-visibility: hidden</code> for the debug panel.</p>
         <button id="toggle-debugBtn"
             style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Toggle
             Debug Panel</button>
     </header>
 
-    <div class="layout">
-        <div class="feed" id="feed">
-            <!-- First cards are in the initial viewport, NO off-screen-card class -->
-            <div class="card" data-id="1">
-                <h2>Card #1 (Initial View)</h2>
-                <p>This card is visible immediately and renders normally without deferred layout logic.</p>
-                <div class="card-img"></div>
-            </div>
-            <div class="card" data-id="2">
-                <h2>Card #2 (Initial View)</h2>
-                <p>Another card perfectly in the initial viewport or immediately following.</p>
-                <div class="card-img"></div>
-            </div>
-
-
-            <!-- Followed by off-screen cards -->
-            <div class="card off-screen-card" data-id="3">
-                <h2>Card #3 (Deferred)</h2>
-                <p>Scroll down! This card is completely deferred using <code>content-visibility: auto</code>.</p>
-                <div class="card-img"></div>
-            </div>
+    <div class="feed" id="feed">
+        <!-- First cards are in the initial viewport, NO off-screen-card class -->
+        <div class="card" data-id="1">
+            <h2>Card #1 (Initial View)</h2>
+            <p>This card is visible immediately and renders normally without deferred layout logic.</p>
+            <div class="card-img"></div>
+        </div>
+        <div class="card" data-id="2">
+            <h2>Card #2 (Initial View)</h2>
+            <p>Another card perfectly in the initial viewport or immediately following.</p>
+            <div class="card-img"></div>
         </div>
 
-        <aside class="sidebar">
-            <h2>Detailed Information</h2>
-            <p>Click a card for hidden details, or use Cmd/Ctrl+F to search natively for keywords.</p>
-
-            <div id="sidebar-content">
-                <!-- Sidebar contents with hidden="until-found" -->
-                <div class="sidebar-text" id="info-1" hidden="until-found">
-                    <strong>Details for Card #1</strong>
-                    <p>Secret payload for Card #1! This is perfectly indexed and searchable by the browser's Find in
-                        Page.</p>
-                </div>
-                <div class="sidebar-text" id="info-2" hidden="until-found">
-                    <strong>Details for Card #2</strong>
-                    <p>Secret payload for Card #2! Accessible and performant.</p>
-                </div>
-                <div class="sidebar-text" id="info-3" hidden="until-found">
-                    <strong>Details for Card #3</strong>
-                    <p>Secret payload for Card #3! Out of sight, out of main thread blocks.</p>
-                </div>
-            </div>
-        </aside>
+        <!-- Followed by off-screen cards -->
+        <div class="card off-screen-card" data-id="3">
+            <h2>Card #3 (Deferred)</h2>
+            <p>Scroll down! This card is completely deferred using <code>content-visibility: auto</code>.</p>
+            <div class="card-img"></div>
+        </div>
     </div>
 
     <!-- Debug panel -->
@@ -211,61 +144,11 @@
                 <div class="card-img"></div>
             `;
             document.getElementById('feed').appendChild(card);
-
-            // Generate Sidebar Details
-            const sidebarText = document.createElement('div');
-            sidebarText.className = 'sidebar-text';
-            sidebarText.id = `info-${i}`;
-            sidebarText.setAttribute('hidden', 'until-found');
-            sidebarText.innerHTML = `
-                <strong>Details for Card #${i}</strong>
-                <p>Secret payload for Card #${i}</p>
-            `;
-            document.getElementById('sidebar-content').appendChild(sidebarText);
         }
 
         // Toggle debug panel
         document.getElementById('toggle-debugBtn').addEventListener('click', () => {
             document.getElementById('debug-panel').classList.toggle('active');
-        });
-
-        // Explicit JavaScript feature detection check for fallback
-        if (!('onbeforematch' in HTMLElement.prototype)) {
-            document.querySelectorAll('[hidden="until-found"]').forEach(el => {
-                el.removeAttribute('hidden');
-                // Use alternative CSS strategy for fallback unsupported browsers
-                el.classList.add('sidebar-text-fallback');
-            });
-
-            // Native selection fallback pseudo-code
-            document.addEventListener('selectionchange', () => {
-                const selection = window.getSelection();
-                if (!selection.rangeCount) return;
-                let node = selection.anchorNode;
-                if (node && node.nodeType === 3) node = node.parentNode;
-                if (node && node.closest) {
-                    const sidebarText = node.closest('.sidebar-text');
-                    if (sidebarText && sidebarText.classList.contains('sidebar-text-fallback')) {
-                        sidebarText.classList.remove('sidebar-text-fallback');
-                    }
-                }
-            });
-        }
-
-        // Interactive logic linking cards and sidebar details
-        document.addEventListener('click', (e) => {
-            const card = e.target.closest('.card');
-            if (card) {
-                const id = card.dataset.id;
-                const cardText = document.getElementById(`info-${id}`);
-                if (cardText) {
-                    if (cardText.hasAttribute('hidden')) {
-                        cardText.removeAttribute('hidden');
-                    } else if (cardText.classList.contains('sidebar-text-fallback')) {
-                        cardText.classList.remove('sidebar-text-fallback');
-                    }
-                }
-            }
         });
     </script>
 </body>
