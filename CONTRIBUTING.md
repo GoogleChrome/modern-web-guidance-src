@@ -1,6 +1,8 @@
 # Contributing to Guidance
 
-We'd love to accept your patches! Before we can take them, we have to jump a couple of legal hurdles.
+We'd love to accept your patches! We believe it is critical that developers, and their AI agents, have access to the highest quality documentation and guidance.
+
+Just like all other Google open source projects, we require a signed Contributor License Agreement (CLA) for any contribution (even one that just changes documentation).
 
 ## Contributor License Agreements
 
