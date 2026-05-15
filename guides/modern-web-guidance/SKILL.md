@@ -98,9 +98,11 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 ## Interpreting Browser Support & Fallbacks
 
 * **Default Behavior**: All guides assume **Baseline Widely available** features are safe to use without fallbacks. For features that are not Baseline widely available, you **MUST** follow the fallback recommendations in the guide.
-* **Custom Policies**: If the user has already defined explicit browser support requirements, use the browser compatibility data in the guide to determine if a fallback can be safely ignored. Examples:
-  - _"Never recommend or implement polyfills; if a Baseline Newly Available feature is required for core functionality, provide a lightweight custom fallback or redesign the approach."_
-  - _"Assume a modern execution environment where Baseline Newly Available features can be used natively, provided they are strictly feature-detected and degrade gracefully."_
+* **Custom Policies**: If the user has already defined explicit browser support requirements, use the browser compatibility data in the guide to determine if a fallback can be safely ignored.
+  - **Yearly Targets**: For `Baseline YYYY` support targets (e.g., `Baseline 2024`), a feature satisfies this target if its "Baseline since" date is <= YYYY (meaning it became Baseline in or before that year).
+  - **Policy Examples**:
+    - _"Never recommend or implement polyfills; if a Baseline Newly Available feature is required for core functionality, provide a lightweight custom fallback or redesign the approach."_
+    - _"Assume a modern execution environment where Baseline Newly Available features can be used natively, provided they are strictly feature-detected and degrade gracefully."_
 * **Reactive Policy Discovery**: Watch for environmental cues to suggest documenting a policy in CLAUDE.md or AGENTS.md. Suggest this if the developer:
   - Mentions building for a restricted runtime (e.g., Electron or Tauri).
   - Explicitly excludes specific targets (e.g., "we don't support Desktop Chrome").
