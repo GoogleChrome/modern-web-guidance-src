@@ -37,7 +37,7 @@ Walk the decision tree top-to-bottom and stop at the first match. Note that layo
 
 **Do:**
 
-- Use logical properties (`inline-size`, `block-size`, `margin-inline`, `padding-block`, `inset-inline-start`) for layout dimensions and spacing — see the [CSS guide](../../guides/css/css/guide.md) for full coverage.
+- Use logical properties (`inline-size`, `block-size`, `margin-inline`, `padding-block`, `inset-inline-start`) for layout dimensions and spacing — see {{ GUIDE_REF("css") }} for full coverage.
 - Apply the content-first vs layout-first mental model: flexbox when items dictate flow, grid when you define the skeleton first.
 - Use the `place-*` shorthands (`place-content`, `place-items`, `place-self`) to align across both axes in one declaration.
 - Reach for intrinsic sizing (`min-content`, `max-content`, `fit-content()`) and flexible tracks (`fr`, `minmax()`) before fixed `width`/`height` — fewer media queries, more resilient layouts.
@@ -50,7 +50,7 @@ Walk the decision tree top-to-bottom and stop at the first match. Note that layo
 body.centered  { display: grid; place-content: center; min-block-size: 100dvb; }
 ```
 
-> For `calc-size()` and constraint-aware intrinsic sizing, see [Calculate with intrinsic sizes](../../guides/user-experience/calculate-with-intrinsic-sizes/).
+> For `calc-size()` and constraint-aware intrinsic sizing, see {{ GUIDE_REF("calculate-with-intrinsic-sizes") }}.
 
 ## 2 Flexbox
 
@@ -202,7 +202,7 @@ Query the size (or computed style) of an ancestor container rather than the view
 }
 ```
 
-> For component-driven responsive styling patterns, see [Size-aware styling](../../guides/user-experience/size-aware-styling/) and [Fluid scaling](../../guides/user-experience/fluid-scaling/).
+> For component-driven responsive styling patterns, see {{ GUIDE_REF("size-aware-styling") }} and {{ GUIDE_REF("fluid-scaling") }}.
 
 ## 5 Native overlays, anchor positioning, and stacking contexts
 
@@ -223,7 +223,7 @@ Query the size (or computed style) of an ancestor container rather than the view
 - Don't mix physical and logical keywords in a single `position-area` value — pick one coordinate system.
 - Feature-detect with `@supports (anchor-name: --x)` and provide an absolute-position fallback.
 
-> For full implementation detail, polyfill strategies, and `popover` value reference, see [Declarative dialog and popover control](../../guides/user-experience/declarative-dialog-popover-control/) and [Position-aware tooltips](../../guides/user-experience/position-aware-tooltips/). For anchor positioning applied to menus and tab indicators, see [Resilient context menus and nested dropdowns](../../guides/user-experience/resilient-context-menus-and-nested-dropdowns/) and [Anchor positioning tab underline](../../guides/user-experience/anchor-positioning-tab-underline/).
+> For full implementation detail, polyfill strategies, and `popover` value reference, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("position-aware-tooltips") }}. For anchor positioning applied to menus and tab indicators, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }} and {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
 
 ## 6 Overflow tracking and layout stability
 
@@ -261,7 +261,7 @@ Manage layout shifts, scrollbars, and clipping predictably.
 }
 ```
 
-> For `overflow: clip` and `overflow-clip-margin` in depth, see [Overflow clipping control](../../guides/user-experience/overflow-clipping-control/). For scrollbar color, sizing, and theming, see [Customize scrollbar color and thickness](../../guides/user-experience/customize-scrollbar-color-and-thickness/), [Adapt scrollbar to light/dark preferences](../../guides/user-experience/adapt-scrollbar-to-light-dark-preferences/), and [Adapt scrollbar to contrast preferences](../../guides/user-experience/adapt-scrollbar-to-contrast-preferences/).
+> For `overflow: clip` and `overflow-clip-margin` in depth, see {{ GUIDE_REF("overflow-clipping-control") }}. For scrollbar color, sizing, and theming, see {{ GUIDE_REF("customize-scrollbar-color-and-thickness") }}, {{ GUIDE_REF("adapt-scrollbar-to-light-dark-preferences") }}, and {{ GUIDE_REF("adapt-scrollbar-to-contrast-preferences") }}.
 
 ## 7 Viewport mechanics and track distribution
 
@@ -270,11 +270,11 @@ Manage layout shifts, scrollbars, and clipping predictably.
 - Use `dvh`/`dvw` for mobile layout containers that must account for browser UI shifting (URL bar collapse/expand).
 - Don't use `100vw` for full-width layout — it ignores scrollbar width and causes horizontal overflow. Use `100%`, `100dvw`, or `100svw` instead.
 
-> For the full viewport unit reference (`svh`, `lvh`, `dvi`, `dvb`, etc.), see the [CSS guide](../../guides/css/css/guide.md).
+> For the full viewport unit reference (`svh`, `lvh`, `dvi`, `dvb`, etc.), see {{ GUIDE_REF("css") }}.
 
 ## 8 Grid lanes (aka masonry)
 
-{{ BASELINE_STATUS("grid-lanes") }}
+{{ BASELINE_STATUS("masonry") }}
 
 The spec is in development. The currently agreed-upon name is "grid lanes" (e.g., `display: grid-lanes`). Firefox ships `grid-template-rows: masonry` behind a flag; no other engines ship it in stable as of this writing.
 
