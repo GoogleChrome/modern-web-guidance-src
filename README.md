@@ -1,5 +1,7 @@
 # Guidance
 
+![Modern Web Guidance](./assets/modern-web-guidance.svg)
+
 A unified repository for modern web development guidance, containing both a Skill/CLI distribution and an MCP server for AI-assisted development, alongside an evaluation suite for measuring AI adoption of modern web APIs.
 
 ## Project Structure
