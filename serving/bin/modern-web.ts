@@ -75,7 +75,7 @@ async function main() {
 
       const searchItems = results.map(r => ({
         guide_id: r.id,
-        similarity: parseFloat(r.similarity),
+        similarity: Number(r.similarity),
       }));
       await getLogger().logSearchResult(latencyMs, true, searchItems);
 
