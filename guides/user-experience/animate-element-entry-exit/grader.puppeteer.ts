@@ -42,6 +42,16 @@ async function waitForAnimationSpy(page: Page, triggerAction: () => Promise<void
   await page.waitForFunction(() => (window as any)._animationObserved, { timeout: 2000 });
 }
 
+function getChromePath() {
+  if (process.platform === 'darwin') {
+    return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  }
+  if (process.platform === 'win32') {
+    return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  }
+  return 'google-chrome';
+}
+
 describe(`animate-element-entry-exit Expectations (Puppeteer): ${demoName}`, () => {
   let browser: Browser;
   let page: Page;
@@ -50,6 +60,7 @@ describe(`animate-element-entry-exit Expectations (Puppeteer): ${demoName}`, () 
   // FLAKINESS RISK: Browser launching/connection can fail or timeout under heavy CI load.
   test.before(async () => {
     browser = await puppeteer.launch({
+      executablePath: getChromePath(),
       headless: true,
     });
   });
