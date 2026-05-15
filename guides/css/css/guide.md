@@ -447,6 +447,7 @@ Rendering performance is critical for smooth user experiences, especially in hea
 - Prefer to animate `opacity` and `transform` (including individual transform properties, e.g. `translate` instead of `left/right/top/bottom`) to ensure animations stay on the compositor thread.
 - Use `transition-behavior: allow-discrete` + `@starting-style` to animate layout properties like `display` or `<dialog>` state natively.
 - Always pair `content-visibility` with `contain-intrinsic-size` to prevent scrollbar jumps (CLS).
+- When setting `contain-intrinsic-size` use the `auto` keyword and a value that’s derived from what is known about the contents (i.e. text size, spacing, size of graphics, character count). Preferably use units such as `rem`, `lh`, `cap`, or `ch` that match values used for the elements within the contents rather than `px`. If the content for items in a group is not consistently sized, then use an average size.
 - Use `contain: layout style paint` to isolate component rendering updates.
 
 #### Code Example: Render Optimization
@@ -454,7 +455,19 @@ Rendering performance is critical for smooth user experiences, especially in hea
 ```css
 .large-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 800px;
+  contain-intrinsic-block-size: auto 800px;
+}
+
+.row {
+  --row-gap: .4rem;
+  --title-height: 1lh;
+  --description-height: 0.85lh;
+
+  display: grid;
+  row-gap: var(--row-gap);
+  content-visibility: auto;
+  /* The sum of the title height, row gap, and description height should be the size of the contents when skipped for rendering. */
+  contain-intrinsic-block-size: auto calc(var(--title-height) + var(--row-gap) + var(--description-height));
 }
 
 .popover-reveal {
