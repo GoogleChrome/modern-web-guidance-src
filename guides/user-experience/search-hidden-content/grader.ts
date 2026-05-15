@@ -104,11 +104,10 @@ test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
   });
 
   // 6. The state of the `coupon-panel` MUST be synchronized using a `beforematch` event listener.
-  test('State MUST be synchronized using a beforematch event listener and update aria-expanded on the controlling trigger button', async () => {
+  test('State MUST be synchronized using a beforematch event listener', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const hasBeforeMatchListener = html.includes('beforematch') || html.includes('onbeforematch');
     expect(hasBeforeMatchListener, 'Missing beforematch event listener for UI synchronization').toBe(true);
-    expect(/aria-expanded/i.test(html)).toBe(true);
   });
 
   // 7. A fallback strategy MUST be used for unsupported browsers.

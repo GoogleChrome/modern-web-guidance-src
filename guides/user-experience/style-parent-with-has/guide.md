@@ -26,7 +26,6 @@ By combining `:has()` with `:user-invalid`, we can declaratively style any ances
 <form>
   <div class="card-section">
     <div class="header">
-      <!-- Assume an <h1> precedes this section in the full page layout -->
       <h3>Profile Settings</h3>
       <span class="status-icon"></span>
     </div>

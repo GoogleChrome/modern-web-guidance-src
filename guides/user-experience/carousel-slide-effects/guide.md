@@ -4,9 +4,6 @@ description: Create a carousel of slides with images or other visual elements, w
 web-feature-ids:
   - scroll-driven-animations
   - scroll-snap
-sources:
-  - https://scroll-driven-animations.style/
-  - https://scroll-driven-animations.style/demos/parallax-carousel/css/
 ---
 
 # Build Carousel Slide Effects
@@ -27,9 +24,6 @@ Here’s how to create carousel slide effects:
       …
     </ul>
     ```
-
-    > [!NOTE]
-    > **Scope.** This guide is about the *visual slide effect* applied as items move through a horizontal scroller. It does not prescribe a complete accessible carousel widget. If you are building a true carousel with previous/next controls, autoplay, or programmatic slide selection, layer the [APG carousel pattern](https://www.w3.org/WAI/ARIA/apg/patterns/carousel/) on top — that pattern's `role="region"` + `aria-roledescription="carousel"` (and per-slide `aria-roledescription="slide"`) only carry the right meaning when paired with the matching keyboard and control contract. Don't add those role descriptions to plain scrolling lists.
 
     ```css
     .scroller {
@@ -70,22 +64,24 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 
 ```css
 @keyframes animate {
-  0% { scale: 0.5; }
-  50% { scale: 1; }
-  100% { scale: 0.5; }
+  0% {
+    scale: 0.5;
+  }
+
+  50% {
+    scale: 1;
+  }
+
+  100% {
+    scale: 0.5;
+  }
 }
 
 .scroller > * {
+  /* Applies the animation using an `auto` duration */
   animation: animate auto linear both;
+  /* Sets the animation timeline to use an anonymous view progress timeline, tracking the element's progress through the scroller on the inline axis */
   animation-timeline: view(inline);
-}
-
-/* MANDATORY Copy-Paste Safety: Wrap continuous animation properties in a reduced motion check directly inside the code block */
-@media (prefers-reduced-motion: reduce) {
-  .scroller > * {
-    animation: none !important;
-    scale: 1 !important;
-  }
 }
 ```
 
@@ -93,23 +89,27 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 
 ```css
 @keyframes animate {
-  0% { scale: 0.5; }
-  50% { scale: 1; }
-  100% { scale: 0.5; }
-}
-
-.scroller > * {
-  animation: animate auto linear both;
-  view-timeline: --item inline;
-  animation-timeline: --item;
-}
-
-/* MANDATORY Copy-Paste Safety: Disable motion for sensitive users */
-@media (prefers-reduced-motion: reduce) {
-  .scroller > * {
-    animation: none !important;
-    scale: 1 !important;
+  0% {
+    scale: 0.5;
   }
+
+  50% {
+    scale: 1;
+  }
+
+  100% {
+    scale: 0.5;
+  }
+}
+
+/* This creates a named view-timeline on each carousel item. The timeline is used to drive the animation that is applied on the same element. */
+.scroller > * {
+  /* Applies the animation using an `auto` duration */
+  animation: animate auto linear both;
+  /* Defines a named view progress timeline, tracking the element's progress through the scroller on the inline axis */
+  view-timeline: --item inline;
+  /* Sets the animation timeline to use the named view progress timeline defined above */
+  animation-timeline: --item;
 }
 ```
 
@@ -137,12 +137,9 @@ When using the `view-timeline` property to create a scroll-driven animation:
 - **OPTIONAL** be explicit about the axis to track: When not targeting the default `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `view-timeline-axis`.
 - **DO** make sure the scope of the lookup works: When the element that is declaring the `view-timeline` is not a flat tree ancestor of the animated element, hoist up the visibility of the `view-timeline`’s name by using `timeline-scope` on a shared ancestor.
 
-### Autoplay Considerations
-If your carousel automatically advances or auto-scrolls through slides using continuous timers, you MUST provide a visible, accessible button allowing users to pause the autoplay mechanism. Additionally, default the carousel to a static, paused state if the user has `prefers-reduced-motion: reduce` enabled.
+## Browser support and fallback strategies
 
-## Fallback strategies
-
-{{ FEATURE_FALLBACKS("scroll-driven-animations") }}
+{{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
 For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 

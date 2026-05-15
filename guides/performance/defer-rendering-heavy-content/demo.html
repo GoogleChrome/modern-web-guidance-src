@@ -147,16 +147,12 @@
     <div class="layout">
         <div class="feed" id="feed">
             <!-- First cards are in the initial viewport, NO off-screen-card class -->
-            <!--
-                aria-expanded lives on the CONTROL (the clickable card), not on the
-                hidden panel it reveals. aria-controls points at the panel.
-            -->
-            <div class="card" data-id="1" role="button" tabindex="0" aria-controls="info-1" aria-expanded="false">
+            <div class="card" data-id="1">
                 <h2>Card #1 (Initial View)</h2>
                 <p>This card is visible immediately and renders normally without deferred layout logic.</p>
                 <div class="card-img"></div>
             </div>
-            <div class="card" data-id="2" role="button" tabindex="0" aria-controls="info-2" aria-expanded="false">
+            <div class="card" data-id="2">
                 <h2>Card #2 (Initial View)</h2>
                 <p>Another card perfectly in the initial viewport or immediately following.</p>
                 <div class="card-img"></div>
@@ -164,7 +160,7 @@
 
 
             <!-- Followed by off-screen cards -->
-            <div class="card off-screen-card" data-id="3" role="button" tabindex="0" aria-controls="info-3" aria-expanded="false">
+            <div class="card off-screen-card" data-id="3">
                 <h2>Card #3 (Deferred)</h2>
                 <p>Scroll down! This card is completely deferred using <code>content-visibility: auto</code>.</p>
                 <div class="card-img"></div>
@@ -176,10 +172,7 @@
             <p>Click a card for hidden details, or use Cmd/Ctrl+F to search natively for keywords.</p>
 
             <div id="sidebar-content">
-                <!--
-                    Sidebar panels carry hidden="until-found" but NOT aria-expanded —
-                    aria-expanded belongs on the control, not on the controlled panel.
-                -->
+                <!-- Sidebar contents with hidden="until-found" -->
                 <div class="sidebar-text" id="info-1" hidden="until-found">
                     <strong>Details for Card #1</strong>
                     <p>Secret payload for Card #1! This is perfectly indexed and searchable by the browser's Find in
@@ -208,14 +201,10 @@
     <script>
         // Generate additional offscreen elements dynamically
         for (let i = 4; i <= 20; i++) {
-            // Generate Feed Card — the card IS the toggle control for its sidebar panel
+            // Generate Feed Card
             const card = document.createElement('div');
             card.className = 'card off-screen-card';
             card.dataset.id = i;
-            card.setAttribute('role', 'button');
-            card.setAttribute('tabindex', '0');
-            card.setAttribute('aria-controls', `info-${i}`);
-            card.setAttribute('aria-expanded', 'false');
             card.innerHTML = `
                 <h2>Card #${i} (Deferred)</h2>
                 <p>This heavy content is cleanly deferred dynamically.</p>
@@ -223,7 +212,7 @@
             `;
             document.getElementById('feed').appendChild(card);
 
-            // Generate Sidebar Details (controlled panel — no aria-expanded on the panel itself)
+            // Generate Sidebar Details
             const sidebarText = document.createElement('div');
             sidebarText.className = 'sidebar-text';
             sidebarText.id = `info-${i}`;
@@ -238,16 +227,6 @@
         // Toggle debug panel
         document.getElementById('toggle-debugBtn').addEventListener('click', () => {
             document.getElementById('debug-panel').classList.toggle('active');
-        });
-
-        // beforematch state synchronization: when the browser reveals a hidden panel
-        // via Find in Page, flip aria-expanded on the CONTROLLING card (not the panel).
-        document.querySelectorAll('.sidebar-text').forEach(el => {
-            el.addEventListener('beforematch', () => {
-                const id = el.id.replace('info-', '');
-                const card = document.querySelector(`.card[data-id="${id}"]`);
-                card?.setAttribute('aria-expanded', 'true');
-            });
         });
 
         // Explicit JavaScript feature detection check for fallback
@@ -268,46 +247,24 @@
                     const sidebarText = node.closest('.sidebar-text');
                     if (sidebarText && sidebarText.classList.contains('sidebar-text-fallback')) {
                         sidebarText.classList.remove('sidebar-text-fallback');
-                        const id = sidebarText.id.replace('info-', '');
-                        const card = document.querySelector(`.card[data-id="${id}"]`);
-                        card?.setAttribute('aria-expanded', 'true');
                     }
                 }
             });
         }
 
-        // Interactive logic linking cards and sidebar details — proper toggle behavior
-        function toggleCard(card) {
-            const id = card.dataset.id;
-            const cardText = document.getElementById(`info-${id}`);
-            if (!cardText) return;
-
-            const isHidden = cardText.hasAttribute('hidden') || cardText.classList.contains('sidebar-text-fallback');
-            if (isHidden) {
-                cardText.removeAttribute('hidden');
-                cardText.classList.remove('sidebar-text-fallback');
-                card.setAttribute('aria-expanded', 'true');
-            } else {
-                if ('onbeforematch' in HTMLElement.prototype) {
-                    cardText.setAttribute('hidden', 'until-found');
-                } else {
-                    cardText.classList.add('sidebar-text-fallback');
-                }
-                card.setAttribute('aria-expanded', 'false');
-            }
-        }
-
+        // Interactive logic linking cards and sidebar details
         document.addEventListener('click', (e) => {
             const card = e.target.closest('.card');
-            if (card) toggleCard(card);
-        });
-
-        // Cards expose role="button"; honor the keyboard activation contract.
-        document.addEventListener('keydown', (e) => {
-            const card = e.target.closest('.card');
-            if (card && (e.key === 'Enter' || e.key === ' ')) {
-                e.preventDefault();
-                toggleCard(card);
+            if (card) {
+                const id = card.dataset.id;
+                const cardText = document.getElementById(`info-${id}`);
+                if (cardText) {
+                    if (cardText.hasAttribute('hidden')) {
+                        cardText.removeAttribute('hidden');
+                    } else if (cardText.classList.contains('sidebar-text-fallback')) {
+                        cardText.classList.remove('sidebar-text-fallback');
+                    }
+                }
             }
         });
     </script>
