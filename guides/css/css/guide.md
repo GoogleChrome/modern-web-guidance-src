@@ -467,7 +467,7 @@ Rendering performance is critical for smooth user experiences, especially in hea
   row-gap: var(--row-gap);
   content-visibility: auto;
   /* The sum of the title height, row gap, and description height should be the size of the contents when skipped for rendering. */
-  contain-intrinsic-block-size: auto calc(var(--title-height) + var(--gap) + var(--description-height));
+  contain-intrinsic-block-size: auto calc(var(--title-height) + var(--row-gap) + var(--description-height));
 }
 
 .popover-reveal {
