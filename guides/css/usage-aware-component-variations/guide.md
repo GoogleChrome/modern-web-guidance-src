@@ -61,7 +61,7 @@ In the context of design system components, style queries become invaluable in a
 
 {{ FEATURE_FALLBACKS("container-style-queries") }}
 
-**MANDATORY**: Provide a safe default experience (progressive enhancement). Since style queries are currently **Limited Availability**, use a manual fallback if the context is critical.
+**MANDATORY**: Provide a safe default experience (progressive enhancement), and use a manual fallback if the context is critical.
 
 ```css
 /* Fallback for browsers without style query support */
