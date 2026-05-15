@@ -10,6 +10,7 @@ export interface StoreUseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount?: number;
   chunkContent?: string;
   vector?: number[];
   distance?: number;
@@ -29,6 +30,7 @@ interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount?: number;
 }
 
 export interface BuildOptions {
@@ -186,6 +188,7 @@ export interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount: number;
 }
 
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
@@ -253,12 +256,14 @@ async function processSingleGuideFile(
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
+  const tokenCount = await embedder.countTokens(processedMarkdown);
 
   useCases.push({
     id,
     description: data.description,
     category,
     featuresUsed,
+    tokenCount,
   });
 
   const chunks = IS_NO_CHUNKING
@@ -266,7 +271,7 @@ async function processSingleGuideFile(
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
   for (const chunk of chunks) {
-    const embeddingText = `${id} (${category})\n\n${chunk}`;
+    const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({
@@ -274,6 +279,7 @@ async function processSingleGuideFile(
       description: data.description,
       category,
       featuresUsed,
+      tokenCount,
       chunkContent: chunk,
       vector
     });

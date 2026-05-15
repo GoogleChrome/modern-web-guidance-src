@@ -81,9 +81,9 @@ npx modern-web-guidance@latest retrieve "animate-to-from-top-layer"
 
 #### Google Antigravity: `agy plugin install https://github.com/GoogleChrome/modern-web-guidance`
 
-#### Github CLI: `gh skill install GoogleChrome/modern-web-guidance`
+#### GitHub CLI: `gh skill install GoogleChrome/modern-web-guidance`
 
-#### Github Copilot CLI:
+#### GitHub Copilot CLI:
 
 ```shell
 /plugin marketplace add GoogleChrome/modern-web-guidance
@@ -103,10 +103,14 @@ We don't recommend this method, but it will work.
 
 ## Updating
 
+If you installed the skill using `npx modern-web-guidance@latest install`, then you can update with this command:
+
 ```sh
 # Update all installed skills
 npx modern-web-guidance@latest update
 ```
+
+Otherwise, consult your agent's documentation for updating plugins and skills.
 
 ## Evals to prove this works well ;)
 
@@ -164,3 +168,15 @@ If you want to customize the skill packs installed and the scope at which they a
 # Choose which skills you want
 npx modern-web-guidance@latest install --choose
 ```
+
+## Usage Statistics & Opt-Out
+
+Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the Modern Web Guidance tool. See [modern-web.ts](https://github.com/GoogleChrome/guidance/blob/main/serving/bin/modern-web.ts) to see exactly what data is collected.
+
+Data collection is enabled by default. You can opt-out completely at any time (suppressing all local console telemetry warnings, search/retrieve metric dispatches, and installation telemetry) by setting the `DISABLE_TELEMETRY=1` environment variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
+
+```bash
+export DISABLE_TELEMETRY=1
+```
+
+Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).

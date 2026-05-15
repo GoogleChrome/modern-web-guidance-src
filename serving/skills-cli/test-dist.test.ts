@@ -18,6 +18,7 @@ export function assertSearchResults(output: string) {
     const topResult = results[0];
     assert.ok(topResult.id, 'Top result should have an id');
     assert.ok(topResult.description, 'Top result should have a description');
+    assert.ok(topResult.tokenCount !== undefined, 'Top result should have a tokenCount');
     assert.ok(topResult.similarity, 'Top result should have a similarity');
 }
 

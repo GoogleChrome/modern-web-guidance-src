@@ -51,4 +51,17 @@ describe('processSkills', () => {
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/SKILL.md')), 'chrome-extensions SKILL.md should exist');
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/references/extensions/popup-ui.md')), 'chrome-extensions sibling popup-ui.md references should exist');
   });
+
+  it('verifies modern-web.mjs has correct shebang without --experimental-strip-types', () => {
+    const publishRoot = path.join(rootDir, 'dist/skills-cli');
+    const modernWebMjsPath = path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs');
+    
+    assert.ok(fs.existsSync(modernWebMjsPath), 'modern-web.mjs should exist');
+    
+    const content = fs.readFileSync(modernWebMjsPath, 'utf8');
+    const firstLine = content.split('\n')[0];
+    
+    assert.strictEqual(firstLine, '#!/usr/bin/env node', 'Shebang should be #!/usr/bin/env node');
+    assert.ok(!firstLine.includes('--experimental-strip-types'), 'Shebang should not contain --experimental-strip-types');
+  });
 });

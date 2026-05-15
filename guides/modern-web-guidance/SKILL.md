@@ -42,10 +42,20 @@ npx -y modern-web-guidance@latest --skill-version SKILL_VERSION search "<query>"
 ```json
 [
   {
-    "id": "content-vis",
-    "description": "Defer rendering of offscreen content using content-visibility.",
+    "id": "optimize-image-priority",
+    "description": "Optimize the loading priority of Largest Contentful Paint (LCP) candidate images.",
     "category": "performance",
-    "similarity": "0.85"
+    "featuresUsed": [ "Fetch priority" ],
+    "tokenCount": 985,
+    "similarity": 0.7289
+  },
+  {
+    "id": "defer-rendering-heavy-content",
+    "description": "Reduce rendering times in content-heavy web pages by deferring rendering for offscreen content.",
+    "category": "performance",
+    "featuresUsed": [ "content-visibility", "hidden=\"until-found\"" ],
+    "tokenCount": 1250,
+    "similarity": 0.6961
   }
 ]
 ```

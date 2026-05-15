@@ -145,6 +145,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
 
   try {
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
+    fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
     if (version) {
       updateVersionsInDir(publishRoot, version);
@@ -226,8 +227,25 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         metafile: true,
       });
 
+      console.log("Bundling watchdog main.js...");
+      const resultWatchdog = await esbuild.build({
+        entryPoints: [path.join(SERVING_DIR, "skills-cli/telemetry/watchdog/main.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/watchdog/main.js"),
+        loader: { ".node": "file" },
+        metafile: true,
+      });
+
+      const modernWebMjsPath = path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs");
+      const modernWebContent = fs.readFileSync(modernWebMjsPath, "utf8");
+      const updatedModernWebContent = modernWebContent.replace(/^#!.*node.*--experimental-strip-types.*\n/, "#!/usr/bin/env node\n");
+      fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
+      console.log("Fixed shebang in modern-web.mjs");
+
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultModernWeb.metafile],
+        [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 
