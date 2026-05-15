@@ -142,7 +142,7 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 <!-- Good: Distinct title and language declaration -->
 <html lang="en">
 <head>
-  <title>Analytics Reports | Guidance Platform</title>
+  <title>Analytics Reports | Modern Web Guidance</title>
 </head>
 <body>
   <p>The motto is <span lang="la">"Carpe diem"</span>.</p>
