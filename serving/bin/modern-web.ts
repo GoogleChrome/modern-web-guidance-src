@@ -165,7 +165,7 @@ async function main() {
       shell: process.platform === "win32",
     });
     const success = !result.error && result.status === 0;
-    await getLogger().logToolCommand(Date.now() - startTime, success, CommandType.UNSPECIFIED);
+    await getLogger().logToolCommand(Date.now() - startTime, success, CommandType.UNINSTALL);
     if (result.error) {
       console.error("Uninstall failed:", result.error);
     }
