@@ -182,13 +182,20 @@ function validateCalibrationPaths(targetDirAbs: string): { demoPath: string; neg
   return { demoPath, negativePath, graderPath };
 }
 
-async function runDemoCalibration(demoPath: string, graderPath: string, demoOutDir: string, result: CalibrationResult): Promise<boolean> {
-  console.log(cYellow(`\nRunning against demo.html... (Expecting 100% pass)`));
+async function runDemoCalibration(
+  demoPath: string,
+  graderPath: string,
+  demoOutDir: string,
+  result: CalibrationResult,
+  stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit',
+  silent = false
+): Promise<boolean> {
+  if (!silent) console.log(cYellow(`\nRunning against demo.html... (Expecting 100% pass)`));
   let demoFailed = false;
 
-  const demoResults = await runPlaywright(demoPath, graderPath, demoOutDir, 'inherit')
+  const demoResults = await runPlaywright(demoPath, graderPath, demoOutDir, stdio)
     .catch(err => {
-      console.error(cRed(`Failed to test demo.html: ${err.message}`));
+      if (!silent) console.error(cRed(`Failed to test demo.html: ${err.message}`));
       return null;
     });
 
@@ -201,28 +208,37 @@ async function runDemoCalibration(demoPath: string, graderPath: string, demoOutD
     result.demo.failed = unexpected;
 
     if (expected === 0 && unexpected === 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run for demo.html`));
+      if (!silent) console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run for demo.html`));
       demoFailed = true;
     } else if (unexpected > 0) {
       result.demo.failingTests = demoResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
-      console.log(cRed(`\u274c demo.html failed ${unexpected} tests!`));
-      demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
+      if (!silent) {
+        console.log(cRed(`\u274c demo.html failed ${unexpected} tests!`));
+        demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
+      }
       demoFailed = true;
     } else {
-      console.log(cGreen(`\u2705 demo.html passed all ${expected} tests.`));
+      if (!silent) console.log(cGreen(`\u2705 demo.html passed all ${expected} tests.`));
     }
   }
 
-  console.log('');
+  if (!silent) console.log('');
   return demoFailed;
 }
 
-async function runNegativeCalibration(negativePath: string, graderPath: string, negativeOutDir: string, result: CalibrationResult): Promise<void> {
-  console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
+async function runNegativeCalibration(
+  negativePath: string,
+  graderPath: string,
+  negativeOutDir: string,
+  result: CalibrationResult,
+  stdio: 'inherit' | 'ignore' | 'pipe' = 'ignore',
+  silent = false
+): Promise<void> {
+  if (!silent) console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
 
-  const negativeResults = await runPlaywright(negativePath, graderPath, negativeOutDir, 'ignore')
+  const negativeResults = await runPlaywright(negativePath, graderPath, negativeOutDir, stdio)
     .catch(err => {
-      console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
+      if (!silent) console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
       return null;
     });
 
@@ -235,18 +251,20 @@ async function runNegativeCalibration(negativePath: string, graderPath: string, 
     result.negative.failed = failed;
 
     if (passed === 0 && failed === 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run for negative-demo.html`));
+      if (!silent) console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run for negative-demo.html`));
     } else if (passed > 0) {
       result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
-      console.log(cRed(`\u274c negative-demo.html incorrectly passed ${passed} tests!`));
-      negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
+      if (!silent) {
+        console.log(cRed(`\u274c negative-demo.html incorrectly passed ${passed} tests!`));
+        negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
+      }
     } else {
-      console.log(cGreen(`\u2705 negative-demo.html failed all ${failed} tests correctly.`));
+      if (!silent) console.log(cGreen(`\u2705 negative-demo.html failed all ${failed} tests correctly.`));
       result.success = true;
     }
   }
 
-  console.log('');
+  if (!silent) console.log('');
 }
 
 function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boolean, demoOutDir: string, negativeOutDir: string): void {
@@ -261,7 +279,7 @@ function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boo
   }
 }
 
-export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
+export async function testGrader(targetDirRaw: string, silent = false): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
   const { demoPath, negativePath, graderPath } = validateCalibrationPaths(targetDirAbs);
 
@@ -274,16 +292,17 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
   const demoOutDir = path.join(targetDirAbs, 'grade-report', 'demo');
   const negativeOutDir = path.join(targetDirAbs, 'grade-report', 'negative');
 
-  const demoFailed = await runDemoCalibration(demoPath, graderPath, demoOutDir, result);
+  const stdio = silent ? 'ignore' : 'inherit';
+  const demoFailed = await runDemoCalibration(demoPath, graderPath, demoOutDir, result, stdio, silent);
 
   if (demoFailed) {
-    console.log(cYellow(`Skipping negative-demo.html run due to failures in demo.html`));
+    if (!silent) console.log(cYellow(`Skipping negative-demo.html run due to failures in demo.html`));
     return result;
   }
 
-  await runNegativeCalibration(negativePath, graderPath, negativeOutDir, result);
+  await runNegativeCalibration(negativePath, graderPath, negativeOutDir, result, silent ? 'ignore' : 'ignore', silent);
 
-  printFinalCalibrationSummary(result, demoFailed, demoOutDir, negativeOutDir);
+  if (!silent) printFinalCalibrationSummary(result, demoFailed, demoOutDir, negativeOutDir);
 
   return result;
 }
