@@ -1,11 +1,11 @@
 ---
 name: passkeys
-description: Comprehensive orientation and cross-cutting principles for implementing WebAuthn and Passkeys in web applications. Use this skill when handling passkey registration, authentication, management, or reauthentication.
+description: Comprehensive orientation and cross-cutting principles for implementing WebAuthn and Passkeys in web applications. Use this guide when handling passkey registration, authentication, management, or reauthentication.
 ---
 
 # Passkeys Orientation Guide
 
-This category skill provides high-density, action-oriented orientation for implementing secure, framework-agnostic passkey authentication and credential management in modern web applications.
+This guide provides high-density, action-oriented orientation for implementing secure, framework-agnostic passkey authentication and credential management in modern web applications.
 
 ## 1. Core Prerequisites for Passkeys
 
