@@ -67,7 +67,7 @@ const PRIORITY_LABEL_REGEX = /^P\d+$/;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const PROJECT_GITHUB_TOKEN = process.env.PROJECT_GITHUB_TOKEN || GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
-const REPO = 'guidance';
+const REPO = 'modern-web-guidance-src';
 const PROJECT_NUMBER = 30;
 // Default to dry run mode unless explicitly disabled.
 const IS_DRY_RUN = process.env.DRY_RUN !== 'false';

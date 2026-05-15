@@ -6,7 +6,7 @@ import { buildDist } from './build-dist.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
+const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 

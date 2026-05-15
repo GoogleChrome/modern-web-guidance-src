@@ -1,4 +1,4 @@
-# Guidance
+# Modern Web Guidance Project (Source)
 
 ![Modern Web Guidance](./assets/modern-web-guidance.svg)
 
@@ -7,7 +7,7 @@ A unified repository for modern web development guidance, containing both a Skil
 ## Project Structure
 
 - **`guides/`**: All guide content, organized by discipline (performance, user-experience, etc.). Also contains the dev pipeline scripts (`dev-guide.ts`, `run-grader.ts`, `grader-gen.ts`, `negative-gen.ts`).
-- **`harness/`**: The Guidance eval harness for executing and scoring tests. Includes task definitions, agent runners, and base apps.
+- **`harness/`**: The Modern Web Guidance eval harness for executing and scoring tests. Includes task definitions, agent runners, and base apps.
 - **`serving/`**: The Modern Web guidance server supporting both a standalone CLI (Skills) and an MCP server. This provides semantic search over curated web development guides and browser support data.
 - **`eval-view/`**: A static dashboard for visualizing and analyzing evaluation results.
 - **`bin/gd.ts`**: The unified CLI entry point.
@@ -104,7 +104,7 @@ If you want to maintain multiple configuration profiles, you can specify a custo
 gd eval --config my_custom_config.ts
 ```
 
-Environment variables in `.env` at the `guidance/` root are still required for setting paths to binaries and API keys.
+Environment variables in `.env` at the `modern-web-guidance-src/` root are still required for setting paths to binaries and API keys.
 
 ### Agents
 

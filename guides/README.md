@@ -53,7 +53,7 @@ This will output a categorized table sorted into the 6 maturity stages (`Stub`, 
 ### Manual Piece-wise execution
 
 Occasionally, you may want to generate or test specific pieces of the pipeline manually.
-Ensure `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are in `guidance/.env`:
+Ensure `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are in `modern-web-guidance-src/.env`:
 
 ```sh
 GEMINI_API_KEY=api-key

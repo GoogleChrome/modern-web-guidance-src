@@ -1,8 +1,8 @@
-# Guidance Project — Context Document
+# Modern Web Guidance Project — Context Document
 
 *(Note: This is an auto-maintained LLM context document, meant to provide overarching project goals, architecture, and workflow details to AI agents working in this repository. It is not intended to replace the READMEs for human contributors, but rather to supplement them with "big picture" state. AI agents are instructed to update this file as they work.)*
 
-This document describes the goals, architecture, contributor workflow, and current state of the Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
+This document describes the goals, architecture, contributor workflow, and current state of the Modern Web Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
 
 Last updated: 2026-03-06.
 
@@ -10,7 +10,7 @@ Last updated: 2026-03-06.
 
 ## 1. What This Project Is
 
-**Guidance** is a Google Chrome project where subject matter experts (SMEs) write curated guides for modern web platform features (CSS, JS APIs, HTML). These guides are served to AI coding agents via Agent Skills and a CLI (or MCP), so that when developers ask an AI tool to implement something, the agent produces code that uses modern best practices rather than outdated patterns. The project has two intertwined goals:
+**Modern Web Guidance** is a Google Chrome project where subject matter experts (SMEs) write curated guides for modern web platform features (CSS, JS APIs, HTML). These guides are served to AI coding agents via Agent Skills and a CLI (or MCP), so that when developers ask an AI tool to implement something, the agent produces code that uses modern best practices rather than outdated patterns. The project has two intertwined goals:
 
 1. **Create high-quality guidance** — structured markdown documents that teach coding agents how to use modern web features correctly.
 2. **Prove the guidance works** — an evaluation harness that measures whether agents with access to the guidance produce better output than agents without it.
@@ -23,7 +23,7 @@ Last updated: 2026-03-06.
 ### Repository structure
 
 ```
-guidance/
+modern-web-guidance-src/
   guides/                     # All guide content, organized by discipline
     performance/              # e.g. batch-analytics-events, optimize-image-priority
     user-experience/          # e.g. light-dismiss-dialog, animate-to-intrinsic-sizes
