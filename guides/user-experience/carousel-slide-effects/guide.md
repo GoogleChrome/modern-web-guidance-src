@@ -20,15 +20,16 @@ Here’s how to create carousel slide effects:
 1.  **Create a scroller:** This element will act as the container for your carousel slides. In this example it uses `overflow-x: scroll` to allow horizontal scrolling.
 
     ```html
-    <!-- MANDATORY: Wrap the carousel container in role="region" and set aria-roledescription="carousel" along with an accessible name -->
-    <ul class="scroller" role="region" aria-roledescription="carousel" aria-label="Visual slide showcases">
-      <!-- MANDATORY: Set aria-roledescription="slide" on individual slides -->
-      <li class="entry" aria-roledescription="slide" aria-label="Slide 1 of 3">1</li>
-      <li class="entry" aria-roledescription="slide" aria-label="Slide 2 of 3">2</li>
-      <li class="entry" aria-roledescription="slide" aria-label="Slide 3 of 3">3</li>
+    <ul class="scroller">
+      <li class="entry">1</li>
+      <li class="entry">2</li>
+      <li class="entry">3</li>
       …
     </ul>
     ```
+
+    > [!NOTE]
+    > **Scope.** This guide is about the *visual slide effect* applied as items move through a horizontal scroller. It does not prescribe a complete accessible carousel widget. If you are building a true carousel with previous/next controls, autoplay, or programmatic slide selection, layer the [APG carousel pattern](https://www.w3.org/WAI/ARIA/apg/patterns/carousel/) on top — that pattern's `role="region"` + `aria-roledescription="carousel"` (and per-slide `aria-roledescription="slide"`) only carry the right meaning when paired with the matching keyboard and control contract. Don't add those role descriptions to plain scrolling lists.
 
     ```css
     .scroller {

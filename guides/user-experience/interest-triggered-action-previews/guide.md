@@ -27,33 +27,24 @@ An interest relationship is created by setting the `interestfor` attribute on a 
 <button interestfor="interestingElement" data-effect="A">Some effect</button>
 <button interestfor="interestingElement" data-effect="B">Some other effect</button>
 <div id="interestingElement">Something interesting</div>
-
-<!-- MANDATORY: Supply a centralized polite live region to ensure preview state updates are accessible to screen readers -->
-<div id="preview-announcer" role="status" aria-live="polite" class="visually-hidden"></div>
 ```
 
 For the sake of this use case, we can leverage the `interest` and `loseinterest` events to preview various effects for an interest target. Both of these events are `InterestEvent`s which has a `source` property which is the source of the interest (i.e. the element with the `interestfor` attribute).
 
 ```javascript
-const previewAnnouncer = document.getElementById('preview-announcer');
-
 interestingElement.addEventListener("interest", event => {
   // Apply the preview based on `event.source`
   event.target.dataset.preview = event.source.dataset.effect;
-  // MANDATORY: Expose preview state programmatically to assistive technologies
-  if (previewAnnouncer) {
-    previewAnnouncer.textContent = `Previewing effect: ${event.source.dataset.effect}`;
-  }
 });
 
 interestingElement.addEventListener("loseinterest", event => {
   // Unapply the preview
   delete event.target.dataset.preview;
-  if (previewAnnouncer) {
-    previewAnnouncer.textContent = '';
-  }
 });
 ```
+
+> [!NOTE]
+> **Don't announce interest-driven previews via a live region.** Interest can be triggered just by moving the pointer across the page or tabbing through nearby buttons, so apply/unapply announcements quickly become noise that can drown out content the user actually cares about. The preview itself is the affordance; users who can perceive it benefit directly, and those who can't will not benefit from a verbal echo of "Previewing effect: A". If you decide you genuinely need an announcement for a specific case, debounce it heavily and announce the *committed* effect (on `click`), not every passing hover.
 
 Active interest sources and targets can be selected with CSS using the `:interest-source` and `:interest-target` pseudo-selectors respectively.
 

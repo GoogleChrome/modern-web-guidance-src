@@ -72,7 +72,6 @@
       </p>
 
       <div id="preview-box" class="preview-box">Preview Area</div>
-      <div id="preview-announcer" role="status" aria-live="polite" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);"></div>
     </main>
     <script type="module">
       if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
@@ -82,21 +81,19 @@
       const previewBox = document.getElementById('preview-box');
       let appliedColor = '';
 
-      // The 'interest' event fires on the target element
+      // The 'interest' event fires on the target element.
+      // Note: we intentionally do NOT broadcast preview state to a live region —
+      // interest can fire on every passing hover/focus, which would create noise.
       previewBox.addEventListener('interest', (e) => {
         // e.source is the element that triggered the interest
         previewBox.style.backgroundColor = e.source.dataset.color;
         previewBox.textContent = `Previewing ${e.source.ariaLabel}`;
-        const announcer = document.getElementById('preview-announcer');
-        if (announcer) announcer.textContent = `Previewing color: ${e.source.ariaLabel}`;
       });
 
       // The 'loseinterest' event fires when the user stops interacting
       previewBox.addEventListener('loseinterest', () => {
         previewBox.style.backgroundColor = appliedColor;
         previewBox.textContent = appliedColor ? 'Color Applied' : 'Preview Area';
-        const announcer = document.getElementById('preview-announcer');
-        if (announcer) announcer.textContent = '';
       });
 
       document.querySelectorAll('.color-grid button').forEach((btn) => {

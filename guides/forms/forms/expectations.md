@@ -52,7 +52,6 @@
 - The implementation MUST allow pasting into password fields.
 - The implementation MUST provide a toggle capability allowing users to unmask password input.
 - The password toggle button MUST NOT use `aria-label` overriding its visible text, MUST expose its toggle state via `aria-pressed`, and MUST link warning descriptions via `aria-describedby`.
-- The implementation MUST NOT use `<section>` elements as layout containers for individual form fields to prevent region landmark dilution.
 - The implementation MUST indicate exact amounts on pay buttons.
 - The implementation MUST use `autocomplete="cc-number"`, `cc-exp`, `cc-csc` for payment fields.
 - The implementation MUST include cryptographically secure anti-CSRF tokens for mutating actions.

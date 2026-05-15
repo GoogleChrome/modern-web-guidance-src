@@ -134,25 +134,36 @@ test.describe(`defer-rendering-heavy-content Expectations: ${demoName}`, () => {
     expect(isHiddenIncorrectly, '.sidebar-text must not be visually hidden via CSS overrides').toBe(false);
   });
 
-  // 8. The `.sidebar-text` `aria-expanded` attribute must stay in sync with the `hidden` attribute using a `beforematch` event listener.
-  test('The `.sidebar-text` `aria-expanded` attribute must stay in sync with the `hidden` attribute', async ({ page }) => {
+  // 8. aria-expanded must live on the controlling card, not on the .sidebar-text panel.
+  //    A beforematch listener must keep that card's aria-expanded in sync with reveal state.
+  test('aria-expanded lives on the controlling card and stays in sync via beforematch', async ({ page }) => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const hasBeforeMatchListener = html.includes('beforematch') || html.includes('onbeforematch');
-    expect(hasBeforeMatchListener, 'Missing beforematch event listener for .sidebar-text UI synchronization').toBe(true);
+    expect(hasBeforeMatchListener, 'Missing beforematch event listener for UI synchronization').toBe(true);
 
-    const hasAriaExpanded = await page.evaluate(() => {
+    // .sidebar-text panels must NOT carry aria-expanded themselves.
+    const panelsClean = await page.evaluate(() => {
       const els = Array.from(document.querySelectorAll('.sidebar-text'));
-      return els.every(el => el.getAttribute('aria-expanded') === 'false' && el.getAttribute('hidden') === 'until-found');
+      return els.every(el => !el.hasAttribute('aria-expanded') && el.getAttribute('hidden') === 'until-found');
     });
-    expect(hasAriaExpanded, '.sidebar-text elements must have aria-expanded attribute').toBe(true);
+    expect(panelsClean, '.sidebar-text panels must NOT have aria-expanded; only the controlling card should').toBe(true);
+
+    // Each .card that reveals a panel must be exposed as a toggle control with aria-controls and aria-expanded.
+    const controlsWired = await page.evaluate(() => {
+      const cards = Array.from(document.querySelectorAll('.card'));
+      return cards.every(card => {
+        const isButton = card.tagName === 'BUTTON' || card.getAttribute('role') === 'button';
+        return isButton && card.hasAttribute('aria-controls') && card.getAttribute('aria-expanded') === 'false';
+      });
+    });
+    expect(controlsWired, 'Each card must be a toggle control with aria-controls and aria-expanded="false" initially').toBe(true);
 
     await page.click('.card:nth-of-type(1)');
-    // await page.waitForTimeout(1000);
-    const isExpanded = await page.evaluate(() => {
-      const card = document.querySelector('.sidebar-text:nth-of-type(1)');
+    const cardExpanded = await page.evaluate(() => {
+      const card = document.querySelector('.card:nth-of-type(1)');
       return card?.getAttribute('aria-expanded') === 'true';
     });
-    expect(isExpanded, '.sidebar-text elements must have aria-expanded attribute set to true when the content is revealed').toBe(true);
+    expect(cardExpanded, 'After click, the controlling card must have aria-expanded="true"').toBe(true);
   });
 
   // 9. The `sidebar-text` must use a fallback strategy for unsupported browsers.
@@ -162,7 +173,7 @@ test.describe(`defer-rendering-heavy-content Expectations: ${demoName}`, () => {
     expect(hasFeatureDetection, 'Missing explicit fallback strategy or feature detection for beforematch').toBe(true);
   });
 
-  test('The beforematch event handler must programmatically update aria-expanded on the controlling trigger button', async () => {
+  test('The beforematch event handler must programmatically update aria-expanded on the controlling card', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     expect(/aria-expanded/i.test(html)).toBe(true);
   });

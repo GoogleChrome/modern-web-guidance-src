@@ -25,29 +25,37 @@ It also provides light dismiss behavior, so when a user clicks or otherwise focu
 The tooltip element must have an `id` attribute with a unique value:
 
 ```html
-<!-- MANDATORY: The tooltip container `<div>` must have a `popover` attribute, `role="tooltip"`, and plain text content only.
+<!-- MANDATORY: The tooltip container `<div>` must have a `popover` attribute.
      the value of `"hint"` ensures it can be "light dismissed". -->
-<div popover="hint" role="tooltip" id="tooltip">Tooltip content</div>
+<div popover="hint" id="tooltip">Tooltip content</div>
 ```
 
 A user expresses interest in the additional information by hovering or focusing on an `<a>` or `<button>` element. The element must have an `interestfor` attribute that matches the `id` attribute of the tooltip.
 
 ```html
-<!-- MANDATORY: Programmatically associate the trigger with the tooltip using aria-describedby for assistive technology support -->
-<button interestfor="tooltip" aria-describedby="tooltip">Tooltip trigger</button>
+<!-- The `interestfor` attribute can be applied to a `<button>` element: -->
+<button interestfor="tooltip">Tooltip trigger</button>
 
-<a interestfor="tooltip" aria-describedby="tooltip" href="">Tooltip trigger</a>
+<!-- The `interestfor` attribute can also be applied to an `<a>` element: -->
+<a interestfor="tooltip" href="">Tooltip trigger</a>
 ```
 
 The trigger must have a visual indicator to indicate that there is additional information available by interacting with the trigger.
 
+### Accessibility built in to `interestfor`
+
+`interestfor` handles the assistive-technology wiring for you, so you generally do not need to add ARIA attributes manually:
+
+- A target with `popover="hint"` gains an implicit minimum role of `tooltip`. **DO NOT** set `role="tooltip"` yourself.
+- The browser implicitly associates the source element with the target via `aria-describedby` when the target is plaintext, or via `aria-details` when the target contains interactive content. **DO NOT** add `aria-describedby` or `aria-details` to the trigger.
+- Because the association switches to `aria-details` when needed, the target IS allowed to contain interactive content (e.g. a link inside an "interest card").
+
 ### Accessibility Constraints (WCAG 1.4.13)
 
-To ensure hover-triggered popovers comply with WCAG 1.4.13 (Content on Hover or Focus), your implementation MUST guarantee three core behaviors:
+Even with `interestfor` handling the semantics above, your implementation MUST still satisfy WCAG 1.4.13 (Content on Hover or Focus):
 - **Dismissible:** Users must be able to dismiss the tooltip without moving pointer hover or keyboard focus (e.g., by pressing the `Escape` key). The native `popover` attribute manages this binding automatically.
 - **Hoverable:** The pointer must be able to move over the tooltip content itself without the tooltip disappearing. This allows users with magnification tools to read the tooltip text safely.
 - **Persistent:** The tooltip must remain visible until the hover or focus trigger is removed, the user explicitly dismisses it, or its content is no longer valid.
-- **Plaintext Content Only:** Do not place interactive elements (links, buttons) inside a tooltip referenced by `aria-describedby`. 
 
 ### Positioning the tooltip
 

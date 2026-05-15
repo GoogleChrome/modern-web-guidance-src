@@ -80,16 +80,13 @@ test.describe(`Carousel Item Effects Expectations: ${demoName}`, () => {
     expect(html).toContain('prefers-reduced-motion');
   });
 
-  test(`MANDATORY: The carousel container must set role="region", define aria-roledescription="carousel", and provide an accessible name`, async () => {
+  test(`MANDATORY: must NOT apply the APG carousel ARIA pattern without the matching control contract`, async () => {
+    // This guide is scoped to the visual slide effect, not a full carousel widget.
+    // Adding aria-roledescription="carousel"/"slide" without the matching keyboard
+    // and control implementation misleads assistive tech users.
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/role=["']region["']/i.test(html)).toBe(true);
-    expect(/aria-roledescription=["']carousel["']/i.test(html)).toBe(true);
-    expect(/aria-label/i.test(html)).toBe(true);
-  });
-
-  test(`MANDATORY: Individual slides must set aria-roledescription="slide"`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/aria-roledescription=["']slide["']/i.test(html)).toBe(true);
+    expect(/aria-roledescription=["']carousel["']/i.test(html)).toBe(false);
+    expect(/aria-roledescription=["']slide["']/i.test(html)).toBe(false);
   });
 
 });

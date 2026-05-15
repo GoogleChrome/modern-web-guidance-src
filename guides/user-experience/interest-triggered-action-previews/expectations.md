@@ -2,4 +2,4 @@
 - The target element must respond to the `interest` event to show the preview state (e.g. updating content or styles).
 - The target element must respond to the `loseinterest` event to revert the preview state.
 - The polyfill for interest invokers should be conditionally installed.
-- Dynamic preview state updates MUST be programmatically exposed to assistive technologies using a centralized polite live region or accessible description updates.
+- The implementation MUST NOT announce interest-driven preview state changes via a live region (e.g. `role="status"` / `aria-live`). Interest is a passive signal and broadcasting every apply/unapply produces noise; reserve announcements for committed actions (e.g. on click).

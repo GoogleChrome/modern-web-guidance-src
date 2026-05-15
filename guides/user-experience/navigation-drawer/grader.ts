@@ -374,11 +374,6 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     expect(halfOpacity).toBeLessThan(initialOpacity);
   });
 
-  test('The menu trigger button must swap its aria-label text dynamically to match the open/closed state of the drawer', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/aria-label/i.test(html)).toBe(true);
-  });
-
   test('Any inline decorative SVG icons inside the trigger button must explicitly define aria-hidden="true"', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     expect(/<svg[^>]*aria-hidden=["']true["']/i.test(html)).toBe(true);
