@@ -6,6 +6,14 @@ modern-web-guidance is an agent skill (aka [SKILL.md](http://SKILL.md)) that hel
 
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
+## Quickstart
+
+```shell
+npx modern-web-guidance@latest install
+```
+
+See [Installation](#installation) for more details and alternative methods.
+
 ## Why?
 
 AI coding agents often default to older patterns/libraries because their training data contains vast amounts of legacy code. This often leads them to generate unnecessary, bloated JavaScript for common tasks that are now native in the web platform.
@@ -58,7 +66,7 @@ Here's a tiny sampling of the **134+ use-case-centric guides**:
 
 Token-efficient, targeted, and private guidance injected right into the context window. Yeah, buddy.
 
-## Get started
+## Installation
 
 ```shell
 npx modern-web-guidance@latest install
