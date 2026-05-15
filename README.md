@@ -33,6 +33,22 @@ For core guides under `guides/<discipline>/` (e.g. `guides/performance/my-featur
 
 If you are an external contributor looking to add new guidance, calibrate test fixtures, or improve existing content, please follow our guidelines in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
+## Serving
+
+The `modern-web-guidance` **Skill** is served through a standalone CLI distribution (`serving/skills-cli`), enabling AI agents to perform local semantic searches and retrieve targeted implementation patterns on demand. Within the evaluation harness, the serving mechanism is configured via the `serving` setting in [`harness/config.ts`](./harness/config.ts), which defaults to `Serving.SKILLS_CLI`.
+
+Alternatively, an **MCP server** and other experimental interfaces are maintained in the codebase for research and testing purposes, providing connection-based access to the same underlying guidance data.
+
+## Evaluation Harness & Dashboard
+
+#### Prompt Benchmarking Harness (`harness/`)
+
+The evaluation harness is a matrix-driven runner that measures how effectively coding agents adopt modern web APIs. It executes tasks across various AI agents in isolated environments and scores their output against browser-based test assertions.
+
+#### Evaluation Dashboard (`eval-view/`)
+
+The evaluation dashboard provides a web interface to visualize pass rates, inspect agent trajectories, and review grade reports. It supports both a dynamic local development mode and a fully static deployment hosted on GitHub Pages.
+
 ## Getting Started
 
 This project is managed as a **pnpm workspace**. You can install all dependencies for all projects with a single command from the root:
@@ -42,7 +58,7 @@ pnpm install
 pnpm setup:playwright
 ```
 
-### 0. CLI Setup
+### CLI Setup
 
 The `gd` CLI is the main way to run this project. To make it available globally and set up shell auto-completion, run:
 
@@ -51,22 +67,6 @@ pnpm link --global && gd setup-completion
 ```
 
 *Note: For the auto-completion to take effect, you must refresh your shell (e.g., open a new terminal or source your config).*
-
-### 1. Serving
-
-#### `modern-web-guidance`
-
-Guidance is primarily served to agents through the `modern-web-guidance` **Skill** via a standalone CLI distribution (`serving/skills-cli`). This allows agents to execute semantic searches and retrieve implementation patterns directly within their local environment.
-
-The primary serving mechanism is controlled by the `serving` setting in [`harness/config.ts`](./harness/config.ts), which defaults to `Serving.SKILLS_CLI`.
-
-##### Research & Testing Interfaces
-
-Alternatively, an **MCP server** and other experimental serving approaches are maintained in the codebase for research purposes during testing, providing connection-based access to the same underlying data.
-
-### 2. Eval Harness & Dashboard
-
-The evaluation suite measures how effectively AI models use modern web APIs.
 
 ## Usage
 
@@ -105,8 +105,17 @@ Utilities & Setup
 
 All evaluation and environment configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file defines two primary configuration structures:
 
-- **Environment Configuration (`environmentConfig`)**: Resolves absolute paths to AI agent binaries/CLIs (Jetski, Gemini CLI, Claude Code, Codex), GCP credentials, and required API keys. Values are populated via environment variables loaded automatically from `.env` at the repository root.
+- **Environment Configuration (`environmentConfig`)**: Resolves absolute paths to AI agent binaries/CLIs, GCP credentials, and required API keys. Values are populated via environment variables loaded automatically from `.env` at the repository root.
 - **Suite Configuration (`defaultSuiteConfig`)**: Controls evaluation execution parameters such as agent selection (`agent`), serving mode (`serving`), task filters (`tasks`), etc.
+
+### API Keys & Environment Setup
+
+For setup of core guide development workflows (`gd dev`), configure your Gemini API key and model in your environment or `.env` file:
+
+```bash
+GEMINI_API_KEY='your_api_key_here'
+GEMINI_MODEL='gemini-3-flash-preview'
+```
 
 ### Runtime Configuration Overrides
 
@@ -122,47 +131,7 @@ If you want to maintain multiple configuration profiles, you can specify a custo
 gd eval --config my_custom_config.ts
 ```
 
-Environment variables in `.env` at the `modern-web-guidance-src/` root are still required for setting paths to binaries and API keys.
-
-### Agents
-
-Supported agents are defined in the `Agents` object in [`harness/config.ts`](./harness/config.ts).
-
-#### Gemini CLI
-
-Gemini CLI (`gemini_cli`) is the default agent used by the evaluation harness. When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
-
-Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3.1-pro-preview'`).
-
-#### Jetski (IDE)
-
-When using Jetski (`jetski`), be sure to update the settings of the Jetski automation window so that the "Review Policy" is set to "Always Proceed".
-
-#### Jetski CLI
-
-When using Jetski CLI (`jetski_cli`), the evaluation harness executes the standalone command-line tool. Note that this agent requires a Cloudtop environment to run successfully.
-
-#### Claude Code
-
-Implemented with [Claude Code on Vertex AI](https://code.claude.com/docs/en/google-vertex-ai).
-
-Log in with `gcloud` and set project ID with `gcloud config set project <YOUR-GCP-PROJECT-ID>`.
-The GCP project must enable the Vertex AI API and the desired model in the Model Garden.
-
-Set the following environment variables:
-
-```
-CLAUDE_CODE_USE_VERTEX=1
-CLOUD_ML_REGION=global
-ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
-ANTHROPIC_MODEL=<enabled-model-in-vertex>
-```
-
-#### Codex CLI
-
-To use Codex CLI, you will need to request an exception, which appears when attempting to use it (`codex`).
-This request should file a bug similar to b/492300931, which includes a screenshot to the PCounsel approval.
-After approval, start `codex` locally and login to your account.
+For comprehensive configuration details on running evaluations across other agents, see [EVALS.md](./EVALS.md).
 
 ## Quality Control
 
