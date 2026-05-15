@@ -4,11 +4,6 @@ description: Smoothly hide/show elements as they are added/removed from the DOM 
 web-feature-ids:
   - starting-style
   - transition-behavior
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/@starting-style
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/transition-behavior
-  - https://web.dev/blog/baseline-entry-animations
-  - https://www.smashingmagazine.com/2025/01/transitioning-top-layer-entries-display-property-css/
 ---
 
 In the past, CSS transitions could not animate elements when they were first added to the DOM or when their `display` property changed from `none`. The `@starting-style` at-rule and `transition-behavior: allow-discrete` provide a declarative way to create smooth entry and exit animations.

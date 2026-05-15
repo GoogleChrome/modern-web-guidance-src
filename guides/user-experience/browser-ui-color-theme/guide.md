@@ -6,17 +6,6 @@ web-feature-ids:
 - prefers-color-scheme
 - light-dark
 - accent-color
-sources:
-  - https://web.dev/articles/baseline-in-action-color-theme
-  - https://web.dev/articles/color-scheme
-  - https://web.dev/learn/design/media-features?hl=en#setting_the_color_scheme_for_ui_elements
-  - https://web.dev/articles/building/a-theme-switch-component
-  - https://drafts.csswg.org/css-color-adjust/#color-scheme-prop
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme
-  - https://css-tricks.com/almanac/properties/c/color-scheme/
-  - https://blog.jim-nielsen.com/2020/color-scheme-property/
-  - https://web.dev/articles/building/a-color-scheme
-  - https://web.dev/articles/accent-color
 ---
 
 # Browser UI color theme

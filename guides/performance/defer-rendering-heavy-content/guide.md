@@ -4,9 +4,6 @@ description: Reduce rendering times in content-heavy web pages (e.g. pages with 
 web-feature-ids:
   - hidden-until-found
   - content-visibility
-sources:
-  - https://developer.chrome.com/docs/css-ui/hidden-until-found
-  - https://web.dev/articles/content-visibility
 ---
 
 # Defer rendering heavy content

@@ -3,13 +3,6 @@ name: declarative-button-actions
 description: Declaratively connect a button to any element to trigger custom, application-specific actions using declarative button commands, invoker commands, button commands, custom commands, or declarative toggle actions.
 web-feature-ids:
   - invoker-commands
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/Invoker_Commands_API
-  - https://developer.chrome.com/blog/command-and-commandfor
-  - https://open-ui.org/components/invokers.explainer/
-  - https://html.spec.whatwg.org/multipage/form-elements.html#attr-button-command
-  - https://css-tricks.com/invoker-commands-additional-ways-to-work-with-dialog-popover-and-more/ 
-  - https://londonwebstandards.org/talks/everything-you-need-to-know-about-invoker-commands/
 ---
 
 # Declarative Button Actions

@@ -3,12 +3,6 @@ name: efficient-background-processing
 description: Conserve system resources and battery life by pausing background JavaScript execution (such as `<canvas>` animations, WebGL rendering, or high-frequency WebSocket data polling) when the component is off-screen and then resume them just-in-time when they scroll back into view.
 web-feature-ids:
   - content-visibility
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/content-visibility
-  - https://web.dev/articles/content-visibility
-  - https://css-tricks.com/almanac/properties/c/content-visibility/
-  - https://github.com/w3c/csswg-drafts/issues/11310
-  - https://issues.chromium.org/issues/365168180
 ---
 
 # Efficient Background Processing

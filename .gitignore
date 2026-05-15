@@ -11,14 +11,14 @@ eval-view/suites.gen.json
 dist/
 
 # Test artifacts
-eval-view/test-results/
+**/test-results/
 harness/results/
 harness/results.bak/
-harness/test-results/
 tasks/test-results/
 grade-report/
 test-app-results/
 guides/**/test-results/
+guides/**/test-app-results/
 guides/**/.last-run.json
 
 # legacy paths (any content here should be deleted)

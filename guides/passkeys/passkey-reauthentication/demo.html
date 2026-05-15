@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Reauthentication Demo</title>
+</head>
+<body>
+  <div class="card">
+    <h2>Sensitive Transaction Protection</h2>
+    <p>Please re-authenticate your session to proceed with this action.</p>
+    
+    <button id="reauth-btn" data-testid="reauth-button">Verify Identity</button>
+
+    <div id="status" class="status" data-testid="reauth-status">Idle</div>
+    <div id="fallback" data-testid="reauth-fallback" hidden>Your device does not support passkeys. Please re-enter your password to continue.</div>
+  </div>
+
+  <script type="module">
+    let reauthAbortController = new AbortController();
+
+    async function performReauth() {
+      const statusEl = document.getElementById('status');
+
+      if (!window.PublicKeyCredential) {
+        document.getElementById('fallback').hidden = false;
+        return;
+      }
+
+      statusEl.textContent = 'Verifying...';
+
+      reauthAbortController.abort();
+      reauthAbortController = new AbortController();
+
+      try {
+        const responseOptions = await fetch('/api/reauth/options', { method: 'POST' });
+        if (!responseOptions.ok) throw new Error('Failed to generate step-up options');
+        const reauthOptionsJSON = await responseOptions.json();
+
+        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(reauthOptionsJSON);
+
+        const credential = await navigator.credentials.get({
+          publicKey,
+          signal: reauthAbortController.signal
+        });
+
+        if (credential) {
+          const encodedResponse = credential.JSON();
+          const verifyResponse = await fetch('/api/reauth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(encodedResponse)
+          });
+
+          if (verifyResponse.ok) {
+            statusEl.textContent = 'Identity Verified Successfully!';
+            statusEl.style.color = '#228b22';
+          } else {
+            if (verifyResponse.status === 404) {
+              // Segregated signalUnknownCredential only on explicit server 404
+              if (PublicKeyCredential.signalUnknownCredential) {
+                await PublicKeyCredential.signalUnknownCredential({
+                  rpId,
+                  credentialId: encodedResponse.id
+                });
+              }
+            }
+            throw new Error('Re-authentication verification rejected');
+          }
+        }
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          statusEl.textContent = 'Verification cancelled.';
+          return;
+        }
+        console.error(err);
+        statusEl.textContent = `Error: ${err.message}`;
+        statusEl.style.color = '#cc0000';
+      }
+    }
+
+    document.getElementById('reauth-btn').addEventListener('click', performReauth);
+  </script>
+</body>
+</html>

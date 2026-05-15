@@ -59,6 +59,7 @@ test.beforeEach(async ({ page }) => {
         }
         return 'Mock response';
       }
+      // eslint-disable-next-line require-yield
       async* promptStreaming(text: any, options: any) {
         window.__LM_LOGS__.calls.push({ method: 'session.promptStreaming', text, options, source: this.__source });
         const stream = (async function* () {

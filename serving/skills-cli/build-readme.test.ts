@@ -10,8 +10,8 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
 
   before(() => {
     fs.mkdirSync(testOutputDir, { recursive: true });
-    // Write a mock README with the placeholder
-    fs.writeFileSync(dummyReadmePath, '# Test README\n\n<!-- INJECT_SKILL_COVERAGE -->\n\n## Installation');
+    // Write a mock README with the placeholder and static count string
+    fs.writeFileSync(dummyReadmePath, '# Test README\n\nJust a tiny sampling of the **134+ use-case-centric guides**:\n\n<!-- INJECT_SKILL_COVERAGE -->\n\n## Installation');
     // Create package.json to satisfy version parser
     fs.writeFileSync(path.join(testOutputDir, 'package.json'), JSON.stringify({ version: '1.2.3' }));
 
@@ -39,5 +39,7 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     assert.ok(content.includes('<h3>'), 'Should contain category h3 elements');
     assert.match(content, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'Should contain explorer feature links');
     assert.match(content, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'Should link use cases to GitHub blob files');
+    assert.ok(content.includes(`**${result.useCasesCount} use-case-centric guides**`), 'Should dynamically update the use case count string');
+    assert.ok(!content.includes('134+'), 'Should remove the hardcoded count');
   });
 });

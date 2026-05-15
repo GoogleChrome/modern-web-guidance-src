@@ -89,6 +89,7 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     } else {
       readmeContent = readmeContent.replace('## Installation', dynamicMd + '## Installation');
     }
+    readmeContent = readmeContent.replace(/\*\*\d+\+? use-case-centric guides\*\*/, `**${readyGuides.length} use-case-centric guides**`);
     fs.writeFileSync(destReadmePath, readmeContent);
   }
 

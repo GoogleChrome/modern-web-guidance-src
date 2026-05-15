@@ -2,17 +2,17 @@
 
 Inject web platform expertise, best practices, and modern API patterns directly into your AI coding agents.
 
-modern-web-guidance is an agent skill (aka [SKILL.md](http://SKILL.md)) to help ensure that when your coding agent works on a web application, it uses modern, high-performance, accessible, and secure APIs rather than legacy, outdated workarounds.
+modern-web-guidance is an agent skill (aka [SKILL.md](http://SKILL.md)) that helps your coding agent build better web apps. It uses modern, high-performance, accessible, and secure APIs rather than legacy, outdated workarounds. This project is supported by the Google Chrome team, the Microsoft Edge team, and the web development community.
 
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
 ## Why?
 
-AI coding agents often default to older patterns/libraries because their training data contains vast amounts of legacy code. This often leads them to generate unnecessary, bloated JavaScript for common tasks that are now native.
+AI coding agents often default to older patterns/libraries because their training data contains vast amounts of legacy code. This often leads them to generate unnecessary, bloated JavaScript for common tasks that are now native in the web platform.
 
 ### Bridging the "High-Recall, Low-Coverage" Knowledge Gap
 
-Every developer knows about the **knowledge cutoff**—but for coding agents, the real issue is **knowledge representation**. Even for web platform features released over the last 10 years, our current frontier models lack the density and coverage of high-quality, modern implementation patterns. The models have *high recall* (they know an API exists) but *low coverage* of actual production best practices.
+Every developer knows about the **knowledge cutoff**—but for coding agents, the real issue is **knowledge representation**. Even for web platform features released over the last 10 years, even current frontier models lack the density and coverage of high-quality, modern implementation patterns. The models have *high recall* (they know an API exists) but *low coverage* of actual production best practices.
 
 **This repository bridges that gap.** We don't waste your agent's context on general knowledge it already has. Instead, we inject targeted, high-density, expert-curated guidance specifically focused on:
 
@@ -22,11 +22,11 @@ Every developer knows about the **knowledge cutoff**—but for coding agents, th
 
 ## What
 
-Our content is evergrowing, but we cover from the bleeding edge of the web platform, through the past several years of new features handling fallback strategies. But **we don't waste your tokens** on stuff models already know.
+Our content is evergrowing, we cover the bleeding edge of the web platform as well as the past several years of new features handling fallback strategies. The skill is designed **not to waste your tokens** on stuff models already know.
 
 ### Core disciplines
 
-Just a tiny sampling of the **134+ use-case-centric guides**: 
+Here's a tiny sampling of the **134+ use-case-centric guides**: 
 
 * **User Experience**: Smooth and modern visual states: View Transitions, CSS `scrollbar-color` styling, high-contrast adaptation, entry/exit transition animations, parallax scrolling.  
 * **CSS layout:** container queries (both size and style queries), modern color spaces (`oklch`, `color-mix`) and `subgrid`, text-wrap tuning (`balance`, `pretty`), subgrid, and typography line height trimming (`text-box`)  
@@ -79,9 +79,16 @@ npx modern-web-guidance@latest retrieve "animate-to-from-top-layer"
 
 #### Vercel `skills` CLI: `npx skills add GoogleChrome/modern-web-guidance`
 
-#### Github CLI: `gh skill install GoogleChrome/modern-web-guidance`
-
 #### Google Antigravity: `agy plugin install https://github.com/GoogleChrome/modern-web-guidance`
+
+#### GitHub CLI: `gh skill install GoogleChrome/modern-web-guidance`
+
+#### GitHub Copilot CLI: 
+
+```shell
+/plugin marketplace add GoogleChrome/modern-web-guidance
+/plugin install modern-web-guidance@googlechrome
+```
 
 #### Claude Code plugin
 
@@ -96,12 +103,16 @@ We don't recommend this method, but it will work.
 
 ## Updating
 
+If you installed the skill using `npx modern-web-guidance@latest install`, then you can update with this command:
+
 ```sh
 # Update all installed skills
 npx modern-web-guidance@latest update
 ```
 
-## This isn't slop. We've got the evals to prove it. ;)
+Otherwise, consult your agent's documentation for updating plugins and skills.
+
+## Evals to prove this works well ;)
 
 Every piece of guidance in this pack isn't just a tutorial—it is **empirically proven and continuously calibrated** to guarantee AI agents write better code. We test every guide using an automated quality-assurance harness to ensure correct agent behavior.
 
@@ -157,3 +168,15 @@ If you want to customize the skill packs installed and the scope at which they a
 # Choose which skills you want  
 npx modern-web-guidance@latest install --choose
 ```
+
+## Usage Statistics & Opt-Out
+
+Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the Modern Web Guidance tool. See [modern-web.ts](https://github.com/GoogleChrome/guidance/blob/main/serving/bin/modern-web.ts) to see exactly what data is collected.
+
+Data collection is enabled by default. You can opt-out completely at any time (suppressing all local console telemetry warnings, search/retrieve metric dispatches, and installation telemetry) by setting the `DISABLE_TELEMETRY=1` environment variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
+
+```bash
+export DISABLE_TELEMETRY=1
+```
+
+Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).

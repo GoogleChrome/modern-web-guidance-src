@@ -122,29 +122,17 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   const { publishRoot, version} = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
-  // const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
 
-  // Step 1: Check if we can short-circuit without wiping anything.
-  // processGuides internally uses dist/.cache/ and evaluates the source hashes.
-  const _skipped = await processGuides({
-    outputDir: DIST_DIR,
-    target: 'skills-cli',
-  });
+  // TODO(paulirish): Refactor this build script to be less convoluted:
+  // 1. Separate cache checking from execution in processGuides.
+  // 2. Use better function names (e.g. prepareGuidesAndEmbeddings, isCacheValid).
+  // 3. Avoid the double-call pattern to processGuides.
 
-  // TODO: this code prevented modern-web.mjs from rebuilding on changes.
-  // if (skipped && fs.existsSync(modernWebMjs)) {
-  //   const { skillsCount, skillNames } = processSkills(publishRoot);
-  //   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
-  //   return { featuresCount, useCasesCount, skillsCount, skillNames };
-  // }
-
-  // Step 2: If we didn't short-circuit, we do a clean, purist build.
-  // Now we can safely wipe publishRoot completely!
+  // Wipe publishRoot completely to ensure a clean build.
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, { recursive: true });
 
-  // Step 3: Because we just wiped publishRoot, we restore the fresh vectors/guides 
-  // from .cache/ into DIST_DIR.
+  // Restore the fresh vectors/guides from .cache/ into DIST_DIR.
   await processGuides({
     outputDir: DIST_DIR,
     target: 'skills-cli',
@@ -157,6 +145,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
 
   try {
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
+    fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
     if (version) {
       updateVersionsInDir(publishRoot, version);
@@ -238,8 +227,25 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         metafile: true,
       });
 
+      console.log("Bundling watchdog main.js...");
+      const resultWatchdog = await esbuild.build({
+        entryPoints: [path.join(SERVING_DIR, "skills-cli/telemetry/watchdog/main.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/watchdog/main.js"),
+        loader: { ".node": "file" },
+        metafile: true,
+      });
+
+      const modernWebMjsPath = path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs");
+      const modernWebContent = fs.readFileSync(modernWebMjsPath, "utf8");
+      const updatedModernWebContent = modernWebContent.replace(/^#!.*node.*--experimental-strip-types.*\n/, "#!/usr/bin/env node\n");
+      fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
+      console.log("Fixed shebang in modern-web.mjs");
+
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultModernWeb.metafile],
+        [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 

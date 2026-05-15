@@ -4,19 +4,6 @@ description: Build a component that changes its layout based on whether it conta
 web-feature-ids:
   - has
   - not
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:has
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:not
-  - https://developer.mozilla.org/en-US/blog/css-not-pseudo-multiple-selectors/
-  - https://drafts.csswg.org/selectors/
-  - https://css-tricks.com/the-css-has-selector/
-  - https://css-tricks.com/almanac/pseudo-selectors/h/has/
-  - https://css-tricks.com/almanac/pseudo-selectors/n/not/
-  - https://www.bram.us/2021/12/21/the-css-has-selector-is-way-more-than-a-parent-selector/
-  - https://www.joshwcomeau.com/css/has/
-  - https://ishadeed.com/article/css-has-guide/
-  - https://developer.chrome.com/blog/has-m105
-  - https://blog.logrocket.com/advanced-guide-css-has-selector/
 ---
 
 Historically, applying different layouts to a component based on its content required either JavaScript or conditional logic in your HTML templating language to inject modifier classes (like `.card--has-image` or `.card--text-only`).

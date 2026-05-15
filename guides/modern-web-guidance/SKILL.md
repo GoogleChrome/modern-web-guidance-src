@@ -42,10 +42,20 @@ npx -y modern-web-guidance@latest --skill-version SKILL_VERSION search "<query>"
 ```json
 [
   {
-    "id": "content-vis",
-    "description": "Defer rendering of offscreen content using content-visibility.",
+    "id": "optimize-image-priority",
+    "description": "Optimize the loading priority of Largest Contentful Paint (LCP) candidate images.",
     "category": "performance",
-    "similarity": "0.85"
+    "featuresUsed": [ "Fetch priority" ],
+    "tokenCount": 985,
+    "similarity": 0.7289
+  },
+  {
+    "id": "defer-rendering-heavy-content",
+    "description": "Reduce rendering times in content-heavy web pages by deferring rendering for offscreen content.",
+    "category": "performance",
+    "featuresUsed": [ "content-visibility", "hidden=\"until-found\"" ],
+    "tokenCount": 1250,
+    "similarity": 0.6961
   }
 ]
 ```
@@ -69,11 +79,17 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 **Example Output**:
 `The markdown content of the guide describing implementation steps...`
 
+## Using npx
+
+-   IMPORTANT: on Windows, using `npx` may fail. Use `npx.cmd ...` instead.
+-   Network access is required for fetching npm packages needed by the task.
+-   If the `npx -y modern-web-guidance…` command hangs, you may be offline. Try running again in offline
+    mode: `npx --offline …`.
+-   The `--skill-version` flag is used to determine if this SKILL.md is out of date. If it is, a warning
+    message is logged to stderr.
+
 ## Guidelines
 
 -   Always search **first** to find the most specific design/performance patterns.
 -   These guides are usually framework-agnostic; adapt them correctly to your setup.
 -   Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
--   Note: if the `npx -y modern-web-guidance…` command hangs, try running again in offline mode: `npx --offline …`
--   Note: the `--skill-version` flag is used to determine if this SKILL.md is out of date. If it is, a warning message
-    is logged to stderr.

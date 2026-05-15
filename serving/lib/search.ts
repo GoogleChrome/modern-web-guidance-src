@@ -8,11 +8,12 @@ export interface UseCaseResult {
   id: string;
   description: string;
   category: string;
-  featuresUsed: string[];
-  similarity: string;
+  featuresUsed?: string[];
+  tokenCount: number;
+  similarity: number;
 }
 
-let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; vector: number[]; norm: number }[] | null = null;
+let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; tokenCount: number; vector: number[]; norm: number }[] | null = null;
 
 function dotProduct(a: number[], b: number[]): number {
   let dotProduct = 0;
@@ -50,6 +51,7 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
       description: item.description,
       category: item.category,
       featuresUsed: item.featuresUsed || [],
+      tokenCount: item.tokenCount || 0,
       vector: item.vector,
       norm: item.vector ? calculateNorm(item.vector) : 0
     })).filter(item => item.vector);
@@ -79,8 +81,9 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
     id: r.item.id,
     description: r.item.description,
     category: r.item.category,
-    featuresUsed: r.item.featuresUsed,
-    similarity: r.similarity.toFixed(4)
+    featuresUsed: r.item.featuresUsed?.length ? r.item.featuresUsed : undefined,
+    tokenCount: r.item.tokenCount,
+    similarity: parseFloat(r.similarity.toFixed(4))
   }));
 
   // Log the result

@@ -51,8 +51,8 @@ async function main() {
     // Request lower boundary floor to capture actual scores
     const results = await searchUseCases(query, 3, -1.0);
 
-    const topMatch = results[0] || { id: "N/A", similarity: "0.0000", description: "No match" };
-    const simScore = parseFloat(topMatch.similarity);
+    const topMatch = results[0] || { id: "N/A", similarity: 0, description: "No match" };
+    const simScore = Number(topMatch.similarity);
 
     let status = "🔴 Very Low (<0.3)";
     if (simScore >= 0.6) {
@@ -63,7 +63,7 @@ async function main() {
       status = "🟠 Low (0.3-0.45)";
     }
 
-    rows.push(`| \`${query}\` | ${topMatch.id} | **${topMatch.similarity}** | ${status} |`);
+    rows.push(`| \`${query}\` | ${topMatch.id} | **${typeof topMatch.similarity === 'number' ? topMatch.similarity.toFixed(4) : topMatch.similarity}** | ${status} |`);
   }
 
   const matrixContent = `# RAG Similarity Threshold Calibration Matrix

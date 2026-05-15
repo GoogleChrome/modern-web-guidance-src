@@ -3,8 +3,6 @@ name: autofill-highlight-inputs
 description: Use CSS to highlight form fields that have been autofilled by the browser and not edited by the user.
 web-feature-ids:
   - autofill
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:autofill
 ---
 
 # Use the CSS :autofill pseudo-class to highlight form fields that have been autofilled by the browser and not edited by the user

@@ -1,0 +1,7 @@
+- Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API.
+- When using WebGL or WebGPU, the `<canvas>` element MUST include the `layoutsubtree` attribute to allow descendant HTML elements to be exposed to browser features.
+- When using WebGL or WebGPU, canvas rendering MUST be executed inside an `onpaint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.
+- When using WebGL or WebGPU, the rendering logic MUST use `texElementImage2D` for WebGL or `copyElementImageToTexture` for WebGPU to draw HTML elements onto the canvas.
+- When using WebGL or WebGPU, the CSS `transform` property of the descendant HTML element MUST be updated based on the transform matrix calculated during rendering.
+- Screen size changes MUST be observed to update the canvas size to match device pixels to prevent blurriness.
+- A fallback UI strategy MUST be implemented for browsers that do not support HTML-in-Canvas.
