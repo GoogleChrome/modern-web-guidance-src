@@ -21,7 +21,9 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     fs.writeFileSync(path.join(mockGuidesDir, 'forms/autofill-address-form.md'), 'content');
     
     fs.mkdirSync(path.join(mockGuidesDir, 'performance'), { recursive: true });
-    fs.writeFileSync(path.join(mockGuidesDir, 'performance/break-up-long-tasks.md'), 'content');
+    
+    fs.mkdirSync(path.join(mockGuidesDir, 'user-experience'), { recursive: true });
+    fs.writeFileSync(path.join(mockGuidesDir, 'user-experience/move-dom-element-without-losing-state.md'), 'content');
   });
 
   after(() => {
@@ -41,5 +43,6 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     assert.match(content, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'Should link use cases to GitHub blob files');
     assert.ok(content.includes(`**${result.useCasesCount} use-case-centric guides**`), 'Should dynamically update the use case count string');
     assert.ok(!content.includes('134+'), 'Should remove the hardcoded count');
+    assert.ok(content.includes('&lt;iframe&gt; loading state'), 'Should escape angle brackets in descriptions');
   });
 });

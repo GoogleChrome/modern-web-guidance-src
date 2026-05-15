@@ -73,7 +73,8 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     ucs.sort((a, b) => a.id.localeCompare(b.id));
     for (const uc of ucs) {
       const url = `https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/${uc.category}/${uc.id}.md`;
-      dynamicMd += `- **[${uc.id}](${url})**: ${uc.description}\n`;
+      const escapedDescription = uc.description.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      dynamicMd += `- **[${uc.id}](${url})**: ${escapedDescription}\n`;
     }
     dynamicMd += `\n`;
   }
