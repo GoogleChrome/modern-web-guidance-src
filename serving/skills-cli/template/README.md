@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/modern-web-guidance.svg" alt="Modern Web Guidance Logo" width="150" />
+</p>
+
 # Modern Web Guidance
 
 Inject web platform expertise, best practices, and modern API patterns directly into your AI coding agents.
