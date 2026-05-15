@@ -2,11 +2,19 @@
   <img src="assets/modern-web-guidance.svg" alt="Modern Web Guidance Logo" width="150" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/GoogleChrome/modern-web-guidance"><img src="https://img.shields.io/npm/v/modern-web-guidance.svg" alt="npm version"></a>
+  <a href="https://github.com/GoogleChrome/modern-web-guidance/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/modern-web-guidance.svg" alt="license"></a>
+  <a href="https://github.com/GoogleChrome/modern-web-guidance"><img src="https://img.shields.io/github/stars/GoogleChrome/modern-web-guidance.svg" alt="github stars"></a>
+</p>
+
 # Modern Web Guidance
 
 Inject web platform expertise, best practices, and modern API patterns directly into your AI coding agents.
 
 modern-web-guidance is an agent skill (aka [SKILL.md](http://SKILL.md)) that helps your coding agent build better web apps. It uses modern, high-performance, accessible, and secure APIs rather than legacy, outdated workarounds. This project is supported by the Google Chrome team, the Microsoft Edge team, and the web development community.
+
+Find the source code and contribute on [GitHub](https://github.com/GoogleChrome/modern-web-guidance).
 
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
@@ -183,7 +191,7 @@ npx modern-web-guidance@latest install --choose
 
 ## Usage Statistics & Opt-Out
 
-Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the Modern Web Guidance tool. See [modern-web.ts](https://github.com/GoogleChrome/guidance/blob/main/serving/bin/modern-web.ts) to see exactly what data is collected.
+Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the Modern Web Guidance tool. See [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance/blob/main/serving/bin/modern-web.ts) to see exactly what data is collected.
 
 Data collection is enabled by default. You can opt-out completely at any time (suppressing all local console telemetry warnings, search/retrieve metric dispatches, and installation telemetry) by setting the `DISABLE_TELEMETRY=1` environment variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
 
@@ -192,3 +200,11 @@ export DISABLE_TELEMETRY=1
 ```
 
 Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).
+
+## Contributors
+
+Active contributors are what keep this project moving forward. Thanks to everyone who has contributed!
+
+<a href="https://github.com/GoogleChrome/modern-web-guidance/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance" />
+</a>
