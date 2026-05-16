@@ -30,7 +30,7 @@ export class WatchdogClient {
     }
 
     this.#childProcess = spawn(process.execPath, args, {
-      stdio: ['pipe', 'ignore', 'ignore'],
+      stdio: ['pipe', 'ignore', 'inherit'],
       detached: true,
     });
 
