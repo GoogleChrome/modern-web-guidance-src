@@ -4,11 +4,6 @@ description: Adjust the visible clipping boundary of an element to align with th
 web-feature-ids:
   - overflow-clip
   - overflow-clip-margin
-sources:
-  - https://developer.chrome.com/en/blog/overflow-replaced-elements
-  - https://web.dev/en/learn/css/overflow
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/overflow-clip-margin
-  - https://css-tricks.com/almanac/properties/o/overflow-clip-margin/
 ---
 
 # Overflow Clipping Control
