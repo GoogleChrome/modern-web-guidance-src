@@ -117,6 +117,12 @@ test('modern-web CLI search and retrieve', async () => {
   const searchOut = execSync(`node "${binaryPath}" search "address form"`, { encoding: 'utf8' });
   assertSearchResults(searchOut);
 
+  // 1b. Validate search with --skill-version after search query
+  const skillVersionPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/skill-version.txt');
+  const skillVersion = (await fs.readFile(skillVersionPath, 'utf8')).trim();
+  const searchOutWithVersion = execSync(`node "${binaryPath}" search "address form" --skill-version "${skillVersion}"`, { encoding: 'utf8' });
+  assertSearchResults(searchOutWithVersion);
+
   // 2. Validate retrieve
   const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');

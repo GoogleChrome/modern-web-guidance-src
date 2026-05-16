@@ -31,6 +31,7 @@ Commands:
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
   install [options]         Install the modern-web-guidance skill
+  uninstall                 Uninstall the modern-web-guidance skill
   update                    Update skills
 
 Options:
@@ -155,6 +156,18 @@ async function main() {
     await getLogger().logToolCommand(Date.now() - startTime, success, CommandType.UPDATE);
     if (result.error) {
       console.error("Update failed:", result.error);
+    }
+  } else if (command === "uninstall") {
+    const startTime = Date.now();
+    const skills = getOurCLIAdjacentSkillIDs();
+    const result = spawnSync("npx", ["skills", "remove", ...skills], {
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+    const success = !result.error && result.status === 0;
+    await getLogger().logToolCommand(Date.now() - startTime, success, CommandType.UNINSTALL);
+    if (result.error) {
+      console.error("Uninstall failed:", result.error);
     }
   } else {
     console.error(`Unknown command: ${command}`);
