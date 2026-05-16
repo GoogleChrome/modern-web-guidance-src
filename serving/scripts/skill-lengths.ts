@@ -9,6 +9,7 @@ const distSkillsCliDir = path.join(workspaceRoot, "dist/skills-cli");
 interface FileInfo {
   relativePath: string;
   charCount: number;
+  lineCount: number;
 }
 
 function main() {
@@ -41,6 +42,7 @@ function main() {
     results.push({
       relativePath: file,
       charCount: content.length,
+      lineCount: content.split(/\r?\n/).length,
     });
   }
 
@@ -48,10 +50,10 @@ function main() {
   results.sort((a, b) => b.charCount - a.charCount);
 
   // Print as markdown table
-  console.log("| Character Count | File Path |");
-  console.log("| --- | --- |");
+  console.log("| Character Count | Line Count | File Path |");
+  console.log("| --- | --- | --- |");
   for (const r of results) {
-    console.log(`| ${r.charCount.toLocaleString()} | ${r.relativePath} |`);
+    console.log(`| ${r.charCount.toLocaleString()} | ${r.lineCount.toLocaleString()} | ${r.relativePath} |`);
   }
 }
 
