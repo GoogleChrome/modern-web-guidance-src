@@ -48,10 +48,10 @@ function main() {
   results.sort((a, b) => b.charCount - a.charCount);
 
   // Print as markdown table
-  console.log("| File Path | Character Count |");
+  console.log("| Character Count | File Path |");
   console.log("| --- | --- |");
   for (const r of results) {
-    console.log(`| ${r.relativePath} | ${r.charCount.toLocaleString()} |`);
+    console.log(`| ${r.charCount.toLocaleString()} | ${r.relativePath} |`);
   }
 }
 
