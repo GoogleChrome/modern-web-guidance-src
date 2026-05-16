@@ -112,3 +112,31 @@ npx -y modern-web-guidance@latest retrieve "<id>"
   - Questions if a feature is safe to use without fallbacks.
 
   No defined policy format. This is an example: `**Browser Support:** Allow Newly Available features, but only adopt custom fallback code that adds <= 20 lines and does not require external dependencies.`
+
+## Security & Sandbox Configuration
+
+#### `allowed-tools` field
+
+The optional `allowed-tools` field:
+* A space-separated string of tools that are pre-approved to run.
+* Experimental. Support for this field may vary between agent implementations.
+
+To allow the `modern-web-guidance` commands without permitting unrestricted `npx` access, you can define specific command constraints in your agent's configuration:
+
+**Example:**
+
+```yaml
+allowed-tools: Bash(npx:-y:modern-web-guidance*)
+```
+
+If your agent uses space-separated argument matching, use:
+
+```yaml
+allowed-tools: Bash(npx:-y modern-web-guidance*)
+```
+
+If the package is installed globally and run directly:
+
+```yaml
+allowed-tools: Bash(modern-web-guidance:*)
+```

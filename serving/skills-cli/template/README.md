@@ -2,13 +2,6 @@
   <img src="assets/modern-web-guidance.svg" alt="Modern Web Guidance Logo" width="150" />
 </p>
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/modern-web-guidance"><img src="https://img.shields.io/npm/v/modern-web-guidance?style=flat-square&color=33cd56" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/modern-web-guidance"><img src="https://img.shields.io/npm/dm/modern-web-guidance?style=flat-square&color=blue" alt="npm downloads"></a>
-  <a href="https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/LICENSE"><img src="https://img.shields.io/github/license/GoogleChrome/modern-web-guidance-src?style=flat-square" alt="license"></a>
-  <a href="https://github.com/GoogleChrome/modern-web-guidance-src"><img src="https://img.shields.io/github/stars/GoogleChrome/modern-web-guidance-src?style=flat-square&color=gold" alt="github stars"></a>
-</p>
-
 # 🚀 Modern Web Guidance
 
 Inject web platform expertise, best practices, and modern API patterns directly into your AI coding agents.
