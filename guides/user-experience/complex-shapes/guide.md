@@ -4,16 +4,6 @@ description: Clip elements and their content to any free-form shape, like a symb
 web-feature-ids:
   - masks
   - svg
-sources:
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/mask
-  - https://web.dev/articles/building/a-theme-switch-component
-  - https://web.dev/articles/css-masking
-  - https://web.dev/articles/how-we-built-designcember
-  - https://web.dev/learn/css/paths-shapes-clipping-masking
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Masking/Introduction
-  - https://css-tricks.com/clipping-masking-css/
-  - https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorials/SVG_from_scratch/SVG_and_CSS
-  - https://css-tricks.com/svg-properties-and-css/
 ---
 
 ## Overview

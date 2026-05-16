@@ -3,13 +3,6 @@ name: shaped-cutouts
 description: Combine multiple shapes to create complex cutouts or 'knockout' effects in elements, such as adding a notch to an element.
 web-feature-ids:
   - masks
-sources:
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/mask
-  - https://web.dev/articles/building/a-theme-switch-component
-  - https://web.dev/articles/css-masking
-  - https://web.dev/learn/css/paths-shapes-clipping-masking
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Masking/Introduction
-  - https://css-tricks.com/clipping-masking-css/
 ---
 
 ## Overview

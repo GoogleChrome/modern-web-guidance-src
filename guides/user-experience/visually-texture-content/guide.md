@@ -3,12 +3,6 @@ name: visually-texture-content
 description: Apply realistic weathering and texture patterns to elements to give them an organic, aged, or physical material appearance.
 web-feature-ids:
   - masks
-sources:
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/mask
-  - https://web.dev/articles/css-masking
-  - https://web.dev/learn/css/paths-shapes-clipping-masking
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Masking/Introduction
-  - https://css-tricks.com/clipping-masking-css/
 ---
 
 ## Overview

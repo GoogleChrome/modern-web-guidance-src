@@ -3,12 +3,6 @@ name: soft-edge-content-fade
 description: Apply a transparency gradient to content edges to indicate further scrollable areas or to obscure payment-walled text.
 web-feature-ids:
   - masks
-sources:
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/mask
-  - https://web.dev/articles/css-masking
-  - https://web.dev/learn/css/paths-shapes-clipping-masking
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Masking/Introduction
-  - https://css-tricks.com/clipping-masking-css/
 ---
 
 ## Overview
