@@ -9,8 +9,6 @@ web-feature-ids:
 
 This guide details how to accurately calculate the total time a user spends actively viewing a page. Traditional metrics like time-on-page often incorrectly include time spent with the page in the background. By using the `VisibilityStateEntry` API, you can measure only the "foreground time," providing a better metric of user engagement.
 
-{{ BASELINE_STATUS("page-visibility-state") }}
-
 ## Implementing foreground time calculation
 
 The `PerformanceTimeline` API exposes visibility state changes as performance entries. Rather than reacting to `visibilitychange` events and manually accumulating time throughout a session, you can query the entire visibility history at any time.
