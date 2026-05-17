@@ -195,69 +195,7 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
   dynamicMd = dynamicMd.trimEnd() + `\n</details>\n\n`;
 
-  // Generate Evals Results Table
-  let evalsMd = '';
-  const evalsSummaryPath = path.join(SERVING_DIR, 'skills-cli', 'eval-results-summary.json');
-  if (fs.existsSync(evalsSummaryPath)) {
-    try {
-      const evalsData = JSON.parse(fs.readFileSync(evalsSummaryPath, 'utf-8'));
-      if (Array.isArray(evalsData) && evalsData.length > 0) {
-        evalsMd += '| Suite | Agent + Model | Tasks | Unguided → Guided (Uplift) |\n';
-        evalsMd += '| :--- | :--- | :---: | :---: |\n';
-
-        // Stratified Recency Selection Algorithm
-        const selectedRuns: any[] = [];
-        const groups: Record<string, any[]> = {};
-
-        for (const run of evalsData) {
-          let cleanModel = run.model;
-          if (cleanModel.startsWith('claude-')) {
-            cleanModel = cleanModel.slice(7);
-          }
-          const key = `${run.agent}|||${cleanModel}`;
-          if (!groups[key]) {
-            groups[key] = [];
-          }
-          groups[key].push(run);
-        }
-
-        for (const key of Object.keys(groups)) {
-          groups[key].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        }
-
-        const K = 2;
-        const remainingPool: any[] = [];
-
-        for (const key of Object.keys(groups)) {
-          const groupRuns = groups[key];
-          selectedRuns.push(...groupRuns.slice(0, K));
-          remainingPool.push(...groupRuns.slice(K));
-        }
-
-        if (selectedRuns.length > 10) {
-          selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-          selectedRuns.splice(10);
-        } else if (selectedRuns.length < 10) {
-          remainingPool.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-          const fillCount = 10 - selectedRuns.length;
-          selectedRuns.push(...remainingPool.slice(0, fillCount));
-        }
-
-        selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-        for (const run of selectedRuns) {
-          const suiteLabel = formatSuiteLabel(run.testId, run.timestamp);
-          const agentModel = formatAgentModel(run.agent, run.model);
-          const tasks = run.taskCount;
-          const uplift = formatUplift(run.unguidedPassRate, run.guidedPassRate);
-
-          evalsMd += `| ${suiteLabel} | ${agentModel} | ${tasks} | ${uplift} |\n`;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse evals summary:', e);
-    }
-  }
+  const evalsMd = generateEvalsResultsTable();
 
   // Update README idempotently from template source
   const templateReadmePath = path.join(SERVING_DIR, "skills-cli/template/README.md");
@@ -286,6 +224,75 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
+}
+
+function generateEvalsResultsTable(): string {
+  let evalsMd = '';
+  const evalsSummaryPath = path.join(SERVING_DIR, 'skills-cli', 'eval-results-summary.json');
+  if (!fs.existsSync(evalsSummaryPath)) {
+    return '';
+  }
+
+  try {
+    const evalsData = JSON.parse(fs.readFileSync(evalsSummaryPath, 'utf-8'));
+    if (Array.isArray(evalsData) && evalsData.length > 0) {
+      evalsMd += '| Suite | Agent + Model | Tasks | Unguided → Guided (Uplift) |\n';
+      evalsMd += '| :--- | :--- | :---: | :---: |\n';
+
+      // Stratified Recency Selection Algorithm
+      const selectedRuns: any[] = [];
+      const groups: Record<string, any[]> = {};
+
+      for (const run of evalsData) {
+        let cleanModel = run.model;
+        if (cleanModel.startsWith('claude-')) {
+          cleanModel = cleanModel.slice(7);
+        }
+        const key = `${run.agent}|||${cleanModel}`;
+        if (!groups[key]) {
+          groups[key] = [];
+        }
+        groups[key].push(run);
+      }
+
+      for (const key of Object.keys(groups)) {
+        groups[key].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      }
+
+      const K = 2;
+      const remainingPool: any[] = [];
+
+      for (const key of Object.keys(groups)) {
+        const groupRuns = groups[key];
+        selectedRuns.push(...groupRuns.slice(0, K));
+        remainingPool.push(...groupRuns.slice(K));
+      }
+
+      if (selectedRuns.length > 10) {
+        selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        selectedRuns.splice(10);
+      } else if (selectedRuns.length < 10) {
+        remainingPool.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        const fillCount = 10 - selectedRuns.length;
+        selectedRuns.push(...remainingPool.slice(0, fillCount));
+      }
+
+      selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      for (const run of selectedRuns) {
+        const suiteLabel = formatSuiteLabel(run.testId, run.timestamp);
+        const agentModel = formatAgentModel(run.agent, run.model);
+        const tasks = run.taskCount;
+        const uplift = formatUplift(run.unguidedPassRate, run.guidedPassRate);
+
+        evalsMd += `| ${suiteLabel} | ${agentModel} | ${tasks} | ${uplift} |\n`;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to parse evals summary:', e);
+  }
+
+  return evalsMd;
 }
 
 function getAgentBadge(agent: string): string {
