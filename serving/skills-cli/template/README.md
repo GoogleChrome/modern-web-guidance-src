@@ -55,52 +55,36 @@ Here is a preview of our **134+ use-case-centric guides**:
 
 | Category | Core Capabilities & APIs |
 | :--- | :--- |
-| **🎨 User Experience** | Smooth visual states (View Transitions, entry/exit animations, parallax scroll, CSS `scrollbar-color`). |
-| **📐 CSS Layout** | Modern layout systems (container queries, `subgrid`, modern color spaces like `oklch`, text-wrap tuning, and line-height trimming). |
-| **⚡ Performance** | Speed optimizations (instant preloading, Interaction to Next Paint (INP) diagnostics, and scheduling tasks via `scheduler.yield`). |
-| **📝 Forms & UI** | Native components (Anchor Positioning for tooltips, Popover API, dialogs, `:user-invalid` validation, and auto-sizing fields). |
-| **♿ Accessibility** | Hardened patterns (accessible error announcements, keyboard focus management). |
-| **🤖 Built-in AI** | Local client models (native translation, summarization, and language detection APIs). |
+| **User Experience** | Smooth visual states (View Transitions, entry/exit animations, parallax scroll, CSS `scrollbar-color`). |
+| **CSS** | Modern layout systems (container queries, `subgrid`, modern color spaces like `oklch`, text-wrap tuning, and line-height trimming). |
+| **Performance** | Speed optimizations (instant preloading, Interaction to Next Paint (INP) diagnostics, and scheduling tasks via `scheduler.yield`). |
+| **Forms & UI** | Native components (Anchor Positioning for tooltips, Popover API, dialogs, `:user-invalid` validation, and auto-sizing fields). |
+| **Accessibility** | Hardened patterns (accessible error announcements, keyboard focus management). |
+| **Built-in AI** | Local client models (native translation, summarization, and language detection APIs). |
 
 <!-- INJECT_SKILL_COVERAGE -->
 
-### 🛡️ Safe Adoption of Modern Features
+### Safe Adoption of Modern Features
 
 * **Responsible Fallbacks**: We prioritize lightweight, case-specific custom fallbacks (<50 LOC) or conditionally-loaded polyfills instead of heavy third-party bundles.
 * **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
-* **Baseline-Aware Integration**: We leverage real-time compatibility data from the Baseline project so agents can dynamically choose progressive enhancement over risky workarounds.
+* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents can dynamically adapt to current browser support and any browser support preferences.
 
-## ⚙️ How It Works
+## How It Works
 
-When your agent needs modern web APIs, it queries the local database:
-
-```mermaid
-flowchart TD
-    Agent[AI Agent] -->|1. Searches| Tool[modern-web tool]
-    Tool -->|2. Local Semantic Match| Guides[(130+ Curated Guides)]
-    Guides -->|3. Retrieves| Tool
-    Tool -->|4. Injects context| Agent
-```
-
-1. **Discovery**: The agent is instructed to use the `modern-web` CLI for web platform queries.
+0. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web` CLI for web platform queries.
 2. **Local Semantic Search**: The agent runs `modern-web search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
-3. **Context Injection**: The agent retrieves the guide via `modern-web retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
+3. **Guide Fetch**: The agent retrieves the guide via `modern-web retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
+
+Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
 
 ## 💾 Alternative Installation Methods
 
 <details>
-<summary><b>Vercel Skills CLI</b></summary>
+<summary><b>Vercel Skills CLI</b> (aka <code>npx skills</code>)</summary>
 
 ```shell
 npx skills add GoogleChrome/modern-web-guidance
-```
-</details>
-
-<details>
-<summary><b>Google Antigravity</b></summary>
-
-```shell
-agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 ```
 </details>
 
@@ -109,6 +93,14 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 
 ```shell
 gh skill install GoogleChrome/modern-web-guidance
+```
+</details>
+
+<details>
+<summary><b>Google Antigravity</b></summary>
+
+```shell
+agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 ```
 </details>
 
@@ -134,32 +126,37 @@ gh skill install GoogleChrome/modern-web-guidance
 
 ## 🔄 Updating
 
-If you installed the skill using `npx modern-web-guidance@latest install`, you can update with:
-
-```sh
-npx modern-web-guidance@latest update
-```
+If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
 
 Otherwise, consult your agent's documentation for updating plugins and skills.
 
-## 🧪 Evaluation & Quality Assurance
+## 🧪 Evals to prove this works well ;)
 
-Every guide in this pack is continuously calibrated to guarantee it helps agents write better code. We run automated evaluations using a closed-loop validation pipeline:
+We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** to guarantee AI agents write better code.  We run automated evaluations using a closed-loop validation pipeline:
 
-```mermaid
-flowchart TD
-    SME[SME Guidance] --> Gen[Gemini CLI Generator]
-    Gen -->|Generates| Grader[Playwright Grader .spec.ts]
-    Gen -->|Generates| Neg[Negative Demo .html]
-    Grader --> Cal[Calibration Loop]
-    Neg --> Cal
-    Cal -->|Validates Grader| E2E[E2E Agent Evals]
-    E2E -->|Compare| Guided[Guided Agent vs. Unguided]
+```
+  [ Expert-authored guidance and demo ]
+            │
+            ▼
+  [ Generated assets ] ──> Playwright Grader (.spec.ts) & Negative Demo (.html)
+            │
+            ▼
+  [ Calibration loop ] ───────> Runs Grader on Gold-Standard Demo (Must Pass 100%)
+            │                   Runs Grader on Negative Demo (Must Fail 100%)
+            ▼
+  [ E2E agent evals ] ────────> Runs coding agents in Guided vs. Unguided modes
+                                Compares accuracy w/ and w/o guide injection to prove impact
 ```
 
-1. **Outcome-Based Assertions**: We write Playwright scripts (`.spec.ts`) that verify exact runtime behaviors, computed styles, and accessibility states.
-2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a flawed anti-pattern implementation (0% pass target). The generator automatically refines tests on failure.
-3. **E2E Testing**: We measure agent performance on real tasks with and without guidance. We only publish guides that demonstrate a significant improvement in success rates (e.g., from 20% to 90%).
+0.
+1. **Outcome-Based Assertions**: We write browser automation scripts that verify the guide was followed correctly: exact runtime behaviors, computed styles, and accessibility states.
+2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
+3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
+
+### Recent eval results:
+
+<!-- INJECT_EVAL_RESULTS -->
+
 
 ## 🗃️ Available Skill Packs
 
@@ -174,11 +171,10 @@ npx modern-web-guidance@latest install --choose
 
 ## 📊 Telemetry & Privacy
 
-Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the tool. You can inspect what is collected in [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/serving/bin/modern-web.ts).
+Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the tool. You can inspect what is collected in [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/serving/bin/modern-web.ts).
 
 > [!TIP]
-> **To Opt-Out:**
-> Set the `DISABLE_TELEMETRY=1` environment variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
+> **To Opt-Out:**, set the `DISABLE_TELEMETRY=1` env variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
 > ```bash
 > export DISABLE_TELEMETRY=1
 > ```
@@ -197,4 +193,4 @@ Active contributors are what keep this project moving forward. Thanks to everyon
 
 ## 📄 Attribution
 
-Portions of the documentation and compatibility data used in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors, and [W3C](https://www.w3.org/) specifications.
+Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors, and [W3C](https://www.w3.org/) specifications.
