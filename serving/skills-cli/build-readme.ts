@@ -23,48 +23,29 @@ const HTML_ROOTS = new Set([
 ]);
 
 function getCategoryForFeature(id: string): string {
-  const feature = features[id];
-  const featGroups: string[] = feature && feature.group
-    ? (Array.isArray(feature.group) ? feature.group : [feature.group])
-    : [];
+  const feat = features[id];
+  const featGroups = feat?.group ? (Array.isArray(feat.group) ? feat.group : [feat.group]) : [];
+  const resolved = new Set<string>();
 
-  const resolvedCategories = new Set<string>();
-
-  for (const groupKey of featGroups) {
-    let current = groupKey;
-    let root = null;
-    while (current && groups[current]) {
-      const parent = groups[current].parent;
-      if (!parent) {
-        root = current;
-        break;
-      }
-      current = parent;
-    }
-
-    if (root) {
-      if (CSS_ROOTS.has(root)) {
-        resolvedCategories.add('CSS & Layout');
-      } else if (HTML_ROOTS.has(root)) {
-        resolvedCategories.add('HTML & DOM');
-      } else {
-        resolvedCategories.add('JavaScript & APIs');
-      }
-    }
+  for (const g of featGroups) {
+    let root = g;
+    while (groups[root]?.parent) root = groups[root].parent;
+    
+    if (CSS_ROOTS.has(root)) resolved.add('CSS & Layout');
+    else if (HTML_ROOTS.has(root)) resolved.add('HTML & DOM');
+    else resolved.add('JavaScript & APIs');
   }
 
-  // Prioritize categories when multiple groups exist
-  if (resolvedCategories.has('CSS & Layout')) return 'CSS & Layout';
-  if (resolvedCategories.has('HTML & DOM')) return 'HTML & DOM';
-  if (resolvedCategories.has('JavaScript & APIs')) return 'JavaScript & APIs';
+  if (resolved.has('CSS & Layout')) return 'CSS & Layout';
+  if (resolved.has('HTML & DOM')) return 'HTML & DOM';
+  if (resolved.has('JavaScript & APIs')) return 'JavaScript & APIs';
 
   // Fallback checks on ID itself (for features without groups)
-  if (id.includes('css') || id.includes('style') || id.includes('layout') || id.includes('highlight') || id.includes('target') || id === 'anchor-positioning') {
-    return 'CSS & Layout';
-  }
-  if (id.includes('html') || id.includes('element') || id.includes('dom') || id.includes('link-') || id.includes('invoker')) {
-    return 'HTML & DOM';
-  }
+  const cssKws = ['css', 'style', 'layout', 'highlight', 'target', 'anchor-positioning'];
+  const htmlKws = ['html', 'element', 'dom', 'link-', 'invoker'];
+  
+  if (cssKws.some(kw => id.includes(kw))) return 'CSS & Layout';
+  if (htmlKws.some(kw => id.includes(kw))) return 'HTML & DOM';
 
   return 'JavaScript & APIs';
 }
