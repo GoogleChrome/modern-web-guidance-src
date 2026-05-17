@@ -3,6 +3,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { resultsDir } from '../../lib/paths.ts';
 
+const ALLOWED_AGENTS = ['claudecode', 'geminicli', 'codex', 'claude', 'codexcli'];
+
+function isAgentAllowed(agent: string): boolean {
+  const normalized = agent.toLowerCase().replace(/[-_]/g, '');
+  return ALLOWED_AGENTS.includes(normalized);
+}
+
 const SERVING_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUTPUT_PATH = path.join(SERVING_DIR, 'skills-cli', 'eval-results-summary.json');
 
@@ -43,9 +50,21 @@ function collectResults() {
       const content = fs.readFileSync(evalsPath, 'utf8');
       const data = JSON.parse(content);
 
+      const agent = data.agent || 'unknown';
+      if (!isAgentAllowed(agent)) {
+        console.log(`Skipping ${item.name} (agent ${agent} not in allowlist)`);
+        continue;
+      }
+
       const summary = data.summary;
       if (!summary) {
         console.warn(`Missing summary in ${item.name}/evals.json`);
+        continue;
+      }
+
+      const taskCount = summary.taskCount || 0;
+      if (taskCount < 60) {
+        console.log(`Skipping ${item.name} (taskCount ${taskCount} < 60)`);
         continue;
       }
 
@@ -58,10 +77,10 @@ function collectResults() {
       summaries.push({
         testId: item.name,
         timestamp: data.timestamp || new Date().toISOString(),
-        agent: data.agent || 'unknown',
+        agent: agent,
         serving: serving,
         model: data.model || 'unknown',
-        taskCount: summary.taskCount || 0,
+        taskCount: taskCount,
         unguidedPassRate: summary.unguidedPassRate ?? 0,
         guidedPassRate: summary.guidedPassRate ?? 0,
       });

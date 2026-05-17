@@ -432,17 +432,20 @@ We developed a robust eval harness to ensure that the content is **empirically p
 2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
 3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
 
-### Recent eval results:
+### Recent eval results
 
 | Suite | Agent + Model | Tasks | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
-| Nightly (Apr 30) | ✱ claude_code (claude-opus-4-6) | 66 | 44% → 81% (**+37%**) |
-| Nightly (Apr 30) | ✦ jetski_cli | 66 | 41% → 78% (**+37%**) |
-| Nightly (Apr 28) | ✱ claude_code (claude-opus-4-6) | 66 | 41% → 77% (**+36%**) |
-| Nightly (Apr 28) | ✦ jetski_cli | 66 | 42% → 73% (**+31%**) |
-| Nightly (Apr 27) | ✱ claude_code (claude-opus-4-6) | 66 | 41% → 79% (**+38%**) |
-| Nightly (Apr 27) | ✦ jetski_cli | 66 | 39% → 82% (**+43%**) |
-| Nightly (Apr 27) | ✱ claude_code (claude-opus-4-6) | 66 | 40% → 78% (**+38%**) |
+| Nightly (May 17) | ❂ codex_cli (gpt-5.5) | 75 | 37% → 65% (**+28%**) |
+| Nightly (May 17) | ✱ claude_code (opus-4-7) | 75 | 54% → 85% (**+31%**) |
+| Nightly (May 16) | ❂ codex_cli (gpt-5.5) | 75 | 49% → 82% (**+33%**) |
+| Nightly (May 16) | ✱ claude_code (opus-4-7) | 75 | 51% → 86% (**+35%**) |
+| Nightly (May 15) | ❂ codex_cli (gpt-5.5) | 74 | 52% → 81% (**+29%**) |
+| Nightly (May 15) | ✱ claude_code (opus-4-7) | 74 | 53% → 82% (**+29%**) |
+| Nightly (May 14) | ❂ codex_cli (gpt-5.5) | 68 | 54% → 86% (**+32%**) |
+| Nightly (May 14) | ✱ claude_code (opus-4-7) | 68 | 54% → 91% (**+37%**) |
+| Nightly (Apr 30) | ✱ claude_code (opus-4-6) | 66 | 44% → 81% (**+37%**) |
+| Nightly (Apr 28) | ✱ claude_code (opus-4-6) | 66 | 41% → 77% (**+36%**) |
 
 
 ## <img src=".github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs

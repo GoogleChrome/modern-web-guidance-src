@@ -90,8 +90,47 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
         evalsMd += '| Suite | Agent + Model | Tasks | Unguided → Guided (Uplift) |\n';
         evalsMd += '| :--- | :--- | :---: | :---: |\n';
         
-        const limitedData = evalsData.slice(0, 10);
-        for (const run of limitedData) {
+        // Stratified Recency Selection Algorithm
+        const selectedRuns: any[] = [];
+        const groups: Record<string, any[]> = {};
+        
+        for (const run of evalsData) {
+          let cleanModel = run.model;
+          if (cleanModel.startsWith('claude-')) {
+            cleanModel = cleanModel.slice(7);
+          }
+          const key = `${run.agent}|||${cleanModel}`;
+          if (!groups[key]) {
+            groups[key] = [];
+          }
+          groups[key].push(run);
+        }
+        
+        for (const key of Object.keys(groups)) {
+          groups[key].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        }
+        
+        const K = 2;
+        const remainingPool: any[] = [];
+        
+        for (const key of Object.keys(groups)) {
+          const groupRuns = groups[key];
+          selectedRuns.push(...groupRuns.slice(0, K));
+          remainingPool.push(...groupRuns.slice(K));
+        }
+        
+        if (selectedRuns.length > 10) {
+          selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          selectedRuns.splice(10);
+        } else if (selectedRuns.length < 10) {
+          remainingPool.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          const fillCount = 10 - selectedRuns.length;
+          selectedRuns.push(...remainingPool.slice(0, fillCount));
+        }
+        
+        selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        for (const run of selectedRuns) {
           const suiteLabel = formatSuiteLabel(run.testId, run.timestamp);
           const agentModel = formatAgentModel(run.agent, run.model);
           const tasks = run.taskCount;
@@ -120,6 +159,8 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     }
     readmeContent = readmeContent.replace(/\*\*\d+\+? use-case-centric guides\*\*/, `**${readyGuides.length} use-case-centric guides**`);
     fs.writeFileSync(destReadmePath, readmeContent);
+    const rootReadmePath = path.join(rootDir, "README.mwg.md");
+    fs.writeFileSync(rootReadmePath, readmeContent);
   }
 
   // Copy .github/img assets
@@ -143,7 +184,11 @@ function getAgentBadge(agent: string): string {
 
 function formatAgentModel(agent: string, model: string): string {
   const badge = getAgentBadge(agent);
-  const modelStr = model && model !== 'unknown' ? ` (${model})` : '';
+  let cleanModel = model;
+  if (cleanModel.startsWith('claude-')) {
+    cleanModel = cleanModel.slice(7);
+  }
+  const modelStr = cleanModel && cleanModel !== 'unknown' ? ` (${cleanModel})` : '';
   return `${badge}${agent}${modelStr}`;
 }
 

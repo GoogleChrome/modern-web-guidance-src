@@ -1,5 +1,175 @@
 [
   {
+    "testId": "nightly-2026-05-17_04-01-38-codex_cli-micahjo",
+    "timestamp": "2026-05-17T04:07:19.820Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 75,
+    "unguidedPassRate": 37,
+    "guidedPassRate": 65
+  },
+  {
+    "testId": "nightly-2026-05-17_03-47-52-claude_code-micahjo",
+    "timestamp": "2026-05-17T04:00:32.941Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 75,
+    "unguidedPassRate": 54,
+    "guidedPassRate": 85
+  },
+  {
+    "testId": "nightly-2026-05-16_03-59-41-codex_cli-micahjo",
+    "timestamp": "2026-05-16T04:13:40.514Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 75,
+    "unguidedPassRate": 49,
+    "guidedPassRate": 82
+  },
+  {
+    "testId": "nightly-2026-05-16_03-46-01-claude_code-micahjo",
+    "timestamp": "2026-05-16T03:58:46.837Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 75,
+    "unguidedPassRate": 51,
+    "guidedPassRate": 86
+  },
+  {
+    "testId": "nightly-2026-05-15_03-59-14-codex_cli-micahjo",
+    "timestamp": "2026-05-15T04:14:44.129Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 74,
+    "unguidedPassRate": 52,
+    "guidedPassRate": 81
+  },
+  {
+    "testId": "nightly-2026-05-15_03-42-32-claude_code-micahjo",
+    "timestamp": "2026-05-15T03:58:19.118Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 74,
+    "unguidedPassRate": 53,
+    "guidedPassRate": 82
+  },
+  {
+    "testId": "nightly-2026-05-14_03-57-48-codex_cli-micahjo",
+    "timestamp": "2026-05-14T04:10:56.655Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 68,
+    "unguidedPassRate": 54,
+    "guidedPassRate": 86
+  },
+  {
+    "testId": "nightly-2026-05-14_03-41-57-claude_code-micahjo",
+    "timestamp": "2026-05-14T03:57:02.049Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 68,
+    "unguidedPassRate": 54,
+    "guidedPassRate": 91
+  },
+  {
+    "testId": "nightly-2026-05-13_03-59-36-codex_cli-micahjo",
+    "timestamp": "2026-05-13T04:13:21.286Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 68,
+    "unguidedPassRate": 55,
+    "guidedPassRate": 87
+  },
+  {
+    "testId": "nightly-2026-05-13_03-41-30-claude_code-micahjo",
+    "timestamp": "2026-05-13T03:58:45.541Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 68,
+    "unguidedPassRate": 55,
+    "guidedPassRate": 88
+  },
+  {
+    "testId": "nightly-2026-05-12_03-44-12-claude_code-micahjo",
+    "timestamp": "2026-05-12T05:27:21.259Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 68,
+    "unguidedPassRate": 53,
+    "guidedPassRate": 89
+  },
+  {
+    "testId": "nightly-2026-05-12_03-54-18-codex_cli-micahjo",
+    "timestamp": "2026-05-12T05:27:20.553Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 68,
+    "unguidedPassRate": 51,
+    "guidedPassRate": 83
+  },
+  {
+    "testId": "nightly-2026-05-11_04-35-02-codex_cli-micahjo",
+    "timestamp": "2026-05-11T04:49:09.997Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 70,
+    "unguidedPassRate": 60,
+    "guidedPassRate": 87
+  },
+  {
+    "testId": "nightly-2026-05-11_04-19-18-claude_code-micahjo",
+    "timestamp": "2026-05-11T04:34:11.462Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 70,
+    "unguidedPassRate": 59,
+    "guidedPassRate": 94
+  },
+  {
+    "testId": "nightly-2026-05-07_15-38-04-codex_cli-micahjo",
+    "timestamp": "2026-05-07T15:53:08.990Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 70,
+    "unguidedPassRate": 52,
+    "guidedPassRate": 83
+  },
+  {
+    "testId": "nightly-2026-05-07_15-21-04-claude_code-micahjo",
+    "timestamp": "2026-05-07T15:36:58.462Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 70,
+    "unguidedPassRate": 54,
+    "guidedPassRate": 85
+  },
+  {
+    "testId": "nightly-2026-05-05_05-41-49-claude_code-leimingzhang",
+    "timestamp": "2026-05-05T05:53:43.073Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 70,
+    "unguidedPassRate": 50,
+    "guidedPassRate": 83
+  },
+  {
     "testId": "nightly-2026-04-30_02-05-13-claude_code-leimingzhang",
     "timestamp": "2026-04-30T02:13:29.471Z",
     "agent": "claude_code",
@@ -8,16 +178,6 @@
     "taskCount": 66,
     "unguidedPassRate": 44,
     "guidedPassRate": 81
-  },
-  {
-    "testId": "nightly-2026-04-30_01-56-02-jetski_cli-leimingzhang",
-    "timestamp": "2026-04-30T02:04:19.636Z",
-    "agent": "jetski_cli",
-    "serving": "skills_cli",
-    "model": "unknown",
-    "taskCount": 66,
-    "unguidedPassRate": 41,
-    "guidedPassRate": 78
   },
   {
     "testId": "nightly-2026-04-28_00-42-54-claude-leimingzhang",
@@ -30,16 +190,6 @@
     "guidedPassRate": 77
   },
   {
-    "testId": "nightly-2026-04-28_00-09-01-jetski_cli-leimingzhang",
-    "timestamp": "2026-04-28T00:42:05.933Z",
-    "agent": "jetski_cli",
-    "serving": "skills_cli",
-    "model": "unknown",
-    "taskCount": 66,
-    "unguidedPassRate": 42,
-    "guidedPassRate": 73
-  },
-  {
     "testId": "nightly-2026-04-27_14-33-06-claude-leimingzhang",
     "timestamp": "2026-04-27T15:12:08.718Z",
     "agent": "claude_code",
@@ -48,16 +198,6 @@
     "taskCount": 66,
     "unguidedPassRate": 41,
     "guidedPassRate": 79
-  },
-  {
-    "testId": "nightly-2026-04-27_13-58-03-jetski_cli-leimingzhang",
-    "timestamp": "2026-04-27T14:32:13.900Z",
-    "agent": "jetski_cli",
-    "serving": "skills_cli",
-    "model": "unknown",
-    "taskCount": 66,
-    "unguidedPassRate": 39,
-    "guidedPassRate": 82
   },
   {
     "testId": "nightly-2026-04-27_12-48-23-claude-leimingzhang",
