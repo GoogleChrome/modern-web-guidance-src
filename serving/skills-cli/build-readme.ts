@@ -211,8 +211,6 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       readmeContent = readmeContent.replace('<!-- INJECT_EVAL_RESULTS -->', evalsMd.trimEnd());
     }
     fs.writeFileSync(destReadmePath, readmeContent);
-    const rootReadmePath = path.join(rootDir, "README.mwg.md");
-    fs.writeFileSync(rootReadmePath, readmeContent);
   }
 
   // Copy .github/img assets
