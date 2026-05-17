@@ -18,11 +18,9 @@ Inject web platform expertise, best practices, and modern API patterns directly 
 npx modern-web-guidance@latest install
 ```
 
-This command will run the interactive wizard to add the SKILL.md where your coding agent will find it. For alternative package managers and platforms, see [Alternative Installation Methods](#alternative-installation-methods) below.
+This command runs an interactive wizard to place the SKILL.md appropriately. See [Alternative Installation Methods](#alternative-installation-methods) below.
 
-#### Try it out, before without installing
-
-You can run the CLI directly to search and preview guides:
+#### Try it out (without installing)
 
 ```shell
 # Search for relevant guides
@@ -74,7 +72,9 @@ Here is a preview of our **134+ use-case-centric guides**:
 2. **Local Semantic Search**: The agent runs `modern-web search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
 3. **Guide Fetch**: The agent retrieves the guide via `modern-web retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
 
-Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
+> [!TIP]
+> Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
+> The NPM package is self-contained, with no extra dependencies to ensure both low-latency and supply-chain security.
 
 ## 💾 Alternative Installation Methods
 
