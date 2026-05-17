@@ -2,10 +2,114 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
-import { getFeatureName } from "../lib/baseline.ts";
+import { getFeatureName, getFeatureGroups } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
+
+const CATEGORY_MAP: Record<string, string> = {
+  // HTML / DOM
+  'html-elements': 'HTML & DOM',
+  'landmark-elements': 'HTML & DOM',
+  'html': 'HTML & DOM',
+  'custom-elements': 'HTML & DOM',
+  'dom': 'HTML & DOM',
+  'shadow-dom': 'HTML & DOM',
+  'forms': 'HTML & DOM',
+
+  // CSS
+  'css': 'CSS & Layout',
+  'layout': 'CSS & Layout',
+  'positioning': 'CSS & Layout',
+  'borders-outlines': 'CSS & Layout',
+  'background': 'CSS & Layout',
+  'blend-mode': 'CSS & Layout',
+  'selectors': 'CSS & Layout',
+  'fonts': 'CSS & Layout',
+  'color': 'CSS & Layout',
+  'media-queries': 'CSS & Layout',
+  'flexbox': 'CSS & Layout',
+  'grid': 'CSS & Layout',
+  'transforms': 'CSS & Layout',
+  'transitions': 'CSS & Layout',
+  'shadows': 'CSS & Layout',
+  'overflow': 'CSS & Layout',
+  'shapes': 'CSS & Layout',
+  'scrollbars': 'CSS & Layout',
+  'text': 'CSS & Layout',
+  'view-transitions': 'CSS & Layout',
+  'animation': 'CSS & Layout',
+
+  // JS / APIs
+  'javascript': 'JavaScript & APIs',
+  'fetch': 'JavaScript & APIs',
+  'streams': 'JavaScript & APIs',
+  'iterators': 'JavaScript & APIs',
+  'arrays': 'JavaScript & APIs',
+  'maps': 'JavaScript & APIs',
+  'typed-arrays': 'JavaScript & APIs',
+  'messaging': 'JavaScript & APIs',
+  'web-audio': 'JavaScript & APIs',
+  'webgl-extensions': 'JavaScript & APIs',
+  'clipboard': 'JavaScript & APIs',
+  'storage': 'JavaScript & APIs',
+  'history': 'JavaScript & APIs',
+  'url': 'JavaScript & APIs',
+  'workers': 'JavaScript & APIs',
+  'concurrency': 'JavaScript & APIs',
+  'sensors': 'JavaScript & APIs',
+  'progressive-web-app': 'JavaScript & APIs',
+  'performance': 'JavaScript & APIs',
+  'diagnostics': 'JavaScript & APIs',
+  'security': 'JavaScript & APIs',
+  'privacy': 'JavaScript & APIs',
+};
+
+function getCategoryForFeature(id: string): string {
+  const groups = getFeatureGroups(id);
+  for (const group of groups) {
+    if (CATEGORY_MAP[group]) {
+      return CATEGORY_MAP[group];
+    }
+  }
+  
+  if (groups.length > 0) {
+    const g = groups[0];
+    if (g.includes('css') || g.includes('style') || g.includes('layout') || g.includes('highlight') || g.includes('target')) {
+      return 'CSS & Layout';
+    } else if (g.includes('html') || g.includes('element') || g.includes('dom') || g.includes('link-') || g.includes('invoker')) {
+      return 'HTML & DOM';
+    }
+  }
+  
+  // Hardcoded fallbacks for known groupless features in our guides
+  if (id.includes('css') || id.includes('style') || id.includes('layout') || id.includes('highlight') || id.includes('target') || id === 'anchor-positioning') {
+    return 'CSS & Layout';
+  }
+  if (id.includes('html') || id.includes('element') || id.includes('dom') || id.includes('link-') || id.includes('invoker')) {
+    return 'HTML & DOM';
+  }
+
+  return 'JavaScript & APIs';
+}
+
+function listToMarkdownTable(items: string[], colCount = 3): string {
+  const rowCount = Math.ceil(items.length / colCount);
+  let md = '| | | |\n| :--- | :--- | :--- |\n';
+  for (let r = 0; r < rowCount; r++) {
+    const rowItems = [];
+    for (let c = 0; c < colCount; c++) {
+      const idx = r + c * rowCount;
+      if (idx < items.length) {
+        rowItems.push(items[idx]);
+      } else {
+        rowItems.push('');
+      }
+    }
+    md += `| ${rowItems.join(' | ')} |\n`;
+  }
+  return md;
+}
 
 export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const guidesDir = path.join(publishRoot, 'skills/modern-web-guidance/guides');
@@ -58,11 +162,36 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 
   let dynamicMd = `#### The full list (as of \`v${version}\`)\n\n`;
 
+  // Group features by category
+  const categories: Record<string, { id: string; name: string }[]> = {
+    'HTML & DOM': [],
+    'CSS & Layout': [],
+    'JavaScript & APIs': []
+  };
+
+  for (const f of allFeaturesSorted) {
+    const cat = getCategoryForFeature(f.id);
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(f);
+  }
+
   // Details block 1: Web features
   dynamicMd += `<details>\n<summary>Includes expert guidance across <strong>${allFeaturesSorted.length} modern web features</strong></summary>\n\n`;
-  for (const f of allFeaturesSorted) {
-    dynamicMd += `- [${f.name.replace(/</g, '&lt;')}](https://web-platform-dx.github.io/web-features-explorer/features/${f.id}/)\n`;
+  
+  for (const cat of ['HTML & DOM', 'CSS & Layout', 'JavaScript & APIs']) {
+    const list = categories[cat] || [];
+    if (list.length === 0) continue;
+    
+    dynamicMd += `### ${cat} (${list.length} features)\n\n`;
+    
+    const linkedItems = list.map(f => {
+      const escapedName = f.name.replace(/</g, '&lt;');
+      return `[${escapedName}](https://web-platform-dx.github.io/web-features-explorer/features/${f.id}/)`;
+    });
+    
+    dynamicMd += listToMarkdownTable(linkedItems) + '\n';
   }
+  
   dynamicMd += `</details>\n\n`;
 
   // Details block 2: Use cases
@@ -157,7 +286,6 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     if (readmeContent.includes('<!-- INJECT_EVAL_RESULTS -->')) {
       readmeContent = readmeContent.replace('<!-- INJECT_EVAL_RESULTS -->', evalsMd.trimEnd());
     }
-    readmeContent = readmeContent.replace(/\*\*\d+\+? use-case-centric guides\*\*/, `**${readyGuides.length} use-case-centric guides**`);
     fs.writeFileSync(destReadmePath, readmeContent);
     const rootReadmePath = path.join(rootDir, "README.mwg.md");
     fs.writeFileSync(rootReadmePath, readmeContent);
