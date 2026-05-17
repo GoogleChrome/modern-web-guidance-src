@@ -9,35 +9,35 @@ import { rootDir } from "../../lib/paths.ts";
 const SERVING_DIR = path.join(rootDir, "serving");
 
 const CSS_ROOTS = new Set([
-  'css', 
-  'view-transitions', 
-  'animation', 
-  'clipping-shapes-masking', 
-  'scrolling', 
-  'print', 
+  'css',
+  'view-transitions',
+  'animation',
+  'clipping-shapes-masking',
+  'scrolling',
+  'print',
   'reading-order'
 ]);
 
 const HTML_ROOTS = new Set([
-  'html', 
-  'dom', 
-  'web-components', 
-  'svg', 
-  'images', 
-  'mathml', 
-  'ruby', 
-  'resource-hints', 
-  'text-fragments', 
-  'integrity', 
+  'html',
+  'dom',
+  'web-components',
+  'svg',
+  'images',
+  'mathml',
+  'ruby',
+  'resource-hints',
+  'text-fragments',
+  'integrity',
   'xml'
 ]);
 
 function getCategoryForFeature(id: string): string {
   const feature = features[id];
-  const featGroups: string[] = feature && feature.group 
+  const featGroups: string[] = feature && feature.group
     ? (Array.isArray(feature.group) ? feature.group : [feature.group])
     : [];
-  
+
   const resolvedCategories = new Set<string>();
 
   for (const groupKey of featGroups) {
@@ -51,7 +51,7 @@ function getCategoryForFeature(id: string): string {
       }
       current = parent;
     }
-    
+
     if (root) {
       if (CSS_ROOTS.has(root)) {
         resolvedCategories.add('CSS & Layout');
@@ -140,13 +140,7 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   // Sort categories alphabetically by slug
   const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => a.localeCompare(b));
 
-  let version = "unknown";
-  try {
-    const pkgJson = JSON.parse(fs.readFileSync(path.join(publishRoot, "package.json"), "utf8"));
-    if (pkgJson.version) version = pkgJson.version;
-  } catch { }
-
-  let dynamicMd = `#### The full list (as of \`v${version}\`)\n\n`;
+  let dynamicMd = `#### The full list\n\n`;
 
   // Group features by category
   const categories: Record<string, { id: string; name: string }[]> = {
