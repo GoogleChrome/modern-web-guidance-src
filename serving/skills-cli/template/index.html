@@ -89,6 +89,41 @@
       margin-top: 0.5rem;
       font-size: 0.8rem;
       color: #888;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .view-btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      background-color: #2e7d32;
+    }
+    #guide-view {
+      display: none;
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    #guide-view h2 {
+      margin-top: 0;
+      color: #2e7d32;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 0.5rem;
+    }
+    #guide-content {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.9rem;
+      background: #fafafa;
+      padding: 1rem;
+      border-radius: 4px;
+      border: 1px solid #eee;
+      max-height: 500px;
+      overflow-y: auto;
     }
   </style>
 </head>
@@ -107,16 +142,25 @@
 
   <div class="results" id="results"></div>
 
+  <div id="guide-view">
+    <h2 id="guide-title">Guide Content</h2>
+    <pre id="guide-content"></pre>
+  </div>
+
   <script type="module">
-    import { searchUseCasesBrowser } from './skills/modern-web-guidance/search-browser.js';
+    import { searchUseCasesBrowser, retrieveUseCaseBrowser } from './skills/modern-web-guidance/search-browser.js';
 
     const statusEl = document.getElementById('status');
     const queryInput = document.getElementById('query');
     const searchBtn = document.getElementById('search-btn');
     const resultsEl = document.getElementById('results');
+    const guideViewEl = document.getElementById('guide-view');
+    const guideTitleEl = document.getElementById('guide-title');
+    const guideContentEl = document.getElementById('guide-content');
 
     const VECTORS_URL = './skills/modern-web-guidance/use-cases.vectors.gen.json.gz';
     const MODEL_URL = './skills/modern-web-guidance/tfjs_model_minilm/model.json';
+    const GUIDES_BASE_URL = './skills/modern-web-guidance/guides';
 
     // We can pre-initialize the embedder to make the first search faster,
     // or just let the search function do it on demand.
@@ -176,11 +220,23 @@
             </div>
             <div class="result-desc">${res.description}</div>
             <div class="result-meta">
-              ${res.featuresUsed ? `Features: ${res.featuresUsed.join(', ')} | ` : ''}
-              Tokens: ${res.tokenCount}
+              <span>
+                ${res.featuresUsed ? `Features: ${res.featuresUsed.join(', ')} | ` : ''}
+                Tokens: ${res.tokenCount}
+              </span>
+              <button class="view-btn" data-id="${res.id}" data-category="${res.category}">View Guide</button>
             </div>
           `;
           resultsEl.appendChild(item);
+        });
+
+        // Add event listeners to the buttons
+        document.querySelectorAll('.view-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            const category = e.target.dataset.category;
+            await showGuide(id, category);
+          });
         });
       } catch (e) {
         statusEl.textContent = `Search failed: ${e.message}`;
@@ -189,6 +245,24 @@
         console.error(e);
       } finally {
         searchBtn.disabled = false;
+      }
+    }
+
+    async function showGuide(id, category) {
+      statusEl.textContent = `Fetching guide for ${id}...`;
+      guideViewEl.style.display = 'none';
+      try {
+        const content = await retrieveUseCaseBrowser(id, category, GUIDES_BASE_URL);
+        guideTitleEl.textContent = `${id} (${category})`;
+        guideContentEl.textContent = content;
+        guideViewEl.style.display = 'block';
+        guideViewEl.scrollIntoView({ behavior: 'smooth' });
+        statusEl.textContent = `Loaded guide for ${id}`;
+      } catch (e) {
+        statusEl.textContent = `Failed to load guide: ${e.message}`;
+        statusEl.style.backgroundColor = '#fee';
+        statusEl.style.borderColor = '#d32f2f';
+        console.error(e);
       }
     }
 

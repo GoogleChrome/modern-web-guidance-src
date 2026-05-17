@@ -54,3 +54,22 @@ export async function searchUseCasesBrowser(
 
   return searchVectorsCore(queryVector, cachedVectors, limit, minSimilarity);
 }
+
+/**
+ * Retrieve the markdown content of a guide.
+ * @param useCaseId The ID of the usecase/guide.
+ * @param category The category of the guide.
+ * @param guidesBaseUrl Base URL where guides are served.
+ */
+export async function retrieveUseCaseBrowser(
+  useCaseId: string,
+  category: string,
+  guidesBaseUrl: string
+): Promise<string> {
+  const url = `${guidesBaseUrl}/${category}/${useCaseId}.md`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch guide from ${url}: ${response.statusText}`);
+  }
+  return response.text();
+}
