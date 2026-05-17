@@ -112,17 +112,22 @@ The track configuration is gated behind an `.is-initialized` class on the list i
      matter because the snap points are full-width. */
   scroll-snap-align: start;
 
-  /* Render the track scrolled to the content on first paint, so the
-     left spacer is hidden off-screen without a JS scroll jump. Has no
-     effect until the parent gains `.is-initialized` and the track
-     becomes a scroll container. */
-  scroll-initial-target: nearest;
-
   /* The content must paint over the revealed spacer color. */
   background: Canvas;
 
   /* Row separator (example value; customize to taste). */
   border-bottom: 1px solid #eee;
+}
+
+/* Gate `scroll-initial-target` behind `.is-initialized` so it only
+   applies once the track is actually a scroll container. Setting it on
+   the content before then would let the property walk up to the nearest
+   scrollable ancestor (typically the document) and shift the page's
+   initial scroll position to bring this row's content into view. With
+   the gate, the rule is only live when the row's own track can satisfy
+   it, so the initial scroll happens inside the track as intended. */
+.SwipeableList-item.is-initialized .SwipeableList-content {
+  scroll-initial-target: nearest;
 }
 
 /* The track is the focusable scroll container, but its overflow is clipped

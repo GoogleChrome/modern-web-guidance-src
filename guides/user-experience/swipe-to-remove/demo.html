@@ -121,10 +121,17 @@
         scroll-snap-align: start;
       }
 
+      /* Ensure some focus affordance is visible when the track is focused.
+         Since this element has a z-index above the track, and paint outside
+         the track is clipped, ensure this element shows focus. */
+      .SwipeableList-track:focus-visible .SwipeableList-content {
+        outline: auto;
+        outline-offset: -2px;
+      }
+
       .SwipeableList-content {
         position: relative;
         z-index: 2;
-        scroll-initial-target: nearest;
         scroll-snap-align: start;
 
         /* Ensure a background so it covers spacer and remove icons */
@@ -133,12 +140,10 @@
         padding: 1.5em;
       }
 
-      /* Ensure some focus affordance is visible when the track is focused.
-         Since this element has a z-index above the track, and paint outside
-         the track is clipped, ensure this element shows focus. */
-      .SwipeableList-track:focus-visible .SwipeableList-content {
-        outline: auto;
-        outline-offset: -2px;
+      .SwipeableList-item.is-initialized .SwipeableList-content {
+        /* Only set scroll-initial-target once the item track is scrollable,
+           otherwise apply to the scroll position of the list itself. */
+        scroll-initial-target: nearest;
       }
     }
   </style>
