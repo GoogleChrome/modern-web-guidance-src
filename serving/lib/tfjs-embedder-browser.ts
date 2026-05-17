@@ -1,7 +1,8 @@
-import { setBackend, tensor2d, Tensor } from "@tensorflow/tfjs-core";
+import { setBackend } from "@tensorflow/tfjs-core";
 import { loadGraphModel, GraphModel } from "@tensorflow/tfjs-converter";
 import { BertTokenizer } from "@huggingface/transformers";
 import "./tfjs-kernels.ts";
+import { embedTextCore } from "./tfjs-embedder.ts";
 
 export class TfjsEmbedderBrowser {
   private static instance: TfjsEmbedderBrowser;
@@ -59,36 +60,6 @@ export class TfjsEmbedderBrowser {
         throw new Error("Failed to initialize TFJS Embedder");
     }
 
-    const tokenized = await this.tokenizer(text, { padding: true, truncation: true });
-
-    // Extract data and convert to numbers
-    const extractData = (tensor: any) => {
-        const data = tensor.data || tensor;
-        return Array.from(data).map((x: any) => Number(x));
-    };
-
-    const inputIdsData = extractData(tokenized.input_ids);
-    const attentionMaskData = extractData(tokenized.attention_mask);
-    const tokenTypeIdsData = extractData(tokenized.token_type_ids);
-
-    const inputIds = tensor2d([inputIdsData], undefined, 'int32');
-    const attentionMask = tensor2d([attentionMaskData], undefined, 'int32');
-    const tokenTypeIds = tensor2d([tokenTypeIdsData], undefined, 'int32');
-
-    const result = this.model.predict({
-        "input_ids": inputIds,
-        "attention_mask": attentionMask,
-        "token_type_ids": tokenTypeIds
-    }) as Tensor;
-
-    const data = await result.data();
-
-    // Cleanup tensors
-    inputIds.dispose();
-    attentionMask.dispose();
-    tokenTypeIds.dispose();
-    result.dispose();
-
-    return Array.from(data);
+    return embedTextCore(text, this.model, this.tokenizer);
   }
 }

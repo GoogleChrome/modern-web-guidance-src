@@ -13,9 +13,19 @@ export interface UseCaseResult {
   similarity: number;
 }
 
-let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; tokenCount: number; vector: number[]; norm: number }[] | null = null;
+export interface VectorItem {
+  id: string;
+  description: string;
+  category: string;
+  featuresUsed: string[];
+  tokenCount: number;
+  vector: number[];
+  norm: number;
+}
 
-function dotProduct(a: number[], b: number[]): number {
+let cachedVectors: VectorItem[] | null = null;
+
+export function dotProduct(a: number[], b: number[]): number {
   let dotProduct = 0;
   for (let i = 0; i < a.length; i++) {
     dotProduct += a[i] * b[i];
@@ -23,7 +33,7 @@ function dotProduct(a: number[], b: number[]): number {
   return dotProduct;
 }
 
-function calculateNorm(v: number[]): number {
+export function calculateNorm(v: number[]): number {
   let sum = 0;
   for (const val of v) {
     sum += val * val;
@@ -34,7 +44,6 @@ function calculateNorm(v: number[]): number {
 export async function searchUseCases(query: string, limit = 5, minSimilarity = 0.3, embedder?: any): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder || TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
-  const queryNorm = calculateNorm(queryVector);
 
   if (!cachedVectors) {
     const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json.gz");
@@ -57,9 +66,24 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
     })).filter(item => item.vector);
   }
 
-  const resultsMap = new Map<string, { item: (typeof cachedVectors)[0]; similarity: number }>();
+  const limitedResults = searchVectorsCore(queryVector, cachedVectors, limit, minSimilarity);
 
-  for (const item of cachedVectors) {
+  // Log the result
+  logToolResult("search_use_cases", limitedResults.map(r => ({ id: r.id, similarity: r.similarity })));
+
+  return limitedResults;
+}
+
+export function searchVectorsCore(
+  queryVector: number[],
+  vectors: VectorItem[],
+  limit = 5,
+  minSimilarity = 0.3
+): UseCaseResult[] {
+  const queryNorm = calculateNorm(queryVector);
+  const resultsMap = new Map<string, { item: VectorItem; similarity: number }>();
+
+  for (const item of vectors) {
     if (item.norm === 0 || queryNorm === 0) continue;
     
     const sim = dotProduct(queryVector, item.vector) / (queryNorm * item.norm);
@@ -77,7 +101,7 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
   // Sort by similarity descending
   results.sort((a, b) => b.similarity - a.similarity);
 
-  const limitedResults = results.slice(0, limit).map(r => ({
+  return results.slice(0, limit).map(r => ({
     id: r.item.id,
     description: r.item.description,
     category: r.item.category,
@@ -85,9 +109,4 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
     tokenCount: r.item.tokenCount,
     similarity: parseFloat(r.similarity.toFixed(4))
   }));
-
-  // Log the result
-  logToolResult("search_use_cases", limitedResults.map(r => ({ id: r.id, similarity: r.similarity })));
-
-  return limitedResults;
 }

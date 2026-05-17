@@ -94,41 +94,44 @@ export class TfjsEmbedder {
     if (!this.model || !this.tokenizer) {
         throw new Error("Failed to initialize TFJS Embedder");
     }
-
-    const tokenized = await this.tokenizer(text, { padding: true, truncation: true });
-
-    // Extract data and convert to numbers (handling BigInt if present)
-    const extractData = (tensor: any) => {
-        const data = tensor.data || tensor;
-        return Array.from(data).map((x: any) => Number(x));
-    };
-
-    const inputIdsData = extractData(tokenized.input_ids);
-    const attentionMaskData = extractData(tokenized.attention_mask);
-    const tokenTypeIdsData = extractData(tokenized.token_type_ids);
-
-    const inputIds = tensor2d([inputIdsData], undefined, 'int32');
-    const attentionMask = tensor2d([attentionMaskData], undefined, 'int32');
-    const tokenTypeIds = tensor2d([tokenTypeIdsData], undefined, 'int32');
-
-    const result = this.model.predict({
-        "input_ids": inputIds,
-        "attention_mask": attentionMask,
-        "token_type_ids": tokenTypeIds
-    }) as Tensor;
-
-    const data = await result.data();
-
-    // Cleanup tensors
-    inputIds.dispose();
-    attentionMask.dispose();
-    tokenTypeIds.dispose();
-    result.dispose();
-
-    return Array.from(data);
+    return embedTextCore(text, this.model, this.tokenizer);
   }
 
   public shutdown() {
     // No-op: we use custom IO handler instead of local server now
   }
+}
+
+export async function embedTextCore(text: string, model: GraphModel, tokenizer: any): Promise<number[]> {
+  const tokenized = await tokenizer(text, { padding: true, truncation: true });
+
+  // Extract data and convert to numbers (handling BigInt if present)
+  const extractData = (tensor: any) => {
+      const data = tensor.data || tensor;
+      return Array.from(data).map((x: any) => Number(x));
+  };
+
+  const inputIdsData = extractData(tokenized.input_ids);
+  const attentionMaskData = extractData(tokenized.attention_mask);
+  const tokenTypeIdsData = extractData(tokenized.token_type_ids);
+
+  const inputIds = tensor2d([inputIdsData], undefined, 'int32');
+  const attentionMask = tensor2d([attentionMaskData], undefined, 'int32');
+  const tokenTypeIds = tensor2d([tokenTypeIdsData], undefined, 'int32');
+
+  const result = model.predict({
+      "input_ids": inputIds,
+      "attention_mask": attentionMask,
+      "token_type_ids": tokenTypeIds
+  }) as Tensor;
+
+  const data = await result.data();
+
+  // Cleanup tensors
+  inputIds.dispose();
+  attentionMask.dispose();
+  tokenTypeIds.dispose();
+  result.dispose();
+
+  return Array.from(data);
 }

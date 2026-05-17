@@ -224,9 +224,11 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
           "node:fs": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
           "node:path": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
           "node:url": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
+          "node:zlib": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
           "fs": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
           "path": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
           "url": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
+          "zlib": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
         },
         plugins: [{
           name: 'use-precise-kernels',

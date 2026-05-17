@@ -1,31 +1,9 @@
 import { TfjsEmbedderBrowser } from "./tfjs-embedder-browser.ts";
+import { searchVectorsCore, calculateNorm, VectorItem, UseCaseResult } from "./search.ts";
 
-export interface UseCaseResult {
-  id: string;
-  description: string;
-  category: string;
-  featuresUsed?: string[];
-  tokenCount: number;
-  similarity: number;
-}
+export { UseCaseResult };
 
-let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; tokenCount: number; vector: number[]; norm: number }[] | null = null;
-
-function dotProduct(a: number[], b: number[]): number {
-  let dotProduct = 0;
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-  }
-  return dotProduct;
-}
-
-function calculateNorm(v: number[]): number {
-  let sum = 0;
-  for (const val of v) {
-    sum += val * val;
-  }
-  return Math.sqrt(sum);
-}
+let cachedVectors: VectorItem[] | null = null;
 
 /**
  * Perform client-side search of use cases.
@@ -44,7 +22,6 @@ export async function searchUseCasesBrowser(
 ): Promise<UseCaseResult[]> {
   const embedder = TfjsEmbedderBrowser.getInstance();
   const queryVector = await embedder.embed(query, modelUrl);
-  const queryNorm = calculateNorm(queryVector);
 
   if (!cachedVectors) {
     try {
@@ -75,34 +52,5 @@ export async function searchUseCasesBrowser(
     }
   }
 
-  const resultsMap = new Map<string, { item: (typeof cachedVectors)[0]; similarity: number }>();
-
-  for (const item of cachedVectors) {
-    if (item.norm === 0 || queryNorm === 0) continue;
-
-    const sim = dotProduct(queryVector, item.vector) / (queryNorm * item.norm);
-
-    if (sim < minSimilarity) continue;
-
-    const existing = resultsMap.get(item.id);
-    if (!existing || sim > existing.similarity) {
-      resultsMap.set(item.id, { item, similarity: sim });
-    }
-  }
-
-  const results = Array.from(resultsMap.values());
-
-  // Sort by similarity descending
-  results.sort((a, b) => b.similarity - a.similarity);
-
-  const limitedResults = results.slice(0, limit).map(r => ({
-    id: r.item.id,
-    description: r.item.description,
-    category: r.item.category,
-    featuresUsed: r.item.featuresUsed?.length ? r.item.featuresUsed : undefined,
-    tokenCount: r.item.tokenCount,
-    similarity: parseFloat(r.similarity.toFixed(4))
-  }));
-
-  return limitedResults;
+  return searchVectorsCore(queryVector, cachedVectors, limit, minSimilarity);
 }
