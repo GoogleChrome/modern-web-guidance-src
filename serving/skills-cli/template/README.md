@@ -144,7 +144,7 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 ```
 </details>
 
-## 🔄 Updating
+## <img src=".github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
 
@@ -178,7 +178,7 @@ We developed a robust eval harness to ensure that the content is **empirically p
 <!-- INJECT_EVAL_RESULTS -->
 
 
-## 🗃️ Available Skill Packs
+## <img src=".github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs
 
 You can customize which skill packs are installed using the `--choose` flag:
 
@@ -189,7 +189,7 @@ npx modern-web-guidance@latest install --choose
 * **`modern-web-guidance`** (~234 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
 * **`chrome-extensions`** (~181 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
 
-## 📊 Telemetry & Privacy
+## <img src=".github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
 
 Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the tool. You can inspect what is collected in [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/serving/bin/modern-web.ts).
 
@@ -201,7 +201,7 @@ Google collects anonymous usage statistics (such as search queries, guide retrie
 
 Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).
 
-## 👥 Contributors
+## <img src=".github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
 Active contributors are what keep this project moving forward. Thanks to everyone who has contributed!
 
@@ -211,6 +211,6 @@ Active contributors are what keep this project moving forward. Thanks to everyon
 
 (We build the project in the [modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src) repo.)
 
-## 📄 Attribution
+## <img src=".github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Attribution
 
 Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors, and [W3C](https://www.w3.org/) specifications.
