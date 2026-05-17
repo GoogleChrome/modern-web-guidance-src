@@ -101,9 +101,6 @@ export class ClearcutSender {
       });
 
       clearTimeout(timeoutId);
-      const responseText = await response.text();
-      logger('Telemetry response status:', response.status, response.statusText);
-      logger('Telemetry response body:', responseText);
       if (!response.ok) {
         logger('Telemetry error status:', response.status);
       }
