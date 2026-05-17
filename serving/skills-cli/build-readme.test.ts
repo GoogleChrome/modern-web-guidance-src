@@ -21,7 +21,7 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     fs.writeFileSync(path.join(mockGuidesDir, 'forms/autofill-address-form.md'), 'content');
     
     fs.mkdirSync(path.join(mockGuidesDir, 'performance'), { recursive: true });
-    
+
     fs.mkdirSync(path.join(mockGuidesDir, 'user-experience'), { recursive: true });
     fs.writeFileSync(path.join(mockGuidesDir, 'user-experience/move-dom-element-without-losing-state.md'), 'content');
   });

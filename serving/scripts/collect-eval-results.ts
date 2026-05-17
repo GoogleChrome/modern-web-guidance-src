@@ -93,10 +93,10 @@ function collectResults() {
   summaries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   console.log(`Collected ${summaries.length} nightly runs.`);
-  
+
   // Ensure directory exists
   fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
-  
+
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(summaries, null, 2));
   console.log(`Saved summary to ${OUTPUT_PATH}`);
 }

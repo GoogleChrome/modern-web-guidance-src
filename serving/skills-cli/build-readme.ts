@@ -89,11 +89,11 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       if (Array.isArray(evalsData) && evalsData.length > 0) {
         evalsMd += '| Suite | Agent + Model | Tasks | Unguided → Guided (Uplift) |\n';
         evalsMd += '| :--- | :--- | :---: | :---: |\n';
-        
+
         // Stratified Recency Selection Algorithm
         const selectedRuns: any[] = [];
         const groups: Record<string, any[]> = {};
-        
+
         for (const run of evalsData) {
           let cleanModel = run.model;
           if (cleanModel.startsWith('claude-')) {
@@ -105,20 +105,20 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
           }
           groups[key].push(run);
         }
-        
+
         for (const key of Object.keys(groups)) {
           groups[key].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         }
-        
+
         const K = 2;
         const remainingPool: any[] = [];
-        
+
         for (const key of Object.keys(groups)) {
           const groupRuns = groups[key];
           selectedRuns.push(...groupRuns.slice(0, K));
           remainingPool.push(...groupRuns.slice(K));
         }
-        
+
         if (selectedRuns.length > 10) {
           selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           selectedRuns.splice(10);
@@ -127,15 +127,15 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
           const fillCount = 10 - selectedRuns.length;
           selectedRuns.push(...remainingPool.slice(0, fillCount));
         }
-        
+
         selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        
+
         for (const run of selectedRuns) {
           const suiteLabel = formatSuiteLabel(run.testId, run.timestamp);
           const agentModel = formatAgentModel(run.agent, run.model);
           const tasks = run.taskCount;
           const uplift = formatUplift(run.unguidedPassRate, run.guidedPassRate);
-          
+
           evalsMd += `| ${suiteLabel} | ${agentModel} | ${tasks} | ${uplift} |\n`;
         }
       }
@@ -199,7 +199,7 @@ function formatSuiteLabel(testId: string, timestamp: string): string {
   if (testId.startsWith('nightly-')) type = 'Nightly';
   else if (testId.startsWith('full-')) type = 'Full';
   else if (testId.startsWith('skills-cli-')) type = 'Skills CLI';
-  
+
   return `${type} (${dateStr})`;
 }
 
