@@ -49,14 +49,36 @@ We cover the past several years of the web platform's new features, all the way 
 
 Here is a preview of our **134+ use-case-centric guides**:
 
-| Category | Core Capabilities & APIs |
-| :--- | :--- |
-| **User Experience** | Smooth visual states (View Transitions, entry/exit animations, parallax scroll, CSS `scrollbar-color`). |
-| **CSS** | Modern layout systems (container queries, `subgrid`, modern color spaces like `oklch`, text-wrap tuning, and line-height trimming). |
-| **Performance** | Speed optimizations (instant preloading, Interaction to Next Paint (INP) diagnostics, and scheduling tasks via `scheduler.yield`). |
-| **Forms & UI** | Native components (Anchor Positioning for tooltips, Popover API, dialogs, `:user-invalid` validation, and auto-sizing fields). |
-| **Accessibility** | Hardened patterns (accessible error announcements, keyboard focus management). |
-| **Built-in AI** | Local client models (native translation, summarization, and language detection APIs). |
+<table width="100%" style="border-collapse: collapse; border: none;">
+  <tr style="border: none;">
+    <td width="33%" valign="top" style="border: none; padding: 12px;">
+      <h4>🎨 User Experience</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Smooth visual states (View Transitions, entry/exit animations, parallax scroll, CSS <code>scrollbar-color</code>).</p>
+    </td>
+    <td width="33%" valign="top" style="border: none; padding: 12px;">
+      <h4>📐 CSS Layout</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Modern layout systems (container queries, <code>subgrid</code>, modern color spaces like <code>oklch</code>, text-wrap tuning, and line-height trimming).</p>
+    </td>
+    <td width="33%" valign="top" style="border: none; padding: 12px;">
+      <h4>⚡ Performance</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Speed optimizations (instant preloading, Interaction to Next Paint (INP) diagnostics, and scheduling tasks via <code>scheduler.yield</code>).</p>
+    </td>
+  </tr>
+  <tr style="border: none;">
+    <td width="33%" valign="top" style="border: none; padding: 12px;">
+      <h4>📝 Forms & UI</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Native components (Anchor Positioning for tooltips, Popover API, dialogs, <code>:user-invalid</code> validation, and auto-sizing fields).</p>
+    </td>
+    <td width="33%" valign="top" style="border: none; padding: 12px;">
+      <h4>♿ Accessibility</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Hardened patterns (accessible error announcements, keyboard focus management).</p>
+    </td>
+    <td width="33%" valign="top" style="border: none; padding: 12px;">
+      <h4>🤖 Built-in AI</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Local client models (native translation, summarization, and language detection APIs).</p>
+    </td>
+  </tr>
+</table>
 
 <!-- INJECT_SKILL_COVERAGE -->
 
