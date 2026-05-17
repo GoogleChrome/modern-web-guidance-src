@@ -188,11 +188,7 @@ A scroll-driven `view(inline)` animation tracks each view's progress through the
   }
 
   @keyframes parallax {
-    /* translateX(75%) is example-only — adjust to taste. Smaller values
-       (e.g. 25%) leave more of the previous view visible behind the new
-       one; 100% slides it fully off-screen. brightness(0.8) is a subtle
-       dim that signals "this view is in the background"; lower it for
-       a stronger effect. */
+    /* translateX(75%) and brightness(0.8) are examples — adjust to taste. */
     to {
       transform: translateX(75%);
       filter: brightness(0.8);
