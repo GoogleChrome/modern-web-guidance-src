@@ -1,95 +1,81 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import { features } from "web-features";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
-import { getFeatureName, getFeatureGroups } from "../lib/baseline.ts";
+import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
 
-const CATEGORY_MAP: Record<string, string> = {
-  // HTML / DOM
-  'html-elements': 'HTML & DOM',
-  'landmark-elements': 'HTML & DOM',
-  'html': 'HTML & DOM',
-  'custom-elements': 'HTML & DOM',
-  'dom': 'HTML & DOM',
-  'shadow-dom': 'HTML & DOM',
-  'forms': 'HTML & DOM',
-
-  // CSS
-  'css': 'CSS & Layout',
-  'layout': 'CSS & Layout',
-  'positioning': 'CSS & Layout',
-  'borders-outlines': 'CSS & Layout',
-  'background': 'CSS & Layout',
-  'blend-mode': 'CSS & Layout',
-  'selectors': 'CSS & Layout',
-  'fonts': 'CSS & Layout',
-  'color': 'CSS & Layout',
-  'media-queries': 'CSS & Layout',
-  'flexbox': 'CSS & Layout',
-  'grid': 'CSS & Layout',
-  'transforms': 'CSS & Layout',
-  'transitions': 'CSS & Layout',
-  'shadows': 'CSS & Layout',
-  'overflow': 'CSS & Layout',
-  'shapes': 'CSS & Layout',
-  'scrollbars': 'CSS & Layout',
-  'text': 'CSS & Layout',
-  'view-transitions': 'CSS & Layout',
-  'animation': 'CSS & Layout',
-
-  // JS / APIs
-  'javascript': 'JavaScript & APIs',
-  'fetch': 'JavaScript & APIs',
-  'streams': 'JavaScript & APIs',
-  'iterators': 'JavaScript & APIs',
-  'arrays': 'JavaScript & APIs',
-  'maps': 'JavaScript & APIs',
-  'typed-arrays': 'JavaScript & APIs',
-  'messaging': 'JavaScript & APIs',
-  'web-audio': 'JavaScript & APIs',
-  'webgl-extensions': 'JavaScript & APIs',
-  'clipboard': 'JavaScript & APIs',
-  'storage': 'JavaScript & APIs',
-  'history': 'JavaScript & APIs',
-  'url': 'JavaScript & APIs',
-  'workers': 'JavaScript & APIs',
-  'concurrency': 'JavaScript & APIs',
-  'sensors': 'JavaScript & APIs',
-  'progressive-web-app': 'JavaScript & APIs',
-  'performance': 'JavaScript & APIs',
-  'diagnostics': 'JavaScript & APIs',
-  'security': 'JavaScript & APIs',
-  'privacy': 'JavaScript & APIs',
-};
-
 function getCategoryForFeature(id: string): string {
-  const groups = getFeatureGroups(id);
-  for (const group of groups) {
-    if (CATEGORY_MAP[group]) {
-      return CATEGORY_MAP[group];
-    }
+  const feat = features[id];
+  if (!feat) {
+    return 'JavaScript & APIs';
   }
-  
-  if (groups.length > 0) {
-    const g = groups[0];
-    if (g.includes('css') || g.includes('style') || g.includes('layout') || g.includes('highlight') || g.includes('target')) {
-      return 'CSS & Layout';
-    } else if (g.includes('html') || g.includes('element') || g.includes('dom') || g.includes('link-') || g.includes('invoker')) {
-      return 'HTML & DOM';
-    }
+
+  const compat = feat.compat_features || [];
+  const prefixes = new Map<string, number>();
+  for (const c of compat) {
+    const parts = c.split('.');
+    const prefix = parts[0];
+    prefixes.set(prefix, (prefixes.get(prefix) || 0) + 1);
   }
-  
-  // Hardcoded fallbacks for known groupless features in our guides
-  if (id.includes('css') || id.includes('style') || id.includes('layout') || id.includes('highlight') || id.includes('target') || id === 'anchor-positioning') {
+
+  const css = prefixes.get('css') || 0;
+  const html = prefixes.get('html') || 0;
+  const api = prefixes.get('api') || 0;
+  const js = prefixes.get('javascript') || 0;
+
+  // 1. Keyword overrides for specific features or groups of features
+  // CSS & Layout overrides:
+  if (
+    id.includes('transition') ||
+    id.includes('highlight') ||
+    id === 'anchor-positioning' ||
+    id === 'function'
+  ) {
     return 'CSS & Layout';
   }
-  if (id.includes('html') || id.includes('element') || id.includes('dom') || id.includes('link-') || id.includes('invoker')) {
+  // Web Animations is CSS, but Long Animation Frames is performance (JS)
+  if (id.includes('animation') && id !== 'long-animation-frames') {
+    return 'CSS & Layout';
+  }
+
+  // HTML & DOM overrides:
+  if (
+    id === 'customizable-select' ||
+    id.includes('canvas-html') ||
+    id.includes('html-in-canvas')
+  ) {
     return 'HTML & DOM';
   }
 
+  // JavaScript & APIs overrides:
+  if (
+    id === 'mutationobserver' ||
+    id === 'move-before' ||
+    id === 'speculation-rules' ||
+    id === 'fetch-priority' ||
+    id === 'permissions-policy'
+  ) {
+    return 'JavaScript & APIs';
+  }
+
+  // 2. CSS-first rule: if it has mostly CSS keys, it's CSS
+  if (css > 0 && css >= html && css >= api) {
+    return 'CSS & Layout';
+  }
+
+  // 3. HTML-first rule: if it has HTML keys and not dominated by APIs
+  if (html > 0) {
+    const apiTotal = api + js;
+    if (apiTotal === 0 || (html / apiTotal) >= 0.1) {
+      return 'HTML & DOM';
+    }
+  }
+
+  // 4. Fallback to JS & APIs
   return 'JavaScript & APIs';
 }
 
@@ -176,26 +162,26 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
 
   // Details block 1: Web features
-  dynamicMd += `<details>\n<summary>Includes expert guidance across <strong>${allFeaturesSorted.length} modern web features</strong></summary>\n\n`;
-  
+  dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} modern web features</strong></summary>\n\n`;
+
   for (const cat of ['HTML & DOM', 'CSS & Layout', 'JavaScript & APIs']) {
     const list = categories[cat] || [];
     if (list.length === 0) continue;
-    
+
     dynamicMd += `### ${cat} (${list.length} features)\n\n`;
-    
+
     const linkedItems = list.map(f => {
       const escapedName = f.name.replace(/</g, '&lt;');
       return `[${escapedName}](https://web-platform-dx.github.io/web-features-explorer/features/${f.id}/)`;
     });
-    
+
     dynamicMd += listToMarkdownTable(linkedItems) + '\n';
   }
-  
+
   dynamicMd += `</details>\n\n`;
 
   // Details block 2: Use cases
-  dynamicMd += `<details>\n<summary>Covers <strong>${readyGuides.length} real-world developer use cases</strong> with production-ready code patterns</summary>\n\n`;
+  dynamicMd += `<details>\n<summary><strong>${readyGuides.length} real-world developer use cases</strong></summary>\n\n`;
   for (const cat of sortedCategories) {
     dynamicMd += `<h3>${cat}</h3>\n\n`;
     const ucs = categoryMap.get(cat)!;
