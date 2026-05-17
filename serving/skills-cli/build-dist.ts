@@ -154,14 +154,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       path.join(publishRoot, "assets/modern-web-guidance.svg")
     );
 
-    // Copy .github/img assets
-    fs.mkdirSync(path.join(publishRoot, ".github/img"), { recursive: true });
-    fs.cpSync(
-      path.join(rootDir, ".github/img"),
-      path.join(publishRoot, ".github/img"),
-      { recursive: true }
-    );
-
     if (version) {
       updateVersionsInDir(publishRoot, version);
     }

@@ -94,5 +94,14 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     fs.writeFileSync(destReadmePath, readmeContent);
   }
 
+  // Copy .github/img assets
+  const srcImgDir = path.join(rootDir, ".github/img");
+  const destImgDir = path.join(publishRoot, ".github/img");
+  if (fs.existsSync(srcImgDir)) {
+    fs.mkdirSync(destImgDir, { recursive: true });
+    fs.cpSync(srcImgDir, destImgDir, { recursive: true });
+    console.log(`Copied ${srcImgDir} to ${destImgDir}`);
+  }
+
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
 }
