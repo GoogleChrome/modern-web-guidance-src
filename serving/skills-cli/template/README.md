@@ -2,19 +2,17 @@
   <img src="assets/modern-web-guidance.svg" alt="Modern Web Guidance Logo" width="150" />
 </p>
 
-# 🚀 Modern Web Guidance
+# Modern Web Guidance
 
 Inject web platform expertise, best practices, and modern API patterns directly into your AI coding agents.
 
-**Modern Web Guidance** is an agent skill (aka `SKILL.md`) that helps AI agents build better web applications using modern, high-performance, accessible, and secure APIs instead of legacy workarounds.
+**Modern Web Guidance** is an agent skill (aka `SKILL.md`) with a CLI that helps AI agents build better web applications using modern, high-performance, accessible, and secure APIs instead of legacy workarounds.
 
 *Supported by the Google Chrome team, the Microsoft Edge team, and the web development community.*
 
-(We build the project in the [modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src) repo.)
-
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
-## ⚡ Quickstart
+## Quickstart
 
 To start the interactive setup wizard:
 
@@ -24,7 +22,7 @@ npx modern-web-guidance@latest install
 
 For alternative package managers and platforms, see [Alternative Installation Methods](#alternative-installation-methods) below.
 
-### 🔍 Manual Search (Try without installing)
+#### Try it out, before without installing
 
 You can run the CLI directly to search and preview guides:
 
@@ -36,22 +34,22 @@ npx modern-web-guidance@latest search "animate a dialog modal backdrop"
 npx modern-web-guidance@latest retrieve "animate-to-from-top-layer"
 ```
 
-## ❓ Why?
+## Why?
 
-LLMs are trained on vast amounts of legacy code, causing AI coding agents to default to outdated patterns. They write bloated, custom JavaScript for tasks that now have native, high-performance web platform solutions.
+Coding agents often default to older patterns because LLM training data contains vast amounts of legacy code. This often leads them to generate bloated JavaScript for tasks that now have native, high-performance web platform solutions.
 
-Even if a model knows an API exists (**high recall**), it often lacks the density of real-world, modern implementation patterns required for production-ready code (**low coverage**).
+Even if a model knows an API exists, it often lacks the density of real-world, modern implementation patterns required for production-ready code.
 
-**Modern Web Guidance bridges this gap.** We inject targeted, expert-curated guidelines directly into your agent's context window, focusing on:
+**Modern Web Guidance bridges this gap.** Our skill's CLI returns targeted, expert-curated guidelines directly into your agent's context window, focusing on:
 * **Modern Browser APIs**: Helping models correctly structure APIs they frequently misuse.
 * **Performance & Accessibility**: Eliminating legacy bloat with clean, native patterns.
-* **Responsible Fallbacks**: Guiding models to use sensible, lightweight fallbacks instead of heavy polyfills.
+* **Responsible Fallbacks**: Guiding models to use sensible, lightweight fallbacks instead of heavy polyfills or legacy libraries.
 
 ## 📦 What's Included?
 
-We cover the bleeding edge of the web platform and fallback strategies, focusing purely on what models struggle with. The guides are designed to be token-efficient—**no filler, just actionable guidance**.
+We cover the past several years of the web platform's new features, all the way up to the cutting edge. The guides are **designed to be token-efficient**; we run evals enabling us to prune lowest-common-denominator content that models already know.
 
-### 🗂️ Core Disciplines
+### Core Disciplines
 
 Here is a preview of our **134+ use-case-centric guides**:
 
@@ -194,6 +192,8 @@ Active contributors are what keep this project moving forward. Thanks to everyon
 <a href="https://github.com/GoogleChrome/modern-web-guidance/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance" />
 </a>
+
+(We build the project in the [modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src) repo.)
 
 ## 📄 Attribution
 
