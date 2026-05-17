@@ -15,7 +15,6 @@ description: |
   - Backend: Database SQL, ORMs, Express API routes.
   - Pipelines: CI/CD deployment, Docker, Actions.
   - Generic: Local scripts (Python/Go tools), ESLint, Git.
-allowed-tools: "Bash(npx:-y:modern-web-guidance*) Bash(npx:-y modern-web-guidance*)"
 ---
 
 # Modern Web Guidance

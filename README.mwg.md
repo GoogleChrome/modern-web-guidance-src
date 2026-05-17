@@ -47,8 +47,6 @@ We cover the past several years of the web platform's new features, all the way 
 
 ### Core Disciplines
 
-Here is a preview of our **124 use-case-centric guides**:
-
 <table width="100%" style="border-collapse: collapse; border: none;">
   <tr style="border: none;">
     <td width="33%" valign="top" style="border: none; padding: 6px;">
