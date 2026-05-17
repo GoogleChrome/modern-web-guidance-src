@@ -1,0 +1,72 @@
+[
+  {
+    "testId": "nightly-2026-04-30_02-05-13-claude_code-leimingzhang",
+    "timestamp": "2026-04-30T02:13:29.471Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-6",
+    "taskCount": 66,
+    "unguidedPassRate": 44,
+    "guidedPassRate": 81
+  },
+  {
+    "testId": "nightly-2026-04-30_01-56-02-jetski_cli-leimingzhang",
+    "timestamp": "2026-04-30T02:04:19.636Z",
+    "agent": "jetski_cli",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 66,
+    "unguidedPassRate": 41,
+    "guidedPassRate": 78
+  },
+  {
+    "testId": "nightly-2026-04-28_00-42-54-claude-leimingzhang",
+    "timestamp": "2026-04-28T01:21:27.348Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-6",
+    "taskCount": 66,
+    "unguidedPassRate": 41,
+    "guidedPassRate": 77
+  },
+  {
+    "testId": "nightly-2026-04-28_00-09-01-jetski_cli-leimingzhang",
+    "timestamp": "2026-04-28T00:42:05.933Z",
+    "agent": "jetski_cli",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 66,
+    "unguidedPassRate": 42,
+    "guidedPassRate": 73
+  },
+  {
+    "testId": "nightly-2026-04-27_14-33-06-claude-leimingzhang",
+    "timestamp": "2026-04-27T15:12:08.718Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-6",
+    "taskCount": 66,
+    "unguidedPassRate": 41,
+    "guidedPassRate": 79
+  },
+  {
+    "testId": "nightly-2026-04-27_13-58-03-jetski_cli-leimingzhang",
+    "timestamp": "2026-04-27T14:32:13.900Z",
+    "agent": "jetski_cli",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 66,
+    "unguidedPassRate": 39,
+    "guidedPassRate": 82
+  },
+  {
+    "testId": "nightly-2026-04-27_12-48-23-claude-leimingzhang",
+    "timestamp": "2026-04-27T13:27:22.964Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-6",
+    "taskCount": 66,
+    "unguidedPassRate": 40,
+    "guidedPassRate": 78
+  }
+]

@@ -80,6 +80,31 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
   dynamicMd = dynamicMd.trimEnd() + `\n</details>\n\n`;
 
+  // Generate Evals Results Table
+  let evalsMd = '';
+  const evalsSummaryPath = path.join(SERVING_DIR, 'skills-cli', 'eval-results-summary.json');
+  if (fs.existsSync(evalsSummaryPath)) {
+    try {
+      const evalsData = JSON.parse(fs.readFileSync(evalsSummaryPath, 'utf-8'));
+      if (Array.isArray(evalsData) && evalsData.length > 0) {
+        evalsMd += '| Suite | Agent + Model | Tasks | Unguided → Guided (Uplift) |\n';
+        evalsMd += '| :--- | :--- | :---: | :---: |\n';
+        
+        const limitedData = evalsData.slice(0, 10);
+        for (const run of limitedData) {
+          const suiteLabel = formatSuiteLabel(run.testId, run.timestamp);
+          const agentModel = formatAgentModel(run.agent, run.model);
+          const tasks = run.taskCount;
+          const uplift = formatUplift(run.unguidedPassRate, run.guidedPassRate);
+          
+          evalsMd += `| ${suiteLabel} | ${agentModel} | ${tasks} | ${uplift} |\n`;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse evals summary:', e);
+    }
+  }
+
   // Update README idempotently from template source
   const templateReadmePath = path.join(SERVING_DIR, "skills-cli/template/README.md");
   const destReadmePath = path.join(publishRoot, "README.md");
@@ -89,6 +114,9 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       readmeContent = readmeContent.replace('<!-- INJECT_SKILL_COVERAGE -->', dynamicMd.trimEnd());
     } else {
       readmeContent = readmeContent.replace('## Installation', dynamicMd + '## Installation');
+    }
+    if (readmeContent.includes('<!-- INJECT_EVAL_RESULTS -->')) {
+      readmeContent = readmeContent.replace('<!-- INJECT_EVAL_RESULTS -->', evalsMd.trimEnd());
     }
     readmeContent = readmeContent.replace(/\*\*\d+\+? use-case-centric guides\*\*/, `**${readyGuides.length} use-case-centric guides**`);
     fs.writeFileSync(destReadmePath, readmeContent);
@@ -104,3 +132,35 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
 }
+
+function getAgentBadge(agent: string): string {
+  const name = agent.toLowerCase();
+  if (name.includes('gemini') || name.includes('jetski')) return '✦ ';
+  if (name.includes('codex') || name.includes('openai')) return '❂ ';
+  if (name.includes('claude')) return '✱ ';
+  return '';
+}
+
+function formatAgentModel(agent: string, model: string): string {
+  const badge = getAgentBadge(agent);
+  const modelStr = model && model !== 'unknown' ? ` (${model})` : '';
+  return `${badge}${agent}${modelStr}`;
+}
+
+function formatSuiteLabel(testId: string, timestamp: string): string {
+  const date = new Date(timestamp);
+  const dateStr = date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
+  let type = 'Run';
+  if (testId.startsWith('nightly-')) type = 'Nightly';
+  else if (testId.startsWith('full-')) type = 'Full';
+  else if (testId.startsWith('skills-cli-')) type = 'Skills CLI';
+  
+  return `${type} (${dateStr})`;
+}
+
+function formatUplift(unguided: number, guided: number): string {
+  const uplift = guided - unguided;
+  const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
+  return `${unguided}% → ${guided}% (**${upliftStr}**)`;
+}
+

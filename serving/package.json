@@ -22,6 +22,7 @@
     "build:megaskill": "node scripts/build-megaskill.ts",
     "build-dist": "node --experimental-strip-types */build-dist.ts",
     "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",
+    "collect-evals": "node --experimental-strip-types scripts/collect-eval-results.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
     "test": "node --test --test-reporter ${TEST_REPORTER:-dot} **/*.test.ts",
