@@ -208,6 +208,37 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
       console.log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
 
+      console.log("Bundling search-browser.js...");
+      const resultSearchBrowser = await esbuild.build({
+        entryPoints: [path.join(SERVING_DIR, "lib/search-browser.ts")],
+        bundle: true,
+        platform: "browser",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/search-browser.js"),
+        sourcemap: true,
+        minify: true,
+        metafile: true,
+        alias: {
+          "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+          "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
+          "node:fs": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
+          "node:path": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
+          "node:url": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
+          "fs": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
+          "path": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
+          "url": path.resolve(SERVING_DIR, "lib/empty-shim.ts"),
+        },
+        plugins: [{
+          name: 'use-precise-kernels',
+          setup(build) {
+            build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
+              return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
+            })
+          },
+        }],
+      });
+      console.log(`Generated search-browser.js at ${path.join(publishRoot, "skills/modern-web-guidance/search-browser.js")}`);
+
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
         entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
@@ -245,7 +276,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       console.log("Fixed shebang in modern-web.mjs");
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
+        [resultSearch.metafile, resultSearchBrowser.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 
