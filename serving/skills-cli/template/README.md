@@ -12,7 +12,7 @@ Inject web platform expertise, best practices, and modern API patterns directly 
 
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
-## Quickstart
+## <img src=".github/img/terminal.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Quickstart
 
 ```shell
 npx modern-web-guidance@latest install
@@ -30,7 +30,7 @@ npx modern-web-guidance@latest search "animate a dialog modal backdrop"
 npx modern-web-guidance@latest retrieve "animate-to-from-top-layer"
 ```
 
-## Why?
+## <img src=".github/img/lightbulb.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Why?
 
 Coding agents often default to older patterns because LLM training data contains vast amounts of legacy code. This often leads them to generate bloated JavaScript for tasks that now have native, high-performance web platform solutions.
 
@@ -41,7 +41,7 @@ Even if a model knows an API exists, it often lacks the density of real-world, m
 * **Performance & Accessibility**: Eliminating legacy bloat with clean, native patterns.
 * **Responsible Fallbacks**: Guiding models to use sensible, lightweight fallbacks instead of heavy polyfills or legacy libraries.
 
-## 📦 What's Included?
+## <img src=".github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> What's Included?
 
 We cover the past several years of the web platform's new features, all the way up to the cutting edge. The guides are **designed to be token-efficient**; we run evals enabling us to prune lowest-common-denominator content that models already know.
 
@@ -66,7 +66,7 @@ Here is a preview of our **134+ use-case-centric guides**:
 * **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
 * **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents can dynamically adapt to current browser support and any browser support preferences.
 
-## How It Works
+## <img src=".github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
 0. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web` CLI for web platform queries.
 2. **Local Semantic Search**: The agent runs `modern-web search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
@@ -76,7 +76,7 @@ Here is a preview of our **134+ use-case-centric guides**:
 > Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
 > The NPM package is self-contained, with no extra dependencies to ensure both low-latency and supply-chain security.
 
-## 💾 Alternative Installation Methods
+## <img src=".github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Alternative Installation Methods
 
 <details>
 <summary><b>Vercel Skills CLI</b> (aka <code>npx skills</code>)</summary>
@@ -128,7 +128,7 @@ If you installed the skill using `npx modern-web-guidance@latest install`, you c
 
 Otherwise, consult your agent's documentation for updating plugins and skills.
 
-## 🧪 Evals to prove this works well ;)
+## <img src=".github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well ;)
 
 We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** to guarantee AI agents write better code.  We run automated evaluations using a closed-loop validation pipeline:
 
