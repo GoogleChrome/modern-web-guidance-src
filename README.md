@@ -1,18 +1,53 @@
-# Modern Web Guidance Project (Source)
+# <img src="./assets/modern-web-guidance.svg" alt="Modern Web Guidance" width="48" height="48" style="width: 48px; max-width: 48px; height: 48px; vertical-align: -10px;"> Modern Web Guidance (Source)
 
-![Modern Web Guidance](./assets/modern-web-guidance.svg)
+A unified repository for authoring, calibrating, and evaluating modern web development guidance. Here, Subject Matter Experts (SMEs) curate best practices, automated pipelines generate test fixtures and grading scripts, and an evaluation harness measures how effectively AI coding agents adopt modern web APIs.
 
-A unified repository for modern web development guidance, containing both a Skill/CLI distribution and an MCP server for AI-assisted development, alongside an evaluation suite for measuring AI adoption of modern web APIs.
+The published distribution of this guidance is compiled and released to the [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) repository as Agent Skills—including the primary `modern-web-guidance` Skill (which utilizes a bundled CLI distribution) alongside other standalone Skills.
 
 ## Project Structure
 
-- **`guides/`**: All guide content, organized by discipline (performance, user-experience, etc.). Also contains the dev pipeline scripts (`dev-guide.ts`, `run-grader.ts`, `grader-gen.ts`, `negative-gen.ts`).
-- **`harness/`**: The Modern Web Guidance eval harness for executing and scoring tests. Includes task definitions, agent runners, and base apps.
-- **`serving/`**: The Modern Web guidance server supporting both a standalone CLI (Skills) and an MCP server. This provides semantic search over curated web development guides and browser support data.
-- **`eval-view/`**: A static dashboard for visualizing and analyzing evaluation results.
-- **`bin/gd.ts`**: The unified CLI entry point.
+- **`guides/`**: Curated guide content organized by discipline (performance, user-experience, etc.), along with core development pipeline orchestration scripts.
+- **`harness/`**: The evaluation harness for executing and scoring agent tests. Contains agent runners, evaluation orchestration, and base applications.
+- **`serving/`**: Serving infrastructure that compiles guides into semantic search indexes, builds the standalone RAG CLI distribution (`skills-cli`), and orchestrates publishing all Skills to both the public npm registry and the GitHub distribution repository.
+- **`skills-src/`**: Source files and templates for standalone discipline-level and topic-specific Agent Skills.
+- **`features/`**: Feature definitions and documentation snippets for specific web platform capabilities, used for transclusion and baseline status tracking.
+- **`eval-view/`**: A static web dashboard for visualizing and analyzing evaluation suite results.
+- **`nightly/`**: Automation scripts for configuring and executing scheduled nightly evaluation runs across multiple agents.
+- **`bin/gd.ts`**: The unified CLI entry point for all development and evaluation workflows.
 
 See [CONTEXT.md](./CONTEXT.md) for a comprehensive project overview, architecture details, and contributor workflow.
+
+## Guide Development
+
+Guidance is authored across two primary locations in the repository:
+
+- **`guides/`**: Core guides organized by web platform discipline (e.g., performance, user experience). These guides undergo rigorous calibration and automated evaluation using the `gd dev` pipeline.
+- **`skills-src/`**: Standalone Agent Skills and templates authored directly as Markdown artifacts.
+
+### Three-Stage Workflow
+
+For core guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`), development follows a structured three-stage workflow:
+1. **Stage 1: Identifying use cases** — Translate a feature into distinct tasks (Stub state).
+2. **Stage 2: Authoring guidance** — Flesh out the guidance and expectations (Needs calibration).
+3. **Stage 3: Evaluating guidance** — Auto-generate artifacts and run tests with `gd dev` (Eval-ready).
+
+If you are an external contributor looking to add new guidance, calibrate test fixtures, or improve existing content, please follow our guidelines in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Serving
+
+The `modern-web-guidance` **Skill** is served through a standalone CLI distribution (`serving/skills-cli`), enabling AI agents to perform local semantic searches and retrieve targeted implementation patterns on demand. Within the evaluation harness, the serving mechanism is configured via the `serving` setting in [`harness/config.ts`](./harness/config.ts), which defaults to `Serving.SKILLS_CLI`.
+
+Alternatively, an **MCP server** and other experimental interfaces are maintained in the codebase for research and testing purposes, providing connection-based access to the same underlying guidance data.
+
+## Evaluation Harness & Dashboard
+
+#### Prompt Benchmarking Harness (`harness/`)
+
+The evaluation harness is a matrix-driven runner that measures how effectively coding agents adopt modern web APIs. It executes tasks across various AI agents in isolated environments and scores their output against browser-based test assertions.
+
+#### Evaluation Dashboard (`eval-view/`)
+
+The evaluation dashboard provides a web interface to visualize pass rates, inspect agent trajectories, and review grade reports. It supports both a dynamic local development mode and a fully static deployment hosted on GitHub Pages.
 
 ## Getting Started
 
@@ -23,7 +58,7 @@ pnpm install
 pnpm setup:playwright
 ```
 
-### 0. CLI Setup
+### CLI Setup
 
 The `gd` CLI is the main way to run this project. To make it available globally and set up shell auto-completion, run:
 
@@ -33,62 +68,54 @@ pnpm link --global && gd setup-completion
 
 *Note: For the auto-completion to take effect, you must refresh your shell (e.g., open a new terminal or source your config).*
 
-### 1. Serving
-
-#### modern-web-guidance
-
-Guidance is primarily served to AI agents as a **Skill** via a standalone CLI distribution (`skills_cli`). This allows agents to execute semantic searches and retrieve implementation patterns directly within their local environment.
-
-Alternatively, an **MCP server** is available for agents that support the Model Context Protocol, providing dynamic, connection-based access to the same underlying data.
-
-```bash
-cd serving
-pnpm run build
-```
-
-For MCP usage specifically, you can start the server with `pnpm start`. For more details on the server internals, see the [Serving README](./serving/mcp-server/README.md).
-
-The primary serving mechanism is controlled by the `serving` setting in [`harness/config.ts`](./harness/config.ts), which defaults to `Serving.SKILLS_CLI`.
-
-#### google-developer-knowledge
-
-The [Developer Knowledge MCP server](https://developers.google.com/knowledge/mcp) can be enabled in the [`harness/config.ts`](./harness/config.ts) file by adding it to the `mcpServersToEnable` list.
-
-It requires the `MCP_API_KEY` to be set to a GCP API key with access enabled for the Developer Knowledge API.
-
-### 2. Eval Harness & Dashboard
-
-The evaluation suite measures how effectively AI models use modern web APIs.
-
 ## Usage
 
-Run commands via the `gd` CLI.. run `gd --help`: 
+Run commands via the `gd` CLI. See `gd --help` for a list of commands: 
 
 ```bash
-# Guide Development
-gd audit                      # show status of all guides
-gd dev [dir] [options]        # auto-generate/calibrate 
+Guide Development
+  dev <dir>                    Auto-generate and calibrate guide artifacts
+    --grade                    Run/calibrate grader
+    --test-grader              Check grader calibration (demo + negative-demo)
+    --gen-grader               Generate a new grader script
+    --gen-negative             Generate negative examples
+    --guided                   Skip calibration, run guided agent test only
+    --no-test                  Skip agent tests after calibration
+    --cross-app                Also check grader on an unmodified base app
+  audit                        Show status of all guides
+    --usecases                 Group by usecases rather than features
 
-# You can still run individual steps if you need to, like `gd dev <dir> --gen-grader`
+Evaluation & Dashboard
+  eval [suite|tasks...]        Run the full evaluation suite, or specific tasks
+    --config <path>            Custom config file (defaults to root config.ts)
+    --ui                       Start the evaluation review UI
+  run <tmpl> <prompt>          Run an ad-hoc agent test against a template
+    --config <path>            Custom config file (defaults to root config.ts)
+  dashboard                    Start the evaluation dashboard
+  deploy                       Deploy the dashboard to GitHub Pages
+  upload                       Upload generated evaluation suite to GCS
+  backfill                     Backfill metrics for historical suites
 
-# Evaluation
-gd eval                       # run the full evaluation suite
-gd eval [task1] [task2]       # run specific tasks (which are the names of guides e.g. `batch-analytics-events`)
-gd eval --config <custom_config>       # run with config overrides (defaults to config.ts, or harness/config.ts)
-gd dashboard                  # start the evaluation dashboard
-gd backfill                   # backfill metrics for historical suites
-
-# To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
-gd upload <suite-name>
-# Example: gd upload analytics-suite
+Utilities & Setup
+  baselinestatus <query>       Check browser support and Baseline status
+  setup-completion             Install shell auto-completion
 ```
 
 ## Configuration
 
-All configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file controls:
+All evaluation and environment configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file defines two primary configuration structures:
 
--   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
--   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
+- **Environment Configuration (`environmentConfig`)**: Resolves absolute paths to AI agent binaries/CLIs, GCP credentials, and required API keys. Values are populated via environment variables loaded automatically from `.env` at the repository root.
+- **Suite Configuration (`defaultSuiteConfig`)**: Controls evaluation execution parameters such as agent selection (`agent`), serving mode (`serving`), task filters (`tasks`), etc.
+
+### API Keys & Environment Setup
+
+For setup of core guide development workflows (`gd dev`), configure your Gemini API key and model in your environment or `.env` file:
+
+```bash
+GEMINI_API_KEY='your_api_key_here'
+GEMINI_MODEL='gemini-3-flash-preview'
+```
 
 ### Runtime Configuration Overrides
 
@@ -104,47 +131,7 @@ If you want to maintain multiple configuration profiles, you can specify a custo
 gd eval --config my_custom_config.ts
 ```
 
-Environment variables in `.env` at the `modern-web-guidance-src/` root are still required for setting paths to binaries and API keys.
-
-### Agents
-
-Supported agents are defined in the `Agents` object in [`harness/config.ts`](./harness/config.ts).
-
-#### Jetski
-
-Jetski is the default agent that will be used. When running, be sure to update the settings of the Jetski automation window so that the "Review Policy" is set to "Always Proceed".
-
-#### Gemini CLI
-
-When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
-
-Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3.1-pro-preview'`).
-
-#### Claude
-
-Implemented with [Claude Code on Vertex AI](https://code.claude.com/docs/en/google-vertex-ai).
-
-Log in with `gcloud` and set project ID with `gcloud config set project <YOUR-GCP-PROJECT-ID>`.
-The GCP project must enable the Vertex AI API and `Claude Opus 4.6` in the Model Garden.
-
-Set the following environment variables:
-
-```
-CLAUDE_CODE_USE_VERTEX=1
-CLOUD_ML_REGION=global
-ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
-ANTHROPIC_MODEL='claude-opus-4-6'
-```
-
-#### Codex CLI
-
-To use Codex CLI, you will need to request an exception, which appears when attempting to use it (`codex`).
-This request should file a bug similar to b/492300931, which includes a screenshot to the PCounsel approval.
-After approval, start `codex` locally and login to your account.
-
-## Guides
-
-For adding and testing guides, see the [guides README](./guides/README.md).
+For comprehensive configuration details on running evaluations across other agents, see [EVALS.md](./EVALS.md).
 
 ## Quality Control
 
@@ -153,17 +140,6 @@ Run the full preflight suite (typechecking, linting, and tests) from the root:
 ```bash
 pnpm preflight
 ```
-
-## Development
-
-Development follows a **three-stage workflow**:
-1.  **Stage 1: Identifying use cases** — Translate a feature into distinct tasks (Stub state).
-2.  **Stage 2: Authoring guidance** — Flesh out the guidance and expectations (Needs calibration).
-3.  **Stage 3: Evaluating guidance** — Auto-generate artifacts and run tests with `gd dev` (Eval-ready).
-
-Add guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`). See [guides README](./guides/README.md) and [CONTEXT.md](./CONTEXT.md) for the detailed workflow.
-
-Build-free TypeScript is supported in `serving` (requires Node 24+).
 
 ## License
 

@@ -160,7 +160,7 @@ ${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
     console.log(`${featuresCount} features`);
     console.log(`${skillsCount} skills (${skillNames.join(', ')})`);
 
-    console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
+    console.log('\nPerhaps also:\n    pushd ~/code/modern-web-guidance && git pull gh && git push gob && popd');
   }
 }
 
