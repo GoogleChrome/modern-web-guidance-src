@@ -213,7 +213,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         }],
       });
       fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
-      console.log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
 
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
@@ -249,7 +248,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       const modernWebContent = fs.readFileSync(modernWebMjsPath, "utf8");
       const updatedModernWebContent = modernWebContent.replace(/^#!.*node.*--experimental-strip-types.*\n/, "#!/usr/bin/env node\n");
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
-      console.log("Fixed shebang in modern-web.mjs");
 
       generateThirdPartyNotices(
         [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],

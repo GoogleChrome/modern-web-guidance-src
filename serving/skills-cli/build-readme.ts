@@ -100,7 +100,6 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   if (fs.existsSync(srcImgDir)) {
     fs.mkdirSync(destImgDir, { recursive: true });
     fs.cpSync(srcImgDir, destImgDir, { recursive: true });
-    console.log(`Copied ${srcImgDir} to ${destImgDir}`);
   }
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
