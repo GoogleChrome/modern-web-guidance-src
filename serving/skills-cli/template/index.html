@@ -148,7 +148,7 @@
   </div>
 
   <script type="module">
-    import { searchUseCasesBrowser, retrieveUseCaseBrowser } from './skills/modern-web-guidance/search-browser.js';
+    import { GuidanceBrowserClient } from './skills/modern-web-guidance/search-browser.js';
 
     const statusEl = document.getElementById('status');
     const queryInput = document.getElementById('query');
@@ -158,37 +158,43 @@
     const guideTitleEl = document.getElementById('guide-title');
     const guideContentEl = document.getElementById('guide-content');
 
-    const VECTORS_URL = './skills/modern-web-guidance/use-cases.vectors.gen.json.gz';
-    const MODEL_URL = './skills/modern-web-guidance/tfjs_model_minilm/model.json';
-    const GUIDES_BASE_URL = './skills/modern-web-guidance/guides';
+    const client = new GuidanceBrowserClient({
+      baseURL: './skills/modern-web-guidance'
+    });
 
-    // We can pre-initialize the embedder to make the first search faster,
-    // or just let the search function do it on demand.
-    // Let's do it on demand but enable UI after we verify we can fetch.
-    // Actually, we can trigger a dummy embed to pre-warm it.
-    async function init() {
-      try {
-        statusEl.textContent = 'Pre-warming embedding model... (Fetching model and tokenizer)';
-
-        // Import TfjsEmbedderBrowser directly if we want to pre-warm it here.
-        // But search-browser.js exports searchUseCasesBrowser which handles it.
-        // To pre-warm, we can run a dummy search.
-        await searchUseCasesBrowser('warmup', VECTORS_URL, MODEL_URL, 1, 0.0);
-
+    // Handle status transitions
+    client.addEventListener('statuschange', (e) => {
+      const status = e.status;
+      const error = e.error;
+      
+      if (status === 'ready') {
         statusEl.textContent = 'Ready! Model and vectors loaded client-side.';
         statusEl.style.backgroundColor = '#efe';
         statusEl.style.borderColor = '#2e7d32';
         queryInput.disabled = false;
         searchBtn.disabled = false;
-      } catch (e) {
-        statusEl.textContent = `Initialization failed: ${e.message}`;
+      } else if (status === 'error') {
+        statusEl.textContent = `Initialization failed: ${error?.message || 'Unknown error'}`;
         statusEl.style.backgroundColor = '#fee';
         statusEl.style.borderColor = '#d32f2f';
-        console.error(e);
+      } else if (status === 'initializing') {
+        statusEl.textContent = 'Initializing TFJS Model & Tokenizer...';
+      } else if (status === 'loading-model') {
+        statusEl.textContent = 'Downloading model files...';
+      } else if (status === 'loading-vectors') {
+        statusEl.textContent = 'Downloading search vectors...';
       }
-    }
+    });
 
-    init();
+    // Handle detailed download progress
+    client.addEventListener('progress', (e) => {
+      const step = e.step;
+      const percentage = e.percentage;
+      statusEl.textContent = `Loading [${step}]: ${percentage}%`;
+    });
+
+    // Start bootstrapping immediately
+    client.bootstrap().catch(err => console.error("Bootstrap failed", err));
 
     async function doSearch() {
       const query = queryInput.value.trim();
@@ -200,7 +206,7 @@
 
       const startTime = performance.now();
       try {
-        const results = await searchUseCasesBrowser(query, VECTORS_URL, MODEL_URL);
+        const results = await client.search(query);
         const duration = ((performance.now() - startTime) / 1000).toFixed(2);
 
         statusEl.textContent = `Found ${results.length} results in ${duration}s`;
@@ -252,7 +258,8 @@
       statusEl.textContent = `Fetching guide for ${id}...`;
       guideViewEl.style.display = 'none';
       try {
-        const content = await retrieveUseCaseBrowser(id, category, GUIDES_BASE_URL);
+        // Pass target dictionary as requested in Option 1 refactoring
+        const content = await client.retrieve({ id, category });
         guideTitleEl.textContent = `${id} (${category})`;
         guideContentEl.textContent = content;
         guideViewEl.style.display = 'block';
