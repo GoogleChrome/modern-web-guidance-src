@@ -14,13 +14,11 @@ Inject web platform expertise, best practices, and modern API patterns directly 
 
 ## Quickstart
 
-To start the interactive setup wizard:
-
 ```shell
 npx modern-web-guidance@latest install
 ```
 
-For alternative package managers and platforms, see [Alternative Installation Methods](#alternative-installation-methods) below.
+This command will run the interactive wizard to add the SKILL.md where your coding agent will find it. For alternative package managers and platforms, see [Alternative Installation Methods](#alternative-installation-methods) below.
 
 #### Try it out, before without installing
 
