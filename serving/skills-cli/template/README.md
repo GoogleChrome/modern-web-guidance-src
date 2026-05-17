@@ -148,7 +148,7 @@ We developed a robust eval harness to ensure that the content is **empirically p
                                 Compares accuracy w/ and w/o guide injection to prove impact
 ```
 
-0.
+0. **Simulated Developer Tasks**: We define realistic, intent-based developer prompts (in `tasks/task.md`) that mimic real-world requests (e.g., "make my images load faster"). These prompts avoid naming specific APIs or features, testing whether the agent can successfully discover and implement the correct modern patterns solely by reading the guide.
 1. **Outcome-Based Assertions**: We write browser automation scripts that verify the guide was followed correctly: exact runtime behaviors, computed styles, and accessibility states.
 2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
 3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
