@@ -170,7 +170,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
           return basename === "model.json" || basename.startsWith("group1-shard");
         }
       });
-      console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
     }
 
     try {

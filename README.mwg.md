@@ -78,7 +78,7 @@ We cover the past several years of the web platform's new features, all the way 
   </tr>
 </table>
 
-#### The full list (as of `v0.0.155`)
+#### The full list
 
 <details>
 <summary><strong>99 modern web features</strong></summary>

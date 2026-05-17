@@ -9,27 +9,17 @@ import { rootDir } from "../../lib/paths.ts";
 const SERVING_DIR = path.join(rootDir, "serving");
 
 const CSS_ROOTS = new Set([
-  'css',
-  'view-transitions',
-  'animation',
-  'clipping-shapes-masking',
-  'scrolling',
-  'print',
-  'reading-order'
+  'css', 
+  'scrolling', 
+  'animation', 
+  'view-transitions', 
+  'clipping-shapes-masking'
 ]);
 
 const HTML_ROOTS = new Set([
-  'html',
-  'dom',
-  'web-components',
-  'svg',
-  'images',
-  'mathml',
-  'ruby',
-  'resource-hints',
-  'text-fragments',
-  'integrity',
-  'xml'
+  'html', 
+  'dom', 
+  'resource-hints'
 ]);
 
 function getCategoryForFeature(id: string): string {

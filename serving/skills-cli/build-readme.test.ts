@@ -37,7 +37,7 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     assert.ok(result.useCasesCount > 0, 'Should have processed some use cases');
 
     const content = fs.readFileSync(dummyReadmePath, 'utf8');
-    assert.ok(content.includes('#### The full list (as of `v1.2.3`)'), 'Should inject correct version heading');
+    assert.ok(content.includes('#### The full list'), 'Should inject correct heading');
     assert.ok(content.includes('<h3>'), 'Should contain category h3 elements');
     assert.match(content, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'Should contain explorer feature links');
     assert.match(content, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'Should link use cases to GitHub blob files');
