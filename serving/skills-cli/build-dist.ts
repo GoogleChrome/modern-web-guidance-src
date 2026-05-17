@@ -284,6 +284,15 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
       console.log("Fixed shebang in modern-web.mjs");
 
+      console.log("Generating TypeScript declarations...");
+      try {
+        execSync("pnpm exec tsc -p tsconfig.declaration.json", { cwd: rootDir, stdio: "inherit" });
+        console.log("TypeScript declarations generated.");
+      } catch (err) {
+        console.error("Failed to generate declarations:", err);
+        throw err;
+      }
+
       generateThirdPartyNotices(
         [resultSearch.metafile, resultSearchBrowser.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")

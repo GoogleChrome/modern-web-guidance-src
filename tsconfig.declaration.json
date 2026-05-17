@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./dist/skills-cli/skills/modern-web-guidance"
+  },
+  "files": [
+    "./serving/lib/search-browser.ts"
+  ]
+}

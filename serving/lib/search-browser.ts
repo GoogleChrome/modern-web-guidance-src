@@ -4,9 +4,10 @@ import { BertTokenizer } from "@huggingface/transformers";
 import "./tfjs-kernels.ts";
 
 import { embedTextCore } from "./tfjs-embedder.ts";
-import { searchVectorsCore, calculateNorm, VectorItem, UseCaseResult } from "./search.ts";
+import { searchVectorsCore, calculateNorm } from "./search.ts";
+import type { VectorItem, UseCaseResult } from "./search.ts";
 
-export { UseCaseResult };
+export type { UseCaseResult };
 
 export type ClientStatus =
   | 'idle'
@@ -263,7 +264,7 @@ export class GuidanceBrowserClient extends EventTarget {
     }
 
     // 4. Concatenate and decompress
-    const blob = new Blob(chunks);
+    const blob = new Blob(chunks as BlobPart[]);
     const ds = new DecompressionStream("gzip");
     const decompressedStream = blob.stream().pipeThrough(ds);
     const decompressedResponse = new Response(decompressedStream);
@@ -325,30 +326,28 @@ export class GuidanceBrowserClient extends EventTarget {
     console.log("GuidanceBrowserClient resources disposed");
   }
 
-  // Strong types support for EventTarget
+}
+
+export interface GuidanceBrowserClient {
   addEventListener<K extends keyof GuidanceBrowserClientEventMap>(
     type: K,
-    listener: (this: GuidanceBrowserClient, ev: GuidanceBrowserClientEventMap[K]) => any,
+    listener: ((this: GuidanceBrowserClient, ev: GuidanceBrowserClientEventMap[K]) => any) | null,
     options?: boolean | AddEventListenerOptions
   ): void;
   addEventListener(
     type: string,
-    listener: EventListenerOrEventListenerObject,
+    listener: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions
-  ): void {
-    super.addEventListener(type, listener, options);
-  }
+  ): void;
 
   removeEventListener<K extends keyof GuidanceBrowserClientEventMap>(
     type: K,
-    listener: (this: GuidanceBrowserClient, ev: GuidanceBrowserClientEventMap[K]) => any,
+    listener: ((this: GuidanceBrowserClient, ev: GuidanceBrowserClientEventMap[K]) => any) | null,
     options?: boolean | EventListenerOptions
   ): void;
   removeEventListener(
     type: string,
-    listener: EventListenerOrEventListenerObject,
+    listener: EventListenerOrEventListenerObject | null,
     options?: boolean | EventListenerOptions
-  ): void {
-    super.removeEventListener(type, listener, options);
-  }
+  ): void;
 }

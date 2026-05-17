@@ -22,5 +22,15 @@
   },
   "bin": {
     "modern-web-guidance": "skills/modern-web-guidance/modern-web.mjs"
+  },
+  "exports": {
+    "./search": {
+      "types": "./skills/modern-web-guidance/serving/lib/search.d.ts",
+      "default": "./skills/modern-web-guidance/search.mjs"
+    },
+    "./search-browser": {
+      "types": "./skills/modern-web-guidance/serving/lib/search-browser.d.ts",
+      "default": "./skills/modern-web-guidance/search-browser.js"
+    }
   }
 }
