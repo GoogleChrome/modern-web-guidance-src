@@ -56,7 +56,7 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     if (pkgJson.version) version = pkgJson.version;
   } catch { }
 
-  let dynamicMd = `#### Full Skill Coverage (v${version})\n\n`;
+  let dynamicMd = `### Coverage\n\n \`v${version}\`\n\n`;
 
   // Details block 1: Web features
   dynamicMd += `<details>\n<summary>Includes expert guidance across <strong>${allFeaturesSorted.length} modern web features</strong></summary>\n\n`;
