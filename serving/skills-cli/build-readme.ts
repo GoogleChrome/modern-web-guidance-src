@@ -22,32 +22,21 @@ const HTML_ROOTS = new Set([
   'resource-hints'
 ]);
 
+const getRoot = (g: string): string => groups[g]?.parent ? getRoot(groups[g].parent) : g;
+
 function getCategoryForFeature(id: string): string {
   const feat = features[id];
-  const featGroups = feat?.group ? (Array.isArray(feat.group) ? feat.group : [feat.group]) : [];
-  const resolved = new Set<string>();
+  const featGroups = [feat?.group ?? []].flat();
 
-  for (const g of featGroups) {
-    let root = g;
-    while (groups[root]?.parent) root = groups[root].parent;
-    
-    if (CSS_ROOTS.has(root)) resolved.add('CSS & Layout');
-    else if (HTML_ROOTS.has(root)) resolved.add('HTML & DOM');
-    else resolved.add('JavaScript & APIs');
-  }
+  const resolved = new Set(featGroups.map(g => {
+    const r = getRoot(g);
+    return CSS_ROOTS.has(r) ? 'CSS & Layout' : HTML_ROOTS.has(r) ? 'HTML & DOM' : 'JavaScript & APIs';
+  }));
 
-  if (resolved.has('CSS & Layout')) return 'CSS & Layout';
-  if (resolved.has('HTML & DOM')) return 'HTML & DOM';
-  if (resolved.has('JavaScript & APIs')) return 'JavaScript & APIs';
-
-  // Fallback checks on ID itself (for features without groups)
-  const cssKws = ['css', 'style', 'layout', 'highlight', 'target', 'anchor-positioning'];
-  const htmlKws = ['html', 'element', 'dom', 'link-', 'invoker'];
-  
-  if (cssKws.some(kw => id.includes(kw))) return 'CSS & Layout';
-  if (htmlKws.some(kw => id.includes(kw))) return 'HTML & DOM';
-
-  return 'JavaScript & APIs';
+  return ['CSS & Layout', 'HTML & DOM', 'JavaScript & APIs'].find(c => resolved.has(c))
+    || (/highlight|target|anchor-positioning/.test(id) ? 'CSS & Layout'
+    : /link-|invoker/.test(id) ? 'HTML & DOM'
+    : 'JavaScript & APIs');
 }
 
 function listToMarkdownTable(items: string[], colCount = 3): string {
