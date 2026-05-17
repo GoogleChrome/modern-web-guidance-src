@@ -1,81 +1,81 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { features } from "web-features";
+import { features, groups } from "web-features";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
 
+const CSS_ROOTS = new Set([
+  'css', 
+  'view-transitions', 
+  'animation', 
+  'clipping-shapes-masking', 
+  'scrolling', 
+  'print', 
+  'reading-order'
+]);
+
+const HTML_ROOTS = new Set([
+  'html', 
+  'dom', 
+  'web-components', 
+  'svg', 
+  'images', 
+  'mathml', 
+  'ruby', 
+  'resource-hints', 
+  'text-fragments', 
+  'integrity', 
+  'xml'
+]);
+
 function getCategoryForFeature(id: string): string {
-  const feat = features[id];
-  if (!feat) {
-    return 'JavaScript & APIs';
-  }
+  const feature = features[id];
+  const featGroups: string[] = feature && feature.group 
+    ? (Array.isArray(feature.group) ? feature.group : [feature.group])
+    : [];
+  
+  const resolvedCategories = new Set<string>();
 
-  const compat = feat.compat_features || [];
-  const prefixes = new Map<string, number>();
-  for (const c of compat) {
-    const parts = c.split('.');
-    const prefix = parts[0];
-    prefixes.set(prefix, (prefixes.get(prefix) || 0) + 1);
-  }
-
-  const css = prefixes.get('css') || 0;
-  const html = prefixes.get('html') || 0;
-  const api = prefixes.get('api') || 0;
-  const js = prefixes.get('javascript') || 0;
-
-  // 1. Keyword overrides for specific features or groups of features
-  // CSS & Layout overrides:
-  if (
-    id.includes('transition') ||
-    id.includes('highlight') ||
-    id === 'anchor-positioning' ||
-    id === 'function'
-  ) {
-    return 'CSS & Layout';
-  }
-  // Web Animations is CSS, but Long Animation Frames is performance (JS)
-  if (id.includes('animation') && id !== 'long-animation-frames') {
-    return 'CSS & Layout';
-  }
-
-  // HTML & DOM overrides:
-  if (
-    id === 'customizable-select' ||
-    id.includes('canvas-html') ||
-    id.includes('html-in-canvas')
-  ) {
-    return 'HTML & DOM';
-  }
-
-  // JavaScript & APIs overrides:
-  if (
-    id === 'mutationobserver' ||
-    id === 'move-before' ||
-    id === 'speculation-rules' ||
-    id === 'fetch-priority' ||
-    id === 'permissions-policy'
-  ) {
-    return 'JavaScript & APIs';
-  }
-
-  // 2. CSS-first rule: if it has mostly CSS keys, it's CSS
-  if (css > 0 && css >= html && css >= api) {
-    return 'CSS & Layout';
-  }
-
-  // 3. HTML-first rule: if it has HTML keys and not dominated by APIs
-  if (html > 0) {
-    const apiTotal = api + js;
-    if (apiTotal === 0 || (html / apiTotal) >= 0.1) {
-      return 'HTML & DOM';
+  for (const groupKey of featGroups) {
+    let current = groupKey;
+    let root = null;
+    while (current && groups[current]) {
+      const parent = groups[current].parent;
+      if (!parent) {
+        root = current;
+        break;
+      }
+      current = parent;
+    }
+    
+    if (root) {
+      if (CSS_ROOTS.has(root)) {
+        resolvedCategories.add('CSS & Layout');
+      } else if (HTML_ROOTS.has(root)) {
+        resolvedCategories.add('HTML & DOM');
+      } else {
+        resolvedCategories.add('JavaScript & APIs');
+      }
     }
   }
 
-  // 4. Fallback to JS & APIs
+  // Prioritize categories when multiple groups exist
+  if (resolvedCategories.has('CSS & Layout')) return 'CSS & Layout';
+  if (resolvedCategories.has('HTML & DOM')) return 'HTML & DOM';
+  if (resolvedCategories.has('JavaScript & APIs')) return 'JavaScript & APIs';
+
+  // Fallback checks on ID itself (for features without groups)
+  if (id.includes('css') || id.includes('style') || id.includes('layout') || id.includes('highlight') || id.includes('target') || id === 'anchor-positioning') {
+    return 'CSS & Layout';
+  }
+  if (id.includes('html') || id.includes('element') || id.includes('dom') || id.includes('link-') || id.includes('invoker')) {
+    return 'HTML & DOM';
+  }
+
   return 'JavaScript & APIs';
 }
 
