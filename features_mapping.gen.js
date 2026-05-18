@@ -166,11 +166,6 @@ window.__featuresMapping = {
     "scrollbar-color",
     "prefers-contrast"
   ],
-  "adapt-scrollbar-to-light-dark-preferences": [
-    "scrollbar-color",
-    "color-scheme",
-    "prefers-color-scheme"
-  ],
   "anchor-positioning-tab-underline": [
     "anchor-positioning",
     "prefers-reduced-motion"
@@ -193,12 +188,6 @@ window.__featuresMapping = {
   ],
   "apply-webgl-shaders": [
     "canvas-html"
-  ],
-  "browser-ui-color-theme": [
-    "color-scheme",
-    "prefers-color-scheme",
-    "light-dark",
-    "accent-color"
   ],
   "calculate-event-differentials": [
     "temporal"
@@ -252,6 +241,12 @@ window.__featuresMapping = {
   "customize-scrollbar-color-and-thickness": [
     "scrollbar-color",
     "scrollbar-width"
+  ],
+  "dark-mode": [
+    "color-scheme",
+    "prefers-color-scheme",
+    "light-dark",
+    "accent-color"
   ],
   "declarative-button-actions": [
     "invoker-commands"
@@ -323,10 +318,6 @@ window.__featuresMapping = {
     "popover",
     "popover-hint",
     "anchor-positioning"
-  ],
-  "light-dark-theme-semantic-color-palettes": [
-    "color-scheme",
-    "light-dark"
   ],
   "light-dismiss-a-dialog": [
     "dialog-closedby"
@@ -468,9 +459,6 @@ window.__featuresMapping = {
     "mutationobserver",
     "resize-observer",
     "web-animations"
-  ],
-  "theme-within-theme": [
-    "color-scheme"
   ],
   "usage-aware-component-variations": [
     "container-style-queries"
