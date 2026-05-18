@@ -243,8 +243,9 @@ Check for any existing conventions around naming and levels before inventing you
 - Use `color-scheme: light dark` on `:root` to enable dark mode support that automatically adapts to the system setting. You can also specify `color-scheme` on individual elements to force a different value for that subtree (`light`/`dark` or `light dark` for the system default)
 - Use `light-dark()` to provide alternatives that automatically resolve based on the element's `color-scheme`.
 Typically this happens in Tier 2 or Tier 3 tokens.
-- IMPORTANT: When using `light-dark()` on an inherited `<color>` property, it will resolve to a specific color based on that element's `color-scheme` and inherit as that resolved color, not as a `light-dark()` value. It will NOT adapt to any descendant-specific `color-scheme` overrides. To keep `light-dark()` color tokens dynamic resolve them as late as possible by only passing them around as unregistered custom properties.
+- IMPORTANT: When using `light-dark()` on an inherited `<color>` property, it will resolve to a specific color based on that element's `color-scheme` and inherit as that resolved color, not as a `light-dark()` value. It will NOT adapt to any descendant-specific `color-scheme` overrides. To keep `light-dark()` color tokens dynamic resolve them as late as possible by only passing them around as unregistered custom properties and avoid relying on inherited color values across `color-scheme` boundaries.
 
+See {{ GUIDE_REF("dark-mode") }} for tips & best practices on supporting dark mode switching and {{ GUIDE_REF("component-specific-light-dark-theme") }} for more on applying different `color-scheme` modes than the page-wide setting on certain elements.
 
 ### Forced Colors Mode
 

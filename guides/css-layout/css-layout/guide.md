@@ -261,7 +261,7 @@ Manage layout shifts, scrollbars, and clipping predictably.
 }
 ```
 
-> For `overflow: clip` and `overflow-clip-margin` in depth, see {{ GUIDE_REF("overflow-clipping-control") }}. For scrollbar color, sizing, and theming, see {{ GUIDE_REF("customize-scrollbar-color-and-thickness") }}, {{ GUIDE_REF("adapt-scrollbar-to-light-dark-preferences") }}, and {{ GUIDE_REF("adapt-scrollbar-to-contrast-preferences") }}.
+> For `overflow: clip` and `overflow-clip-margin` in depth, see {{ GUIDE_REF("overflow-clipping-control") }}. For scrollbar color, sizing, and theming, see {{ GUIDE_REF("customize-scrollbar-color-and-thickness") }}, {{ GUIDE_REF("dark-mode") }}, and {{ GUIDE_REF("adapt-scrollbar-to-contrast-preferences") }}.
 
 ## 7 Viewport mechanics and track distribution
 
