@@ -8,6 +8,14 @@ import { rootDir } from "../../lib/paths.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
 
+const CAT = {
+  CSS: 'CSS & Layout',
+  HTML: 'HTML & DOM',
+  JS: 'JavaScript & APIs'
+} as const;
+
+const CAT_PRIORITY = [CAT.CSS, CAT.HTML, CAT.JS] as const;
+
 const CSS_ROOTS = new Set([
   'css', 
   'scrolling', 
@@ -30,13 +38,20 @@ function getCategoryForFeature(id: string): string {
 
   const resolved = new Set(featGroups.map(g => {
     const r = getRoot(g);
-    return CSS_ROOTS.has(r) ? 'CSS & Layout' : HTML_ROOTS.has(r) ? 'HTML & DOM' : 'JavaScript & APIs';
+    return CSS_ROOTS.has(r) ? CAT.CSS : HTML_ROOTS.has(r) ? CAT.HTML : CAT.JS;
   }));
 
-  return ['CSS & Layout', 'HTML & DOM', 'JavaScript & APIs'].find(c => resolved.has(c))
-    || (/highlight|target|anchor-positioning/.test(id) ? 'CSS & Layout'
-    : /link-|invoker/.test(id) ? 'HTML & DOM'
-    : 'JavaScript & APIs');
+  const matchedCat = CAT_PRIORITY.find(c => resolved.has(c));
+  if (matchedCat) return matchedCat;
+
+  // Fallback checks on ID itself (for features without groups)
+  const cssIds = ['anchor-positioning', 'container-anchor-position-queries', 'highlight', 'scroll-initial-target'];
+  const htmlIds = ['link-rel-expect', 'invoker-commands', 'interest-invokers'];
+
+  if (cssIds.includes(id)) return CAT.CSS;
+  if (htmlIds.includes(id)) return CAT.HTML;
+
+  return CAT.JS;
 }
 
 function listToMarkdownTable(items: string[], colCount = 3): string {
@@ -104,9 +119,9 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 
   // Group features by category
   const categories: Record<string, { id: string; name: string }[]> = {
-    'HTML & DOM': [],
-    'CSS & Layout': [],
-    'JavaScript & APIs': []
+    [CAT.HTML]: [],
+    [CAT.CSS]: [],
+    [CAT.JS]: []
   };
 
   for (const f of allFeaturesSorted) {
@@ -118,7 +133,7 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   // Details block 1: Web features
   dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} modern web features</strong></summary>\n\n`;
 
-  for (const cat of ['HTML & DOM', 'CSS & Layout', 'JavaScript & APIs']) {
+  for (const cat of CAT_PRIORITY) {
     const list = categories[cat] || [];
     if (list.length === 0) continue;
 
