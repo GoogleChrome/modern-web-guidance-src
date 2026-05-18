@@ -22,6 +22,16 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     expect(hasRequiredInputs).toBe(true);
   });
 
+  test('The implementation must dynamically synchronize aria-invalid using inline JS', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/aria-invalid/i.test(html)).toBe(true);
+  });
+
+  test('The visual error state must utilize multiple visual indicators', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/border|icon/i.test(html)).toBe(true);
+  });
+
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {

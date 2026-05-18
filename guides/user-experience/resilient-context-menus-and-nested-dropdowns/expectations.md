@@ -5,3 +5,4 @@
 - `flip-block` and `flip-inline` keywords (or equivalent custom `@position-try` rules) are used to handle edge collisions.
 - A popover polyfill is conditionally loaded only if popover is not supported in the browser.
 - An anchor positioning polyfill is conditionally loaded only if anchor positioning is not supported in the browser.
+- The overlay container MUST NOT be framed or exposed as an ARIA menu (`role="menu"`) unless full menu keyboard navigation contracts are implemented; otherwise, it MUST be exposed as a generic action panel.

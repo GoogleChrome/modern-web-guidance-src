@@ -11,22 +11,6 @@ The primary goal of this stage is to translate a technical web platform feature 
 2. Stage 2: Authoring guidance for a use case
 3. Stage 3: Evaluating guidance for a use case
 
-## Research and discovery
-
-Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, use the `project-use-cases-research` skill to perform grounded research. This skill guides you through using your own tools and optional automated deep research to surface authoritative sources and real-world implementations.
-
-### Using `project-use-cases-research`
-
-Refer to the `project-use-cases-research` skill file for detailed instructions on how to:
-1.  **Gather inputs** from GitHub issues or arguments.
-2.  **Conduct standard research** using `search_web` and `read_url_content`.
-3.  **Run optional automated deep research** using the `deep_research.js` script.
-
-The process will result in:
-1.  A research report saved to `guides/.research/<feature-id>.md`.
-2.  Proposed use cases that follow the constraints described in this skill.
-3.  Scaffolded `guide.md` and `demo.html` stubs.
-
 ## Identifying action-oriented tasks
 
 A "use case" in this project is not a description of a feature; it's a task that the user is trying to implement, or a problem they're trying to solve. The feature is only relevant in the sense that it's part of the recommended solution for the use case.
@@ -81,7 +65,6 @@ The following steps are REQUIRED for creating a new use case:
   - **name**: Short, slugified name of the use case.
   - **description**: Action-oriented description of the use case.
   - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
-  - **sources**: List of primary source URLs used to synthesize the document. Do NOT guess these. The user should provide them.
 
   For example:
 
@@ -92,8 +75,6 @@ The following steps are REQUIRED for creating a new use case:
   web-feature-ids:
     - fetch-priority
     - fetch
-  sources:
-    - https://web.dev/articles/fetch-priority
   ---
   ```
 

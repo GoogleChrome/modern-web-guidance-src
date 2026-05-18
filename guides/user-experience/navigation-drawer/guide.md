@@ -9,14 +9,6 @@ web-feature-ids:
   - scroll-driven-animations
   - scroll-initial-target
   - scroll-snap
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll_snap
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Properties_and_values_API/Registering_properties
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll-driven_animations
-  - https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
-  - https://developer.mozilla.org/en-US/docs/Web/API/Popover_API
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/inert
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
 ---
 
 ## Overview
@@ -60,10 +52,11 @@ The drawer is a single popover containing a horizontal scroller, which contains 
     <!-- aria-controls links the trigger to the drawer; aria-expanded
          reflects the current state for assistive tech. -->
     <button id="drawer-open"
-            aria-label="Open menu"
+            aria-label="Menu"
             aria-expanded="false"
             aria-controls="drawer">
-      <!-- menu icon SVG -->
+      <!-- MANDATORY: Inline decorative SVGs MUST define aria-hidden="true" -->
+      <svg aria-hidden="true" viewBox="0 0 24 24">...</svg>
     </button>
   </header>
   <!-- Page content. -->
@@ -306,6 +299,8 @@ document.addEventListener('keydown', (event) => {
 ```
 
 ### Fallback strategies
+
+{{ FEATURE_FALLBACKS("popover") }}
 
 The drawer's core mechanics — scroll snap, `IntersectionObserver`, and `inert` — are all Baseline Widely available and required for the component to function. The popover API, the scroll-driven animation that fades the backdrop, and `scroll-initial-target` are progressive enhancements with simple fallbacks that can be easily implemented if wide browser support is required.
 

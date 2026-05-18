@@ -9,24 +9,49 @@ import { rootDir } from '../../lib/paths.ts';
 
 describe('replaceMacros (Functional with real data)', () => {
   describe('BASELINE_STATUS', () => {
-    it('replaces macro with widely available status', () => {
+    it('replaces macro with widely available status including detailed browser support', () => {
       const content = '{{ BASELINE_STATUS("grid") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('2017-10-17'));
-      assert.ok(result.includes('Widely available'));
+      assert.strictEqual(
+        result,
+        "Baseline status for Grid: Widely available. It's been Baseline since 2017-10-17.\nSupported by: Chrome 57 (Mar 2017), Edge 16 (Oct 2017), Firefox 52 (Mar 2017), Safari 10.1 (Mar 2017), and Safari iOS 10.3 (Mar 2017)."
+      );
     });
 
-    it('replaces macro with newly available status', () => {
-      const content = "{{ BASELINE_STATUS('dialog-closedby') }}";
+    it('replaces macro with newly available status dynamically splitting out mobile targets when support diverges', () => {
+      const content = "{{ BASELINE_STATUS('popover') }}";
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result !== undefined); // Specific text might vary depending on live data
+      assert.strictEqual(
+        result,
+        "Baseline status for Popover: Newly available. It's been Baseline since 2025-01-27.\nSupported by: Chrome 116 (Aug 2023), Edge 116 (Aug 2023), Firefox 125 (Apr 2024), Safari 17 (Sep 2023), and Safari iOS 18.3 (Jan 2025)."
+      );
     });
 
-    it('replaces macro with not supported status', () => {
-      // Accelerometer is typically limited
-      const content = '{{ BASELINE_STATUS("accelerometer") }}';
+    it('replaces macro with limited availability status listing exact supporting engines', () => {
+      const content = '{{ BASELINE_STATUS("popover-hint") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('limited availability'));
+      assert.strictEqual(
+        result,
+        "popover=\"hint\" has limited availability.\nSupported by: Chrome 133 (Feb 2025), Edge 133 (Feb 2025), and Firefox 149 (Mar 2026).\nUnsupported in: Safari."
+      );
+    });
+
+    it('replaces macro with declarative-webmcp status', () => {
+      const content = '{{ BASELINE_STATUS("declarative-webmcp") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(
+        result,
+        "Form-associated WebMCP attributes is not natively supported by any major browser yet."
+      );
+    });
+
+    it('replaces macro with canvas-html status', () => {
+      const content = '{{ BASELINE_STATUS("canvas-html") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.strictEqual(
+        result,
+        "HTML in canvas is not natively supported by any major browser yet."
+      );
     });
 
     it('throws error for non-existent feature', () => {
@@ -311,20 +336,15 @@ describe('INCLUDE', () => {
     it('replaces macro with forms skill path', () => {
       const content = '{{ GUIDE_REF("forms") }}';
       const result = replaceMacros(content, path.join(rootDir, 'test.md'));
-      assert.equal(result, '`guides/forms/SKILL.md`');
+      assert.equal(result, '`guides/forms/forms/guide.md`');
     });
 
     it('replaces macro with category-level skill command for skills-cli', () => {
       const content = '{{ GUIDE_REF("forms") }}';
       const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'skills-cli' });
-      assert.equal(result, '`forms` (via `node <modern-web-directory>/modern-web.mjs retrieve "forms"`)');
+      assert.equal(result, '`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)');
     });
 
-    it('replaces macro with category-level skill command for skills-cli-npx', () => {
-      const content = '{{ GUIDE_REF("forms") }}';
-      const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'skills-cli-npx' });
-      assert.equal(result, '`forms` (via `npx -p modern-web-guidance@latest -- modern-web retrieve "forms"`)');
-    });
 
     it('throws error for non-existent guide', () => {
       const content = '{{ GUIDE_REF("non-existent-guide-xyz") }}';

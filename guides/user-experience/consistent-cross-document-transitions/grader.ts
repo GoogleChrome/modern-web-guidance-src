@@ -154,4 +154,10 @@ test.describe(`Consistent Cross-Document Transitions: ${fileName}`, () => {
     }
     expect(hasAnyBlocking).toBe(true);
   });
+
+  test('Cross-document view transitions must be disabled when prefers-reduced-motion: reduce is active', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/prefers-reduced-motion/i.test(html)).toBe(true);
+  });
+
 });

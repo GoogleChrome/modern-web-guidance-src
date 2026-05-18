@@ -1,0 +1,6 @@
+- The image element with class `.shaped-avatar` has the `mask-image` and `-webkit-mask-image` properties applied referencing a valid SVG mask ID.
+- The decorative empty element with class `.card-accent` has the `mask-image` and `-webkit-mask-image` properties applied referencing a valid SVG mask ID.
+- The SVG masks (e.g., `#splat-mask` and `#accent-stencil`) use `maskContentUnits="objectBoundingBox"` to scale correctly with the elements' dimensions.
+- The parent container `.unified-card` uses `filter: drop-shadow()` to silhouette the unified card and adjacent masked element as a single, cohesive shape.
+- Safe layout practices are followed where all readable text content remains entirely within the standard unmasked container `.card-body` to prevent any clipping.
+- The element with class `.gradient-masked-card` has a pure CSS radial or linear gradient applied to the `mask-image` and `-webkit-mask-image` properties.

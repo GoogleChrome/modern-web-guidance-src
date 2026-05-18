@@ -3,16 +3,6 @@ name: size-aware-styling
 description: Build a component whose styles can be conditionally dependent on its own width or height, rather than the width or height of the viewport. For example a card component that can change its layouts depending on how large it is, or a call-to-action button that can conditionally display helper text based on its width.
 web-feature-ids:
   - container-queries
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Containment/Container_queries
-  - https://css-tricks.com/css-container-queries/
-  - https://www.joshwcomeau.com/css/container-queries-introduction/
-  - https://web.dev/learn/css/container-queries
-  - https://www.joshwcomeau.com/css/container-queries-unleashed/
-  - https://frontendmasters.com/blog/container-queries-and-units/
-  - https://www.smashingmagazine.com/2024/06/what-are-css-container-style-queries-good-for/
-  - https://web.dev/articles/baseline-in-action-container-queries
-  - https://web.dev/blog/how-to-use-container-queries-now
 ---
 
 ## Overview

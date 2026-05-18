@@ -10,3 +10,4 @@
 * Polyfills for interestfor, popover, and anchor positioning must be conditionally installed.
 * Do not display tooltip content using `::before` and `::after` pseudo-elements.
 * Do not put tooltip content into attributes on the trigger.
+* The implementation MUST adhere to WCAG 1.4.13 guidelines, ensuring the tooltip is dismissible (e.g. via `Esc`), hoverable, and persistent.

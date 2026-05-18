@@ -3,12 +3,6 @@ name: form-fields-automatically-fit-contents
 description: Allow form fields to grow and shrink to fit the user input, e.g. as the user types or selects a different option. Apply maximum and minimum size limits to create dynamic and responsive form fields that conform with the page design.
 web-feature-ids:
   - field-sizing
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/field-sizing
-  - https://drafts.csswg.org/css-forms-1/#propdef-field-sizing
-  - https://developer.chrome.com/docs/css-ui/css-field-sizing
-  - https://css-tricks.com/almanac/properties/f/field-sizing/
-  - https://polypane.app/blog/field-sizing-just-works/
 ---
 
 By default, form controls like `<input>`, `<textarea>`, and `<select>` have fixed dimensions. Their sizes remain constant, regardless of the amount of content the user enters or selects.

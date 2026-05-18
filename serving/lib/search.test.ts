@@ -10,7 +10,8 @@ describe("searchUseCases", () => {
     const bestMatch = results[0];
     assert.strictEqual(bestMatch.id, "autofill-address-form", "Best match should be autofill-address-form");
     
-    const distance = parseFloat(bestMatch.distance as unknown as string);
-    assert.ok(distance < 0.7, `Distance ${distance} should be less than 0.7`);
+    const similarity = bestMatch.similarity;
+    assert.ok(similarity > 0.3, `Similarity ${similarity} should be greater than 0.3`);
+    assert.ok(bestMatch.tokenCount > 0, 'Best match should have tokenCount > 0');
   });
 });

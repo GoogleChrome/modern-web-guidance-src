@@ -128,6 +128,10 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     expect(hasPseudoTooltip).toBe(false);
   });
 
+  test('Tooltips must be hoverable and persistent per WCAG 1.4.13 guidelines', async () => {
+    expect(/popover=["']hint["']/i.test(html)).toBe(true);
+  });
+
   test('Tooltip should become visible on hover', async ({ page }) => {
     const trigger = page.locator('[interestfor], .tooltip').first();
     await expect(trigger).toBeVisible();

@@ -6,18 +6,19 @@ import { buildDist } from './build-dist.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
+const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 
 // This controls what is published to https://github.com/GoogleChrome/modern-web-guidance.
 const GH_PUBLISH_PATTERNS = [
   '**/*',
-  '!**/guides/**',
+  '!**/.cache/**',
   '!**/tfjs_model_minilm/**',
   '!**/*.{js,mjs,ts,bin,map,gz}',
+  '!**/skill-version.txt',
   '!THIRD_PARTY_NOTICES',
-  '!skills/modern-web/package.json',
+  '!skills/modern-web-guidance/package.json',
 ];
 
 const isDryRun = process.argv.includes('--dry-run');
@@ -28,15 +29,30 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+const getLatestGitTag = (target = 'HEAD') => {
+  return execSync(`git describe --tags --match "v*.*.*" --abbrev=0 ${target}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+};
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
 
-  // Get the latest tag that looks like v*.*.*
-  const latestTag = getLatestTag();
-  const currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
+  const target = isDryRun ? 'origin/main' : 'HEAD';
+  console.log(`Checking latest tag against ${target}...`);
+  
+  let latestTag: string;
+  try {
+    latestTag = getLatestTag(target);
+  } catch (err) {
+    if (isDryRun) {
+      console.log(`Could not find tags on ${target}. Falling back to HEAD.`);
+      latestTag = getLatestTag('HEAD');
+    } else {
+      throw err;
+    }
+  }
+
   console.log(`Found latest tag: ${latestTag}`);
+  const currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
 
   const newVersion = incrementVersion(currentVersion);
   console.log(`Next version will be: ${newVersion}`);
@@ -84,21 +100,17 @@ async function validate(newVersion: string) {
   execSync('node --test skills-cli/*.test.ts', {
     cwd: SERVING_DIR,
     stdio: 'inherit' ,
-    env: { ...process.env, TEST_REPORTER: 'spec', SKIP_BUILD: '1' }
+    env: { ...process.env, TEST_REPORTER: 'spec' }
   });
+
+  return result;
 }
 
 async function main() {
   const newVersion = await getNextVersion();
 
-  await validate(newVersion);
-
-  console.log(`\nRebuilding distribution with version ${newVersion} for npm...`);
-  const publishCliDir = path.join(DIST_DIR, "skills-cli-npx");
-  const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true});
-  if (!result) {
-    throw new Error("Build failed or was already in progress.");
-  }
+  const result = await validate(newVersion);
+  const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
   const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
 
@@ -148,7 +160,7 @@ ${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
     console.log(`${featuresCount} features`);
     console.log(`${skillsCount} skills (${skillNames.join(', ')})`);
 
-    console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
+    console.log('\nPerhaps also:\n    pushd ~/code/modern-web-guidance && git pull gh && git push gob && popd');
   }
 }
 

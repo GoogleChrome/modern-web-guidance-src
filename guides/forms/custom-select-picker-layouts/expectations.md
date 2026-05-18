@@ -7,3 +7,4 @@
 - The implementation MUST include a progressive enhancement fallback for browsers that do not support `appearance: base-select`. This fallback MUST use `CSS.supports("appearance", "base-select")` to detect support before applying fallback logic.
 - If the layout is critical, the fallback script MAY use a minimal JavaScript solution or toggle classes to ensure functionality, but graceful degradation to a standard OS select is preferred if acceptable.
 - The `<select>` MUST have a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.
+- The checked state of a grid `<option>` MUST be communicated using multiple visual cues (such as border thickness and font weight shifts) to avoid color-only state indications.

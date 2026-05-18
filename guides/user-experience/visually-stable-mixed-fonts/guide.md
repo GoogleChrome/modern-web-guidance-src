@@ -3,9 +3,6 @@ name: visually-stable-mixed-fonts
 description: Define font styles such that text remains readable and visually consistent in situations where multiple fonts are used to render a single block of text.
 web-feature-ids:
   - font-size-adjust
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust
-  - https://web.dev/blog/font-size-adjust
 ---
 
 When mixing different font families, for instance when inserting inline code snippets, or switching out font families for different themes, differences in "x-height" (the height of lowercase letters) can make one font appear much smaller or larger than the other font. This can lead to poor legibility and layout shifts.
@@ -16,7 +13,7 @@ The `font-size-adjust` property allows you to normalize the visual size of text 
 
 1.  **MANDATORY**: Apply `font-size-adjust` to elements where font consistency is critical, such as containers using web fonts or blocks with mixed font families.
 2.  **MANDATORY**: Use the `from-font` keyword on elements to automatically match font size in nested elements to the proportions of the primary font.
-3.  **MANDATORY**: Use a specific numeric aspect-ratio override value for `font-size-adjust` (e.g., `font-size-adjust: 0.5`) to normalize proportions independently when the font proportions to base on are from an independent theme.
+3.  **MANDATORY**: Use a specific numeric aspect-ratio override value for `font-size-adjust` (e.g., `font-size-adjust: 0.5`) to normalize proportions independently when the font proportions to base on are from different themes.
 
 ### Example: Normalizing x-height automatically
 

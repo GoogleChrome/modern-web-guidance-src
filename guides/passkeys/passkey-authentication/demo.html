@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Authentication Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #fafafa; color: #333; }
+    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 400px; }
+    input { width: 100%; padding: 0.5rem; margin: 0.5rem 0 1rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { background: #0066cc; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; width: 100%; }
+    button:hover { background: #0052a3; }
+    .status { margin-top: 1rem; font-weight: bold; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Sign In with Passkey</h2>
+    
+    <!-- Autofill forms annotated with autocompleteTokens and autofocus -->
+    <form id="signin-form">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" autocomplete="username webauthn" autofocus data-testid="username-field">
+      
+      <button type="button" id="auth-btn" data-testid="auth-button">Sign in with Passkey</button>
+    </form>
+    <div id="status" class="status" data-testid="auth-status">Idle</div>
+  </div>
+
+  <script type="module">
+    let autofillAbortController = new AbortController();
+
+    async function performAuth(mediationType = 'optional') {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = mediationType === 'conditional' ? 'Waiting for autofill select...' : 'Authenticating...';
+
+      try {
+        // 1. Fetch options parameters discoverably
+        const responseOptions = await fetch('/api/login/options', { method: 'POST' });
+        if (!responseOptions.ok) throw new Error('Options endpoint failed');
+        const loginOptionsJSON = await responseOptions.json();
+
+        // 2. Decode and invoke native WebAuthn Prompt
+        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(loginOptionsJSON);
+        const credential = await navigator.credentials.get({
+          publicKey,
+          signal: autofillAbortController.signal,
+          mediation: mediationType
+        });
+
+        // 3. Verify Assertion responses securely
+        if (credential) {
+          const encodedResponse = credential.toJSON();
+          let verifyResponse;
+          try {
+            verifyResponse = await fetch('/api/login/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(encodedResponse)
+            });
+
+            if (verifyResponse.ok) {
+              statusEl.textContent = 'Authenticated Successfully!';
+              statusEl.style.color = '#228b22';
+            } else if (verifyResponse.status === 404) {
+              // Segregated signalUnknownCredential only on explicit server 404
+              if (PublicKeyCredential.signalUnknownCredential) {
+                await PublicKeyCredential.signalUnknownCredential({
+                  rpId: window.location.hostname,
+                  credentialId: encodedResponse.id
+                });
+              }
+              throw new Error('User credential unknown to server');
+            } else {
+              throw new Error('Assertion verification failed');
+            }
+          } catch (verifyErr) {
+            console.error('Server verification threw:', verifyErr);
+            throw verifyErr;
+          }
+        } else {
+          throw new Error('Local biometrics authentication failed');
+        }
+      } catch (e) {
+        console.error(e);
+        // Silently swallow expected Conditional UI cancels
+        if (mediationType === 'conditional') {
+          if (['NotAllowedError', 'AbortError'].includes(e.name)) {
+            return;
+          }
+        } else {
+          // Surface biometrics buttons cancels UI errors
+          statusEl.textContent = `Error: ${e.message}`;
+          statusEl.style.color = '#cc0000';
+          
+          // Re-arm Conditional autofill suggestions after explicit modal prompt cancellations
+          initializeConditionalAutofill();
+        }
+      }
+    }
+
+    async function initializeConditionalAutofill() {
+      if (window.PublicKeyCredential) {
+        const capabilities = await PublicKeyCredential.getClientCapabilities();
+        if (capabilities.passkeyPlatformAuthenticator && capabilities.conditionalGet === true) {
+          await performAuth('conditional');
+        }
+      }
+    }
+
+    // Button triggers flow
+    document.getElementById('auth-btn').addEventListener('click', () => {
+      // Abort any pending Conditional UI to avoid collisions
+      autofillAbortController.abort();
+      autofillAbortController = new AbortController(); // Reset abort controller
+      performAuth('optional');
+    });
+
+    // Initialize conditional UI suggestions on page load
+    window.addEventListener('DOMContentLoaded', initializeConditionalAutofill);
+  </script>
+</body>
+</html>

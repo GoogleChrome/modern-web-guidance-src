@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- 
+    MANDATORY: Declare support for both light and dark themes early.
+    This helps the browser set the initial canvas color before CSS is parsed.
+    While this helps avoid a "flash of un-themed content" (FOUC), it may not 
+    completely eliminate flashes in all browsers or loading conditions.
+  -->
+  <meta name="color-scheme" content="light dark">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browser UI Color Theme: Interactive Demo</title>
+  <style>
+    :root {
+      /* Brand Tokens */
+      --brand-accent-light: #0056b3;
+      --brand-accent-dark: #00e5ff;
+
+      --brand-bg-light: hsl(0, 0%, 100%);
+      --brand-bg-dark: hsl(212, 33%, 10%);
+      
+      --brand-text-light: hsl(210, 100%, 2%);
+      --brand-text-dark: hsl(0, 0%, 100%);
+
+      /* MANDATORY: Apply to :root or html for viewport-wide theming. */
+      color-scheme: light dark;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+
+      /* Initial resolution using System Color keywords as fallbacks. */
+      --accent-color: var(--brand-accent-light, AccentColor);
+      --background-color: var(--brand-bg-light, Canvas);
+      --text-color: var(--brand-text-light, CanvasText);
+
+      /* Apply theme to root properties to ensure the entire viewport is themed correctly. */
+      background-color: var(--background-color);
+      color: var(--text-color);
+      accent-color: var(--accent-color);
+      
+      /* OPTIONAL: Use scrollbar-color for consistent cross-browser scrollbar control. */
+      scrollbar-color: var(--accent-color) var(--background-color);
+
+      /* 
+        OPTIONAL: For older WebKit-based browsers that do not support scrollbar-color,
+        continue to use non-standard ::-webkit-scrollbar pseudo-elements.
+      */
+      &::-webkit-scrollbar {
+        width: 12px;
+      }
+      &::-webkit-scrollbar-track {
+        background: var(--background-color);
+      }
+      &::-webkit-scrollbar-thumb {
+        background-color: var(--accent-color);
+        border-radius: 10px;
+        border: 3px solid var(--background-color);
+      }
+
+      /* MANDATORY: Fallback Strategy for browsers without light-dark(). */
+      @media (prefers-color-scheme: light) {
+        --accent-color: var(--brand-accent-light);
+        --background-color: var(--brand-bg-light);
+        --text-color: var(--brand-text-light);
+      }
+      @media (prefers-color-scheme: dark) {
+        --accent-color: var(--brand-accent-dark);
+        --background-color: var(--brand-bg-dark);
+        --text-color: var(--brand-text-dark);
+      }
+
+      /* OPTIONAL: Modern approach using light-dark(). */
+      @supports (color: light-dark(white, black)) {
+        --accent-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
+        --background-color: light-dark(var(--brand-bg-light), var(--brand-bg-dark));
+        --text-color: light-dark(var(--brand-text-light), var(--brand-text-dark));
+      }
+
+      /* 
+        MANDATORY: Registered custom properties (via @property) are NOT used 
+        for tokens that dynamically resolve with light-dark(). 
+        Registration "locks" the resolved value at computed-time on the root, 
+        which would prevent re-resolution in nested elements with different schemes.
+      */
+    }
+
+    body {
+      padding: 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+      /* Inherits color, accent-color, and scrollbar-color from :root */
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+      margin-block-start: 2rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      border: 1px solid color-mix(in srgb, var(--text-color), transparent 80%);
+      border-radius: 12px;
+    }
+
+    .scroll-container {
+      height: 100px;
+      overflow: auto;
+      border: 1px solid color-mix(in srgb, var(--text-color), transparent 70%);
+      padding: 1rem;
+      border-radius: 8px;
+    }
+
+    .scroll-content {
+      height: 250px;
+      background: linear-gradient(to bottom, var(--background-color), color-mix(in srgb, var(--accent-color), transparent 90%));
+    }
+
+    input[type="text"], select, button {
+      padding: 0.6rem;
+      border-radius: 6px;
+      border: 1px solid color-mix(in srgb, var(--text-color), transparent 60%);
+      background-color: var(--background-color);
+      color: var(--text-color);
+      font-size: 1rem;
+    }
+
+    select {
+      cursor: pointer;
+    }
+
+    /* DEMONSTRATION: Nested Color Scheme and Inheritance Footgun Fix. */
+    .forced-dark-section {
+      color-scheme: dark;
+
+      /* 
+        MANDATORY: when nesting schemes, dynamic built-in inherited properties (e.g. color, accent-color) set with 
+        light-dark() must also be set on the element where the scheme changes. 
+
+        When setting a different color-scheme on a component, **DO NOT** redefine custom properties (e.g. --accent-color: light-dark(black, white);) 
+        unless the custom property needs to be updated. The custom property only needs 
+        to be applied to a property (e.g. accent-color: var(--accent-color);).
+      */
+      background-color: var(--background-color);
+      color: var(--text-color);
+      accent-color: var(--accent-color);
+      scrollbar-color: var(--accent-color) var(--background-color);
+      
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* DEMONSTRATION: Opting out of Auto-Dark Mode */
+    .opt-out-section {
+      /* 
+        MANDATORY: Use 'only light' to prevent browsers (particularly on mobile) 
+        from automatically inverting colors if a dedicated dark theme 
+        isn't yet implemented for this section.
+      */
+      color-scheme: only light;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    progress { width: 100%; }
+
+    .theme-switcher-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .checkbox-group {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Browser UI Theme Demo</h1>
+    <p>This demo shows how <code>color-scheme</code> affects native UI like scrollbars and dropdowns. Use the switcher below to manually override the system preference.</p>
+  </header>
+
+  <main class="demo-grid">
+    <section class="control-group">
+      <h2>Global Theme Controls</h2>
+      
+      <!-- Manual Theme Switcher (Best Practice) -->
+      <div class="theme-switcher-container">
+        <label for="theme-switcher">Manual Theme Toggle:</label>
+        <select id="theme-switcher">
+          <option value="system">System Default (Respects OS)</option>
+          <option value="light">Forced Light Mode</option>
+          <option value="dark">Forced Dark Mode</option>
+        </select>
+      </div>
+
+      <div class="scroll-container">
+        <div class="scroll-content">
+          <p>Global scrollbars adapt to the root scheme.</p>
+        </div>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="check" checked>
+        <label for="check">Brand Checkbox</label>
+      </div>
+      
+      <progress value="40" max="100"></progress>
+    </section>
+
+    <section class="forced-dark-section">
+      <h2>Nested Theme (Always Dark)</h2>
+      <p>The dropdown and scrollbars in this section will <strong>always</strong> be dark.</p>
+      
+      <select>
+        <option>Dark Dropdown 1</option>
+        <option>Dark Dropdown 2</option>
+      </select>
+
+      <div class="scroll-container">
+        <div class="scroll-content">
+          <p>Nested scrollbars stay dark.</p>
+        </div>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="dark-check" checked>
+        <label for="dark-check">Dark Checkbox</label>
+      </div>
+
+      <progress value="85" max="100"></progress>
+    </section>
+
+    <section class="control-group">
+      <h2>Opt-out Example</h2>
+      <div class="opt-out-section">
+        <p>This section uses <code>color-scheme: only light</code> to prevent automatic browser overrides even if the rest of the page is dark.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Logic for the manual theme switcher (MANDATORY Best Practice)
+    const switcher = document.getElementById('theme-switcher');
+    switcher.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      const root = document.documentElement;
+      
+      if (mode === 'light') {
+        root.style.colorScheme = 'light';
+      } else if (mode === 'dark') {
+        root.style.colorScheme = 'dark';
+      } else {
+        // Reset to system default
+        root.style.colorScheme = 'light dark';
+      }
+    });
+  </script>
+</body>
+</html>

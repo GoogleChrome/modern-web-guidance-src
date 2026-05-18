@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Registration Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #fafafa; color: #333; }
+    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 400px; }
+    button { background: #0066cc; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    button:hover { background: #0052a3; }
+    .status { margin-top: 1rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Register a Passkey</h2>
+    <p>Promote passkey adoption for a secure, passwordless login experience.</p>
+    <button id="register-btn" data-testid="register-button">Create Passkey</button>
+    <div id="status" class="status" data-testid="registration-status">Idle</div>
+  </div>
+
+  <script type="module">
+    function decodeBase64Url(str) {
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = str.length % 4;
+      if (pad) {
+        str += new Array(5 - pad).join('=');
+      }
+      const bin = atob(str);
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) {
+        buf[i] = bin.charCodeAt(i);
+      }
+      return buf.buffer;
+    }
+
+    async function registerPasskey() {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Registering...';
+
+      try {
+        const responseOptions = await fetch('/api/register/options');
+        const optionsJSON = await responseOptions.json();
+
+        optionsJSON.challenge = decodeBase64Url(optionsJSON.challenge);
+        optionsJSON.user.id = decodeBase64Url(optionsJSON.user.id);
+        
+        if (optionsJSON.excludeCredentials) {
+          optionsJSON.excludeCredentials = optionsJSON.excludeCredentials.map(cred => {
+            cred.id = decodeBase64Url(cred.id);
+            return cred;
+          });
+        }
+
+        const credential = await navigator.credentials.create({ publicKey: optionsJSON });
+        
+        await fetch('/api/register/verify', {
+          method: 'POST',
+          body: JSON.stringify(credential)
+        });
+
+        statusEl.textContent = 'Passkey Registered Successfully!';
+        statusEl.style.color = '#228b22';
+      } catch (e) {
+        statusEl.textContent = 'Error during registration';
+        statusEl.style.color = '#cc0000';
+      }
+    }
+
+    document.getElementById('register-btn').addEventListener('click', registerPasskey);
+  </script>
+</body>
+</html>
