@@ -13,21 +13,29 @@ Use the CSS `:autofill` to highlight fields that have (or have not been) autofil
 
 To highlight a form field that has been autofilled by the browser (and not edited by the user) add a selector to your CSS using the `:autofill` class. This can be used for an `<input>`, `<select>`, or `<textarea>` element.
 
-The following example uses `:autofill` to set border color:
+When styling autofilled states, you must adhere to accessibility best practices:
+- **Multiple State Indicators**: Do not rely on border color alone to indicate the autofilled state. Use multiple indicators such as border thickness and custom background shading to ensure the state is perceivable.
+- **Preserve Focus Indicators**: Never remove focus outlines (`outline: none`) without providing a clear, high-contrast replacement for keyboard users.
+
+The following example uses `:autofill` to set a custom border and background, along with explicit focus styles:
 
 ```css
 input:autofill,
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  /* box-shadow overrides the autofill background color, which cannot be changed via background-color */
-  /* box-shadow: 0 0 0 100vmax #efe inset; */
-  border-color: green;
-  outline: none;
+input:-webkit-autofill {
+  /* Multiple indicators: use both a distinct border and background color via box-shadow to avoid color-only state */
+  border: 2px solid #2e7d32;
+  box-shadow: 0 0 0 100vmax #e8f5e9 inset;
+}
+
+/* MANDATORY: Always provide an explicit focus indicator when styling autofilled states */
+input:autofill:focus-visible,
+input:-webkit-autofill:focus-visible {
+  outline: 3px solid #000;
+  outline-offset: 2px;
 }
 ```
 
-As shown in this example, the `box-shadow` property can be used to customize the background if required, since `background-color` cannot be overridden directly.
+As shown in this example, the `box-shadow` property is used to customize the background, since `background-color` cannot be overridden directly on autofilled fields.
 
 ## Use the correct CSS pseudo-class name
 

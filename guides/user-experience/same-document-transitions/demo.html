@@ -107,7 +107,7 @@
     <!-- State 1: List View -->
     <div id="list-page">
       <div class="content">
-        <h1>Products</h1>
+        <h1 id="list-heading" tabindex="-1">Products</h1>
         <p>Click a product thumbnail to see details.</p>
 
         <div class="grid">
@@ -141,7 +141,7 @@
       <!-- The shared hero element, dynamically configured via JS -->
       <div id="hero" onclick="goFromDetailToList()"></div>
       <div class="content">
-        <h1 id="title">Product Overview</h1>
+        <h1 id="title" tabindex="-1">Product Overview</h1>
         <p>This is the full-bleed hero view.</p>
         <button onclick="goFromDetailToList()">Back to products</button>
       </div>
@@ -164,11 +164,15 @@
 
         if (!document.startViewTransition) {
           document.body.classList.add("detail");
+          document.getElementById("title")?.focus();
           return;
         }
-        document.startViewTransition(() =>
+        const transition = document.startViewTransition(() =>
           document.body.classList.add("detail"),
         );
+        transition.finished.finally(() => {
+          document.getElementById("title")?.focus();
+        });
       }
 
       document.querySelectorAll(".thumbnail").forEach((thumbnail) => {
@@ -178,12 +182,14 @@
       function goFromDetailToList() {
         if (!document.startViewTransition) {
           document.body.classList.remove("detail");
+          document.getElementById("list-heading")?.focus();
           return;
         }
         const transition = document.startViewTransition(() => {
           document.body.classList.remove("detail");
         });
         transition.finished.finally(() => {
+          document.getElementById("list-heading")?.focus();
           // Remove selected classList to remove view-transition-names
           document.querySelectorAll(".selected").forEach(
             (element) => {

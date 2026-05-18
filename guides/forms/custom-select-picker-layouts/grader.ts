@@ -42,6 +42,11 @@ test.describe(`Custom Select Picker Layouts Expectations: ${demoName}`, () => {
     expect(!hasScript || hasCssSupports).toBe(true);
   });
 
+  test(`MUST communicate checked state of options using multiple visual cues`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/font-weight:|border/i.test(html)).toBe(true);
+  });
+
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {

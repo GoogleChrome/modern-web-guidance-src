@@ -7,25 +7,26 @@
 <body>
   <h1>Payment</h1>
   <form id="payment-form" name="payment-form">
-    <section>
-      <label for="cc-number">Card number</label>
+    <div style="margin-bottom: 1rem;">
+      <label for="cc-number" style="display:block;">Card number</label>
       <input id="cc-number" name="cc-number" type="text" autocomplete="cc-number" inputmode="numeric" maxlength="50" pattern="[\d ]{10,30}" required>
-    </section>
+    </div>
 
-    <section>
-      <label for="cc-name">Name on card</label>
+    <div style="margin-bottom: 1rem;">
+      <label for="cc-name" style="display:block;">Name on card</label>
       <input id="cc-name" name="cc-name" type="text" autocomplete="cc-name" maxlength="50" pattern="[\p{L} \-\.]+" required>
-    </section>
+    </div>
 
-    <section>
-      <label for="cc-exp">Expiry date</label>
-      <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required>
-    </section>
+    <div style="margin-bottom: 1rem;">
+      <label for="cc-exp" style="display:block;">Expiry date</label>
+      <span id="exp-hint" style="display:block; font-size:0.85em; color:#666;">Format: MM/YY</span>
+      <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp" aria-describedby="exp-hint" maxlength="5" required>
+    </div>
 
-    <section>
-      <label for="cc-csc">Security code</label>
+    <div style="margin-bottom: 1rem;">
+      <label for="cc-csc" style="display:block;">Security code</label>
       <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc" inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}" required>
-    </section>
+    </div>
 
     <button type="submit">Complete payment</button>
   </form>

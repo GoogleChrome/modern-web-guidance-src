@@ -59,6 +59,7 @@ To build a component that changes its layout based on its content:
 ```
 
 ```html
+<!-- Assume an <h1> precedes these components in the document layout -->
 <!-- A card WITH an image (will use row layout) -->
 <article class="article-card">
   <img src="thumbnail.jpg" alt="Article thumbnail" />

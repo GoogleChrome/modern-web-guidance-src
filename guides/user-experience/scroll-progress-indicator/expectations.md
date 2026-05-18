@@ -4,4 +4,5 @@
 * The progress indicator element has `transform-origin` set to the start (e.g., `0 50%` or `left`) so it scales from the correct side.
 * The implementation includes feature detection using `@supports` for scroll-driven animations.
 * The implementation respects user preferences for reduced motion using `@media (prefers-reduced-motion: no-preference)`.
+* The purely decorative progress indicator element MUST define `aria-hidden="true"` to hide it from assistive technology reading trees.
 * The implementation DOES NOT add any `scroll` event listeners.

@@ -433,7 +433,7 @@ Simple pie chart:
 }
 ```
 
-**Important:** When using gradients to render charts, ensure there is a textual fallback for screen readers.
+**Important:** When using gradients to render charts, ensure there is a textual fallback for screen readers. MANDATORY: You MUST provide a semantic data table as an accessible alternative, as detailed in {{ GUIDE_REF("accessibility") }} under the alternate text and media guidelines.
 
 ## 9. Transitions & animations
 

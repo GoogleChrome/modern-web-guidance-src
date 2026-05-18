@@ -36,7 +36,22 @@ A user expresses interest in the additional information by hovering or focusing 
 <a interestfor="tooltip" href="">Tooltip trigger</a>
 ```
 
-The trigger must have a visual indicator to indicate that there is additional information available by interacting with the trigger. 
+The trigger must have a visual indicator to indicate that there is additional information available by interacting with the trigger.
+
+### Accessibility built in to `interestfor`
+
+`interestfor` handles the assistive-technology wiring for you, so you generally do not need to add ARIA attributes manually:
+
+- A target with `popover="hint"` gains an implicit minimum role of `tooltip`. **DO NOT** set `role="tooltip"` yourself.
+- The browser implicitly associates the source element with the target via `aria-describedby` when the target is plaintext, or via `aria-details` when the target contains interactive content. **DO NOT** add `aria-describedby` or `aria-details` to the trigger.
+- Because the association switches to `aria-details` when needed, the target IS allowed to contain interactive content (e.g. a link inside an "interest card").
+
+### Accessibility Constraints (WCAG 1.4.13)
+
+Even with `interestfor` handling the semantics above, your implementation MUST still satisfy WCAG 1.4.13 (Content on Hover or Focus):
+- **Dismissible:** Users must be able to dismiss the tooltip without moving pointer hover or keyboard focus (e.g., by pressing the `Escape` key). The native `popover` attribute manages this binding automatically.
+- **Hoverable:** The pointer must be able to move over the tooltip content itself without the tooltip disappearing. This allows users with magnification tools to read the tooltip text safely.
+- **Persistent:** The tooltip must remain visible until the hover or focus trigger is removed, the user explicitly dismisses it, or its content is no longer valid.
 
 ### Positioning the tooltip
 
@@ -68,9 +83,9 @@ Also, the polyfill does not support `position-area` on popovers, so **MANDATORY:
 
 ### Fallback strategies
 
-{{ BASELINE_STATUS("interest-invokers") }}
+{{ FEATURE_FALLBACKS("interest-invokers") }}
 
-Interest invokers must be conditionally polyfilled with the `interestfor` polyfill, available at https://github.com/mfreed7/interestfor or on NPM. Do prefer bundling the polyfill over using the CDN.
+Interest invokers must be conditionally polyfilled using the `interestfor` polyfill package from NPM. Do prefer bundling the polyfill over using the CDN.
 
 ```html
 <script type="module">

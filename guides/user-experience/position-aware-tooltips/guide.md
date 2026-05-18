@@ -23,7 +23,7 @@ By setting `container-type: anchored` on your positioned element, you turn it in
 Use the Popover API to create a tooltip. This creates an implicit anchor connection that can be used for positioning.
 
 ```html
-<button popovertarget="tooltip" id="anchor">anchor</button>
+<button popovertarget="tooltip" id="anchor" aria-describedby="tooltip">anchor</button>
 <div id="tooltip" popover role="tooltip"></div>
 ```
 

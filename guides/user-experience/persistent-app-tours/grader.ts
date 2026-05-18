@@ -97,4 +97,15 @@ test.describe(`Persistent App Tours Expectations: ${demoName}`, () => {
     await expect(tourStep).not.toBeVisible();
   });
 
+  test(`5. The tour container must set role="dialog" and use accessible name bindings via aria-labelledby`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/role=["']dialog["']/i.test(html)).toBe(true);
+    expect(/aria-labelledby/i.test(html)).toBe(true);
+  });
+
+  test(`6. Programmatic focus must be shifted into the opened tour step container upon display`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/\.focus\(\)/i.test(html)).toBe(true);
+  });
+
 });

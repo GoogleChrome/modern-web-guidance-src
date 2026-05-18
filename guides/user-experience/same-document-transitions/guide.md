@@ -82,10 +82,16 @@ function goFromListToDetail(e){
   // Trigger the transition, checking for support
   if (!document.startViewTransition) {
     document.body.classList.add("detail");
+    // MANDATORY Accessibility Routing: Route focus to the newly revealed heading to announce context and preserve logical tab flow
+    document.getElementById("detail-heading")?.focus();
     return; // MANDATORY: End function execution if view transitions are not supported.  
   }
   const transition = document.startViewTransition(() => {
     document.body.classList.add("detail");
+  });
+  // MANDATORY Accessibility Routing: Route focus after the view transition resolves
+  transition.finished.finally(() => {
+    document.getElementById("detail-heading")?.focus();
   });
 }
 
@@ -93,13 +99,16 @@ function goFromListToDetail(e){
 function goFromDetailToList() {
   if (!document.startViewTransition) {
     document.body.classList.remove("detail");
+    document.getElementById("list-heading")?.focus();
     return;
   }
   const transition = document.startViewTransition(() => {
     document.body.classList.remove("detail");
   });
-  // Clean up the list view
+  // Clean up the list view and route focus
   transition.finished.finally(() => {
+    // Route focus back to list view
+    document.getElementById("list-heading")?.focus();
     // Remove selected classList to remove view-transition-names
     document.querySelectorAll(".selected").forEach(
       (element) => {
@@ -144,6 +153,7 @@ The pseudo-elements are snapshots of the live elements, so you can also use `obj
 -   **DO** remove temporary `view-transition-name` values after the transition finishes to avoid side effects on future transitions.
 -   **DO NOT** transition elements with active animations. View transitions operate on snapshots, so any animations will appear to be paused during the view transition.
 -   **DO** respect user preferences for reduced motion using the `prefers-reduced-motion` media query.
+-   **MANDATORY Accessibility Routing**: View transitions morph page layouts dynamically but do not manage programmatic focus. If focus remains on an element that is hidden or removed during the transition, focus is abandoned, leaving keyboard and assistive technology users without context. Shift focus programmatically to an updated page heading or view container (using `tabindex="-1"`) immediately after the DOM updates or when the view transition's `finished` promise resolves.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -157,7 +167,7 @@ The pseudo-elements are snapshots of the live elements, so you can also use `obj
 
 ## Fallback Strategies
 
-{{ BASELINE_STATUS("view-transitions") }}
+{{ FEATURE_FALLBACKS("view-transitions") }}
 
 The View Transitions API is designed for progressive enhancement. Browsers that do not support it will simply execute the DOM update immediately without animation.
 
