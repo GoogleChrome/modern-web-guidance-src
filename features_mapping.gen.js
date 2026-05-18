@@ -422,6 +422,9 @@ window.__featuresMapping = {
     "details-name",
     "hidden-until-found"
   ],
+  "shaped-cutouts": [
+    "masks"
+  ],
   "shrinking-header-on-scroll": [
     "scroll-driven-animations"
   ],
@@ -440,9 +443,6 @@ window.__featuresMapping = {
     "scroll-driven-animations",
     "scroll-snap",
     "scroll-snap-events"
-  ],
-  "stencil-cutouts": [
-    "masks"
   ],
   "style-parent-with-has": [
     "user-pseudos"
