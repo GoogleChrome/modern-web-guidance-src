@@ -111,7 +111,11 @@ export class ClearcutLogger {
     }
 
     if (commandType == CommandType.INSTALL || commandType == CommandType.INSTALL_CHOOSE) {
-      console.warn("Google collects anonymous usage statistics to improve the reliability, relevance, and performance of the Modern Web Guidance tool. You can opt-out completely at any time by setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. See https://github.com/GoogleChrome/modern-web-guidance#usage-statistics--opt-out for more details.");
+      console.warn(
+        "Google collects anonymous usage statistics to improve the reliability, relevance, and performance of the Modern Web Guidance tool. " +
+        "You can opt-out completely at any time by setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. " +
+        "See https://github.com/GoogleChrome/modern-web-guidance#usage-statistics--opt-out for more details."
+      );
     }
 
     const payload: ChromeModernWebGuidance = {
