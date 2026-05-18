@@ -71,7 +71,7 @@ By assigning both parts the same background color, they visually merge into a si
 <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
   <defs>
     <!-- Use objectBoundingBox to make the mask scale with the element -->
-    <mask id="card-accent-mask" maskContentUnits="objectBoundingBox">
+    <mask id="accent-stencil" maskContentUnits="objectBoundingBox">
       <!-- Fill the entire area with white (fully visible) -->
       <rect width="1" height="1" fill="white" />
       <!-- Draw a black shape to cut out a concave curve. Extending the path to x=1.1 guarantees it fully clears the right edge, preventing subpixel lines -->
