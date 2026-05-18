@@ -9,7 +9,7 @@ import { WatchdogClient } from './WatchdogClient.ts';
 import {
   type ChromeModernWebGuidance,
   type SearchItem,
-  type CommandType,
+  CommandType,
   WatchdogMessageType,
   OsType,
 } from './types.ts';
@@ -54,7 +54,6 @@ export class ClearcutLogger {
     if (!isTelemetryEnabled()) {
       return;
     }
-    console.warn("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_TELEMETRY=1.");
     this.#skillVersion = options.skillVersion ?? undefined;
     this.#watchdog = new WatchdogClient({
       clearcutEndpoint: options.clearcutEndpoint,
@@ -109,6 +108,10 @@ export class ClearcutLogger {
   async logToolCommand(latencyMs: number, success: boolean, commandType: CommandType): Promise<void> {
     if (!this.#watchdog) {
       return;
+    }
+
+    if (commandType == CommandType.INSTALL || commandType == CommandType.INSTALL_CHOOSE) {
+      console.warn("Google collects anonymous usage statistics to improve the reliability, relevance, and performance of the Modern Web Guidance tool. You can opt-out completely at any time by setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. See https://github.com/GoogleChrome/modern-web-guidance#usage-statistics--opt-out for more details.");
     }
 
     const payload: ChromeModernWebGuidance = {
