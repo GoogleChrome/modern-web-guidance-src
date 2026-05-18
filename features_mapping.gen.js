@@ -97,7 +97,6 @@ window.__featuresMapping = {
     "top-level-await"
   ],
   "defer-rendering-heavy-content": [
-    "hidden-until-found",
     "content-visibility"
   ],
   "defer-work-until-scroll-ends": [
