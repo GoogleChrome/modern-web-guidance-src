@@ -6,7 +6,7 @@
 
 Inject web platform expertise, best practices, and modern API patterns directly into your AI coding agents.
 
-**Modern Web Guidance** is an agent skill (aka `SKILL.md`) with a CLI that helps AI agents build better web applications using modern, high-performance, accessible, and secure APIs instead of legacy workarounds.
+**Modern Web Guidance** is an agent skill (aka `SKILL.md`) with a CLI that helps coding agents build better web applications using modern, high-performance, accessible, and secure APIs instead of legacy workarounds.
 
 *Supported by the Google Chrome team, the Microsoft Edge team, and the web development community.*
 
@@ -44,6 +44,8 @@ Even if a model knows an API exists, it often lacks the density of real-world, m
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> What's Included?
 
 We cover the past several years of the web platform's new features, all the way up to the cutting edge. The guides are **designed to be token-efficient**; we run evals enabling us to prune lowest-common-denominator content that models already know.
+
+_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/navigation-drawer.md).
 
 ### Core Disciplines
 
@@ -427,14 +429,14 @@ Google handles this data in accordance with the [Google Privacy Policy](https://
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
-Active contributors are what keep this project moving forward. Thanks to everyone who has contributed!
+If you'd like to contribute to modern-web-guidance, please see [source repo's `CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/CONTRIBUTING.md). The `modern-web-guidance` repo is a purely a publish target for clean skills installation.
 
-<a href="https://github.com/GoogleChrome/modern-web-guidance/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance" />
+Huge thanks to everyone who has contributed!
+
+<a href="https://github.com/GoogleChrome/modern-web-guidance-src/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance-src" />
 </a>
-
-(We build the project in the [modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src) repo.)
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Attribution
 
-Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors, and [W3C](https://www.w3.org/) specifications.
+Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors and [W3C](https://www.w3.org/), [WHATWG](https://whatwg.org), and [IETF](https://www.ietf.org) specifications.
