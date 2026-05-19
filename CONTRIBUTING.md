@@ -15,7 +15,7 @@ Follow either of the two links above to access the appropriate CLA and instructi
 
 ## Scope and positioning policies
 ### Vendor-agnostic guidance
-* Core guides focus on web features aligned with the [web-features project](https://github.com/web-platform-dx/web-features), meaning we key on web-feature IDs and Browser Compat Data (BCD) keys to handle compatibility and fallbacks. The guides must remain vendor-agnostic. Negative standards positions are not a reason to exclude guides on how to use a feature.
+* Core guides focus on web features aligned with the [web-features project](https://github.com/web-platform-dx/web-features), meaning we key on web-feature IDs and [Browser Compat Data (BCD)](https://github.com/mdn/browser-compat-data) keys to handle compatibility and fallbacks. The guides must remain vendor-agnostic. Negative standards positions are not a reason to exclude guides on how to use a feature.
 * Non-web scope: Branded or proprietary extensions (for example, Chrome Extensions, Chrome Web Store APIs, Google Play integration) are available behind an opt-in flag.
 
 ### Origin trial (OT) support policy
