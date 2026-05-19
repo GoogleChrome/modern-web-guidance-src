@@ -220,7 +220,7 @@ If you'd like to contribute to modern-web-guidance, please see [source repo's `C
 Huge thanks to everyone who has contributed!
 
 <a href="https://github.com/GoogleChrome/modern-web-guidance-src/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance-src?max=101" />
+  <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance-src&max=101" />
 </a>
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;">  License
