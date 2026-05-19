@@ -72,7 +72,7 @@ Use the `@container scroll-state(...)` query to apply styles when the header is 
 
 ### Notes on Dimension Changes
 
-Without scroll anchoring disabled, changing layout-affecting properties (height, padding, font-size, transforms) when stuck can cause visual flickering. Scroll anchoring on the in-flow content below the sticky element adjusts the scroll offset to compensate for the layout change, which pushes the element back out of its stuck position and triggers an oscillation.
+Without scroll anchoring disabled, changing layout-affecting properties (height, padding, font-size) when stuck can cause visual flickering. Scroll anchoring on the in-flow content below the sticky element adjusts the scroll offset to compensate for the layout change, which pushes the element back out of its stuck position and triggers an oscillation.
 
 Disable scroll anchoring on the scroll container to avoid this:
 
