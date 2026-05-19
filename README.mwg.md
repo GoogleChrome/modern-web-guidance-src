@@ -365,7 +365,7 @@ Otherwise, consult your agent's documentation for updating plugins and skills.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well ;)
 
-We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** to guarantee AI agents write better code.  We run automated evaluations using a closed-loop validation pipeline:
+We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** to ensure AI agents write better code.  We run automated evaluations using a closed-loop validation pipeline:
 
 ```
   [ Expert-authored guidance and demo ]
@@ -377,12 +377,12 @@ We developed a robust eval harness to ensure that the content is **empirically p
   [ Calibration loop ] ───────> Runs Grader on Gold-Standard Demo (Must Pass 100%)
             │                   Runs Grader on Negative Demo (Must Fail 100%)
             ▼
-  [ E2E agent evals ] ────────> Runs coding agents in Guided vs. Unguided modes
-                                Compares accuracy w/ and w/o guide injection to prove impact
+  [ E2E agent evals ] ────────> Runs coding agents in guided vs. unguided modes
+                                Compares accuracy w/ and w/o the skill
 ```
 
-0. **Simulated Developer Tasks**: We define realistic, intent-based developer prompts (in `tasks/task.md`) that mimic real-world requests (e.g., "make my images load faster"). These prompts avoid naming specific APIs or features, testing whether the agent can successfully discover and implement the correct modern patterns solely by reading the guide.
-1. **Outcome-Based Assertions**: We write browser automation scripts that verify the guide was followed correctly: exact runtime behaviors, computed styles, and accessibility states.
+0. **Simulated Developer Tasks**: We define realistic, developer prompts that mimic real-world requests (e.g., "make my images load faster"). The prompts avoid naming APIs or features, testing whether the agent can successfully discover the relevant guides naturally.
+1. **Browser-based Assertions**: We write browser automation scripts that verify the guide was followed correctly: exact runtime behaviors, computed styles, accessibility states, etc.
 2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
 3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
 
