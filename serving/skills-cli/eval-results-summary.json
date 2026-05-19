@@ -1,16 +1,5 @@
 [
   {
-    "testId": "nightly-2026-05-18_04-00-43-codex_cli-micahjo",
-    "timestamp": "2026-05-18T04:02:53.908Z",
-    "agent": "codex_cli",
-    "serving": "skills_cli",
-    "model": "unknown",
-    "taskCount": 75,
-    "assertionCount": 75,
-    "unguidedPassRate": 0,
-    "guidedPassRate": 0
-  },
-  {
     "testId": "nightly-2026-05-18_03-47-37-claude_code-micahjo",
     "timestamp": "2026-05-18T03:59:46.941Z",
     "agent": "claude_code",
@@ -20,17 +9,6 @@
     "assertionCount": 603,
     "unguidedPassRate": 52,
     "guidedPassRate": 85
-  },
-  {
-    "testId": "nightly-2026-05-17_04-01-38-codex_cli-micahjo",
-    "timestamp": "2026-05-17T04:07:19.820Z",
-    "agent": "codex_cli",
-    "serving": "skills_cli",
-    "model": "gpt-5.5",
-    "taskCount": 75,
-    "assertionCount": 249,
-    "unguidedPassRate": 37,
-    "guidedPassRate": 65
   },
   {
     "testId": "nightly-2026-05-17_03-47-52-claude_code-micahjo",
@@ -88,6 +66,17 @@
     "guidedPassRate": 82
   },
   {
+    "testId": "nightly-2026-05-15_03-30-02-agy-micahjo",
+    "timestamp": "2026-05-15T03:41:34.024Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 74,
+    "assertionCount": 600,
+    "unguidedPassRate": 47,
+    "guidedPassRate": 91
+  },
+  {
     "testId": "nightly-2026-05-14_03-57-48-codex_cli-micahjo",
     "timestamp": "2026-05-14T04:10:56.655Z",
     "agent": "codex_cli",
@@ -107,6 +96,17 @@
     "taskCount": 68,
     "assertionCount": 554,
     "unguidedPassRate": 54,
+    "guidedPassRate": 91
+  },
+  {
+    "testId": "nightly-2026-05-14_03-30-02-agy-micahjo",
+    "timestamp": "2026-05-14T03:41:05.682Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 68,
+    "assertionCount": 554,
+    "unguidedPassRate": 47,
     "guidedPassRate": 91
   },
   {
@@ -132,26 +132,26 @@
     "guidedPassRate": 88
   },
   {
-    "testId": "nightly-2026-05-12_03-44-12-claude_code-micahjo",
-    "timestamp": "2026-05-12T05:27:21.259Z",
-    "agent": "claude_code",
+    "testId": "nightly-2026-05-13_03-30-02-agy-micahjo",
+    "timestamp": "2026-05-13T03:40:30.860Z",
+    "agent": "antigravity",
     "serving": "skills_cli",
-    "model": "claude-opus-4-7",
+    "model": "unknown",
     "taskCount": 68,
-    "assertionCount": 456,
-    "unguidedPassRate": 53,
-    "guidedPassRate": 89
+    "assertionCount": 554,
+    "unguidedPassRate": 50,
+    "guidedPassRate": 90
   },
   {
-    "testId": "nightly-2026-05-12_03-54-18-codex_cli-micahjo",
-    "timestamp": "2026-05-12T05:27:20.553Z",
-    "agent": "codex_cli",
+    "testId": "nightly-2026-05-12_03-30-01-agy-micahjo",
+    "timestamp": "2026-05-12T03:43:47.301Z",
+    "agent": "antigravity",
     "serving": "skills_cli",
-    "model": "gpt-5.5",
+    "model": "unknown",
     "taskCount": 68,
-    "assertionCount": 447,
-    "unguidedPassRate": 51,
-    "guidedPassRate": 83
+    "assertionCount": 554,
+    "unguidedPassRate": 49,
+    "guidedPassRate": 91
   },
   {
     "testId": "nightly-2026-05-11_04-35-02-codex_cli-micahjo",
@@ -176,6 +176,17 @@
     "guidedPassRate": 94
   },
   {
+    "testId": "nightly-2026-05-11_04-10-48-agy-micahjo",
+    "timestamp": "2026-05-11T04:19:15.793Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 70,
+    "assertionCount": 565,
+    "unguidedPassRate": 46,
+    "guidedPassRate": 88
+  },
+  {
     "testId": "nightly-2026-05-07_15-38-04-codex_cli-micahjo",
     "timestamp": "2026-05-07T15:53:08.990Z",
     "agent": "codex_cli",
@@ -198,6 +209,28 @@
     "guidedPassRate": 85
   },
   {
+    "testId": "nightly-2026-05-07_15-07-22-agy-micahjo",
+    "timestamp": "2026-05-07T15:20:01.570Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 70,
+    "assertionCount": 568,
+    "unguidedPassRate": 47,
+    "guidedPassRate": 84
+  },
+  {
+    "testId": "nightly-2026-05-06_05-30-01-agy-leimingzhang",
+    "timestamp": "2026-05-06T05:37:06.260Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 70,
+    "assertionCount": 568,
+    "unguidedPassRate": 44,
+    "guidedPassRate": 85
+  },
+  {
     "testId": "nightly-2026-05-05_05-41-49-claude_code-leimingzhang",
     "timestamp": "2026-05-05T05:53:43.073Z",
     "agent": "claude_code",
@@ -207,6 +240,39 @@
     "assertionCount": 568,
     "unguidedPassRate": 50,
     "guidedPassRate": 83
+  },
+  {
+    "testId": "nightly-2026-05-05_05-30-02-agy-leimingzhang",
+    "timestamp": "2026-05-05T05:41:05.771Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 70,
+    "assertionCount": 568,
+    "unguidedPassRate": 39,
+    "guidedPassRate": 85
+  },
+  {
+    "testId": "nightly-2026-05-02_05-30-02-agy-leimingzhang",
+    "timestamp": "2026-05-02T05:40:44.509Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 67,
+    "assertionCount": 533,
+    "unguidedPassRate": 39,
+    "guidedPassRate": 83
+  },
+  {
+    "testId": "nightly-2026-05-01_05-30-02-agy-leimingzhang",
+    "timestamp": "2026-05-01T05:41:13.261Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 66,
+    "assertionCount": 524,
+    "unguidedPassRate": 39,
+    "guidedPassRate": 79
   },
   {
     "testId": "nightly-2026-04-30_02-05-13-claude_code-leimingzhang",
@@ -220,6 +286,17 @@
     "guidedPassRate": 81
   },
   {
+    "testId": "nightly-2026-04-30_01-56-02-agy-leimingzhang",
+    "timestamp": "2026-04-30T02:04:19.636Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 66,
+    "assertionCount": 524,
+    "unguidedPassRate": 41,
+    "guidedPassRate": 78
+  },
+  {
     "testId": "nightly-2026-04-28_00-42-54-claude-leimingzhang",
     "timestamp": "2026-04-28T01:21:27.348Z",
     "agent": "claude_code",
@@ -231,6 +308,17 @@
     "guidedPassRate": 77
   },
   {
+    "testId": "nightly-2026-04-28_00-09-01-agy-leimingzhang",
+    "timestamp": "2026-04-28T00:42:05.933Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 66,
+    "assertionCount": 524,
+    "unguidedPassRate": 42,
+    "guidedPassRate": 73
+  },
+  {
     "testId": "nightly-2026-04-27_14-33-06-claude-leimingzhang",
     "timestamp": "2026-04-27T15:12:08.718Z",
     "agent": "claude_code",
@@ -240,6 +328,17 @@
     "assertionCount": 524,
     "unguidedPassRate": 41,
     "guidedPassRate": 79
+  },
+  {
+    "testId": "nightly-2026-04-27_13-58-03-agy-leimingzhang",
+    "timestamp": "2026-04-27T14:32:13.900Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 66,
+    "assertionCount": 524,
+    "unguidedPassRate": 39,
+    "guidedPassRate": 82
   },
   {
     "testId": "nightly-2026-04-27_12-48-23-claude-leimingzhang",

@@ -45,8 +45,6 @@ Even if a model knows an API exists, it often lacks the density of real-world, m
 
 We cover the past several years of the web platform's new features, all the way up to the cutting edge. The guides are **designed to be token-efficient**; we run evals enabling us to prune lowest-common-denominator content that models already know.
 
-_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/navigation-drawer.md).
-
 ### Core Disciplines
 
 <table width="100%" style="border-collapse: collapse; border: none;">
@@ -79,6 +77,8 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
     </td>
   </tr>
 </table>
+
+_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/navigation-drawer.md).
 
 #### The full list
 
@@ -388,20 +388,20 @@ We developed a robust eval harness to ensure that the content is **empirically p
 2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
 3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
 
-### Recent eval results
+### Recent eval results snapshot
 
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
-| May 18 | codex_cli | 75 / 75 | 0% → 0% (**+0%**) |
-| May 18 | claude_code (opus-4-7) | 75 / 603 | 52% → 85% (**+33%**) |
-| May 17 | codex_cli (gpt-5.5) | 75 / 249 | 37% → 65% (**+28%**) |
-| May 17 | claude_code (opus-4-7) | 75 / 603 | 54% → 85% (**+31%**) |
-| May 16 | codex_cli (gpt-5.5) | 75 / 603 | 49% → 82% (**+33%**) |
-| May 16 | claude_code (opus-4-7) | 75 / 603 | 51% → 86% (**+35%**) |
-| May 15 | codex_cli (gpt-5.5) | 74 / 600 | 52% → 81% (**+29%**) |
-| May 15 | claude_code (opus-4-7) | 74 / 600 | 53% → 82% (**+29%**) |
-| Apr 30 | claude_code (opus-4-6) | 66 / 516 | 44% → 81% (**+37%**) |
-| Apr 28 | claude_code (opus-4-6) | 66 / 524 | 41% → 77% (**+36%**) |
+| May 18 | claude_code (opus-4-7) | 75 / 603 | 52% → 85% (**+33pp**) |
+| May 17 | claude_code (opus-4-7) | 75 / 603 | 54% → 85% (**+31pp**) |
+| May 16 | codex_cli (gpt-5.5) | 75 / 603 | 49% → 82% (**+33pp**) |
+| May 16 | claude_code (opus-4-7) | 75 / 603 | 51% → 86% (**+35pp**) |
+| May 15 | codex_cli (gpt-5.5) | 74 / 600 | 52% → 81% (**+29pp**) |
+| May 15 | claude_code (opus-4-7) | 74 / 600 | 53% → 82% (**+29pp**) |
+| May 15 | Antigravity | 74 / 600 | 47% → 91% (**+44pp**) |
+| May 14 | Antigravity | 68 / 554 | 47% → 91% (**+44pp**) |
+| Apr 30 | claude_code (opus-4-6) | 66 / 516 | 44% → 81% (**+37pp**) |
+| Apr 28 | claude_code (opus-4-6) | 66 / 524 | 41% → 77% (**+36pp**) |
 
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs

@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { resultsDir } from '../../lib/paths.ts';
 
-const ALLOWED_AGENTS = ['claudecode', 'geminicli', 'codex', 'claude', 'codexcli'];
+const ALLOWED_AGENTS = ['claudecode', 'geminicli', 'codex', 'claude', 'codexcli', 'antigravity'];
 
 function isAgentAllowed(agent: string): boolean {
   const normalized = agent.toLowerCase().replace(/[-_]/g, '');
@@ -51,7 +51,12 @@ function collectResults() {
       const content = fs.readFileSync(evalsPath, 'utf8');
       const data = JSON.parse(content);
 
-      const agent = data.agent || 'unknown';
+      let agent = data.agent || 'unknown';
+      if (agent.startsWith('jetski')) {
+        agent = 'antigravity';
+        item.name = item.name.replace('jetski_cli', 'agy');
+      }
+
       if (!isAgentAllowed(agent)) {
         console.log(`Skipping ${item.name} (agent ${agent} not in allowlist)`);
         continue;
@@ -66,6 +71,11 @@ function collectResults() {
       const taskCount = summary.taskCount || 0;
       if (taskCount < 60) {
         console.log(`Skipping ${item.name} (taskCount ${taskCount} < 60)`);
+        continue;
+      }
+      // broken run.
+      if (summary.unguidedPassRate == 0 || summary.guidedPassRate == 0 || summary.guidedTotal < 500) {
+        console.log(`Skipping ${item.name} (broken run probably)`);
         continue;
       }
 

@@ -45,8 +45,6 @@ Even if a model knows an API exists, it often lacks the density of real-world, m
 
 We cover the past several years of the web platform's new features, all the way up to the cutting edge. The guides are **designed to be token-efficient**; we run evals enabling us to prune lowest-common-denominator content that models already know.
 
-_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/navigation-drawer.md).
-
 ### Core Disciplines
 
 <table width="100%" style="border-collapse: collapse; border: none;">
@@ -79,6 +77,8 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
     </td>
   </tr>
 </table>
+
+_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/navigation-drawer.md).
 
 <!-- INJECT_SKILL_COVERAGE -->
 
@@ -174,7 +174,7 @@ We developed a robust eval harness to ensure that the content is **empirically p
 2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
 3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
 
-### Recent eval results
+### Recent eval results snapshot
 
 <!-- INJECT_EVAL_RESULTS -->
 

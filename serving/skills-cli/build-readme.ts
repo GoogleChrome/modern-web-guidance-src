@@ -281,7 +281,7 @@ function formatSuiteLabel(testId: string, timestamp: string): string {
 
 function formatUplift(unguided: number, guided: number): string {
   const uplift = guided - unguided;
-  const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
+  const upliftStr = uplift >= 0 ? `+${uplift}pp` : `${uplift}pp`;
   return `${unguided}% → ${guided}% (**${upliftStr}**)`;
 }
 
