@@ -114,7 +114,7 @@ export class ClearcutLogger {
       console.warn(
         "Google collects anonymous usage statistics to improve the reliability, relevance, and performance of the Modern Web Guidance tool. " +
         "You can opt-out completely at any time by setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. " +
-        "See https://github.com/GoogleChrome/modern-web-guidance#usage-statistics--opt-out for more details."
+        "See https://github.com/GoogleChrome/modern-web-guidance#-telemetry--privacy for more details."
       );
     }
 
