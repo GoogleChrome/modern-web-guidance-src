@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/modern-web-guidance.svg" alt="Modern Web Guidance Logo" width="150" />
+  <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/modern-web-guidance.svg" alt="Modern Web Guidance Logo" width="150" />
 </p>
 
 # Modern Web Guidance
@@ -12,7 +12,7 @@ Inject web platform expertise, best practices, and modern API patterns directly 
 
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
-## <img src=".github/img/terminal.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Quickstart
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/terminal.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Quickstart
 
 ```shell
 npx modern-web-guidance@latest install
@@ -30,7 +30,7 @@ npx modern-web-guidance@latest search "animate a dialog modal backdrop"
 npx modern-web-guidance@latest retrieve "animate-to-from-top-layer"
 ```
 
-## <img src=".github/img/lightbulb.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Why?
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lightbulb.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Why?
 
 Coding agents often default to older patterns because LLM training data contains vast amounts of legacy code. This often leads them to generate bloated JavaScript for tasks that now have native, high-performance web platform solutions.
 
@@ -41,7 +41,7 @@ Even if a model knows an API exists, it often lacks the density of real-world, m
 * **Performance & Accessibility**: Eliminating legacy bloat with clean, native patterns.
 * **Responsible Fallbacks**: Guiding models to use sensible, lightweight fallbacks instead of heavy polyfills or legacy libraries.
 
-## <img src=".github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> What's Included?
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> What's Included?
 
 We cover the past several years of the web platform's new features, all the way up to the cutting edge. The guides are **designed to be token-efficient**; we run evals enabling us to prune lowest-common-denominator content that models already know.
 
@@ -301,7 +301,7 @@ We cover the past several years of the web platform's new features, all the way 
 * **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
 * **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents can dynamically adapt to current browser support and any browser support preferences.
 
-## <img src=".github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
 0. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web` CLI for web platform queries.
 2. **Local Semantic Search**: The agent runs `modern-web search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
@@ -311,7 +311,7 @@ We cover the past several years of the web platform's new features, all the way 
 > Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
 > The NPM package is self-contained, with no extra dependencies to ensure both low-latency and supply-chain security.
 
-## <img src=".github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Alternative Installation Methods
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Alternative Installation Methods
 
 <details>
 <summary><b>Vercel Skills CLI</b> (aka <code>npx skills</code>)</summary>
@@ -357,13 +357,13 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 ```
 </details>
 
-## <img src=".github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
 
 Otherwise, consult your agent's documentation for updating plugins and skills.
 
-## <img src=".github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well ;)
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well ;)
 
 We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** to guarantee AI agents write better code.  We run automated evaluations using a closed-loop validation pipeline:
 
@@ -402,7 +402,7 @@ We developed a robust eval harness to ensure that the content is **empirically p
 | Nightly (Apr 28) | ✱ claude_code (opus-4-6) | 66 | 41% → 77% (**+36%**) |
 
 
-## <img src=".github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs
 
 You can customize which skill packs are installed using the `--choose` flag:
 
@@ -413,7 +413,7 @@ npx modern-web-guidance@latest install --choose
 * **`modern-web-guidance`** (~234 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
 * **`chrome-extensions`** (~181 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
 
-## <img src=".github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
 
 Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the tool. You can inspect what is collected in [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/serving/bin/modern-web.ts).
 
@@ -425,7 +425,7 @@ Google collects anonymous usage statistics (such as search queries, guide retrie
 
 Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).
 
-## <img src=".github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
 Active contributors are what keep this project moving forward. Thanks to everyone who has contributed!
 
@@ -435,6 +435,6 @@ Active contributors are what keep this project moving forward. Thanks to everyon
 
 (We build the project in the [modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src) repo.)
 
-## <img src=".github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Attribution
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Attribution
 
 Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors, and [W3C](https://www.w3.org/) specifications.

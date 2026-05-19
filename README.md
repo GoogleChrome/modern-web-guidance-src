@@ -1,4 +1,4 @@
-# <img src="./assets/modern-web-guidance.svg" alt="Modern Web Guidance" width="48" height="48" style="width: 48px; max-width: 48px; height: 48px; vertical-align: -10px;"> Modern Web Guidance (Source)
+# <img src="./.github/img/modern-web-guidance.svg" alt="Modern Web Guidance" width="48" height="48" style="width: 48px; max-width: 48px; height: 48px; vertical-align: -10px;"> Modern Web Guidance (Source)
 
 A unified repository for authoring, calibrating, and evaluating modern web development guidance. Here, Subject Matter Experts (SMEs) curate best practices, automated pipelines generate test fixtures and grading scripts, and an evaluation harness measures how effectively AI coding agents adopt modern web APIs.
 

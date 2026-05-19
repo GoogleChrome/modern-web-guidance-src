@@ -147,12 +147,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
     fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
-    // Copy logo asset
-    fs.mkdirSync(path.join(publishRoot, "assets"), { recursive: true });
-    fs.copyFileSync(
-      path.join(rootDir, "assets/modern-web-guidance.svg"),
-      path.join(publishRoot, "assets/modern-web-guidance.svg")
-    );
+
 
     if (version) {
       updateVersionsInDir(publishRoot, version);
