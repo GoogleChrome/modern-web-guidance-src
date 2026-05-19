@@ -1,11 +1,34 @@
 [
   {
+    "testId": "nightly-2026-05-18_04-00-43-codex_cli-micahjo",
+    "timestamp": "2026-05-18T04:02:53.908Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 75,
+    "assertionCount": 75,
+    "unguidedPassRate": 0,
+    "guidedPassRate": 0
+  },
+  {
+    "testId": "nightly-2026-05-18_03-47-37-claude_code-micahjo",
+    "timestamp": "2026-05-18T03:59:46.941Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-7",
+    "taskCount": 75,
+    "assertionCount": 603,
+    "unguidedPassRate": 52,
+    "guidedPassRate": 85
+  },
+  {
     "testId": "nightly-2026-05-17_04-01-38-codex_cli-micahjo",
     "timestamp": "2026-05-17T04:07:19.820Z",
     "agent": "codex_cli",
     "serving": "skills_cli",
     "model": "gpt-5.5",
     "taskCount": 75,
+    "assertionCount": 249,
     "unguidedPassRate": 37,
     "guidedPassRate": 65
   },
@@ -16,6 +39,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 75,
+    "assertionCount": 603,
     "unguidedPassRate": 54,
     "guidedPassRate": 85
   },
@@ -26,6 +50,7 @@
     "serving": "skills_cli",
     "model": "gpt-5.5",
     "taskCount": 75,
+    "assertionCount": 603,
     "unguidedPassRate": 49,
     "guidedPassRate": 82
   },
@@ -36,6 +61,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 75,
+    "assertionCount": 603,
     "unguidedPassRate": 51,
     "guidedPassRate": 86
   },
@@ -46,6 +72,7 @@
     "serving": "skills_cli",
     "model": "gpt-5.5",
     "taskCount": 74,
+    "assertionCount": 600,
     "unguidedPassRate": 52,
     "guidedPassRate": 81
   },
@@ -56,6 +83,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 74,
+    "assertionCount": 600,
     "unguidedPassRate": 53,
     "guidedPassRate": 82
   },
@@ -66,6 +94,7 @@
     "serving": "skills_cli",
     "model": "gpt-5.5",
     "taskCount": 68,
+    "assertionCount": 554,
     "unguidedPassRate": 54,
     "guidedPassRate": 86
   },
@@ -76,6 +105,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 68,
+    "assertionCount": 554,
     "unguidedPassRate": 54,
     "guidedPassRate": 91
   },
@@ -86,6 +116,7 @@
     "serving": "skills_cli",
     "model": "gpt-5.5",
     "taskCount": 68,
+    "assertionCount": 554,
     "unguidedPassRate": 55,
     "guidedPassRate": 87
   },
@@ -96,6 +127,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 68,
+    "assertionCount": 554,
     "unguidedPassRate": 55,
     "guidedPassRate": 88
   },
@@ -106,6 +138,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 68,
+    "assertionCount": 456,
     "unguidedPassRate": 53,
     "guidedPassRate": 89
   },
@@ -116,6 +149,7 @@
     "serving": "skills_cli",
     "model": "gpt-5.5",
     "taskCount": 68,
+    "assertionCount": 447,
     "unguidedPassRate": 51,
     "guidedPassRate": 83
   },
@@ -126,6 +160,7 @@
     "serving": "skills_cli",
     "model": "gpt-5.5",
     "taskCount": 70,
+    "assertionCount": 565,
     "unguidedPassRate": 60,
     "guidedPassRate": 87
   },
@@ -136,6 +171,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 70,
+    "assertionCount": 565,
     "unguidedPassRate": 59,
     "guidedPassRate": 94
   },
@@ -146,6 +182,7 @@
     "serving": "skills_cli",
     "model": "gpt-5.5",
     "taskCount": 70,
+    "assertionCount": 568,
     "unguidedPassRate": 52,
     "guidedPassRate": 83
   },
@@ -156,6 +193,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 70,
+    "assertionCount": 568,
     "unguidedPassRate": 54,
     "guidedPassRate": 85
   },
@@ -166,6 +204,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-7",
     "taskCount": 70,
+    "assertionCount": 568,
     "unguidedPassRate": 50,
     "guidedPassRate": 83
   },
@@ -176,6 +215,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-6",
     "taskCount": 66,
+    "assertionCount": 516,
     "unguidedPassRate": 44,
     "guidedPassRate": 81
   },
@@ -186,6 +226,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-6",
     "taskCount": 66,
+    "assertionCount": 524,
     "unguidedPassRate": 41,
     "guidedPassRate": 77
   },
@@ -196,6 +237,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-6",
     "taskCount": 66,
+    "assertionCount": 524,
     "unguidedPassRate": 41,
     "guidedPassRate": 79
   },
@@ -206,6 +248,7 @@
     "serving": "skills_cli",
     "model": "claude-opus-4-6",
     "taskCount": 66,
+    "assertionCount": 524,
     "unguidedPassRate": 40,
     "guidedPassRate": 78
   }

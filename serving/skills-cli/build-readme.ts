@@ -203,7 +203,7 @@ function generateEvalsResultsTable(): string {
   try {
     const evalsData = JSON.parse(fs.readFileSync(evalsSummaryPath, 'utf-8'));
     if (Array.isArray(evalsData) && evalsData.length > 0) {
-      evalsMd += '| Suite | Agent + Model | Tasks | Unguided → Guided (Uplift) |\n';
+      evalsMd += '| Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |\n';
       evalsMd += '| :--- | :--- | :---: | :---: |\n';
 
       // Stratified Recency Selection Algorithm
@@ -250,9 +250,11 @@ function generateEvalsResultsTable(): string {
         const suiteLabel = formatSuiteLabel(run.testId, run.timestamp);
         const agentModel = formatAgentModel(run.agent, run.model);
         const tasks = run.taskCount;
+        const assertions = run.assertionCount;
+        const tasksAssertions = assertions ? `${tasks} / ${assertions}` : `${tasks}`;
         const uplift = formatUplift(run.unguidedPassRate, run.guidedPassRate);
 
-        evalsMd += `| ${suiteLabel} | ${agentModel} | ${tasks} | ${uplift} |\n`;
+        evalsMd += `| ${suiteLabel} | ${agentModel} | ${tasksAssertions} | ${uplift} |\n`;
       }
     }
   } catch (e) {
@@ -262,33 +264,19 @@ function generateEvalsResultsTable(): string {
   return evalsMd;
 }
 
-function getAgentBadge(agent: string): string {
-  const name = agent.toLowerCase();
-  if (name.includes('gemini') || name.includes('jetski')) return '✦ ';
-  if (name.includes('codex') || name.includes('openai')) return '❂ ';
-  if (name.includes('claude')) return '✱ ';
-  return '';
-}
-
 function formatAgentModel(agent: string, model: string): string {
-  const badge = getAgentBadge(agent);
   let cleanModel = model;
   if (cleanModel.startsWith('claude-')) {
     cleanModel = cleanModel.slice(7);
   }
   const modelStr = cleanModel && cleanModel !== 'unknown' ? ` (${cleanModel})` : '';
-  return `${badge}${agent}${modelStr}`;
+  return `${agent}${modelStr}`;
 }
 
 function formatSuiteLabel(testId: string, timestamp: string): string {
   const date = new Date(timestamp);
   const dateStr = date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
-  let type = 'Run';
-  if (testId.startsWith('nightly-')) type = 'Nightly';
-  else if (testId.startsWith('full-')) type = 'Full';
-  else if (testId.startsWith('skills-cli-')) type = 'Skills CLI';
-
-  return `${type} (${dateStr})`;
+  return dateStr;
 }
 
 function formatUplift(unguided: number, guided: number): string {

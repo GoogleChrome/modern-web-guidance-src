@@ -390,18 +390,18 @@ We developed a robust eval harness to ensure that the content is **empirically p
 
 ### Recent eval results
 
-| Suite | Agent + Model | Tasks | Unguided → Guided (Uplift) |
+| Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
-| Nightly (May 17) | ❂ codex_cli (gpt-5.5) | 75 | 37% → 65% (**+28%**) |
-| Nightly (May 17) | ✱ claude_code (opus-4-7) | 75 | 54% → 85% (**+31%**) |
-| Nightly (May 16) | ❂ codex_cli (gpt-5.5) | 75 | 49% → 82% (**+33%**) |
-| Nightly (May 16) | ✱ claude_code (opus-4-7) | 75 | 51% → 86% (**+35%**) |
-| Nightly (May 15) | ❂ codex_cli (gpt-5.5) | 74 | 52% → 81% (**+29%**) |
-| Nightly (May 15) | ✱ claude_code (opus-4-7) | 74 | 53% → 82% (**+29%**) |
-| Nightly (May 14) | ❂ codex_cli (gpt-5.5) | 68 | 54% → 86% (**+32%**) |
-| Nightly (May 14) | ✱ claude_code (opus-4-7) | 68 | 54% → 91% (**+37%**) |
-| Nightly (Apr 30) | ✱ claude_code (opus-4-6) | 66 | 44% → 81% (**+37%**) |
-| Nightly (Apr 28) | ✱ claude_code (opus-4-6) | 66 | 41% → 77% (**+36%**) |
+| May 18 | codex_cli | 75 / 75 | 0% → 0% (**+0%**) |
+| May 18 | claude_code (opus-4-7) | 75 / 603 | 52% → 85% (**+33%**) |
+| May 17 | codex_cli (gpt-5.5) | 75 / 249 | 37% → 65% (**+28%**) |
+| May 17 | claude_code (opus-4-7) | 75 / 603 | 54% → 85% (**+31%**) |
+| May 16 | codex_cli (gpt-5.5) | 75 / 603 | 49% → 82% (**+33%**) |
+| May 16 | claude_code (opus-4-7) | 75 / 603 | 51% → 86% (**+35%**) |
+| May 15 | codex_cli (gpt-5.5) | 74 / 600 | 52% → 81% (**+29%**) |
+| May 15 | claude_code (opus-4-7) | 74 / 600 | 53% → 82% (**+29%**) |
+| Apr 30 | claude_code (opus-4-6) | 66 / 516 | 44% → 81% (**+37%**) |
+| Apr 28 | claude_code (opus-4-6) | 66 / 524 | 41% → 77% (**+36%**) |
 
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs

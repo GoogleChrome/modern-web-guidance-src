@@ -20,6 +20,7 @@ interface EvalsSummary {
   serving: string;
   model: string;
   taskCount: number;
+  assertionCount: number;
   unguidedPassRate: number;
   guidedPassRate: number;
 }
@@ -81,6 +82,7 @@ function collectResults() {
         serving: serving,
         model: data.model || 'unknown',
         taskCount: taskCount,
+        assertionCount: summary.guidedTotal ?? 0,
         unguidedPassRate: summary.unguidedPassRate ?? 0,
         guidedPassRate: summary.guidedPassRate ?? 0,
       });
