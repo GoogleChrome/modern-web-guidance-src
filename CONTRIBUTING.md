@@ -23,7 +23,7 @@ Follow either of the two links above to access the appropriate CLA and instructi
 
 # Repository architecture and release flow
 To foster an open-source contributor environment while maintaining a stable, clean installation path for end-users, we utilize a two-repo architecture:
-* **Working repo** ([GoogleChrome/modern-web-guidance-source](https://github.com/GoogleChrome/modern-web-guidance-src/)): Contains, development scripts, internal evaluation grader tasks, and raw guidance files. All contributors (internal and external) submit PRs and file issues here.
+* **Source repo** ([GoogleChrome/modern-web-guidance-src](https://github.com/GoogleChrome/modern-web-guidance-src/)): Contains development scripts, eval tasks, agent harnesses, raw guidance files, tests, etc. All contributors submit PRs and file issues here.
 * **Installation repo** ([GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance)): Contains compiled, ready-to-consume skills and agent-specific plugin configurations. This is the clean, stable repo that users clone to install the skills. This is a read-only repo. No issues and no PRs. 
 * **Syncing and build mechanism**: Changes merged into `modern-web-guidance-source` will trigger an automated build pipeline that compiles the raw guidance into optimized artifacts and pushes them to `modern-web-guidance`.
 
