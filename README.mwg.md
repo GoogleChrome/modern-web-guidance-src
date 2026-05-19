@@ -398,8 +398,8 @@ We developed a robust eval harness to ensure that the content is **empirically p
 | May 16 | claude_code (opus-4-7) | 75 / 603 | 51% → 86% (**+35pp**) |
 | May 15 | codex_cli (gpt-5.5) | 74 / 600 | 52% → 81% (**+29pp**) |
 | May 15 | claude_code (opus-4-7) | 74 / 600 | 53% → 82% (**+29pp**) |
-| May 15 | Antigravity | 74 / 600 | 47% → 91% (**+44pp**) |
-| May 14 | Antigravity | 68 / 554 | 47% → 91% (**+44pp**) |
+| May 15 | antigravity | 74 / 600 | 47% → 91% (**+44pp**) |
+| May 14 | antigravity | 68 / 554 | 47% → 91% (**+44pp**) |
 | Apr 30 | claude_code (opus-4-6) | 66 / 516 | 44% → 81% (**+37pp**) |
 | Apr 28 | claude_code (opus-4-6) | 66 / 524 | 41% → 77% (**+36pp**) |
 
@@ -434,7 +434,7 @@ If you'd like to contribute to modern-web-guidance, please see [source repo's `C
 Huge thanks to everyone who has contributed!
 
 <a href="https://github.com/GoogleChrome/modern-web-guidance-src/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance-src" />
+  <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance-src&max=101" />
 </a>
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Attribution
