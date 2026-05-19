@@ -191,11 +191,11 @@ The eval harness measures whether guides actually improve agent output.
 
 Five agents are supported, configured in `harness/config.ts`:
 
-- **Jetski** (default): Google's internal IDE agent. Requires the Jetski app.
+- **Jetski** (default): Google's internal IDE agent. 
 - **Jetski CLI**: CLI version of Jetski.
 - **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` env vars.
-- **Claude Code**: Uses Claude on Vertex AI. Requires GCP setup.
-- **Codex CLI**: Requires requesting an exception and PCounsel approval. See root README for details.
+- **Claude Code**
+- **Codex CLI** 
 
 ### Base apps
 
@@ -216,7 +216,7 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 ### Build process
 
-`pnpm build:mcp` compiles all `guide.md` and `SKILL.md` files (that have valid frontmatter and content) into a searchable index. The build script also generates a "megaskill" — a concatenated document of all guides for agents that support skill-based injection rather than MCP.
+`pnpm build` compiles all `guide.md` and `SKILL.md` files (that have valid frontmatter and content) into a searchable index. The build script also generates a "megaskill" — a concatenated document of all guides for agents that support skill-based injection rather than MCP.
 
 ### How agents access guidance
 
@@ -323,27 +323,6 @@ Different agents have different integration capabilities. MCP provides dynamic, 
 
 ### Why a retry loop for calibration?
 Gemini-generated graders frequently fail calibration on the first attempt — tests may be too strict, too lenient, or check the wrong thing. Feeding failure context back into regeneration significantly improves success rates. The retry loop (up to 3 total attempts) automates what was previously a tedious manual cycle.
-
----
-
-## 11. Future Direction
-
-### Near-term (in progress or planned)
-
-- **Reconcile contributor docs**: Rick's `.agents/skills/` approach (modular skill files for project-use-cases, project-guides, project-evals) and the `gd` CLI approach need to be unified into a single coherent contributor workflow. The two-checkpoint model from Rick's proposal is compatible with the `gd dev` pipeline and will likely be adopted.
-- **Merge `cli-plus-dev` to main**: The CLI and dev pipeline need to land on main so all contributors can use them.
-
-### Medium-term
-
-- **Second base app**: A more complex base application beyond `daily-grind` to provide a harder test for agents. More ambiguous tasks that challenge the system.
-- **Grader failure responsibility model**: When grader calibration fails repeatedly, clarify whether the SME iterates on `expectations.md` or an infra engineer debugs the generation prompt. This hasn't been an issue yet but will become important as more SMEs run the pipeline.
-- **Scale to all 44 guides**: Currently 36 guides are stubs. The `gd dev-all` batch command exists for processing multiple guides once SMEs have fleshed them out.
-
-### Longer-term
-
-- **Additional agent support**: Evaluating more AI coding tools beyond Gemini CLI, Claude Code, and Jetski.
-- **Continuous evaluation**: Automated suite runs on CI to detect regressions in guide effectiveness as models update.
-- **Guide effectiveness feedback loop**: Using eval results to identify which guides need improvement (low guided scores, or guided scores not significantly better than unguided).
 
 ---
 
