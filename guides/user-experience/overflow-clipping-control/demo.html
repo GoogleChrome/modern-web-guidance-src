@@ -1,32 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Overflow Clipping Control</title>
+  <title>Overflow Clipping Control Demo</title>
   <style>
     body {
       font: 1em/1.5 system-ui, sans-serif;
-      padding: 2rem;
     }
 
-    .container {
-      background: #eee;
-      width: 10em;
-      height: 10em;
-      padding: 1em;
+    img {
+      background: #fff;
+    }
 
-      /* Essential CSS */
-      overflow: clip;
-      overflow-clip-margin: content-box;
+    .intro {
+      max-width: 80ch;
+      margin-bottom: 2rem;
+      color: #555;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 2.5rem;
+      margin-top: 2rem;
+      align-items: start;
+    }
+
+    .demo-item {
+      padding: 1.5rem;
+    }
+
+    h3 {
+      background: #eee;
+      padding: 0.2rem 0.5rem;
+      display: inline-block;
+    }
+
+    .description {
+      font-size: 0.9rem;
+    }
+
+    /* --- 1. NESTED BORDER CURVES STYLES --- */
+    .nested-curve-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem 0;
+    }
+
+    .nested-curve-parent {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      padding: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 32px;
+      background: #737373;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      /* Level 1 Fallback: clips child roughly at the padding box */
+      overflow: hidden;
+    }
+
+    /* Inner footer component with 12px rounded to visually demonstrate automatic concentric corner clipping */
+    .nested-curve-footer {
+      background: #111;
+      color: #fff;
+      padding: 8px 12px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    @supports (overflow-clip-margin: content-box) {
+      .nested-curve-parent {
+        overflow: clip;
+        /* Automatically curves clipping edge to match inner content-box radius */
+        overflow-clip-margin: content-box;
+      }
+    }
+
+    /* --- 2. CHILD ELEMENT SHADOW BLEED STYLES --- */
+    .safety-zone-parent {
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 16px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+      /* Level 1 Fallback: clips overflowing text/content but truncates child shadows */
+      overflow: hidden;
+    }
+
+    /* Child button element positioned inside with a prominent shadow */
+    .demo-glowing-btn {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      background: #e52e71;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      /* Prominent box-shadow rendered perfectly unclipped inside the visible safety zone */
+      box-shadow: 0 8px 13px rgba(229, 46, 113, 0.65);
+    }
+
+    @supports (overflow-clip-margin: 15px) {
+      .safety-zone-parent {
+        overflow: clip;
+        /* Establishes a visible safety zone allowing child element shadows to render safely outside */
+        overflow-clip-margin: 15px;
+      }
+    }
+
+    #fallback-banner,
+    #margin-fallback-banner {
+      display: none;
+      background: #fff3cd;
+      color: #856404;
+      padding: 1rem;
+      border: 1px solid #ffeeba;
+      border-radius: 0.25rem;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
     }
   </style>
 </head>
+
 <body>
-  <div class="container">
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc pretium, diam id vehicula blandit, mauris risus condimentum nunc, sit amet vehicula dui sem in orci. Praesent ac lectus mattis, varius nunc non, commodo nulla. Phasellus viverra, est nec pharetra blandit, sem ipsum porta lacus, non sodales erat purus id nisl. Suspendisse condimentum tellus a nibh mattis, ut tempor orci cursus. Pellentesque nulla quam, finibus at nunc sed, euismod tincidunt orci. Mauris eu ipsum nec mi aliquam ultrices. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Sed quis sapien vitae elit venenatis tincidunt in ac orci. Mauris cursus lacus vel velit laoreet imperdiet. Nulla facilisi. Duis eu orci mauris.
-    </p>
+  <h1>Overflow Clipping Control</h1>
+  <div id="fallback-banner">
+    <strong>Notice:</strong> Your browser does not support <code>overflow: clip</code>.
   </div>
-  <p>The overflow in the above box is clipped to the content box rather than the usual padding box, allowing the padding border to be present on all sides without requiring extra wrapper elements.</p>
+  <div id="margin-fallback-banner">
+    <strong>Notice:</strong> Your browser does not support <code>overflow-clip-margin</code>.
+  </div>
+
+  <p class="intro">This demo showcases dynamic container layout controls using <code>overflow: clip</code> combined with
+    <code>overflow-clip-margin</code>. Setting inner clip margins enables mathematically perfect nested border radii
+    without writing custom child subtraction calculations, while extended length offsets establish a visible safety zone
+    allowing prominent child element drop-shadows to render beautifully unclipped past container boundaries.
+  </p>
+
+  <div class="grid">
+    <div class="demo-item">
+      <h3>Nested Rounded Curves</h3>
+      <p class="description">Applies <code>overflow-clip-margin: content-box</code> to a parent container with rounded corners
+        and custom padding. Automatically applies similar rounded corners on inner child media and footer components along the
+        concentric inner content box boundary, solving awkward nesting curves without custom <code>calc()</code> logic.
+      </p>
+    
+      <div class="nested-curve-wrapper">
+        <div class="nested-curve-parent">
+          <img src="test_pattern.svg" alt="Nested Curve Demo">
+          <div class="nested-curve-footer">Card Footer</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-item">
+      <h3>Child Element Shadow Bleed</h3>
+      <p class="description">Applying prominent box-shadows to inner child elements (like buttons or sub-cards) within a clipped parent container normally results in sharp boundary cutoff under <code>overflow: hidden</code>. Replacing it with <code>overflow: clip</code> and setting an <code>overflow-clip-margin</code> creates a visible safety zone permitting the child's shadow to render beautifully unclipped.</p>
+
+      <div class="safety-zone-wrapper">
+        <div class="safety-zone-parent">
+          <h4>Clipped Container</h4>
+          <p>Inner boundaries securely contained.</p>
+          <button class="demo-glowing-btn">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (!CSS.supports('overflow', 'clip')) {
+      document.getElementById('fallback-banner').style.display = 'block';
+    }
+    if (!CSS.supports('overflow-clip-margin', 'content-box')) {
+      document.getElementById('margin-fallback-banner').style.display = 'block';
+    }
+  </script>
 </body>
+
 </html>

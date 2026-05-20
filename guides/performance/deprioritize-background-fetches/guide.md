@@ -4,8 +4,6 @@ description: Deprioritize background data fetches made with the Fetch API to pre
 web-feature-ids:
     - fetch-priority
     - fetch
-sources:
-  - https://web.dev/articles/fetch-priority
 ---
 
 # Deprioritize background fetches

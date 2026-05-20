@@ -6,7 +6,7 @@ import { buildDist } from './build-dist.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
+const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 
@@ -16,6 +16,7 @@ const GH_PUBLISH_PATTERNS = [
   '!**/.cache/**',
   '!**/tfjs_model_minilm/**',
   '!**/*.{js,mjs,ts,bin,map,gz}',
+  '!**/skill-version.txt',
   '!THIRD_PARTY_NOTICES',
   '!skills/modern-web-guidance/package.json',
 ];
@@ -159,7 +160,7 @@ ${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
     console.log(`${featuresCount} features`);
     console.log(`${skillsCount} skills (${skillNames.join(', ')})`);
 
-    console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
+    console.log('\nPerhaps also:\n    pushd ~/code/modern-web-guidance && git pull gh && git push gob && popd');
   }
 }
 

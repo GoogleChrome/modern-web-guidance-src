@@ -21,7 +21,9 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     fs.writeFileSync(path.join(mockGuidesDir, 'forms/autofill-address-form.md'), 'content');
     
     fs.mkdirSync(path.join(mockGuidesDir, 'performance'), { recursive: true });
-    fs.writeFileSync(path.join(mockGuidesDir, 'performance/break-up-long-tasks.md'), 'content');
+
+    fs.mkdirSync(path.join(mockGuidesDir, 'user-experience'), { recursive: true });
+    fs.writeFileSync(path.join(mockGuidesDir, 'user-experience/move-dom-element-without-losing-state.md'), 'content');
   });
 
   after(() => {
@@ -35,9 +37,11 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     assert.ok(result.useCasesCount > 0, 'Should have processed some use cases');
 
     const content = fs.readFileSync(dummyReadmePath, 'utf8');
-    assert.ok(content.includes('#### Full Skill Coverage (v1.2.3)'), 'Should inject correct version heading');
+    assert.ok(content.includes('#### The full list'), 'Should inject correct heading');
     assert.ok(content.includes('<h3>'), 'Should contain category h3 elements');
     assert.match(content, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'Should contain explorer feature links');
     assert.match(content, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'Should link use cases to GitHub blob files');
+
+    assert.ok(content.includes('&lt;iframe&gt; loading state'), 'Should escape angle brackets in descriptions');
   });
 });

@@ -77,6 +77,12 @@
       navigation: auto;
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      @view-transition {
+        navigation: none;
+      }
+    }
+
     * {
       margin: 0;
       padding: 0;

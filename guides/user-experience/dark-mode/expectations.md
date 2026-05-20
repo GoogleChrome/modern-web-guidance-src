@@ -1,0 +1,15 @@
+- **MANDATORY**: The document includes a `<meta name="color-scheme" content="light dark">` tag in the `<head>` to declare theme support early and minimize the risk of un-themed content flashes.
+- **MANDATORY**: The `color-scheme: light dark;` property is applied to the `html` element or the `:root` pseudo-class to ensure the browser themes the entire viewport, including root scrollbars and the canvas background.
+- **MANDATORY**: The implementation avoids forcing a single theme (e.g., `color-scheme: light` or `color-scheme: dark`) on the entire page or root element, unless done as a result of an explicit user manual toggle.
+- **OPTIONAL**: The `light-dark()` function is used to define dynamic colors (such as background, text, and `accent-color`) that automatically respond to the computed `color-scheme`.
+- **MANDATORY (If using `light-dark()`)**: When nesting different color schemes (e.g., a dark section in a light page), all properties using dynamic tokens defined with `light-dark()` are reassigned their token values (e.g. `accent-color: var(--accent-color);`) on the element where the `color-scheme` changes to prevent the "inheritance footgun".
+- **MANDATORY (If using `light-dark()`)**: The implementation includes a fallback strategy for browsers that support `color-scheme` but not `light-dark()` (typically using `prefers-color-scheme` media queries to set custom property values).
+- **MANDATORY (If using `light-dark()`)**: Registered custom properties (via `@property`) are **not** used for values that must dynamically resolve with `light-dark()`
+- Built-in browser UI elements, including scrollbars and form controls adapt their appearance to match the active color scheme.
+- If the `accent-color` property is used, it computes to a different color in light vs dark mode.
+- If the `scrollbar-color` property is used, it produces different scrollbar colors in light vs dark mode.
+- The agent has created a scrollable element with `overflow: auto` or `overflow: scroll` or `overflow-y` set.
+- If the `scrollbar-color` property is used, the agent has defined CSS variables (custom properties) for the scrollbar colors.
+- The agent has defined CSS variables (custom properties) for the scrollbar colors and they are different across light vs dark mode.
+- Any `::-webkit-scrollbar-*` pseudo-elements, if present, are conditionally applied within an `@supports not (scrollbar-color: auto)` or equivalent feature query to prevent overriding modern properties.
+- Any `::-webkit-scrollbar-*` pseudo-elements, if present, include basic `::-webkit-scrollbar` dimensions (e.g., `width` or `height`) so the scrollbar renders its colors in webkit browsers.

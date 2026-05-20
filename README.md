@@ -1,168 +1,232 @@
-# Guidance
+# <img src="./.github/img/modern-web-guidance.svg" alt="Modern Web Guidance" width="30" height="30"> Modern Web Guidance (Source)
 
-A unified repository for modern web development guidance, containing both a Skill/CLI distribution and an MCP server for AI-assisted development, alongside an evaluation suite for measuring AI adoption of modern web APIs.
+A unified repository for authoring, calibrating, and evaluating modern web development guidance. Here, we curate and codify best practices, write eval tasks and assertions, and an evaluation harness measures how coding agents follow the guidance.
 
-## Project Structure
+The published distribution of this guidance is compiled and released to the [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) repository as agent skills including the primary `modern-web-guidance` skill (which utilizes a bundled CLI distribution) alongside other standalone skills.
 
-- **`guides/`**: All guide content, organized by discipline (performance, user-experience, etc.). Also contains the dev pipeline scripts (`dev-guide.ts`, `run-grader.ts`, `grader-gen.ts`, `negative-gen.ts`).
-- **`harness/`**: The Guidance eval harness for executing and scoring tests. Includes task definitions, agent runners, and base apps.
-- **`serving/`**: The Modern Web guidance server supporting both a standalone CLI (Skills) and an MCP server. This provides semantic search over curated web development guides and browser support data.
-- **`eval-view/`**: A static dashboard for visualizing and analyzing evaluation results.
-- **`bin/gd.ts`**: The unified CLI entry point.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for how we work on the project and orientation of the codebase. We're open to contributions to guidance, eval cases, eval infra and more. :) 
 
-See [CONTEXT.md](./CONTEXT.md) for a comprehensive project overview, architecture details, and contributor workflow.
+---
 
-## Getting Started
+**Modern Web Guidance** is an agent skill (aka `SKILL.md`) with a CLI that helps coding agents build better web applications using modern, high-performance, accessible, and secure APIs instead of legacy workarounds.
 
-This project is managed as a **pnpm workspace**. You can install all dependencies for all projects with a single command from the root:
+*Supported by the Google Chrome team, the Microsoft Edge team, and the web development community.*
 
-```bash
-pnpm install
-pnpm setup:playwright
+<!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
+
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/terminal.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Quickstart
+
+```shell
+npx modern-web-guidance@latest install
 ```
 
-### 0. CLI Setup
+This command runs an interactive wizard to place the SKILL.md appropriately. See [Alternative Installation Methods](#alternative-installation-methods) below.
 
-The `gd` CLI is the main way to run this project. To make it available globally and set up shell auto-completion, run:
+#### Try it out (without installing)
 
-```bash
-pnpm link --global && gd setup-completion
+```shell
+# Search for relevant guides
+npx modern-web-guidance@latest search "animate a dialog modal backdrop"
+
+# Retrieve a guide by ID
+npx modern-web-guidance@latest retrieve "animate-to-from-top-layer"
 ```
 
-*Note: For the auto-completion to take effect, you must refresh your shell (e.g., open a new terminal or source your config).*
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lightbulb.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Why?
 
-### 1. Serving
+Coding agents often default to older patterns because LLM training data contains vast amounts of legacy code. This often leads them to generate bloated JavaScript for tasks that now have native, high-performance web platform solutions.
 
-#### modern-web-guidance
+Even if a model knows an API exists, it often lacks the density of real-world, modern implementation patterns required for production-ready code.
 
-Guidance is primarily served to AI agents as a **Skill** via a standalone CLI distribution (`skills_cli`). This allows agents to execute semantic searches and retrieve implementation patterns directly within their local environment.
+**Modern Web Guidance bridges this gap.** Our skill's CLI returns targeted, expert-curated guidelines directly into your agent's context window, focusing on:
+* **Modern Browser APIs**: Helping models correctly structure APIs they frequently misuse.
+* **Performance & Accessibility**: Eliminating legacy bloat with clean, native patterns.
+* **Responsible Fallbacks**: Guiding models to use sensible, lightweight fallbacks instead of heavy polyfills or legacy libraries.
 
-Alternatively, an **MCP server** is available for agents that support the Model Context Protocol, providing dynamic, connection-based access to the same underlying data.
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> What's Included?
 
-```bash
-cd serving
-pnpm run build
+We cover the past several years of the web platform's new features, all the way up to the cutting edge. The guides are **designed to be token-efficient**; we run evals enabling us to prune lowest-common-denominator content that models already know.
+
+### Core Disciplines
+
+<table width="100%" style="border-collapse: collapse; border: none;">
+  <tr style="border: none;">
+    <td width="33%" valign="top" style="border: none; padding: 6px;">
+      <h4>🎨 User Experience</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Smooth visual states (View Transitions, entry/exit animations, parallax scroll, CSS <code>scrollbar-color</code>).</p>
+    </td>
+    <td width="33%" valign="top" style="border: none; padding: 6px;">
+      <h4>📐 CSS Layout</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Modern layout systems (container queries, <code>subgrid</code>, modern color spaces like <code>oklch</code>, text-wrap tuning, and line-height trimming).</p>
+    </td>
+    <td width="33%" valign="top" style="border: none; padding: 6px;">
+      <h4>⚡ Performance</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Speed optimizations (instant preloading, Interaction to Next Paint (INP) diagnostics, and scheduling tasks via <code>scheduler.yield</code>).</p>
+    </td>
+  </tr>
+  <tr style="border: none;">
+    <td width="33%" valign="top" style="border: none; padding: 6px;">
+      <h4>📝 Forms & UI</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Native components (Anchor Positioning for tooltips, Popover API, dialogs, <code>:user-invalid</code> validation, and auto-sizing fields).</p>
+    </td>
+    <td width="33%" valign="top" style="border: none; padding: 6px;">
+      <h4>♿ Accessibility</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Hardened patterns (accessible error announcements, keyboard focus management).</p>
+    </td>
+    <td width="33%" valign="top" style="border: none; padding: 6px;">
+      <h4>🤖 Built-in AI</h4>
+      <p style="font-size: 0.9em; line-height: 1.4;">Local client models (native translation, summarization, and language detection APIs).</p>
+    </td>
+  </tr>
+</table>
+
+_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/navigation-drawer.md).
+
+### Safe Adoption of Modern Features
+
+* **Progressive Enhancement & Nuanced Fallbacks**: We distinguish between purely additive enhancements (like speculative preloading) which are safe to let older browsers silently ignore, and critical behaviors (like dialog controls or network beacons) where we write highly considered, low-overhead fallbacks.
+* **Responsible Fallbacks**: We prioritize lightweight, case-specific custom fallbacks (<50 LOC) or conditionally-loaded polyfills instead of heavy third-party bundles.
+* **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
+* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents can dynamically adapt to current browser support and any browser support preferences.
+
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
+
+0. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web` CLI for web platform queries.
+2. **Local Semantic Search**: The agent runs `modern-web search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
+3. **Guide Fetch**: The agent retrieves the guide via `modern-web retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
+
+> [!TIP]
+> Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
+> The npm package is self-contained, with no extra dependencies to ensure both low-latency and supply-chain security.
+
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Alternative Installation Methods
+
+<details>
+<summary><b>Vercel Skills CLI</b> (aka <code>npx skills</code>)</summary>
+
+```shell
+npx skills add GoogleChrome/modern-web-guidance
+```
+</details>
+
+<details>
+<summary><b>GitHub CLI</b></summary>
+
+```shell
+gh skill install GoogleChrome/modern-web-guidance
+```
+</details>
+
+<details>
+<summary><b>Google Antigravity</b></summary>
+
+```shell
+agy plugin install https://github.com/GoogleChrome/modern-web-guidance
+```
+</details>
+
+<details>
+<summary><b>GitHub Copilot CLI</b></summary>
+
+```shell
+/plugin marketplace add GoogleChrome/modern-web-guidance
+/plugin install modern-web-guidance@googlechrome
+```
+</details>
+
+<details>
+<summary><b>Claude Code Plugin</b></summary>
+
+```shell
+/plugin marketplace add GoogleChrome/modern-web-guidance
+/plugin install modern-web-guidance@googlechrome
+/plugin  # Select GoogleChrome marketplace, press enter, enable AutoUpdate
+/reload-plugins
+```
+</details>
+
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
+
+If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
+
+Otherwise, consult your agent's documentation for updating plugins and skills.
+
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well ;)
+
+We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** to ensure AI agents write better code.  We run automated evaluations using a closed-loop validation pipeline:
+
+```
+  [ Expert-authored guidance and demo ]
+            │
+            ▼
+  [ Generated assets ] ──> Playwright Grader (.spec.ts) & Negative Demo (.html)
+            │
+            ▼
+  [ Calibration loop ] ───────> Runs Grader on Gold-Standard Demo (Must Pass 100%)
+            │                   Runs Grader on Negative Demo (Must Fail 100%)
+            ▼
+  [ E2E agent evals ] ────────> Runs coding agents in guided vs. unguided modes
+                                Compares accuracy w/ and w/o the skill
 ```
 
-For MCP usage specifically, you can start the server with `pnpm start`. For more details on the server internals, see the [Serving README](./serving/mcp-server/README.md).
+0. **Simulated Developer Tasks**: We define realistic, developer prompts that mimic real-world requests (e.g., "make my images load faster"). The prompts avoid naming APIs or features, testing whether the agent can successfully discover the relevant guides naturally.
+1. **Browser-based Assertions**: We write browser automation scripts that verify the guide was followed correctly: exact runtime behaviors, computed styles, accessibility states, etc.
+2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
+3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
 
-The primary serving mechanism is controlled by the `serving` setting in [`harness/config.ts`](./harness/config.ts), which defaults to `Serving.SKILLS_CLI`.
+### Recent eval results snapshot
 
-#### google-developer-knowledge
+| Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
+| :--- | :--- | :---: | :---: |
+| May 18 | claude_code (opus-4-7) | 75 / 603 | 52% → 85% (**+33pp**) |
+| May 17 | claude_code (opus-4-7) | 75 / 603 | 54% → 85% (**+31pp**) |
+| May 16 | codex_cli (gpt-5.5) | 75 / 603 | 49% → 82% (**+33pp**) |
+| May 16 | claude_code (opus-4-7) | 75 / 603 | 51% → 86% (**+35pp**) |
+| May 15 | codex_cli (gpt-5.5) | 74 / 600 | 52% → 81% (**+29pp**) |
+| May 15 | claude_code (opus-4-7) | 74 / 600 | 53% → 82% (**+29pp**) |
+| May 15 | Antigravity | 74 / 600 | 47% → 91% (**+44pp**) |
+| May 14 | Antigravity | 68 / 554 | 47% → 91% (**+44pp**) |
+| Apr 30 | claude_code (opus-4-6) | 66 / 516 | 44% → 81% (**+37pp**) |
+| Apr 28 | claude_code (opus-4-6) | 66 / 524 | 41% → 77% (**+36pp**) |
 
-The [Developer Knowledge MCP server](https://developers.google.com/knowledge/mcp) can be enabled in the [`harness/config.ts`](./harness/config.ts) file by adding it to the `mcpServersToEnable` list.
 
-It requires the `MCP_API_KEY` to be set to a GCP API key with access enabled for the Developer Knowledge API.
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs
 
-### 2. Eval Harness & Dashboard
+You can customize which skill packs are installed using the `--choose` flag:
 
-The evaluation suite measures how effectively AI models use modern web APIs.
-
-## Usage
-
-Run commands via the `gd` CLI.. run `gd --help`: 
-
-```bash
-# Guide Development
-gd audit                      # show status of all guides
-gd dev [dir] [options]        # auto-generate/calibrate 
-
-# You can still run individual steps if you need to, like `gd dev <dir> --gen-grader`
-
-# Evaluation
-gd eval                       # run the full evaluation suite
-gd eval [task1] [task2]       # run specific tasks (which are the names of guides e.g. `batch-analytics-events`)
-gd eval --config <custom_config>       # run with config overrides (defaults to config.ts, or harness/config.ts)
-gd dashboard                  # start the evaluation dashboard
-gd backfill                   # backfill metrics for historical suites
-
-# To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
-gd upload <suite-name>
-# Example: gd upload analytics-suite
+```shell
+npx modern-web-guidance@latest install --choose
 ```
 
-## Configuration
+* **`modern-web-guidance`** (~234 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
+* **`chrome-extensions`** (~181 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
 
-All configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file controls:
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
 
--   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
--   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
+Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the tool. You can inspect what is collected in [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/serving/bin/modern-web.ts).
 
-### Runtime Configuration Overrides
+> [!TIP]
+> **To Opt-Out:**, set the `DISABLE_TELEMETRY=1` env variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
+> ```bash
+> export DISABLE_TELEMETRY=1
+> ```
 
-You can override suite configurations without modifying `harness/config.ts` directly. The `gd eval` command automatically looks for a `config.ts` file in the project root. If this file doesn't exist and no `--config` flag is provided, it safely falls back to the defaults in `harness/config.ts`.
+Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).
 
-To get started, copy the template:
-```bash
-cp config.ts.example config.ts
-```
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
-If you want to maintain multiple configuration profiles, you can specify a custom file using the `--config` flag:
-```bash
-gd eval --config my_custom_config.ts
-```
+If you'd like to contribute to modern-web-guidance, please see [source repo's `CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/CONTRIBUTING.md). The `modern-web-guidance` repo is a purely a publish target for clean skills installation.
 
-Environment variables in `.env` at the `guidance/` root are still required for setting paths to binaries and API keys.
+Huge thanks to everyone who has contributed!
 
-### Agents
+<a href="https://github.com/GoogleChrome/modern-web-guidance-src/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance-src&max=101" />
+</a>
 
-Supported agents are defined in the `Agents` object in [`harness/config.ts`](./harness/config.ts).
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;">  License
 
-#### Jetski
+Unless otherwise noted:
+* Software code in this repository is licensed under the [Apache License 2.0](LICENSE).
+* Documentation and guide content under `guides/` are licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
-Jetski is the default agent that will be used. When running, be sure to update the settings of the Jetski automation window so that the "Review Policy" is set to "Always Proceed".
-
-#### Gemini CLI
-
-When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
-
-Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3.1-pro-preview'`).
-
-#### Claude
-
-Implemented with [Claude Code on Vertex AI](https://code.claude.com/docs/en/google-vertex-ai).
-
-Log in with `gcloud` and set project ID with `gcloud config set project <YOUR-GCP-PROJECT-ID>`.
-The GCP project must enable the Vertex AI API and `Claude Opus 4.6` in the Model Garden.
-
-Set the following environment variables:
-
-```
-CLAUDE_CODE_USE_VERTEX=1
-CLOUD_ML_REGION=global
-ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
-ANTHROPIC_MODEL='claude-opus-4-6'
-```
-
-#### Codex CLI
-
-To use Codex CLI, you will need to request an exception, which appears when attempting to use it (`codex`).
-This request should file a bug similar to b/492300931, which includes a screenshot to the PCounsel approval.
-After approval, start `codex` locally and login to your account.
-
-## Guides
-
-For adding and testing guides, see the [guides README](./guides/README.md).
-
-## Quality Control
-
-Run the full preflight suite (typechecking, linting, and tests) from the root:
-
-```bash
-pnpm preflight
-```
-
-## Development
-
-Development follows a **three-stage workflow**:
-1.  **Stage 1: Identifying use cases** — Translate a feature into distinct tasks (Stub state).
-2.  **Stage 2: Authoring guidance** — Flesh out the guidance and expectations (Needs calibration).
-3.  **Stage 3: Evaluating guidance** — Auto-generate artifacts and run tests with `gd dev` (Eval-ready).
-
-Add guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`). See [guides README](./guides/README.md) and [CONTEXT.md](./CONTEXT.md) for the detailed workflow.
-
-Build-free TypeScript is supported in `serving` (requires Node 24+).
-
-## License
-
-Google LLC
+Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors and [W3C](https://www.w3.org/), [WHATWG](https://whatwg.org), and [IETF](https://www.ietf.org) specifications.

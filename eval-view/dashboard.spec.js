@@ -5,7 +5,7 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/');
 
     // Check title
-    await expect(page.locator('.landing-title')).toContainText('Guidance Evals');
+    await expect(page.locator('.landing-title')).toContainText('Modern Web Guidance Evals');
 
     // Check suites content
     await expect(page.locator('.suite-table-row').first()).toBeVisible();

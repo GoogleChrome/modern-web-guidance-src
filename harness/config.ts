@@ -4,6 +4,9 @@ import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
+// Disable telemetry globally for all evaluation and test harness runs
+process.env.DISABLE_TELEMETRY = '1';
+
 try {
   process.loadEnvFile(path.join(rootDir, '.env'));
 } catch {
@@ -29,7 +32,7 @@ export type Serving = typeof Serving[keyof typeof Serving];
 
 // ******************************************
 // *** Set environment configuration      ***
-// *** Set env variables in guidance/.env ***
+// *** Set env variables in modern-web-guidance-src/.env ***
 // ******************************************
 export const environmentConfig: EnvironmentConfig = {
   // Jetski Configuration

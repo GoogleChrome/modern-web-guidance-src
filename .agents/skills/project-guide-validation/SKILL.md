@@ -12,12 +12,11 @@ This protocol defines the process for an AI agent to validate the technical accu
 When assigned to validate a guide, create a task list artifact based on this checklist and complete each phase:
 
 - [ ] 1. Familiarization
-- [ ] 2. Source Verification
-- [ ] 3. Best Practices & Accessibility Review
-- [ ] 4. Expectation Alignment
-- [ ] 5. Testing and Verification with DevTools MCP (Includes starting server)
-- [ ] 6. Manual Verification (Only if automated tests pass)
-- [ ] 7. Feedback Report
+- [ ] 2. Best Practices & Accessibility Review
+- [ ] 3. Expectation Alignment
+- [ ] 4. Testing and Verification with DevTools MCP (Includes starting server)
+- [ ] 5. Manual Verification (Only if automated tests pass)
+- [ ] 6. Feedback Report
 
 ---
 
@@ -28,29 +27,26 @@ Before performing any verification, read the `guide.md` file in its entirety:
 *   **Identify the Solution**: Understand the recommended API, property, or architectural approach (e.g., Temporal API, container queries, scheduler.yield).
 *   **Contextualize**: Get familiar with the overall structure and flow of the guidance before checking external sources or running tests.
 
-## 2. Source Verification
-
-Before finalizing any guide, verify all sources listed in the guide:
-*   **Relevance**: Go through each listed source and ensure it is actually relevant to the use case and the feature described.
-*   **Alignment**: Check that the guidance accurately aligns with the information provided in the sources. Ensure no contradictions or misunderstandings of the technical spec or documentation.
-
-## 3. Qualitative & Best Practices Review
+## 2. Qualitative & Best Practices Review
 
 Critically evaluate the guide's content to ensure it follows established best practices and does not introduce anti-patterns:
 *   **Discipline-Specific Skills**: Check if there are finalized "production ready" skill files for the relevant discipline located at `guides/<discipline>/skill.md`. If they exist, ensure the guide complies with them.
-*   **Accessibility (A11y)**: Even if a specific accessibility skill file is not yet finalized, accessibility is a distinct concern that should **always** be present. Evaluate the guide against general accessibility best practices based on your own training data (e.g., contrast, motion, focus management, ARIA usage).
+*   **Accessibility (A11y)**: Accessibility is a distinct concern that MUST **always** be evaluated. The canonical reference is `guides/accessibility/accessibility/guide.md`. Read it first, then apply it as follows:
+    *   **`guide.md` under review**: MUST adhere to every applicable best practice across all sections of the canonical guide (landmarks/headings, ARIA roles, names/descriptions, focus management, keyboard navigation, alt text and SVG treatment, hints and validation, live regions, non-color state indicators, reduced motion, dialog/overlay semantics, and visibility hiding decisions). Recommendations and code samples must not contradict the canonical guide. Pay particular attention to copy-paste safety (code examples must embed the rules they mention, e.g. `prefers-reduced-motion`, `:focus-visible`, `aria-hidden`), multi-indicator state communication, AT-tree synchronization with visibility changes, and post-transition focus management.
+    *   **`demo.html` under review**: NOT held to general a11y best practices — only required to faithfully demonstrate the patterns the `guide.md` prescribes. If the guide mandates a specific a11y pattern (e.g., `aria-live="polite"` on toasts, `aria-pressed` on a toggle, `prefers-reduced-motion` in CSS), the demo MUST show it. Do not flag demos for missing a11y features that the guide does not call out.
+    *   **`expectations.md` under review**: SHOULD encode the a11y patterns that the guide prescribes as testable expectations, but MUST NOT include prose-only or manual-verification-only requirements that the grader cannot assert.
 *   **Avoid Gating Critical Content**: Verify that the guide does not recommend interactive reveal patterns (e.g., following the cursor) that are inaccessible to non-pointer users. Ensure accessible alternatives are provided if such patterns are discussed.
 *   **Internal Consistency**: Ensure no deviations from existing skills or established patterns in the project.
 *   **Copy-Paste Safety**: Ensure that code examples are complete and safe to copy. If the text recommends a fallback or a constraint (like reduced motion), the code example **MUST** implement it.
 
-## 4. Expectation Alignment
+## 3. Expectation Alignment
 
 Ensure that the `expectations.md` file (used for evaluation) aligns perfectly with `guide.md`:
 *   **Traceability**: Every expectation should be traceable back to a specific recommendation in the guide. Do not create expectations for behaviors not covered in the guidance.
 *   **Actionability**: The guide must provide clear instructions on *how* to meet each expectation. An agent should not have to guess the implementation to satisfy an expectation.
 *   **Outcome Focus**: Expectations should focus on the observable output and behavior (e.g., "The UI correctly updates when the date is modified"), not the specific implementation approach (unless strictly required by the guide's constraints).
 
-## 5. Testing and Verification with DevTools MCP
+## 4. Testing and Verification with DevTools MCP
 
 Always use the **DevTools MCP** server to test the demo associated with the guide. This drives testing autonomously without requiring manual user interaction.
 
@@ -66,13 +62,13 @@ Always use the **DevTools MCP** server to test the demo associated with the guid
 *   **Check Status**: Use the `baseline-status` skill (by reading its `SKILL.md` file) to learn how to query the status of any given feature.
 *   **Fallback Requirement**: If a feature is NOT widely available, the demo file MUST demonstrate how the fallback strategy described in the guide should be used.
 
-## 6. Manual Verification
+## 5. Manual Verification
 
 After automated testing with DevTools MCP, guide the user through manual verification of the demo. This helps confirm behavior across different environments and provides confidence in the solution.
 
 ### Instructions for the Agent:
-1.  **Prerequisite**: Only proceed to manual verification if the automated tests in Step 5 passed or if specific cross-browser testing is required that DevTools cannot cover.
-2.  **Provide Link**: Provide the user with the local server URL started in Step 5.
+1.  **Prerequisite**: Only proceed to manual verification if the automated tests in Step 4 passed or if specific cross-browser testing is required that DevTools cannot cover.
+2.  **Provide Link**: Provide the user with the local server URL started in Step 4.
 3.  **Guide the User**: Provide the user with clear, step-by-step instructions on how to interact with the demo manually.
     *   Specify what to click on or what inputs to provide.
     *   Describe what they should look for to confirm success or failure.
@@ -87,12 +83,12 @@ After automated testing with DevTools MCP, guide the user through manual verific
 - **Unconditional Polyfill Loading**: Using a standard `<script>` tag for a polyfill violates project standards; it must be conditionally loaded.
 - **Implementation-Prescriptive Expectations**: Watch for expectations that mandate a specific syntax (e.g., `typeof Temporal === 'undefined'`) instead of a functional outcome.
 
-## 7. Feedback Report
+## 6. Feedback Report
 
 After completing the validation steps, provide the user with a structured feedback report.
 
 ### Guidelines for the Report:
-1.  **Summarize Findings**: Inform the user of what you found during verification (sources, expectations, demo behavior).
+1.  **Summarize Findings**: Inform the user of what you found during verification (expectations, demo behavior).
 2.  **Focus on Critical Issues**: Highlight critical gaps or correctness issues (e.g., "The polyfill is loaded unconditionally despite the guide saying it should be conditional"). Ignore minor nitpicks that do not affect the technical accuracy or user experience.
 3.  **Make Recommendations**: If issues were found, make clear recommendations for fixes.
 4.  **State Status**: Clearly state if the demo passed or failed automated and manual verification.

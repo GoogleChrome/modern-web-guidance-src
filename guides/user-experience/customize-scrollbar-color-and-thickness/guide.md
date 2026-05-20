@@ -4,11 +4,6 @@ description: Customize the color or thickness of a scrollbar
 web-feature-ids:
   - scrollbar-color
   - scrollbar-width
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-color
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-width
-  - https://developer.chrome.com/en/docs/css-ui/scrollbar-styling
-  - https://www.bram.us/2026/01/15/100vw-horizontal-overflow-no-more/
 ---
 
 # Customize the color or thickness of a scrollbar

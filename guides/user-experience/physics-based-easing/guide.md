@@ -3,11 +3,6 @@ name: physics-based-easing
 description: Create custom, physics-based animation and transition effects, like bounce and spring, that feel more natural and engaging than traditional easing curves.
 web-feature-ids:
   - linear-easing
-sources:
-  - https://developer.chrome.com/docs/css-ui/css-linear-easing-function
-  - https://developer.mozilla.org/en-US/blog/custom-easing-in-css-with-linear/
-  - https://www.joshwcomeau.com/animation/linear-timing-function/
-  - https://www.smashingmagazine.com/2023/09/path-css-easing-linear-function/
 ---
 
 Traditional CSS easing functions like `ease-in` or `cubic-bezier()` are limited to simple curves, making it impossible to create complex physics-based effects like bounces or springs. The `linear()` timing function solves this by allowing you to provide a series of stops that can approximate complex curves. Transitions and animations are interpolated based on straight lines between the stops, but within enough stops, it can appear smooth.

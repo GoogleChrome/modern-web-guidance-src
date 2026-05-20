@@ -2,11 +2,7 @@
 name: defer-rendering-heavy-content
 description: Reduce rendering times in content-heavy web pages (e.g. pages with long feeds, lots of articles, or complex dashboards), by deferring rendering for any content that is not immediately visible to the user.
 web-feature-ids:
-  - hidden-until-found
   - content-visibility
-sources:
-  - https://developer.chrome.com/docs/css-ui/hidden-until-found
-  - https://web.dev/articles/content-visibility
 ---
 
 # Defer rendering heavy content
@@ -21,7 +17,7 @@ To optimize rendering, you can utilize the CSS `content-visibility` property and
 | :--- | :--- | :--- |
 | **1. Below the fold** (Delay initial load) | **`content-visibility: auto`** | Browser automatically offloads layout/paint workload until the container scrolls close to view, keeping standard page load speed frictionless. |
 | **2. Toggle State** (Fast view switching) | **`content-visibility: hidden`** | Skips layout calculations for hidden divs but preserves style containment state, allowing for instantaneous toggling without structural shifts (superior to `display: none`). |
-| **3. Searchable & Deferred** (Collapsible specs/FAQ) | **`hidden="until-found"`** | Same benefits as previous, defers load-time rendering fully, but remains searchable via native Find-in-page. The browser automatically unhides and scrolls to the target on match. |
+| **3. Searchable & Deferred** (Collapsible disclosures) | **`hidden="until-found"`** | For detailed instructions on combining rendering performance with find-in-page search accessibility, see {{ GUIDE_REF("search-hidden-content") }}. |
 
 ## How to implement `content-visibility: auto`
 
@@ -84,45 +80,19 @@ The `contain-intrinsic-size` CSS shorthand property acts as a placeholder dimens
 }
 ```
 
-Because `content-visibility: hidden` excludes the element and its children from the accessibility tree and find-in-page search, **DO NOT** use it if the content must remain discoverable while hidden. For searchable hidden content, use `hidden="until-found"`.
-
-## How to implement `hidden="until-found"`
-  
-The `hidden="until-found"` attribute forces the browser to apply an internal `content-visibility: hidden` rule. This hides content until a user utilizes "Find in page" or navigates via document fragments directly into the container.
-
-1. **Identify heavy sections:** Locate layout blocks that are initially hidden (e.g., extra rows in a large data table).
-2. **Apply the attribute:** Add `hidden="until-found"` directly onto the collapsible container element.
-3. **Handle state synchronization:** If reveal states require DOM updates (such as toggling an aria-expanded attribute or rotating a chevron icon), use the `beforematch` event listener.
-
-### Example code
-
-```html
-<div class="heavy-section" hidden="until-found">
-  <p>Heavy content.</p>
-</div>
-```
-
-```javascript
-// Optional: Handle state synchronization
-const heavySection = document.querySelector('.heavy-section');
-
-heavySection.addEventListener('beforematch', (event) => {
-  // Logic to execute immediately before the browser reveals the match
-});
-```
+Because `content-visibility: hidden` excludes the element and its children from the accessibility tree and find-in-page search, **DO NOT** use it if the content must remain discoverable while hidden. If you need hidden content to remain searchable via native Find-in-page, use `hidden="until-found"` as described in {{ GUIDE_REF("search-hidden-content") }}.
 
 ## Best Practices
 
 - **DO** use `contain-intrinsic-size` with `content-visibility: auto`. Failure to do so forces height recalculations on scroll, causing viewport layout jumping or visual glitches.
 - **DO NOT** apply `content-visibility: auto` to elements inside the initial fold viewport, as this delays critical page rendering.
-- **DO NOT** apply standard `display: none` or `visibility: hidden` to elements designed to use `hidden="until-found"`, as this permanently excludes them from search discovery.
-- **DO** verify that `hidden="until-found"` handles interactive states gracefully on trigger.
+- **MANDATORY Accessibility Verification**: When applying `content-visibility: auto`, you MUST verify sequential keyboard reachability. In certain assistive technology configurations, off-screen nodes utilizing `content-visibility: auto` may be excluded from the accessibility tree or sequential navigation routes until focus is forcibly moved inside them. Test linear navigation across off-screen boundaries using keyboard alone.
 
 ## Fallback strategies
 
 ### `content-visibility` fallback
 
-{{ BASELINE_STATUS("content-visibility") }}
+{{ FEATURE_FALLBACKS("content-visibility") }}
 
 When `content-visibility` is not supported it will be ignored by the browser. In most cases `content-visibility: auto` will not need a fallback, though without it performance gains will be lost. An unsupported browser will leave `content-visibility: hidden` elements completely visible. Use feature detection to implement a fallback.
 
@@ -138,20 +108,5 @@ When `content-visibility` is not supported it will be ignored by the browser. In
     display: block; /* Turn the layout box back on */
     content-visibility: hidden;
   }
-}
-```
-
-### `hidden="until-found"` fallback
-
-{{ BASELINE_STATUS("hidden-until-found") }}
-
-When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly. Feature detection MUST check for the existence of `onbeforematch` in `HTMLElement.prototype`.
-
-```javascript
-if (!('onbeforematch' in HTMLElement.prototype)) {
-  document.querySelectorAll('[hidden="until-found"]').forEach(el => {
-    // Unsupported browsers show content to maintain searchability
-    el.removeAttribute('hidden'); 
-  });
 }
 ```

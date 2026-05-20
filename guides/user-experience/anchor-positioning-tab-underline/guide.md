@@ -4,9 +4,6 @@ description: Transition an element seamlessly between two target element positio
 web-feature-ids:
   - anchor-positioning
   - prefers-reduced-motion
-sources:
-  - https://una.im/follow-the-anchor
-  - https://css-tricks.com/fancy-menu-navigation-using-anchor-positioning/
 ---
 
 In a tab menu, you should provide visual hints to users about what page they are on. One option is by underlining the tab. With anchor positioning, you can create a smooth animation between the positions of the underline. This does not work when changing the active tab loads a new web page.
@@ -76,9 +73,23 @@ ul::before {
 
 This is only a visual indicator, and must not be a replacement for setting the appropriate `aria-current="page"` or `aria-selected` aria values.
 
-### Fallback strategies
+```html
+<!-- MANDATORY: Provide explicit assistive technology state alongside the visual tab underline -->
+<nav aria-label="Primary">
+  <ul>
+    <li class="active">
+      <a href="/home" aria-current="page">Home</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+  </ul>
+</nav>
+```
 
-{{ BASELINE_STATUS("anchor-positioning") }}
+## Fallback strategies
+
+{{ FEATURE_FALLBACKS("anchor-positioning") }}
 
 If anchor positioning is not supported in the browser, use a `border-bottom` to add an underline. It will not be animated.
 

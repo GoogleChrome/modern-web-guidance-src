@@ -3,14 +3,6 @@ name: resolution-optimized-pseudo-elements
 description: Use resolution-optimized images in CSS pseudo-elements (such as `::before` and `::after`) to reduce the number of DOM nodes.
 web-feature-ids: 
   - image-set
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/image/image-set
-  - https://css-tricks.com/almanac/functions/i/image-set/
-  - https://css-tricks.com/using-performant-next-gen-images-in-css-with-image-set/
-  - https://uploadcare.com/blog/image-set-for-responsive-images
-  - https://web.dev/articles/preload-responsive-images
-  - https://web.dev/learn/design/responsive-images
-  - https://web.dev/articles/responsive-images
 ---
 
 Using resolution-optimized images in CSS pseudo-elements (like `::before` or `::after`) allows you to add decorative icons or structural graphics without cluttering your HTML with extra DOM nodes. By combining pseudo-elements with the `image-set()` CSS function, you can provide the browser with multiple formats (such as AVIF or WebP) and resolutions (like `1x` and `2x`). The browser will automatically choose the most optimal image for the user's device capabilities.

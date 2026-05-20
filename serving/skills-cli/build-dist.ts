@@ -3,8 +3,8 @@ import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import * as esbuild from "esbuild";
-import { scanDisciplineSkills } from "../../lib/guide-validation.ts";
-import { rootDir, guidesDir } from "../../lib/paths.ts";
+import { config } from "../../lib/skills-config.ts";
+import { rootDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
 import { replaceMacros } from "../lib/macros.ts";
 import { updateReadmeWithFeaturesAndUseCases } from "./build-readme.ts";
@@ -70,18 +70,48 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
 
 }
 
-export function processSkills(publishRoot: string, scanDir = guidesDir) {
-  const skills = scanDisciplineSkills(scanDir);
+export function processSkills(publishRoot: string) {
+  console.log("Processing standalone skills from configuration...");
+  const skills = config.standaloneSkills;
 
   for (const skill of skills) {
     const skillName = skill.name;
-    const source = path.join(skill.dir, "SKILL.md");
+    const source = path.join(rootDir, skill.sourcePath);
     const skillDestDir = path.join(publishRoot, "skills", skillName);
 
     fs.mkdirSync(skillDestDir, { recursive: true });
 
     const target = 'skills-cli';
-    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
+
+    // Copy sibling directories and files (e.g., references)
+    const sourceDir = path.dirname(source);
+    if (fs.existsSync(sourceDir)) {
+      const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name === "SKILL.md") continue;
+        const entrySrc = path.join(sourceDir, entry.name);
+        const entryDest = path.join(skillDestDir, entry.name);
+        fs.cpSync(entrySrc, entryDest, { recursive: true });
+      }
+    }
+
+    // Versioning.
+    //
+    // - This identifier only changes when the SKILL.md does.
+    // - skill-version.txt is published to npm, and the modern-web-guidance CLI uses
+    //   it to know what version is the latest.
+    // - We replace "--skill-version SKILL_VERSION" in SKILL.md, such that agents will
+    //   call npx and pass along the agent's version.
+    // - If they differ, the CLI tool logs a warning to stderr with instructions on how
+    //   to update.
+    const skillVersion = execSync(
+      'git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" SKILL.md',
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], cwd: sourceDir }
+    ).trim();
+    fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
+
+    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
+      .replaceAll('SKILL_VERSION', skillVersion);
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 
@@ -92,28 +122,17 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   const { publishRoot, version} = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
-  const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
 
-  // Step 1: Check if we can short-circuit without wiping anything.
-  // processGuides internally uses dist/.cache/ and evaluates the source hashes.
-  const skipped = await processGuides({
-    outputDir: DIST_DIR,
-    target: 'skills-cli',
-  });
+  // TODO(paulirish): Refactor this build script to be less convoluted:
+  // 1. Separate cache checking from execution in processGuides.
+  // 2. Use better function names (e.g. prepareGuidesAndEmbeddings, isCacheValid).
+  // 3. Avoid the double-call pattern to processGuides.
 
-  if (skipped && fs.existsSync(modernWebMjs)) {
-    const { skillsCount, skillNames } = processSkills(publishRoot);
-    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
-    return { featuresCount, useCasesCount, skillsCount, skillNames };
-  }
-
-  // Step 2: If we didn't short-circuit, we do a clean, purist build.
-  // Now we can safely wipe publishRoot completely!
+  // Wipe publishRoot completely to ensure a clean build.
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, { recursive: true });
 
-  // Step 3: Because we just wiped publishRoot, we restore the fresh vectors/guides 
-  // from .cache/ into DIST_DIR.
+  // Restore the fresh vectors/guides from .cache/ into DIST_DIR.
   await processGuides({
     outputDir: DIST_DIR,
     target: 'skills-cli',
@@ -126,6 +145,9 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
 
   try {
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
+    fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
+
+
 
     if (version) {
       updateVersionsInDir(publishRoot, version);
@@ -143,7 +165,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
           return basename === "model.json" || basename.startsWith("group1-shard");
         }
       });
-      console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
     }
 
     try {
@@ -186,7 +207,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         }],
       });
       fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
-      console.log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
 
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
@@ -207,8 +227,24 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         metafile: true,
       });
 
+      console.log("Bundling watchdog main.js...");
+      const resultWatchdog = await esbuild.build({
+        entryPoints: [path.join(SERVING_DIR, "skills-cli/telemetry/watchdog/main.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/watchdog/main.js"),
+        loader: { ".node": "file" },
+        metafile: true,
+      });
+
+      const modernWebMjsPath = path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs");
+      const modernWebContent = fs.readFileSync(modernWebMjsPath, "utf8");
+      const updatedModernWebContent = modernWebContent.replace(/^#!.*node.*--experimental-strip-types.*\n/, "#!/usr/bin/env node\n");
+      fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
+
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultModernWeb.metafile],
+        [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 
@@ -225,6 +261,10 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     const { skillsCount, skillNames } = processSkills(publishRoot);
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
+    // Copy the generated README to root README.mwg.md for this repo
+    const rootReadmePath = path.join(rootDir, "README.mwg.md");
+    fs.copyFileSync(path.join(publishRoot, "README.md"), rootReadmePath);
+
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
     return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
@@ -233,7 +273,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     }
   }
 }
-
 
 
 function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
@@ -261,7 +300,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 
     if (pkgJsonPath && pkgJsonPath.includes('node_modules')) {
       const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-      if (pkg.name && pkg.name !== 'guidance') nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
+      if (pkg.name && pkg.name !== 'modern-web-guidance-src') nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
     }
   }
 

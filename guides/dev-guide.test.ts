@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { printTestComparison } from './dev-guide.ts';
-import { parsePassRates } from './guide-gen.ts';
+import { parsePassRates } from './lib/utils.ts';
 
 // CRITICAL: This test ensures that if the output format of dev-guide.ts changes,
 // we will be alerted, because feedback-handler.ts and guide-gen.ts depend on

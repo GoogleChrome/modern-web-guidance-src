@@ -72,6 +72,13 @@
           box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
         }
       }
+
+      @media (prefers-reduced-motion: reduce) {
+        .card {
+          transition: none !important;
+          scale: 1 !important;
+        }
+      }
     </style>
   </head>
   <body>

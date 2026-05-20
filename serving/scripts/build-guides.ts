@@ -10,6 +10,7 @@ export interface StoreUseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount?: number;
   chunkContent?: string;
   vector?: number[];
   distance?: number;
@@ -17,6 +18,7 @@ export interface StoreUseCase {
 import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
 
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
+import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
@@ -28,6 +30,7 @@ interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount?: number;
 }
 
 export interface BuildOptions {
@@ -128,7 +131,10 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   BUILD_GUIDES_DIR = cachePaths.cachedGuides;
 
   // 2. Scan & Hash
-  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  let readyGuides = scanAllGuides().filter(inv => {
+    const excluded = config.monoskill.excludeFromBundling || [];
+    return inv.hasGuide && !excluded.includes(inv.category) && !excluded.includes(inv.name);
+  });
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
 
   // 3. Cache Evaluation
@@ -182,6 +188,7 @@ export interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount: number;
 }
 
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
@@ -249,12 +256,14 @@ async function processSingleGuideFile(
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
+  const tokenCount = await embedder.countTokens(processedMarkdown);
 
   useCases.push({
     id,
     description: data.description,
     category,
     featuresUsed,
+    tokenCount,
   });
 
   const chunks = IS_NO_CHUNKING
@@ -262,7 +271,7 @@ async function processSingleGuideFile(
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
   for (const chunk of chunks) {
-    const embeddingText = `${id} (${category})\n\n${chunk}`;
+    const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({
@@ -270,6 +279,7 @@ async function processSingleGuideFile(
       description: data.description,
       category,
       featuresUsed,
+      tokenCount,
       chunkContent: chunk,
       vector
     });

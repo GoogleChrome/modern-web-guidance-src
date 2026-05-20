@@ -5,13 +5,6 @@ web-feature-ids:
   - blocking-render
   - link-rel-expect
   - cross-document-view-transitions
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/View_Transition_API/Using
-  - https://developer.chrome.com/docs/web-platform/view-transitions/cross-document
-  - https://github.com/WICG/view-transitions/blob/main/document-render-blocking.md
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/link#blocking
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script#blocking
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel#expect
 ---
 
 # Consistent Cross-Document Transitions
@@ -47,6 +40,13 @@ MANDATORY: Both the source and destination pages must include the `@view-transit
 */
 @view-transition {
   navigation: auto;
+}
+
+/* MANDATORY Copy-Paste Safety: Disable cross-document view transitions for users requesting reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
 }
 ```
 
@@ -216,10 +216,11 @@ window.addEventListener('pagereveal', async (event) => {
 - **DO** keep render-blocking scripts small and fast. The browser has a built-in timeout (around 4 seconds), after which the transition is skipped entirely with a `TimeoutError`.
 - **DO NOT** use `<link rel="expect">` to block on elements deep in the page that are not visible in the initial viewport. This delays the transition without visual benefit.
 - **DO NOT** assign the same `view-transition-name` to multiple elements on the same page. Duplicate names cause the entire transition to be skipped.
+- **Assistive Technology Timing Impact**: Using `blocking="render"` delays visual updates and initial paint. While this prevents visual glitches for sighted users, it can cause processing latency or deferred initialization for screen readers and other assistive technologies that depend on rendered accessibility trees. Weigh the visual continuity benefits against the initial read latency for non-visual users, and ensure render-blocking scripts are minimal and extremely optimized.
 
 ## Fallback Strategies
 
-{{ BASELINE_STATUS("cross-document-view-transitions") }}
+{{ FEATURE_FALLBACKS("cross-document-view-transitions") }}
 
 Cross-document view transitions are an excellent candidate for progressive enhancement. In browsers that do not support them, the `@view-transition` rule is ignored and standard same-origin navigations occurs exactly as they would without the feature. Supporting browsers get smooth transitions; all others get standard navigation. Limited browser support is not a reason to avoid adoption.
 

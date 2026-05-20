@@ -6,3 +6,6 @@
 - The `<button>` tag MUST contain a `<selectedcontent>` element to mirror selections and MUST NOT contain legacy `<selectedoption>` element.
 - A progressive enhancement fallback MUST be included that checks for `!CSS.supports("appearance", "base-select")` before logging support or applying standard legacy fallbacks.
 - The `<select>` MUST have a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.
+- Decorative inline SVG icons inside `<option>` elements MUST explicitly define `aria-hidden="true"`.
+- The checked state of an `<option>` MUST be denoted using multiple visual indicators (e.g., modifying both font-weight and background-color) to avoid color-only state communication.
+- Dropdown entry/exit and icon animations MUST be disabled or dampened if `prefers-reduced-motion: reduce` is set.

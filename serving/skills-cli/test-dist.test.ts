@@ -18,10 +18,11 @@ export function assertSearchResults(output: string) {
     const topResult = results[0];
     assert.ok(topResult.id, 'Top result should have an id');
     assert.ok(topResult.description, 'Top result should have a description');
-    assert.ok(topResult.distance, 'Top result should have a distance');
+    assert.ok(topResult.tokenCount !== undefined, 'Top result should have a tokenCount');
+    assert.ok(topResult.similarity, 'Top result should have a similarity');
 }
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
+const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
 const STAGING_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 
@@ -99,7 +100,7 @@ test('README dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
   
   // Verify it contains the new headers and format
-  assert.match(readmeRaw, /#### Full Skill Coverage \(v\d+\.\d+\.\d+\)/, 'README should contain the Skill Coverage header with the version');
+  assert.ok(readmeRaw.includes('#### The full list'), 'README should contain the Skill Coverage header');
   assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
   assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
   assert.ok(readmeRaw.includes('<h3>'), 'README should contain category h3 headings');
@@ -116,9 +117,22 @@ test('modern-web CLI search and retrieve', async () => {
   const searchOut = execSync(`node "${binaryPath}" search "address form"`, { encoding: 'utf8' });
   assertSearchResults(searchOut);
 
+  // 1b. Validate search with --skill-version after search query
+  const skillVersionPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/skill-version.txt');
+  const skillVersion = (await fs.readFile(skillVersionPath, 'utf8')).trim();
+  const searchOutWithVersion = execSync(`node "${binaryPath}" search "address form" --skill-version "${skillVersion}"`, { encoding: 'utf8' });
+  assertSearchResults(searchOutWithVersion);
+
   // 2. Validate retrieve
   const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
+
+  // 3. Validate list
+  const listOut = execSync(`node "${binaryPath}" list`, { encoding: 'utf8' });
+  assert.ok(listOut.includes('accessible-error-announcement'), 'List output should contain known guide IDs');
+  const catalog = JSON.parse(listOut);
+  assert.ok(Array.isArray(catalog), 'List output should be a JSON array');
+  assert.ok(catalog.length > 100, 'Catalog should contain all documented guidelines');
 });
 
 test('modern-web CLI version flags', async () => {

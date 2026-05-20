@@ -6,3 +6,6 @@
 - The implementation notes that `calc-size()` acts as an automatic opt-in for interpolation, even if `interpolate-size: allow-keywords` is missing.
 - The implementation provides a clear interaction (e.g., a checkbox, button, or hover) to trigger the size change.
 - The implementation includes a dismissible element (e.g., an alert) that starts at an intrinsic size (`auto`) and collapses to `0` when dismissed.
+- Elements collapsed to zero dimensions MUST be programmatically hidden from assistive technologies (e.g., setting `hidden = true` or `aria-hidden="true"`) upon transition completion.
+- Buttons controlling collapsible or expandable panels MUST dynamically synchronize their `aria-expanded` attribute.
+- Sizing transitions MUST be disabled when `prefers-reduced-motion: reduce` is active.
