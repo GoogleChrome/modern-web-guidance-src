@@ -4,5 +4,8 @@
   "version": "0.0.26",
   "author": {
     "name": "Google Chrome"
-  }
+  },
+  "logo": "../.github/img/modern-web-guidance.svg",
+  "homepage": "https://developer.chrome.com/docs/modern-web-guidance",
+  "repository": "https://github.com/GoogleChrome/modern-web-guidance/"
 }
