@@ -97,7 +97,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 
 > [!TIP]
 > Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
-> The NPM package is self-contained, with no extra dependencies to ensure both low-latency and supply-chain security.
+> The npm package is self-contained, with no extra dependencies to ensure both low-latency and supply-chain security.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Alternative Installation Methods
 
