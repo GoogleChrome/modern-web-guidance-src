@@ -20,7 +20,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for how we work on the project and orie
 npx modern-web-guidance@latest install
 ```
 
-This command runs an interactive wizard to place the SKILL.md appropriately. See [Alternative Installation Methods](#alternative-installation-methods) below.
+This command runs an interactive wizard to place the SKILL.md appropriately. See [Alternative Installation Methods](#-alternative-installation-methods) below.
 
 #### Try it out (without installing)
 
