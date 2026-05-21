@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drilldown - Negative Demo</title>
+  <style>
+    @layer base {
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        font-family: system-ui, sans-serif;
+      }
+
+      header {
+        padding: 1.25rem 1.5rem;
+        font-size: 1.3em;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      h2 {
+        font-weight: normal;
+        padding: 1.5rem;
+        font-size: 1.25rem;
+      }
+
+      .icon {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 0;
+        width: 1.5rem;
+        height: 1.5rem;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+      }
+
+      .icon-back {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>');
+      }
+
+      .item {
+        display: block;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+
+    @layer demo {
+      .Stack {
+        height: 100dvh;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 100%;
+        grid-template-rows: 100%;
+        /* Lacks scroll-snap-type and overflow-x: auto to fail the layout test */
+        overflow-x: hidden; 
+      }
+
+      .Stack-view {
+        /* Lacks scroll-snap-align and scroll-snap-stop */
+      }
+
+      .Stack-viewContent {
+        width: 100%;
+        height: 100%;
+        background-color: #fff;
+        overflow-y: auto;
+      }
+
+      @supports (animation-timeline: view()) {
+        .Stack-viewContent {
+          animation: parallax linear both;
+          animation-timeline: view(inline);
+          animation-range: exit 0% exit 100%;
+        }
+
+        .Stack-view:not(:first-child) .Stack-viewContent {
+          animation: parallax linear both;
+          animation-timeline: view(inline);
+          animation-range: exit 0% exit 100%;
+        }
+
+        @keyframes parallax {
+          to {
+            /* Uses incorrect 25% translation value to fail regression check */
+            transform: translateX(25%);
+            filter: brightness(0.8);
+          }
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="Stack"></div>
+
+  <script>
+    function getCurrentUrlPath() {
+      return location.hash.slice(1) || '/';
+    }
+
+    function getUrlPathFromLink(link) {
+      return link.hash.slice(1) || '/';
+    }
+
+    function getDemoUrl(urlPath) {
+      return urlPath === '/' ? location.pathname + location.search : `#${urlPath}`;
+    }
+
+    function renderDemoRoot() {
+      return `
+        <header>Feed</header>
+        <main>${renderDemoLinks(1, 10)}</main>
+      `;
+    }
+
+    function renderDemoDrillDown(urlPath) {
+      const match = urlPath.match(/^\/view\/(\d+)$/);
+      if (!match) return null;
+      const id = Number(match[1]);
+      return `
+        <header>
+          <button class="icon icon-back" aria-label="Back"></button>
+          Post
+        </header>
+        <main>
+          <h2>Post #${id}</h2>
+        </main>
+      `;
+    }
+
+    function renderDemoLinks(from, to) {
+      let html = '';
+      for (let id = from; id <= to; id++) {
+        html += `<a class="item" href="#/view/${id}">Link to post #${id}</a>`;
+      }
+      return html;
+    }
+
+    const stack = document.querySelector('.Stack');
+    let rootView = null;
+    const entriesByDepth = new Map();
+    let currentDepth = 0;
+
+    function resolveUrl(urlPath) {
+      return renderDemoDrillDown(urlPath);
+    }
+
+    function createRootView() {
+      return makeView(renderDemoRoot());
+    }
+
+    function createDrillDownView(routeData) {
+      return makeView(routeData);
+    }
+
+    function makeView(innerHtml) {
+      const view = document.createElement('div');
+      view.className = 'Stack-view';
+      view.innerHTML = `<div class="Stack-viewContent">${innerHtml}</div>`;
+      return view;
+    }
+
+    function drillDown(urlPath) {
+      const routeData = resolveUrl(urlPath);
+      if (!routeData) return;
+
+      const newDepth = currentDepth + 1;
+      currentDepth = newDepth;
+
+      const newView = createDrillDownView(routeData);
+      stack.appendChild(newView);
+      entriesByDepth.set(newDepth, {urlPath, view: newView});
+    }
+
+    function onActiveViewChanged(currentView) {
+      // Intentionally omits setting 'inert' attribute on background views
+      // to fail the accessibility test
+      let seenCurrent = false;
+      for (const view of [...stack.children]) {
+        if (seenCurrent) {
+          for (const e of entriesByDepth.values()) if (e.view === view) e.view = null;
+          view.remove();
+        } else {
+          // view.toggleAttribute('inert', view !== currentView); // Left out to fail the test!
+          if (view === currentView) seenCurrent = true;
+        }
+      }
+    }
+
+    stack.addEventListener('click', (e) => {
+      if (e.target.closest('.icon-back')) {
+        history.back();
+        return;
+      }
+
+      const link = e.target.closest('a');
+      if (!link) return;
+      
+      const urlPath = getUrlPathFromLink(link);
+      e.preventDefault();
+      drillDown(urlPath);
+      
+      const currentView = entriesByDepth.get(currentDepth)?.view;
+      if (currentView) {
+        onActiveViewChanged(currentView);
+      }
+    });
+
+    const initialUrlPath = getCurrentUrlPath();
+    const initialRouteData = resolveUrl(initialUrlPath);
+
+    let initialView;
+    if (initialRouteData) {
+      initialView = createDrillDownView(initialRouteData);
+    } else {
+      rootView = createRootView();
+      initialView = rootView;
+    }
+    stack.appendChild(initialView);
+    entriesByDepth.set(0, {urlPath: initialUrlPath, view: initialView});
+  </script>
+</body>
+</html>
