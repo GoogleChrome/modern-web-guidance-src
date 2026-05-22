@@ -52,6 +52,27 @@ Found a bug? Have a suggestion? Email [email] or open an issue at [URL].
 Version [X.Y.Z] — [Brief changelog for latest version]
 ```
 
+### The Implementation-Detail Rule
+
+**Never describe how the extension is built.** Potential users are not developers evaluating your stack — they want to know what the extension does for them.
+
+Strip all of the following from every piece of copy:
+
+- Web API names: `MutationObserver`, `IntersectionObserver`, `Service Worker`, `Shadow DOM`, `IndexedDB`, `WebSockets`
+- Chrome API names: `chrome.storage`, `declarativeNetRequest`, `chrome.scripting`, `offscreen document`
+- Framework/library names: React, custom elements, Lit, Webpack, TypeScript
+- Architecture descriptions: "background processing", "event-driven", "declarative"
+
+**Transform every implementation sentence into a user benefit:**
+
+| Before (implementation) | After (user benefit) |
+|-------------------------|----------------------|
+| "Uses a MutationObserver to detect page changes" | "Automatically detects new content as you browse" |
+| "Built with custom elements and Shadow DOM" | "Works seamlessly without affecting page styles" |
+| "Powered by a service worker" | "Runs quietly in the background" |
+| "Your settings are synced via chrome.storage.sync" | "Your settings sync across all your devices" |
+| "Implements declarativeNetRequest for filtering" | "Blocks ads and trackers without reading your page content" |
+
 ### Why This Structure Works
 
 1. **One-sentence opener** — The reviewer and users both scan the first line. Make it count.
