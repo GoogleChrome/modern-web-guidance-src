@@ -10,8 +10,8 @@ Inject web platform expertise, best practices, and modern API patterns directly 
 
 *Supported by the Google Chrome team, the Microsoft Edge team, and the web development community.*
 
-[!NOTE:] 
-This is a **preview release** of Modern Web Guidance. We're actively adding new content and we [welcome contributions or feedback on GitHub](https://github.com/GoogleChrome/modern-web-guidance-src).
+> [!NOTE]
+> This is a **preview release** of Modern Web Guidance. We're actively adding new content and we [welcome contributions or feedback on GitHub](https://github.com/GoogleChrome/modern-web-guidance-src).
 
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 

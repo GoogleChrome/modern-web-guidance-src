@@ -4,8 +4,8 @@ A unified repository for authoring, calibrating, and evaluating modern web devel
 
 The published distribution of this guidance is compiled and released to the [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) repository as agent skills including the primary `modern-web-guidance` skill (which utilizes a bundled CLI distribution) alongside other standalone skills.
 
-[!NOTE:] 
-This is a **preview release** of Modern Web Guidance. We're actively adding new content and we [welcome contributions or feedback on GitHub](https://github.com/GoogleChrome/modern-web-guidance-src).
+> [!NOTE]
+> This is a **preview release** of Modern Web Guidance. We're actively adding new content and we [welcome contributions or feedback on GitHub](https://github.com/GoogleChrome/modern-web-guidance-src).
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for how we work on the project and orientation of the codebase. We're open to contributions to guidance, eval cases, eval infra and more. :) 
 
