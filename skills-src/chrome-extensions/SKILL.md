@@ -198,7 +198,7 @@ await chrome.action.setBadgeText({ text: '5' });
 
 `activeTab` grants temporary access to the current tab ONLY when triggered by:
 - Clicking the extension action icon
-- A context menu item
+- A context menu item (including the `"tab"` context)
 - A keyboard shortcut from the `commands` API
 - Accepting an omnibox suggestion
 
@@ -510,3 +510,4 @@ Verify EVERY item before delivering:
 - [ ] Error handling on all async operations
 - [ ] `host_permissions` scoped to specific domains (not `<all_urls>` unless needed)
 - [ ] `return true` in `onMessage` listeners with async responses
+- [ ] Any use of `"tab"` in `chrome.contextMenus` `contexts` requires Chrome M150+
