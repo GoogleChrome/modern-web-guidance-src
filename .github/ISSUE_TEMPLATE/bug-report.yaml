@@ -1,0 +1,45 @@
+name: Bug report
+description: Report an error or issue with existing guidance or web platform feature details.
+title: "[Bug]: <Short description>"
+labels: ["bug"]
+body:
+  - type: input
+    id: web-feature-id
+    attributes:
+      label: web-feature-id
+      description: If applicable, provide the web-feature ID from https://webstatus.dev/ that this bug relates to.
+      placeholder: e.g. scroll-driven-animations
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: A clear and concise description of what the bug is (e.g., incorrect code snippet, outdated information, typo).
+      placeholder: e.g. The provided code snippet for the animation-timeline guidance results in a syntax error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to reproduce
+      description: If applicable, please explain the steps required to duplicate the issue. 
+      placeholder: |
+        1. Go to '...'
+        2. Copy the code snippet for '...'
+        3. Run it in browser/agent
+        4. See error
+
+  - type: textarea
+    id: agent-behavior
+    attributes:
+      label: Coding agent behavior
+      description: If this bug relates to a coding agent hallucination or failure based on our guidance, describe the prompt used and the incorrect output generated.
+      placeholder: When this prompt was entered, the agent generated deprecated syntax...
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment details
+      description: Specific coding agent/IDE version where you encountered this issue.
+      placeholder: e.g. "GitHub Copilot v1.156"
