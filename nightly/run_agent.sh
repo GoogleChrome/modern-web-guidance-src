@@ -4,23 +4,25 @@ set -euo pipefail
 usage() {
   cat << EOF
 Usage: $0 [OPTIONS]
-Runs the nightly evaluation for the specified agent.
+Runs the evaluation for the specified agent.
 
 Options:
   --help        Show this help message and exit.
   --agent       The agent to run (required).
                 Valid agents: jetski_cli, claude_code, codex_cli
+  --name        Specify the prefix name of this periodic run (default: "nightly").
   --workers     The number of concurrent workers to use (optional).
 
 Examples:
   $0 --agent jetski_cli
-  $0 --agent jetski_cli --workers 10
+  $0 --agent jetski_cli --name "weekly" --workers 10
 EOF
 }
 
 # Parse flags
 AGENT=""
 WORKERS=""
+PREFIX="nightly"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help)
@@ -30,6 +32,11 @@ while [[ $# -gt 0 ]]; do
     --agent)
       if [[ -z "${2:-}" ]]; then echo "Error: --agent requires an argument"; exit 1; fi
       AGENT="$2"
+      shift 2
+      ;;
+    --prefix)
+      if [[ -z "${2:-}" ]]; then echo "Error: --prefix requires an argument"; exit 1; fi
+      PREFIX="$2"
       shift 2
       ;;
     --workers)
@@ -64,8 +71,9 @@ INITIAL_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 
 # Setup variables
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-SUITE_ID="nightly-${TIMESTAMP}-${AGENT}-${USER_LDAP}"
+SUITE_ID="${PREFIX}-${TIMESTAMP}-${AGENT}-${USER_LDAP}"
 DASHBOARD_URL="http://go/guidance-evals/dashboard.html?testId=${SUITE_ID}&source=remote"
+DISPLAY_NAME="$(echo "${PREFIX}" | sed 's/./\U&/')"
 EVAL_EXIT_CODE=0
 FAIL_REASON=""
 UPLOAD_EXIT_CODE=0
@@ -86,7 +94,7 @@ cleanup() {
   if [ "$CURRENT_BRANCH" = "$SUITE_ID" ]; then
     echo "Running cleanup: ensuring all changes are committed to leave a clean working directory."
     git add -A
-    git commit -m "chore: final state of nightly workflow ${SUITE_ID}" || true
+    git commit -m "chore: final state of ${PREFIX} workflow ${SUITE_ID}" || true
   fi
 
   if [ -n "$INITIAL_BRANCH" ] && [ "$INITIAL_BRANCH" != "HEAD" ]; then
@@ -95,14 +103,35 @@ cleanup() {
     git checkout "$INITIAL_COMMIT" || true
   fi
 
+  # Always delete the isolation branch if it exists to ensure a clean repository status
+  if [ -n "${SUITE_ID:-}" ] && git show-ref --verify --quiet "refs/heads/${SUITE_ID}"; then
+    echo "Deleting isolation branch ${SUITE_ID} to ensure a clean repository status..."
+    git branch -D "${SUITE_ID}" || true
+  fi
+
+  # Parse evaluation data to get details
+  local has_generation_errors=false
+  local generation_errors_count=0
+  local has_data=true
+
+  if [ -f "${RESULTS_JSON:-}" ]; then
+    has_data=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" has-data)
+    generation_errors_count=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" errors-count)
+    if [ "$generation_errors_count" -gt 0 ]; then
+      has_generation_errors=true
+    fi
+  fi
+
   local body
   if [ "$exit_code" -eq 0 ]; then
-    echo "Run completed successfully. Deleting isolation branch ${SUITE_ID}..."
-    git branch -D "$SUITE_ID" || true
-
-    body="✅ Nightly run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}\n\nResults have been uploaded to the dashboard: ${DASHBOARD_URL}"
+    body="✅ ${DISPLAY_NAME} run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}\n\nResults have been uploaded to the dashboard: ${DASHBOARD_URL}"
+  elif [ "$exit_code" -eq 2 ] || [ "$has_data" = "false" ]; then
+    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} completed but generated NO DATA. Upload skipped.\nSuite ID: ${SUITE_ID}\n"
+    if [ -n "$FAIL_REASON" ]; then
+      body="${body}\nReason: ${FAIL_REASON}"
+    fi
   else
-    body="❌ Nightly run for agent ${AGENT} failed unexpectedly with exit code ${exit_code}. Last stage: ${STAGE}.\nSuite ID: ${SUITE_ID}\n"
+    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} failed unexpectedly with exit code ${exit_code}. Last stage: ${STAGE}.\nSuite ID: ${SUITE_ID}\n"
     if [ "$EVAL_EXIT_CODE" -ne 0 ]; then
       body="${body}\n\nEvaluation step (gd eval) failed with exit code ${EVAL_EXIT_CODE}."
     fi
@@ -111,12 +140,25 @@ cleanup() {
     fi
   fi
 
-  if [ "$EVAL_RAN" = "true" ]; then
+  # Append generation errors ONLY if results were NOT uploaded successfully (exit_code != 0)
+  if [ "$exit_code" -ne 0 ] && [ -f "${RESULTS_JSON:-}" ] && [ "$has_generation_errors" = "true" ]; then
+    local errors_text
+    errors_text=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" text)
+    body="${body}\n\n${errors_text}"
+  fi
+
+  if [ "$EVAL_RAN" = "true" ] && [ "${NIGHTLY_GUIDANCE_RUN:-0}" != "1" ]; then
     body="${body}\n\nLocal results path: ${REPO_ROOT}/harness/results/${SUITE_ID}"
   fi
 
   if [ "${NIGHTLY_GUIDANCE_RUN:-0}" = "1" ]; then
-    printf "%b\n\n----------------------------------------\n\n" "$body" >> "${SUMMARY_FILE:-$SCRIPT_DIR/nightly_summary.txt}"
+    printf "%b\n\n----------------------------------------\n\n" "$body" >> "${SUMMARY_FILE:-$SCRIPT_DIR/${PREFIX}_summary.txt}"
+    
+    # Delete the local results to save disk space in nightly runs
+    if [ -d "${REPO_ROOT}/harness/results/${SUITE_ID}" ]; then
+      echo "Deleting ${PREFIX} local results directory ${SUITE_ID} to save disk space..."
+      rm -rf "${REPO_ROOT}/harness/results/${SUITE_ID}"
+    fi
   else
     printf "\n=== STANDALONE RUN SUMMARY ===\n%b\n==============================\n\n" "$body"
   fi
@@ -180,6 +222,20 @@ if [ "$EVAL_EXIT_CODE" -ne 0 ] && [ ! -f "$RESULTS_JSON" ]; then
   echo "Evaluation crashed catastrophically (exit code ${EVAL_EXIT_CODE}). Skipping upload step."
   FAIL_REASON="Evaluation crashed (exit code ${EVAL_EXIT_CODE}). Upload skipped."
   exit $EVAL_EXIT_CODE
+fi
+
+# Check if evals.json was generated and verify presence of data
+if [ -f "$RESULTS_JSON" ]; then
+  HAS_DATA=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" has-data)
+  if [ "$HAS_DATA" = "false" ]; then
+    echo "⚠️ Warning: No evaluation data was generated (0 tasks run). Skipping upload."
+    FAIL_REASON="No evaluation data was generated (0 tasks run). Upload skipped."
+    exit 2
+  fi
+else
+  echo "❌ Error: evals.json was not generated."
+  FAIL_REASON="evals.json was not generated. Upload skipped."
+  exit 1
 fi
 
 STAGE="Upload Results"

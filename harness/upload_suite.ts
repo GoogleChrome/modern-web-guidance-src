@@ -90,6 +90,19 @@ async function main() {
     process.exit(1);
   }
 
+  try {
+    const evalsContent = fs.readFileSync(evalsJsonPath, 'utf8');
+    const evalsData = JSON.parse(evalsContent);
+    const results = evalsData.results || {};
+    if (Object.keys(results).length === 0) {
+      console.warn(cRed(`⚠️ Warning: No evaluation data found in evals.json (0 tasks were run). Sync skipped.`));
+      process.exit(0);
+    }
+  } catch (e: any) {
+    console.error(cRed(`❌ Failed to parse evals.json: ${e.message}`));
+    process.exit(1);
+  }
+
   console.log(cBold(cCyan(`Starting upload for suite: ${suiteName}${summaryOnly ? ' (Summary Only)' : ''}`)));
 
   const storage = new Storage({ projectId: PROJECT_ID });
