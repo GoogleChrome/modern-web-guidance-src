@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 
 interface ScenarioCheck {
   passed: boolean;
@@ -20,13 +19,6 @@ interface GenerationError {
   testName: string;
   runNumber: number;
   message: string;
-}
-
-interface AnalysisResult {
-  hasData: boolean;
-  isCatastrophicFailure?: boolean;
-  error?: string;
-  generationErrors?: GenerationError[];
 }
 
 function main(): void {
