@@ -113,11 +113,34 @@ function main(): void {
       console.log(String(generationErrors.length));
     } else if (outputFormat === 'text') {
       if (generationErrors.length > 0) {
-        let text = `❌ Generation Errors (Total: ${generationErrors.length}):\n`;
-        generationErrors.forEach((err, idx) => {
-          text += `  ${idx + 1}. Run ${err.runNumber} - ${err.testName}:\n     👉 ${err.message}\n`;
-        });
-        console.log(text);
+        let text = `❌ Generation Errors (Total: ${generationErrors.length}):\n\n`;
+        
+        // Group errors by their message
+        const groups: Record<string, GenerationError[]> = {};
+        for (const err of generationErrors) {
+          if (!groups[err.message]) {
+            groups[err.message] = [];
+          }
+          groups[err.message].push(err);
+        }
+
+        // Output each error group cleanly
+        for (const [message, errList] of Object.entries(groups)) {
+          text += `  ● "${message}" (occurred on ${errList.length} tasks):\n`;
+          
+          const maxVisible = 10;
+          const visibleList = errList.slice(0, maxVisible);
+          visibleList.forEach((err, idx) => {
+            text += `    ${idx + 1}. Run ${err.runNumber} - ${err.testName}\n`;
+          });
+
+          if (errList.length > maxVisible) {
+            text += `    ... and ${errList.length - maxVisible} more tasks experienced this error.\n`;
+          }
+          text += `\n`;
+        }
+        
+        console.log(text.trimEnd());
       } else {
         console.log('✅ No generation errors detected.');
       }
