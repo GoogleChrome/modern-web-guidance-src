@@ -9,12 +9,12 @@ Runs the nightly evaluation for the specified agent.
 Options:
   --help        Show this help message and exit.
   --agent       The agent to run (required).
-                Valid agents: jetski_cli, claude_code, codex_cli
+                Valid agents: antigravity_cli, jetski_cli, claude_code, codex_cli
   --workers     The number of concurrent workers to use (optional).
 
 Examples:
-  $0 --agent jetski_cli
-  $0 --agent jetski_cli --workers 10
+  $0 --agent antigravity_cli
+  $0 --agent antigravity_cli --workers 10
 EOF
 }
 
@@ -144,6 +144,7 @@ pnpm setup:playwright
 STAGE="Configuration Setup"
 # Update Configuration
 case "$AGENT" in
+  "antigravity_cli") AGENT_ENUM="ANTIGRAVITY_CLI" ;;
   "jetski_cli") AGENT_ENUM="JETSKI_CLI" ;;
   "claude_code") AGENT_ENUM="CLAUDE_CODE" ;;
   "codex_cli")  AGENT_ENUM="CODEX_CLI" ;;

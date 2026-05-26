@@ -9,19 +9,19 @@ Run the guidance nightly evaluation sequence.
 Options:
   --help        Show this help message and exit.
   --agents      Specify a space-separated list of agents to run
-                (default: "jetski_cli claude_code codex_cli").
-                Valid agents: jetski_cli, claude_code, codex_cli
+                (default: "antigravity_cli jetski_cli claude_code codex_cli").
+                Valid agents: antigravity_cli, jetski_cli, claude_code, codex_cli
   --workers     The number of concurrent workers to use (optional).
 
 Examples:
   $0
-  $0 --agents "jetski_cli codex_cli"
-  $0 --agents "jetski_cli" --workers 10
+  $0 --agents "antigravity_cli jetski_cli codex_cli"
+  $0 --agents "antigravity_cli" --workers 10
 EOF
 }
 
 # Default values
-AGENTS_TO_RUN="jetski_cli claude_code codex_cli"
+AGENTS_TO_RUN="antigravity_cli jetski_cli claude_code codex_cli"
 WORKERS="20"
 
 # Parse flags

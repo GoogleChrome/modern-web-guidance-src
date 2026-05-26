@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { resultsDir } from '../../lib/paths.ts';
 
-const ALLOWED_AGENTS = ['claudecode', 'geminicli', 'codex', 'claude', 'codexcli', 'antigravity'];
+const ALLOWED_AGENTS = ['claudecode', 'geminicli', 'codex', 'claude', 'codexcli', 'antigravitycli'];
 
 function isAgentAllowed(agent: string): boolean {
   const normalized = agent.toLowerCase().replace(/[-_]/g, '');
@@ -52,9 +52,9 @@ function collectResults() {
       const data = JSON.parse(content);
 
       let agent = data.agent || 'unknown';
-      if (agent.startsWith('jetski')) {
-        agent = 'antigravity';
-        item.name = item.name.replace('jetski_cli', 'agy');
+      if (agent.startsWith('jetski') || agent === 'antigravity' || agent === 'antigravity_cli') {
+        agent = 'antigravity_cli';
+        item.name = item.name.replace('jetski_cli', 'antigravity_cli');
       }
 
       if (!isAgentAllowed(agent)) {

@@ -87,7 +87,7 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
   }));
 
   // Log the result
-  logToolResult("search_use_cases", limitedResults.map(r => ({ id: r.id, similarity: r.similarity })));
+  logToolResult("search_use_cases", limitedResults);
 
   return limitedResults;
 }

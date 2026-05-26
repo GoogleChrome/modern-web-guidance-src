@@ -18,7 +18,8 @@ export const Agents = {
   JETSKI_CLI: 'jetski_cli',
   GEMINI_CLI: 'gemini_cli',
   CLAUDE_CODE: 'claude_code',
-  CODEX_CLI: 'codex_cli'
+  CODEX_CLI: 'codex_cli',
+  ANTIGRAVITY_CLI: 'antigravity_cli'
 } as const;
 
 export const Serving = {
@@ -45,6 +46,10 @@ export const environmentConfig: EnvironmentConfig = {
   // Gemini CLI Configuration
   geminiCliBin: process.env.GEMINI_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/gemini'),
   geminiDir: process.env.GEMINI_DIR || path.join(os.homedir(), '.gemini'),
+
+  // Antigravity Configuration
+  antigravityCliBin: process.env.ANTIGRAVITY_CLI_BIN || path.join(os.homedir(), '.local/bin/agy'),
+  antigravityDir: process.env.ANTIGRAVITY_DIR || path.join(os.homedir(), '.antigravitycli'),
 
   // Claude Code Configuration (through GCP Vertex AI)
   claudeCodeCliBin: process.env.CLAUDE_CODE_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/claude'),
@@ -105,6 +110,8 @@ export interface EnvironmentConfig {
   jetskiProfileDir: string;
   geminiCliBin: string;
   geminiDir: string;
+  antigravityCliBin: string;
+  antigravityDir: string;
   claudeCodeCliBin: string;
   codexCliBin: string;
   gcpCredentials: string;
