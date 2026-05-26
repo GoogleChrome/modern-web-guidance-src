@@ -203,7 +203,7 @@ case "$AGENT" in
   *) echo "Unknown agent: $AGENT"; exit 1 ;;
 esac
 
-TEMP_CONFIG_FILE="nightly_config_${SUITE_ID}.ts"
+TEMP_CONFIG_FILE="config_${SUITE_ID}.ts"
 cp config.ts.example "$TEMP_CONFIG_FILE"
 
 # Append direct object mutations to override the defaults safely
