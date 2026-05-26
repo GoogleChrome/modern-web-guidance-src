@@ -10,12 +10,13 @@ Options:
   --help        Show this help message and exit.
   --agent       The agent to run (required).
                 Valid agents: jetski_cli, claude_code, codex_cli
-  --name        Specify the prefix name of this periodic run (default: "nightly").
+  --prefix      Specify the prefix name of this periodic run (default: "nightly").
+  --local       Run using local committed repository HEAD instead of origin/main (optional).
   --workers     The number of concurrent workers to use (optional).
 
 Examples:
   $0 --agent jetski_cli
-  $0 --agent jetski_cli --name "weekly" --workers 10
+  $0 --agent jetski_cli --prefix "weekly" --local --workers 10
 EOF
 }
 
@@ -23,6 +24,7 @@ EOF
 AGENT=""
 WORKERS=""
 PREFIX="nightly"
+RUN_LOCAL="false"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help)
@@ -38,6 +40,10 @@ while [[ $# -gt 0 ]]; do
       if [[ -z "${2:-}" ]]; then echo "Error: --prefix requires an argument"; exit 1; fi
       PREFIX="$2"
       shift 2
+      ;;
+    --local)
+      RUN_LOCAL="true"
+      shift 1
       ;;
     --workers)
       if ! [[ "${2:-}" =~ ^[0-9]+$ ]]; then echo "Error: --workers requires a numeric argument"; exit 1; fi
@@ -175,8 +181,13 @@ fi
 
 STAGE="Branch Isolation"
 # 3. Branch Isolation (Bypass Local main)
-git fetch origin
-git checkout -B "$SUITE_ID" origin/main
+if [ "$RUN_LOCAL" = "true" ]; then
+  echo "Isolating from local branch commit ${INITIAL_COMMIT}..."
+  git checkout -B "$SUITE_ID" "$INITIAL_COMMIT"
+else
+  git fetch origin
+  git checkout -B "$SUITE_ID" origin/main
+fi
 
 STAGE="Setup Dependencies"
 # Install dependencies and setup Playwright

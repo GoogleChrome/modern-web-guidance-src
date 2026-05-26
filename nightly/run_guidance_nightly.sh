@@ -10,6 +10,8 @@ Options:
   --help        Show this help message and exit.
   --prefix      Specify the prefix name of this periodic run (default: "nightly").
                 e.g. "weekly", "nightly", "daily".
+  --local       Run using local committed repository HEAD instead of origin/main (optional).
+                Highly useful for testing orchestration script updates locally.
   --agents      Specify a space-separated list of agents to run
                 (default: "jetski_cli claude_code codex_cli").
                 Valid agents: jetski_cli, claude_code, codex_cli
@@ -18,7 +20,7 @@ Options:
 Examples:
   $0
   $0 --prefix "weekly"
-  $0 --agents "jetski_cli codex_cli"
+  $0 --prefix "weekly" --local
   $0 --agents "jetski_cli" --workers 10
 EOF
 }
@@ -27,6 +29,7 @@ EOF
 PREFIX="nightly"
 AGENTS_TO_RUN="jetski_cli claude_code codex_cli"
 WORKERS="20"
+RUN_LOCAL="false"
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -39,6 +42,10 @@ while [[ $# -gt 0 ]]; do
       if [[ -z "${2:-}" ]]; then echo "Error: --prefix requires an argument"; exit 1; fi
       PREFIX="$2"
       shift 2
+      ;;
+    --local)
+      RUN_LOCAL="true"
+      shift 1
       ;;
     --agents)
       if [[ -z "${2:-}" ]]; then echo "Error: --agents requires an argument"; exit 1; fi
@@ -118,6 +125,9 @@ run_agent() {
   local cmd_args=("--agent" "$agent" "--prefix" "$PREFIX")
   if [ -n "$WORKERS" ]; then
     cmd_args+=("--workers" "$WORKERS")
+  fi
+  if [ "$RUN_LOCAL" = "true" ]; then
+    cmd_args+=("--local")
   fi
 
   "$SCRIPT_DIR/run_agent.sh" "${cmd_args[@]}" || { 
