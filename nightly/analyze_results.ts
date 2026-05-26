@@ -24,6 +24,7 @@ interface GenerationError {
 
 interface AnalysisResult {
   hasData: boolean;
+  isCatastrophicFailure?: boolean;
   error?: string;
   generationErrors?: GenerationError[];
 }
@@ -31,7 +32,7 @@ interface AnalysisResult {
 function main(): void {
   const args = process.argv.slice(2);
   const evalsJsonPath = args[0];
-  const outputFormat = args[1] || 'json'; // 'json', 'text', 'has-data', 'errors-count'
+  const outputFormat = args[1] || 'json'; // 'json', 'text', 'has-data', 'errors-count', 'is-catastrophic-failure'
 
   if (!evalsJsonPath) {
     console.error('Usage: node --experimental-strip-types analyze_results.ts <path-to-evals.json> [format]');
@@ -41,12 +42,14 @@ function main(): void {
   if (!fs.existsSync(evalsJsonPath)) {
     if (outputFormat === 'has-data') {
       console.log('false');
+    } else if (outputFormat === 'is-catastrophic-failure') {
+      console.log('false');
     } else if (outputFormat === 'errors-count') {
       console.log('0');
     } else if (outputFormat === 'text') {
       console.log('❌ Error: evals.json does not exist.');
     } else {
-      console.log(JSON.stringify({ hasData: false, error: 'evals.json does not exist', generationErrors: [] }));
+      console.log(JSON.stringify({ hasData: false, isCatastrophicFailure: false, error: 'evals.json does not exist', generationErrors: [] }));
     }
     process.exit(0);
   }
@@ -61,26 +64,31 @@ function main(): void {
     if (testNames.length === 0) {
       if (outputFormat === 'has-data') {
         console.log('false');
+      } else if (outputFormat === 'is-catastrophic-failure') {
+        console.log('false');
       } else if (outputFormat === 'errors-count') {
         console.log('0');
       } else if (outputFormat === 'text') {
         console.log('⚠️ No evaluation data was generated (0 tasks were run).');
       } else {
-        console.log(JSON.stringify({ hasData: false, error: 'No tasks were run', generationErrors: [] }));
+        console.log(JSON.stringify({ hasData: false, isCatastrophicFailure: false, error: 'No tasks were run', generationErrors: [] }));
       }
       process.exit(0);
     }
 
     const generationErrors: GenerationError[] = [];
     let totalRunsCount = 0;
+    let earlyFailuresCount = 0;
 
     for (const testName of testNames) {
       const runs = results[testName] || [];
       for (const run of runs) {
         totalRunsCount++;
         const scenarioChecks = run.results || [];
+        let runHasEarlyFailure = false;
         for (const check of scenarioChecks) {
           if (check.isEarlyFailure) {
+            runHasEarlyFailure = true;
             generationErrors.push({
               testName,
               runNumber: run.runNumber,
@@ -88,13 +96,19 @@ function main(): void {
             });
           }
         }
+        if (runHasEarlyFailure) {
+          earlyFailuresCount++;
+        }
       }
     }
 
     const hasData = totalRunsCount > 0;
+    const isCatastrophicFailure = totalRunsCount > 0 && earlyFailuresCount === totalRunsCount;
 
     if (outputFormat === 'has-data') {
       console.log(hasData ? 'true' : 'false');
+    } else if (outputFormat === 'is-catastrophic-failure') {
+      console.log(isCatastrophicFailure ? 'true' : 'false');
     } else if (outputFormat === 'errors-count') {
       console.log(String(generationErrors.length));
     } else if (outputFormat === 'text') {
@@ -108,18 +122,20 @@ function main(): void {
         console.log('✅ No generation errors detected.');
       }
     } else {
-      console.log(JSON.stringify({ hasData, generationErrors }, null, 2));
+      console.log(JSON.stringify({ hasData, isCatastrophicFailure, generationErrors }, null, 2));
     }
 
   } catch (err: any) {
     if (outputFormat === 'has-data') {
+      console.log('false');
+    } else if (outputFormat === 'is-catastrophic-failure') {
       console.log('false');
     } else if (outputFormat === 'errors-count') {
       console.log('0');
     } else if (outputFormat === 'text') {
       console.log(`❌ Error processing results: ${err.message}`);
     } else {
-      console.log(JSON.stringify({ hasData: false, error: `Failed to parse results: ${err.message}`, generationErrors: [] }));
+      console.log(JSON.stringify({ hasData: false, isCatastrophicFailure: false, error: `Failed to parse results: ${err.message}`, generationErrors: [] }));
     }
   }
 }

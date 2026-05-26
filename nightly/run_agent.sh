@@ -131,6 +131,11 @@ cleanup() {
   local body
   if [ "$exit_code" -eq 0 ]; then
     body="✅ ${DISPLAY_NAME} run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}\n\nResults have been uploaded to the dashboard: ${DASHBOARD_URL}"
+  elif [ "$exit_code" -eq 3 ]; then
+    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} FAILED due to CATASTROPHIC GENERATION ERRORS. Upload skipped.\nSuite ID: ${SUITE_ID}\n"
+    if [ -n "$FAIL_REASON" ]; then
+      body="${body}\nReason: ${FAIL_REASON}"
+    fi
   elif [ "$exit_code" -eq 2 ] || [ "$has_data" = "false" ]; then
     body="❌ ${DISPLAY_NAME} run for agent ${AGENT} completed but generated NO DATA. Upload skipped.\nSuite ID: ${SUITE_ID}\n"
     if [ -n "$FAIL_REASON" ]; then
@@ -242,6 +247,13 @@ if [ -f "$RESULTS_JSON" ]; then
     echo "⚠️ Warning: No evaluation data was generated (0 tasks run). Skipping upload."
     FAIL_REASON="No evaluation data was generated (0 tasks run). Upload skipped."
     exit 2
+  fi
+
+  IS_CATASTROPHIC_FAILURE=$(node --experimental-strip-types "$SCRIPT_DIR/analyze_results.ts" "$RESULTS_JSON" is-catastrophic-failure)
+  if [ "$IS_CATASTROPHIC_FAILURE" = "true" ]; then
+    echo "❌ Error: Catastrophic generation failures (100% early failure rate). Skipping upload."
+    FAIL_REASON="Catastrophic generation failures (100% early failure rate). Upload skipped."
+    exit 3
   fi
 else
   echo "❌ Error: evals.json was not generated."
