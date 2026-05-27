@@ -70,7 +70,6 @@ Guidance is authored across two primary locations in the repository:
 - **`guides/`**: Core guides organized by web platform discipline (e.g., performance, user experience). These guides undergo rigorous calibration and automated evaluation using the `gd dev` pipeline.
 - **`skills-src/`**: Standalone Agent Skills and templates authored directly as Markdown artifacts.
 
-
 ### Three-Stage Workflow
 
 For core guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`), development follows a structured three-stage workflow:
@@ -93,8 +92,6 @@ The evaluation harness is a matrix-driven runner that measures how effectively c
 #### Evaluation Dashboard (`eval-view/`)
 
 The evaluation dashboard provides a web interface to visualize pass rates, inspect agent trajectories, and review grade reports. It supports both a dynamic local development mode and a fully static deployment hosted on GitHub Pages.
-
-
 
 ### CLI Setup
 

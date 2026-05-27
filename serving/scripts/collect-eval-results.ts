@@ -52,7 +52,7 @@ function collectResults() {
       const data = JSON.parse(content);
 
       let agent = data.agent || 'unknown';
-      if (agent.startsWith('jetski') || agent === 'antigravity' || agent === 'antigravity_cli') {
+      if (agent.startsWith('jetski') || agent === 'antigravity_cli') {
         agent = 'antigravity_cli';
         item.name = item.name.replace('jetski_cli', 'antigravity_cli');
       }

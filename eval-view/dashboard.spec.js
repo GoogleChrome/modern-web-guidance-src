@@ -85,6 +85,41 @@ test.describe('Eval View Dashboard', () => {
     expect(partsCount).toBeGreaterThan(0);
   });
 
+  test('should close log and diff modal using Back button', async ({ page }) => {
+    await page.goto('/dashboard.html?testId=example-result');
+
+    // 1. Test Diff Modal Back navigation
+    const firstAccordion = page.locator('.task-accordion-header').first();
+    await firstAccordion.click();
+
+    // Verify Diff button exists and click it to open modal
+    const diffButton = page.locator('.tfoot-action-btn', { hasText: 'Diff' }).first();
+    await diffButton.click();
+
+    const modal = page.locator('#modal');
+    await expect(modal).toBeVisible();
+
+    // Click the UI's 'Back' button inside the modal
+    const backButton = page.locator('#modal .secondary-btn', { hasText: 'Back' }).first();
+    await backButton.click();
+
+    // Verify modal is now closed
+    await expect(modal).not.toBeVisible();
+
+    // 2. Test JSON Modal Back navigation
+    const jsonButton = page.locator('.tfoot-action-btn', { hasText: 'JSON' }).first();
+    await jsonButton.click();
+
+    await expect(modal).toBeVisible();
+
+    // Click the UI's 'Back' button inside the modal
+    const backButtonLog = page.locator('#modal .secondary-btn', { hasText: 'Back' }).first();
+    await backButtonLog.click();
+
+    // Verify modal is now closed
+    await expect(modal).not.toBeVisible();
+  });
+
   test('should block access to hidden files', async ({ page }) => {
     const response = await page.request.get('/.gitignore');
     expect(response.status()).toBe(403);

@@ -20,7 +20,6 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   const geminiSource = path.join(os.homedir(), '.gemini');
   const geminiDest = path.join(tempHome, '.gemini');
 
-  const antigravitySource = path.join(geminiSource, 'antigravity-cli');
   const antigravityDest = path.join(geminiDest, 'antigravity-cli');
 
   fs.mkdirSync(antigravityDest, { recursive: true });
@@ -35,24 +34,6 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   for (const file of filesToCopy) {
     const src = path.join(geminiSource, file);
     copyFileIfExists(src, path.join(geminiDest, file));
-    copyFileIfExists(src, path.join(antigravityDest, file));
-  }
-
-  // Copy local internal state parameters if present
-  const internalFiles = [
-    'installation_id',
-    'user_settings.pb'
-  ];
-
-  for (const file of internalFiles) {
-    const src = path.join(geminiSource, 'jetski', file);
-    const destJetskiDir = path.join(geminiDest, 'jetski');
-    fs.mkdirSync(destJetskiDir, { recursive: true });
-    copyFileIfExists(src, path.join(destJetskiDir, file));
-
-    // Fallback for antigravity-cli custom settings
-    const antigravitySrc = path.join(antigravitySource, file);
-    copyFileIfExists(antigravitySrc, path.join(antigravityDest, file));
   }
 
   // Symlink Keychains to bypass authentication prompt by allowing secure credential lookup (keytar)
@@ -149,9 +130,6 @@ async function run() {
     // Capture trajectory databases and protos
     const conversationsDir = path.join(tempHome, '.gemini', 'antigravity-cli', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
-    exportTrajectories(conversationsDir, '*.db', targetDir);
-    exportTrajectories(conversationsDir, '*.json', targetDir);
-    exportTrajectories(conversationsDir, '*.jsonl', targetDir);
 
     console.log("Antigravity CLI agent finished successfully.");
 

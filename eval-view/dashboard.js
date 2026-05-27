@@ -665,8 +665,20 @@ function renderGrid(data, testId) {
                 const isOpen = accordion.classList.toggle('open');
                 chevron.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
 
-                if (isOpen && content.querySelector('.expansion-loading')) {
-                    await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
+                if (isOpen) {
+                    const guidedKey = `${scenarioName} - guided`;
+                    const unguidedKey = `${scenarioName} - unguided`;
+                    const finalKey = results[guidedKey] ? guidedKey : unguidedKey;
+                    currentDetails = {
+                        testName: finalKey,
+                        runs: results[finalKey],
+                        stats: data.stats[finalKey],
+                        testId: testId
+                    };
+
+                    if (content.querySelector('.expansion-loading')) {
+                        await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
+                    }
                 }
             };
 
@@ -1063,8 +1075,9 @@ async function showDetails(testName, runs, stats, testId) {
     // Store for back navigation
     currentDetails = { testName, runs, stats, testId };
 
-    const matchName = testName.split(' - ')[0];
-    const accordionId = `item-${matchName.replace(/\s+/g, '-').toLowerCase()}`;
+    const parts = testName.split(' - ');
+    const scenarioName = parts.slice(0, 2).join(' - ');
+    const accordionId = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
     const accordionEl = document.getElementById(accordionId);
 
     if (accordionEl) {
@@ -1084,6 +1097,9 @@ function renderBackButton() {
     btn.onclick = () => {
         if (currentDetails) {
             showDetails(currentDetails.testName, currentDetails.runs, currentDetails.stats, currentDetails.testId);
+        } else {
+            const modal = $('dialog#modal');
+            if (modal.open) modal.close();
         }
     };
     return btn;

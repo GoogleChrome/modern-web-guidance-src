@@ -21,7 +21,7 @@ EOF
 }
 
 # Default values
-AGENTS_TO_RUN="antigravity_cli jetski_cli claude_code codex_cli"
+AGENTS_TO_RUN="jetski_cli claude_code codex_cli"
 WORKERS="20"
 
 # Parse flags

@@ -49,7 +49,6 @@ export const environmentConfig: EnvironmentConfig = {
 
   // Antigravity Configuration
   antigravityCliBin: process.env.ANTIGRAVITY_CLI_BIN || path.join(os.homedir(), '.local/bin/agy'),
-  antigravityDir: process.env.ANTIGRAVITY_DIR || path.join(os.homedir(), '.antigravitycli'),
 
   // Claude Code Configuration (through GCP Vertex AI)
   claudeCodeCliBin: process.env.CLAUDE_CODE_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/claude'),
@@ -67,7 +66,7 @@ export const defaultSuiteConfig: SuiteConfig = {
   name: null,
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
-  mcpServersToEnable: ['modern-web-guidance'],
+  mcpServersToEnable: [],
   skillsToEnable: ['modern-web-guidance'],
   serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
@@ -111,7 +110,6 @@ export interface EnvironmentConfig {
   geminiCliBin: string;
   geminiDir: string;
   antigravityCliBin: string;
-  antigravityDir: string;
   claudeCodeCliBin: string;
   codexCliBin: string;
   gcpCredentials: string;
