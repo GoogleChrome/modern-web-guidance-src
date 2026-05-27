@@ -15,7 +15,7 @@ Currently, WebMCP **only supports Tools**. It does not support the "Resources" o
 
 ## Quick Overview
 
-- **Imperative API**: Use `navigator.modelContext.registerTool()` for complex logic and dynamic interactions.
+- **Imperative API**: Use `document.modelContext.registerTool()` for complex logic and dynamic interactions.
 - **Declarative API**: Annotate standard HTML `<form>` elements with `toolname` and `tooldescription` to turn them into tools.
 
 ## Best Practices
