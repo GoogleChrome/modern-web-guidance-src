@@ -710,7 +710,7 @@ function formatSuiteLabel(testInfo) {
 
 function getAgentBadge(agentName) {
     const name = (agentName || '').toLowerCase();
-    if (name.includes('gemini') || name.includes('jetski')) {
+    if (name.includes('gemini') || name.includes('jetski') || name.includes('antigravity')) {
         return '<span class="agent-badge gemini">✦</span>';
     }
     if (name.includes('codex') || name.includes('openai')) {
