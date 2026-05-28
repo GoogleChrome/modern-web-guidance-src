@@ -218,7 +218,7 @@ Google handles this data in accordance with the [Google Privacy Policy](https://
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
-If you'd like to contribute to modern-web-guidance, please see [source repo's `CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/CONTRIBUTING.md). The `modern-web-guidance` repo is a purely a publish target for clean skills installation.
+If you'd like to contribute to modern-web-guidance, please see [source repo's `CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md). The `modern-web-guidance` repo is a purely a publish target for clean skills installation.
 
 Huge thanks to everyone who has contributed!
 
