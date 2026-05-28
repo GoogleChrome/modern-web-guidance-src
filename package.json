@@ -1,7 +1,7 @@
 {
   "name": "modern-web-guidance-src",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.0-itsbigspark.1",
+  "description": "itsbigspark fork of GoogleChrome/modern-web-guidance-src. Builds the runtime CLI bundle into dist/skills-cli/ and ships it as a GitHub Release artefact consumed by the-one-asset-manager (toam). No npm install on consumer machines.",
   "main": "index.js",
   "type": "module",
   "private": true,

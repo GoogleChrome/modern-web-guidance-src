@@ -1,0 +1,89 @@
+name: Sync from upstream
+
+# Scheduled fork sync from GoogleChrome/modern-web-guidance-src@main.
+# Opens a PR each Monday with whatever upstream has merged since the
+# fork last synced. A human reviews + merges; then tags a fork-suffixed
+# version to publish a release.
+#
+# Why a GHA workflow rather than Renovate: Renovate manages dependency
+# manifests inside a repo, not "merge upstream main into our main."
+# Independent Renovate bumps would also diverge pnpm-lock.yaml from
+# upstream's, making this sync conflict-prone. Upstream is the sole
+# source of dep truth on this fork; Renovate is intentionally not
+# configured.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Monday 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/GoogleChrome/modern-web-guidance-src.git
+          git fetch upstream main
+
+      - name: Open sync PR if upstream diverged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          OURS_SHA=$(git rev-parse origin/main)
+          SHORT=${UPSTREAM_SHA:0:7}
+          BRANCH="sync/upstream-${SHORT}"
+
+          if [ "$UPSTREAM_SHA" = "$OURS_SHA" ]; then
+            echo "Already in sync with upstream@${SHORT} — nothing to do."
+            exit 0
+          fi
+
+          # Skip if a PR for this exact upstream SHA is already open.
+          if gh pr list --head "$BRANCH" --state open --json number --jq 'length' | grep -qv '^0$'; then
+            echo "Sync PR for upstream@${SHORT} already open. Nothing to do."
+            exit 0
+          fi
+
+          git checkout -b "$BRANCH" origin/main
+
+          if git merge --no-edit upstream/main; then
+            CONFLICT_NOTE=""
+          else
+            # Leave conflicts in-tree for human resolution; commit the
+            # half-merged state so the PR opens and a maintainer can
+            # finish the merge locally.
+            git add -A
+            git commit -m "chore: sync upstream/main — CONFLICTS" --allow-empty
+            CONFLICT_NOTE=$'\n\n⚠ **Merge conflicts** — resolve locally before merging this PR.'
+          fi
+
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: sync upstream/main → ${SHORT}" \
+            --body "Automated sync from \`GoogleChrome/modern-web-guidance-src@${UPSTREAM_SHA}\`.
+
+          **Before merging:**
+          - Confirm the release workflow runs clean against this branch (push a temp tag like \`v0.0.0-itsbigspark.sync-${SHORT}\` to a draft PR, or use \`workflow_dispatch\`).
+          - Diff \`package.json\` \`pnpm.onlyBuiltDependencies\` for any new entries — each one is a postinstall hook that will run on the next CI build, and needs security review.
+          - Diff \`pnpm-lock.yaml\` for any new top-level deps and surprising transitive shifts.
+
+          **After merging:** tag \`vX.Y.Z-itsbigspark.N\` to publish a release artefact.${CONFLICT_NOTE}"

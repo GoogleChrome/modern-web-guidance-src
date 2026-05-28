@@ -1,0 +1,89 @@
+name: Release fork artefact
+
+# Triggers only on fork-suffixed tags (v*-itsbigspark.*). Upstream tags
+# (vX.Y.Z without suffix) flow through us via the upstream-sync workflow
+# but don't release on their own — a maintainer must explicitly tag a
+# fork-suffixed version after vetting the sync PR.
+on:
+  push:
+    tags:
+      - 'v*-itsbigspark.*'
+
+permissions:
+  contents: write  # to create the GitHub Release
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      # SUPPLY-CHAIN POSTURE
+      # ====================
+      # `pnpm.onlyBuiltDependencies` in the root package.json (inherited
+      # from upstream, vetted on every sync PR) is the explicit allowlist
+      # of packages whose lifecycle scripts may run. Everything else is
+      # blocked by pnpm. The current allowlist is:
+      #
+      #   @github/keytar, esbuild, gpt4all, keytar, node-pty,
+      #   onnxruntime-node, protobufjs, sharp, tree-sitter-bash,
+      #   @anthropic-ai/claude-code
+      #
+      # Adding a name to that list requires security review on the PR
+      # that proposed it (typically an upstream-sync PR).
+      #
+      # --frozen-lockfile forbids resolving outside the committed
+      # pnpm-lock.yaml, so a dep can't enter the tree mid-install.
+      - run: pnpm install --frozen-lockfile
+
+      # Build path: serving/scripts/build-guides.ts (regenerates the
+      # use-case index) → serving/skills-cli/build-dist.ts (esbuild
+      # bundles bin/modern-web.ts → modern-web.mjs, copies the TFJS
+      # MiniLM model + pre-computed embeddings + plugin manifests +
+      # SKILL.md, processes standalone skills). Output:
+      # <repo>/dist/skills-cli/ — same shape as upstream's npm tarball.
+      - run: pnpm --filter serving build
+
+      - name: Smoke-test the bundled bin
+        run: |
+          cd dist/skills-cli
+          # Run a real search query; require non-empty JSON back.
+          node skills/modern-web-guidance/modern-web.mjs \
+            search "anchor positioning" \
+            --skill-version ci-smoke-test > /tmp/smoke.json
+          test -s /tmp/smoke.json
+          jq -e 'length > 0' /tmp/smoke.json > /dev/null
+          echo "Smoke test passed — bin returned $(jq 'length' /tmp/smoke.json) results."
+
+      - name: Package and checksum
+        run: |
+          TAG="${{ github.ref_name }}"
+          tar czf "modern-web-guidance-${TAG}.tar.gz" -C dist/skills-cli .
+          shasum -a 256 "modern-web-guidance-${TAG}.tar.gz" > checksums.sha256
+          ls -la "modern-web-guidance-${TAG}.tar.gz" checksums.sha256
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            modern-web-guidance-*.tar.gz
+            checksums.sha256
+          # Body of the GH Release page — points maintainers + reviewers
+          # at the consumer registry entry and the upstream commit pin.
+          body: |
+            Fork release of `GoogleChrome/modern-web-guidance-src`. Built in
+            CI with `pnpm install --frozen-lockfile` + `pnpm --filter serving build`;
+            no npm install required on consumer machines.
+
+            Consumed by [`the-one-asset-manager`](https://github.com/itsbigspark/the-one-asset-manager)
+            (toam) via a `source.release` registry entry — `toam install
+            modern-web-guidance` fetches this tarball, verifies the
+            checksum, stages it, and shims the bin onto consumer PATH.
+
+            Upstream commit pinned in the corresponding sync PR.

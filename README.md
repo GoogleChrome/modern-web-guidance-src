@@ -1,5 +1,31 @@
 # <img src="./.github/img/modern-web-guidance.svg" alt="Modern Web Guidance" width="30" height="30"> Modern Web Guidance (Source)
 
+> ## itsbigspark fork
+>
+> This is the [itsbigspark](https://github.com/itsbigspark) fork of
+> [`GoogleChrome/modern-web-guidance-src`](https://github.com/GoogleChrome/modern-web-guidance-src).
+> The fork exists so itsbigspark consumers receive a vetted, pinned
+> build of the runtime CLI without ever running `npm install` on their
+> machines:
+>
+> - `.github/workflows/release.yml` runs `pnpm install --frozen-lockfile` +
+>   `pnpm --filter serving build` in CI on each fork-suffixed tag
+>   (`v*-itsbigspark.*`), then publishes the bundled `dist/skills-cli/`
+>   tree as a GitHub Release tarball with a SHA-256 checksum file.
+> - `.github/workflows/upstream-sync.yml` opens a PR weekly merging
+>   `upstream/main` into ours; a maintainer reviews + merges + tags a new
+>   fork-suffixed release.
+> - The release artefact is consumed by
+>   [`the-one-asset-manager`](https://github.com/itsbigspark/the-one-asset-manager)
+>   (`toam`) via a `source.release` registry entry. `toam install
+>   modern-web-guidance` fetches the tarball, verifies the checksum,
+>   stages it, and shims the bin onto consumer PATH.
+>
+> All upstream content below is unchanged. Upstream attribution + license
+> (Apache-2.0) preserved verbatim.
+
+---
+
 A unified repository for authoring, calibrating, and evaluating modern web development guidance. Here, we curate and codify best practices, write eval tasks and assertions, and an evaluation harness measures how coding agents follow the guidance.
 
 The published distribution of this guidance is compiled and released to the [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) repository as agent skills including the primary `modern-web-guidance` skill (which utilizes a bundled CLI distribution) alongside other standalone skills.
