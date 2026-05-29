@@ -1,0 +1,149 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..0b46d71c 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -152,6 +152,50 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Form Styles */
++    .form-group {
++      margin-bottom: 1.5rem;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: bold;
++      margin-bottom: 0.5rem;
++    }
++
++    select {
++      width: 100%;
++      padding: 0.75rem;
++      font-size: 1rem;
++      border: 2px solid #ccc;
++      border-radius: 4px;
++      background-color: white;
++    }
++
++    /* Visual State - Native */
++    select:user-invalid {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    select:user-valid {
++      border-color: #188038;
++      background-color: #e6f4ea;
++    }
++
++    /* Error Message Visibility */
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 0.5rem;
++    }
++
++    select:user-invalid + .error-msg {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +239,42 @@
+         </div>
+       </div>
+     </section>
++
++    <!-- Order Section -->
++    <section id="order-section" style="margin-top: 40px;">
++      <h2 style="text-align: center; margin-bottom: 20px;">Place Your Order</h2>
++      <form id="order-form" style="max-width: 500px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
++        
++        <div class="form-group">
++          <label for="shop-select">Select your local shop</label>
++          <select id="shop-select" name="shop" required aria-errormessage="shop-error">
++            <option value="" disabled selected>Choose a shop...</option>
++            <option value="downtown">Downtown (Main St)</option>
++            <option value="uptown">Uptown (Broadway)</option>
++            <option value="westside">Westside (Wilshire)</option>
++          </select>
++          <div id="shop-error" class="error-msg">
++            Please select a local shop.
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="grind-select">Grind preference</label>
++          <select id="grind-select" name="grind" required aria-errormessage="grind-error">
++            <option value="" disabled selected>choose grind...</option>
++            <option value="whole-bean">Whole Bean</option>
++            <option value="coarse">Coarse (French Press)</option>
++            <option value="medium">Medium (Drip)</option>
++            <option value="fine">Fine (Espresso)</option>
++          </select>
++          <div id="grind-error" class="error-msg">
++            Please choose a grind preference.
++          </div>
++        </div>
++
++        <button type="submit" class="btn" style="width: 100%; border: none; cursor: pointer;">Submit Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +287,50 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const form = document.getElementById('order-form');
++    if (form) {
++      const syncAriaInvalid = (control) => {
++        setTimeout(() => {
++          try {
++            if (control.matches(':user-invalid')) {
++              control.setAttribute('aria-invalid', 'true');
++            } else {
++              control.removeAttribute('aria-invalid');
++            }
++          } catch (e) {
++            // Safe fallback if :user-invalid is not supported by matches()
++          }
++        }, 0);
++      };
++
++      form.addEventListener('blur', (e) => {
++        if (e.target.matches('select')) {
++          syncAriaInvalid(e.target);
++        }
++      }, true);
++
++      form.addEventListener('change', (e) => {
++        if (e.target.matches('select')) {
++          syncAriaInvalid(e.target);
++        }
++      });
++
++      form.addEventListener('submit', (e) => {
++        Array.from(form.elements).forEach(control => {
++          if (control.matches('select')) {
++            syncAriaInvalid(control);
++          }
++        });
++      });
++      
++      form.addEventListener('reset', () => {
++        Array.from(form.elements).forEach(control => {
++          control.removeAttribute('aria-invalid');
++        });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>
