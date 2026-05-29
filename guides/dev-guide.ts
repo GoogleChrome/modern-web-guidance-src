@@ -217,6 +217,12 @@ export async function saveSolution(targetDirRaw: string): Promise<void> {
   const baseAppRel = path.relative(rootDir, baseAppAbs);
   console.log(cCyan(`Saving solution for guide ${guideName} (base app: ${baseAppRel})...`));
 
+  const solutionDir = path.join(targetDirAbs, 'solution');
+  if (fs.existsSync(solutionDir)) {
+    console.log(cCyan(`Copying legacy solution files from ${solutionDir} to ${baseAppAbs} before generating patch...`));
+    fs.cpSync(solutionDir, baseAppAbs, { recursive: true });
+  }
+
   // Run git diff
   let diff = '';
   try {
