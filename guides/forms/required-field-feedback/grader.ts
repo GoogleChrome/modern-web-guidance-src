@@ -127,7 +127,7 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
   });
 
   test('Clicking "Submit" with empty fields MUST trigger the error state on all of them', async ({ page }) => {
-    const submitBtn = page.locator('button[type="submit"]');
+    const submitBtn = page.getByRole('button', { name: 'Submit', exact: true });
     const isEnabled = await submitBtn.isEnabled();
     
     let allTriggered = false;
@@ -137,7 +137,8 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
         document.querySelectorAll('form[novalidate]').forEach(form => form.removeAttribute('novalidate'));
       });
 
-      const inputs = page.locator('form input[required]');
+      const form = page.locator('form').filter({ has: submitBtn });
+      const inputs = form.locator('input[required]');
       const count = await inputs.count();
       const initialStyles: any[] = [];
       for (let i = 0; i < count; i++) {
@@ -166,7 +167,9 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     let success = false;
     await fallbackCheckbox.check();
     
-    const inputs = page.locator('form input[required]');
+    const submitBtn = page.getByRole('button', { name: 'Submit', exact: true });
+    const form = page.locator('form').filter({ has: submitBtn });
+    const inputs = form.locator('input[required]');
     const count = await inputs.count();
     const initialStyles: any[] = [];
     for (let i = 0; i < count; i++) {
@@ -187,7 +190,6 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     const typeNeutral = !differs(initialStyles[0], typeStyle) || !typeStyle.hasUserInvalid || differs(blurStyle, typeStyle);
     
     await page.keyboard.press('Backspace');
-    const submitBtn = page.locator('button[type="submit"]');
     await submitBtn.click();
     const finalStyles = [];
     for (let i = 0; i < count; i++) {
