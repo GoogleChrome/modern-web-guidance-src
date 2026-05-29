@@ -73,7 +73,9 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
 
   test('Submit buttons MUST use actionable language', async ({ page }) => {
     const buttonText = await page.evaluate(() => {
-      const btn = document.querySelector('button[type="submit"], input[type="submit"], [id*="submit" i], [class*="submit" i], button');
+      const btn = document.querySelector('button[type="submit"], input[type="submit"]') ||
+                  document.querySelector('[id*="submit" i], [class*="submit" i]') ||
+                  document.querySelector('button');
       if (!btn) return '';
       return (btn.textContent || (btn as HTMLInputElement).value || '').trim();
     });
@@ -188,7 +190,7 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
 
   test('Vertical margin between label and input MUST be less than margin between groups', async ({ page }) => {
     const gestaltProximity = await page.evaluate(() => {
-      const group = document.querySelector('.form-group, .field, .form-row, div:has(label)');
+      const group = document.querySelector('.form-group, .field, .form-row') || document.querySelector('div:has(> label)');
       const nextGroup = group?.nextElementSibling;
       
       if (!group || !nextGroup) return false;
