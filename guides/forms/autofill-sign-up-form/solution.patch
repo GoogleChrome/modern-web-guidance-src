@@ -1,0 +1,33 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..0a2ff4c3 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -195,6 +195,28 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);">
++      <h2>Sign Up</h2>
++      <form id="sign-up-form" name="sign-up-form">
++        <div style="margin-bottom: 1rem;">
++          <label for="name" style="display:block; margin-bottom: 5px;">Full name</label>
++          <input id="name" name="name" type="text" autocomplete="name" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" required pattern="[\p{L}\.\- ]+">
++        </div>
++
++        <div style="margin-bottom: 1rem;">
++          <label for="email" style="display:block; margin-bottom: 5px;">Email</label>
++          <input id="email" name="email" type="email" autocomplete="username" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" required>
++        </div>
++
++        <div style="margin-bottom: 1rem;">
++          <label for="new-password" style="display:block; margin-bottom: 5px;">Password</label>
++          <input id="new-password" name="new-password" type="password" autocomplete="new-password" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" minlength="8" required>
++        </div>
++
++        <button type="submit" class="btn" style="border: none; cursor: pointer;">Sign Up</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

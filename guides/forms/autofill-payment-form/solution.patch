@@ -1,0 +1,43 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..08284034 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -195,6 +195,38 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);">
++      <h2 style="margin-bottom: 20px;">Payment Information</h2>
++      <form id="payment-form" name="payment-form">
++        <!-- cc-number -->
++        <div style="margin-bottom: 1rem;">
++          <label for="cc-number" style="display:block; font-weight: bold; margin-bottom: 5px;">Card number</label>
++          <input id="cc-number" name="cc-number" type="text" autocomplete="cc-number" inputmode="numeric" maxlength="50" pattern="[\d ]{10,30}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" required>
++        </div>
++
++        <!-- cc-name -->
++        <div style="margin-bottom: 1rem;">
++          <label for="cc-name" style="display:block; font-weight: bold; margin-bottom: 5px;">Name on card</label>
++          <input id="cc-name" name="cc-name" type="text" autocomplete="cc-name" maxlength="50" pattern="[\p{L} \-\.]+" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" required>
++        </div>
++
++        <!-- cc-exp -->
++        <div style="margin-bottom: 1rem;">
++          <label for="cc-exp" style="display:block; font-weight: bold; margin-bottom: 5px;">Expiry date</label>
++          <span id="exp-hint" class="hint" style="display:block; font-size:0.85em; color:#666; margin-bottom: 5px;">Format: MM/YY</span>
++          <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp" aria-describedby="exp-hint" maxlength="5" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" required>
++        </div>
++
++        <!-- cc-csc -->
++        <div style="margin-bottom: 1rem;">
++          <label for="cc-csc" style="display:block; font-weight: bold; margin-bottom: 5px;">Security code</label>
++          <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc" inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" required>
++        </div>
++
++        <button type="submit" class="btn" style="border: none; cursor: pointer;">Complete payment</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

@@ -1,0 +1,24 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..a529a538 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -152,6 +152,19 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Autofill Styles */
++    input:autofill,
++    input:-webkit-autofill {
++      border: 2px solid #2e7d32;
++      box-shadow: 0 0 0 100vmax var(--secondary) inset;
++    }
++
++    input:autofill:focus-visible,
++    input:-webkit-autofill:focus-visible {
++      outline: 3px solid #000;
++      outline-offset: 2px;
++    }
+   </style>
+ </head>
+ 
