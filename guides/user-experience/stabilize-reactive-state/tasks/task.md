@@ -1,0 +1,6 @@
+---
+base_app: daily-grind
+---
+- can you add a reactive event deadline tracker to our landing page to compare standard mutable dates against a modern immutable datetime object? let's build a dashboard under our seasonal favorites with two panels. on the left panel, show a standard legacy date value in #date-value, with a button #extend-date-btn that mutates it in place, showing the reference changed status in #date-ref-changed and render count in #date-render-count. on the right panel, display the modern immutable date value in #temporal-value, with a button #extend-temporal-btn to increment the hour. the immutable button should return a new object reference to trigger an update, setting the reference changed status to "Yes" in #temporal-ref-changed and incrementing the re-render count in #temporal-render-count.
+- we need to track our brewing workshop deadlines on the homepage without having the UI freeze or fail to update. can you build a countdown or scheduling widget using modern immutable date structures instead of mutating the standard date in place so reactivity works properly?
+- can you replace our inline date mutation logic in the promotional event banner with immutable date updates? make sure we assign the new reference back to state each time so the view actually re-renders.

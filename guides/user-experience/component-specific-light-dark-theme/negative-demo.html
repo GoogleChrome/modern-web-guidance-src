@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Component-Specific Light/Dark Theme Demo</title>
+  <style>
+    @property --page-bg {
+      syntax: '<color>';
+      inherits: true;
+      initial-value: #ffffff;
+    }
+
+    @property --page-text {
+      syntax: '<color>';
+      inherits: true;
+      initial-value: #000000;
+    }
+
+    @property --accent {
+      syntax: '<color>';
+      inherits: true;
+      initial-value: #1a73e8;
+    }
+
+    :root {
+      --page-bg: light-dark(#ffffff, #121212);
+      --page-text: light-dark(#202124, #f8f9fa);
+      --accent: light-dark(#1a73e8, #8ab4f8);
+
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      background-color: var(--page-bg);
+      color: var(--page-text);
+      accent-color: var(--accent);
+      padding: light-dark(10px, 20px, 30px);
+      margin: light-dark(1rem, 2rem);
+    }
+
+    body {
+      margin: 0;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .themed-card {
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .themed-card.force-light {
+      color-scheme: light;
+    }
+
+    .themed-card.force-dark {
+      color-scheme: dark;
+    }
+
+    .scroll-box {
+      height: 80px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    select, button {
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: var(--accent);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+    }
+
+    .no-bg-override {
+      color-scheme: dark;
+    }
+
+    .theme-island {
+      color-scheme: dark;
+      padding: 2rem;
+      border-radius: 16px;
+      border: 2px dashed var(--accent);
+      margin-top: 4rem;
+    }
+
+    .island-grid {
+      margin-top: 1rem;
+    }
+
+    .theme-switcher-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    #global-theme-switcher {
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    h3 {
+      color: light-dark(#111, #222, #333);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Component-Specific Themes</h1>
+      <p>This demo follows the guide's implementation steps for <code>light-dark()</code> and <code>color-scheme</code> overrides.</p>
+      <span class="no-bg-override">System Default</span>
+    </header>
+
+    <div class="theme-switcher-container">
+      <label for="global-theme-switcher">Global Theme Override:</label>
+      <select id="global-theme-switcher">
+        <option value="system">System Default</option>
+        <option value="light">Forced Light Mode</option>
+        <option value="dark">Forced Dark Mode</option>
+      </select>
+    </div>
+
+    <div class="grid">
+      <section class="themed-card">
+        <h3>System Default</h3>
+        <p>I follow your OS theme. My scrollbar and dropdown below adapt automatically.</p>
+
+        <div class="scroll-box">
+          Scroll down to see the themed scrollbar. The browser handles this because of the root <code>color-scheme</code>.
+        </div>
+
+        <select>
+          <option>Adaptive Dropdown</option>
+        </select>
+
+        <button>Primary Action</button>
+      </section>
+
+      <section class="themed-card force-dark">
+        <h3>Forced Dark</h3>
+        <p>I am ALWAYS dark. Notice my dark scrollbars and dropdown, even if your OS is in light mode.</p>
+
+        <div class="scroll-box">
+          My scrollbar is dark because <code>color-scheme: dark</code> is forced on this container.
+        </div>
+
+        <select>
+          <option>Dark Dropdown</option>
+        </select>
+
+        <button>Primary Action</button>
+      </section>
+    </div>
+
+    <div class="theme-island">
+      <h2>Nested Theme Island (Forced Dark)</h2>
+      <p>This section is forced to dark. The card inside picks up the theme correctly.</p>
+
+      <div class="grid island-grid">
+        <div class="themed-card">
+          <h3>Inherited Dark</h3>
+          <p>I am a standard card inheriting a dark context from my parent.</p>
+          <button>Nested Action</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const switcher = document.getElementById('global-theme-switcher');
+    switcher.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      const root = document.documentElement;
+
+      if (mode === 'light') {
+        root.style.colorScheme = 'light';
+      } else if (mode === 'dark') {
+        root.style.colorScheme = 'dark';
+      } else {
+        root.style.colorScheme = 'light dark';
+      }
+    });
+  </script>
+</body>
+
+</html>
