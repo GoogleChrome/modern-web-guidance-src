@@ -1,0 +1,33 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..9d044b8e 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -195,6 +195,28 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="demo-address-section" style="margin-top: 50px;">
++      <h2>Shipping Address</h2>
++      <form id="address-form" name="address-form">
++        <section style="margin-bottom: 15px;">
++          <label for="name">Name</label>
++          <input id="name" name="name" type="text" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
++        </section>
++
++        <section style="margin-bottom: 15px;">
++          <label for="address">Address</label>
++          <textarea id="address" name="address" autocomplete="street-address" maxlength="300" required></textarea>
++        </section>
++
++        <section style="margin-bottom: 15px;">
++          <label for="postal-code">ZIP or postal code</label>
++          <input id="postal-code" name="postal-code" type="text" autocomplete="postal-code" maxlength="20" required>
++        </section>
++
++        <button type="submit" class="btn">Submit</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

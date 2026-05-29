@@ -265,7 +265,10 @@ function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boo
 export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
   const solutionDir = path.join(targetDirAbs, 'solution');
-  const hasSolution = fs.existsSync(solutionDir);
+  const patchPath = path.join(targetDirAbs, 'solution.patch');
+  const hasSolutionDir = fs.existsSync(solutionDir);
+  const hasPatch = fs.existsSync(patchPath);
+  const hasSolution = hasPatch || hasSolutionDir;
 
   const result: CalibrationResult = {
     success: false,
@@ -313,8 +316,13 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
     try {
       restoreGitState();
 
-      console.log(cYellow(`\nApplying solution patch from ${solutionDir} to ${baseAppDir}...`));
-      fs.cpSync(solutionDir, baseAppDir, { recursive: true });
+      if (hasPatch) {
+        console.log(cYellow(`\nApplying solution patch from ${patchPath}...`));
+        execSync(`git apply ${patchPath}`, { cwd: rootDir });
+      } else if (hasSolutionDir) {
+        console.log(cYellow(`\nApplying solution files from ${solutionDir} to ${baseAppDir}...`));
+        fs.cpSync(solutionDir, baseAppDir, { recursive: true });
+      }
 
       console.log(cYellow(`Running positive calibration (expecting 100% pass)...`));
       const demoResults = await runPlaywright(targetFileAbs, graderPath, demoOutDir, 'inherit')
