@@ -2,6 +2,7 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import matter from 'gray-matter';
 import { rootDir, baseAppsDir } from '../lib/paths.ts';
 import { generateNegative } from './negative-gen.ts';
 import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
@@ -266,7 +267,21 @@ async function generateArtifact(name: string, generator: () => Promise<void>, ch
 }
 
 async function generateTask(targetDir: string): Promise<void> {
-  const baseApp = 'daily-grind';
+  let baseApp = 'daily-grind';
+  const taskFilePath = path.join(targetDir, 'tasks', TASK_FILE);
+  if (fs.existsSync(taskFilePath)) {
+    try {
+      const taskContent = fs.readFileSync(taskFilePath, 'utf8');
+      const parsed = matter(taskContent);
+      if (parsed.data && parsed.data.base_app) {
+        baseApp = parsed.data.base_app;
+        console.log(`Resolved baseApp from existing task.md: ${baseApp}`);
+      }
+    } catch (e) {
+      console.warn(`Failed to parse existing task.md: ${e}. Using default baseApp.`);
+    }
+  }
+
   const originalHome = process.env.HOME;
   
   const workDir = setupIsolatedWorkDir('ghh-prompt-gen');
@@ -275,6 +290,13 @@ async function generateTask(targetDir: string): Promise<void> {
   try {
     // Copy guide dir contents into the isolated work directory
     fs.cpSync(targetDir, workDir, { recursive: true });
+
+    // Explicitly copy expectations.md if it exists
+    const expectationsSrc = path.join(targetDir, EXPECTATIONS_FILE);
+    const expectationsDest = path.join(workDir, EXPECTATIONS_FILE);
+    if (fs.existsSync(expectationsSrc)) {
+      fs.copyFileSync(expectationsSrc, expectationsDest);
+    }
 
     // Copy the base app so Gemini can see what app the prompts target
     const baseAppHtml = path.join(baseAppsDir, baseApp, 'index.html');
@@ -287,8 +309,13 @@ async function generateTask(targetDir: string): Promise<void> {
       guideFileName = 'SKILL.md';
     }
 
+    const hasExpectations = fs.existsSync(expectationsSrc);
+    const readExpectations = hasExpectations ? `Read ${EXPECTATIONS_FILE} to understand the verification requirements.\n` : '';
+    const dataTestIdRule = hasExpectations ? `
+- If ${EXPECTATIONS_FILE} specifies data-testid attributes (e.g., \`- The button to start must have data-testid="test-trigger"\`), you MUST include these exact data-testid requirements in the generated task prompts so the developer knows to apply them.` : '';
+
     const userPrompt = `Read ${guideFileName} to understand what web development guidance is being provided.
-Read base-app.html to understand the existing web app (the "${baseApp}" app) that the developer is working on.
+${readExpectations}Read base-app.html to understand the existing web app (the "${baseApp}" app) that the developer is working on.
 
 Generate a ${TASK_FILE} file containing 1–4 realistic test prompts that a web developer would send to an AI coding assistant to accomplish the goal described in this guide.
 
@@ -307,7 +334,7 @@ Rules:
 - Do NOT mention or mandate legacy fallbacks in the prompt. The RAG system handles fallbacks automatically.
 - Do NOT mention the guide itself or indicate that guidance exists.
 - Do NOT name the base app (e.g. "${baseApp}") — a real developer wouldn't refer to it that way.
-- Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS functions (e.g., do not command the agent to 'use the Temporal API' or 'use sibling-index()'). You MUST describe the desired user outcome instead. However, it is completely acceptable (and sometimes necessary) to include specific DOM IDs or class names if the grader requires them to locate elements.
+- Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS functions (e.g., do not command the agent to 'use the Temporal API' or 'use sibling-index()'). You MUST describe the desired user outcome instead. However, it is completely acceptable (and sometimes necessary) to include specific DOM IDs or class names if the grader requires them to locate elements.${dataTestIdRule}
 - Each prompt must be on its own line, prefixed with "- ", containing absolutely no internal line breaks.
 - When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
 

@@ -308,7 +308,7 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
         execSync(`git checkout -- ${baseAppDir}`, { cwd: rootDir, stdio: 'ignore' });
         execSync(`git clean -fd ${baseAppDir}`, { cwd: rootDir, stdio: 'ignore' });
       } catch (err) {
-        console.warn(cYellow(`Warning: Failed to restore git status: ${err.message}`));
+        console.warn(cYellow(`Warning: Failed to restore git status: ${err instanceof Error ? err.message : String(err)}`));
       }
     };
 

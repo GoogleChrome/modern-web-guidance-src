@@ -69,6 +69,7 @@ Because the unmodified base app does not have the target feature/form at all, te
 You should generate browser tests, with each test containing only one assertion. Avoid using static assertions (like regex or str.includes()) to test CSS or HTML syntax whenever possible. Instead, use Playwright's browser APIs to test computed styles and actual DOM layout.
 
 Locators and Agnosticism:
+- If expectations.md specifies data-testid requirements (e.g., data-testid="test-trigger"), you MUST use them as your primary locators in the grader (e.g., \`page.getByTestId('test-trigger')\` or \`page.locator('[data-testid="..."]')\`).
 - ALWAYS write your locators to be application-structure agnostic.
 - NEVER rely on specific CSS paths or specific class names (unless explicitly demanded by expectations.md).
 - NEVER assume the element IDs are exactly hardcoded, unless they are specified in expectations.md.

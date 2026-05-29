@@ -16,6 +16,7 @@
   },
 
   "exclude": [
+    "**/solution",
     "**/node_modules",
     "**/dist",
     "**/build",

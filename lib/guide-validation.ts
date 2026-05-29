@@ -178,13 +178,13 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
   for (const inv of guides) {
     const subdir = inv.dir;
-    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill } = inv;
+    const { hasGuide, hasDemo, hasSolution, hasGrader, hasTask, isDisciplineSkill } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
     const isDisciplineGuide = inv.name === inv.category;
     
     // Discipline skills don't need demo.html
-    if (!isDisciplineSkill && !isDisciplineGuide && guideExists !== hasDemo) {
+    if (!isDisciplineSkill && !isDisciplineGuide && guideExists !== (hasDemo || hasSolution)) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
@@ -420,7 +420,7 @@ export function inventoryGuide(dir: string): GuideInventory {
     hasGuide,
     isStub,
     hasDemo: readFileSafe(path.join(dir, DEMO_FILE)).length > 0,
-    hasSolution: fs.existsSync(path.join(dir, 'solution')),
+    hasSolution: fs.existsSync(path.join(dir, 'solution')) || fs.existsSync(path.join(dir, 'solution.patch')),
     hasExpectations,
     expectationsEmpty: hasExpectations && expectationsContent.length === 0,
     hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
