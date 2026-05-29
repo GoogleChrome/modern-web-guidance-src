@@ -1,0 +1,315 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..0b458d49 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -152,6 +152,90 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Form Validation Styles */
++    .form-group {
++      margin-bottom: 1.5rem;
++      text-align: left;
++    }
++
++    label {
++      display: block;
++      font-weight: bold;
++      margin-bottom: 0.5rem;
++    }
++
++    input {
++      width: 100%;
++      padding: 0.75rem;
++      font-size: 1rem;
++      border: 2px solid #ccc;
++      border-radius: 4px;
++      margin-bottom: 0.5rem;
++    }
++
++    input:user-invalid,
++    input.user-invalid-fallback {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    input:user-valid,
++    input.user-valid-fallback {
++      border-color: #188038;
++      background-color: #e6f4ea;
++    }
++
++    .hint {
++      display: block;
++      color: #5f6368;
++      font-size: 0.85rem;
++      margin-bottom: 0.25rem;
++    }
++
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 0.5rem;
++    }
++
++    input:user-invalid + .error-msg,
++    input.user-invalid-fallback + .error-msg {
++      display: block;
++    }
++
++    .rules-list {
++      margin-bottom: 0.5rem;
++      padding-left: 1.5rem;
++      color: #5f6368;
++      font-size: 0.875rem;
++      transition: color 0.2s;
++    }
++
++    .form-group:has(input:user-invalid) .rules-list,
++    .form-group:has(input.user-invalid-fallback) .rules-list {
++      color: #d93025;
++      font-weight: 600;
++    }
++
++    .form-group:has(input:user-valid) .rules-list,
++    .form-group:has(input.user-valid-fallback) .rules-list {
++      color: #188038;
++      text-decoration: line-through;
++      opacity: 0.6;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      border: 0;
++    }
+   </style>
+ </head>
+ 
+@@ -163,7 +247,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -197,7 +281,67 @@
+     </section>
+   </main>
+ 
++  <!-- Account View Placeholder -->
++  <div id="account-placeholder"></div>
++
++  <!-- Account View Template -->
++  <template id="account-template">
++    <main id="account-view" class="container">
++      <section style="max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
++        <h2 style="margin-bottom: 20px; color: var(--primary);">Create Account</h2>
++        <form id="signup-form" novalidate onsubmit="event.preventDefault();">
++          <div class="form-group">
++            <label for="signup-email">Email Address</label>
++            <span id="signup-email-hint" class="hint">Format: you@example.com</span>
++            <input type="email" id="signup-email" name="email" required autocomplete="email" aria-describedby="signup-email-hint" aria-errormessage="signup-email-error">
++            <div id="signup-email-error" class="error-msg">
++              <span aria-hidden="true">❌</span> Please enter a valid email address.
++            </div>
++          </div>
++          <div class="form-group">
++            <label for="signup-password">Password</label>
++            <ul id="signup-password-rules" class="rules-list">
++              <li>At least 8 characters</li>
++              <li>One uppercase letter</li>
++              <li>One lowercase letter</li>
++              <li>One number</li>
++              <li>One special character</li>
++            </ul>
++            <input type="password" id="signup-password" name="password" required minlength="8"
++              pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}" aria-describedby="signup-password-rules">
++          </div>
++          <button type="submit" class="btn" style="width: 100%;">Sign Up</button>
++        </form>
++      </section>
++    </main>
++  </template>
++
+   <footer>
++    <!-- Newsletter Form -->
++    <div class="newsletter-section" style="max-width: 400px; margin: 0 auto 30px auto; background: rgba(255,255,255,0.5); padding: 20px; border-radius: 8px;">
++      <h3 style="margin-bottom: 10px; color: var(--primary);">Subscribe to our Newsletter</h3>
++      <form id="newsletter-form" novalidate onsubmit="event.preventDefault();">
++        <div class="form-group" style="margin-bottom: 10px;">
++          <label for="newsletter-email" class="visually-hidden">Email Address</label>
++          <span id="newsletter-email-hint" class="hint">Format: you@example.com</span>
++          <input type="email" id="newsletter-email" name="email" required autocomplete="email" aria-describedby="newsletter-email-hint" aria-errormessage="newsletter-email-error">
++          <div id="newsletter-email-error" class="error-msg">
++            <span aria-hidden="true">❌</span> Please enter a valid email address.
++          </div>
++        </div>
++        <button type="submit" class="btn" style="margin-top: 5px; width: 100%;">Subscribe</button>
++      </form>
++    </div>
++
++    <!-- Fallback Controller -->
++    <div style="margin-bottom: 1.5rem;">
++      <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #e0d8d5; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.85rem;">
++        <input type="checkbox" id="force-fallback">
++        <strong>Force Fallback Mode</strong> (Simulate older browser)
++      </label>
++      <div id="fallback-status" style="margin-top: 0.5rem; font-size: 0.85rem; font-weight: bold; display: none;"></div>
++    </div>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -207,6 +351,142 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // 1. Router Logic
++    const homeView = document.querySelector('main.container');
++    const heroSection = document.querySelector('header.hero');
++    const accountPlaceholder = document.getElementById('account-placeholder');
++    const accountTemplate = document.getElementById('account-template');
++
++    function handleRoute() {
++      const hash = location.hash;
++      if (hash === '#account') {
++        if (homeView) homeView.style.display = 'none';
++        if (heroSection) heroSection.style.display = 'none';
++        if (accountPlaceholder) {
++          if (!document.getElementById('account-view')) {
++            const clone = accountTemplate.content.cloneNode(true);
++            accountPlaceholder.appendChild(clone);
++            // Re-init fallback if needed for new elements
++            if (!useNativeLogic) {
++              UserInvalidFallback.init(accountPlaceholder);
++            }
++          }
++          accountPlaceholder.style.display = 'block';
++        }
++      } else {
++        if (homeView) homeView.style.display = 'block';
++        if (heroSection) heroSection.style.display = 'flex';
++        if (accountPlaceholder) accountPlaceholder.style.display = 'none';
++      }
++    }
++
++    window.addEventListener('hashchange', handleRoute);
++    window.addEventListener('DOMContentLoaded', handleRoute);
++
++    // 2. Fallback & Feature Detection Logic
++    const forceFallbackCheckbox = document.getElementById('force-fallback');
++    const statusDiv = document.getElementById('fallback-status');
++    let useNativeLogic = false;
++
++    const updateFeatureState = () => {
++      const nativelySupported = CSS.supports('selector(:user-invalid)');
++      const forced = forceFallbackCheckbox.checked;
++
++      useNativeLogic = nativelySupported && !forced;
++
++      if (useNativeLogic) {
++        statusDiv.textContent = "✅ Native :user-invalid supported. Using browser logic.";
++        statusDiv.style.color = "#137333";
++        statusDiv.style.display = "block";
++      } else {
++        const reason = forced ? "(Forced)" : "(Not supported)";
++        statusDiv.textContent = `⚠️ Using JS fallback logic ${reason}.`;
++        statusDiv.style.color = "#b06000";
++        statusDiv.style.display = "block";
++      }
++
++      // Reset validation classes
++      document.querySelectorAll('input').forEach(input => {
++        input.classList.remove('user-invalid-fallback');
++        input.classList.remove('user-valid-fallback');
++        input.removeAttribute('aria-invalid');
++      });
++
++      if (!useNativeLogic) {
++        UserInvalidFallback.init(document);
++      }
++    };
++
++    if (forceFallbackCheckbox) {
++      forceFallbackCheckbox.addEventListener('change', updateFeatureState);
++    }
++
++    const UserInvalidFallback = (() => {
++      const dirtyState = new WeakMap();
++
++      const updateState = (input) => {
++        const isValid = input.checkValidity();
++        input.classList.toggle('user-invalid-fallback', !isValid);
++        input.classList.toggle('user-valid-fallback', isValid);
++
++        if (!isValid) {
++          input.setAttribute('aria-invalid', 'true');
++        } else {
++          input.removeAttribute('aria-invalid');
++        }
++      };
++
++      const handleEvent = (event) => {
++        const input = event.target;
++
++        if (event.type === 'reset') {
++          const controls = input.elements || [];
++          for (const control of controls) {
++            dirtyState.delete(control);
++            control.classList.remove('user-invalid-fallback');
++            control.classList.remove('user-valid-fallback');
++            control.removeAttribute('aria-invalid');
++          }
++          return;
++        }
++
++        if (!input.checkValidity) return;
++
++        if (event.type === 'input' || event.type === 'change') {
++          const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++          state.hasInteracted = true;
++          dirtyState.set(input, state);
++          if (state.hasBlurred) {
++            updateState(input);
++          }
++        } else if (event.type === 'blur') {
++          const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
++          state.hasBlurred = true;
++          dirtyState.set(input, state);
++          if (state.hasInteracted) {
++            updateState(input);
++          }
++        }
++      };
++
++      const init = (root = document) => {
++        const nativelySupported = CSS.supports('selector(:user-invalid)');
++        if (nativelySupported && !forceFallbackCheckbox.checked) return;
++
++        root.addEventListener('blur', handleEvent, true);
++        root.addEventListener('input', handleEvent);
++        root.addEventListener('change', handleEvent);
++        root.addEventListener('reset', handleEvent, true);
++      };
++
++      return { init };
++    })();
++
++    // Initial run
++    updateFeatureState();
++  </script>
++
+ </body>
+ 
+ </html>
