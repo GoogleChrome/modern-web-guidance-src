@@ -81,12 +81,12 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     }
     return false;
   }
-  if (!currentInv.hasDemo) {
-    console.error(cRed(`\nError: ${DEMO_FILE} is required but missing in ${targetDir}`));
+  if (!currentInv.hasDemo && !currentInv.hasSolution) {
+    console.error(cRed(`\nError: Either ${DEMO_FILE} or a solution/ folder is required, but both are missing in ${targetDir}`));
     return false;
   }
 
-  const needsGeneration = !currentInv.hasNegativeDemo || !currentInv.hasGrader;
+  const needsGeneration = (!currentInv.hasSolution && !currentInv.hasNegativeDemo) || !currentInv.hasGrader;
 
   // Generators require expectations.md — check before attempting generation
   if (needsGeneration && !currentInv.hasExpectations) {
@@ -96,10 +96,10 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Step 2: Generate missing artifacts
-  if (!currentInv.hasNegativeDemo) {
+  if (!currentInv.hasSolution && !currentInv.hasNegativeDemo) {
     await generateArtifact('negative-demo.html', () => generateNegative(targetDirRaw), path.join(targetDir, NEGATIVE_DEMO_FILE));
   } else {
-    console.log(cDim(`\nSkipping ${NEGATIVE_DEMO_FILE} generation (already exists)`));
+    console.log(cDim(`\nSkipping ${NEGATIVE_DEMO_FILE} generation (already exists or using solution calibration)`));
   }
 
   if (!currentInv.hasGrader) {

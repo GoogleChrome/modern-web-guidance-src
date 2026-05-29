@@ -278,6 +278,7 @@ export interface GuideInventory {
   hasGuide: boolean;
   isStub: boolean;
   hasDemo: boolean;
+  hasSolution: boolean;
   hasExpectations: boolean;
   expectationsEmpty: boolean;
   hasNegativeDemo: boolean;
@@ -419,6 +420,7 @@ export function inventoryGuide(dir: string): GuideInventory {
     hasGuide,
     isStub,
     hasDemo: readFileSafe(path.join(dir, DEMO_FILE)).length > 0,
+    hasSolution: fs.existsSync(path.join(dir, 'solution')),
     hasExpectations,
     expectationsEmpty: hasExpectations && expectationsContent.length === 0,
     hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
@@ -434,9 +436,10 @@ export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'n
 export function classifyGuide(inv: GuideInventory): GuideStatus {
   if (!inv.hasGuide && !inv.isStub) return 'incomplete';
   if (inv.isStub && !inv.hasGuide) return 'stub';
-  if (!inv.hasDemo) return 'incomplete';
+  if (!inv.hasDemo && !inv.hasSolution) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
-  if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
+  if (!inv.hasGrader) return 'needs-calibration';
+  if (!inv.hasSolution && !inv.hasNegativeDemo) return 'needs-calibration';
   if (!inv.hasTask) return 'needs-test';
   return 'eval-ready';
 }

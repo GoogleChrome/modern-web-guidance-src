@@ -5,8 +5,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { guidesDir } from '../lib/paths.ts';
-import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
+import { guidesDir, rootDir } from '../lib/paths.ts';
+import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
+import { getTaskMap } from '../lib/guide-validation.ts';
 
 export function findGrader(startDir: string): string | null {
   let currentDir = startDir;
@@ -255,15 +256,16 @@ function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boo
   } else {
     console.log(cBold(cRed(`Failed! The grader needs calibration.`)));
     if (demoFailed) {
-      console.log(`\nView demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), demoOutDir)}`);
+      console.log(`\nView positive calibration report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), demoOutDir)}`);
     }
-    console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), negativeOutDir)}`);
+    console.log(`\nView negative calibration report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), negativeOutDir)}`);
   }
 }
 
 export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
-  const { demoPath, negativePath, graderPath } = validateCalibrationPaths(targetDirAbs);
+  const solutionDir = path.join(targetDirAbs, 'solution');
+  const hasSolution = fs.existsSync(solutionDir);
 
   const result: CalibrationResult = {
     success: false,
@@ -271,13 +273,124 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
     negative: { passed: 0, failed: 0, passingTests: [] },
   };
 
+  const graderPath = findGrader(targetDirAbs);
+  if (!graderPath) {
+    throw new Error('Could not find grader.ts in the directory or any parents.');
+  }
+
   const demoOutDir = path.join(targetDirAbs, 'grade-report', 'demo');
   const negativeOutDir = path.join(targetDirAbs, 'grade-report', 'negative');
+
+  if (hasSolution) {
+    console.log(cCyan(`\n\ud83d\udee0\ufe0f  Option B Calibration: using solution/ folder over base app...`));
+
+    const guideName = path.basename(targetDirAbs);
+    const taskMap = getTaskMap();
+    const taskInfo = taskMap.get(`${guideName}/task`);
+    if (!taskInfo) {
+      throw new Error(`Could not find task info for guide: ${guideName}`);
+    }
+    const baseAppName = taskInfo.baseApp;
+    const baseAppDir = path.join(rootDir, 'harness', 'base_apps', baseAppName);
+    if (!fs.existsSync(baseAppDir)) {
+      throw new Error(`Base app directory not found: ${baseAppDir}`);
+    }
+
+    const targetFileAbs = path.join(baseAppDir, 'index.html');
+    const { execSync } = await import('child_process');
+
+    const restoreGitState = () => {
+      console.log(cDim(`Restoring base app git state in ${baseAppDir}...`));
+      try {
+        execSync(`git checkout -- ${baseAppDir}`, { cwd: rootDir, stdio: 'ignore' });
+        execSync(`git clean -fd ${baseAppDir}`, { cwd: rootDir, stdio: 'ignore' });
+      } catch (err) {
+        console.warn(cYellow(`Warning: Failed to restore git status: ${err.message}`));
+      }
+    };
+
+    let demoFailedTests = 0;
+    try {
+      restoreGitState();
+
+      console.log(cYellow(`\nApplying solution patch from ${solutionDir} to ${baseAppDir}...`));
+      fs.cpSync(solutionDir, baseAppDir, { recursive: true });
+
+      console.log(cYellow(`Running positive calibration (expecting 100% pass)...`));
+      const demoResults = await runPlaywright(targetFileAbs, graderPath, demoOutDir, 'inherit')
+        .catch(err => {
+          console.error(cRed(`Failed to run positive test target: ${err.message}`));
+          return null;
+        });
+
+      let demoPassedTests = 0;
+      if (demoResults) {
+        demoPassedTests = demoResults.stats?.expected || 0;
+        demoFailedTests = demoResults.stats?.unexpected || 0;
+        result.demo.passed = demoPassedTests;
+        result.demo.failed = demoFailedTests;
+
+        if (demoPassedTests === 0 && demoFailedTests === 0) {
+          console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run against solution-patched base app`));
+          demoFailedTests = 1;
+        } else if (demoFailedTests > 0) {
+          result.demo.failingTests = demoResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
+          console.log(cRed(`\u274c Solution-patched base app failed ${demoFailedTests} tests!`));
+          demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
+        } else {
+          console.log(cGreen(`\u2705 Solution-patched base app passed all ${demoPassedTests} tests.`));
+        }
+      }
+
+      restoreGitState();
+
+      if (demoFailedTests > 0) {
+        console.log(cYellow(`Skipping negative calibration run due to failures in positive test`));
+        printFinalCalibrationSummary(result, true, demoOutDir, negativeOutDir);
+        return result;
+      }
+
+      console.log(cYellow(`\nRunning negative calibration on unmodified base app (expecting 100% fail)...`));
+      const negativeResults = await runPlaywright(targetFileAbs, graderPath, negativeOutDir, 'ignore')
+        .catch(err => {
+          console.error(cRed(`Failed to run negative test target: ${err.message}`));
+          return null;
+        });
+
+      if (negativeResults) {
+        const negativePassedTests = negativeResults.stats?.expected || 0;
+        const negativeFailedTests = negativeResults.stats?.unexpected || 0;
+        result.negative.passed = negativePassedTests;
+        result.negative.failed = negativeFailedTests;
+
+        if (negativePassedTests === 0 && negativeFailedTests === 0) {
+          console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run against unmodified base app`));
+        } else if (negativePassedTests > 0) {
+          result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
+          console.log(cRed(`\u274c Unmodified base app incorrectly passed ${negativePassedTests} tests!`));
+          negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
+        } else {
+          console.log(cGreen(`\u2705 Unmodified base app failed all ${negativeFailedTests} tests correctly.`));
+          result.success = true;
+        }
+      }
+
+      printFinalCalibrationSummary(result, false, demoOutDir, negativeOutDir);
+
+    } finally {
+      restoreGitState();
+    }
+
+    return result;
+  }
+
+  const { demoPath, negativePath } = validateCalibrationPaths(targetDirAbs);
 
   const demoFailed = await runDemoCalibration(demoPath, graderPath, demoOutDir, result);
 
   if (demoFailed) {
     console.log(cYellow(`Skipping negative-demo.html run due to failures in demo.html`));
+    printFinalCalibrationSummary(result, demoFailed, demoOutDir, negativeOutDir);
     return result;
   }
 
@@ -305,7 +418,7 @@ async function run(): Promise<void> {
 
   const stat = fs.statSync(targetPathAbs);
   if (stat.isDirectory()) {
-    console.log(cCyan(`\ud83e\uddea Directory detected. Running calibration suite on the grader (demo.html & negative-demo.html)...`));
+    console.log(cCyan(`\ud83e\uddea Directory detected. Running calibration suite on the grader...`));
     const result = await testGrader(targetPathAbs);
     process.exit(result.success ? 0 : 1);
   } else if (targetPathAbs.endsWith('.html')) {
