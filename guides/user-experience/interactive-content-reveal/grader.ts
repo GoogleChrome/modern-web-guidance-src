@@ -13,7 +13,7 @@ test('sets --mouse-x custom property when moving mouse over the card', async ({ 
   const container = page.locator('.product-card').first();
   const box = await container.boundingBox();
   if (box) {
-    await page.mouse.move(box.x + 100, box.y + 150);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   }
   // Allow any pointermove handlers to execute
   await page.waitForTimeout(100);
@@ -28,7 +28,7 @@ test('sets --mouse-y custom property when moving mouse over the card', async ({ 
   const container = page.locator('.product-card').first();
   const box = await container.boundingBox();
   if (box) {
-    await page.mouse.move(box.x + 100, box.y + 150);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   }
   // Allow any pointermove handlers to execute
   await page.waitForTimeout(100);
@@ -192,9 +192,11 @@ test('sets gradient stops via --inner-size and --outer-size properties', async (
     }
     if (!revealEl) return false;
 
-    // Temporarily disable transition on the reveal element to get immediate computed style
+    // Temporarily disable transition on both reveal element and parent card to get immediate computed style
     const originalTransition = revealEl.style.transition;
+    const originalCardTransition = card.style.transition;
     revealEl.style.transition = 'none';
+    card.style.transition = 'none';
 
     card.style.setProperty('--inner-size', '15px');
     card.style.setProperty('--outer-size', '35px');
@@ -202,8 +204,9 @@ test('sets gradient stops via --inner-size and --outer-size properties', async (
     const styleAfter = window.getComputedStyle(revealEl);
     const maskAfter = styleAfter.maskImage || styleAfter.webkitMaskImage || '';
 
-    // Restore transition
+    // Restore transitions
     revealEl.style.transition = originalTransition;
+    card.style.transition = originalCardTransition;
 
     return maskAfter.includes('15px') && maskAfter.includes('35px');
   });
@@ -245,7 +248,21 @@ test('ensures size properties have a non-zero transition duration by default', a
           .map((s) => parseFloat(s.trim()))
           .some((v) => v > 0);
         const targetsSize = prop.includes('--inner-size') || prop.includes('--outer-size') || prop === 'all';
-        return hasNonZero && targetsSize;
+        if (hasNonZero && targetsSize) return true;
+
+        // Fallback: Check parent container card that defines variables transition
+        const card = el.closest('.product-card') || el.parentElement;
+        if (card) {
+          const parentStyle = window.getComputedStyle(card);
+          const parentDuration = parentStyle.transitionDuration;
+          const parentProp = parentStyle.transitionProperty;
+          const parentHasNonZero = parentDuration
+            .split(',')
+            .map((s) => parseFloat(s.trim()))
+            .some((v) => v > 0);
+          const parentTargetsSize = parentProp.includes('--inner-size') || parentProp.includes('--outer-size') || parentProp === 'all';
+          if (parentHasNonZero && parentTargetsSize) return true;
+        }
       }
     }
     return false;

@@ -14,7 +14,7 @@ test('The document contains a top-layer element that remains open after being mo
   await expect(topLayer).toBeAttached();
   
   // Open the top-layer element
-  const openBtn = page.locator('button', { hasText: /open|feedback|show|trigger|dialog/i }).first();
+  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).first();
   await openBtn.click();
   
   // Verify it is open and record its initial parent
@@ -63,7 +63,7 @@ test('The script contains a feature detection check for moveBefore to safely han
   await page.goto(TARGET_FILE_URL);
   
   // Open the top-layer element
-  const openBtn = page.locator('button', { hasText: /open|feedback|show|trigger|dialog/i }).first();
+  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).first();
   await openBtn.click();
 
   // Move the top-layer element
@@ -108,7 +108,7 @@ test('The script uses moveBefore to move the top-layer element to a new parent i
   await page.goto(TARGET_FILE_URL);
 
   // Open the top-layer element
-  const openBtn = page.locator('button', { hasText: /open|feedback|show|trigger|dialog/i }).first();
+  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).first();
   await openBtn.click();
 
   // Move the top-layer element
@@ -159,7 +159,7 @@ test('The script falls back to using insertBefore or appendChild and restores st
   await page.goto(TARGET_FILE_URL);
 
   // Open the top-layer element
-  const openBtn = page.locator('button', { hasText: /open|feedback|show|trigger|dialog/i }).first();
+  const openBtn = page.locator('button:visible', { hasText: /open|feedback|show|trigger|modal/i }).first();
   await openBtn.click();
 
   // Get original parent
