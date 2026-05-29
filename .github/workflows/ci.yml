@@ -52,7 +52,7 @@ jobs:
           fi
 
       # Fail if any changes were written to any source files or generated untracked files
-      - run: git add -A && git diff --cached --exit-code -- ':!README.mwg.md'
+      - run: git add -A && git diff --cached --exit-code
 
       #  TODO(paulirish): restore this after fixing:
       #      fatal: You are not currently on a branch. To push the history leading to the current (detached HEAD) state now, use git push origin HEAD:<name-of-remote-branch>       

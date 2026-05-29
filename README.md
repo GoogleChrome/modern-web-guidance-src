@@ -1,8 +1,8 @@
 # <img src="./.github/img/modern-web-guidance.svg" alt="Modern Web Guidance" width="30" height="30"> Modern Web Guidance (Source)
 
-A unified repository for authoring, calibrating, and evaluating modern web development guidance. Here, we curate and codify best practices, write eval tasks and assertions, and an evaluation harness measures how coding agents follow the guidance.
+This repo is the source repository for [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) and includes the code and documentation for authoring, calibrating, and evaluating its contents.
 
-The published distribution of this guidance is compiled and released to the [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) repository as agent skills including the primary `modern-web-guidance` skill (which utilizes a bundled CLI distribution) alongside other standalone skills.
+**Modern Web Guidance** is a set of skills that embed web platform expertise, best practices, and browser compatibility data directly into your coding agents. It helps to steer your coding agents away from legacy patterns, and instead toward solutions that harness the power and capabilities of the modern web platform.
 
 > [!NOTE]
 > This is a **preview release** of Modern Web Guidance. We're actively adding new content and we [welcome contributions or feedback on GitHub](https://github.com/GoogleChrome/modern-web-guidance-src).
@@ -10,8 +10,6 @@ The published distribution of this guidance is compiled and released to the [Goo
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for how we work on the project and orientation of the codebase. We're open to contributions to guidance, eval cases, eval infra and more. :) 
 
 ---
-
-**Modern Web Guidance** is an agent skill (aka `SKILL.md`) with a CLI that helps coding agents build better web applications using modern, high-performance, accessible, and secure APIs instead of legacy workarounds.
 
 *Supported by the Google Chrome team, the Microsoft Edge team, and the web development community.*
 
@@ -23,7 +21,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for how we work on the project and orie
 npx modern-web-guidance@latest install
 ```
 
-This command runs an interactive wizard to place the SKILL.md appropriately. See [Alternative Installation Methods](#-alternative-installation-methods) below.
+This command runs an interactive wizard to install Modern Web Guidance. See [Alternative Installation Methods](#-alternative-installation-methods) below.
 
 #### Try it out (without installing)
 
@@ -43,7 +41,7 @@ Even if a model knows an API exists, it often lacks the density of real-world, m
 
 **Modern Web Guidance bridges this gap.** Our skill's CLI returns targeted, expert-curated guidelines directly into your agent's context window, focusing on:
 * **Modern Browser APIs**: Helping models correctly structure APIs they frequently misuse.
-* **Performance & Accessibility**: Eliminating legacy bloat with clean, native patterns.
+* **Performance & Accessibility**: Preferring platform-level APIs that can be optimized by the browser and include built-in accessibility affordances.
 * **Responsible Fallbacks**: Guiding models to use sensible, lightweight fallbacks instead of heavy polyfills or legacy libraries.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> What's Included?
@@ -74,7 +72,7 @@ We cover the past several years of the web platform's new features, all the way 
     </td>
     <td width="33%" valign="top" style="border: none; padding: 6px;">
       <h4>♿ Accessibility</h4>
-      <p style="font-size: 0.9em; line-height: 1.4;">Hardened patterns (accessible error announcements, keyboard focus management).</p>
+      <p style="font-size: 0.9em; line-height: 1.4;">Important considerations (screen reader and keyboard operability, content navigation and discoverability).</p>
     </td>
     <td width="33%" valign="top" style="border: none; padding: 6px;">
       <h4>🤖 Built-in AI</h4>
@@ -94,9 +92,9 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
-0. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web` CLI for web platform queries.
-2. **Local Semantic Search**: The agent runs `modern-web search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
-3. **Guide Fetch**: The agent retrieves the guide via `modern-web retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
+1. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web-guidance` CLI for web platform queries.
+2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
+3. **Guide Fetch**: The agent retrieves the guide via `modern-web-guidance retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
 
 > [!TIP]
 > Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
@@ -209,7 +207,7 @@ npx modern-web-guidance@latest install --choose
 Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the tool. You can inspect what is collected in [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/serving/bin/modern-web.ts).
 
 > [!TIP]
-> **To Opt-Out:**, set the `DISABLE_TELEMETRY=1` env variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
+> **To Opt-Out:** set the `DISABLE_TELEMETRY=1` env variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
 > ```bash
 > export DISABLE_TELEMETRY=1
 > ```
@@ -218,7 +216,7 @@ Google handles this data in accordance with the [Google Privacy Policy](https://
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
-If you'd like to contribute to modern-web-guidance, please see [source repo's `CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md). The `modern-web-guidance` repo is a purely a publish target for clean skills installation.
+If you'd like to contribute to modern-web-guidance, please see the [source repo's `CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md). The `modern-web-guidance` repo is purely a publish target for clean skills installation.
 
 Huge thanks to everyone who has contributed!
 
