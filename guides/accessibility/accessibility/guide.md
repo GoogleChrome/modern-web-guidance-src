@@ -334,7 +334,7 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 <!-- Session Timeout Warning with controls -->
 <div role="alert" class="timeout-warning">
   Your session will expire in 2 minutes. 
-  <button type="button" onclick="extendSession()">Extend Session</button>
+  <button type="button" id="extend-session-btn">Extend Session</button>
 </div>
 ```
 
@@ -437,7 +437,7 @@ Modern browsers provide native solutions for creating modal dialogs which avoid 
 
 ### Code Examples
 
-**HTML & JS: Native `<dialog>` with standard close events**
+**HTML: Native `<dialog>`**
 ```html
 <!-- Dialog opens natively with showModal() and locks focus -->
 <button id="open-btn">Open Dialog</button>
@@ -445,14 +445,19 @@ Modern browsers provide native solutions for creating modal dialogs which avoid 
 <dialog id="accessible-modal" aria-labelledby="title-id">
   <h2 id="title-id">Account Settings</h2>
   <p>Update your details here.</p>
-  <button onclick="this.closest('dialog').close()">Close Dialog</button>
+  <button id="close-dialog-btn">Close Dialog</button>
 </dialog>
+```
 
-<script>
-  document.getElementById('open-btn').addEventListener('click', () => {
-    document.getElementById('accessible-modal').showModal();
-  });
-</script>
+**JavaScript: Dialog controls**
+```javascript
+const dialog = document.getElementById('accessible-modal');
+document.getElementById('open-btn').addEventListener('click', () => {
+  dialog.showModal();
+});
+document.getElementById('close-dialog-btn').addEventListener('click', () => {
+  dialog.close();
+});
 ```
 
 ## 12. Testing Validations

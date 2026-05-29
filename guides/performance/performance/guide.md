@@ -29,7 +29,7 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 </style>
 
 <!-- Defer non-critical CSS -->
-<link rel="preload" href="non-critical.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" href="non-critical.css" as="style" id="non-critical-css">
 <noscript><link rel="stylesheet" href="non-critical.css"></noscript>
 
 <!-- Load CSS conditionally based on viewport -->
@@ -38,6 +38,8 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 <!-- Defer JavaScript execution -->
 <script defer src="app-bundle.js"></script>
 ```
+
+Note: To apply the stylesheet when loaded, you must toggle its `rel` attribute to `stylesheet` using JavaScript (e.g., by adding a load event listener to the element).
 
 ### The Resource Hint Navigator
 

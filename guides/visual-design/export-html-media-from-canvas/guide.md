@@ -192,6 +192,7 @@ targetHTMLElement.style.transform = computedTransform.toString();
 
 ## Example code
 
+**HTML**
 ```html
 <body>
     <canvas id="canvas" style="width: 400px; height: 200px;" layoutsubtree>
@@ -199,44 +200,44 @@ targetHTMLElement.style.transform = computedTransform.toString();
     </canvas>
     
     <button id="download">Download Image</button>
-
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const element = document.getElementById('element');
-        const download = document.getElementById('download');
-
-        canvas.onpaint = (event) => {
-            ctx.reset();
-            // Draw the element into the canvas
-            const transform = ctx.drawElementImage(element, 10, 10);
-            // Synchronize DOM position for hit testing (typing)
-            element.style.transform = transform.toString();
-        };
-
-        download.onclick = () => {
-            // Export the canvas content as an image
-            const dataURL = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = 'exported-canvas.png';
-            link.href = dataURL;
-            link.click();
-        };
-
-        // Re-initialize canvas size on screen resize
-        const observer = new ResizeObserver(([entry]) => {
-            const dpc = entry.devicePixelContentBoxSize;
-            canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
-            canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
-            canvas.requestPaint();
-        });
-        const supportsDevicePixelContentBox = 
-            typeof ResizeObserverEntry !== 'undefined' && 
-            'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
-        const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
-        observer.observe(canvas, options);
-    </script>
 </body>
+```
+
+**JavaScript**
+```javascript
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const element = document.getElementById('element');
+
+canvas.onpaint = (event) => {
+    ctx.reset();
+    // Draw the element into the canvas
+    const transform = ctx.drawElementImage(element, 10, 10);
+    // Synchronize DOM position for hit testing (typing)
+    element.style.transform = transform.toString();
+};
+
+document.getElementById('download').addEventListener('click', () => {
+    // Export the canvas content as an image
+    const dataURL = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = 'exported-canvas.png';
+    link.href = dataURL;
+    link.click();
+});
+
+// Re-initialize canvas size on screen resize
+const observer = new ResizeObserver(([entry]) => {
+    const dpc = entry.devicePixelContentBoxSize;
+    canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
+    canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
+    canvas.requestPaint();
+});
+const supportsDevicePixelContentBox = 
+    typeof ResizeObserverEntry !== 'undefined' && 
+    'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
+const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
+observer.observe(canvas, options);
 ```
 
 ## Best Practices
