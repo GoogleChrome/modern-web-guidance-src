@@ -363,14 +363,15 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
         result.negative.passed = negativePassedTests;
         result.negative.failed = negativeFailedTests;
 
-        if (negativePassedTests === 0 && negativeFailedTests === 0) {
-          console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run against unmodified base app`));
-        } else if (negativePassedTests > 0) {
+        const totalTests = negativePassedTests + negativeFailedTests;
+        if (totalTests === 0) {
+          console.log(cYellow(`⚠️  Warning: No tests were run against unmodified base app`));
+        } else if (negativeFailedTests === 0) {
           result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
-          console.log(cRed(`\u274c Unmodified base app incorrectly passed ${negativePassedTests} tests!`));
+          console.log(cRed(`❌ Unmodified base app incorrectly passed all ${negativePassedTests} tests (vacuous validation)!`));
           negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
         } else {
-          console.log(cGreen(`\u2705 Unmodified base app failed all ${negativeFailedTests} tests correctly.`));
+          console.log(cGreen(`✅ Unmodified base app correctly failed ${negativeFailedTests} / ${totalTests} tests (passed ${negativePassedTests} tests).`));
           result.success = true;
         }
       }
