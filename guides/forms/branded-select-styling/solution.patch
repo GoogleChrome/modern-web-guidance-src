@@ -1,0 +1,86 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..137fca21 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -152,6 +152,63 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roast Selector Styles */
++    .roast-selector-container {
++      margin: 20px 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .roast-selector-container label {
++      color: white;
++      font-weight: bold;
++    }
++
++    #roast-select,
++    #roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    #roast-select {
++      background-color: var(--primary);
++      color: white;
++      border: 2px solid var(--accent);
++      border-radius: 4px;
++      padding: 8px 16px;
++      font-size: 1rem;
++      cursor: pointer;
++      font-family: inherit;
++    }
++
++    #roast-select::picker(select) {
++      background-color: var(--primary);
++      border: 2px solid var(--accent);
++      border-radius: 4px;
++      padding: 4px;
++    }
++
++    #roast-select::picker-icon {
++      color: var(--accent);
++    }
++
++    #roast-select option::checkmark {
++      color: var(--accent);
++    }
++
++    #roast-select option {
++      color: white;
++      padding: 6px 12px;
++      border-radius: 2px;
++      cursor: pointer;
++    }
++
++    #roast-select option:hover {
++      background-color: var(--accent);
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+@@ -171,6 +228,17 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="roast-selector-container">
++      <label for="roast-select">Choose your roast:</label>
++      <select id="roast-select" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">Light Roast</option>
++        <option value="medium" selected>Medium Roast</option>
++        <option value="dark">Dark Roast</option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
