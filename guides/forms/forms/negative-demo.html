@@ -1,0 +1,191 @@
+<html>
+<head>
+  <style>
+    body {
+      background-color: white;
+      color: black;
+      font-family: Arial;
+      font-size: 10px;
+      margin: 20px;
+    }
+
+    .form-wrapper {
+      width: 800px;
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .input-row {
+      width: 45%;
+      margin: 5px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .input-field {
+      width: 100px;
+      height: 20px;
+      border: 1px solid #eee;
+      font-size: 10px;
+      outline: none;
+    }
+
+    .label-text {
+      margin-left: 50px;
+    }
+
+    .group-spacing {
+      margin-top: 2px;
+    }
+
+    .submit-div {
+      background-color: gray;
+      width: 60px;
+      height: 20px;
+      text-align: center;
+      cursor: pointer;
+      margin-top: 50px;
+    }
+
+    .hidden-info {
+      display: none;
+    }
+
+    .error-border {
+      border: 1px solid red;
+    }
+
+    #cc-inputs input {
+      width: 30px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <div style="font-size: 24px;">Registration</div>
+    
+    <div class="form-wrapper">
+      <div class="input-row">
+        <input type="text" class="input-field" placeholder="First Name" oninput="checkValid(this)">
+        <span class="label-text">First Name</span>
+      </div>
+      
+      <div class="input-row">
+        <input type="text" class="input-field" placeholder="Last Name" oninput="checkValid(this)">
+        <span class="label-text">Last Name</span>
+      </div>
+
+      <div class="group-spacing"></div>
+
+      <div class="input-row">
+        <input type="number" class="input-field" placeholder="Age" oninput="validateAge(this)">
+        <span class="label-text">Age</span>
+      </div>
+
+      <div class="input-row">
+        <input type="email" class="input-field" placeholder="Email">
+        <span class="label-text">Email</span>
+      </div>
+
+      <div class="input-row">
+        <input type="password" class="input-field" id="p1" onpaste="return false;">
+        <span class="label-text">Password</span>
+      </div>
+
+      <div class="input-row">
+        <div id="cc-inputs">
+          <input type="number" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
+          <input type="number" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
+          <input type="number" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
+          <input type="number" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
+        </div>
+        <span class="label-text">Credit Card</span>
+      </div>
+
+      <div class="input-row">
+        <input type="number" class="input-field" placeholder="Zip">
+        <span class="label-text">Zip Code</span>
+      </div>
+
+      <div class="input-row">
+        <div style="display: flex; flex-direction: column;">
+          <div><input type="radio" name="opt"> Option 1</div>
+          <div><input type="radio" name="opt"> Option 2</div>
+          <div><input type="radio" name="opt"> Option 3</div>
+          <div><input type="radio" name="opt"> Option 4</div>
+          <div><input type="radio" name="opt"> Option 5</div>
+          <div><input type="radio" name="opt"> Option 6</div>
+          <div><input type="radio" name="opt"> Option 7</div>
+          <div><input type="radio" name="opt"> Option 8</div>
+          <div><input type="radio" name="opt"> Option 9</div>
+          <div><input type="radio" name="opt"> Option 10</div>
+          <div><input type="radio" name="opt"> Option 11</div>
+          <div><input type="radio" name="opt"> Option 12</div>
+        </div>
+        <span class="label-text">Choose preference</span>
+      </div>
+
+      <div class="input-row">
+        <select class="input-field">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+        <span class="label-text">Subscribe?</span>
+      </div>
+
+      <div id="btn-submit" class="submit-div" onclick="doAction()" style="opacity: 0.5; pointer-events: none;">
+        Submit
+      </div>
+    </div>
+  </div>
+
+  <div class="hidden-info">This is secret help text that screen readers cannot see.</div>
+
+  <script>
+    function checkValid(el) {
+      if (el.value.length < 1) {
+        el.className = 'input-field error-border';
+      } else {
+        el.className = 'input-field';
+      }
+      checkAll();
+    }
+
+    function validateAge(el) {
+      if (el.value < 18) {
+        alert("Too young!");
+        el.value = "";
+      }
+      checkAll();
+    }
+
+    function checkAll() {
+      var inputs = document.getElementsByTagName('input');
+      var allValid = true;
+      for (var i = 0; i < inputs.length; i++) {
+        if (inputs[i].type == 'text' && inputs[i].value == "") {
+          allValid = false;
+        }
+      }
+      
+      if (allValid) {
+        document.getElementById('btn-submit').style.opacity = "1";
+        document.getElementById('btn-submit').style.pointerEvents = "auto";
+      } else {
+        document.getElementById('btn-submit').style.opacity = "0.5";
+        document.getElementById('btn-submit').style.pointerEvents = "none";
+      }
+    }
+
+    function doAction() {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/register?data=" + document.getElementById('p1').value, true);
+      xhr.send();
+      alert("Done");
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Demo: Performance Optimization</title>
+
+  <!-- 1. Resource Hints -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Preload critical LCP image -->
+  <link rel="preload" href="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=1200&q=80" as="image" fetchpriority="high">
+
+  <!-- 2. Critical CSS Inlining -->
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #3b82f6;
+      --border-color: #334155;
+    }
+    body {
+      margin: 0;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+    }
+    .hero {
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 2rem;
+      background: linear-gradient(to bottom, #0f172a, #1e293b);
+    }
+    .hero-title {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin-bottom: 2rem;
+    }
+    .lcp-image {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+
+  <!-- 3. Defer Non-Critical CSS -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap"></noscript>
+
+  <!-- 4. Defer JavaScript -->
+  <script defer src="app.js"></script>
+  
+  <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+
+  <section class="hero">
+    <h1 class="hero-title">Blazing Fast Web Experiences</h1>
+    <p class="hero-subtitle">Demonstrating Largest Contentful Paint (LCP), Interaction to Next Paint (INP), and Critical Rendering Path optimizations.</p>
+    
+    <img 
+      src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=1200&q=80" 
+      alt="Futuristic Web Interface" 
+      class="lcp-image"
+      width="1200" 
+      height="675"
+      fetchpriority="high"
+      decoding="sync"
+    >
+  </section>
+
+  <div style="display: none;">
+    <img src="small-thumb.jpg" fetchpriority="low" alt="Thumbnail">
+  </div>
+
+  <main class="container" style="max-width: 1200px; margin: 0 auto; padding: 4rem 2rem;">
+    
+    <section class="dynamic-section" style="margin-bottom: 4rem;">
+      <h2>Dynamic Content Interaction</h2>
+      <p>Click the button below to simulate a heavy JavaScript task and load a dynamic feature.</p>
+      
+      <button id="heavyTaskBtn" style="background: var(--accent-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
+        Run Heavy Task & Load Feature
+      </button>
+      <span id="taskStatus" style="margin-left: 1rem; color: var(--text-secondary);"></span>
+      
+      <div class="progress-bar" style="width: 100%; height: 4px; background: var(--border-color); margin-top: 1rem; border-radius: 2px; overflow: hidden;">
+        <div id="progressBarFill" style="width: 0%; height: 100%; background: var(--accent-primary); transition: width 0.1s;"></div>
+      </div>
+    </section>
+
+    <section class="image-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; margin-bottom: 4rem;">
+      
+      <div class="card" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+        <picture>
+          <source type="image/avif" srcset="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 50vw">
+          <source type="image/webp" srcset="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 50vw">
+          <img 
+            src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80" 
+            alt="Cyber Security Concept" 
+            width="800" 
+            height="533"
+            loading="lazy" 
+          >
+        </picture>
+        <div style="padding: 1.5rem;">
+          <h3>Responsive AVIF/WebP</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">Lazy loaded, aspect ratio preserved.</p>
+        </div>
+      </div>
+
+      <div class="card" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+        <img 
+          src="https://images.unsplash.com/photo-151877066853b-5e6c9f492113?auto=format&fit=crop&w=800&q=80" 
+          alt="Microchip" 
+          width="800" 
+          height="533"
+          loading="lazy" 
+        >
+        <div style="padding: 1.5rem;">
+          <h3>Standard Lazy Loading</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">Below the fold images do not block initial render.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="video-section" style="margin-bottom: 4rem;">
+      <h2>Optimized Video Delivery</h2>
+      
+      <video 
+        controls 
+        width="1200" 
+        height="675"
+        poster="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80" 
+        preload="none"
+        style="width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border-color);"
+        loading="lazy"
+      >
+        <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" type="video/webm">
+        <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
+        <track src="captions.vtt" kind="captions" srclang="en" label="English">
+      </video>
+    </section>
+
+    <section class="containment-section article-list-item" style="background: var(--card-bg); padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color);">
+      <h2>CSS Containment & Visibility</h2>
+      <p>This section uses <code>content-visibility: auto</code> to save rendering costs if it were part of a long list.</p>
+    </section>
+
+  </main>
+
+  <style>
+    .article-list-item {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 200px;
+    }
+
+    .video-section {
+      contain: layout style paint;
+    }
+  </style>
+
+  <script>
+    const heavyTaskBtn = document.getElementById('heavyTaskBtn');
+    const taskStatus = document.getElementById('taskStatus');
+    const progressBarFill = document.getElementById('progressBarFill');
+
+    async function yieldToMain() {
+      if ('scheduler' in window && 'yield' in scheduler) {
+        return await scheduler.yield();
+      }
+      return new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    heavyTaskBtn.addEventListener('click', async () => {
+      heavyTaskBtn.disabled = true;
+      taskStatus.textContent = 'Processing...';
+      
+      const totalItems = 1000;
+      for (let i = 0; i < totalItems; i++) {
+        Math.sqrt(Math.random() * 10000);
+        
+        if (i % 10 === 0) {
+          const progress = (i / totalItems) * 100;
+          progressBarFill.style.width = `${progress}%`;
+        }
+        
+        if (i % 50 === 0) {
+          await yieldToMain();
+        }
+      }
+      
+      progressBarFill.style.width = '100%';
+      taskStatus.textContent = 'Complete! Loading feature...';
+      
+      // Real Dynamic Import
+      try {
+        const { heavyFunction } = await import('./feature.js');
+        heavyFunction();
+        taskStatus.textContent = 'Complete! Feature loaded.';
+      } catch (error) {
+        console.error('Failed to load feature:', error);
+        taskStatus.textContent = 'Failed to load feature.';
+      }
+      
+      heavyTaskBtn.disabled = false;
+    });
+
+  </script>
+
+  <script defer src="https://www.google-analytics.com/analytics.js"></script>
+</body>
+</html>

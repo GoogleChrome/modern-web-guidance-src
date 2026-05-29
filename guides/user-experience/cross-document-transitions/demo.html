@@ -1,75 +1,123 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
-<head>
-  <meta charset="UTF-8">
-  <title>Cross-document Transitions</title>
-  <style>
-    /* CORE: View Transitions API */
-    @view-transition {
-      navigation: auto;
-    }
-
-    ::view-transition-old(root) {
-      animation: fade-out 0.4s ease-out forwards;
-    }
-
-    ::view-transition-new(root) {
-      animation: fade-in 0.4s ease-out forwards;
-    }
-
-    @keyframes fade-out {
-      to {
-        opacity: 0;
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cross-document Transitions</title>
+    <style>
+      @media (prefers-reduced-motion: no-preference) {
+        @view-transition {
+          navigation: auto;
+        }
       }
-    }
+      :active-view-transition-type(next) {
+        &::view-transition-old(root) {
+          animation: slide-out-next 0.4s ease-out forwards;
+        }
 
-    @keyframes fade-in {
-      from {
-        opacity: 0;
+        &::view-transition-new(root) {
+          animation: slide-in-next 0.4s ease-out forwards;
+        }
       }
+      :active-view-transition-type(previous) {
+        &::view-transition-old(root) {
+          animation: slide-out-previous 0.4s ease-out forwards;
+        }
+
+        &::view-transition-new(root) {
+          animation: slide-in-previous 0.4s ease-out forwards;
+        }
+      }
+
+      @keyframes slide-out-next {
+        to {
+          opacity: 0;
+          translate: -10% 0;
+        }
+      }
+
+      @keyframes slide-in-next {
+        from {
+          opacity: 0;
+          translate: 10% 0;
+        }
+      }
+
+      @keyframes slide-out-previous {
+        to {
+          opacity: 0;
+          translate: 10% 0;
+        }
+      }
+
+      @keyframes slide-in-previous {
+        from {
+          opacity: 0;
+          translate: -10% 0;
+        }
+      }
+      /* DEMO: Styling */
+      body {
+        font-family: monospace;
+        max-width: 500px;
+        margin: 50px auto;
+        padding: 0 20px;
+        text-align: center;
+      }
+
+      a {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: #0066cc;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Cross-document Transitions</h1>
+    <p>Cross-document navigation with view transitions.</p>
+
+    <a href="?page=0" id="previous">← Go to Page 0</a>
+    <a href="?page=2" id="next">Go to Page 2 →</a>
+  </body>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const page = params.get("page");
+
+    if (page) {
+      document.title = `Page ${page}`;
+      document.querySelector("h1").textContent = `Page ${page}`;
+
+      const nextPage = Number(page) + 1;
+      const next = document.getElementById("next");
+      next.href = `?page=${nextPage}`;
+      next.textContent = `Go to Page ${nextPage} →`;
+
+      const previousPage = Number(page) - 1;
+      const previous = document.getElementById("previous");
+      previous.href = `?page=${previousPage}`;
+      previous.textContent = `← Go to Page ${previousPage}`;
     }
-
-    /* DEMO: Styling */
-    body {
-      font-family: monospace;
-      max-width: 500px;
-      margin: 50px auto;
-      padding: 0 20px;
-      text-align: center;
-    }
-
-    a {
-      display: inline-block;
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: #0066cc;
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-    }
-  </style>
-</head>
-
-<body>
-  <h1>Cross-document Transitions</h1>
-  <p>Cross-document navigation with view transitions.</p>
-  <a href="?page=2">→ Go to Page 2</a>
-</body>
-
-<script>
-  const params = new URLSearchParams(location.search);
-  const page = params.get('page');
-
-  if (page) {
-    document.title = `Page ${page}`;
-    document.querySelector('h1').textContent = `Page ${page}`;
-
-    const nextPage = Number(page) + 1;
-    const a = document.querySelector('a');
-    a.href = `?page=${nextPage}`;
-    a.textContent = `→ Go to Page ${nextPage}`;
-  }
-</script>
-
+    const getTransitionType = (from, to) => {
+      const fromUrl = new URL(from.url);
+      const fromPage = fromUrl.searchParams.get("page");
+      const toUrl = new URL(to.url);
+      const toPage = toUrl.searchParams.get("page");
+      if (!toPage || !fromPage) return;
+      return toPage > fromPage ? "next" : "previous";
+    };
+    window.addEventListener("pagereveal", async (e) => {
+      if (e.viewTransition && window.navigation?.activation) {
+        const transitionType = getTransitionType(
+          navigation.activation.from,
+          navigation.activation.entry,
+        );
+        if (transitionType) e.viewTransition.types.add(transitionType);
+      }
+    });
+  </script>
 </html>

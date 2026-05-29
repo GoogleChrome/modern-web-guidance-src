@@ -3,8 +3,6 @@ name: animated-select-picker
 description: Create a custom select component whose dropdown is animated. For example, the menu fades or slides into view, or the options animate upon selection.
 web-feature-ids:
   - customizable-select
-sources:
-  - https://developer.chrome.com/en/blog/a-customizable-select
 ---
 
 # Animated Select Picker
@@ -37,8 +35,8 @@ The following example demonstrates a custom select styled with standard page ani
     <selectedcontent></selectedcontent>
   </button>
   <option value="system">
-    <!-- SVGs are allowed inside options when appearance: base-select is active -->
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- MANDATORY: Decorative inline SVGs MUST set aria-hidden="true" to prevent redundant screen reader announcement -->
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
       <line x1="8" y1="21" x2="16" y2="21"></line>
       <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -46,7 +44,7 @@ The following example demonstrates a custom select styled with standard page ani
     System Default
   </option>
   <option value="light">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
       <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -95,7 +93,7 @@ The following example demonstrates a custom select styled with standard page ani
   transform: rotate(180deg);
 }
 
-/* 
+/*
  * The Picker Container
  * Uses top-layer animations with `allow-discrete` visibility hooks
  */
@@ -139,6 +137,20 @@ The following example demonstrates a custom select styled with standard page ani
   width: 1.25rem;
   height: 1.25rem;
 }
+
+/* MANDATORY: Provide multiple indicators (e.g. bold font and distinct background) for the checked state to avoid color-only state communication */
+.animated-select option:checked {
+  font-weight: 700;
+  background-color: #f1f5f9;
+}
+
+/* Ensure copy-paste safety for users with motion sensitivities */
+@media (prefers-reduced-motion: reduce) {
+  .animated-select::picker(select),
+  .animated-select::picker-icon {
+    transition: none !important;
+  }
+}
 ```
 
 ## Strategic Implementation & Best Practices
@@ -146,13 +158,8 @@ The following example demonstrates a custom select styled with standard page ani
 - **DO** use `@starting-style` when you need animations to trigger exactly when an element transitions from `display: none` to visible.
 - **DO NOT** use ad-hoc scroll locking. Top-layer elements managed by ‘base-select’ should allow natural backdrop dismiss behaviors.
 - **DO** verify reduced motion preferences. Always wrap animation constraints in a `prefers-reduced-motion` media query to ensure accessible environments for those affected by motion sickness.
-- **DO** ensure your `<select>` has a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.
+{{ FEATURE("customizable-select", "usage") }}
 
 ## Fallback strategies
 
-{{ BASELINE_STATUS("customizable-select") }}
-
-For browsers that do not yet support `appearance: base-select`, the `<select>` element degrades gracefully to a standard operating system dropdown.
-
-- **Non-Text Content Ignored**: Older browsers strip HTML tags (like `<svg>` or `<div>`) inside `<option>` tags and render only the text nodes. Ensure the text content of the `<option>` is readable and meaningful on its own.
-- **HTML Structure Handling**: Standard parsers may ignore the `<button>` and `<selectedcontent>` tags inside `<select>` or treat them as invalid. No heavy JavaScript polyfills are strictly required for progressive enhancement if you view standard text as a readable fallback.
+{{ FEATURE_FALLBACKS("customizable-select")}}

@@ -1,0 +1,50 @@
+- The implementation MUST inline critical CSS in the HTML `<head>`.
+- The implementation MUST use `async` or `defer` for all non-critical scripts.
+- The implementation MUST split CSS by media queries using the `media` attribute on `<link>` tags.
+- The implementation MUST utilize resource hints like `preconnect` or `dns-prefetch` for essential third-party domains.
+- The implementation MUST NOT use `@import` in CSS.
+- The implementation MUST NOT place large, non-critical JavaScript in the `<head>`.
+- The implementation MUST use `fetchpriority="high"` on the LCP image.
+- The implementation MUST declare the LCP image in standard HTML (not mounted by JS).
+- The implementation MUST preload background images acting as LCP using `<link rel="preload" as="image">` with `fetchpriority="high"`.
+- The implementation MUST use `fetchpriority="low"` to demote competing above-the-fold non-LCP elements.
+- The implementation MUST NOT lazy-load the LCP image.
+- The implementation MUST NOT overuse `fetchpriority="high"`.
+- The implementation MUST NOT implement complex JavaScript loaders for the hero section.
+- The implementation MUST break up long JavaScript tasks exceeding 50ms.
+- The implementation MUST use `scheduler.yield()` with a fallback to `setTimeout` for yielding if heavy computations are present.
+- The implementation MUST debounce or throttle rapid event listeners (`scroll`, `resize`, `input`).
+- The implementation MUST separate UI updates from heavy computations.
+- The implementation MUST NOT rely solely on `setTimeout(..., 0)` for continuous yielding if `scheduler.yield` is available.
+- The implementation MUST NOT cause layout thrashing by interleaving DOM reads and writes.
+- The implementation MUST NOT block the thread with recurring timers like heavy `setInterval`.
+- The implementation MUST use `defer` with all third-party scripts unless critical.
+- The implementation MUST self-host critical third-party dependencies if possible.
+- The implementation MUST use `content-visibility: auto` on off-screen sections on large, complex pages.
+- The implementation MUST pair `content-visibility` with `contain-intrinsic-size`.
+- The implementation MUST apply explicit CSS containment (`contain: layout style paint`) for isolated UI components.
+- The implementation MUST NOT apply `content-visibility: auto` to above-the-fold content or on small, simpler pages.
+- The implementation MUST NOT overuse `will-change` globally.
+- The implementation MUST serve modern image formats (AVIF / WebP) via the `<picture>` element or equivalent CDN auto-formatting.
+- The implementation MUST apply explicit `width` and `height` attributes to images.
+- The implementation MUST utilize `loading="lazy"` on all below-the-fold images.
+- The implementation MUST implement responsive images with `srcset` and `sizes`.
+- The implementation MUST NOT lazy load above-the-fold images.
+- The implementation MUST NOT omit the `sizes` attribute when using `srcset`.
+- The implementation MUST register a Service Worker.
+- The Service Worker MUST use a `CacheFirst` strategy for static assets (evidenced by cache creation).
+- The Service Worker MUST use a `NetworkFirst` strategy for HTML documents (evidenced by cache creation).
+- The Service Worker MUST create caches to store resources.
+- The implementation MUST NOT cache opaque responses blindly.
+- The implementation MUST NOT cache POST requests in service workers.
+- The implementation MUST NOT bypass versioning for cached assets.
+- The implementation MUST preload critical fonts using `<link rel="preload" as="font" crossorigin>`.
+- The implementation MUST NOT preload all fonts.
+- The implementation MUST specify explicit `width` and `height` attributes for video elements.
+- The implementation MUST provide a `poster` image fallback for videos.
+- The implementation MUST use `preload="none"` for non-critical videos.
+- The implementation MUST serve modern video formats via source negotiation.
+- The implementation MUST use `loading="lazy"` for offscreen videos.
+- The implementation MUST NOT auto-play large video files without user intent.
+- The implementation MUST use dynamic imports (`import()`) to load code on demand if code splitting is beneficial.
+- The implementation MUST configure bundler asset chunking to split third-party vendors.

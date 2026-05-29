@@ -25,7 +25,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 
 ### 1. HTML Structure
 ```html
-<form>
+<form id="feedback-form">
   <div class="field">
     <label for="full-name">Full Name</label>
     <input
@@ -35,8 +35,9 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
       required
       aria-errormessage="name-error"
     >
+    <!-- MANDATORY: Include an icon or distinct non-color indicator alongside error text -->
     <div id="name-error" class="error-msg">
-      This field is required.
+      <span aria-hidden="true">❌</span> This field is required.
     </div>
   </div>
 </form>
@@ -53,6 +54,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 
 /*
   Only highlight empty required fields AFTER the user visits them.
+  MANDATORY: Provide multiple indicators (border shift + helper text/icon) to avoid color-only state communication.
 */
 input:user-invalid {
   border-color: #d93025;
@@ -70,111 +72,47 @@ input:required:user-valid {
 }
 ```
 
-## Fallbacking & Browser Support
+### 3. JavaScript State Synchronization
 
-The `:user-invalid` pseudo-class is widely supported (Baseline 2023), but if you need to support older browsers, you must ensure consistency of the implementation.
-
-### CSS for Fallback
-```css
-input:user-invalid,
-input.user-invalid-fallback {
-  border-color: #d93025;
-  background-color: #fce8e6;
-}
-
-input:user-invalid + .error-msg,
-input.user-invalid-fallback + .error-msg {
-  display: block;
-}
-```
-
-### JavaScript Fallback
-
-DO: Use a reusable utility that tracks interaction state using a `WeakMap`. This avoids polluting the DOM with "dirty" classes or data attributes.
+MANDATORY: Because `:user-invalid` is a visual state, you MUST provide a JavaScript bridge to sync `aria-invalid="true"` dynamically for assistive technologies when a user blurs an invalid field or attempts submission.
 
 ```javascript
-const UserInvalidFallback = (() => {
-  const dirtyState = new WeakMap();
+const form = document.getElementById('feedback-form');
 
-  const updateState = (input) => {
-    const isValid = input.checkValidity();
+const syncAriaInvalid = (input) => {
+  if (!input.checkValidity()) {
+    input.setAttribute('aria-invalid', 'true');
+  } else {
+    input.removeAttribute('aria-invalid');
+  }
+};
 
-    // Update both visual and ARIA state
-    input.classList.toggle('user-invalid-fallback', !isValid);
-    input.classList.toggle('user-valid-fallback', isValid);
+// Sync on blur when a user finishes interacting
+form.addEventListener('blur', (e) => {
+  if (e.target.matches('input[required]')) {
+    syncAriaInvalid(e.target);
+  }
+}, true);
 
-    if (!isValid) {
-      input.setAttribute('aria-invalid', 'true');
-    } else {
-      input.removeAttribute('aria-invalid');
-    }
-  };
+// Sync all required fields when submission is attempted
+form.addEventListener('submit', () => {
+  form.querySelectorAll('input[required]').forEach(syncAriaInvalid);
+});
 
-  const handleEvent = (event) => {
-    const input = event.target;
-
-    if (event.type === 'reset') {
-      const controls = input.elements || [];
-      for (const control of controls) {
-        dirtyState.delete(control);
-        control.classList.remove('user-invalid-fallback');
-        control.classList.remove('user-valid-fallback');
-        control.removeAttribute('aria-invalid');
-      }
-      return;
-    }
-
-    if (!input.checkValidity) return;
-
-    if (event.type === 'input' || event.type === 'change') {
-      const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
-      state.hasInteracted = true;
-      dirtyState.set(input, state);
-      if (state.hasBlurred) {
-        updateState(input);
-      }
-    } else if (event.type === 'blur') {
-      const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
-      state.hasBlurred = true;
-      dirtyState.set(input, state);
-      if (state.hasInteracted) {
-        updateState(input);
-      }
-    }
-  };
-
-  const init = (root = document) => {
-    if (CSS.supports('selector(:user-invalid)')) return;
-
-    root.addEventListener('blur', handleEvent, true); // Capture phase
-    root.addEventListener('input', handleEvent);
-    root.addEventListener('change', handleEvent);
-    root.addEventListener('reset', handleEvent, true); // Capture resets
-  };
-
-  return { init };
-})();
-
-// Initialize for a specific form
-const form = document.querySelector('#demo-form');
-UserInvalidFallback.init(form);
+// Remove error state immediately upon correction
+form.addEventListener('input', (e) => {
+  if (e.target.matches('input[required]') && e.target.checkValidity()) {
+    e.target.removeAttribute('aria-invalid');
+  }
+});
 ```
+
+## Fallbacking & Browser Support
+
+{{ FEATURE_FALLBACKS("user-pseudos") }}
 
 ## Other Considerations
 
 1.  **Asterisks**: It is still best practice to indicate required fields visually (e.g., with an asterisk `*`) in the label, so users know what to expect *before* they interact.
 2.  **Submit Buttons**: Unlike `disabled` buttons, keep your submit button enabled. If the user clicks it, the browser will automatically trigger `:user-invalid` on all empty required fields and focus the first one. This is excellent for accessibility and UX.
-3.  **Accessibility**: Native `:user-invalid` does not automatically sync with ARIA attributes. Add the following JavaScript to keep `aria-invalid` in sync with the visual state:
-
-```javascript
-// Sync aria-invalid with the CSS :user-invalid state
-const syncAria = (el) => {
-  el.toggleAttribute?.('aria-invalid', el.matches(':user-invalid'));
-};
-
-// Update on blur (to show error) and input (to clear it)
-document.addEventListener('blur', (e) => syncAria(e.target), true);
-document.addEventListener('input', (e) => {
-  if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
-});
-```
+3.  **Accessibility**: {{ FEATURE("user-pseudos", "aria-invalid") }}

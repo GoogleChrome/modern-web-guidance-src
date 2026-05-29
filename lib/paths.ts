@@ -1,22 +1,17 @@
-import { execSync } from 'child_process';
 import path from 'path';
-/**
- * Returns the repository root directory. Uses `git rev-parse --show-toplevel`
- * so that the correct root is returned even when running from a git worktree.
- */
-export function getRootDir(): string {
-  try {
-    return execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim();
-  } catch {
-    // Fallback to import.meta.dirname-based resolution (e.g. outside a git repo).
-    return path.resolve(import.meta.dirname, '..');
-  }
-}
 
-export const rootDir = getRootDir();
+/**
+ * Returns the repository root directory.
+ * 
+ * NOTE: We used to use \`git rev-parse --show-toplevel\` here to support git worktrees.
+ * However, that failed when processes were spawned from directories resolved outside 
+ * the project (e.g. via symlinks into another git repository), causing it to incorrectly 
+ * resolve to that external repository's root instead of this project's root.
+ * 
+ * Using \`import.meta.dirname\` is robust and works correctly regardless of the current
+ * working directory or surrounding git repositories.
+ */
+export const rootDir = path.resolve(import.meta.dirname, '..');
 
 export const guidesDir = path.join(rootDir, 'guides');
 export const harnessDir = path.join(rootDir, 'harness');

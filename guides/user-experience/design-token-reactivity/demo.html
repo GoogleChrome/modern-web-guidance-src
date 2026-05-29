@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
   <style>
+    :root {
+      --style-queries-supported: check;
+    }
+
     .container {
       --density: compact;
-      /* No container-type required for style queries! */
     }
 
     .item {
@@ -21,6 +24,16 @@
     @container style(--density: spacious) {
       .item {
         padding: 2.5rem;
+      }
+    }
+
+    #toggle-spacious {
+      display: none;
+    }
+
+    @container style(--style-queries-supported) {
+      #toggle-spacious {
+        display: revert;
       }
     }
   </style>

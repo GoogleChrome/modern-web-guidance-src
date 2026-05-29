@@ -1,5 +1,4 @@
 ---
 base_app: daily-grind
-grader: branded-select-styling
 ---
-add a coffee roast selector (light, medium, dark) to the hero section. use the new customizable select features so the dropdown list, the arrow, and the checkmark all match the site's dark brown (#4e342e) and orange (#ffab40) palette.
+- Add a scrollable container representing a customer feedback log right below the "Seasonal Favorites" section. Ensure the feedback container has a height limit so that it scrolls vertically when filled with testimonials. Style this feedback container's scrollbar to match the site's theme: make it thinner than the default scrollbar, with a dark brown (#4e342e) track and an orange (#ffab40) thumb.

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  #navigation-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #222;
+    color: white;
+    z-index: 9999;
+  }
+  #navigation-sidebar ul {
+    list-style-type: none;
+    padding: 20px;
+  }
+  #navigation-sidebar li {
+    margin-bottom: 15px;
+  }
+  #navigation-sidebar a {
+    color: white;
+    text-decoration: none;
+    font-size: 18px;
+  }
+  .hidden {
+    display: none;
+  }
+  header {
+    background-color: #f4f4f4;
+    padding: 15px;
+    border-bottom: 1px solid #ccc;
+  }
+  button {
+    padding: 10px 15px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  main {
+    padding: 20px;
+  }
+</style>
+</head>
+<body>
+  <div id="navigation-sidebar">
+    <ul>
+      <li><a href="#">Home</a></li>
+      <li><a href="#">About</a></li>
+      <li><a href="#">Contact</a></li>
+    </ul>
+  </div>
+  
+  <div>
+    <header>
+      <button id="menu-toggle">Menu</button>
+      <h1>My Website</h1>
+    </header>
+    <main>
+      <p>Welcome to my website.</p>
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('menu-toggle').onclick = function() {
+      document.getElementById('navigation-sidebar').className = 'hidden';
+    };
+  </script>
+</body>
+</html>

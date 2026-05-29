@@ -1,0 +1,7 @@
+- The form element has both `toolname` and `tooldescription` attributes.
+- Input elements have associated labels or `toolparamdescription` attributes.
+- The `submit` event listener uses `event.preventDefault()`.
+- The `submit` event listener checks `event.agentInvoked`.
+- The `submit` event listener calls `event.respondWith()` with a Promise.
+- The `:tool-form-active` pseudo-class is used to provide visual feedback.
+- The `:tool-submit-active` pseudo-class is used to provide visual feedback.

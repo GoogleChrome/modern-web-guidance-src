@@ -1,0 +1,15 @@
+- The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` (or equivalent) before usage.
+- The implementation MUST conditionally load a Temporal polyfill only if native support is absent.
+- The implementation MUST manually assign the loaded polyfill to `globalThis.Temporal` to ensure it is globally accessible.
+- The implementation MUST verify that the target calendar system is supported by the environment using `Intl.supportedValuesOf('calendar')` before creating calendar-specific Temporal objects.
+- The implementation MUST use `withCalendar()` to associate a non-ISO calendar system when performing operations specific to that calendar.
+- The implementation MUST use `monthCode` rather than the numeric `month` index to identify specific months across years in lunisolar calendars (such as the Hebrew and Chinese calendars).
+- The implementation MUST use `monthsInYear` as the upper bound when iterating through months in a year, rather than assuming 12.
+- The implementation MUST use `toLocaleString()` to format dates for display, specifying the appropriate calendar in the locale or options.
+- The implementation MUST NOT assume that every year has exactly 12 months.
+- The implementation MUST NOT assume that `month === 12` is always the last month of the year.
+- The implementation MUST NOT assume that a leap year only adds a single day (it may add a leap month in some calendars).
+- The implementation MUST NOT use the legacy `Date` object for calculations involving non-Gregorian calendars.
+- The implementation MUST use `Temporal.PlainDate.compare()` (or equivalent Temporal compare method) to compare dates instead of manual property comparison.
+- The implementation MUST account for era names when formatting dates in systems that rely on eras (e.g., Japanese or Buddhist calendar systems) using `toLocaleString()`.
+- The implementation MUST use `daysInMonth` when checking month invariants or doing day iterations instead of hardcoding fixed values like 30 or 31.

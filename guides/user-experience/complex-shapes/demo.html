@@ -1,41 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Custom Shapes Demo</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-    background-color: #f0f0f0;
-  }
-  .custom-shape {
-    width: 220px;
-    height: 220px;
-    background: red;
-    mask-image: url('heart.svg');
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    mask-position: center;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    font-weight: bold;
-    color: white;
-    font-size: 32px;
-    padding: 20px;
-  }
-</style>
+  <meta charset="UTF-8">
+  <title>Complex Shapes Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: black;
+    }
+
+    /* The element to be masked */
+    .shaped-element {
+      width: 200px;
+      height: 200px;
+      background-color: #e74c3c;
+
+      /* Apply the mask */
+      -webkit-mask-image: url(#star-mask);
+      mask-image: url(#star-mask);
+
+      /* Improve text view */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+      font-weight: bold;
+      padding: 40px 0;
+      box-sizing: border-box;
+    }
+
+    /* Fallback for browsers that do not support masking */
+    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
+      .shaped-element {
+        /* Use a simple rounded rectangle as fallback */
+        clip-path: inset(5% round 15px);
+      }
+    }
+
+  </style>
 </head>
+
 <body>
-  <div class="custom-shape">
-    This text is clipped by the heart!
+  <!-- SVG Mask Definition (hidden from view) -->
+  <svg width="0" height="0" style="position: absolute;">
+    <defs>
+      <!-- Use objectBoundingBox to make it scale -->
+      <mask id="star-mask" maskContentUnits="objectBoundingBox">
+        <!-- White reveals, black hides, gray creates semi-transparency -->
+        <!-- A simple star shape path in normalized coordinates (0 to 1) -->
+        <path
+          d="M 0.5,0 L 0.625,0.375 L 1,0.375 L 0.7,0.625 L 0.8125,1 L 0.5,0.75 L 0.1875,1 L 0.3,0.625 L 0,0.375 L 0.375,0.375 Z"
+          fill="white" />
+        <!-- A gray circle in the center to demonstrate semi-transparency -->
+        <circle cx="0.5" cy="0.5" r="0.2" fill="gray" />
+      </mask>
+    </defs>
+  </svg>
+  
+  <div class="shaped-element">
+    This element (including text) is clipped by the star!
   </div>
+
 </body>
+
 </html>

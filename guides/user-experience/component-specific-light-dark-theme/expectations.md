@@ -1,0 +1,13 @@
+
+- **MANDATORY**: Outside of `@supports` feature detection, `light-dark()` is used with var() references for the two color arguments, not raw color values (e.g., `--card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark))` while `--card-bg-light` and `--card-bg-dark` are the raw tokens that contain the actual color values).
+- **MANDATORY**: The implementation uses the `color-scheme` property (e.g., `color-scheme: light` or `color-scheme: dark`) to force a specific theme on a component or section.
+- **MANDATORY**: `color-scheme` overrides are only applied to elements that also have a `background-color` (or where a background is clearly intended), as per the guide's recommendation.
+- **MANDATORY**: When a component or section forces a `color-scheme`, inherited properties that use `light-dark()` tokens (like `color` or `accent-color`) are explicitly re-applied on that same element to ensure they re-resolve correctly and avoid the "inheritance footgun".
+- **OPTIONAL**: The component's internal elements (like scrollbars or form controls) correctly adapt their native browser styling when `color-scheme` is overridden.
+- **MANDATORY**: Fallback strategies are provided for browsers that do not support `light-dark()`, using manual variable overrides and `@media (prefers-color-scheme)` queries.
+- **MANDATORY**: Progressive enhancement is used via `@supports (color: light-dark(white, black))` to ensure that the `light-dark()` logic is preferred and used when available, allowing per-component overrides to work as intended.
+- **MANDATORY**: `light-dark()` is only used for supported types (colors) and not for non-color properties like `padding` or `margin`.
+- **MANDATORY**: Custom properties intended to dynamically resolve with `light-dark()` are NOT registered using `@property` with a `<color>` type, as this prevents dynamic re-resolution.
+- **MANDATORY**: Each `light-dark()` call contains exactly two color arguments.
+- When the component is forced to `color-scheme: light`, its computed `background-color` and `color` match the first argument of the respective `light-dark()` calls, regardless of the system's `prefers-color-scheme`.
+- When the component is forced to `color-scheme: dark`, its computed `background-color` and `color` match the second argument of the respective `light-dark()` calls, regardless of the system's `prefers-color-scheme`.

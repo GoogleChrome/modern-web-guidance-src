@@ -43,4 +43,15 @@ export class Embedder {
     const output = await this.pipe(text, { pooling: "mean", normalize: true });
     return Array.from(output.data);
   }
+
+  public async countTokens(text: string): Promise<number> {
+    if (!this.pipe) await this.init();
+    if (!this.pipe || !(this.pipe as any).tokenizer) return Math.ceil(text.length / 4);
+    try {
+      const res = await (this.pipe as any).tokenizer(text, { add_special_tokens: false });
+      return res.input_ids.data.length;
+    } catch {
+      return Math.ceil(text.length / 4);
+    }
+  }
 }

@@ -17,7 +17,7 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string, 
       const fullPath = path.join(currentDir, file.name);
       const destinationPath = path.join(currentPrefix, file.name);
 
-      if (file.name === 'node_modules') continue;
+      if (file.name === 'node_modules' || file.name === '.jetskicli') continue;
 
       if (file.isDirectory()) {
         if (!summaryOnly) {
@@ -87,6 +87,38 @@ async function main() {
 
   if (!fs.existsSync(evalsJsonPath)) {
     console.error(cRed(`❌ evals.json not found in ${resultsDir}. Cannot upload incomplete or un-evaluated suite.`));
+    process.exit(1);
+  }
+
+  try {
+    const evalsContent = fs.readFileSync(evalsJsonPath, 'utf8');
+    const evalsData = JSON.parse(evalsContent);
+    const results = evalsData.results || {};
+    if (Object.keys(results).length === 0) {
+      console.warn(cRed(`⚠️ Warning: No evaluation data found in evals.json (0 tasks were run). Sync skipped.`));
+      process.exit(0);
+    }
+
+    // Guard: Prevent uploading runs with 100% early generation failures (catastrophic crash)
+    const testNames = Object.keys(results);
+    let totalRunsCount = 0;
+    let earlyFailuresCount = 0;
+    for (const testName of testNames) {
+      const runs = results[testName] || [];
+      for (const run of runs) {
+        totalRunsCount++;
+        const scenarioChecks = run.results || [];
+        if (scenarioChecks.some((check: any) => check.isEarlyFailure)) {
+          earlyFailuresCount++;
+        }
+      }
+    }
+    if (totalRunsCount > 0 && earlyFailuresCount === totalRunsCount) {
+      console.error(cRed(`❌ Error: Catastrophic generation failures (100% early failure rate). Upload blocked to prevent trend contamination.`));
+      process.exit(1);
+    }
+  } catch (e: any) {
+    console.error(cRed(`❌ Failed to parse evals.json: ${e.message}`));
     process.exit(1);
   }
 

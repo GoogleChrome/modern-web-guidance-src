@@ -53,7 +53,7 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
       const buildResult = spawnSync('pnpm', ['run', 'build'], {
         cwd: targetDir,
         stdio: 'ignore',
-        shell: true
+        shell: process.platform === 'win32'
       });
       if (buildResult.status !== 0) {
         throw new Error(`pnpm build failed in ${targetDir}`);
@@ -70,7 +70,8 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
       cwd: targetDir,
       env: { ...process.env, PORT: port.toString() },
       detached: true,
-      stdio: 'ignore'
+      stdio: 'ignore',
+      shell: process.platform === 'win32'
     });
 
     let isReady = false;
@@ -102,7 +103,7 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
     if (serverProcess.pid) {
       try { process.kill(-serverProcess.pid); } catch (e) {}
     }
-  }, { scope: 'worker', timeout: 120000 }]
+  }, { scope: 'worker', timeout: 60000 }]
 });
 
 export { expect } from '@playwright/test';

@@ -4,3 +4,4 @@
 - If the content-based styling is critical to the component's functionality or layout, the implementation MUST include a fallback strategy for browsers that do not support the `:has()` selector.
 - When a CSS fallback is implemented, it MUST use `@supports not selector(:has(*))` in CSS to provide alternative styling via a modifier class (e.g., `.has-image`).
 - When a fallback is implemented, the strategy MUST either rely on server-side rendering to add the modifier class, or include a JavaScript feature detection block using `CSS.supports('selector(:has(*))')` to manually add the modifier class on the container element on load.
+- Standalone component examples MUST document or assume a complete, accessible document heading hierarchy outline.

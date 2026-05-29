@@ -11,33 +11,21 @@ The primary goal of this stage is to translate a technical web platform feature 
 2. Stage 2: Authoring guidance for a use case
 3. Stage 3: Evaluating guidance for a use case
 
-## Research and discovery
-
-Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, use the `project-use-cases-research` skill to perform grounded research. This skill guides you through using your own tools and optional automated deep research to surface authoritative sources and real-world implementations.
-
-### Using `project-use-cases-research`
-
-Refer to the `project-use-cases-research` skill file for detailed instructions on how to:
-1.  **Gather inputs** from GitHub issues or arguments.
-2.  **Conduct standard research** using `search_web` and `read_url_content`.
-3.  **Run optional automated deep research** using the `deep_research.js` script.
-
-The process will result in:
-1.  A research report saved to `guides/.research/<feature-id>.md`.
-2.  Proposed use cases that follow the constraints described in this skill.
-3.  Scaffolded `guide.md` and `demo.html` stubs.
-
 ## Identifying action-oriented tasks
 
 A "use case" in this project is not a description of a feature; it's a task that the user is trying to implement, or a problem they're trying to solve. The feature is only relevant in the sense that it's part of the recommended solution for the use case.
 
 * **Action-oriented thinking**: Frame every use case as a task, and make sure it starts with a verb. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
 * **Bridge the knowledge gap**: Assume the developer knows *what* they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know *which* modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
-* **Don't get too specific**: The use case must be general enough to match a wide range of relevant user prompts. Try to be as general as possible, while still faithfully representing the use case. For example, instead of saying "Fade an image in/out..." say "Smoothly hide/show a component...".
-* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
+* **Balance Generality and Distinctness**: The use case **description** should be general enough to capture the overall intent and match a wide range of user prompts. However, to leverage the vector search effectively, ensure the guide uses **clear, descriptive headings**. The RAG system chunks content by heading, making specific parts of your guide discoverable for specific prompts. The implementation details within those chunks must remain **distinct and specific** to ensure the agent receives an unambiguous solution. For example, instead of saying "Fade an image in/out..." in the description, say "Smoothly hide/show a component...".
+* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. **NEVER** mention the specific API methods, properties, or the target feature name in the description itself. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
 * **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use case.
-* **Drop niche use cases**: If a use case is unlikely to match real developer prompts (e.g., very specific visual effects, obscure layout tricks), omit it. Prefer use cases that represent common, everyday developer needs.
+* **MANDATORY: Drop niche use cases**: Every guide must solve a tangible, high-priority developer need. Do not document niche features or visual tricks with negligible practical impact. Omit use cases unlikely to match real developer prompts.
 * **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
+* **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
+* **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage. If the implementation across proposed use cases is 90% identical, consolidate them.
+* **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline skill file.
+
 
 ## Minimizing overlap
 
@@ -77,7 +65,6 @@ The following steps are REQUIRED for creating a new use case:
   - **name**: Short, slugified name of the use case.
   - **description**: Action-oriented description of the use case.
   - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
-  - **sources**: List of primary source URLs used to synthesize the document. Do NOT guess these. The user should provide them.
 
   For example:
 
@@ -88,8 +75,6 @@ The following steps are REQUIRED for creating a new use case:
   web-feature-ids:
     - fetch-priority
     - fetch
-  sources:
-    - https://web.dev/articles/fetch-priority
   ---
   ```
 
@@ -98,6 +83,9 @@ The following steps are REQUIRED for creating a new use case:
   Create a `demo.html` file in the new subdirectory. This file is **eval infrastructure** — it is used by `grader.ts` to verify that a correct implementation passes all tests. Real-world coding agents never see this file.
 
   Because it is not shown to agents, `demo.html` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
+
+  **Quality Rules for Demos:**
+  * **Identifiable Test Targets**: Make target elements in HTML demos explicitly identifiable using clear data attributes like `data-testid` and specific class names to aid in grading.
 
   See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
 

@@ -1,0 +1,5 @@
+- The `@view-transition` at-rule is defined with `navigation: auto` to enable cross-document transitions.
+- The `@view-transition` rule is wrapped in a `prefers-reduced-motion: no-preference` media query to respect user accessibility settings.
+- Custom animations are defined for different transition types using the `:active-view-transition-type()` pseudo-class (e.g., for "next" and "previous" directions).
+- A `pagereveal` event listener is added to the `window` to dynamically add transition types to the `viewTransition` object.
+- The page-level transition animations use `::view-transition-old(root)` and `::view-transition-new(root)` to create slide or fade effects.

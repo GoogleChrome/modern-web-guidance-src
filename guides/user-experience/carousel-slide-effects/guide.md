@@ -4,9 +4,6 @@ description: Create a carousel of slides with images or other visual elements, w
 web-feature-ids:
   - scroll-driven-animations
   - scroll-snap
-sources:
-  - https://scroll-driven-animations.style/
-  - https://scroll-driven-animations.style/demos/parallax-carousel/css/
 ---
 
 # Build Carousel Slide Effects

@@ -4,3 +4,11 @@
 # Content reviewers for guide content (anything in category subdirectories)
 # e.g., guides/accessibility/accessible-error-announcement/
 guides/*/*/ @philipwalton @rviscomi @malchata
+
+# Discipline-level skills
+guides/*/SKILL.md @philipwalton @rviscomi @malchata
+
+# Eval files
+**/grader.ts @paulirish @micahjo7
+**/tasks/task.md @paulirish @micahjo7
+**/negative-demo.html @paulirish @micahjo7

@@ -5,8 +5,6 @@ web-feature-ids:
   - enterkeyhint
   - input-email-tel-url
   - inputmode
-sources:
-  - https://web.dev/articles/payment-and-address-form-best-practices
 ---
 
 # Build a payment form that follows best practice
@@ -98,8 +96,10 @@ Make sure to add appropriate `autocomplete` values in payment card forms. Withou
        maxlength="50" pattern="[\p{L} \-\.]+" required>
 
 <!-- cc-exp autofills the full expiry date as MM/YY -->
+<!-- MANDATORY: Place format hints above the input so autocomplete popovers or virtual keyboards do not obscure them during editing -->
+<span id="exp-hint" class="hint">Format: MM/YY</span>
 <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp"
-       placeholder="MM/YY" maxlength="5" required>
+       aria-describedby="exp-hint" maxlength="5" required>
 
 <!-- cc-csc autofills the security code; DO NOT use type="password" here -->
 <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc"
@@ -122,9 +122,9 @@ Allow users to include spaces when they're entering a new payment card number, s
 
 Add the `required` attribute to mandatory fields. Modern browsers automatically prompt and set focus for missing data.
 
-### Fallback strategies
+## Fallback strategies
 
-{{ BASELINE_STATUS("enterkeyhint") }}
+{{ FEATURE_FALLBACKS("enterkeyhint") }}
 {{ BASELINE_STATUS("input-email-tel-url") }}
 {{ BASELINE_STATUS("inputmode") }}
 

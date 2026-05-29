@@ -1,0 +1,6 @@
+- The application processes a heavy computation or large loop asynchronously.
+- The application yields control back to the main thread periodically during the processing.
+- The application uses a time-based deadline (e.g., 50ms) to determine when to yield.
+- The application uses `scheduler.yield()` if available to yield back to the main thread.
+- The application uses `setTimeout` as a fallback mechanism for browsers that do not support the Scheduler API.
+- The application remains responsive to user interaction (e.g., hover states or clicks) while the task is processing.

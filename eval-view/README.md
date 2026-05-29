@@ -1,18 +1,18 @@
 # Eval-View Dashboard
 
-The Eval-View Dashboard lets you visualize test results from the Guidance eval harness.
+The Eval-View Dashboard lets you visualize test results from the Modern Web Guidance eval harness.
 
 The dashboard can be view in two different ways:
 
 1. Locally, with `gd dashboard`, via `server.js`.
-2. Remotely, with GitHub Pages at **[https://googlechrome.github.io/guidance/](https://googlechrome.github.io/guidance/)** (static hosting).
+2. Remotely, with GitHub Pages at **[https://googlechrome.github.io/modern-web-guidance-src/](https://googlechrome.github.io/modern-web-guidance-src/)** (static hosting).
 
 The `eval-view` codebase contains complexity to support both views.
 
 ## Viewing the Dashboard
 
 The dashboard is continuously deployed to GitHub Pages and can be accessed at:
-**[https://googlechrome.github.io/guidance/](https://googlechrome.github.io/guidance/)**
+**[https://googlechrome.github.io/modern-web-guidance-src/](https://googlechrome.github.io/modern-web-guidance-src/)**
 
 ### Authentication & Permissions
 
@@ -25,10 +25,18 @@ The application fetches evaluation data directly from the private Google Cloud S
 
 ## Local Development
 
-To run the dashboard locally and see local results (run from the root `guidance` directory):
+To run the dashboard locally and see local results (run from the root `modern-web-guidance-src` directory):
 
 ```bash
 pnpm dashboard
+```
+
+### Parity Testing
+To ensure your changes will work on the static deployment host, you can run the dashboard in a "Static" mode that serves files via `statikk` to mimic static deployment structure:
+
+```bash
+# From the project root directory
+STATIC=true gd dashboard
 ```
 
 ## Deploying Changes

@@ -38,7 +38,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
                     {capitalizedCategory}
                 </a>
-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.slug}`}>
+                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
                     <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
                         {topArticle.data.title}
                     </h3>
@@ -54,7 +54,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
                 </div>
             </div>
             <div class="w-full order-first lg:order-last">
-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.slug}`}>
+                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
                     <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
                 </a>
             </div>
@@ -65,11 +65,11 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {bottomArticles.map((article, index) => {
             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
-            const isBookmarked = readingList.includes(article.slug);
+            const isBookmarked = readingList.includes(article.id);
             return (
                 <div class="flex flex-col shadow-sm overflow-hidden h-full">
                     {index === 1 && (
-                        <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`}>
+                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
                             <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
                         </a>
                     )}
@@ -77,7 +77,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
                         <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
                             {capitalizedBottomCategory}
                         </a>
-                        <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`}>
+                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
                             <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
                                 {article.data.title}
                             </h3>
@@ -92,7 +92,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
                                 <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
                                 {article.data.readingTime} Min.
                             </span>
-                            <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
                         </div>
                     </div>
                 </div>

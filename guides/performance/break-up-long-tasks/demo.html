@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complex Computations and Loops Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+    }
+    #output {
+      margin-top: 1rem;
+      font-family: monospace;
+      padding: 1rem;
+      background: #f0f0f0;
+      border-radius: 4px;
+    }
+    .box {
+      width: 50px;
+      height: 50px;
+      background: red;
+      transition: transform 0.1s, background-color 0.1s;
+      margin-bottom: 1rem;
+    }
+    .box:hover {
+      transform: scale(1.2);
+      background: blue;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Scheduler Yield Demo</h1>
+  <p>Hover the red box below while processing. It should remain responsive and turn blue.</p>
+  <div class="box" id="hover-box"></div>
+  <button id="start-btn">Start Heavy Task</button>
+  <div id="output">Ready</div>
+
+  <script>
+    function processItem() {
+      // Simulate heavy synchronous work (approx 2ms)
+      const end = performance.now() + 2;
+      while (performance.now() < end) {
+        // Block
+      }
+    }
+
+    async function processData() {
+      const output = document.getElementById('output');
+      const btn = document.getElementById('start-btn');
+      
+      output.textContent = 'Processing...';
+      btn.disabled = true;
+
+      const totalItems = 1000;
+      
+      // DO: Set a time-based deadline 50 milliseconds into the future.
+      let deadline = performance.now() + 50;
+
+      for (let i = 0; i < totalItems; i++) {
+        processItem();
+        
+        // MANDATORY: Yield to the main thread periodically to keep the UI responsive.
+        if (performance.now() >= deadline) {
+          // DO: Feature detect scheduler.yield
+          if ('scheduler' in window && 'yield' in window.scheduler) {
+            await scheduler.yield();
+          } else {
+            // DO: Fallback to setTimeout for older browsers
+            await new Promise(resolve => setTimeout(resolve, 0));
+          }
+          
+          // Update UI periodically after yielding
+          output.textContent = `Processed ${i} of ${totalItems}...`;
+          
+          deadline = performance.now() + 50;
+        }
+      }
+
+      output.textContent = 'Done! All items processed.';
+      btn.disabled = false;
+    }
+
+    document.getElementById('start-btn').addEventListener('click', processData);
+  </script>
+</body>
+</html>

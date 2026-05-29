@@ -56,6 +56,30 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
     expect(needsFallbackCheck ? hasFallbackCheck : true).toBe(true);
   });
 
+  test('Inline decorative SVG icons inside <option> elements must define aria-hidden="true"', async () => {
+    const matches = [...html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)];
+    for (const match of matches) {
+      const optInner = match[1];
+      if (/<svg/i.test(optInner)) {
+        expect(/aria-hidden=["']true["']/i.test(optInner)).toBe(true);
+      }
+    }
+  });
+
+  test('Options with complex inner markup must use aria-label', async () => {
+    expect(/<option[^>]*aria-label/i.test(html)).toBe(true);
+  });
+
+  test('The checked state of an option must incorporate multiple visual indicators', async () => {
+    expect(/font-weight:|border/i.test(cssContent)).toBe(true);
+  });
+
+  test('Continuous keyframe animations must be wrapped inside a reduced-motion media query', async () => {
+    if (/@keyframes/i.test(cssContent)) {
+      expect(/prefers-reduced-motion/i.test(cssContent)).toBe(true);
+    }
+  });
+
   test.describe('Browser DOM tests', () => {
     test.beforeEach(async ({ page }) => {
       await page.route('http://localhost/*', async (route) => {

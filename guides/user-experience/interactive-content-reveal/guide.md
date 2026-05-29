@@ -4,13 +4,6 @@ description: Create interactive reveal effects, such as a spotlight that follows
 web-feature-ids:
   - masks
   - registered-custom-properties
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/mask-image
-  - https://web.dev/articles/css-masking
-  - https://www.gperrucci.com/blog/css/mask-image
-  - https://web.dev/learn/css/paths-shapes-clipping-masking#masking
-  - https://frontendmasters.com/blog/css-spotlight-effect/
-  - https://css-tricks.com/image-fragmentation-effect-with-css-masks-and-custom-properties/
 ---
 
 Add performant, interactive reveal effects to your site with CSS masks and registered custom properties. By using a radial gradient as a mask and registering its stop values, we can smoothly transition the entry and exit, while following a user's pointer with minimal JavaScript. 
@@ -90,23 +83,23 @@ container.addEventListener('pointermove', (e) => {
 ```
 
 ### 4. Accessibility and Interaction
-MANDATORY: Ensure the reveal effect does not interfere with content accessibility. Avoid using this effect for revealing essential content.
+**MANDATORY Accessibility Guarantee:** This pattern relies on pointer interactions to reveal a visual spotlight. You MUST guarantee that all underlying content remains fully visible, legible, and independently keyboard-reachable by default in the underlying layout, using the spotlight layer purely as a non-essential visual enhancement for pointer users. Never use this effect to obscure or gate essential content from keyboard-only or assistive technology users.
 
-* **Pointer Events:** If the reveal layer is an overlay, set `pointer-events: none` to allow users to interact with buttons or links underneath.
-* **Non-Pointer Inputs:** Consider disabling the effect for users without a pointer using the `@media (pointer: none)` media query, especially if the revealed content is critical.
-* **Reduced Motion:** Respect user preferences for reduced motion by disabling transitions or the effect entirely.
+* **Pointer Events:** Set `pointer-events: none` on the mask overlay layer to allow standard click and touch interactions to pass through to controls underneath.
+* **Reduced Motion Override:** Disable smooth transition interpolation for users requesting reduced motion.
 
 ```css
+/* MANDATORY Copy-Paste Safety: Disable transition scaling for motion-sensitive users */
 @media (prefers-reduced-motion: reduce) {
   .reveal-layer {
-    transition: none;
+    transition: none !important;
   }
 }
 ```
 
 ## Fallback strategies
 
-{{ BASELINE_STATUS("registered-custom-properties") }}
+{{ FEATURE_FALLBACKS("registered-custom-properties") }}
 
 ### Non-registered Property Fallback
 Browsers that support `mask-image` but not `@property` will still show the spotlight, but the movement will jump between on and off states because they cannot interpolate values inside a `radial-gradient`. Provide fallback values when using `var()`.

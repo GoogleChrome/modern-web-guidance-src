@@ -4,8 +4,6 @@ description: Build a sign-up form with correct autocomplete values and autofill 
 web-feature-ids:
   - input-email-tel-url
   - inputmode
-sources:
-  - https://web.dev/articles/sign-up-form-best-practices
 ---
 
 # Build a sign-up form that follows best practice
