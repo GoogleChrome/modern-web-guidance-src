@@ -49,13 +49,27 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
 
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
 
+    if (!fs.existsSync(path.join(targetDir, 'node_modules'))) {
+      console.log(`[TEST-FIXTURE] node_modules not found. Running pnpm install in ${targetDir}...`);
+      const installResult = spawnSync('pnpm', ['install'], {
+        cwd: targetDir,
+        stdio: 'pipe',
+        shell: process.platform === 'win32'
+      });
+      if (installResult.status !== 0) {
+        console.error(`Install Failed Output:\nSTDOUT:\n${installResult.stdout?.toString()}\nSTDERR:\n${installResult.stderr?.toString()}`);
+        throw new Error(`pnpm install failed in ${targetDir}`);
+      }
+    }
+
     if (pkgJson.scripts && pkgJson.scripts.build) {
       const buildResult = spawnSync('pnpm', ['run', 'build'], {
         cwd: targetDir,
-        stdio: 'ignore',
+        stdio: 'pipe',
         shell: process.platform === 'win32'
       });
       if (buildResult.status !== 0) {
+        console.error(`Build Failed Output:\nSTDOUT:\n${buildResult.stdout?.toString()}\nSTDERR:\n${buildResult.stderr?.toString()}`);
         throw new Error(`pnpm build failed in ${targetDir}`);
       }
     }
