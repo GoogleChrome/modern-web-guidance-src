@@ -1,0 +1,186 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..6bc49f84 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -152,6 +152,121 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roast Picker Styles */
++    .roast-picker-container {
++      margin-top: 20px;
++      margin-bottom: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .roast-picker-container label {
++      color: white;
++      margin-bottom: 8px;
++      font-size: 1rem;
++      font-weight: 500;
++    }
++
++    select,
++    select::picker(select) {
++      appearance: base-select;
++    }
++
++    select {
++      padding: 0.6rem 1.2rem;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      background: white;
++      font-size: 1rem;
++      cursor: pointer;
++      width: 250px;
++      color: var(--text);
++    }
++
++    select::picker(select) {
++      display: none;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 12px;
++      padding: 15px;
++      border: 1px solid var(--primary);
++      border-radius: 8px;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
++      background: white;
++      margin-top: 8px;
++    }
++
++    select:open::picker(select) {
++      display: grid;
++    }
++
++    option {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      padding: 15px;
++      border: 1px solid #e0d0cc;
++      border-radius: 6px;
++      transition: background-color 0.2s, border-color 0.2s;
++      cursor: pointer;
++      background: white;
++    }
++
++    option:hover {
++      background-color: #f5ebe6;
++    }
++
++    option:checked {
++      border: 2px solid var(--primary);
++      background-color: #efe2db;
++      font-weight: 700;
++    }
++
++    .roast-picker-container .icon {
++      font-size: 1.8rem;
++      margin-bottom: 6px;
++    }
++
++    .roast-picker-container .label {
++      font-weight: 500;
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    /* Trigger button styling */
++    select button {
++      background: white;
++      border: 1px solid var(--secondary);
++      padding: 0.6rem 1.2rem;
++      border-radius: 4px;
++      font-size: 1rem;
++      color: var(--text);
++      cursor: pointer;
++      display: inline-flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 250px;
++    }
++
++    select button::after {
++      content: "▼";
++      font-size: 0.8rem;
++      margin-left: 10px;
++      color: var(--primary);
++    }
++
++    selectedcontent {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    selectedcontent .icon {
++      font-size: 1.2rem;
++      margin: 0;
++    }
+   </style>
+ </head>
+ 
+@@ -171,6 +286,28 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    
++    <div class="roast-picker-container">
++      <label id="roast-label" for="roast-picker">Choose your roast:</label>
++      <select name="roast" id="roast-picker" aria-labelledby="roast-label">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light" selected>
++          <span class="icon" aria-hidden="true">🪵</span>
++          <span class="label">Light Roast</span>
++        </option>
++        <option value="medium">
++          <span class="icon" aria-hidden="true">🍫</span>
++          <span class="label">Medium Roast</span>
++        </option>
++        <option value="dark">
++          <span class="icon" aria-hidden="true">🌋</span>
++          <span class="label">Dark Roast</span>
++        </option>
++      </select>
++    </div>
++
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+@@ -207,6 +344,30 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers that do not support customizable select
++    if (!CSS.supports('appearance', 'base-select')) {
++      const picker = document.getElementById('roast-picker');
++      if (picker) {
++        // Remove the custom button trigger
++        const button = picker.querySelector('button');
++        if (button) {
++          button.remove();
++        }
++        // Simplify options for standard select
++        const options = picker.querySelectorAll('option');
++        options.forEach(option => {
++          const label = option.querySelector('.label');
++          if (label) {
++            // Keep it simple, just text
++            option.textContent = label.textContent;
++          }
++        });
++        // Remove container styling that might look bad with standard select
++        picker.style.appearance = 'auto'; // ensure default appearance
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>
