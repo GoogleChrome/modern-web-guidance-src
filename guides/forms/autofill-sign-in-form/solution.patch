@@ -1,0 +1,35 @@
+diff --git a/harness/base_apps/devtools-times/src/components/SignInForm.tsx b/harness/base_apps/devtools-times/src/components/SignInForm.tsx
+index a7c52b6f..26d8a2cd 100644
+--- a/harness/base_apps/devtools-times/src/components/SignInForm.tsx
++++ b/harness/base_apps/devtools-times/src/components/SignInForm.tsx
+@@ -61,25 +61,27 @@ export default function SignInForm() {
+             Username
+           </label>
+           <input
+-            type="text"
++            type="email"
+             id="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
++            autoComplete="username"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
+         
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
++          <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">
+             Password
+           </label>
+           <input
+             type="password"
+-            id="password"
++            id="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
++            autoComplete="current-password"
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+         </div>
