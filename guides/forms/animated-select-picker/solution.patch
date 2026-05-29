@@ -1,0 +1,206 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..cd993c85 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -7,6 +7,7 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      interpolate-size: allow-keywords;
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -152,6 +153,157 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Select Wrapper and Label */
++    .select-wrapper {
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      gap: 0.5rem;
++      margin: 1.5rem 0;
++      width: 100%;
++      max-width: 300px;
++    }
++
++    .select-wrapper label {
++      font-size: 0.875rem;
++      font-weight: 500;
++      color: var(--secondary);
++    }
++
++    /* Style the main trigger */
++    .custom-select {
++      appearance: base-select;
++      font-family: inherit;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
++      background-color: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 0.875rem 1rem;
++      font-size: 1rem;
++      color: var(--text);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
++      cursor: pointer;
++    }
++
++    .custom-select:hover {
++      border-color: var(--accent);
++    }
++
++    .custom-select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++      border-color: var(--accent);
++    }
++
++    /* Built-in picker-icon rotation */
++    .custom-select::picker-icon {
++      transition: transform 0.3s ease;
++      color: var(--primary);
++    }
++
++    .custom-select:open::picker-icon {
++      transform: rotate(180deg);
++      color: var(--accent);
++    }
++
++    /* Picker (Dropdown Menu) Styling & Core Animations */
++    .custom-select::picker(select) {
++      appearance: base-select;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 10px 25px -3px rgba(0,0,0,0.1);
++      padding: 0.5rem;
++      margin-top: 0.25rem;
++      width: anchor-size(width);
++      overflow: hidden;
++
++      /* The crucial transition setting for popover animations */
++      transition:
++        display 0.5s allow-discrete,
++        overlay 0.5s allow-discrete,
++        opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
++        height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
++        
++      opacity: 0;
++      height: 0;
++    }
++
++    /* Open State */
++    .custom-select:open::picker(select) {
++      opacity: 1;
++      height: auto;
++    }
++
++    /* @starting-style to hook the transition on initial popover open */
++    @starting-style {
++      .custom-select:open::picker(select) {
++        opacity: 0;
++        height: 0;
++      }
++    }
++
++    /* Option Item Styling */
++    .custom-select option {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.75rem 1rem;
++      border-radius: 8px;
++      cursor: pointer;
++      margin-bottom: 0.25rem;
++      color: var(--text);
++      font-weight: 500;
++      transition: background-color 0.2s ease, color 0.2s ease;
++    }
++
++    .custom-select option:last-child {
++      margin-bottom: 0;
++    }
++
++    .custom-select option:hover {
++      background-color: var(--secondary);
++    }
++
++    /* Selected Option */
++    .custom-select option:checked {
++      background-color: var(--primary);
++      color: white;
++      font-weight: 700;
++    }
++
++    /* Style the selected content mirrored in the button */
++    .custom-select selectedcontent {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      font-weight: 500;
++    }
++
++    /* Checked icon custom style */
++    .custom-select::checkmark {
++      display: none;
++    }
++
++    /* Support for SVG inside Options */
++    .custom-select option svg,
++    .custom-select selectedcontent svg {
++      flex-shrink: 0;
++      width: 1.25rem;
++      height: 1.25rem;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .custom-select::picker(select),
++      .custom-select::picker-icon {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -171,6 +323,35 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <div class="select-wrapper">
++      <label for="store-select">Choose your store</label>
++      <select id="store-select" class="custom-select" name="store">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="downtown" aria-label="Downtown Store">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
++            <polyline points="9 22 9 12 15 12 15 22"></polyline>
++          </svg>
++          Downtown
++        </option>
++        <option value="westside" aria-label="Westside Store">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
++            <polyline points="9 22 9 12 15 12 15 22"></polyline>
++          </svg>
++          Westside
++        </option>
++        <option value="uptown" aria-label="Uptown Store">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
++            <polyline points="9 22 9 12 15 12 15 22"></polyline>
++          </svg>
++          Uptown
++        </option>
++      </select>
++    </div>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
