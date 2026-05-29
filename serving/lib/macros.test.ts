@@ -54,6 +54,12 @@ describe('replaceMacros (Functional with real data)', () => {
       );
     });
 
+    it('returns generic token for static-site target', () => {
+      const content = '{{ BASELINE_STATUS("grid") }}';
+      const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+      assert.strictEqual(result, '[BASELINE_STATUS: grid]');
+    });
+
     it('throws error for non-existent feature', () => {
       const content = '{{ BASELINE_STATUS("non-existent-feature-xyz") }}';
       assert.throws(() => replaceMacros(content, 'test.md'), /Web feature ID "non-existent-feature-xyz" not found/);
@@ -345,6 +351,11 @@ describe('INCLUDE', () => {
       assert.equal(result, '`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)');
     });
 
+    it('replaces macro with relative markdown link for static-site target', () => {
+      const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
+      const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
+      assert.equal(result, '[break-up-long-tasks](../performance/break-up-long-tasks.md)');
+    });
 
     it('throws error for non-existent guide', () => {
       const content = '{{ GUIDE_REF("non-existent-guide-xyz") }}';
