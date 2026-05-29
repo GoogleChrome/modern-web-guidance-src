@@ -33,13 +33,14 @@ const ALL_OPTIONS = {
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
+  'save-solution': { type: 'boolean', desc: 'Save the current base app state as the solution patch' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
-  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'no-test', 'cross-app'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'no-test', 'cross-app', 'save-solution'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
@@ -252,6 +253,11 @@ async function main() {
       if (values['gen-negative']) {
         const { generateNegative } = await import('../guides/negative-gen.ts');
         await generateNegative(dir);
+        break;
+      }
+      if (values['save-solution']) {
+        const { saveSolution } = await import('../guides/dev-guide.ts');
+        await saveSolution(dir);
         break;
       }
       // Default dev-guide pipeline

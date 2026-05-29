@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { rootDir, baseAppsDir } from '../lib/paths.ts';
@@ -186,6 +187,69 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   printSummary(targetDir, currentInv, calibrationResult, calibrationAttempt);
 
   return calibrationResult?.success ?? false;
+}
+
+export async function saveSolution(targetDirRaw: string): Promise<void> {
+  const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
+  if (!fs.existsSync(targetDirAbs)) {
+    console.error(cRed(`Error: Directory not found: ${targetDirAbs}`));
+    process.exit(1);
+  }
+
+  const guideName = path.basename(targetDirAbs);
+  const taskMap = getTaskMap();
+  const taskKey = `${guideName}/task`;
+  const taskInfo = taskMap.get(taskKey);
+
+  if (!taskInfo) {
+    console.error(cRed(`Error: Task info not found for ${taskKey}`));
+    process.exit(1);
+  }
+
+  const baseAppName = taskInfo.baseApp;
+  const baseAppAbs = path.join(baseAppsDir, baseAppName);
+  if (!fs.existsSync(baseAppAbs)) {
+    console.error(cRed(`Error: Base app directory not found: ${baseAppAbs}`));
+    process.exit(1);
+  }
+
+  const baseAppRel = path.relative(rootDir, baseAppAbs);
+  console.log(cCyan(`Saving solution for guide ${guideName} (base app: ${baseAppRel})...`));
+
+  // Run git diff
+  let diff = '';
+  try {
+    // We run from rootDir to ensure paths in diff are relative to repo root
+    diff = execSync(`git diff ${baseAppRel}`, { cwd: rootDir, encoding: 'utf8' });
+  } catch (err) {
+    console.error(cRed(`Error running git diff: ${err}`));
+    process.exit(1);
+  }
+
+  if (!diff.trim()) {
+    console.log(cYellow(`Warning: No changes detected in base app: ${baseAppRel}`));
+    return;
+  }
+
+  const patchPath = path.join(targetDirAbs, 'solution.patch');
+  try {
+    fs.writeFileSync(patchPath, diff);
+    console.log(cGreen(`✅ Solution patch saved to ${patchPath}`));
+  } catch (err) {
+    console.error(cRed(`Error writing solution patch: ${err}`));
+    process.exit(1);
+  }
+
+  // Restore base app state
+  console.log(cCyan(`Restoring base app state: ${baseAppRel}...`));
+  try {
+    execSync(`git checkout -- ${baseAppRel}`, { cwd: rootDir });
+    execSync(`git clean -fd ${baseAppRel}`, { cwd: rootDir });
+    console.log(cGreen(`✅ Base app state restored.`));
+  } catch (err) {
+    console.error(cRed(`Error restoring base app state: ${err}`));
+    process.exit(1);
+  }
 }
 
 async function generateArtifact(name: string, generator: () => Promise<void>, checkPath: string): Promise<void> {
