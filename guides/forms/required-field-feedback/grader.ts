@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../test-fixture.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -11,7 +11,6 @@ if (!targetFile) {
 const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
 
 // Tests
 test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
@@ -33,19 +32,21 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
   });
 
   // Setup browser testing
-  test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+  test.beforeEach(async ({ page, TARGET_URL }) => {
+    if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
+      await page.route('http://localhost/*', async (route) => {
+        const requestPath = new URL(route.request().url()).pathname;
+        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
-      }
-    });
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+        } else {
+          await route.continue();
+        }
+      });
+    }
 
-    await page.goto(demoUrl);
+    await page.goto(TARGET_URL);
 
     // Disable transitions and animations to ensure instant E2E style checks
     await page.evaluate(() => {
