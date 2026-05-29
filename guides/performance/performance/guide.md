@@ -35,8 +35,7 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 <!-- Load CSS conditionally based on viewport -->
 <link rel="stylesheet" href="mobile.css" media="(max-width: 768px)">
 
-<!-- Defer JavaScript execution -->
-<script defer src="app-bundle.js"></script>
+
 ```
 
 Note: To apply the stylesheet when loaded, you must toggle its `rel` attribute to `stylesheet` using JavaScript (e.g., by adding a load event listener to the element).
