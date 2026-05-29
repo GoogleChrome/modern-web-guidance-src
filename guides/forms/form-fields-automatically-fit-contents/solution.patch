@@ -1,0 +1,72 @@
+diff --git a/harness/base_apps/daily-grind/index.html b/harness/base_apps/daily-grind/index.html
+index 66c91736..b6b81ee1 100644
+--- a/harness/base_apps/daily-grind/index.html
++++ b/harness/base_apps/daily-grind/index.html
+@@ -152,6 +152,38 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    input[type="text"],
++    textarea,
++    select {
++      font-family: inherit;
++      font-size: 1rem;
++      padding: 0.5rem;
++      border: 1px solid #999;
++      border-radius: 4px;
++      field-sizing: content;
++    }
++
++    input[type="text"] {
++      width: auto;
++      align-self: start;
++      min-inline-size: 15ch;
++      max-inline-size: 50ch;
++    }
++
++    select {
++      width: auto;
++      align-self: start;
++      max-inline-size: 50ch;
++    }
++
++    textarea {
++      height: auto;
++      width: 50ch;
++      box-sizing: border-box;
++      min-block-size: 3lh;
++      max-block-size: 10lh;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +227,28 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Feedback</h2>
++      <form style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 600px; margin: 20px auto;">
++        <label style="display: flex; flex-direction: column; gap: 0.5rem; font-weight: 500; align-items: flex-start;">
++          Name:
++          <input type="text" placeholder="Your name">
++        </label>
++        <label style="display: flex; flex-direction: column; gap: 0.5rem; font-weight: 500; align-items: flex-start;">
++          Comments:
++          <textarea placeholder="Your comments"></textarea>
++        </label>
++        <label style="display: flex; flex-direction: column; gap: 0.5rem; font-weight: 500; align-items: flex-start;">
++          Topic:
++          <select>
++            <option value="general">General Inquiry</option>
++            <option value="feedback">Feedback</option>
++            <option value="support">Support</option>
++          </select>
++        </label>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
