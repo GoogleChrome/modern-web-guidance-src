@@ -55,28 +55,25 @@ test('ts-morph can parse Javascript and yield AST nodes via fluent API', () => {
   assert.strictEqual(functionDecls[0].getName(), 'greet', 'Function name extracted as greet');
 });
 
-// 3. CSS Tree
-import * as csstree from 'css-tree';
+// 3. CSSOMNom
+import { Parser, CSSSupportsRule } from '../lib/third_party/cssomnom/index.js';
 
-test('css-tree can parse CSS and yield AST nodes', () => {
+test('cssomnom can parse CSS and yield AST nodes', () => {
   const css = `
     @supports (display: grid) {
       .container { display: grid; }
     }
   `;
 
-  // Parse CSS into AST
-  const ast = csstree.parse(css);
+  const rules = Parser.parseStyleSheetText(css);
 
   let foundSupports = false;
-  csstree.walk(ast, {
-    visit: 'Atrule',
-    enter(node) {
-      if (node.name === 'supports') {
-        foundSupports = true;
-      }
+  rules.forEach(rule => {
+    if (rule instanceof CSSSupportsRule) {
+      foundSupports = true;
     }
   });
 
-  assert.ok(foundSupports, 'csstree successfully walked the AST and found @supports');
+  assert.ok(foundSupports, 'cssomnom successfully parsed and found @supports');
 });
+
