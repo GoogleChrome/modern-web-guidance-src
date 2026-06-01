@@ -584,6 +584,20 @@ export async function runCliAgentCommand(
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
     
+    // Save generation failure info so results collector registers early failure
+    try {
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      fs.writeFileSync(failureFile, JSON.stringify({
+        agentName,
+        exitCode: -1,
+        stderr: stderrData || err.message || String(err),
+        stdout: stdoutData
+      }, null, 2));
+      console.log(`Saved generation failure info to: ${failureFile}`);
+    } catch (writeErr) {
+      console.error(`Failed to write generation_failed.json:`, writeErr);
+    }
+
     // Fallback: Save whatever we have to agent_stderr.log even if it failed
     const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
     let fallbackContent = `Execution failed: ${err.message || err}\n`;
