@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Soft Edge Content Fade - Paywall Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+
+    .paywall-card {
+      position: relative;
+      width: 350px;
+      background-color: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      border: 1px solid #eaeaea;
+      overflow: hidden;
+    }
+
+    .paywall-container {
+      position: relative;
+      max-height: 150px;
+      overflow: hidden;
+    }
+
+    .paywall-container::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: #ffffff;
+    }
+
+    .content {
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+    }
+
+    .cta-section {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .cta-button {
+      background-color: #0070f3;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .cta-button:hover {
+      background-color: #0051a2;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="paywall-card">
+    <div class="paywall-container">
+      <div class="content">
+        <p>This is premium member-only content. In a real application, this text would continue detailing highly
+          valuable
+          insights and expert analysis that are reserved exclusively for our subscribed readers.</p>
+        <p>Obscuring text using a transparency gradient is an elegant way to tease premium content without fully
+          exposing it,
+          encouraging reader sign-ups.</p>
+      </div>
+    </div>
+    <div class="cta-section">
+      <button class="cta-button">Subscribe to Read Full Story</button>
+    </div>
+  </div>
+
+</body>
+
+</html>
