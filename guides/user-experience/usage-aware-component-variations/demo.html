@@ -1,1 +1,159 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Semantic Component Adaptation Demo</title>
+  <style>
+    :root {
+      --color-brand: #1a73e8;
+      --color-accent: #e67c73;
+      --color-border: #dadce0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 3rem;
+    }
+
+    /* 1. Standard Informational Zone */
+    .section {
+      padding: 2rem;
+      border: 1px dashed #dadce0;
+      border-radius: 12px;
+    }
+
+    /* 2. Promotional/High-Impact Zone */
+    .featured {
+      /* Semantic context flag */
+      --surface: featured;
+    }
+
+    .section:where(.featured) {
+      border: 2px solid var(--color-brand);
+      background-color: #f8fbff;
+      color: #1a1a1a;
+    }
+
+    /* --- The Component: Card --- */
+    .card {
+      max-inline-size: 400px;
+      background: #ffffff;
+      color: #1a1a1a;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+    }
+
+    .badge {
+      display: none; /* Hidden by default */
+      position: absolute;
+      inset-block-start: -12px;
+      inset-inline-end: 1rem;
+      background: var(--color-accent);
+      color: #ffffff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .button {
+      align-self: flex-start;
+      padding: 0.5rem 1.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      /* Default: Outlined */
+      background: transparent;
+      border: 1px solid var(--color-brand);
+      color: var(--color-brand);
+    }
+
+    /* --- Style Queries in Action --- */
+
+    /* Selector-based defaults — work in every browser. Use :where() so the
+       style query below (same specificity, later in source order) wins. */
+    :where(.featured) .card {
+      border-color: var(--color-brand);
+      box-shadow: 0 4px 20px rgba(26, 115, 232, 0.15);
+    }
+
+    :where(.featured) .button {
+      background: var(--color-brand);
+      color: #ffffff;
+      border: none;
+    }
+
+    :where(.featured) .badge {
+      display: block;
+    }
+
+    /* Progressive enhancement: style queries override when supported. */
+    @container style(--surface: featured) {
+      .card {
+        border-color: var(--color-brand);
+        box-shadow: 0 4px 20px rgba(26, 115, 232, 0.15);
+      }
+
+      .button {
+        /* Automatically switch to "Filled" primary style */
+        background: var(--color-brand);
+        color: #ffffff;
+        border: none;
+      }
+
+      .badge {
+        /* Automatically reveal badges in featured surfaces */
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Semantic Adaptation</h1>
+    <p>The same "CTA Card" component adapts its internal visual logic based on the <code>--surface</code> flag of its parent section.</p>
+  </header>
+
+  <section class="section">
+    <h2>Standard Section</h2>
+    <p>Components here use their base informational style.</p>
+
+    <div class="card">
+      <div class="badge">Special Offer</div>
+      <h3 class="title">Monthly Newsletter</h3>
+      <p>Stay updated with our latest developer insights and web platform news.</p>
+      <button class="button">Subscribe</button>
+    </div>
+  </section>
+
+  <section class="section featured">
+    <h2>Featured Promotion</h2>
+    <p>Components here automatically upgrade to a "featured" promotional style.</p>
+
+    <div class="card">
+      <div class="badge">Special Offer</div>
+      <h3 class="title">Premium Access</h3>
+      <p>Get unlimited access to all advanced guides and priority support today.</p>
+      <button class="button">Get Started</button>
+    </div>
+  </section>
+
+</body>
+</html>
