@@ -62,7 +62,7 @@ test('The section headers or containers within the container have scroll-snap-al
     };
     const links = getTOCLinks();
     const targets = links.map(link => {
-      const id = decodeURIComponent(link.getAttribute('href').slice(1));
+      const id = decodeURIComponent(link.getAttribute('href')!.slice(1));
       return document.getElementById(id);
     }).filter(Boolean) as HTMLElement[];
 
@@ -125,7 +125,7 @@ test('When the user scrolls to a section, the corresponding link in the Table of
     };
     const links = getTOCLinks();
     const targets = links.map(link => {
-      const id = decodeURIComponent(link.getAttribute('href').slice(1));
+      const id = decodeURIComponent(link.getAttribute('href')!.slice(1));
       return document.getElementById(id);
     }).filter(Boolean) as HTMLElement[];
 
@@ -220,7 +220,7 @@ test('When a TOC link is selected, it should have appropriate accessibility attr
     };
     const links = getTOCLinks();
     const targets = links.map(link => {
-      const id = decodeURIComponent(link.getAttribute('href').slice(1));
+      const id = decodeURIComponent(link.getAttribute('href')!.slice(1));
       return document.getElementById(id);
     }).filter(Boolean) as HTMLElement[];
 
@@ -303,7 +303,7 @@ test('When the user scrolls to a section, only one TOC link is highlighted as th
     };
     const links = getTOCLinks();
     const targets = links.map(link => {
-      const id = decodeURIComponent(link.getAttribute('href').slice(1));
+      const id = decodeURIComponent(link.getAttribute('href')!.slice(1));
       return document.getElementById(id);
     }).filter(Boolean) as HTMLElement[];
 
@@ -356,7 +356,7 @@ test('The implementation uses the scrollsnapchange event listener on the scroll 
   await page.addInitScript(() => {
     (window as any).__registeredListeners = [];
     const originalAddEventListener = EventTarget.prototype.addEventListener;
-    EventTarget.prototype.addEventListener = function(type, listener, options) {
+    EventTarget.prototype.addEventListener = function(type, _listener, _options) {
       (window as any).__registeredListeners.push({
         type,
         elementTagName: (this as any).tagName,

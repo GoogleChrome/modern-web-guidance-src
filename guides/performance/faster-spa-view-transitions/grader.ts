@@ -40,7 +40,7 @@ test.describe('Faster SPA View Transitions Grader', () => {
       const activeNotHidden = activeStyle !== 'hidden';
 
       // Verify content-visibility is actually used on the page by checking if inactive has hidden
-      const hasFeature = inactiveIds.length > 0 && inactiveIds.some(id => {
+      const hasFeature = inactiveIds.some(id => {
         const el = document.getElementById(id);
         return el && window.getComputedStyle(el).contentVisibility === 'hidden';
       });

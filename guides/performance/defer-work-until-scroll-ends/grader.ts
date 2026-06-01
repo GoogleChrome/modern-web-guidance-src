@@ -6,7 +6,7 @@ const targetUrl = `file://${targetFile}`;
 test.describe('Defer Work Until Scroll Ends', () => {
   // Helper to trigger scroll in a direction-agnostic way
   const triggerScroll = async (scrollerLocator: any, distance: number) => {
-    await scrollerLocator.evaluate((el, dist) => {
+    await scrollerLocator.evaluate((el: any, dist: any) => {
       const style = window.getComputedStyle(el);
       const isHorizontal = style.overflowX === 'auto' || style.overflowX === 'scroll';
       if (isHorizontal) {
@@ -18,7 +18,7 @@ test.describe('Defer Work Until Scroll Ends', () => {
     }, distance);
   };
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async () => {
     // If targetUrl is not set properly, fail fast
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set.');
@@ -30,7 +30,7 @@ test.describe('Defer Work Until Scroll Ends', () => {
     await page.addInitScript(() => {
       (window as any).__registeredListeners = [];
       const original = EventTarget.prototype.addEventListener;
-      EventTarget.prototype.addEventListener = function (type: string, listener: any, options: any) {
+      EventTarget.prototype.addEventListener = function (type: string, _listener: any, _options: any) {
         (window as any).__registeredListeners.push({
           type,
           targetTagName: (this as any).tagName || null,
@@ -63,11 +63,11 @@ test.describe('Defer Work Until Scroll Ends', () => {
 
       (window as any).__scrollendTimerCreated = false;
       const originalSetTimeout = window.setTimeout;
-      window.setTimeout = function (callback: any, delay: any) {
+      window.setTimeout = function (this: any, _callback: any, _delay: any) {
         const timer = originalSetTimeout.apply(this, arguments as any);
         (window as any).__scrollendTimerCreated = true;
         return timer;
-      };
+      } as any;
     });
 
     // 2. Load the page
@@ -144,10 +144,10 @@ test.describe('Defer Work Until Scroll Ends', () => {
 
       // Spying on addEventListener to wrap scroll listeners
       const originalAddEventListener = EventTarget.prototype.addEventListener;
-      EventTarget.prototype.addEventListener = function (type: string, listener: any, options: any) {
+      EventTarget.prototype.addEventListener = function (type: string, listener: any, _options: any) {
         if (type === 'scroll' && typeof listener === 'function') {
           const originalListener = listener;
-          const wrappedListener = function (this: any, event: any) {
+          const wrappedListener = function (this: any, _event: any) {
             (window as any).__scrollListenerRunning = true;
             const start = performance.now();
             const result = originalListener.apply(this, arguments as any);
@@ -156,7 +156,7 @@ test.describe('Defer Work Until Scroll Ends', () => {
             (window as any).__scrollListenerRunning = false;
             return result;
           };
-          return originalAddEventListener.call(this, type, wrappedListener, options);
+          return originalAddEventListener.call(this, type, wrappedListener, _options);
         }
         return originalAddEventListener.apply(this, arguments as any);
       };
@@ -195,7 +195,7 @@ test.describe('Defer Work Until Scroll Ends', () => {
     await page.addInitScript(() => {
       (window as any).__registeredListeners = [];
       const original = EventTarget.prototype.addEventListener;
-      EventTarget.prototype.addEventListener = function (type: string, listener: any, options: any) {
+      EventTarget.prototype.addEventListener = function (type: string, _listener: any, _options: any) {
         (window as any).__registeredListeners.push({
           type,
           targetTagName: (this as any).tagName || null,

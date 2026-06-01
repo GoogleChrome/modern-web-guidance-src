@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import * as path from 'path';
 
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {

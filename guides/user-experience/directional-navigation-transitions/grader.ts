@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'url';
 
 const targetFile = process.env.TARGET_FILE;
@@ -165,7 +165,7 @@ async function setupPage(page: Page) {
             if (rule.constructor?.name === 'CSSMediaRule' && ruleText.includes('prefers-reduced-motion')) {
               const mediaRule = rule as any;
               for (const subRule of Array.from(mediaRule.cssRules)) {
-                const subText = subRule.cssText.toLowerCase();
+                const subText = (subRule as any).cssText.toLowerCase();
                 if (subText.includes('::view-transition-group') || subText.includes('::view-transition-old') || subText.includes('::view-transition-new')) {
                   const style = (subRule as any).style;
                   if (style && (style.animation === 'none' || style.animationName === 'none' || style.animation.includes('none'))) {

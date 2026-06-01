@@ -17,8 +17,8 @@ declare global {
     }>;
   }
   interface HTMLCanvasElement {
-    onpaint?: any;
-    requestPaint?: any;
+    onpaint?: (event?: any) => void;
+    requestPaint?: () => void;
   }
 }
 

@@ -247,8 +247,8 @@ test.describe('Stack Drill Down', () => {
       for (const sheet of Array.from(document.styleSheets)) {
         for (const rule of findCSSRules(sheet)) {
           if (rule instanceof CSSStyleRule && rule.selectorText.includes('.Stack-viewContent')) {
-            const timeline = rule.style.animationTimeline || '';
-            const range = rule.style.animationRange || '';
+            const timeline = (rule.style as any).animationTimeline || '';
+            const range = (rule.style as any).animationRange || '';
             if (timeline.includes('view(inline)') && range.includes('exit')) {
               return true;
             }

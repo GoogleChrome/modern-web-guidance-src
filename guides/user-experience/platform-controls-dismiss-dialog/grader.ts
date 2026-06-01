@@ -46,7 +46,7 @@ test.describe('Platform controls dismiss dialog tests', () => {
 
       // Spy on addEventListener
       const spyAddEventListener = (targetName: string, original: Function) => {
-        return function(this: any, type: string, listener: any, options: any) {
+        return function(this: any, type: string, listener: any, _options: any) {
           if (typeof listener === 'function') {
             const code = listener.toString();
             if (['keydown', 'keyup', 'keypress'].includes(type)) {

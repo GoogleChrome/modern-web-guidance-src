@@ -52,7 +52,7 @@ test.describe('Temporal Interval Manager Grader', () => {
       window.__mockTemporalCalled = false;
       window.Temporal = {
         PlainDate: {
-          from: (str: string) => {
+          from: (_str: string) => {
             window.__mockTemporalCalled = true;
             return {
               add: () => ({

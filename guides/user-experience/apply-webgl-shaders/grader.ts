@@ -124,7 +124,7 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     }
 
     await page.addInitScript(() => {
-      (HTMLCanvasElement.prototype as any).getElementTransform = function(el: any, matrix: any) {
+      (HTMLCanvasElement.prototype as any).getElementTransform = function(_el: any, _matrix: any) {
         return 'matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 10, 20, 30, 1)';
       };
     });

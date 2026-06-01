@@ -328,7 +328,6 @@ test.describe("CSS Function Grader", () => {
       }
 
       let totalFunctionUses = 0;
-      let correctFallbacks = 0;
 
       for (const rule of rawRules) {
         if (rule.selector.startsWith('@')) continue;
@@ -351,9 +350,7 @@ test.describe("CSS Function Grader", () => {
                 }
               }
             }
-            if (hasFallback) {
-              correctFallbacks++;
-            } else {
+            if (!hasFallback) {
               return `Function use "${decl.property}: ${decl.value}" is not preceded by a fallback value for "${decl.property}" in rule "${rule.selector}".`;
             }
           }

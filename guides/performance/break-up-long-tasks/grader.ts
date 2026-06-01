@@ -90,11 +90,11 @@ test.describe('Scheduler Yield Tests', () => {
         }
       };
 
-      if (!window.scheduler) {
-        window.scheduler = {} as any;
+      if (!(window as any).scheduler) {
+        (window as any).scheduler = {} as any;
       }
-      const originalYield = window.scheduler.yield;
-      window.scheduler.yield = async function() {
+      const originalYield = (window as any).scheduler.yield;
+      (window as any).scheduler.yield = async function() {
         recordYield();
         if (originalYield) {
           return originalYield.apply(this);
@@ -140,11 +140,11 @@ test.describe('Scheduler Yield Tests', () => {
   test('should use scheduler.yield if available', async ({ page }) => {
     await page.addInitScript(() => {
       (window as any).schedulerYieldCalled = false;
-      if (!window.scheduler) {
-        window.scheduler = {} as any;
+      if (!(window as any).scheduler) {
+        (window as any).scheduler = {} as any;
       }
-      const originalYield = window.scheduler.yield;
-      window.scheduler.yield = async function() {
+      const originalYield = (window as any).scheduler.yield;
+      (window as any).scheduler.yield = async function() {
         (window as any).schedulerYieldCalled = true;
         if (originalYield) {
           return originalYield.apply(this);

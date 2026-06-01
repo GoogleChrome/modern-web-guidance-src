@@ -59,7 +59,7 @@ test.describe('Position-Aware Tooltips Grader', () => {
     const positionArea = await page.evaluate(() => {
       const popover = document.querySelector('[popover]');
       if (!popover) return '';
-      const style = window.getComputedStyle(popover);
+      const style = window.getComputedStyle(popover) as any;
       return style.positionArea || style.getPropertyValue('position-area') || '';
     });
     expect(positionArea).toMatch(/^(block-start|block-end|inline-start|inline-end|top|bottom|left|right|center)/);
@@ -70,7 +70,7 @@ test.describe('Position-Aware Tooltips Grader', () => {
     const fallbacks = await page.evaluate(() => {
       const popover = document.querySelector('[popover]');
       if (!popover) return '';
-      const style = window.getComputedStyle(popover);
+      const style = window.getComputedStyle(popover) as any;
       return style.positionTryFallbacks || style.getPropertyValue('position-try-fallbacks') || style.positionTry || style.getPropertyValue('position-try') || '';
     });
     expect(fallbacks).not.toBe('');
@@ -193,7 +193,7 @@ test.describe('Position-Aware Tooltips Grader', () => {
     // Intercept scroll/resize event listeners to block JS-based positioning updates
     await page.addInitScript(() => {
       const originalAddEventListener = window.addEventListener;
-      window.addEventListener = function(type: string, listener: any, options?: any) {
+      window.addEventListener = function(type: string, _listener: any, _options?: any) {
         if (type === 'scroll' || type === 'resize') {
           console.log(`Intercepted JS listener for: ${type}`);
           return; // Block scroll and resize event listeners!

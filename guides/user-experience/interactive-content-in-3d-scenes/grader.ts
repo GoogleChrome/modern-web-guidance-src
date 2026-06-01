@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
     Object.defineProperty(HTMLCanvasElement.prototype, 'getElementTransform', {
       get() {
         (window as any).__featureChecked = true;
-        return function(this: HTMLCanvasElement, element: HTMLElement) {
+        return function(this: HTMLCanvasElement, _element: HTMLElement) {
           return new DOMMatrix();
         };
       },
@@ -51,7 +51,7 @@ test.beforeEach(async ({ page }) => {
       Object.defineProperty(proto, 'texElementImage2D', {
         get() {
           (window as any).__featureChecked = true;
-          return function(this: any, target: any, level: any, internalformat: any, format: any, type: any, source: any) {
+          return function(this: any, _target: any, _level: any, _internalformat: any, _format: any, _type: any, _source: any) {
             (window as any).__texElementImage2D_called = true;
           };
         },

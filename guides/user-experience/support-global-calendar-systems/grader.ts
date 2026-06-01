@@ -276,12 +276,12 @@ async function setupNativePage(page: any): Promise<{ stats: GraderStats, polyfil
           stats.temporalUsed = true;
           return {
             toString() { return '2026-05-28'; },
-            add(duration: any) {
+            add(_duration: any) {
               return {
                 toString() { return '2226-05-28'; }
               };
             },
-            subtract(duration: any) {
+            subtract(_duration: any) {
               return {
                 toString() { return '1826-05-28'; }
               };
@@ -296,8 +296,8 @@ async function setupNativePage(page: any): Promise<{ stats: GraderStats, polyfil
                 monthCode: 'M05',
                 monthsInYear: 12,
                 daysInMonth: 31,
-                add(duration: any) { return this; },
-                subtract(duration: any) { return this; },
+                add(_duration: any) { return this; },
+                subtract(_duration: any) { return this; },
                 with() { return this; },
                 toLocaleString() {
                   stats.toLocaleStringCalls.push({ locales: 'en-u-ca-' + cal, options: {} });
@@ -319,8 +319,8 @@ async function setupNativePage(page: any): Promise<{ stats: GraderStats, polyfil
             monthCode: 'M05',
             monthsInYear: 12,
             daysInMonth: 31,
-            add(duration: any) { return this; },
-            subtract(duration: any) { return this; },
+            add(_duration: any) { return this; },
+            subtract(_duration: any) { return this; },
             withCalendar(cal: string) {
               stats.originalWithCalendarCalled = true;
               return {
@@ -331,8 +331,8 @@ async function setupNativePage(page: any): Promise<{ stats: GraderStats, polyfil
                 monthCode: 'M05',
                 monthsInYear: 12,
                 daysInMonth: 31,
-                add(duration: any) { return this; },
-                subtract(duration: any) { return this; },
+                add(_duration: any) { return this; },
+                subtract(_duration: any) { return this; },
                 with() { return this; },
                 toLocaleString() {
                   stats.toLocaleStringCalls.push({ locales: 'en-u-ca-' + cal, options: {} });
