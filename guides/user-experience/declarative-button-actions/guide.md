@@ -6,15 +6,13 @@ web-feature-ids:
 ---
 
 # Declarative Button Actions
-The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. This approach reduces the need for manual event listeners and ensures interactivity as soon as the HTML is parsed.
-
-For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
+The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
 
 ## Implementation steps
 
-1.  **Define the target element**: Identify the element that will respond to the action. It must have a unique `id`.
+1.  **Define the target element**: Identify the element that will respond to the action. If it doesn’t have a unique `id`, add one.
 2.  **Configure the invoker button**: Use the `commandfor` attribute to point to the target's `id`, and the `command` attribute to specify the custom command name (prefixed with `--`).
-3.  **Handle the command event**: Attach a `command` event listener to the `document` (or a common parent). This ensures that the event is captured even if it is dispatched by a polyfill or from a child element. The event object contains a `command` property and a `target` property (referring to the element identified by `commandfor`).
+3.  **Handle the command event**: Attach a `command` event listener directly on the target element. The event object contains a `command` property and a `target` property (referring to the element identified by `commandfor`).
 
 ## Example: Custom Animation Controls
 
@@ -39,23 +37,24 @@ For custom, application-specific actions, you can define your own command names.
 </button>
 
 <script>
-  // Listen for the 'command' event directly on the target element
+  // 1. **Optional:** Define a registry of requested actions for cleaner logic
+const commandRegistry = {
+  '--spin': (target) => target.classList.toggle('is-spun'),
+  '--grow': (target) => target.classList.toggle('is-grown'),
+  '--reset': (target) => target.classList.remove('is-spun', 'is-grown'),
+};
+
+  // 2. **Mandatory:** Listen for the 'command' event directly on the target element
   // (This is necessary because the native 'command' event does not bubble)
   document.getElementById('action-target').addEventListener('command', (event) => {
-    // Robustly handle both native API and manual/polyfill fallbacks
-    const command = event.command || event.detail?.command;
+    const command = event.command;
     const target = event.currentTarget;
+    const action = commandRegistry[command];
 
-    // Custom commands are checked to identify the requested action
-    if (command === '--spin') {
-      target.classList.toggle('is-spun');
-    } else if (command === '--grow') {
-      target.classList.toggle('is-grown');
-    } else if (command === '--reset') {
-      // Clear all custom classes to return to initial state
-      target.classList.remove('is-spun', 'is-grown');
+    if (action) {
+      action(target);
     }
-  });
+  }, {capture: true});
 </script>
 ```
 
@@ -76,19 +75,36 @@ This polyfill fully supports custom actions (starting with `--`) and dispatches 
 
 For the best performance, you should only load the polyfill if the browser doesn't support the API natively. This saves bandwidth and reduces script execution time for users on modern browsers.
 
+**NOTE:** This polyfill does not manage ARIA states (like `aria-expanded`) for custom commands. You must manually synchronize these states in your event listener to ensure your site is accessible.
+
 ```javascript
-// Check for native support first
+// 1. Conditionally load the polyfill
 const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
 
 if (!hasNativeSupport) {
-  // Dynamically import the polyfill only when needed
-  try {
-    await import('https://cdn.jsdelivr.net/npm/invokers-polyfill@latest/dist/index.min.js');
-    console.log('Invoker Commands polyfill loaded');
-  } catch (err) {
-    console.error('Error loading fallback:', err);
-  }
+  // Wrap in an async IIFE to avoid top-level await issues in older browsers
+  (async () => {
+    try {
+      await import('https://esm.run/invokers-polyfill');
+    } catch (err) {
+      console.error('Error loading fallback:', err);
+    }
+  })();
 }
+
+// 2. Manually manage ARIA states in your listener
+document.getElementById('action-target').addEventListener('command', (event) => {
+  const command = event.command || event.detail?.command;
+  const target = event.currentTarget;
+  const source = event.source; // The button that triggered the command
+
+  if (command === '--spin') {
+    const isSpun = target.classList.toggle('is-spun');
+    
+    // Polyfill tip: Manually update ARIA to match the new state
+    source?.setAttribute('aria-expanded', isSpun);
+  }
+}, { capture: true });
 ```
 
 ### Manual fallback (Traditional pattern)
@@ -96,17 +112,25 @@ if (!hasNativeSupport) {
 If you prefer not to use a polyfill, you can use a combination of **event delegation** to dispatch events and a **command registry** to handle the actions. This is a common architectural pattern in traditional JavaScript development that remains highly efficient and scalable.
 
 ```javascript
-// 1. Define a registry of requested actions for cleaner logic
+// 1. **Optional:** Define a registry of requested actions for cleaner logic
 const commandRegistry = {
   '--spin': (target) => target.classList.toggle('is-spun'),
   '--grow': (target) => target.classList.toggle('is-grown'),
   '--reset': (target) => target.classList.remove('is-spun', 'is-grown'),
 };
 
-const supportsInvokers = 'commandForElement' in HTMLButtonElement.prototype;
+// 2. If CommandEvent doesn't exist, we assume no native support and provide the fallback
+if (!globalThis.CommandEvent) {
+  globalThis.CommandEvent = class CommandEvent extends Event {
+    constructor(type, { source, command, ...options } = {}) {
+      super(type, options);
+      this.source = source;
+      this.command = command;
+    }
+  }
+}
 
-// 2. The fallback: Dispatch events manually if native support is missing
-if (!supportsInvokers) {
+// 3. The fallback: Dispatch events manually if native support is missing
   document.addEventListener('click', (event) => {
     const button = event.target.closest('button[commandfor]');
     if (!button) return;
@@ -115,15 +139,14 @@ if (!supportsInvokers) {
     const command = button.getAttribute('command');
 
     if (target && command) {
-      target.dispatchEvent(new CustomEvent('command', {
-        bubbles: true,
-        detail: { command }
+      target.dispatchEvent(new CommandEvent('command', { 
+        command, 
+        source: button,
       }));
     }
   });
-}
 
-// 3. The unified listener: Registered directly on the target element
+// 4. **Mandatory:** Register the unified listener directly on the target element
 document.getElementById('action-target').addEventListener('command', (event) => {
   const command = event.command || event.detail?.command;
   const target = event.currentTarget;
@@ -132,5 +155,5 @@ document.getElementById('action-target').addEventListener('command', (event) => 
   if (action) {
     action(target);
   }
-});
+ }, {capture: true});
 ```
