@@ -317,18 +317,12 @@
       // Randomize start in past
       const daysInPast = Math.floor(Math.random() * 14) + 1;
       const start = now.subtract({ days: daysInPast });
-
-      const startDateStr = start.toPlainDate().toString();
-      const startTimeStr = start.toPlainTime().toString().slice(0, 5); // HH:MM
-
       const end = start.add({ days: 30 });
-      const endDateStr = end.toPlainDate().toString();
-      const endTimeStr = end.toPlainTime().toString().slice(0, 5);
 
-      startDateInput.value = startDateStr;
-      startTimeInput.value = startTimeStr;
-      endDateInput.value = endDateStr;
-      endTimeInput.value = endTimeStr;
+      startDateInput.value = start.toPlainDate();
+      startTimeInput.value = start.toPlainTime().toString({ smallestUnit: 'minute' });
+      endDateInput.value = end.toPlainDate();
+      endTimeInput.value = end.toPlainTime().toString({ smallestUnit: 'minute' });
 
       // Event Listeners
       startDateInput.addEventListener('input', calculate);
@@ -337,6 +331,16 @@
       endTimeInput.addEventListener('input', calculate);
 
       calculate();
+    }
+
+    function formatDuration(dur) {
+      if (!dur) {
+        return '-';
+      }
+      if (typeof Intl.DurationFormat !== 'undefined') {
+        return dur.toLocaleString('en-US', { style: 'narrow' });
+      }
+      return `${dur.years}y ${dur.months}m ${dur.days}d ${dur.hours}h ${dur.minutes}m`;
     }
 
     function calculate() {
@@ -352,23 +356,16 @@
         const tz = now.timeZoneId;
 
         // Combine Date and Time with Temporal
-        const startDate = Temporal.PlainDate.from(startD);
-        const startTime = Temporal.PlainTime.from(startT);
-        const start = startDate.toPlainDateTime(startTime).toZonedDateTime(tz);
+        const start = Temporal.PlainDateTime.from(`${startD}T${startT}`).toZonedDateTime(tz);
+        const end = Temporal.PlainDateTime.from(`${endD}T${endT}`).toZonedDateTime(tz);
 
-        const endDate = Temporal.PlainDate.from(endD);
-        const endTime = Temporal.PlainTime.from(endT);
-        const end = endDate.toPlainDateTime(endTime).toZonedDateTime(tz);
-
-        // Calculate Since (Active Time)
+        // Calculate Since (Active Time) and Until (Remaining Time)
         const active = now.since(start, { largestUnit: 'year' });
-
-        // Calculate Until (Remaining Time)
         const remaining = now.until(end, { largestUnit: 'year' });
 
-        // Update Status
-        const isPast = Temporal.ZonedDateTime.compare(now, end) > 0;
-        const isFutureStart = Temporal.ZonedDateTime.compare(now, start) < 0;
+        // Update Status by leveraging the native .sign property of Temporal.Duration
+        const isPast = remaining.sign < 0;
+        const isFutureStart = active.sign < 0;
 
         if (isPast) {
           statusValue.textContent = "EXPIRED";
@@ -378,12 +375,12 @@
         } else if (isFutureStart) {
           statusValue.textContent = "PENDING";
           statusValue.style.color = "#f59e0b";
-          durationValue.textContent = `${remaining.years}y ${remaining.months}m ${remaining.days}d ${remaining.hours}h ${remaining.minutes}m`;
+          durationValue.textContent = formatDuration(remaining);
           rawDurationValue.textContent = remaining.toString();
         } else {
           statusValue.textContent = "ACTIVE";
           statusValue.style.color = "var(--accent-secondary)";
-          durationValue.textContent = `${remaining.years}y ${remaining.months}m ${remaining.days}d ${remaining.hours}h ${remaining.minutes}m`;
+          durationValue.textContent = formatDuration(remaining);
           rawDurationValue.textContent = remaining.toString();
         }
 
@@ -392,7 +389,7 @@
           activeValue.textContent = "Not Started";
           rawActiveValue.textContent = "-";
         } else {
-          activeValue.textContent = `${active.years}y ${active.months}m ${active.days}d ${active.hours}h ${active.minutes}m`;
+          activeValue.textContent = formatDuration(active);
           rawActiveValue.textContent = active.toString();
         }
 
