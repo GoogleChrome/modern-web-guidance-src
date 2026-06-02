@@ -332,9 +332,9 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 
 ```html
 <!-- Session Timeout Warning with controls -->
-<div role="alert" aria-live="assertive" class="timeout-warning">
+<div role="alert" class="timeout-warning">
   Your session will expire in 2 minutes. 
-  <button onclick="extendSession()">Extend Session</button>
+  <button type="button" onclick="extendSession()">Extend Session</button>
 </div>
 ```
 
