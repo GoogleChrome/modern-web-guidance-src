@@ -1,5 +1,16 @@
 import { authenticatedFetch, MiniIndexedDB } from './utils.js';
 
+const ENTRY_POINT_CANDIDATES = [
+    'dist/index.html',
+    'src/App.jsx',
+    'src/App.js',
+    'src/main.jsx',
+    'src/main.js',
+    'src/index.jsx',
+    'src/index.js',
+    'index.html'
+];
+
 export class ApiClient {
     constructor() {
         const params = new URLSearchParams(window.location.search);
@@ -237,16 +248,7 @@ export class ApiClient {
         const logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
         const legacyBasePath = `${testId}/${run.runNumber}/${taskName}/${runType}`;
         
-        const candidates = [
-            'dist/index.html',
-            'src/App.jsx',
-            'src/App.js',
-            'src/main.jsx',
-            'src/main.js',
-            'src/index.jsx',
-            'src/index.js',
-            'index.html'
-        ];
+        const candidates = ENTRY_POINT_CANDIDATES;
 
         // 1. Find best entry point in logicalBasePath
         let entryPointPath = null;
@@ -349,16 +351,7 @@ export class ApiClient {
                 if (cached !== undefined) return cached;
             } catch {}
         }
-        const candidates = [
-            'dist/index.html',
-            'src/App.jsx',
-            'src/App.js',
-            'src/main.jsx',
-            'src/main.js',
-            'src/index.jsx',
-            'src/index.js',
-            'index.html'
-        ];
+        const candidates = ENTRY_POINT_CANDIDATES;
 
         let bestCandidate = null;
         if (this.source === 'remote') {
