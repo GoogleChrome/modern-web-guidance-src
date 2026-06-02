@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Incorrect Text Highlight Demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 640px;
+        margin: 2rem auto;
+        line-height: 1.6;
+      }
+
+      .match {
+        background-image: linear-gradient(#ffdd00, #ffdd00);
+        padding: 0 0.2rem;
+        font-size: 1.1em;
+      }
+    </style>
+  </head>
+  <body>
+    <label for="search-input">Search within text</label>
+    <input id="search-input" type="text" placeholder="Type to highlight..." />
+
+    <article id="content">
+      <p>
+        The page highlights search results by rewriting the document markup.
+        This approach changes the DOM tree every time the search term changes.
+      </p>
+      <p>
+        Search result highlighting should not break existing nodes, event
+        listeners, or accessibility relationships.
+      </p>
+    </article>
+
+    <script>
+      const input = document.getElementById("search-input");
+      const article = document.getElementById("content");
+      const original = article.innerHTML;
+
+      input.addEventListener("input", () => {
+        const term = input.value.trim();
+        article.innerHTML = original;
+        if (!term) return;
+
+        const re = new RegExp(term, "gi");
+        article.innerHTML = article.innerHTML.replace(
+          re,
+          (match) => `<span class="match">${match}</span>`,
+        );
+      });
+    </script>
+  </body>
+</html>
