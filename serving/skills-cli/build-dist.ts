@@ -261,10 +261,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     const { skillsCount, skillNames } = processSkills(publishRoot);
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
-    // Copy the generated README to root README.mwg.md for this repo
-    const rootReadmePath = path.join(rootDir, "README.mwg.md");
-    fs.copyFileSync(path.join(publishRoot, "README.md"), rootReadmePath);
-
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
     return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
