@@ -89,7 +89,7 @@ The popover must cover the whole viewport so its `::backdrop` dims the entire pa
   overflow: visible;
 }
 
-/* Style the popover's ::backdrop to achive the overlay effect and
+/* Style the popover's ::backdrop to achieve the overlay effect and
    provide visual affordances indicating that the rest of the page is inert */
 .Drawer::backdrop {
   background: #000;
@@ -351,7 +351,7 @@ async function openDrawer() {
 
 {{ BASELINE_STATUS("registered-custom-properties") }}
 
-`@property` is only needed because the scroll-driven animation interpolates `--drawer-backdrop` between keyframes — without registration, the property would be treated as a string and would jump between 0 and 1 with no fade. If the scroll-driven animation fallback above is in place, that JavaScript writes a fresh numeric string to `--drawer-backdrop` on every scroll frame and never interpolates, so no seprarate `@property` fallback is needed since all browsers that support scroll-driven animations also support `@property`.
+`@property` is only needed because the scroll-driven animation interpolates `--drawer-backdrop` between keyframes — without registration, the property would be treated as a string and would jump between 0 and 1 with no fade. If the scroll-driven animation fallback above is in place, that JavaScript writes a fresh numeric string to `--drawer-backdrop` on every scroll frame and never interpolates, so no separate `@property` fallback is needed since all browsers that support scroll-driven animations also support `@property`.
 
 
 #### Popover API fallback (no `popover` attribute support):
