@@ -1,4 +1,4 @@
-import { authenticatedFetch } from './utils.js';
+import { authenticatedFetch, MiniIndexedDB } from './utils.js';
 
 export class ApiClient {
     constructor() {
@@ -14,6 +14,7 @@ export class ApiClient {
         }
         this.source = sourceParam;
         this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
+        this.cache = new MiniIndexedDB();
     }
 
     _formatUrl(path, isMetadataOnly = false) {
@@ -105,15 +106,39 @@ export class ApiClient {
 
     /** Fetches the evals.json payload for a specific root test ID. */
     async getEvals(testId) {
+        if (this.source === 'remote') {
+            try {
+                const cached = await this.cache.get(`evals:${testId}`);
+                if (cached) return cached;
+            } catch (e) {
+                console.warn('Cache read failed:', e);
+            }
+        }
         // Appending timestamp to defeat strict local browser cache on eval data
         const path = `${testId}/evals.json?t=${Date.now()}`;
         const res = await this._fetch(path);
         if (!res.ok) throw new Error(`Failed to load data from ${this._formatUrl(path)}`);
-        return await res.json();
+        const data = await res.json();
+        if (this.source === 'remote') {
+            try {
+                await this.cache.set(`evals:${testId}`, data);
+            } catch (e) {
+                console.warn('Cache write failed:', e);
+            }
+        }
+        return data;
     }
 
     /** Fetches the optional jetski automation metadata payload. */
     async getJetskiInfo(testId) {
+        if (this.source === 'remote') {
+            try {
+                const cached = await this.cache.get(`jetski:${testId}`);
+                if (cached !== undefined) return cached; // Note: can be null
+            } catch (e) {
+                console.warn('Cache read failed:', e);
+            }
+        }
         const path = `${testId}/jetski_info.json`;
         let exists = false;
         
@@ -123,12 +148,21 @@ export class ApiClient {
             exists = await this._checkLocalFileExists(path);
         }
 
-        if (!exists) return null;
+        if (!exists) {
+            if (this.source === 'remote') {
+                try { await this.cache.set(`jetski:${testId}`, null); } catch {}
+            }
+            return null;
+        }
 
         try {
             const res = await this._fetch(path);
             if (res.ok) {
-                return await res.json();
+                const data = await res.json();
+                if (this.source === 'remote') {
+                    try { await this.cache.set(`jetski:${testId}`, data); } catch {}
+                }
+                return data;
             }
         } catch (e) {
             console.log('No jetski info found:', e.message);
@@ -136,19 +170,135 @@ export class ApiClient {
         return null; // Not fatal if missing
     }
 
+    /** Gets the entire directory listing of all files in the entire suite's directory. */
+    async getSuiteDirectoryListing(testId) {
+        if (this.source === 'remote') {
+            try {
+                const cached = await this.cache.get(`suiteDirList:${testId}`);
+                if (cached !== undefined) return cached;
+            } catch {}
+        }
+
+        let filePaths = [];
+        if (this.source === 'remote') {
+            let pageToken = '';
+            do {
+                const listUrl = `${this.gcsPrefix}?prefix=${encodeURIComponent(testId + '/')}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+                const res = await authenticatedFetch(listUrl);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.items) {
+                        filePaths.push(...data.items.map(item => item.name));
+                    }
+                    pageToken = data.nextPageToken || '';
+                } else {
+                    break;
+                }
+            } while (pageToken);
+            try { await this.cache.set(`suiteDirList:${testId}`, filePaths); } catch {}
+        } else {
+            try {
+                const res = await fetch(`/api/run-files-recursive?dir=${encodeURIComponent(testId + '/')}&source=local`);
+                if (res.ok) {
+                    const data = await res.json();
+                    filePaths = data.files || [];
+                }
+            } catch (e) {
+                console.log('Error checking local suite files:', e);
+            }
+        }
+        return filePaths;
+    }
+
     /** Checks if a test_suite.log file exists via a fast HEAD or silent remote prefix search. */
     async checkLogExists(testId) {
         try {
-            const path = `${testId}/test_suite.log`;
-            
-            if (this.source === 'remote') {
-                return await this._checkRemoteFileExists(path);
-            } else {
-                return await this._checkLocalFileExists(path);
-            }
+            const suiteFiles = await this.getSuiteDirectoryListing(testId);
+            const logPath = `${testId}/test_suite.log`;
+            return suiteFiles.includes(logPath);
         } catch {
             return false;
         }
+    }
+
+    /** Gets the entire directory listing of all files in a single run's directory. */
+    async getRunDirectoryListing(testId, runNumber) {
+        const suiteFiles = await this.getSuiteDirectoryListing(testId);
+        const runPrefix = `${testId}/${runNumber}/`;
+        return suiteFiles.filter(path => path.startsWith(runPrefix));
+    }
+
+
+    /** Resolves the correct base path for specific run details synchronously using pre-fetched directory list. */
+    resolveResultInfoFromList(testId, run, testName, filePaths) {
+        const [taskName, guideName, runType] = testName.split(' - ');
+        const actualBaseApp = run.baseApp;
+        
+        const logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
+        const legacyBasePath = `${testId}/${run.runNumber}/${taskName}/${runType}`;
+        
+        const candidates = [
+            'dist/index.html',
+            'src/App.jsx',
+            'src/App.js',
+            'src/main.jsx',
+            'src/main.js',
+            'src/index.jsx',
+            'src/index.js',
+            'index.html'
+        ];
+
+        // 1. Find best entry point in logicalBasePath
+        let entryPointPath = null;
+        let usedBasePath = logicalBasePath;
+        
+        for (const candidate of candidates) {
+            const target = `${logicalBasePath}/${candidate}`;
+            if (filePaths.includes(target)) {
+                entryPointPath = target;
+                break;
+            }
+        }
+
+        // 2. Fallback to legacyBasePath
+        if (!entryPointPath) {
+            for (const candidate of candidates) {
+                const target = `${legacyBasePath}/${candidate}`;
+                if (filePaths.includes(target)) {
+                    entryPointPath = target;
+                    usedBasePath = legacyBasePath;
+                    break;
+                }
+            }
+        }
+
+        // 3. Default fallback
+        if (!entryPointPath) {
+            entryPointPath = `${logicalBasePath}/index.html`;
+        }
+
+        // 4. Calculate relative path
+        const relativePath = entryPointPath.replace(usedBasePath + '/', '');
+
+        // 5. Check if local base_app path exists
+        const localBaseAppPath = `${testId}/${run.runNumber}/${guideName}/${taskName}/base_app/${relativePath}`;
+        const exists = filePaths.includes(localBaseAppPath);
+        const setupPath = exists ? localBaseAppPath : `base_apps/${actualBaseApp}/${relativePath}`;
+
+        return {
+            setupPath,
+            resultPath: entryPointPath,
+            usedBasePath
+        };
+    }
+
+    /** Filters and formats run files synchronously from pre-fetched directory list. */
+    filterRunFilesFromList(usedBasePath, filePaths) {
+        const prefix = usedBasePath.endsWith('/') ? usedBasePath : usedBasePath + '/';
+        return filePaths
+            .filter(path => path.startsWith(prefix))
+            .map(path => path.replace(prefix, ''))
+            .filter(fileName => !fileName.includes('/')); // only return direct files
     }
 
     /** Resolves the correct base path for specific run details, parsing legacy logic. */
@@ -193,6 +343,12 @@ export class ApiClient {
     }
 
     async _findBestEntryPoint(basePath) {
+        if (this.source === 'remote') {
+            try {
+                const cached = await this.cache.get(`entryPoint:${basePath}`);
+                if (cached !== undefined) return cached;
+            } catch {}
+        }
         const candidates = [
             'dist/index.html',
             'src/App.jsx',
@@ -224,6 +380,7 @@ export class ApiClient {
                     }
                 }
             }
+            try { await this.cache.set(`entryPoint:${basePath}`, bestCandidate); } catch {}
         } else {
             const checks = candidates.map(candidate =>
                 this._checkLocalFileExists(`${basePath}/${candidate}`)
@@ -239,6 +396,12 @@ export class ApiClient {
 
     /** Lists relevant metadata files (like raw results or trajectories) for a specific test execution dir. */
     async getRunFiles(basePath) {
+        if (this.source === 'remote') {
+            try {
+                const cached = await this.cache.get(`runFiles:${basePath}`);
+                if (cached !== undefined) return cached;
+            } catch {}
+        }
         let files = [];
         try {
             if (this.source === 'local') {
@@ -255,14 +418,15 @@ export class ApiClient {
                     const data = await res.json();
                     if (data.items) {
                         files = data.items.map(item => item.name.split('/').pop());
-                    }
-                }
-            }
-        } catch (e) {
-            console.log('Error checking run files:', e);
-        }
-        return files;
-    }
+                      }
+                  }
+                  try { await this.cache.set(`runFiles:${basePath}`, files); } catch {}
+              }
+          } catch (e) {
+              console.log('Error checking run files:', e);
+          }
+          return files;
+      }
 
     /** Downloads raw text content for a specific URL Path (e.g. from viewContent modal). */
     async getFileText(path) {
@@ -271,8 +435,39 @@ export class ApiClient {
         const isTasks = path.startsWith('tasks/');
 
         if (this.source === 'remote' && !isBaseApp && !isTasks) {
-            const exists = await this._checkRemoteFileExists(path);
-            if (!exists) throw new Error('File not found (404).');
+            try {
+                const cached = await this.cache.get(`fileText:${path}`);
+                if (cached !== undefined) {
+                    if (cached === null) throw new Error('File not found (404).');
+                    return cached;
+                }
+            } catch (err) {
+                if (err.message === 'File not found (404).') throw err;
+            }
+
+            const firstSegment = path.split('/')[0];
+            if (firstSegment) {
+                try {
+                    const suiteFiles = await this.getSuiteDirectoryListing(firstSegment);
+                    if (!suiteFiles.includes(path)) {
+                        try { await this.cache.set(`fileText:${path}`, null); } catch {}
+                        throw new Error('File not found (404).');
+                    }
+                } catch (e) {
+                    if (e.message === 'File not found (404).') throw e;
+                    const exists = await this._checkRemoteFileExists(path);
+                    if (!exists) {
+                        try { await this.cache.set(`fileText:${path}`, null); } catch {}
+                        throw new Error('File not found (404).');
+                    }
+                }
+            } else {
+                const exists = await this._checkRemoteFileExists(path);
+                if (!exists) {
+                    try { await this.cache.set(`fileText:${path}`, null); } catch {}
+                    throw new Error('File not found (404).');
+                }
+            }
         }
         
         // Force local fetching for base_apps or tasks natively, otherwise it tries to read from GCS
@@ -281,10 +476,19 @@ export class ApiClient {
             : await this._fetch(path);
             
         if (!res.ok) {
-            if (res.status === 404) throw new Error('File not found (404).');
+            if (res.status === 404) {
+                if (this.source === 'remote' && !isBaseApp && !isTasks) {
+                    try { await this.cache.set(`fileText:${path}`, null); } catch {}
+                }
+                throw new Error('File not found (404).');
+            }
             throw new Error(`Failed to load from ${path} (${res.status})`);
         }
-        return await res.text();
+        const text = await res.text();
+        if (this.source === 'remote' && !isBaseApp && !isTasks) {
+            try { await this.cache.set(`fileText:${path}`, text); } catch {}
+        }
+        return text;
     }
 
     /** Returns absolute URL wrapper for opening links directly in new tabs (like trajectories). */

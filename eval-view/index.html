@@ -100,7 +100,12 @@
           <tbody id="suites-list">
             <!-- populated by JS -->
           </tbody>
-          </table>
+        </table>
+        <div id="pagination-container" class="pagination-controls" style="display: flex; justify-content: center; align-items: center; gap: 16px; padding: 16px; border-top: 1px solid var(--border-color); font-family: inherit;">
+            <button id="prev-page-btn" class="secondary-btn" style="padding: 6px 12px; display: none;">← Previous</button>
+            <span id="page-info" style="color: var(--text-secondary); font-size: 0.9rem; display: none;">Page 1 of 1</span>
+            <button id="next-page-btn" class="secondary-btn" style="padding: 6px 12px; display: none;">Next →</button>
+        </div>
       </div>
     </div>
 
