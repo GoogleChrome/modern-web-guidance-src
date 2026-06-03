@@ -228,7 +228,6 @@ async function main() {
   for (const agent of activeAgents) {
     const folderName = latestByAgent[agent]!;
     const localSuiteDir = path.join(resultsDir, folderName);
-    const localEvalsPath = path.join(localSuiteDir, 'evals.json');
 
     if (fs.existsSync(localSuiteDir)) {
       console.log(`\n✅ [${agent}] Folder already exists in results, skipping download: ${folderName}`);
