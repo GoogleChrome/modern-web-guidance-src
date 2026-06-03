@@ -40,7 +40,7 @@ async function main() {
   let parentUrl = '';
   let parentNum = '';
   try {
-    const parentOutput = execSync(`gh issue create --title "${parentTitle}" --body-file "${reportPath}" --label "nightly-investigations"`, { encoding: 'utf-8' });
+    const parentOutput = execSync(`gh issue create --title "${parentTitle}" --body-file "${reportPath}" --label "nightly-investigation"`, { encoding: 'utf-8' });
     parentUrl = parentOutput.trim();
     console.log(`✅ Parent issue created at: ${parentUrl}`);
     createdIssues.push({ title: parentTitle, url: parentUrl, type: 'parent' });
