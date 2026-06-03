@@ -134,7 +134,7 @@ async function run() {
     console.log("Codex agent finished successfully.");
   } catch (err) {
     console.error("Error during Codex execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }
