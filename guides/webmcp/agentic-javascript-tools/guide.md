@@ -5,7 +5,7 @@ web-feature-ids:
   - navigator-modelcontext
 ---
 
-The Imperative API uses `navigator.modelContext.registerTool()` to programmatically define JavaScript tools. This is ideal for Single Page Applications (SPAs) where tools need to be added or removed based on the current route or user state.
+The Imperative API uses `document.modelContext.registerTool()` to programmatically define JavaScript tools. This is ideal for Single Page Applications (SPAs) where tools need to be added or removed based on the current route or user state.
 
 ## Registration and Lifecycle
 
@@ -18,7 +18,7 @@ WebMCP does not provide an `unregisterTool()` method. To unregister a tool, you 
 ```javascript
 const controller = new AbortController();
 
-navigator.modelContext.registerTool({
+document.modelContext.registerTool({
   name: "get_user_preferences",
   description: "Retrieves the user's saved preferences.",
   inputSchema: { type: "object", properties: {} },
@@ -38,7 +38,7 @@ controller.abort();
 Parameters (params) are defined using the `inputSchema` property. This must be a **JSON Schema** object that describes the structured data the tool expects.
 
 ```javascript
-navigator.modelContext.registerTool({
+document.modelContext.registerTool({
   name: "calculate_area",
   description: "Calculates the area of a rectangle.",
   inputSchema: {
@@ -107,7 +107,7 @@ export function createInventoryTool(inventoryManager) {
     *   **readOnlyHint**: (Optional) Set to `true` if the tool does not modify any state and only reads data. This helps agents decide when it is safe to call the tool.
 *   **Return Format**: The `execute` function can return any value (object, array, string, number, boolean). Select a structure that best serves your specific use case while ensuring the content is optimized for the LLM to process. The output may encompass raw data, specific error logs, or direct instructions to influence the agent's next action.
 *   **Secure Context**: WebMCP requires HTTPS.
-*   **Deprecated/Removed**: `unregisterTool()`, `provideContext()`, and `clearContext()` are no longer supported.
+*   **Deprecated/Removed**: `navigator.modelContext` (deprecated in Chromium 150), `unregisterTool()`, `provideContext()`, and `clearContext()` are no longer supported.
 
 ## Fallback strategies
 
@@ -116,7 +116,8 @@ export function createInventoryTool(inventoryManager) {
 The WebMCP Imperative API should be used with feature detection to ensure compatibility with browsers that do not yet support WebMCP.
 
 ```javascript
-if ('modelContext' in navigator && 'registerTool' in navigator.modelContext) {
+const modelContext = document.modelContext || navigator.modelContext;
+if (modelContext && 'registerTool' in modelContext) {
   // Register tools
 }
 ```
