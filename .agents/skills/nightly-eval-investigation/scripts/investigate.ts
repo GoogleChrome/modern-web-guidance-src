@@ -361,12 +361,12 @@ async function main() {
       flagDetailsList.push(`Guided pass rate was under 75% in all nightly runs (${rateStrings}).`);
     }
 
-    // 4. High unguided percentage rate: Unguided pass rate 50% or higher in all runs
-    const allUnguidedOver50 = activeAgents.every(agent => details.unguidedPassRates[agent] >= 50);
-    if (allUnguidedOver50) {
+    // 4. High unguided percentage rate: Unguided pass rate 70% or higher in all runs
+    const allUnguidedOver70 = activeAgents.every(agent => details.unguidedPassRates[agent] >= 70);
+    if (allUnguidedOver70) {
       flags.push('HIGH_UNGUIDED_PASS_RATE');
       const rateStrings = activeAgents.map(agent => `${agent}: ${details.unguidedPassRates[agent]}%`).join(', ');
-      flagDetailsList.push(`Unguided pass rate was 50% or higher in all nightly runs (${rateStrings}).`);
+      flagDetailsList.push(`Unguided pass rate was 70% or higher in all nightly runs (${rateStrings}).`);
     }
 
     if (flags.length > 0) {
@@ -384,6 +384,9 @@ async function main() {
   // Generate reports
   const outputDir = path.join(__dirname, '../artifacts');
   fs.mkdirSync(outputDir, { recursive: true });
+
+  const guidesDir = path.join(repoRoot, 'guides');
+  const guideDirsMap = findGuideDirs(guidesDir);
 
   const markdownReportPath = path.join(outputDir, 'nightly_investigation_report.md');
 
@@ -446,10 +449,14 @@ async function main() {
       for (const flag of item.flags) {
         md += `  - **${flag}**: TODO\n`;
       }
+
+      const folderPath = guideDirsMap[item.taskName];
+      const relativePath = folderPath ? path.relative(repoRoot, folderPath) : `guides/.../${item.taskName}`;
+
       md += `- **Actionable Recommendations**:\n`;
-      md += `  - [ ] **Prompt**: TODO\n`;
-      md += `  - [ ] **Guide**: TODO\n`;
-      md += `  - [ ] **Grader**: TODO\n\n`;
+      md += `  - [ ] **Prompt** (\`${relativePath}/tasks/task.md\`): TODO\n`;
+      md += `  - [ ] **Guide** (\`${relativePath}/guide.md\`): TODO\n`;
+      md += `  - [ ] **Grader** (\`${relativePath}/grader.ts\`): TODO\n\n`;
       md += `---\n\n`;
     }
   }
@@ -460,8 +467,6 @@ async function main() {
   // 2. Build Flagged Tasks Context JSON
   if (flaggedTasks.length > 0) {
     console.log('📂 Gathering context details (task prompt, guide description, unit tests) for flagged tasks...');
-    const guidesDir = path.join(repoRoot, 'guides');
-    const guideDirsMap = findGuideDirs(guidesDir);
     const contextMap: Record<string, {
       flags: string[];
       guidePath: string;

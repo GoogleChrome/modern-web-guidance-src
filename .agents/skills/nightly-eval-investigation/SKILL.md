@@ -58,8 +58,8 @@ For every task evaluated in the runs, the investigation tracks four specific met
 - **Implication**: The guide content is ambiguous, incomplete, or the grading assertions are brittle.
 
 ### 4. High Unguided Pass Rate (`HIGH_UNGUIDED_PASS_RATE`)
-- **Rule**: The unguided pass rate for a task is **50% or higher**.
-- **Threshold**: Flagged if **all three** nightly runs for that task have unguided pass rates of 50% or higher.
+- **Rule**: The unguided pass rate for a task is **70% or higher**.
+- **Threshold**: Flagged if **all three** nightly runs for that task have unguided pass rates of 70% or higher.
 - **Implication**: The task prompt is overly prescriptive (giving away the solution) or the task itself is too trivial to require guidance.
 
 ---
@@ -148,8 +148,18 @@ Follow this linear playbook for each flagged task:
 5. **Synthesize the Markdown Report**
    Write the summary under the task's section in `.agents/skills/nightly-eval-investigation/artifacts/nightly_investigation_report.md` following the template below.
 
-### Step 5: Present and Link
-Once the qualitative diagnostics have been added, present the final report to the user and provide a clickable markdown link:
+### Step 5: Inform the User of the Publishing Script
+Once the qualitative diagnostics and recommendations have been fully written and saved to the markdown report, present the final report to the user and inform them that they can run the automated publisher script to create the GitHub parent issue and the task-level engineering/devrel subissues.
+
+> [!WARNING]
+> **DO NOT EXECUTE THE PUBLISHER SCRIPT YOURSELF:** The agent must never run the publisher script (`publish_report.ts`) or create/publish any GitHub issues itself. It must only inform the user of the command so they can verify the report first and execute it manually.
+
+```bash
+node --experimental-strip-types .agents/skills/nightly-eval-investigation/scripts/publish_report.ts
+```
+
+### Step 6: Present and Link
+Present the final report to the user, providing a clickable link, and remind them of the publishing command:
 - Markdown Report: [nightly_investigation_report.md](file:///Users/micahjo/modern-web-guidance-src/.agents/skills/nightly-eval-investigation/artifacts/nightly_investigation_report.md)
 
 ---
