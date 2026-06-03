@@ -107,7 +107,8 @@ async function run() {
     const commandArgs = [
       'exec', 
       userPrompt,
-      '--yolo'
+      '--yolo',
+      '--model', process.env.CODEX_MODEL || 'gpt-5.5'
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
