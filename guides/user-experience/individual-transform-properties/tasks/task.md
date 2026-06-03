@@ -1,0 +1,5 @@
+---
+base_app: daily-grind
+---
+- hey, can you add a featured promo badge with class 'target' to the seasonal favorites section of our coffee site? i want this badge to have two animations running at the same time: one that constantly spins it, and another that slides it back and forth. when the user hovers over the badge, it should scale up smoothly with a transition, but the spinning and sliding animations must keep running continuously without getting cut off or paused. make sure it's built to have a stable stacking context on hover without using will-change.
+- i want to make the seasonal favorite cards on our coffee site feel more interactive. can we add a special element with the class 'target' that rotates slowly and slides back and forth? on hover, this element should grow bigger with a transition, but we need to make sure the slow rotation and sliding animations don't pause or reset when hovered, and make sure we don't use will-change or cause weird stacking context shifts on hover.

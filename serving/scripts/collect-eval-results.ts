@@ -37,7 +37,7 @@ function collectResults() {
 
   for (const item of items) {
     if (!item.isDirectory()) continue;
-    if (!item.name.startsWith('nightly-')) continue;
+    if (!item.name.startsWith('nightly-') && !item.name.startsWith('weekly-')) continue;
 
     const suiteDir = path.join(resultsDir, item.name);
     const evalsPath = path.join(suiteDir, 'evals.json');
@@ -104,7 +104,7 @@ function collectResults() {
   // Sort by timestamp descending
   summaries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  console.log(`Collected ${summaries.length} nightly runs.`);
+  console.log(`Collected ${summaries.length} nightly/weekly runs.`);
 
   // Ensure directory exists
   fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });

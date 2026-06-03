@@ -198,7 +198,7 @@ await chrome.action.setBadgeText({ text: '5' });
 
 `activeTab` grants temporary access to the current tab ONLY when triggered by:
 - Clicking the extension action icon
-- A context menu item
+- A context menu item (including the `"tab"` context)
 - A keyboard shortcut from the `commands` API
 - Accepting an omnibox suggestion
 
@@ -418,7 +418,7 @@ Update it whenever:
 - **Rejection response**: If the user reports a CWS rejection, update the file with the
   fix and add a note to Version History
 
-#### How to fill it out
+### How to fill it out
 
 For each section, pull information from the actual project files:
 1. Read `manifest.json` to extract name, version, description, permissions, host_permissions
@@ -430,6 +430,17 @@ Write store-facing copy in a tone that is specific, honest, and benefit-oriented
 Web Store review team rejects vague descriptions. "Makes your life easier" will be rejected.
 "Highlights search results on any webpage and lets you save highlights to a local list" will
 pass.
+
+**Never mention implementation details.** Users care what the extension does for them, not
+how it was built. Strip any mention of APIs, libraries, frameworks, or code patterns:
+
+| ❌ Implementation detail (cut it) | ✅ User benefit (keep it) |
+|-----------------------------------|--------------------------|
+| "Uses a MutationObserver to detect page changes" | "Automatically detects new content as you browse" |
+| "Built with custom elements and Shadow DOM" | "Works seamlessly without affecting page styles" |
+| "Powered by a service worker for background processing" | "Runs quietly in the background without slowing your browser" |
+| "Leverages the chrome.storage.sync API" | "Your settings sync across all your devices" |
+| "Implements declarativeNetRequest for filtering" | "Blocks ads and trackers without reading your page content" |
 
 ### CHROMEWEBSTORE.md Sections
 
@@ -510,3 +521,4 @@ Verify EVERY item before delivering:
 - [ ] Error handling on all async operations
 - [ ] `host_permissions` scoped to specific domains (not `<all_urls>` unless needed)
 - [ ] `return true` in `onMessage` listeners with async responses
+- [ ] Any use of `"tab"` in `chrome.contextMenus` `contexts` requires Chrome M150+

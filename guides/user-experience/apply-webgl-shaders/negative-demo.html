@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Demo: Apply WebGL shaders to HTML content</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        canvas {
+            border: 1px solid #ccc;
+        }
+        .font {
+            padding: 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Apply Visual Effects using WebGL to HTML Content</h1>
+    <p>This demo shows how to apply WebGL shaders to HTML content rendered in a canvas.</p>
+    
+    <canvas id="canvas" style="width: 400px; height: 300px;">
+        <div id="effect_element">
+           <h2 class="font">Hello World</h2>
+        </div>
+    </canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const gl = canvas.getContext('webgl2');
+        const effect_element = document.getElementById('effect_element');
+
+        const vsSource = `
+            attribute vec4 aVertexPosition;
+            attribute vec2 aTextureCoord;
+            varying highp vec2 vTextureCoord;
+            void main(void) {
+                gl_Position = aVertexPosition;
+                vTextureCoord = aTextureCoord;
+            }
+        `;
+
+        const fsSource = `
+            precision highp float;
+            varying highp vec2 vTextureCoord;
+            uniform sampler2D uSampler;
+            uniform vec2 u_resolution;
+            uniform vec2 u_mouse;
+            uniform float u_time;
+            void main() {
+                vec2 uv = gl_FragCoord.xy / u_resolution;
+                uv.y = 1.0 - uv.y;
+                vec4 texColor = texture2D(uSampler, uv);
+                gl_FragColor = vec4(texColor.rgb + vec3(sin(u_time) * 0.5 + 0.5, 0.0, 0.0), 1.0);
+            }
+        `;
+
+        function loadShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            return shader;
+        }
+
+        function initShaderProgram(gl, vsSource, fsSource) {
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+            return shaderProgram;
+        }
+
+        const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+        const programInfo = {
+            program: shaderProgram,
+            attribLocations: {
+                vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+                textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+            },
+            uniformLocations: {
+                uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+                u_resolution: gl.getUniformLocation(shaderProgram, 'u_resolution'),
+                u_mouse: gl.getUniformLocation(shaderProgram, 'u_mouse'),
+                u_time: gl.getUniformLocation(shaderProgram, 'u_time'),
+            },
+        };
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1.0,  1.0,
+             1.0,  1.0,
+            -1.0, -1.0,
+             1.0, -1.0,
+        ]), gl.STATIC_DRAW);
+
+        const textureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            0.0,  0.0,
+            1.0,  0.0,
+            0.0,  1.0,
+            1.0,  1.0,
+        ]), gl.STATIC_DRAW);
+
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+        let startTime = Date.now();
+        let mouseX = 200;
+        let mouseY = 150;
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = rect.height - (e.clientY - rect.top);
+        });
+
+        function render() {
+            const currentTime = (Date.now() - startTime) * 0.001;
+            
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, effect_element);
+
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(programInfo.program);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+            gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+            
+            gl.uniform2f(programInfo.uniformLocations.u_resolution, canvas.width, canvas.height);
+            gl.uniform2f(programInfo.uniformLocations.u_mouse, mouseX, mouseY);
+            gl.uniform1f(programInfo.uniformLocations.u_time, currentTime);
+
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    </script>
+</body>
+</html>

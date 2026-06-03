@@ -1,0 +1,5 @@
+---
+base_app: daily-grind
+---
+- can you add a coffee subscription delivery planner section to the main container? it needs to let users calculate when their next recurring delivery will arrive. please create a clean card with an input for the start date (id="startDateInput"), inputs for years and months to add (id="yearsInput" and id="monthsInput" respectively), and a dropdown to select how to handle month-end edge cases (id="overflowSelect" with options "constrain" and "reject"). the calculated next delivery date or any error message should display in an element with id="resultDate". everything should update automatically when any input changes, and if the calculation fails (such as adding a month to jan 31 with the "reject" strategy), show a clear error message in the result element.
+- make the delivery planner look super modern and match the dark brown and warm cream aesthetic of the rest of our coffee website. maybe add a few quick preset buttons for common coffee subscription schedules, like "every month" or "every year", that automatically pre-fill the inputs and calculate the next shipment date.

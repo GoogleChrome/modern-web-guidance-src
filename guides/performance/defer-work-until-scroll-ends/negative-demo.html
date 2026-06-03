@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Scroll Display Demo</title>
+  <style>
+    .scroll-container {
+      border: 2px solid #ccc;
+      padding: 16px;
+    }
+
+    .content-section {
+      height: 250px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      background: #f0f0f0;
+      border-radius: 8px;
+    }
+
+    #status {
+      padding: 12px;
+      margin-top: 12px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Scroll Dynamic Recalculation</h1>
+
+  <div class="scroll-container" id="scroller">
+    <div class="content-section">Section 1</div>
+    <div class="content-section">Section 2</div>
+    <div class="content-section">Section 3</div>
+    <div class="content-section">Section 4</div>
+    <div class="content-section">Section 5</div>
+  </div>
+
+  <div id="status">Waiting for scroll...</div>
+
+  <script>
+    const scroller = document.getElementById('scroller');
+    const status = document.getElementById('status');
+
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('.content-section');
+      let bestMatch = sections[0];
+      let maxOverlap = 0;
+
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        const rect = section.getBoundingClientRect();
+        const height = section.offsetHeight;
+        
+        section.style.height = (250 + Math.sin(window.scrollY / 10) * 10) + 'px';
+        
+        const overlap = Math.min(window.innerHeight, rect.bottom) - Math.max(0, rect.top);
+        if (overlap > maxOverlap) {
+          maxOverlap = overlap;
+          bestMatch = section;
+        }
+      }
+
+      const start = performance.now();
+      while (performance.now() - start < 15) {}
+
+      status.textContent = 'Active scroll... Recalculated visible section: ' + bestMatch.textContent;
+    });
+  </script>
+</body>
+
+</html>
