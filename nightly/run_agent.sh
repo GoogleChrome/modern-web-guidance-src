@@ -64,7 +64,6 @@ if [[ -z "$AGENT" ]]; then
   exit 1
 fi
 
-USER_LDAP=$(whoami)
 # AGENT is already set above
 
 # Initialization & State Reset
@@ -77,7 +76,7 @@ INITIAL_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 
 # Setup variables
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-SUITE_ID="${PREFIX}-${TIMESTAMP}-${AGENT}-${USER_LDAP}"
+SUITE_ID="${PREFIX}-${TIMESTAMP}-${AGENT}"
 DASHBOARD_URL="http://go/guidance-evals/dashboard.html?testId=${SUITE_ID}&source=remote"
 DISPLAY_NAME="$(echo "${PREFIX}" | sed 's/./\U&/')"
 EVAL_EXIT_CODE=0

@@ -66,3 +66,6 @@ serving/lib/tfjs_model_minilm/saved_model*/
 
 # Caches
 **/.cache/
+
+# Agent skills artifacts
+.agents/skills/nightly-eval-investigation/artifacts/
