@@ -25,7 +25,7 @@ Make the most of the elements and attributes built for creating forms:
 
 These enable built-in browser functionality, improve accessibility, and add meaning to markup.
 
-### Use the <label> element to label form fields for data entry
+### Use the `<label>` element to label form fields for data entry
 
 To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by giving the label's `for` attribute the same value as the input's `id`.
 

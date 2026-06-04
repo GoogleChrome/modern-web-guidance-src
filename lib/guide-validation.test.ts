@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { parseExpectations } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags } from './guide-validation.ts';
 
 describe('parseExpectations', () => {
   test('legacy flat format: all bullets treated as mustPass', () => {
@@ -62,3 +62,47 @@ describe('parseExpectations', () => {
     assert.deepStrictEqual(result.appAgnostic, []);
   });
 });
+
+describe('validateHtmlTags', () => {
+  test('allows comments, kbd, br, wbr tags', () => {
+    const body = `This is a comment: <!-- comment -->
+Some keyboard shortcut: <kbd>Ctrl</kbd> + <kbd>C</kbd>
+Line break: <br> and <br />
+Word break: <wbr>
+`;
+    const errors = validateHtmlTags(body, 'test.md');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('detects unescaped invalid tags', () => {
+    const body = `Please use <select> or <button> here.
+And an iframe: <iframe src="foo"></iframe>.
+Also unescaped <label>.
+`;
+    const errors = validateHtmlTags(body, 'test.md');
+    assert.strictEqual(errors.length, 4);
+    assert.ok(errors[0].includes('Unescaped HTML tag <select> found on line 1'));
+    assert.ok(errors[1].includes('Unescaped HTML tag <button> found on line 1'));
+    assert.ok(errors[2].includes('Unescaped HTML tag <iframe> found on line 2'));
+    assert.ok(errors[3].includes('Unescaped HTML tag <label> found on line 3'));
+  });
+
+  test('ignores code blocks', () => {
+    const body = `\`\`\`html
+<select>
+  <option>foo</option>
+</select>
+\`\`\`
+`;
+    const errors = validateHtmlTags(body, 'test.md');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('ignores code spans', () => {
+    const body = `Using \`<select>\` is recommended.
+`;
+    const errors = validateHtmlTags(body, 'test.md');
+    assert.deepStrictEqual(errors, []);
+  });
+});
+

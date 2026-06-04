@@ -56,6 +56,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      marked:
+        specifier: ^18.0.3
+        version: 18.0.3
       oxlint:
         specifier: ^1.55.0
         version: 1.55.0
