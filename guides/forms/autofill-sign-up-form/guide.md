@@ -65,7 +65,7 @@ This enables browsers to help users by securely storing sign-up details and corr
 
 Validate data entry both in realtime and before form submission. Use `type="email"` for email inputs — the browser will validate the format automatically. For passwords, use a `pattern` attribute to enforce strength requirements and provide clear error messages when validation fails. Add the `required` attribute to mandatory fields to prevent empty submissions.
 
-### Put sign-up in its own <form> element
+### Put sign-up in its own `<form>` element
 
 Always use the `<form>` element when you're getting users to enter data
 
