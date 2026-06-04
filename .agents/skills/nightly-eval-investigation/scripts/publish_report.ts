@@ -103,7 +103,7 @@ async function main() {
     if (flagsMatch) {
       const flagLines = flagsMatch[1].split('\n');
       for (const fl of flagLines) {
-        const fm = fl.match(/-\s+\*\*\`([^\`]+)\`\*\*/);
+        const fm = fl.match(/-\s+\*\*`([^`]+)`\*\*/);
         if (fm) {
           flags.push(fm[1]);
         }
