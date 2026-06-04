@@ -45,6 +45,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate GitHub App token
+        if: ${{ vars.GH_APP_ID != '' && secrets.GH_APP_PRIVATE_KEY != '' }}
         uses: actions/create-github-app-token@v2
         id: app-token
         with:
