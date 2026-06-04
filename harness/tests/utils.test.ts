@@ -169,7 +169,7 @@ test('scanAllGuides works with standard category/guide structure', () => {
   const tempDir = createTempDir();
   try {
     const guidesDir = path.join(tempDir, 'guides');
-    const categoryDir = path.join(guidesDir, 'user-experience');
+    const categoryDir = path.join(guidesDir, 'html');
     const guideDir = path.join(categoryDir, 'my-use-case');
     fs.mkdirSync(guideDir, { recursive: true });
     fs.writeFileSync(path.join(guideDir, 'guide.md'), 'content');
