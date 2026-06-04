@@ -24,6 +24,7 @@ export const CommandType = {
   INSTALL_CHOOSE: 2,
   UPDATE: 3,
   UNINSTALL: 4,
+  LIST: 5,
 } as const;
 
 export type CommandType = typeof CommandType[keyof typeof CommandType];
