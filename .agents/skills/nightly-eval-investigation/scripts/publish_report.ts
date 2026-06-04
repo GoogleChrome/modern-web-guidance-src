@@ -31,16 +31,28 @@ async function main() {
   }
 
   const reportContent = fs.readFileSync(reportPath, 'utf-8');
+  let parentBody = reportContent.replace(
+    /- \*\*Actionable Recommendations\*\*:\n[\s\S]*?(?=\n---|$$)/g,
+    ''
+  );
+
+  if (parentBody.length > 65536) {
+    console.error(`❌ Error: The parent issue body size (${parentBody.length} characters) exceeds GitHub's limit of 65,536 characters.`);
+    console.error(`Please adjust health thresholds in investigate.ts to reduce the number of flagged tasks.`);
+    process.exit(1);
+  }
 
   // 2. Create the parent issue on GitHub
   const parentTitle = `📋 Nightly Guidance Health Audit: ${dateStr}`;
-  getOrCreateLabel('nightly-investigations', '1D76DB', 'Nightly Guidance Health Audits');
+  getOrCreateLabel('nightly-investigation', '1D76DB', 'Nightly Guidance Health Audits');
   console.log(`📦 Creating parent GitHub issue: "${parentTitle}"...`);
   
   let parentUrl = '';
   let parentNum = '';
+  const tempReportPath = reportPath + '.parent.tmp';
   try {
-    const parentOutput = execSync(`gh issue create --title "${parentTitle}" --body-file "${reportPath}" --label "nightly-investigation"`, { encoding: 'utf-8' });
+    fs.writeFileSync(tempReportPath, parentBody, 'utf-8');
+    const parentOutput = execSync(`gh issue create --title "${parentTitle}" --body-file "${tempReportPath}" --label "nightly-investigation"`, { encoding: 'utf-8' });
     parentUrl = parentOutput.trim();
     console.log(`✅ Parent issue created at: ${parentUrl}`);
     createdIssues.push({ title: parentTitle, url: parentUrl, type: 'parent' });
@@ -48,11 +60,14 @@ async function main() {
     parentNum = parentNumMatch ? parentNumMatch[1] : '';
   } catch (err: any) {
     console.error('❌ Failed to create parent issue. Check GitHub CLI authentication.', err.message);
+    if (fs.existsSync(tempReportPath)) fs.unlinkSync(tempReportPath);
     process.exit(1);
+  } finally {
+    if (fs.existsSync(tempReportPath)) fs.unlinkSync(tempReportPath);
   }
 
   // 3. Parse the report to find recommendations per task and create subissues
-  const taskSections = reportContent.split(/(?=### `[^`]+`)/);
+  const taskSections = reportContent.split(/(?=<a name="[^"]+"><\/a>\s*\n### `[^`]+`)/);
   if (taskSections.length <= 1) {
     console.log('ℹ️ No flagged tasks found or no task details generated.');
     return;
@@ -117,7 +132,7 @@ async function main() {
       }
     }
 
-    const anchorUrl = `${parentUrl}#${getSlug(taskName)}`;
+    const anchorUrl = `${parentUrl}#user-content-${getSlug(taskName)}`;
 
     // Create Grader Subissue (Engineering)
     if (graderRec) {
@@ -136,15 +151,19 @@ ${graderRec.detail}
 ${Object.entries(runDetails).map(([agent, details]) => `- **${agent}**: Guided Pass Rate: ${details.guided}, Unguided Pass Rate: ${details.unguided}, Guides Consumed: ${details.guides}`).join('\n')}`;
 
       console.log(`Creating Grader subissue: "${graderTitle}"...`);
+      const tempGraderPath = path.join(repoRoot, `.agents/skills/nightly-eval-investigation/artifacts/grader_subissue_${taskName}.tmp`);
       try {
+        fs.writeFileSync(tempGraderPath, graderBody, 'utf-8');
         const graderIssueUrl = execSync(
-          `gh issue create --title "${graderTitle}" --body "${graderBody.replace(/"/g, '\\"')}" --label "nightly-investigation-eng-${dateStr}"`,
+          `gh issue create --title "${graderTitle}" --body-file "${tempGraderPath}" --label "nightly-investigation-eng-${dateStr}"`,
           { encoding: 'utf-8' }
         ).trim();
         console.log(`✅ Grader subissue created: ${graderIssueUrl}`);
         createdIssues.push({ title: graderTitle, url: graderIssueUrl, type: 'eng-subissue' });
       } catch (err: any) {
         console.error(`❌ Failed to create Grader subissue:`, err.message);
+      } finally {
+        if (fs.existsSync(tempGraderPath)) fs.unlinkSync(tempGraderPath);
       }
     }
 
@@ -167,9 +186,11 @@ ${guideRec ? `#### Recommended Guide Changes:\n${guideRec.detail}\n` : ''}
 ${Object.entries(runDetails).map(([agent, details]) => `- **${agent}**: Guided Pass Rate: ${details.guided}, Unguided Pass Rate: ${details.unguided}, Guides Consumed: ${details.guides}`).join('\n')}`;
 
       console.log(`Creating Devrel subissue: "${devrelTitle}"...`);
+      const tempDevrelPath = path.join(repoRoot, `.agents/skills/nightly-eval-investigation/artifacts/devrel_subissue_${taskName}.tmp`);
       try {
+        fs.writeFileSync(tempDevrelPath, devrelBody, 'utf-8');
         const devrelIssueUrl = execSync(
-          `gh issue create --title "${devrelTitle}" --body "${devrelBody.replace(/"/g, '\\"')}" --label "nightly-investigation-devrel-${dateStr}"`,
+          `gh issue create --title "${devrelTitle}" --body-file "${tempDevrelPath}" --label "nightly-investigation-devrel-${dateStr}"`,
           { encoding: 'utf-8' }
         ).trim();
         console.log(`✅ Devrel subissue created: ${devrelIssueUrl}`);
@@ -220,7 +241,31 @@ ${Object.entries(runDetails).map(([agent, details]) => `- **${agent}**: Guided P
         }
       } catch (err: any) {
         console.error(`❌ Failed to create Devrel subissue:`, err.message);
+      } finally {
+        if (fs.existsSync(tempDevrelPath)) fs.unlinkSync(tempDevrelPath);
       }
+  }
+
+  // 4. Link all created subissues to the parent issue natively
+  const subissues = createdIssues.filter(i => i.type !== 'parent');
+  if (subissues.length > 0) {
+    try {
+      console.log(`🔗 Fetching GraphQL ID for parent issue...`);
+      const parentNodeId = execSync(`gh issue view ${parentUrl} --json id --jq .id`, { encoding: 'utf-8' }).trim();
+      
+      for (const issue of subissues) {
+        console.log(`🔗 Linking subissue "${issue.title}" to parent natively...`);
+        try {
+          const subIssueNodeId = execSync(`gh issue view ${issue.url} --json id --jq .id`, { encoding: 'utf-8' }).trim();
+          const mutation = 'mutation($issueId: ID!, $subIssueId: ID!) { addSubIssue(input: { issueId: $issueId, subIssueId: $subIssueId }) { clientMutationId } }';
+          execSync(`gh api graphql -f query='${mutation}' -f issueId="${parentNodeId}" -f subIssueId="${subIssueNodeId}"`, { stdio: 'ignore' });
+        } catch (linkErr: any) {
+          console.error(`❌ Failed to link subissue "${issue.title}":`, linkErr.message);
+        }
+      }
+      console.log(`✅ Native sub-issue relationships established.`);
+    } catch (parentErr: any) {
+      console.error(`❌ Failed to fetch parent GraphQL ID:`, parentErr.message);
     }
   }
 

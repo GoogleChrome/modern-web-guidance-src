@@ -10,6 +10,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../../../..');
 const resultsDir = path.join(repoRoot, 'harness', 'results');
 
+function getSlug(taskName: string): string {
+  return taskName.toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/\s+/g, '-');
+}
+
 function findGuideDirs(dir: string, result: Record<string, string> = {}): Record<string, string> {
   if (!fs.existsSync(dir)) return result;
   const items = fs.readdirSync(dir, { withFileTypes: true });
@@ -361,12 +365,12 @@ async function main() {
       flagDetailsList.push(`Guided pass rate was under 75% in all nightly runs (${rateStrings}).`);
     }
 
-    // 4. High unguided percentage rate: Unguided pass rate 70% or higher in all runs
-    const allUnguidedOver70 = activeAgents.every(agent => details.unguidedPassRates[agent] >= 70);
-    if (allUnguidedOver70) {
+    // 4. High unguided percentage rate: Unguided pass rate 90% or higher in all runs
+    const allUnguidedOver90 = activeAgents.every(agent => details.unguidedPassRates[agent] >= 90);
+    if (allUnguidedOver90) {
       flags.push('HIGH_UNGUIDED_PASS_RATE');
       const rateStrings = activeAgents.map(agent => `${agent}: ${details.unguidedPassRates[agent]}%`).join(', ');
-      flagDetailsList.push(`Unguided pass rate was 70% or higher in all nightly runs (${rateStrings}).`);
+      flagDetailsList.push(`Unguided pass rate was 90% or higher in all nightly runs (${rateStrings}).`);
     }
 
     if (flags.length > 0) {
@@ -415,7 +419,7 @@ async function main() {
     md += `\n\n## Flagged Tasks Details\n\n`;
 
     for (const item of flaggedTasks) {
-      md += `### \`${item.taskName}\`\n\n`;
+      md += `<a name="${getSlug(item.taskName)}"></a>\n### \`${item.taskName}\`\n\n`;
       md += `#### Flags:\n`;
       for (let i = 0; i < item.flags.length; i++) {
         md += `- **\`${item.flags[i]}\`**: ${item.details[i]}\n`;
