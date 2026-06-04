@@ -244,6 +244,7 @@ ${Object.entries(runDetails).map(([agent, details]) => `- **${agent}**: Guided P
       } finally {
         if (fs.existsSync(tempDevrelPath)) fs.unlinkSync(tempDevrelPath);
       }
+    }
   }
 
   // 4. Link all created subissues to the parent issue natively
