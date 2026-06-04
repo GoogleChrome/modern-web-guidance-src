@@ -501,6 +501,7 @@ export function resetGuidesMap() {
   cachedGuidesMap = null;
 }
 
+// Safe typographic inline tags that don't represent interactive elements or cause layout breakage.
 const ALLOWED_HTML_TAGS = new Set(['kbd', 'br', 'wbr']);
 
 export function validateHtmlTags(body: string, relativePath: string): string[] {

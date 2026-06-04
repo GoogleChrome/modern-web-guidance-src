@@ -64,6 +64,7 @@ describe('parseExpectations', () => {
 });
 
 describe('validateHtmlTags', () => {
+  // Tests that safe inline typographic elements are permitted
   test('allows comments, kbd, br, wbr tags', () => {
     const body = `This is a comment: <!-- comment -->
 Some keyboard shortcut: <kbd>Ctrl</kbd> + <kbd>C</kbd>
