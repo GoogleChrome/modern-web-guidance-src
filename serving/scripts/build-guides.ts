@@ -67,11 +67,25 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   };
 }
 
-async function computePipelineHash(guides: GuideInventory[], target: string, noChunking: boolean): Promise<string> {
+async function computePipelineHash(
+  guides: GuideInventory[],
+  target: string,
+  noChunking: boolean
+): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
 
-  hash.update(fs.readFileSync(import.meta.filename, "utf-8"));
+  const deps = [
+    import.meta.filename,
+    path.resolve(import.meta.dirname, "../lib/macros.ts"),
+    path.resolve(import.meta.dirname, "../lib/transformers-embedder.ts"),
+    path.resolve(import.meta.dirname, "../../lib/guide-validation.ts"),
+  ];
+
+  for (const dep of deps) {
+    hash.update(fs.readFileSync(dep, "utf-8"));
+  }
+
   hash.update(target);
   hash.update(noChunking.toString());
 
@@ -85,10 +99,20 @@ async function computePipelineHash(guides: GuideInventory[], target: string, noC
   return hash.digest("hex");
 }
 
-function evaluateCacheHit(paths: CachePaths, currentHash: string): boolean {
-  if (!fs.existsSync(paths.cachedTs) || !fs.existsSync(paths.cachedVectors) || !fs.existsSync(paths.cachedManifest)) {
+function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides: GuideInventory[]): boolean {
+  const cacheFiles = [paths.cachedTs, paths.cachedVectors, paths.cachedManifest, paths.cachedGuides];
+  if (cacheFiles.some(file => !fs.existsSync(file))) {
     return false;
   }
+
+  // Verify that all expected guide files are present in the cache
+  for (const inv of expectedGuides) {
+    const cachedFilePath = path.join(paths.cachedGuides, inv.category, `${inv.name}.md`);
+    if (!fs.existsSync(cachedFilePath)) {
+      return false;
+    }
+  }
+
   try {
     const manifest = JSON.parse(fs.readFileSync(paths.cachedManifest, "utf-8"));
     return manifest.hash === currentHash;
@@ -138,7 +162,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
 
   // 3. Cache Evaluation
-  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash);
+  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides);
   if (isHit) {
     restoreFromCache(cachePaths, outputDir, TARGET);
     console.log("👌");
