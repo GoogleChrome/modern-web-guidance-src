@@ -79,7 +79,7 @@ We cover the past several years of the web platform's new features, all the way 
   </tr>
 </table>
 
-_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/navigation-drawer.md).
+_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/overlays/navigation-drawer.md).
 
 <!-- INJECT_SKILL_COVERAGE -->
 
