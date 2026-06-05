@@ -25,7 +25,7 @@ Make the most of the elements and attributes built for creating forms:
 
 These enable built-in browser functionality, improve accessibility, and add meaning to markup.
 
-### Use the <label> element to label form fields for data entry
+### Use the `<label>` element to label form fields for data entry
 
 To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by giving the label's `for` attribute the same value as the input's `id`.
 
@@ -65,7 +65,7 @@ This enables browsers to help users by securely storing sign-in details and corr
 
 Validate data entry both in realtime and before form submission. Use `type="email"` for email inputs — the browser will validate the format automatically. Add the `required` attribute to mandatory fields to prevent empty submissions.
 
-### Put sign-in in its own <form> element
+### Put sign-in in its own `<form>` element
 
 Always use the `<form>` element when you're getting users to enter data
 

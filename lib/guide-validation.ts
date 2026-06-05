@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
+import { marked } from 'marked';
 
 // Import shared utilities (using relative paths from guides/)
 import { validateMacros } from '../serving/lib/macros.ts';
@@ -115,6 +116,7 @@ export function validateGuide(filePath: string): ValidationResult {
   }
 
   errors.push(...validateMacros(body, relativePath));
+  errors.push(...validateHtmlTags(body, relativePath));
 
   return { errors, data, body, filePath };
 }
@@ -498,3 +500,63 @@ export function getGuidesMap(): Map<string, GuideInventory> {
 export function resetGuidesMap() {
   cachedGuidesMap = null;
 }
+
+// Safe typographic inline tags that don't represent interactive elements or cause layout breakage.
+const ALLOWED_HTML_TAGS = new Set(['kbd', 'br', 'wbr']);
+
+export function validateHtmlTags(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+
+  try {
+    const tokens = marked.lexer(body);
+    findInvalidHtmlTokens(tokens, errors, relativePath, body);
+  } catch (e) {
+    errors.push(`Failed to parse markdown with marked lexer for HTML validation in ${relativePath}: ${e}`);
+  }
+
+  return errors;
+}
+
+function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: string, content: string) {
+  for (const token of tokens) {
+    if (token.type === 'html') {
+      const raw = token.raw.trim();
+
+      // Allow HTML comments
+      if (raw.startsWith('<!--') && raw.endsWith('-->')) {
+        continue;
+      }
+
+      // Parse tag name
+      const match = raw.match(/^<\/?([a-zA-Z0-9:-]+)(?:\s+[^>]*)?\/?>$/);
+      if (match) {
+        const tagName = match[1].toLowerCase();
+        if (!ALLOWED_HTML_TAGS.has(tagName)) {
+          // Find line number in content
+          const offset = content.indexOf(token.raw);
+          const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
+          const lineSuffix = line !== -1 ? ` on line ${line}` : '';
+          errors.push(`Unescaped HTML tag <${tagName}> found${lineSuffix} in ${relativePath}. Use backticks or escape angle brackets if it is a tag name reference.`);
+        }
+      } else {
+        // If it does not match a standard tag, but is still parsed as HTML token, warn/fail
+        const offset = content.indexOf(token.raw);
+        const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
+        const lineSuffix = line !== -1 ? ` on line ${line}` : '';
+        errors.push(`Potentially invalid or unescaped HTML block/tag "${raw}" found${lineSuffix} in ${relativePath}.`);
+      }
+    }
+
+    if (token.tokens) {
+      findInvalidHtmlTokens(token.tokens, errors, relativePath, content);
+    }
+    if (token.items) {
+      for (const item of token.items) {
+        if (item.tokens) {
+          findInvalidHtmlTokens(item.tokens, errors, relativePath, content);
+        }
+      }
+    }
+  }
+}
+
