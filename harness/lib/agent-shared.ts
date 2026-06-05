@@ -525,9 +525,10 @@ export async function runCliAgentCommand(
   targetDir: string,
   agentName: string
 ): Promise<void> {
+  const sanitizedEnv = { ...process.env, PWD: workDir };
   const child = spawn(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
     stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
   });
 
