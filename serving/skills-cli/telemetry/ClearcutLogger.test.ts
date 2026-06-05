@@ -77,6 +77,27 @@ describe('ClearcutLogger', () => {
     }
   });
 
+  it('logs LIST tool command correctly via watchdog', async () => {
+    const sentMessages: any[] = [];
+    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
+      sentMessages.push(msg);
+    });
+
+    try {
+      const logger = new ClearcutLogger({ skillVersion: '2026_06_04-list' });
+      await logger.logToolCommand(45, true, CommandType.LIST);
+
+      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      const payload = sentMessages[sentMessages.length - 1].payload;
+      assert.deepStrictEqual(payload.tool_command, { command_type: CommandType.LIST });
+      assert.strictEqual(payload.success, true);
+      assert.strictEqual(payload.latency_ms, 50); // 45 bucketized to 50
+      assert.strictEqual(payload.skill_version, '2026_06_04-list');
+    } finally {
+      sendMock.mock.restore();
+    }
+  });
+
   it('logs retrieve results correctly via watchdog', async () => {
     const sentMessages: any[] = [];
     const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
