@@ -22,7 +22,7 @@ EOF
 
 # Parse flags
 AGENT=""
-WORKERS=""
+WORKERS="20"
 PREFIX="nightly"
 RUN_LOCAL="false"
 while [[ $# -gt 0 ]]; do

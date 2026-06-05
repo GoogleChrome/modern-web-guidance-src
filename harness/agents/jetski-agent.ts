@@ -464,7 +464,7 @@ async function run(): Promise<void> {
 
   } catch (err) {
     console.error("Error during execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     stopWatchingMcpLog();
     killProcessOnPort(config.environment.jetskiDebugPort);

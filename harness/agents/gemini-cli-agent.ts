@@ -120,7 +120,7 @@ async function run() {
 
   } catch (err) {
     console.error("Error during Gemini CLI execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }
