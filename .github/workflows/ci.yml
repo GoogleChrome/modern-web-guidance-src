@@ -34,6 +34,14 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Cache Hugging Face models
+        uses: actions/cache@v4
+        with:
+          path: .cache/huggingface
+          key: ${{ runner.os }}-huggingface-${{ hashFiles('**/transformers-embedder.ts', '**/tfjs-embedder.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-huggingface-
+
 
       - name: Preflight (Typecheck, Lint, Tests)
         env:

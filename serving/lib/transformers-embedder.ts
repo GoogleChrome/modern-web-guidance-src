@@ -1,4 +1,13 @@
-import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
+import { env, pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
+import path from "path";
+
+import os from "os";
+
+// Pin cacheDir to home directory ~/.cache/huggingface or workspace root in dev/CI
+const homeCacheDir = path.join(os.homedir(), ".cache/huggingface");
+env.cacheDir = process.env.CI || process.env.GITHUB_ACTIONS
+  ? path.resolve(import.meta.dirname, "../../.cache/huggingface")
+  : homeCacheDir;
 
 export class Embedder {
   private static instance: Embedder;

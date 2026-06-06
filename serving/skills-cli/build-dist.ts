@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import * as esbuild from "esbuild";
 import { config } from "../../lib/skills-config.ts";
 import { rootDir } from "../../lib/paths.ts";
@@ -143,7 +144,22 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
 
   await acquireLock(lockFilePath);
 
+  const shimPath = path.join(SERVING_DIR, "lib/transformers-shim.gen.ts");
+
   try {
+    const require = createRequire(import.meta.url);
+    const transformersEntry = require.resolve("@huggingface/transformers");
+    const transformersDir = path.dirname(path.dirname(transformersEntry));
+    const tokenizersPath = path.join(transformersDir, "src/tokenizers.js");
+    const envPath = path.join(transformersDir, "src/env.js");
+
+    fs.writeFileSync(
+      shimPath,
+      `// Auto-generated shim for @huggingface/transformers during esbuild bundle\n` +
+      `export { env } from ${JSON.stringify(envPath)};\n` +
+      `export * from ${JSON.stringify(tokenizersPath)};\n`
+    );
+
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
     fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
@@ -186,7 +202,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         minify: true,
         alias: {
           // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
-          "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+          "@huggingface/transformers": shimPath,
           // We leverage Transformers.js only for tokenization. But it is a large dependency and
           // tries to do a lot more, including loading native dependencies (onnxruntime-node) that
           // we have no use for. We use this dummy shim to ensure we can use the library without
@@ -264,6 +280,9 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
     return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
+    if (fs.existsSync(shimPath)) {
+      fs.unlinkSync(shimPath);
+    }
     if (fs.existsSync(lockFilePath)) {
       fs.unlinkSync(lockFilePath);
     }

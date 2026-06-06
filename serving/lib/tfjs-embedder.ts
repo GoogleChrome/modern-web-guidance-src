@@ -1,9 +1,17 @@
 import { setBackend, tensor2d, Tensor } from "@tensorflow/tfjs-core";
 import { loadGraphModel, GraphModel } from "@tensorflow/tfjs-converter";
-import { BertTokenizer } from "@huggingface/transformers";
+import { env, BertTokenizer } from "@huggingface/transformers";
 import "./tfjs-kernels.ts";
 import path from "path";
 import fs from "fs";
+
+import os from "os";
+
+// Pin cacheDir to home directory ~/.cache/huggingface or workspace root in dev/CI
+const homeCacheDir = path.join(os.homedir(), ".cache/huggingface");
+env.cacheDir = process.env.CI || process.env.GITHUB_ACTIONS
+  ? path.resolve(import.meta.dirname, "../../.cache/huggingface")
+  : homeCacheDir;
 
 // Custom IOHandler for loading TFJS models from disk in Node without fetch
 function createNodeFileSystemIOHandler(modelJsonPath: string) {
