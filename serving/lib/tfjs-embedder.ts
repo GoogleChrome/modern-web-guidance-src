@@ -83,11 +83,17 @@ export class TfjsEmbedder {
             console.warn = oldWarn;
         }
 
-        // Use local_files_only first to avoid a network request to huggingface.
+        // Try loading from our local checked-in model directory first (fully offline)
         try {
-            this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
+            const localModelDir = path.resolve(import.meta.dirname, "tfjs_model_minilm");
+            this.tokenizer = await BertTokenizer.from_pretrained(localModelDir, { local_files_only: true });
         } catch (e) {
-            this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
+            // Fallback to local cache or remote HuggingFace Hub
+            try {
+                this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
+            } catch (err) {
+                this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
+            }
         }
     } catch (e) {
         console.error("Failed to load TFJS model:", e);

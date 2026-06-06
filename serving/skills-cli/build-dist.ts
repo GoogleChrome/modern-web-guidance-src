@@ -178,7 +178,12 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
           const stat = fs.statSync(src);
           if (stat.isDirectory()) return true;
           const basename = path.basename(src);
-          return basename === "model.json" || basename.startsWith("group1-shard");
+          return [
+            "model.json",
+            "config.json",
+            "tokenizer.json",
+            "tokenizer_config.json"
+          ].includes(basename) || basename.startsWith("group1-shard");
         }
       });
     }
