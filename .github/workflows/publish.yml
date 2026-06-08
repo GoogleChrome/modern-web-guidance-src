@@ -1,13 +1,9 @@
 name: Publish Skills
 
 on:
-  # We currently want to publish manually.
-  # push:
-  #   branches: [ main ]
-  #   paths:
-  #     - 'serving/skills-cli/**'
-  #     - 'guides/**'
-  #     - '.github/workflows/publish.yml'
+  schedule:
+    # 20:00 UTC is 12:00 PM PST / 1:00 PM PDT
+    - cron: '0 20 * * 1'
   workflow_dispatch: {}
 
 concurrency:
@@ -35,6 +31,13 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
+      - name: Check for changes since last release
+        run: |
+          if git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
+            echo "Error: The latest commit already has a version tag. No new changes to publish."
+            exit 1
+          fi
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
@@ -60,16 +63,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
 
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm via OIDC Provenance
         run: |
           cd dist/skills-cli
-          npm publish --access public
-
-      # - name: Publish to npm via OIDC Provenance
-      #   run: |
-      #     npm install -g npm@latest
-      #     cd dist/skills-cli-npx
-      #     # Doesn't work unless repo is public. TODO: flip on when we open-source.
-      #     # npm publish --provenance --access public --registry https://registry.npmjs.org/
+          npm publish --provenance --access public --registry https://registry.npmjs.org/
