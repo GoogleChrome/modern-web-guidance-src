@@ -1,507 +1,481 @@
 ---
 name: web-components
-description: Action-oriented guidelines for authoring and using Web Components (Custom Elements, Shadow DOM, and HTML Templates). Use this skill when creating reusable UI components, implementing design systems, or managing component lifecycle and styling isolation.
+description: Action-oriented guidelines for authoring and using Web Components. Covers Custom Elements, Shadow DOM, templates and slots, Declarative Shadow DOM, styling across the shadow boundary, Form-Associated Custom Elements, and accessibility. Use this skill when building reusable UI components, design systems, or server-rendered custom elements.
 ---
 
 # Web Components
 
-Web Components are a collection of different specifications, allowing the creation of reusable custom elements with their functionality and styling encapsulated away from the rest of the document. These assets can be published and used in any web application, regardless of the framework or library used. These technologies are leveraged in the modern web development landscape to create reusable UI components, design systems, and manage component lifecycle and styling isolation.
+Web Components are a collection of specifications — Custom Elements, Shadow DOM, and HTML Templates — for building reusable, framework-agnostic custom elements whose markup and styles can be encapsulated from the rest of the document. They are the platform primitive behind design systems, embeddable widgets, and self-contained UI.
+
+Each section below is self-contained: it opens with enough context to be read in isolation and restates any cross-cutting fact it depends on, rather than referring you elsewhere.
 
 ## Table of Contents
 
-1. [Glossary](#1-glossary)
-2. [Decision Matrix: Choosing Web Component Features](#2-decision-matrix-choosing-web-component-features)
-3. [Custom Elements](#3-custom-elements)
-    3.1 [Lifecycle Management](#31-lifecycle-management)
-    3.2 [Implementation Guidelines](#32-implementation-guidelines)
-4. [Shadow DOM & Encapsulation](#4-shadow-dom--encapsulation)
-    4.1 [Encapsulation Strategies](#41-encapsulation-strategies)
-    4.2 [Styling & Theming](#42-styling--theming)
-5. [Styling Web Components](#5-styling-web-components)
-    5.1 [The :host Pseudo-class](#51-the-host-pseudo-class)
-    5.2 [Slots and ::slotted Content](#52-slots-and-slotted-content)
-    5.3 [Style Inheritance and CSS Custom Properties](#53-style-inheritance-and-css-custom-properties)
-    5.4 [Methods for Loading Stylesheets](#54-methods-for-loading-stylesheets)
-    5.5 [The ::part() Pseudo-element](#55-the-part-pseudo-element)
-6. [Semantics, Accessibility, and Forms](#6-semantics-accessibility-and-forms)
-    6.1 [Shadow DOM and ARIA](#61-shadow-dom-and-aria)
-    6.2 [Form-Associated Custom Elements (FACE)](#62-form-associated-custom-elements-face)
-7. [HTML Templates and Slots](#7-html-templates-and-slots)
-8. [Performance](#8-performance)
-    8.1 [Performance Bottlenecks](#81-performance-bottlenecks)
-    8.2 [Optimization Strategies](#82-optimization-strategies)
-    8.3 [Measuring Component Performance](#83-measuring-component-performance)
+- [Glossary](#glossary) and [Decision matrix](#decision-matrix) — shared reference
+- [Custom Elements](#custom-elements) — defining elements, lifecycle, reflection, upgrade timing
+- [Shadow DOM, Templates & Slots](#shadow-dom-templates--slots) — encapsulation, composition, stylesheets
+- [Declarative Shadow DOM](#declarative-shadow-dom) — server-rendered shadow roots and hydration
+- [Styling](#styling) — crossing the shadow boundary
+- [Form-Associated Custom Elements](#form-associated-custom-elements) — native form participation
+- [Accessibility](#accessibility) — semantics, focus, and ARIA across shadow roots
 
-## 1. Glossary
+The retrieval CLI routes by semantic search, so this list is a quick orientation, not a router — there is intentionally no deep cross-linked index.
+
+## Glossary
 
 | Term | Definition |
 | :--- | :--- |
-| **Custom Element** | A user-defined HTML tag that extends the standard set of HTML elements via the `customElements.define()` API. |
-| **Shadow DOM** | A "lite" version of the DOM that is attached to an element but separated from the main document DOM, providing style and markup encapsulation. |
-| **Shadow Root** | The root node of a Shadow DOM subtree. It is attached to a "shadow host." |
-| **Shadow Host** | The regular DOM node that the Shadow DOM is attached to. |
-| **Light DOM** | The regular DOM inside an element that is *not* part of its Shadow DOM. This is where slotted content lives. |
-| **Autonomous Custom Element** | A custom element that extends the base `HTMLElement` class (e.g., `<my-card>`). |
-| **Customized Built-in Element** | A custom element that extends a specific native element (e.g., `<button is="my-button">`). *Note: These are not recommended for production due to a permanent lack of cross-browser support (specifically Safari).* |
-| **Slot** | A placeholder inside a component's Shadow DOM that "projects" content from the Light DOM into the component. |
-| **HTML Template** | The `<template>` element, used to hold HTML markup that is not rendered on page load but can be cloned and reused later. |
-| **Observed Attributes** | A static list of attribute names that, when changed, trigger the `attributeChangedCallback`. |
-| **Lifecycle Callbacks** | Special methods (`connectedCallback`, `disconnectedCallback`, etc.) that run automatically at specific points in an element's life. |
+| **Custom Element** | A user-defined HTML tag registered via `customElements.define()`. |
+| **Autonomous Custom Element** | A custom element extending the base `HTMLElement` class (e.g. `<my-card>`). |
+| **Customized Built-in Element** | A custom element extending a specific native element (e.g. `<button is="my-button">`). Not recommended for production — Safari has declined to implement them. |
+| **Shadow DOM** | An encapsulated DOM subtree attached to an element, isolated from the main document's styles and markup. |
+| **Shadow Root** | The root node of a Shadow DOM subtree. |
+| **Shadow Host** | The regular DOM node a shadow root is attached to. |
+| **Light DOM** | The regular DOM inside an element that is *not* part of its shadow tree. Slotted content lives here. |
+| **Slot** | A placeholder (`<slot>`) inside a shadow tree that projects Light DOM content into the component. |
+| **HTML Template** | The `<template>` element — inert markup that is parsed but not rendered, cloned for reuse. |
+| **ElementInternals** | The object returned by `this.attachInternals()`, exposing form participation, validity, and ARIA semantics to a custom element. |
+| **Observed Attributes** | The static list of attribute names that trigger `attributeChangedCallback` when changed. |
 
-## 2. Decision Matrix: Choosing Features
+## Decision matrix
 
-Use the following heuristics to determine which parts of the Web Components suite to leverage:
-
-| If you need to... | Use... | Reasoning |
+| If you need to… | Use… | Reasoning |
 | :--- | :--- | :--- |
-| Create a new semantic tag (e.g., `<user-profile>`) | **Custom Elements** | Defines the behavior and lifecycle of the element. |
-| Scope styles to the component (avoid CSS leakage) | **Shadow DOM** | Provides strict style and DOM isolation. |
-| Inject user content into specific parts of a UI | **Slots** | Enables composition while maintaining encapsulation. |
-| Reuse markup structures efficiently | **HTML Templates** | High-performance cloning of pre-defined markup. |
-| Integrate with a global design system (Light DOM) | **Custom Elements (No Shadow)** | Easiest for inheriting global CSS and theme variables. |
-| Build a self-contained widget (e.g., Video Player) | **Shadow DOM with Templates** | Protects internal structure and styles from the host page. |
+| Create a new semantic tag (e.g. `<user-profile>`) | **Custom Elements** | Defines behavior and lifecycle. |
+| Scope styles to the component, preventing CSS leakage | **Shadow DOM** | Strict style and DOM isolation. |
+| Inject consumer content into specific regions of a component | **Slots** | Composition without breaking encapsulation. |
+| Render a custom element's shadow tree on the server | **Declarative Shadow DOM** | Markup is visible before JS runs; no FOUC. |
+| Submit a value to a surrounding `<form>` | **Form-Associated Custom Elements** | Native participation without hidden inputs. |
+| Inherit the host page's global CSS and theme | **Custom Element with no shadow root** | Light DOM inherits global styles directly. |
 
-## 3. Custom Elements
+## Custom Elements
 
-### 3.1 Lifecycle Management
+A custom element is a class registered against a tag name. The registration and basic lifecycle are well understood by most tools; what follows leads with the parts that are routinely gotten wrong.
 
-- **MANDATORY**: Register custom elements with a kebab-case name containing at least one hyphen (e.g., `my-element`).
-- **MANDATORY**: Define `observedAttributes` if you need to react to attribute changes via `attributeChangedCallback`. See [§3.2.4 Property-to-Attribute Reflection](#324-property-to-attribute-reflection) for more details.
-- Use `connectedCallback` for setup logic (DOM manipulation, fetching data) rather than the `constructor`. See [§3.2.3 Constructor](#323-constructor) for more details.
-- Clean up global listeners, timers, or observers in `disconnectedCallback` to prevent memory leaks. See [§3.2.7 Disconnected Callback](#327-disconnected-callback) for more details.
+### Decide whether you even need one
 
-```javascript
-define('my-element', class extends HTMLElement {...});
-```
+Reach for a custom element only when you need encapsulated behavior, lifecycle, or a reusable JS-backed API on a tag. Do **not** build one when:
 
-### 3.2 Guidelines
+- A plain HTML element with CSS would do. A styled `<button>` or `<details>` is more accessible and cheaper than a re-implementation.
+- The thing is purely presentational with no behavior. A class on a native element is more performant and can be scoped using @layers or @scope.
+- You only need style scoping on the server with no interactivity — a scoped stylesheet or [Declarative Shadow DOM](#declarative-shadow-dom) without an upgrade may be enough.
 
-#### 3.2.1 Base Class
+Rebuilding native semantics (a custom `<my-button>` that re-creates focus, activation, and ARIA) is the most common misuse: you inherit the maintenance cost of the platform's accessibility for free only if you reuse the native element.
 
-Custom elements must extend the base `HTMLElement` class. While the spec includes "customized built-in elements" (extending specific classes like `HTMLButtonElement`), they are not recommended for production due to their permanent lack of cross-browser support (specifically [Safari](https://bugs.webkit.org/show_bug.cgi?id=182671)).
+### Registration and base class
 
-{{ BASELINE_STATUS("customized-built-in-elements") }}
-
-#### 3.2.2 Constructor
-
-The `constructor` is used for initializing state and attaching a Shadow DOM.
-
-**IMPORTANT**: Avoid performing DOM manipulations or setting attributes here, as the element may not yet be in the document.
-
-**Always** call `super()` first in the constructor.
-
-```javascript
-class MyComponent extends HTMLElement {
-  constructor() {
-    super(); // ✅ GOOD: Call super first
-    this.shadowRoot = this.attachShadow({ mode: 'open' });
-    this.userName = 'Guest';
-    ... // other initialization logic
-  }
-}
-```
-
-**NEVER** call `super()` after performing other operations that may modify `this`.
-
-```javascript
-// ❌ BAD: Calling super after modifying this
-class MyComponent extends HTMLElement {
-  constructor() {
-    this.attachShadow({ mode: 'open' }); // ❌ BAD: Modify this before calling super
-    this.userName = 'Guest';
-    super();
-    ... // other initialization logic
-  }
-}
-```
-
-#### 3.2.3 Best Practice: Property Naming
-
-Properly naming your component's properties and methods is essential for creating a predictable public API and maintaining clean internal logic.
-
-- **Public API (Properties/Methods)**: Use `camelCase` for all public properties and methods to match standard DOM element conventions (e.g., `this.userName`, `this.updateStatus()`).
-- **Internal Properties/State**: Use one of the following conventions to distinguish internal state from the public API:
-    - **Private Fields (`#`)**: Use the native `#` prefix for true privacy. These properties are inaccessible from outside the class and provide the strongest encapsulation. **Best for**: Strict encapsulation where you want to prevent any external access or subclass overrides.
-    - **Convention-based (`_`)**: Use a `_` prefix to signal that a property is intended for internal use only. While still technically accessible, this is a standard signal to other developers. **Best for**: Scenarios where you want to signal "internal use" but still allow subclasses to access or override the property for extension.
-- **Avoid `data-` Prefixes for Properties**: While `data-*` attributes are useful for storing metadata in HTML, it is not recommended to prefix your JavaScript properties with `data-`. Use descriptive camelCase names instead.
-- **Event Handler Properties**: If your component has property-based event handlers, prefix them with `on` (e.g., `this.onClick`).
-- **Avoid Global Attribute Collisions**: Do not name your properties after global HTML attributes (like `style`, `class`, or `id`) unless you are intentionally overriding or wrapping their behavior. See [Avoiding Global Attribute Conflicts](#326-avoiding-global-attribute-conflicts) for more details.
-
-```javascript
-class MyComponent extends HTMLElement {
-  #internalValue = 0; // Native private field
-  _helperState = true; // Convention-based internal property
-  userName = 'Guest'; // Public property (camelCase)
-
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-  }
-
-  // Public method
-  refreshUI() {
-    this.#updateInternalState();
-    this.render();
-  }
-
-  // Private method
-  #updateInternalState() {
-    this.#internalValue++;
-  }
-}
-```
-
-#### 3.2.4 Property-to-Attribute Reflection
-
-Reflection ensures that the JavaScript property and the HTML attribute of a custom element stay in sync. This allows developers to interact with your component via both HTML and JavaScript seamlessly.
-
-1. **Attribute to Property**: Use `attributeChangedCallback` to update internal state when an attribute changes.
-2. **Property to Attribute**: Use getters and setters to update the attribute when the property is modified.
-
-Note that the value of attributes fetched from the DOM are always strings. You will need to appropriately transform the string values from the attribute into the appropriate type for the property. Using TypeScript can help catch type errors at compile time, ensuring that you appropriately transform the string values from the attribute into the appropriate type for the property. Alternatively, you can use JSDoc to document the type of the property and the attribute; ideal if you don't want to add a compilation step to your project.
-
-##### 3.2.4.1 Example: String/Number Reflection
+- **MANDATORY**: The tag name must be kebab-case with at least one hyphen (e.g. `my-element`). This is what distinguishes custom elements from current and future built-ins.
+- Extend the base `HTMLElement` class. Avoid *customized built-in elements* (`extends HTMLButtonElement` with `is="…"`) — Safari has permanently declined to ship them.
 
 ```javascript
 class MyElement extends HTMLElement {
-  static get observedAttributes() {
-    return ['label'];
+  constructor() {
+    super(); // ✅ MANDATORY: call super() first, before touching `this`.
+    this.attachShadow({ mode: 'open' });
   }
-
-  // Getter/Setter for the 'label' property
-  get label() {
-    return this.getAttribute('label');
-  }
-
-  set label(val) {
-    if (val) {
-      this.setAttribute('label', val);
-    } else {
-      this.removeAttribute('label');
-    }
-  }
-
-  attributeChangedCallback(name, oldVal, newVal) {
-    if (name === 'label' && oldVal !== newVal) {
-      this.render();
-    }
+  connectedCallback() {
+    this.render();
   }
 }
+customElements.define('my-element', MyElement);
 ```
 
-##### 3.2.4.2 Example: Boolean Attribute Reflection
+{{ BASELINE_STATUS("customized-built-in-elements") }}
 
-Boolean attributes (like `disabled` or `checked`) follow a specific pattern: if the attribute is present (even without a value), the property is `true`. If absent, it is `false`.
+### Lifecycle: do the right work in the right callback
+
+| Callback | Use for | Avoid |
+| :--- | :--- | :--- |
+| `constructor` | Attaching the shadow root, initializing internal state. | DOM reads/writes, reading attributes or children — the element may not be in the document yet. |
+| `connectedCallback` | Setup that needs the DOM: rendering, adding listeners, reading attributes. May run more than once if the element is moved. | Assuming it runs only once; assuming all Light DOM children are present (see upgrade timing below). |
+| `disconnectedCallback` | Tearing down global listeners, timers, and observers to prevent leaks. | Assuming the element is gone for good — it may be re-inserted. |
+| `attributeChangedCallback(name, old, new)` | Reacting to changes of attributes named in `observedAttributes`. | Heavy work for attributes that don't affect output. |
+
+The constructor **MANDATORY** rule is strict: calling `super()` after any statement that touches `this` throws. Initialize nothing before it.
+
+### Upgrade timing and `:defined`
+
+An element can exist in the DOM *before* its class is registered — for example, in server-rendered HTML or when the script loads late. While undefined it is an inert `HTMLUnknownElement`-like node; when `customElements.define()` runs, the browser **upgrades** every matching element already in the document, running its constructor and `connectedCallback` then.
+
+Two consequences models routinely miss:
+
+1. **Attributes and children may already be present** when your constructor/`connectedCallback` runs on upgrade. Read existing attributes in `connectedCallback` to sync initial state, and never assume the element started empty.
+2. **Children may still be missing** even in `connectedCallback` if the HTML parser hasn't reached them yet. If you depend on Light DOM children, wait for them — use a `slotchange` listener (see [Shadow DOM, Templates & Slots](#shadow-dom-templates--slots)) or defer with `customElements.whenDefined()`.
+
+Style undefined elements out of view to avoid a flash of unstyled content:
+
+```css
+/* Hide the element until its definition has upgraded it. */
+my-element:not(:defined) { visibility: hidden; }
+```
+
+```javascript
+await customElements.whenDefined('my-element'); // resolves once registered
+```
+
+### Attribute ⇄ property reflection
+
+Keep the HTML attribute and the JS property in sync so the element is usable from both markup and script. Attribute values are **always strings** — coerce them.
 
 ```javascript
 class MyToggle extends HTMLElement {
-  static get observedAttributes() {
-    return ['disabled'];
+  static observedAttributes = ['label', 'disabled'];
+
+  // String attribute reflected via getter/setter.
+  get label() { return this.getAttribute('label') ?? ''; }
+  set label(v) {
+    v ? this.setAttribute('label', v) : this.removeAttribute('label');
   }
 
-  get disabled() {
-    return this.hasAttribute('disabled');
-  }
-
-  set disabled(isPushed) {
-    if (isPushed) {
-      this.setAttribute('disabled', '');
-    } else {
-      this.removeAttribute('disabled');
-    }
-  }
+  // Boolean attribute: present = true, absent = false. Never set it to "false".
+  get disabled() { return this.hasAttribute('disabled'); }
+  set disabled(on) { this.toggleAttribute('disabled', !!on); }
 
   attributeChangedCallback(name, oldVal, newVal) {
-    if (name === 'disabled') {
-      this.classList.toggle('is-disabled', newVal !== null);
-    }
+    if (oldVal !== newVal) this.render();
   }
 }
 ```
 
-##### 3.2.4.3 Observed vs. Unobserved State
+Pitfalls:
 
-Determine whether a property should be **observed** or **unobserved** based on how its value impacts the component's state or appearance:
+- **`observedAttributes` discipline**: list only attributes whose change must re-render or trigger a side effect. Observing everything adds a callback to every mutation for no benefit.
+- **Reflection loops**: a setter that writes an attribute will re-enter `attributeChangedCallback`. Guard with an `oldVal !== newVal` check, as above.
+- **Style-only state**: you may reflect a property to an attribute purely for CSS targeting (`:host([loading])`) *without* observing it, as long as the component is the sole writer of that attribute.
 
-- **Observed Attributes**: Attributes listed in `static get observedAttributes()` trigger `attributeChangedCallback`. Use these for state that represents the component's public API and requires the component to **re-render** or perform a side effect when changed externally (e.g., via `element.setAttribute()`).
-- **Unobserved Properties/Internal State**: State used purely for internal bookkeeping or properties that do not affect the visual output immediately should remain **unobserved**. This avoids the performance overhead of the `attributeChangedCallback` lifecycle.
-- **Styling-only Reflection**: You may reflect a property to an attribute purely for CSS targeting (e.g., using `:host([is-loading])`) without adding that attribute to `observedAttributes`, provided the component is the sole manager of that state and does not need to react to external changes of that attribute.
+### Naming conventions
 
-#### 3.2.5 Syncing State
+- Public properties and methods: `camelCase`, matching DOM conventions (`this.userName`, `this.refresh()`).
+- True-private state: native `#` fields (`#count`) for hard encapsulation; a `_` prefix only when subclasses must still reach it.
+- Do **not** shadow global attributes (`style`, `class`, `id`, `slot`, `part`, `title`, `lang`, `dir`) with your own properties — you will break their built-in behavior. Note `disabled` is only global on form controls; on other elements you must implement its effect yourself.
 
-Always check for existing attributes during `connectedCallback` to ensure the initial property values match the HTML markup. This is important to ensure that the component is in a consistent state when it is first rendered.
+## Shadow DOM, Templates & Slots
 
-#### 3.2.6 Avoiding Global Attribute Conflicts
+A shadow root is an encapsulated DOM subtree attached to a host element. Styles defined inside it do not leak out, and page styles do not leak in (with a few inherited exceptions, covered in [Styling](#styling)). Templates are the efficient construction mechanism for a shadow tree, and slots are how consumer content is projected into it — the three are one mental model and are documented together here.
 
-Avoid using global attribute names as custom attribute or property names, as they have pre-defined behaviors in the browser. Using them can cause unexpected side effects or break standard functionality.
+### Attaching a shadow root
 
-**Common conflicting names include:**
+```javascript
+this.attachShadow({ mode: 'open', delegatesFocus: true });
+```
 
-- `style`: Overwriting this can break the element's inline styling capability.
-- `class`, `id`: Standard identifiers used for selection and styling.
-- `slot`, `part`: Used for Web Component composition and styling.
-- `lang`, `title`, `dir`: Global attributes for accessibility and localization.
-- `disabled`: While common in custom elements, remember that it is not a global attribute for all elements (only for form-related ones). Using it on a non-form-associated element requires manual management of its effect on interactivity and styling.
+- Prefer `mode: 'open'` so dev tools and `element.shadowRoot` can inspect the tree. Use `'closed'` only when you must hide the internal structure from page scripts.
+- `delegatesFocus: true` makes focusing the host move focus to the first focusable element inside the shadow tree, and routes `:focus` styling to the host. Set it whenever the component wraps focusable controls — it is essential for label-click and keyboard accessibility.
 
-## 4. Shadow DOM & Encapsulation
+{{ BASELINE_STATUS("shadow-dom") }}
 
-### Structuring a semantic template
+### Templates: construct the tree efficiently
 
-When designing the template for a component, consider the following:
+Define a `<template>` **once** (module scope or a static field) and clone it per instance. Cloning a parsed fragment is far faster than re-parsing an `innerHTML` string on every construction.
 
-- By using semantic HTML elements, you can ensure that the component is accessible and that the user can understand the structure of the component. Most accessibility issues inside web components are due to the lack of semantic mark-up. This does not negate the need to attach appropriate event handlers or aria attributes to the component.
-- Slots can be either named or unnamed. The unnamed slot is considered the "default" slot. Any content inside the component that is not specifically assigned to a named slot will be placed in the default slot. Note: this can include text nodes such as whitespace. To style the default slot, you can use `slot:not([name])` to target only the slot without an assigned name.
-- Named slots provide a way to inject content into specific parts of the component  by an external consumer. Inside the template, you can use the `<slot name="name">` element to define the slot. When styling those slots, you can use `slot[name="name"]` to target the slot. Assigning content to a named slot is done with the `slot="name"` attribute on the element.
-
-```html
-<template id="my-component-template">
-  <div class="container">
+```javascript
+const template = document.createElement('template');
+template.innerHTML = `
+  <div class="card">
     <slot name="header"></slot>
-    <div class="wrapper">
-      <slot></slot>
-      <slot name="aside"></slot>
-    </div>
+    <div class="body"><slot></slot></div>
     <slot name="footer"></slot>
   </div>
-</template>
+`;
+
+class MyCard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    // MANDATORY: deep-clone the template content so each instance gets its own nodes.
+    this.shadowRoot.append(template.content.cloneNode(true));
+  }
+}
+customElements.define('my-card', MyCard);
 ```
 
-Note: though content may be assigned to a slot in a specific order, the nodes themselves remain in the order they were originally added to the DOM. This means that `:first-child` and `:last-child` selectors will not work as expected when targeting content inside a slot.
+Keep templates lean — deeply nested "div soup" and many levels of nested shadow roots both add measurable style-resolution and layout cost; this can lead to a major performance hit at scale. Prefer a flat structure and semantic elements.
 
-**DOES NOT WORK:**
+### Slots: project Light DOM content
 
-With this markup:
+A `<slot>` is a placeholder in the shadow tree that displays Light DOM children of the host. The unnamed `<slot>` is the **default** slot — any child not assigned to a named slot lands there (including whitespace text nodes). Named slots receive children carrying a matching `slot="name"` attribute.
 
 ```html
-<my-component>
-    <div slot="footer"></div>
-    <div slot="header"></div>
-    <div slot="header"></div>
-</my-component>
+<my-card>
+  <h2 slot="header">Title</h2>
+  <p>Body content goes to the default slot.</p>
+  <small slot="footer">Footer</small>
+</my-card>
 ```
 
-These styles inside the component will not work:
+- **MANDATORY**: use semantic elements inside the template. Most accessibility failures in shadow trees come from non-semantic markup; a slot does not change the role of what it projects.
+- **DOM order is preserved, not slot order**: projected nodes keep their original Light DOM order for `:first-child`/`:last-child` purposes, regardless of which slot they fill. A `::slotted(*:first-child)` rule targets the first *DOM* child, not the first child of that slot — so it often will not match what you expect.
 
-```css
-/* Applies no styles because none of the header nodes are the first child */
-slot[name="header"]::slotted(*:first-child) {}
+React to content changes with the `slotchange` event, which fires when the set of assigned nodes changes (including on initial assignment):
+
+```javascript
+this.shadowRoot.querySelector('slot[name="header"]')
+  .addEventListener('slotchange', (e) => {
+    const nodes = e.target.assignedElements();
+    this.toggleAttribute('has-header', nodes.length > 0);
+  });
 ```
 
-### 4.1 Encapsulation Strategies
+`slotchange` is also the reliable signal that Light DOM children have arrived after an upgrade, when they may not have existed during `connectedCallback`.
 
-- Prefer `mode: 'open'` for most use cases to allow standard debugging tools to inspect the shadow root.
-- Use `mode: 'closed'` if you want to obfuscate the internal structure of the component.
-- **IMPORTANT**: Use `delegatesFocus: true` when attaching a shadow root if the element contains focusable parts and you want the host to focus the first available child. This is important to ensure that the component is accessible and that the user can focus the first available child when the component is focused.
-
-### 4.2 Loading Stylesheets
+### Loading stylesheets into a shadow root
 
 | Method | Pros | Cons |
 | :--- | :--- | :--- |
-| **`<style>` Tag** | Simple, encapsulated, works everywhere. | Redundant if used in many instances; can bloat the DOM. |
-| **`<link>` Tag** | Cacheable, allows external CSS files. | Risk of FOUC (Flash of Unstyled Content); separate network request. |
-| **`adoptedStyleSheets`** | High performance; styles are shared via `CSSStyleSheet` objects across instances. | Requires JavaScript; doesn't support `@import` in the same way. |
+| `<style>` in the template | Simple, fully encapsulated, works without JS. | Duplicated per instance; bloats the DOM at scale. |
+| `<link rel="stylesheet">` | Cacheable external file. | Extra request; risks a flash of unstyled content. |
+| `adoptedStyleSheets` | One shared `CSSStyleSheet` across all instances; fastest at scale. | Requires JS; constructed sheets don't support `@import`. |
 
-## 5. Styling Web Components
-
-- Use CSS Custom Properties and inherited properties (like `color` and `font-family`) for theming. These are the primary ways to pass styles through the shadow boundary by default.
-- Use `::part()` to expose specific internal elements for external styling without breaking encapsulation.
-- Style light-DOM children passed into slots using the `::slotted()` pseudo-element.
-
-### 5.1 The :host Pseudo-class
-
-- Use `:host` to style the custom element itself from within its Shadow DOM.
-- Use `:host(selector)` to apply styles only when the host element matches a specific selector (e.g., `:host(.active)`).
-- **Avoid** `:host-context(selector)` to style the host based on its ancestors (useful for theming, e.g., `:host-context([theme="dark"])`). This is not widely supported.
-
-### 5.2 Slotted Content
-
-Styles applied via `::slotted(selector)` only target the top-level elements assigned to the slot. That element's children and nested elements cannot be styled this way.
-
-```html
-<my-component>
-    <div slot="header">
-        <h1>Header</h1>
-    </div>
-</my-component>
-```
-
-```css
-/* Does not work because h1 is not directly assigned to the slot */
-::slotted(h1) {
-    color: red;
-}
-```
-
-Slotted content retains its original **Light DOM** styles. The `::slotted()` styles have lower specificity than styles directly targeting the elements in the Light DOM so this technique is most useful if you want users to own the styling of their slotted content. If you want your component to exert stronger control over the styling of its slotted content, you can:
-
-- Lift the content out of the light DOM and inject it the shadow DOM. This is a brittle approach that requires careful management of the content and its children. If content is updated dynamically, you will need to refresh the component to ensure the new content is replaced accurately.
-- Assign `!important` to all your `::slotted()` styles. This is a brute force approach that will override the styles of the slotted content as long as the consumer does not assign `!important` to their styles. This is also not recommended because it breaks the expected behavior of styling and is a poor consumer experience.
-
-### 5.3 Inheritance and CSS Custom Properties
-
-Web Components' Shadow DOM provides a natural encapsulation boundary for styles. This means that styles applied to the parent document will not affect the component's styles, and vice versa with a few exceptions. Certain typographic properties like `font-family`, `color`, and `line-height` naturally pass through the shadow boundary. If your component is not providing a background color, for example, but is rendering text, it's a good idea to set the `color` property to inherit from the parent document. To prevent these properties from passing through the shadow boundary, you can define them to your preferred values inside your template and they will override the inherited values.
-
-Many projects leverage CSS Custom Properties (Variables) as the primary API for component theming because, like typographic properties, they naturally pass through the shadow boundary. If you want to allow outside styles to override the component's styles, you can define them as CSS Custom Properties. You should provide a reasonable fallback value for the custom properties to ensure that the component is styled even if the custom property is not defined.
-
-```css
-:host {
-  background-color: var(--my-component--BackgroundColor, white);
-  color: var(--my-component--TextColor, contrast-color(var(--my-component--BackgroundColor, white)));
-}
-```
-
-```css
-:root {
-    --my-component--BackgroundColor: goldenrod;
-    --my-component--TextColor: black;
-}
-```
-
-Note: If you define a CSS Custom Property at the `:host` level, users will only be able to override it if they assign the custom properties to the tag itself. If you want custom properties to be inheritable through the DOM tree, you should set custom properties as empty variables and assign the default values as the fallbacks.
-
-**DON'T**
-
-```css
-:host {
-  --my-component--BackgroundColor: white;
-  --my-component--TextColor: contrast-color(white);
-
-  .content {
-    background-color: var(--my-component--BackgroundColor);
-    color: var(--my-component--TextColor);
-  }
-}
-```
-
-because users will have to:
-
-```css
-/* The above requires users to assign custom properties to the tag */
-my-component {
-  --my-component--BackgroundColor: goldenrod;
-  --my-component--TextColor: black;
-}
-
-/* These will not override the properties defined on :host above */
-body {
-  --my-component--BackgroundColor: goldenrod; /* lower specificity */
-  --my-component--TextColor: black;
-}
-```
-
-### 5.4 The ::part() Pseudo-element
-
-The `::part()` pseudo-element allows you to expose specific elements within your Shadow DOM to external styling. This provides a flexible way to allow theming without requiring users be familiar with the internal structure of the component. Parts allow any valid CSS property to be applied to that part of the component and is not ideal for strict design systems.
-
-- **When to use**: Use `part="name"` to expose high-level UI elements (like a "button", "input", or "label") that consumers might want to style directly.
-- **When NOT to use**: Avoid exposing every internal `<div>` or `<span>`. This creates a brittle API and defeats the purpose of Shadow DOM encapsulation. If you need to expose many styles, prefer CSS Custom Properties.
-
-```html
-<!-- Inside Component Template -->
-<div class="container">
-  <button part="submit-button">Submit</button>
-</div>
-
-<!-- External CSS -->
-my-component::part(submit-button) {
-  background-color: navy;
-  color: white;
-}
-```
-
-Use custom properties when you want to allow users access to specific properties of the component.
-
-Use parts when you want to allow users unrestricted access to style an internal element of the component.
-
-```html
-<!-- Inside Component Template -->
-<div class="container">
-  <button part="submit-button">Submit</button>
-</div>
-
-<!-- External CSS -->
-my-component::part(submit-button) {
-  background-color: navy;
-  appearance: none;
-  color: white;
-}
-```
-
-## 6. Semantics, Accessibility, and Forms
-
-### 6.1 Shadow DOM and ARIA
-
-- **MANDATORY**: Ensure that IDs used for ARIA relationships (e.g., `aria-labelledby`, `aria-describedby`) are contained within the same Shadow Root. ARIA relationships cannot cross shadow boundaries.
-- Use the `role` attribute on the host element if the component represents a specific landmark or widget type.
-
-### 6.2 Form-Associated Custom Elements (FACE)
-
-- **IMPORTANT**: Set `static formAssociated = true` in your custom element class to allow it to participate in native HTML `<form>` submissions.
-- **IMPORTANT**: Use `this.attachInternals()` to access the `ElementInternals` API, which provides methods for managing form value, validity, and state.
-- FACE solves the problem of custom elements needing hidden `<input>` fields to submit data or report validity to the surrounding form.
-
-## 7. HTML Templates and Slots
-
-- Use `<template>` elements for complex markup to benefit from the browser's optimized cloning performance.
-- **MANDATORY**: Always use `template.content.cloneNode(true)` when instantiating templates to ensure the fragment is reused.
-- Use named slots (`<slot name="header">`) when your component requires multiple distinct content injection points.
-
-## 8. Performance
-
-Optimizing Web Components is crucial for maintaining a smooth user experience, especially when using many instances of a component.
-
-### 8.1 Performance Bottlenecks
-
-- **Deeply Nested Shadow Roots**: Avoid creating many levels of nested components with their own Shadow DOMs. Each level adds overhead to style resolution, layout calculation, and DOM traversal.
-- **"Div Soup" in Templates**: Keep your component templates lean. Excessive wrapping elements (heavy div usage) increase memory consumption and slow down rendering. Prefer a flat DOM structure where possible.
-- **Excessive Observation**: Only include attributes in `observedAttributes` that strictly require a re-render or a side effect. Observing every attribute adds unnecessary overhead to every change.
-
-### 8.2 Optimization Strategies
-
-- **Reuse `<template>` Instances**: Define your `<template>` once (e.g., as a static property or in the module scope) and use `cloneNode(true)` to instantiate it. This is much faster than repeatedly setting `innerHTML`.
-- **Defer Non-Critical Work**: Use `connectedCallback` for initialization, but defer heavy logic (like complex data fetching or expensive DOM manipulations) until the element is actually visible using an `IntersectionObserver`.
-- **Avoid Unnecessary Shadow Roots**: If a component does not require style or DOM encapsulation (e.g., a simple wrapper that should inherit all global styles), do not attach a Shadow DOM.
-- **Conditional Rendering**: For large components, avoid rendering hidden parts until they are needed. Use `<template>` elements or standard JS logic to lazily inject DOM sections.
-
-### 8.3 Measuring Component Performance
-
-Use the User Timing API (`performance.mark` and `performance.measure`) to identify bottlenecks in your component's lifecycle. This allows you to track how long specific operations (like rendering or data processing) take across many instances.
-
-#### Using performance.mark in Lifecycle Callbacks
-
-Mark the start and end of critical operations to calculate their duration.
+For many instances of one component, prefer a shared constructed stylesheet:
 
 ```javascript
-class MySlowComponent extends HTMLElement {
+const sheet = new CSSStyleSheet();
+sheet.replaceSync(`:host { display: block; }`);
+
+class MyCard extends HTMLElement {
   constructor() {
     super();
-    performance.mark('my-component-constructor-start');
     this.attachShadow({ mode: 'open' });
-    // ... initialization ...
-    performance.mark('my-component-constructor-end');
-    performance.measure('MyComponent Constructor', 'my-component-constructor-start', 'my-component-constructor-end');
-  }
-
-  connectedCallback() {
-    const markName = `my-component-connected-${this.id || 'instance'}`;
-    performance.mark(`${markName}-start`);
-
-    this.render();
-
-    performance.mark(`${markName}-end`);
-    performance.measure(`MyComponent Connected (${this.id})`, `${markName}-start`, `${markName}-end`);
-  }
-
-  attributeChangedCallback(name, oldVal, newVal) {
-    if (oldVal !== newVal) {
-      performance.mark(`my-component-attr-change-${name}-start`);
-      this.render();
-      performance.mark(`my-component-attr-change-${name}-end`);
-      performance.measure(`MyComponent Attr Change: ${name}`, `my-component-attr-change-${name}-start`, `my-component-attr-change-${name}-end`);
-    }
+    // The same sheet object is reused by every instance — no per-instance parse.
+    this.shadowRoot.adoptedStyleSheets = [sheet];
   }
 }
 ```
 
-- **Naming Strategy**: Use unique names for marks and measures, especially if multiple instances of the same component exist. Incorporating the element's `id` or a unique counter is recommended.
-- **Production Use**: While valuable for debugging, consider stripping or conditionally enabling these marks in production to avoid minimal overhead and "polluting" the performance timeline for users.
+## Declarative Shadow DOM
+
+Declarative Shadow DOM (DSD) lets the server send a shadow tree as plain HTML, so the component is styled and structured *before* any JavaScript runs. This is a different task from runtime composition: the markup arrives complete, and the element is later upgraded ("hydrated") by its class if one is registered. Use DSD for server-side rendering, streaming, and avoiding a flash of unstyled content (FOUC).
+
+### Authoring a declarative shadow root
+
+Nest a `<template>` with the `shadowrootmode` attribute as the first child of the host. The parser attaches its content as a shadow root and removes the template — no script needed.
+
+```html
+<my-card>
+  <template shadowrootmode="open">
+    <style>
+      .card { border: 1px solid; border-radius: 8px; padding: 1rem; }
+    </style>
+    <div class="card">
+      <slot name="header"></slot>
+      <div class="body"><slot></slot></div>
+    </div>
+  </template>
+
+  <!-- Light DOM children are projected into the slots above. -->
+  <h2 slot="header">Server-rendered title</h2>
+  <p>Visible and styled before JS loads.</p>
+</my-card>
+```
+
+{{ BASELINE_STATUS("declarative-shadow-dom") }}
+
+### Hydration timing
+
+When the matching class is registered, the browser upgrades the host. Because the shadow root **already exists**, the constructor must not blindly create a second one:
+
+```javascript
+class MyCard extends HTMLElement {
+  constructor() {
+    super();
+    // Reuse the server-rendered shadow root if present; only create one if absent.
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: 'open' });
+      this.shadowRoot.append(template.content.cloneNode(true));
+    }
+    // Otherwise hydrate in place: wire up listeners against existing markup,
+    // and do NOT re-render — that would discard the server's DOM and flash.
+  }
+}
+```
+
+Set `shadowrootmode="open"` (not `closed`) for almost all cases, so scripts and tools can reach `this.shadowRoot` to hydrate. To serialize an existing shadow root back to HTML on the server or in tests, use `getHTML({ serializableShadowRoots: true })` and attach the root with `serializable: true`.
+
+### Avoiding FOUC
+
+The whole point of DSD is that styles ship inside the declarative template, so the component renders correctly on first paint. To keep that guarantee:
+
+- Put component CSS **inside** the `<template shadowrootmode>` (a `<style>` tag or a `<link>`), not in a separate script-loaded sheet.
+- Pair with `my-card:not(:defined) { … }` only for styles that must wait for JS; the structural styles should already be in the shadow root and need no such guard.
+- Do not re-render the shadow tree on hydration. Treat the server markup as authoritative and attach behavior to it.
+
+## Styling
+
+Shadow DOM is a style boundary: page rules don't reach in and component rules don't leak out — except for **inherited** properties. This section covers every selector and channel for styling across that boundary.
+
+### `:host`, `:host()`, `:host-context()`
+
+```css
+/* The component's own host element, styled from inside its shadow tree. */
+:host { display: block; }
+
+/* Only when the host matches a selector — e.g. a reflected state attribute. */
+:host([disabled]) { opacity: 0.5; pointer-events: none; }
+
+/* Based on an ancestor in the Light DOM — useful for theming. */
+:host-context([theme="dark"]) { background: #111; color: #eee; }
+```
+
+`:host-context()` reaches *outside* the boundary to test ancestors, which makes it powerful for theming but has weaker support — gate any reliance on it and prefer an inherited CSS custom property (below) where possible.
+
+{{ BASELINE_STATUS("host-context") }}
+
+### Inherited properties and custom properties cross the boundary
+
+Inherited CSS properties (`color`, `font-family`, `line-height`, and CSS custom properties) **do** pass through the shadow boundary. This makes custom properties the primary theming API: expose them with sensible fallbacks.
+
+```css
+:host {
+  /* Consumers override --card-bg from outside; the fallback keeps it usable. */
+  background: var(--card-bg, white);
+  color: var(--card-fg, black);
+}
+```
+
+A custom property *defined* on `:host` can only be overridden by rules targeting the host element specifically. To let it inherit and be overridable from anywhere up the tree, leave it unset on `:host` and rely on the fallback in each `var()` — do not seed it with a value on `:host`.
+
+### `::slotted()` — styling projected Light DOM
+
+`::slotted(selector)` targets the **top-level** nodes assigned to a slot. It cannot reach their descendants, and it loses to any Light DOM rule (the consumer owns their own content), so use it for light touch-ups, not control.
+
+```css
+/* Matches a slotted <p>, but NOT a <p> nested inside a slotted <div>. */
+::slotted(p) { margin: 0; }
+```
+
+### `::part()` and `exportparts` — expose internals for theming
+
+Mark an internal element with `part="name"` to let consumers style it with any property, without learning your internal structure.
+
+```html
+<!-- inside the shadow template -->
+<button part="submit">Submit</button>
+```
+
+```css
+/* consumer stylesheet */
+my-card::part(submit) { background: navy; color: white; }
+```
+
+Expose a few **high-level** parts (button, input, label), not every `<div>` — broad part surfaces become a brittle API. To re-expose a nested component's parts upward through your own component, forward them with `exportparts`:
+
+```html
+<inner-widget exportparts="submit: card-submit"></inner-widget>
+```
+
+Choose between the two channels deliberately: **custom properties** for a constrained, design-system-safe set of values; **parts** for unrestricted styling of a specific element.
+
+{{ BASELINE_STATUS("shadow-parts") }}
+
+### `@layer` and container queries inside components
+
+- **Cascade layers** (`@layer`) work inside a shadow root and are scoped to it — a layer name in the shadow tree is independent of a same-named layer in the page. Use them to order your own component styles (e.g. `@layer base, theme;`) so consumer overrides via custom properties and `::part` still win predictably.
+- **Container queries** are the right tool for responsive components: a component should respond to the space it's given, not the viewport. Declare the host or a wrapper as a container and query it, so the same component adapts in a sidebar or a full-width region.
+
+```css
+:host { container-type: inline-size; }
+
+@container (min-width: 30rem) {
+  .card { grid-template-columns: 1fr 2fr; }
+}
+```
+
+{{ BASELINE_STATUS("cascade-layers") }}
+
+{{ BASELINE_STATUS("container-queries") }}
+
+## Form-Associated Custom Elements
+
+Models routinely fall back to a hidden `<input>` to get a custom control's value into a form. The platform solution is **Form-Associated Custom Elements** (FACE): with `formAssociated` and `ElementInternals`, a custom element submits its own value, participates in validation, and reflects form state natively.
+
+```javascript
+class RatingInput extends HTMLElement {
+  // MANDATORY: opt in. Without this, attachInternals() form APIs are unavailable.
+  static formAssociated = true;
+
+  #internals;
+  #value = '';
+
+  constructor() {
+    super();
+    this.#internals = this.attachInternals();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  get value() { return this.#value; }
+  set value(v) {
+    this.#value = v;
+    // Push the value into the owning <form> for submission.
+    this.#internals.setFormValue(v);
+    this.#validate();
+  }
+
+  #validate() {
+    if (this.hasAttribute('required') && !this.#value) {
+      // Mark invalid and supply the native validation message + anchor.
+      this.#internals.setValidity(
+        { valueMissing: true },
+        'Please choose a rating.',
+        this.shadowRoot.querySelector('[tabindex]'),
+      );
+    } else {
+      this.#internals.setValidity({}); // clear
+    }
+  }
+
+  // Optional FACE lifecycle hooks:
+  formResetCallback() { this.value = ''; }
+  formDisabledCallback(disabled) { this.toggleAttribute('disabled', disabled); }
+  formStateRestoreCallback(state) { this.value = state; }
+}
+customElements.define('rating-input', RatingInput);
+```
+
+Key points:
+
+- `static formAssociated = true` is **MANDATORY** — it unlocks the form-related `ElementInternals` methods and the `formXxxCallback` lifecycle.
+- `setFormValue(value)` is what submits — no hidden input required. Pass a `FormData` for multi-value controls.
+- `setValidity(flags, message, anchor)` integrates with native constraint validation: the form won't submit while invalid, `:invalid`/`:valid` apply, and the anchor element receives focus on report. Call `setValidity({})` to clear.
+- Implement `formResetCallback`, `formDisabledCallback`, and `formStateRestoreCallback` so the element behaves like a native control on reset, `fieldset[disabled]`, and back/forward autofill restore.
+
+{{ BASELINE_STATUS("form-associated-custom-elements") }}
+
+## Accessibility
+
+A shadow boundary changes how semantics and ARIA work. The two failures that dominate: missing semantics inside the shadow tree, and ARIA references that silently break because they cannot cross shadow roots. This section is about making custom elements accessible by default.
+
+### Default semantics via the ElementInternals ARIA mixin
+
+Set a custom element's role and ARIA state in JS through `ElementInternals`, rather than writing ARIA attributes onto the host. This keeps the semantics as defaults the component owns, while still letting a consumer override them with attributes in the Light DOM.
+
+```javascript
+class ToggleSwitch extends HTMLElement {
+  #internals;
+  constructor() {
+    super();
+    this.#internals = this.attachInternals();
+    this.#internals.role = 'switch';          // default role, no host attribute needed
+    this.#internals.ariaChecked = 'false';    // exposed to the accessibility tree
+  }
+  toggle() {
+    const on = this.#internals.ariaChecked !== 'true';
+    this.#internals.ariaChecked = String(on);
+  }
+}
+customElements.define('toggle-switch', ToggleSwitch);
+```
+
+This avoids polluting the DOM with ARIA attributes and prevents consumers from accidentally clobbering them, while the accessibility tree still sees the correct role and state.
+
+### Focus management and `delegatesFocus`
+
+- Attach the shadow root with `delegatesFocus: true` when the component wraps focusable controls. Focusing the host then forwards focus to the first focusable child, and `:focus`/label clicks behave as users expect.
+- For roving focus or moving focus into a newly revealed region, give the target `tabindex="-1"` and call `.focus()` — make programmatically-focusable targets explicit rather than relying on tab order.
+
+### ARIA relationships cannot cross shadow roots
+
+- **MANDATORY**: an `id` referenced by `aria-labelledby`, `aria-describedby`, `aria-controls`, etc. must live in the **same** tree as the referencing element. An attribute in the Light DOM cannot point at an `id` inside the shadow tree, and vice versa — the reference is silently ignored.
+- Keep each ARIA relationship within one root. If a label in the shadow tree must describe a slotted Light DOM element, move the relationship into one tree (e.g. render the label in the Light DOM, or use `aria-label` text instead of an `id` reference).
+- For element-to-element references that genuinely must cross roots, the emerging **Reference Target** mechanism is the standards direction, but it is not yet broadly available — design to keep references within a single tree today.
+
+Pair these with the semantic-markup rule from [Shadow DOM, Templates & Slots](#shadow-dom-templates--slots): use real `<button>`, `<nav>`, `<ul>` inside the template so most semantics come for free, and reserve `ElementInternals`/ARIA for the gaps.
