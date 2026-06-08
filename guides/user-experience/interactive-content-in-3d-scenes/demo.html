@@ -191,13 +191,15 @@
                 return;
             }
 
-            try {
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                // Update texture from HTML element
-                gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, draw_element);
-            } catch (e) {
-                console.log("texElementImage2D failed:", e);
-                return;
+            if (gl.texElementImage2D) {
+                try {
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    // Update texture from HTML element
+                    gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, draw_element);
+                } catch (e) {
+                    console.log("texElementImage2D failed:", e);
+                    return;
+                }
             }
 
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
