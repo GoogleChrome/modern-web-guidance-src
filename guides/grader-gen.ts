@@ -14,10 +14,31 @@ function getBasePrompt(guideFileName: string) {
 Read the guide file (${guideFileName}) and expectations.md files to understand the guidance and expectations.
 Then, read the demo.html file, which represents a perfect working example of the guides and expectations, and the negative-demo.html file, which represents an anti-example that fails the expectations.
 
-Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements. Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
+Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements.
+You should generate both static tests and browser tests, with each test containing only one assertion.
+CRITICAL DIRECTIVE: ALWAYS prefer static analysis over browser assertions!
+- Use \`linkedom\` (\`document.querySelector\`) to statically verify HTML structure, attributes, tags, and label associations parsed directly from the HTML source.
+- Use \`ts-morph\` to statically verify JavaScript source code (e.g. validating function calls, declarations, variables in \`<script>\` blocks using AST parsing).
+- Use \`cssomnom\` (via \`Parser.parseStyleSheetText\`) to statically verify CSS source code, rules, selectors, and property values.
+- ONLY fallback to Playwright browser automation (\`await expect(page...)\`) if the expectation strictly requires browser rendering, interactivity (clicks/typing), or computed layouts (styles).
 
-You should generate browser tests, with each test containing only one assertion. Avoid using static assertions (like regex or str.includes()) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting. Instead, prefer using Playwright's browser APIs to test computed styles and actual DOM layout. For example, use window.getComputedStyle(el) to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
 
+If you are unfamiliar with the APIs for these parsers, you can refer to their TypeScript definitions located at these absolute paths in the workspace:
+- CSSOMNom: ${path.join(guidesDir, '../lib/third_party/cssomnom/index.d.ts')}
+- TS Morph: ${path.join(guidesDir, 'node_modules/ts-morph/lib/ts-morph.d.ts')}
+- Linkedom: ${path.join(guidesDir, 'node_modules/linkedom/types/index.d.ts')}
+
+Here are examples of best practice approaches for all sorts of assertions:
+
+### Static Analysis Patterns (Linkedom, CSSOMNom, ts-morph)
+${fs.readFileSync(path.join(guidesDir, 'parser-pattern-library.test.ts'), 'utf-8')}
+
+### Browser Analysis Patterns (Playwright)
+${fs.readFileSync(path.join(guidesDir, 'playwright-pattern-library.grader.ts'), 'utf-8')}
+
+
+
+Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
 
 The grader can be run with the following commands:
 

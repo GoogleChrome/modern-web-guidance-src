@@ -33,7 +33,11 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const playwrightConfig = path.join(guidesDir, 'playwright.config.ts');
   const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
 
-  const env: NodeJS.ProcessEnv = { ...process.env, TARGET_FILE: opts.targetFileAbs };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    TARGET_FILE: opts.targetFileAbs,
+    PLAYWRIGHT_HTML_OPEN: 'never'
+  };
 
   if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
