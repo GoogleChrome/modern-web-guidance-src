@@ -47,7 +47,7 @@ jobs:
         env:
           FULL: 1
           TEST_REPORTER: spec
-        run: pnpm --filter serving test skills-cli/install-skills.test.ts
+        run: pnpm --filter serving exec node --test skills-cli/install-skills.test.ts
 
       - name: Compare built (post-macro) guides 
         run: |
