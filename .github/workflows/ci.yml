@@ -42,6 +42,13 @@ jobs:
 
       - name: Verify publish-skills (Dry Run)
         run: pnpm --filter serving run publish-skills --dry-run
+ 
+      - name: Verify installation with install-skills test
+        env:
+          FULL: 1
+          TEST_REPORTER: spec
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: pnpm --filter serving exec node --test skills-cli/install-skills.test.ts
 
       - name: Compare built (post-macro) guides 
         run: |
