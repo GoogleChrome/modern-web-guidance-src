@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scoped Component Transitions Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      margin: 0;
+      padding: 6rem 1.5rem 1.5rem;
+    }
+
+    /* A fixed-position toolbar that should stay visible and on top during
+       any per-card transition. With document-level transitions this would
+       be captured into the snapshot and disappear; with element-scoped
+       transitions it stays painted above the transitioning subtree. */
+    .toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 1rem 1.5rem;
+      background: #1a73e8;
+      color: white;
+      font-weight: 600;
+      z-index: 10;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+
+      /* The scope: contain: layout makes the card a stacking context so its
+         painted output can be captured atomically. The browser auto-applies
+         this during a scoped transition; declaring it up-front avoids a
+         one-frame layout shift the moment the transition begins. */
+      contain: layout;
+
+      /* The scope: isolates this card's view-transition-name namespace. Both
+         cards reuse `view-transition-name: match-element` on their <li>s;
+         without this property an ancestor's transition could capture our
+         participants and our names could collide with another scope's. */
+      view-transition-scope: all;
+    }
+
+    .card h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+      color: #555;
+    }
+
+    .card button {
+      padding: 0.5rem 1rem;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font: inherit;
+      margin-bottom: 1rem;
+    }
+
+    .card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .card li {
+      padding: 0.5rem 0.75rem;
+      background: #f0f4ff;
+      border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+
+      /* Tag every <li> as a participant. `match-element` derives a stable
+         per-element identity automatically, so the browser can match an
+         <li> in the old state to the same <li> in the new state without
+         us inventing a unique name for each one. The names are scoped to
+         the nearest .card via view-transition-scope: all above. */
+      view-transition-name: match-element;
+    }
+
+    /* Default cross-fade tuning for any participant in any scope. */
+    ::view-transition-group(*) {
+      animation-duration: 300ms;
+      animation-timing-function: ease-in-out;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(*),
+      ::view-transition-old(*),
+      ::view-transition-new(*) {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar" data-testid="toolbar">Toolbar (stays visible during scoped transitions)</div>
+
+  <div class="grid">
+    <section class="card" id="left" data-testid="scope-left">
+      <h2>Card A</h2>
+      <button id="left-rotate" data-testid="left-rotate">Rotate Card A</button>
+      <ul id="left-list"></ul>
+    </section>
+
+    <section class="card" id="right" data-testid="scope-right">
+      <h2>Card B</h2>
+      <button id="right-rotate" data-testid="right-rotate">Rotate Card B</button>
+      <ul id="right-list"></ul>
+    </section>
+  </div>
+
+  <script>
+    // Feature-detect on Element.prototype. The spec defines
+    // startViewTransition on Element, so SVG and MathML elements that also
+    // inherit from Element are covered; checking on a specific instance is
+    // also valid but less robust against DOM proxies.
+    const supportsScopedTransition =
+      'startViewTransition' in Element.prototype;
+
+    function render(listEl, items) {
+      listEl.replaceChildren(
+        ...items.map((label) => {
+          const li = document.createElement('li');
+          li.textContent = label;
+          return li;
+        }),
+      );
+    }
+
+    // Deterministic update: move the first item to the end. Each click
+    // produces a guaranteed reorder, so behavioural assertions about
+    // "the order changed after click" never flake.
+    function rotate(items) {
+      if (items.length <= 1) return items.slice();
+      return [...items.slice(1), items[0]];
+    }
+
+    function rotateWithTransition(scopeEl, listEl, items) {
+      const next = rotate(items);
+
+      if (!supportsScopedTransition) {
+        // Fallback path: apply the change directly. The final DOM is
+        // identical to the supported path; only the animation is missing.
+        render(listEl, next);
+        return next;
+      }
+
+      // Call startViewTransition on the SCOPE (the .card), not on
+      // document. Document-level would freeze the whole page's rendering
+      // and capture the toolbar into the snapshot.
+      scopeEl.startViewTransition(() => render(listEl, next));
+      return next;
+    }
+
+    let leftItems = ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry'];
+    let rightItems = ['Fig', 'Grape', 'Honeydew', 'Kiwi', 'Lemon'];
+
+    render(document.getElementById('left-list'), leftItems);
+    render(document.getElementById('right-list'), rightItems);
+
+    document.getElementById('left-rotate').addEventListener('click', () => {
+      leftItems = rotateWithTransition(
+        document.getElementById('left'),
+        document.getElementById('left-list'),
+        leftItems,
+      );
+    });
+    document.getElementById('right-rotate').addEventListener('click', () => {
+      rightItems = rotateWithTransition(
+        document.getElementById('right'),
+        document.getElementById('right-list'),
+        rightItems,
+      );
+    });
+  </script>
+</body>
+</html>
