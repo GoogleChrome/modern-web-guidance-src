@@ -67,6 +67,9 @@ async function loadDashboardData(testId) {
         allTestData = data;
         currentTestID = testId;
 
+        // Pre-fetch the entire suite recursive file listing in background
+        api.getSuiteDirectoryListing(testId).catch(err => console.warn('Pre-fetch suite directory failed:', err));
+
         // Fetch jetski info (optional)
         let jetskiVersion = null;
         let manifestTimestamp = null;
@@ -690,62 +693,113 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
     try {
         let promptHtml = '<div style="color: var(--text-secondary); margin-bottom: 20px;">Prompt fetch deferred or failed.</div>';
         let baseApp = 'n/a';
+        let promptText = '';
 
-        // Fetch prompt from the first run (unguided or guided)
-        const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
-        if (sampleRun && sampleRun.taskName) {
+        // Try loading cached prompt
+        if (api.source === 'remote') {
             try {
-                const typeLabel = (unguidedRuns && unguidedRuns[0]) ? 'unguided' : 'guided';
-                const { usedBasePath } = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
+                const cachedPrompt = await api.cache.get(`prompt:${testId}:${scenarioName}`);
+                if (cachedPrompt) {
+                    promptText = cachedPrompt.promptText;
+                    baseApp = cachedPrompt.baseApp;
+                }
+            } catch {}
+        }
 
-                let promptText = '';
+        // 1. Parallelize all run path & file checks
+        const resolveRunInfo = async (run, typeLabel) => {
+            if (!run) return null;
+            try {
+                const filePaths = await api.getRunDirectoryListing(testId, run.runNumber);
+                const { setupPath, resultPath, usedBasePath } = api.resolveResultInfoFromList(
+                    testId,
+                    run,
+                    `${scenarioName} - ${typeLabel}`,
+                    filePaths
+                );
+                const files = api.filterRunFilesFromList(usedBasePath, filePaths);
+                return { setupPath, resultPath, usedBasePath, files };
+            } catch (e) {
+                console.warn('Error resolving run info:', e);
+                return null;
+            }
+        };
+
+        const unguidedPromises = unguidedRuns 
+            ? unguidedRuns.map(run => resolveRunInfo(run, 'unguided'))
+            : [];
+        const guidedPromises = guidedRuns
+            ? guidedRuns.map(run => resolveRunInfo(run, 'guided'))
+            : [];
+
+        const [unguidedInfos, guidedInfos] = await Promise.all([
+            Promise.all(unguidedPromises),
+            Promise.all(guidedPromises)
+        ]);
+
+        if (!promptText) {
+            // Fetch prompt from the first run (unguided or guided)
+            const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
+            const sampleInfo = (unguidedInfos && unguidedInfos[0]) || (guidedInfos && guidedInfos[0]);
+            if (sampleRun && sampleRun.taskName && sampleInfo) {
                 try {
-                    const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
-                    const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
-                    if (match) {
-                        const arrayStr = `[${match[1]}]`;
-                        const arr = JSON.parse(arrayStr);
-                        promptText = arr[1];
-                        const baseAppPath = arr[4];
-                        if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
+                    const { usedBasePath } = sampleInfo;
+                    try {
+                        const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
+                        const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
+                        if (match) {
+                            const arrayStr = `[${match[1]}]`;
+                            const arr = JSON.parse(arrayStr);
+                            promptText = arr[1];
+                            const baseAppPath = arr[4];
+                            if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
+                        }
+                    } catch (e) {
+                        console.log('Falling back to living guide file:', e);
+                    }
+
+                    // Fallback to HEAD guide if run.mjs parsing fails
+                    if (!promptText) {
+                        const isNegative = sampleRun.taskName.endsWith('-negative');
+                        const taskPath = `tasks/${isNegative ? 'negative/' : ''}${sampleRun.taskName}.md`;
+                        const text = await api.getFileText(taskPath);
+
+                        const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
+                        if (frontmatterMatch) {
+                            const yaml = frontmatterMatch[1];
+                            const baseAppMatch = yaml.match(/base_app:\s*([^\n\r]+)/);
+                            if (baseAppMatch) baseApp = baseAppMatch[1].trim();
+                        }
+                        promptText = text.replace(/^---[\s\S]+?---\n+/, '');
+                    }
+
+                    if (api.source === 'remote' && promptText) {
+                        try {
+                            await api.cache.set(`prompt:${testId}:${scenarioName}`, { promptText, baseApp });
+                        } catch {}
                     }
                 } catch (e) {
-                    console.log('Falling back to living guide file:', e);
+                    console.log('Task prompt fetch failed:', e);
                 }
-
-                // Fallback to HEAD guide if run.mjs parsing fails
-                if (!promptText) {
-                    const isNegative = sampleRun.taskName.endsWith('-negative');
-                    const taskPath = `tasks/${isNegative ? 'negative/' : ''}${sampleRun.taskName}.md`;
-                    const text = await api.getFileText(taskPath);
-
-                    const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
-                    if (frontmatterMatch) {
-                        const yaml = frontmatterMatch[1];
-                        const baseAppMatch = yaml.match(/base_app:\s*([^\n\r]+)/);
-                        if (baseAppMatch) baseApp = baseAppMatch[1].trim();
-                    }
-                    promptText = text.replace(/^---[\s\S]+?---\n+/, '');
-                }
-
-                promptHtml = `
-                    <div class="task-prompt-container">
-                        <div class="task-prompt-meta">
-                            <span class="task-prompt-meta-label">Base App:</span>
-                            <span class="task-prompt-meta-value">${escapeHtml(baseApp)}</span>
-                        </div>
-                        <div class="task-prompt-quote">
-                            <div class="quote-icon">“</div>
-                            <p class="task-prompt-text">${formatPromptText(promptText)}</p>
-                        </div>
-                    </div>
-                `;
-            } catch (e) {
-                console.log('Task prompt fetch failed:', e);
             }
         }
 
-        // 1. Truth Matrix (Combine all runs side-by-side if multiple)
+        if (promptText) {
+            promptHtml = `
+                <div class="task-prompt-container">
+                    <div class="task-prompt-meta">
+                        <span class="task-prompt-meta-label">Base App:</span>
+                        <span class="task-prompt-meta-value">${escapeHtml(baseApp)}</span>
+                    </div>
+                    <div class="task-prompt-quote">
+                        <div class="quote-icon">“</div>
+                        <p class="task-prompt-text">${formatPromptText(promptText)}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. Truth Matrix (Combine all runs side-by-side if multiple)
         const maxUnguided = unguidedRuns ? unguidedRuns.length : 0;
         const maxGuided = guidedRuns ? guidedRuns.length : 0;
         const maxRuns = Math.max(maxUnguided, maxGuided);
@@ -834,20 +888,17 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             return `<span class="${className}" style="${style}">${escapeHtml(g)}</span>`;
         };
 
-                const getTfootChips = async (runs, typeLabel) => {
+        const getTfootChips = (runs, infos) => {
              const chips = [];
              for (let i = 0; i < maxRuns; i++) {
-                 if (!runs || i >= runs.length) {
+                 if (!runs || i >= runs.length || !infos[i]) {
                      chips.push('-');
                      continue;
                  }
                  const run = runs[i];
+                 const info = infos[i];
                  const s = getRunStats(run.results);
-                 const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
-                 let files = run.files || [];
-                 if (files.length === 0) {
-                     try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
-                 }
+                 const { setupPath, resultPath, usedBasePath, files } = info;
 
                  const sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
                  const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
@@ -884,16 +935,11 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         };
 
         // Compute separate horizontal run boxes for Tools Used & Guides Used Only
-                        const getRunCards = async (runs, typeLabel) => {
+        const getRunCards = (runs, infos, typeLabel) => {
              let html = '';
              for (let i = 0; i < maxRuns; i++) {
-                 if (!runs || i >= runs.length) continue;
+                 if (!runs || i >= runs.length || !infos[i]) continue;
                  const run = runs[i];
-                 const { usedBasePath } = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
-                 let files = run.files || [];
-                 if (files.length === 0) {
-                     try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
-                 }
                  const toolsUsed = run.guidanceToolsUsed || [];
                  const guidesUsed = run.guidesUsed || (run.guideUsed && run.guideUsed.guidesUsed) || [];
                  const retrievedGuides = run.retrievedGuides || [];
@@ -949,8 +995,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
              return html;
         };
 
-        const unguidedChips = await getTfootChips(unguidedRuns, 'Unguided');
-        const guidedChips = await getTfootChips(guidedRuns, 'Guided');
+        const unguidedChips = getTfootChips(unguidedRuns, unguidedInfos);
+        const guidedChips = getTfootChips(guidedRuns, guidedInfos);
 
         let tfootHtml = '<tfoot><tr>';
         if (maxRuns > 1) {
@@ -959,13 +1005,12 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         } else {
             tfootHtml += `<td class="center" style="vertical-align: top;">${unguidedChips[0]}</td><td class="center" style="vertical-align: top;">${guidedChips[0]}</td>`;
         }
-const guidedCards = await getRunCards(guidedRuns, 'Guided');
+        const guidedCards = getRunCards(guidedRuns, guidedInfos, 'Guided');
         tfootHtml += `<td>
-<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${guidedCards}</div>
-</td></tr></tfoot>`;
+        <div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${guidedCards}</div>
+        </td></tr></tfoot>`;
 
         truthMatrixHtml = truthMatrixHtml.replace('</tbody></table></div>', `</tbody>${tfootHtml}</table></div>`);
-
 
         const loadBtnId = `load-btn-${scenarioName.replace(/\s+/g, '-')}`;
 
@@ -976,12 +1021,6 @@ const guidedCards = await getRunCards(guidedRuns, 'Guided');
 
             </div>
         `;
-
-            //  i left this out of it for now.
-         // <div id="${escapeHtml(svgContainerId)}" class="stability-section blueprint-framed">
-         //            <div class="stability-title">Reliability Trend Analysis</div>
-         //            <button id="${escapeHtml(loadBtnId)}" class="secondary-btn">Compare task results across trials</button>
-         //        </div>
 
         const loadBtn = container.querySelector(`#${loadBtnId}`);
         if (loadBtn) {
@@ -994,6 +1033,7 @@ const guidedCards = await getRunCards(guidedRuns, 'Guided');
         container.innerHTML = `<div style="color: var(--accent-failure);">Error loading details: ${e.message}</div>`;
     }
 }
+
 
 function formatPromptText(text) {
     const escaped = escapeHtml(text);

@@ -1,12 +1,17 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $, MiniIndexedDB } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
+const cache = new MiniIndexedDB();
 let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentServingFilter = 'all';
 let currentModelFilter = 'all';
+
+let allSuitesList = []; // Unified list of all suites: [{ id, source, timestamp, useResultsPrefix }]
+let currentPage = 1;
+const pageSize = 20;
 
 function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
@@ -22,17 +27,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Initialize UI
         setupTestFilters(); // New filter setup
         setupTableFilters();
+        setupPaginationEvents();
 
         const params = new URLSearchParams(window.location.search);
         
         // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
         initGoogleAuth(async () => {
-             await loadRemoteTests();
+             await loadRemoteSuitesList();
+             await loadPageSuitesData();
         });
 
-        await loadLocalTests();
+        await loadLocalSuitesList();
+        await loadPageSuitesData();
+
         if (getAccessToken()) {
-             await loadRemoteTests();
+             await loadRemoteSuitesList();
+             await loadPageSuitesData();
         }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
@@ -53,9 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Update filter UI to match initial state
         renderFilterMenuItems();
-
-        // Initial Render
-        renderSuites();
 
     } catch (error) {
         console.error('Error:', error);
@@ -147,7 +154,11 @@ function setupTestFilters() {
 
 function setupTableFilters() {
     const filters = {
-        'filter-source': (val) => currentSourceFilter = val,
+        'filter-source': (val) => {
+            currentSourceFilter = val;
+            currentPage = 1;
+            loadPageSuitesData();
+        },
         'filter-agent': (val) => currentAgentFilter = val,
         'filter-serving': (val) => currentServingFilter = val,
         'filter-model': (val) => currentModelFilter = val
@@ -254,7 +265,28 @@ function renderAll() {
 
 
 
-async function loadLocalTests() {
+function getSuiteTimestamp(suiteId, defaultTimestamp) {
+    if (defaultTimestamp) return new Date(defaultTimestamp).getTime();
+    const match = suiteId.match(/(\d{4}-\d{2}-\d{2})[T_](\d{2})-(\d{2})-(\d{2})/);
+    if (match) {
+        return new Date(`${match[1]}T${match[2]}:${match[3]}:${match[4]}`).getTime();
+    }
+    const dateOnly = suiteId.match(/(\d{4}-\d{2}-\d{2})/);
+    if (dateOnly) {
+        return new Date(dateOnly[1]).getTime();
+    }
+    return 0;
+}
+
+function registerSuiteId(suiteId, source, defaultTimestamp, useResultsPrefix) {
+    const timestamp = getSuiteTimestamp(suiteId, defaultTimestamp);
+    // Avoid duplicates
+    if (!allSuitesList.some(s => s.id === suiteId && s.source === source)) {
+        allSuitesList.push({ id: suiteId, source, timestamp, useResultsPrefix });
+    }
+}
+
+async function loadLocalSuitesList() {
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
     }
@@ -265,46 +297,29 @@ async function loadLocalTests() {
         let useResultsPrefix = false;
 
         if (!response.ok) {
-            // Try fetching suites.gen.json as fallback for static mode
             const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
-            if (!staticRes.ok) return; // Silent fail if both fail
+            if (!staticRes.ok) return;
             const suites = await staticRes.json();
-            // convert array of strings to expected format [{id: string, source: 'local'}]
             manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
             useResultsPrefix = true;
         } else {
             manifest = await response.json();
         }
 
-        if (manifest.suites && manifest.suites.length > 0) {
-            document.getElementById('empty-state').style.display = 'none';
-        }
-
-        // Load local test data
-        for (const suite of manifest.suites) {
-            if (suite.source !== 'local') continue;
-            
-            const testId = suite.id;
-            const suiteTimestamp = suite.timestamp;
-            try {
-                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
-                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+        if (manifest.suites) {
+            manifest.suites.forEach(s => {
+                if (s.source === 'local') {
+                    registerSuiteId(s.id, 'local', s.timestamp, useResultsPrefix);
                 }
-            } catch (e) {
-                console.warn(`Failed to load local test ${testId}:`, e);
-            }
+            });
         }
     } catch {
         console.warn('Local proxy not available');
     }
 }
 
-async function loadRemoteTests() {
+async function loadRemoteSuitesList() {
     try {
-        const prefixes = [];
         let pageToken = '';
         
         // Paginate GCS to retrieve all prefixes without truncation limits
@@ -315,43 +330,223 @@ async function loadRemoteTests() {
             
             const data = await response.json();
             if (data.prefixes) {
-                prefixes.push(...data.prefixes);
+                data.prefixes.forEach(prefix => {
+                    const testId = prefix.slice(0, -1);
+                    registerSuiteId(testId, 'remote', null, false);
+                });
             }
             pageToken = data.nextPageToken || '';
         } while (pageToken);
-        
-        if (prefixes.length > 0) {
-             document.getElementById('empty-state').style.display = 'none';
-        }
-
-        // Load remote test data in parallel
-        await Promise.all(prefixes.map(async (prefix) => {
-            const testId = prefix.slice(0, -1); // Remove trailing slash
-            try {
-                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                const response = await authenticatedFetch(fileUrl);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed);
-                }
-            } catch (e) {
-                console.warn(`Failed to load remote test ${testId}:`, e);
-            }
-        }));
-        
-        // Re-render UI now that we have remote data
-        const params = new URLSearchParams(window.location.search);
-        let initialTests = params.get('tests');
-        if (!initialTests || initialTests.trim() === '') {
-            selectedTestIds = new Set(Object.keys(allTestData));
-        }
-        renderFilterMenuItems();
-        renderAll();
-
     } catch (error) {
-        console.error('Error loading remote suites:', error);
+        console.error('Error loading remote suites list:', error);
     }
 }
+
+async function preloadCachedSuitesMetadata() {
+    await Promise.all(allSuitesList.map(async (suite) => {
+        const compoundKey = `${suite.id}|||${suite.source}`;
+        if (allTestData[compoundKey]) return;
+
+        if (suite.source === 'remote') {
+            try {
+                const parsed = await cache.get(`evals:${suite.id}`);
+                if (parsed) {
+                    registerTestData(suite.id, 'remote', parsed);
+                }
+            } catch (err) {
+                console.warn('Preload cache read failed for remote:', err);
+            }
+        }
+    }));
+}
+
+function getFilteredSuites() {
+    return allSuitesList.filter(suite => {
+        const compoundKey = `${suite.id}|||${suite.source}`;
+        const testInfo = allTestData[compoundKey];
+
+        if (currentSourceFilter !== 'all' && suite.source !== currentSourceFilter) return false;
+
+        if (testInfo) {
+            if (currentAgentFilter !== 'all' && testInfo.agent !== currentAgentFilter) return false;
+            if (currentServingFilter !== 'all' && testInfo.serving !== currentServingFilter) return false;
+            if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return false;
+        } else {
+            if (currentAgentFilter !== 'all' || currentServingFilter !== 'all' || currentModelFilter !== 'all') {
+                return false;
+            }
+        }
+        return true;
+    });
+}
+
+async function loadPageSuitesData() {
+    await preloadCachedSuitesMetadata();
+
+    let filteredSuites = getFilteredSuites();
+    filteredSuites.sort((a, b) => b.timestamp - a.timestamp);
+    
+    if (filteredSuites.length > 0) {
+        document.getElementById('empty-state').style.display = 'none';
+    } else {
+        document.getElementById('empty-state').style.display = 'block';
+        document.getElementById('suites-list').innerHTML = '';
+        updatePaginationUI(0);
+        return;
+    }
+
+    const totalPages = Math.ceil(filteredSuites.length / pageSize) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const start = (currentPage - 1) * pageSize;
+    const end = currentPage * pageSize;
+    const pageSuites = filteredSuites.slice(start, end);
+
+    // Fetch and register page data in parallel
+    await Promise.all(pageSuites.map(async (suite) => {
+        const compoundKey = `${suite.id}|||${suite.source}`;
+        if (allTestData[compoundKey]) return; // Already loaded
+
+        if (suite.source === 'local') {
+            try {
+                const fetchPath = suite.useResultsPrefix ? `results/${suite.id}/evals.json` : `${suite.id}/evals.json`;
+                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
+                if (response.ok) {
+                    const parsed = await response.json();
+                    registerTestData(suite.id, suite.useResultsPrefix ? 'static' : 'local', parsed, new Date(suite.timestamp).toISOString());
+                }
+            } catch (e) {
+                console.warn(`Failed to load local test ${suite.id}:`, e);
+            }
+        } else if (suite.source === 'remote') {
+            try {
+                let parsed = null;
+                try {
+                    parsed = await cache.get(`evals:${suite.id}`);
+                } catch (err) {
+                    console.warn('Cache read failed:', err);
+                }
+
+                if (!parsed) {
+                    const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(suite.id + '/evals.json')}?alt=media`;
+                    const response = await authenticatedFetch(fileUrl);
+                    if (response.ok) {
+                        parsed = await response.json();
+                        try {
+                            await cache.set(`evals:${suite.id}`, parsed);
+                        } catch (err) {
+                            console.warn('Cache write failed:', err);
+                        }
+                    }
+                }
+
+                if (parsed) {
+                    registerTestData(suite.id, 'remote', parsed);
+                }
+            } catch (e) {
+                console.warn(`Failed to load remote test ${suite.id}:`, e);
+            }
+        }
+    }));
+
+    // Update filter selection checkboxes
+    selectedTestIds = new Set(Object.keys(allTestData));
+    renderFilterMenuItems();
+    renderSuites();
+    updatePaginationUI(filteredSuites.length);
+}
+
+function updatePaginationUI(totalItems) {
+    const container = document.getElementById('pagination-container');
+    const prevBtn = document.getElementById('prev-page-btn');
+    const nextBtn = document.getElementById('next-page-btn');
+    const pageInfo = document.getElementById('page-info');
+
+    if (!container || !prevBtn || !nextBtn) return;
+
+    if (pageInfo) pageInfo.style.display = 'none';
+
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+    const existingNumBtns = container.querySelectorAll('.pagination-num-btn, .pagination-ellipsis');
+    existingNumBtns.forEach(el => el.remove());
+
+    if (totalItems <= pageSize) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        return;
+    }
+
+    prevBtn.style.display = 'inline-flex';
+    nextBtn.style.display = 'inline-flex';
+
+    if (prevBtn instanceof HTMLButtonElement) prevBtn.disabled = currentPage === 1;
+    if (nextBtn instanceof HTMLButtonElement) nextBtn.disabled = currentPage === totalPages;
+
+    const pages = [];
+    const delta = 1;
+
+    for (let i = 1; i <= totalPages; i++) {
+        if (
+            i === 1 || 
+            i === totalPages || 
+            (i >= currentPage - delta && i <= currentPage + delta)
+        ) {
+            pages.push(i);
+        } else if (pages[pages.length - 1] !== '...') {
+            pages.push('...');
+        }
+    }
+
+    pages.forEach(p => {
+        if (p === '...') {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'pagination-ellipsis';
+            ellipsis.textContent = '...';
+            ellipsis.style.color = 'var(--text-secondary)';
+            ellipsis.style.fontSize = '0.9rem';
+            container.insertBefore(ellipsis, nextBtn);
+        } else if (typeof p === 'number') {
+            const targetPage = p;
+            const numBtn = document.createElement('button');
+            numBtn.className = `pagination-num-btn ${targetPage === currentPage ? 'active' : ''}`;
+            numBtn.textContent = targetPage.toString();
+            numBtn.onclick = async () => {
+                if (currentPage !== targetPage) {
+                    currentPage = targetPage;
+                    await loadPageSuitesData();
+                }
+            };
+            container.insertBefore(numBtn, nextBtn);
+        }
+    });
+}
+
+function setupPaginationEvents() {
+    const prevBtn = document.getElementById('prev-page-btn');
+    const nextBtn = document.getElementById('next-page-btn');
+
+    if (prevBtn) {
+        prevBtn.onclick = async () => {
+            if (currentPage > 1) {
+                currentPage--;
+                await loadPageSuitesData();
+            }
+        };
+    }
+    if (nextBtn) {
+        nextBtn.onclick = async () => {
+            const totalItems = getFilteredSuites().length;
+            const totalPages = Math.ceil(totalItems / pageSize) || 1;
+            if (currentPage < totalPages) {
+                currentPage++;
+                await loadPageSuitesData();
+            }
+        };
+    }
+}
+
 
 function registerTestData(testId, source, parsed, forcedTimestamp) {
     let serving = 'unknown';
@@ -743,16 +938,29 @@ function calculateGroupTotalStats(results, groupType) {
 }
 
 function getSortedTestIds() {
-    // Return only SELECTED tests, sorted by date
-    return Array.from(selectedTestIds).sort((a, b) => {
-        // Safety check if id not in allTestData (shouldn't happen but good practice)
-        if (!allTestData[a] || !allTestData[b]) return 0;
-        return new Date(allTestData[b].timestamp).getTime() - new Date(allTestData[a].timestamp).getTime();
-    });
+    let filteredSuites = getFilteredSuites();
+    filteredSuites.sort((a, b) => b.timestamp - a.timestamp);
+
+    const start = (currentPage - 1) * pageSize;
+    const end = currentPage * pageSize;
+    const pageSuites = filteredSuites.slice(start, end);
+
+    return pageSuites
+        .map(s => `${s.id}|||${s.source}`)
+        .filter(compoundKey => allTestData[compoundKey] !== undefined);
+}
+
+function getAllFilteredTestIds() {
+    let filteredSuites = getFilteredSuites();
+    filteredSuites.sort((a, b) => b.timestamp - a.timestamp);
+
+    return filteredSuites
+        .map(s => `${s.id}|||${s.source}`)
+        .filter(compoundKey => allTestData[compoundKey] !== undefined);
 }
 
 function renderPivotInsights() {
-    const testIds = getSortedTestIds(); // Uses selected filters!
+    const testIds = getAllFilteredTestIds(); // Uses selected filters!
     const grouped = {
         agent: {},
         serving: {},

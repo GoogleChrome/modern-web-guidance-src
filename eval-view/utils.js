@@ -245,3 +245,54 @@ export function $(query, context) {
   return /** @type {ParseSelector<T>} */ (result);
 }
 
+export class MiniIndexedDB {
+    constructor(dbName = 'GuidanceDashboardDB', storeName = 'evalsCache') {
+        this.dbName = dbName;
+        this.storeName = storeName;
+        this.db = null;
+    }
+
+    init() {
+        if (this.db) return Promise.resolve(this.db);
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, 1);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains(this.storeName)) {
+                    db.createObjectStore(this.storeName);
+                }
+            };
+            request.onsuccess = () => {
+                this.db = request.result;
+                resolve(this.db);
+            };
+            request.onerror = () => {
+                reject(request.error);
+            };
+        });
+    }
+
+    async get(key) {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(this.storeName, 'readonly');
+            const store = transaction.objectStore(this.storeName);
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async set(key, value) {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(this.storeName, 'readwrite');
+            const store = transaction.objectStore(this.storeName);
+            const request = store.put(value, key);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+}
+
+
