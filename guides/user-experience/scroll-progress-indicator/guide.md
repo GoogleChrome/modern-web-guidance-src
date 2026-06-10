@@ -48,7 +48,7 @@ This code grows the `#progress` element on scroll using an anonymous scroll-time
 }
 ```
 
-Because of its location in the DOM, the `scroll()` function will track its neareast ancestor scroller in the `block` direction, which here is the root scroller.
+Because of its location in the DOM, the `scroll()` function will track its nearest ancestor scroller in the `block` direction, which here is the root scroller.
 
 ```html
 <body>
