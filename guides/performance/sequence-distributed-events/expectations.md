@@ -3,3 +3,5 @@
 - The implementation MUST NOT use standard `Date.now()` as the primary mechanism for event sorting if native `Temporal` resolution is required for disambiguation.
 - The implementation MUST include explicit feature detection for `Temporal` support (e.g., `typeof Temporal !== 'undefined'`).
 - A fallback strategy MUST be provided for environments lacking native support, such as conditionally loading a polyfill (e.g., `@js-temporal/polyfill`). Because `@js-temporal/polyfill` does not auto-install globally, the implementation MUST ensure `Temporal` is available after loading (e.g., by assigning `globalThis.Temporal = module.Temporal`).
+- The implementation MUST NOT use static `Temporal.Instant.compare(a, b) === 0` to check instant equivalence; it MUST use the native `a.equals(b)` instance method instead.
+- The implementation MUST NOT use floating-point conversions (such as `.since().total('nanoseconds')`) to calculate precise nanosecond differences where safe integer overflow (> 2^53 ns / ~104 days) is possible; instead, it MUST compute exact nanosecond differences using direct `BigInt` subtraction of the `epochNanoseconds` properties.
