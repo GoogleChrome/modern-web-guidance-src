@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { resultsDir } from '../../lib/paths.ts';
 
@@ -111,6 +112,14 @@ function collectResults() {
 
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(summaries, null, 2));
   console.log(`Saved summary to ${OUTPUT_PATH}`);
+
+  console.log(`\nVerifying collected summary against regression thresholds...`);
+  try {
+    execSync('node --test skills-cli/eval-regression.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
+  } catch (err) {
+    console.error(`\n❌ EVALUATION REGRESSION DETECTED! Please review the failures above before committing.`);
+    process.exit(1);
+  }
 }
 
 collectResults();
