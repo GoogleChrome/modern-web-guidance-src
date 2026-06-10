@@ -51,6 +51,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build distribution
+        run: pnpm --filter serving run build
+
+      - name: Verify installation with install-skills test
+        env:
+          FULL: 1
+          TEST_REPORTER: spec
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: pnpm --filter serving exec node --test skills-cli/install-skills.test.ts
+
+
+
       - name: Configure Git for Auth and Commit
         run: |
           git config --global user.name "github-actions[bot]"
