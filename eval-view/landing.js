@@ -756,7 +756,8 @@ function renderPivotInsights() {
     const grouped = {
         agent: {},
         serving: {},
-        model: {}
+        model: {},
+        guide: {}
     };
 
     testIds.forEach(compoundKey => {
@@ -778,6 +779,38 @@ function renderPivotInsights() {
 
         if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
         grouped.model[testInfo.model].push({ uplift, uRate, gRate });
+
+        // Calculate guide-specific statistics for this test run
+        const suiteGuides = {};
+        if (data.results) {
+            Object.keys(data.results).forEach(key => {
+                const parts = key.split(' - ');
+                if (parts.length === 3) {
+                    const [task, guide, runType] = parts;
+                    if (!suiteGuides[guide]) {
+                        suiteGuides[guide] = {
+                            guided: { passed: 0, total: 0 },
+                            unguided: { passed: 0, total: 0 }
+                        };
+                    }
+                    data.results[key].forEach(run => {
+                        const s = getRunStats(run.results);
+                        suiteGuides[guide][runType].passed += s.passed;
+                        suiteGuides[guide][runType].total += s.total;
+                    });
+                }
+            });
+        }
+
+        Object.keys(suiteGuides).forEach(guide => {
+            const gG = suiteGuides[guide].guided;
+            const uG = suiteGuides[guide].unguided;
+            const gG_rate = gG.total > 0 ? Math.round((gG.passed / gG.total) * 100) : 0;
+            const uG_rate = uG.total > 0 ? Math.round((uG.passed / uG.total) * 100) : 0;
+            const uG_uplift = gG_rate - uG_rate;
+            if (!grouped.guide[guide]) grouped.guide[guide] = [];
+            grouped.guide[guide].push({ uplift: uG_uplift, uRate: uG_rate, gRate: gG_rate });
+        });
     });
 
     const getDumbbellMedian = (arr) => {
@@ -796,8 +829,12 @@ function renderPivotInsights() {
             const uRate = medianItem.uRate;
             const gRate = medianItem.gRate;
 
+            const clickAttr = filterKey === 'guide'
+                ? `onclick="window.location.href='guide.html?guide=${encodeURIComponent(key)}'"`
+                : `onclick="setInsightFilter('${filterKey}', '${key}')"`;
+
             rowsHtml += `
-                <tr onclick="setInsightFilter('${filterKey}', '${key}')" style="cursor: pointer;">
+                <tr ${clickAttr} style="cursor: pointer;">
                     <td>
                         <div style="font-weight: 600;">${filterKey === 'serving' ? (servingDisplayNames[key] || key) : key}</div>
                         <div style="font-size: 0.75rem; color: var(--text-secondary);">${items.length} trials</div>
@@ -830,6 +867,10 @@ function renderPivotInsights() {
             <div class="insights-panel">
                 <div class="insights-panel-title">By Model</div>
                 ${renderPivotTable(grouped.model, 'model')}
+            </div>
+            <div class="insights-panel">
+                <div class="insights-panel-title">By Guide</div>
+                ${renderPivotTable(grouped.guide, 'guide')}
             </div>
         `;
     }

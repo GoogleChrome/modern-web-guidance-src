@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guide Performance Trend</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="landing.css">
+  <link rel="stylesheet" href="dashboard-layout.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <div class="container">
+    <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
+      <div>
+        <h1 style="margin: 0;">Guide: <span id="guide-name-header">...</span></h1>
+        <div style="font-size: 0.9em; color: var(--text-secondary); margin-top: 4px;">Performance over time by agent and model combination</div>
+      </div>
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <a href="./" class="secondary-btn" style="text-decoration: none;">← Back to Results</a>
+        <button id="auth-btn" class="secondary-btn" style="display: none;">
+          Sign in with Google
+        </button>
+      </div>
+    </header>
+
+    <div id="graphs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px; margin-top: 20px;">
+      <!-- Graph cards injected by JS -->
+    </div>
+
+    <div id="empty-state" class="empty-state" style="display: none;">
+      <p>No historical runs found for this guide.</p>
+    </div>
+  </div>
+
+  <div id="tooltip-container" class="tooltip-container hidden">
+    <div id="tooltip-header"></div>
+    <div id="tooltip-content" style="padding: 8px 12px; font-size: 0.85rem;"></div>
+  </div>
+
+  <script src="features_mapping.gen.js"></script>
+  <script type="module" src="guide.js"></script>
+</body>
+</html>

@@ -85,6 +85,44 @@ test.describe('Eval View Dashboard', () => {
     expect(partsCount).toBeGreaterThan(0);
   });
 
+  test('should show By Guide panel and navigate to guide.html on click', async ({ page }) => {
+    await page.goto('/');
+
+    // Expand the drawer if it's closed
+    const insightsDrawer = page.locator('.insights-drawer');
+    if (!(await insightsDrawer.getAttribute('open') !== null)) {
+      await page.locator('.insights-summary').click();
+    }
+
+    // Verify By Guide panel is visible and has the correct title
+    const guidePanel = page.locator('.insights-panel', { hasText: 'By Guide' });
+    await expect(guidePanel).toBeVisible();
+
+    // Verify guides are listed under By Guide
+    const contentVisRow = guidePanel.locator('tr', { hasText: 'content-vis' });
+    await expect(contentVisRow).toBeVisible();
+
+    // Click the row to navigate to guide.html
+    await contentVisRow.click();
+    
+    // Check navigation
+    await expect(page).toHaveURL(/.*guide.html\?guide=content-vis/);
+
+    // Verify guide.html loads and header has the guide name
+    await expect(page.locator('#guide-name-header')).toContainText('content-vis');
+
+    // Verify timeline charts are visible
+    const graphsGrid = page.locator('#graphs-grid');
+    await expect(graphsGrid).toBeVisible();
+    await expect(page.locator('.timeline-point').first()).toBeVisible();
+
+    // Hover over a timeline point to verify tooltip behavior
+    await page.locator('.timeline-point').first().hover();
+    const tooltip = page.locator('#tooltip-container');
+    await expect(tooltip).toBeVisible();
+    await expect(page.locator('#tooltip-content')).toBeVisible();
+  });
+
   test('should block access to hidden files', async ({ page }) => {
     const response = await page.request.get('/.gitignore');
     expect(response.status()).toBe(403);
