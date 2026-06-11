@@ -786,7 +786,7 @@ function renderPivotInsights() {
             Object.keys(data.results).forEach(key => {
                 const parts = key.split(' - ');
                 if (parts.length === 3) {
-                    const [task, guide, runType] = parts;
+                    const [, guide, runType] = parts;
                     if (!suiteGuides[guide]) {
                         suiteGuides[guide] = {
                             guided: { passed: 0, total: 0 },

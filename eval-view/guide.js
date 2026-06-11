@@ -1,4 +1,4 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, $ } from './utils.js';
+import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
 
 let allTestData = {}; // Cache all test data by testId
 
@@ -47,7 +47,7 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
         Object.keys(parsed.results).forEach(key => {
             const parts = key.split(' - ');
             if (parts.length === 3) {
-                const [task, guide, runType] = parts;
+                const [, guide, runType] = parts;
                 if (!guides[guide]) {
                     guides[guide] = {
                         guidedPassed: 0, guidedTotal: 0,
@@ -399,7 +399,7 @@ function renderGraphs(guideName) {
         grid.appendChild(card);
 
         svg.querySelectorAll('.timeline-point').forEach(group => {
-            group.addEventListener('mouseenter', (e) => {
+            group.addEventListener('mouseenter', () => {
                 const idx = parseInt(group.getAttribute('data-index'));
                 const runData = combinations[group.getAttribute('data-comb')][idx];
                 const stats = runData.guides[guideName];
