@@ -123,6 +123,34 @@ test.describe('Eval View Dashboard', () => {
     await expect(page.locator('#tooltip-content')).toBeVisible();
   });
 
+  test('should support autocomplete search and prev/next guide navigation', async ({ page }) => {
+    await page.goto('/guide.html?guide=content-vis');
+
+    // Test search autocomplete list
+    const searchInput = page.locator('#guide-search');
+    await searchInput.fill('pre');
+    
+    const autocompleteList = page.locator('#autocomplete-list');
+    await expect(autocompleteList).toBeVisible();
+
+    const option = autocompleteList.locator('.autocomplete-item', { hasText: 'preload-prerender' });
+    await expect(option).toBeVisible();
+    
+    // Choose preload-prerender option
+    await option.click();
+    
+    // Check it immediately navigates
+    await expect(page).toHaveURL(/.*guide.html\?guide=preload-prerender/);
+    await expect(page.locator('#guide-name-header')).toContainText('preload-prerender');
+
+    // Test next/prev navigation buttons
+    const nextBtn = page.locator('#next-guide-btn');
+    await nextBtn.click();
+    
+    // Check it navigated to another guide
+    await expect(page).toHaveURL(/.*guide.html\?guide=.+/);
+  });
+
   test('should block access to hidden files', async ({ page }) => {
     const response = await page.request.get('/.gitignore');
     expect(response.status()).toBe(403);

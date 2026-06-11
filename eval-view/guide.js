@@ -14,14 +14,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         initGoogleAuth(async () => {
-            await loadRemoteTests(guideName);
+            await loadRemoteTests();
+            setupNavigationControls(guideName);
             renderGraphs(guideName);
         });
 
-        await loadLocalTests(guideName);
+        await loadLocalTests();
         if (getAccessToken()) {
-            await loadRemoteTests(guideName);
+            await loadRemoteTests();
         }
+        setupNavigationControls(guideName);
         renderGraphs(guideName);
 
     } catch (error) {
@@ -30,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function registerTestData(testId, source, parsed, forcedTimestamp, guideName) {
+function registerTestData(testId, source, parsed, forcedTimestamp) {
     let serving = 'unknown';
     if (parsed.serving !== undefined) {
         serving = parsed.serving;
@@ -40,64 +42,62 @@ function registerTestData(testId, source, parsed, forcedTimestamp, guideName) {
 
     const compoundKey = `${testId}|||${source}`;
 
-    // Calculate guide-specific statistics for this run
-    let guideStats = null;
+    const guides = {};
     if (parsed.results) {
-        let guidedPassed = 0;
-        let guidedTotal = 0;
-        let unguidedPassed = 0;
-        let unguidedTotal = 0;
-        let found = false;
-
         Object.keys(parsed.results).forEach(key => {
             const parts = key.split(' - ');
-            if (parts.length === 3 && parts[1] === guideName) {
-                found = true;
-                const runType = parts[2];
+            if (parts.length === 3) {
+                const [task, guide, runType] = parts;
+                if (!guides[guide]) {
+                    guides[guide] = {
+                        guidedPassed: 0, guidedTotal: 0,
+                        unguidedPassed: 0, unguidedTotal: 0
+                    };
+                }
                 parsed.results[key].forEach(run => {
                     const s = getRunStats(run.results);
                     if (runType === 'guided') {
-                        guidedPassed += s.passed;
-                        guidedTotal += s.total;
+                        guides[guide].guidedPassed += s.passed;
+                        guides[guide].guidedTotal += s.total;
                     } else if (runType === 'unguided') {
-                        unguidedPassed += s.passed;
-                        unguidedTotal += s.total;
+                        guides[guide].unguidedPassed += s.passed;
+                        guides[guide].unguidedTotal += s.total;
                     }
                 });
             }
         });
-
-        if (found) {
-            const guidedRate = guidedTotal > 0 ? Math.round((guidedPassed / guidedTotal) * 100) : 0;
-            const unguidedRate = unguidedTotal > 0 ? Math.round((unguidedPassed / unguidedTotal) * 100) : 0;
-            guideStats = {
-                guidedPassed,
-                guidedTotal,
-                guidedRate,
-                unguidedPassed,
-                unguidedTotal,
-                unguidedRate,
-                uplift: guidedRate - unguidedRate
-            };
-        }
     }
 
-    // Only store if the guide was actually tested/found in this suite run
-    if (guideStats) {
-        allTestData[compoundKey] = {
-            testId: testId,
-            timestamp: parsed.timestamp || forcedTimestamp || new Date().toISOString(),
-            data: parsed,
-            source: source,
-            agent: parsed.agent || 'unknown',
-            serving: serving,
-            model: parsed.model || 'unknown',
-            guideStats: guideStats
+    // Convert guide raw totals into rates
+    const guidesWithRates = {};
+    Object.keys(guides).forEach(guide => {
+        const g = guides[guide];
+        const guidedRate = g.guidedTotal > 0 ? Math.round((g.guidedPassed / g.guidedTotal) * 100) : 0;
+        const unguidedRate = g.unguidedTotal > 0 ? Math.round((g.unguidedPassed / g.unguidedTotal) * 100) : 0;
+        guidesWithRates[guide] = {
+            guidedPassed: g.guidedPassed,
+            guidedTotal: g.guidedTotal,
+            guidedRate,
+            unguidedPassed: g.unguidedPassed,
+            unguidedTotal: g.unguidedTotal,
+            unguidedRate,
+            uplift: guidedRate - unguidedRate
         };
-    }
+    });
+
+    allTestData[compoundKey] = {
+        testId: testId,
+        timestamp: parsed.timestamp || forcedTimestamp || new Date().toISOString(),
+        data: parsed,
+        source: source,
+        agent: parsed.agent || 'unknown',
+        serving: serving,
+        model: parsed.model || 'unknown',
+        guides: guidesWithRates
+    };
 }
 
-async function loadLocalTests(guideName) {
+async function loadLocalTests() {
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         return; 
     }
@@ -127,7 +127,7 @@ async function loadLocalTests(guideName) {
                 const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp, guideName);
+                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
                 }
             } catch (e) {
                 console.warn(`Failed to load local test ${testId}:`, e);
@@ -138,7 +138,7 @@ async function loadLocalTests(guideName) {
     }
 }
 
-async function loadRemoteTests(guideName) {
+async function loadRemoteTests() {
     try {
         const prefixes = [];
         let pageToken = '';
@@ -162,7 +162,7 @@ async function loadRemoteTests(guideName) {
                 const response = await authenticatedFetch(fileUrl);
                 if (response.ok) {
                     const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed, null, guideName);
+                    registerTestData(testId, 'remote', parsed, null);
                 }
             } catch (e) {
                 console.warn(`Failed to load remote test ${testId}:`, e);
@@ -173,20 +173,137 @@ async function loadRemoteTests(guideName) {
     }
 }
 
+function setupNavigationControls(currentGuide) {
+    const guideSet = new Set();
+    Object.values(allTestData).forEach(run => {
+        if (run.guides) {
+            Object.keys(run.guides).forEach(g => guideSet.add(g));
+        }
+    });
+    const allGuides = [...guideSet].sort();
+
+    const prevBtn = /** @type {HTMLButtonElement} */ ($('#prev-guide-btn'));
+    const nextBtn = /** @type {HTMLButtonElement} */ ($('#next-guide-btn'));
+    const searchInput = /** @type {HTMLInputElement} */ ($('#guide-search'));
+    const list = $('#autocomplete-list');
+    const goBtn = /** @type {HTMLButtonElement} */ ($('#go-guide-btn'));
+
+    if (allGuides.length <= 1) {
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+    } else {
+        const currentIndex = allGuides.indexOf(currentGuide);
+        
+        prevBtn.disabled = false;
+        prevBtn.onclick = () => {
+            const prevIndex = (currentIndex - 1 + allGuides.length) % allGuides.length;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}`;
+        };
+
+        nextBtn.disabled = false;
+        nextBtn.onclick = () => {
+            const nextIndex = (currentIndex + 1) % allGuides.length;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}`;
+        };
+    }
+
+    goBtn.onclick = () => {
+        const val = searchInput.value.trim();
+        if (val) {
+            window.location.href = `guide.html?guide=${encodeURIComponent(val)}`;
+        }
+    };
+
+    let currentFocus = -1;
+
+    searchInput.oninput = () => {
+        const val = searchInput.value.trim().toLowerCase();
+        list.innerHTML = '';
+        currentFocus = -1;
+
+        if (!val) {
+            list.classList.add('hidden');
+            return;
+        }
+
+        const matches = allGuides.filter(g => g.toLowerCase().includes(val)).slice(0, 10);
+        if (matches.length === 0) {
+            list.classList.add('hidden');
+            return;
+        }
+
+        list.classList.remove('hidden');
+        matches.forEach(match => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.textContent = match;
+            div.onclick = () => {
+                searchInput.value = match;
+                list.classList.add('hidden');
+                goBtn.click();
+            };
+            list.appendChild(div);
+        });
+    };
+
+    searchInput.onkeydown = (e) => {
+        const items = list.querySelectorAll('.autocomplete-item');
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            currentFocus++;
+            setActive(items);
+            e.preventDefault();
+        } else if (e.key === 'ArrowUp') {
+            currentFocus--;
+            setActive(items);
+            e.preventDefault();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentFocus > -1) {
+                if (items[currentFocus]) {
+                    /** @type {HTMLElement} */ (items[currentFocus]).click();
+                }
+            } else {
+                goBtn.click();
+            }
+        } else if (e.key === 'Escape') {
+            list.classList.add('hidden');
+        }
+    };
+
+    function setActive(items) {
+        if (!items) return;
+        items.forEach(item => item.classList.remove('active'));
+        if (currentFocus >= items.length) currentFocus = 0;
+        if (currentFocus < 0) currentFocus = items.length - 1;
+        items[currentFocus].classList.add('active');
+        items[currentFocus].scrollIntoView({ block: 'nearest' });
+    }
+
+    document.addEventListener('click', (e) => {
+        const target = /** @type {Node} */ (e.target);
+        if (!searchInput.contains(target) && !list.contains(target)) {
+            list.classList.add('hidden');
+        }
+    });
+}
+
 function renderGraphs(guideName) {
     const grid = $('#graphs-grid');
     grid.innerHTML = '';
 
     const testKeys = Object.keys(allTestData);
-    if (testKeys.length === 0) {
+    const filteredKeys = testKeys.filter(key => allTestData[key].guides && allTestData[key].guides[guideName]);
+
+    if (filteredKeys.length === 0) {
         $('#empty-state').style.display = 'block';
         return;
     }
     $('#empty-state').style.display = 'none';
 
-    // Group runs by agent + model combination
     const combinations = {};
-    testKeys.forEach(compoundKey => {
+    filteredKeys.forEach(compoundKey => {
         const run = allTestData[compoundKey];
         const combKey = `${run.agent}|||${run.model}`;
         if (!combinations[combKey]) {
@@ -195,12 +312,10 @@ function renderGraphs(guideName) {
         combinations[combKey].push(run);
     });
 
-    // Sort runs inside each combination chronologically first
     Object.keys(combinations).forEach(combKey => {
         combinations[combKey].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     });
 
-    // Sort combination keys by freshness (newest run first)
     const sortedCombKeys = Object.keys(combinations).sort((keyA, keyB) => {
         const runsA = combinations[keyA];
         const runsB = combinations[keyB];
@@ -220,7 +335,6 @@ function renderGraphs(guideName) {
         card.style.gap = '15px';
         card.style.padding = '20px';
         
-        // Header info
         const header = document.createElement('div');
         header.innerHTML = `
             <div style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">
@@ -232,7 +346,6 @@ function renderGraphs(guideName) {
         `;
         card.appendChild(header);
 
-        // SVG vertical dumbbell timeline chart
         const chartWrapper = document.createElement('div');
         chartWrapper.style.overflowX = 'auto';
         chartWrapper.style.width = '100%';
@@ -249,7 +362,6 @@ function renderGraphs(guideName) {
 
         let svgContent = '';
         
-        // Grid reference lines (0%, 50%, 100%)
         [0, 50, 100].forEach(percent => {
             const y = rateToY(percent);
             svgContent += `
@@ -258,25 +370,19 @@ function renderGraphs(guideName) {
             `;
         });
 
-        // Plot timeline points
         runs.forEach((run, i) => {
             const x = runs.length > 1 ? paddingX + i * stepX : width / 2;
-            const yU = rateToY(run.guideStats.unguidedRate);
-            const yG = rateToY(run.guideStats.guidedRate);
+            const stats = run.guides[guideName];
+            const yU = rateToY(stats.unguidedRate);
+            const yG = rateToY(stats.guidedRate);
             const shortDate = new Date(run.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
             svgContent += `
                 <g class="timeline-point" data-index="${i}" data-comb="${combKey}" style="cursor: pointer;">
-                    <!-- Vertical Connector -->
                     <line x1="${x}" y1="${yU}" x2="${x}" y2="${yG}" stroke="var(--color-primary)" stroke-width="2" />
-                    <!-- Unguided Dot -->
                     <circle cx="${x}" cy="${yU}" r="4" stroke="#8b949e" stroke-width="1.5" fill="var(--color-surface-container-lowest)" />
-                    <!-- Guided Dot -->
                     <circle cx="${x}" cy="${yG}" r="5" fill="var(--color-primary)" />
-                    <!-- X-Axis text tick rotated 90 degrees -->
                     <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${shortDate}</text>
-                    
-                    <!-- Hover area -->
                     <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
                 </g>
             `;
@@ -292,12 +398,11 @@ function renderGraphs(guideName) {
         card.appendChild(chartWrapper);
         grid.appendChild(card);
 
-        // Tooltip interactions
         svg.querySelectorAll('.timeline-point').forEach(group => {
             group.addEventListener('mouseenter', (e) => {
                 const idx = parseInt(group.getAttribute('data-index'));
                 const runData = combinations[group.getAttribute('data-comb')][idx];
-                const stats = runData.guideStats;
+                const stats = runData.guides[guideName];
                 const formattedDate = new Date(runData.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
                 const tooltip = $('#tooltip-container');
