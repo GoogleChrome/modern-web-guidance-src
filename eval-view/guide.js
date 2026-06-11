@@ -195,11 +195,23 @@ function renderGraphs(guideName) {
         combinations[combKey].push(run);
     });
 
+    // Sort runs inside each combination chronologically first
     Object.keys(combinations).forEach(combKey => {
+        combinations[combKey].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    });
+
+    // Sort combination keys by freshness (newest run first)
+    const sortedCombKeys = Object.keys(combinations).sort((keyA, keyB) => {
+        const runsA = combinations[keyA];
+        const runsB = combinations[keyB];
+        const newestA = new Date(runsA[runsA.length - 1].timestamp).getTime();
+        const newestB = new Date(runsB[runsB.length - 1].timestamp).getTime();
+        return newestB - newestA;
+    });
+
+    sortedCombKeys.forEach(combKey => {
         const [agent, model] = combKey.split('|||');
         const runs = combinations[combKey];
-        // Sort chronologically (oldest to newest)
-        runs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
         const card = document.createElement('div');
         card.className = 'stat-card';
@@ -225,11 +237,11 @@ function renderGraphs(guideName) {
         chartWrapper.style.overflowX = 'auto';
         chartWrapper.style.width = '100%';
 
-        const width = Math.max(450, runs.length * 60);
-        const height = 200;
+        const width = Math.max(450, runs.length * 30);
+        const height = 230;
         const paddingX = 40;
         const paddingY = 25;
-        const plotHeight = height - 2 * paddingY;
+        const plotHeight = height - 2 * paddingY - 35;
         const plotWidth = width - 2 * paddingX;
         const stepX = runs.length > 1 ? plotWidth / (runs.length - 1) : 0;
 
@@ -261,8 +273,8 @@ function renderGraphs(guideName) {
                     <circle cx="${x}" cy="${yU}" r="4" stroke="#8b949e" stroke-width="1.5" fill="var(--color-surface-container-lowest)" />
                     <!-- Guided Dot -->
                     <circle cx="${x}" cy="${yG}" r="5" fill="var(--color-primary)" />
-                    <!-- X-Axis text tick -->
-                    <text x="${x}" y="${height - 5}" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="middle">${shortDate}</text>
+                    <!-- X-Axis text tick rotated 90 degrees -->
+                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${shortDate}</text>
                     
                     <!-- Hover area -->
                     <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
