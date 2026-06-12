@@ -1,4 +1,4 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
+import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, parseResultKey, $ } from './utils.js';
 
 let allTestData = {}; // Cache all test data by testId
 
@@ -45,9 +45,9 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
     const guides = {};
     if (parsed.results) {
         Object.keys(parsed.results).forEach(key => {
-            const parts = key.split(' - ');
-            if (parts.length === 3) {
-                const [, guide, runType] = parts;
+            const parsedKey = parseResultKey(key);
+            if (parsedKey) {
+                const { guide, runType } = parsedKey;
                 if (!guides[guide]) {
                     guides[guide] = {
                         guidedPassed: 0, guidedTotal: 0,
@@ -314,6 +314,9 @@ function renderGraphs(guideName) {
 
     Object.keys(combinations).forEach(combKey => {
         combinations[combKey].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        if (combinations[combKey].length > 50) {
+            combinations[combKey] = combinations[combKey].slice(-50);
+        }
     });
 
     const sortedCombKeys = Object.keys(combinations).sort((keyA, keyB) => {
@@ -377,11 +380,36 @@ function renderGraphs(guideName) {
             const yG = rateToY(stats.guidedRate);
             const shortDate = new Date(run.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
+            const isPositive = stats.guidedRate >= stats.unguidedRate;
+            
+            let elementHtml = '';
+            if (yU === yG) {
+                elementHtml = `<circle cx="${x}" cy="${yG}" r="5" fill="var(--color-primary)" />`;
+            } else {
+                const dist = Math.abs(yU - yG);
+                const arrowHeight = 10;
+                const lineColor = isPositive ? 'var(--color-primary)' : 'var(--color-accent-failure)';
+                let lineY2 = yG;
+                let lineHtml = '';
+                if (dist > arrowHeight) {
+                    lineY2 = yG < yU ? yG + arrowHeight : yG - arrowHeight;
+                    lineHtml = `<line x1="${x}" y1="${yU}" x2="${x}" y2="${lineY2}" stroke="${lineColor}" stroke-width="4" />`;
+                }
+
+                const arrowPoints = yG < yU
+                    ? `${x},${yG} ${x - 6},${yG + 10} ${x + 6},${yG + 10}`
+                    : `${x},${yG} ${x - 6},${yG - 10} ${x + 6},${yG - 10}`;
+
+                elementHtml = `
+                    ${lineHtml}
+                    <circle cx="${x}" cy="${yU}" r="4" stroke="#8b949e" stroke-width="1.5" fill="var(--color-surface-container-lowest)" />
+                    <polygon points="${arrowPoints}" fill="${lineColor}" />
+                `;
+            }
+
             svgContent += `
                 <g class="timeline-point" data-index="${i}" data-comb="${combKey}" style="cursor: pointer;">
-                    <line x1="${x}" y1="${yU}" x2="${x}" y2="${yG}" stroke="var(--color-primary)" stroke-width="2" />
-                    <circle cx="${x}" cy="${yU}" r="4" stroke="#8b949e" stroke-width="1.5" fill="var(--color-surface-container-lowest)" />
-                    <circle cx="${x}" cy="${yG}" r="5" fill="var(--color-primary)" />
+                    ${elementHtml}
                     <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${shortDate}</text>
                     <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
                 </g>

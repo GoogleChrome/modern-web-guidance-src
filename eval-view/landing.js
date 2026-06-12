@@ -1,4 +1,4 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, parseResultKey, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -784,9 +784,9 @@ function renderPivotInsights() {
         const suiteGuides = {};
         if (data.results) {
             Object.keys(data.results).forEach(key => {
-                const parts = key.split(' - ');
-                if (parts.length === 3) {
-                    const [, guide, runType] = parts;
+                const parsedKey = parseResultKey(key);
+                if (parsedKey) {
+                    const { guide, runType } = parsedKey;
                     if (!suiteGuides[guide]) {
                         suiteGuides[guide] = {
                             guided: { passed: 0, total: 0 },
