@@ -1,0 +1,10 @@
+- `indexedDB.open()` is called with a database name and a numeric version.
+- Object stores are created inside the `upgradeneeded` event handler using `createObjectStore()`.
+- At least one index is created with `createIndex()` for efficient querying.
+- Data reads use `"readonly"` transactions; data writes use `"readwrite"` transactions.
+- IndexedDB operations are wrapped in Promises for ergonomic async/await usage.
+- The `versionchange` event is handled on the database connection to close it when another tab upgrades.
+- `put()` is used for insert-or-update operations; `add()` is used when duplicate keys should error.
+- Error handling is present on transactions or requests (e.g., `onerror` handlers or Promise rejections).
+- Sensitive data (tokens, passwords) is NOT stored in IndexedDB without encryption.
+- Simple string key-value storage does NOT use IndexedDB when `localStorage` would suffice.
