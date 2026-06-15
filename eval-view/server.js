@@ -324,6 +324,49 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (decodedPath === '/api/run-files-recursive') {
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
+    const relativePath = parsedUrl.searchParams.get('dir');
+    if (!relativePath) {
+      res.writeHead(400);
+      res.end('Missing dir parameter');
+      return;
+    }
+
+    /** @type {string[]} */
+    let files = [];
+    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+    const targetDir = path.join(resultsDir, relativePath);
+
+    /**
+     * @param {string} dir
+     * @param {string} [prefix]
+     */
+    function collectFilesRecursive(dir, prefix = '') {
+      if (!fs.existsSync(dir)) return;
+      const items = fs.readdirSync(dir, { withFileTypes: true });
+      for (const item of items) {
+        const fullPath = path.join(dir, item.name);
+        const logicalPath = prefix ? `${prefix}/${item.name}` : item.name;
+        if (item.isDirectory()) {
+          collectFilesRecursive(fullPath, logicalPath);
+        } else {
+          files.push(`${relativePath}${logicalPath}`);
+        }
+      }
+    }
+
+    try {
+      collectFilesRecursive(targetDir);
+    } catch (e) {
+      console.error(e);
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ files }));
+    return;
+  }
+
   // --- Silent File Probing API ---
   // Avoids native browser 404 console errors by returning JSON { exists: boolean }
   if (decodedPath === '/api/exists') {
