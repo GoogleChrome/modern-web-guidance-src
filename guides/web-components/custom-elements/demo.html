@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Elements: counter with attribute/property reflection</title>
+  <style>
+    /* Hide the element until its definition has upgraded it (no FOUC). */
+    my-counter:not(:defined) { visibility: hidden; }
+  </style>
+</head>
+<body>
+  <!-- The attribute is present before the script runs: the element upgrades and
+       reads its initial state from the attribute in connectedCallback. -->
+  <my-counter count="3"></my-counter>
+
+  <script>
+    // Build the shadow tree once, then update only the text node that changes.
+    const template = document.createElement('template');
+    template.innerHTML = `
+      <style>
+        :host { display: inline-flex; gap: .5rem; align-items: center;
+                padding: 1rem; border: 1px solid #ccc; border-radius: 8px; }
+        button { cursor: pointer; }
+      </style>
+      <span>Count: <output id="value">0</output></span>
+      <button type="button" id="inc">Increment</button>
+    `;
+
+    class MyCounter extends HTMLElement {
+      static observedAttributes = ['count'];
+
+      constructor() {
+        super(); // MANDATORY: first statement, before touching `this`.
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.append(template.content.cloneNode(true));
+        this.#output = this.shadowRoot.getElementById('value');
+        this.shadowRoot.getElementById('inc')
+          .addEventListener('click', () => { this.count += 1; });
+      }
+
+      #output;
+
+      // Attribute values are always strings; coerce to a number.
+      get count() { return Number(this.getAttribute('count')) || 0; }
+      set count(v) { this.setAttribute('count', String(v)); }
+
+      connectedCallback() { this.#render(); }
+
+      attributeChangedCallback(name, oldVal, newVal) {
+        if (oldVal !== newVal) this.#render(); // guard against reflection loops
+      }
+
+      #render() { this.#output.textContent = String(this.count); }
+    }
+
+    customElements.define('my-counter', MyCounter);
+  </script>
+</body>
+</html>
