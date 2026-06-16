@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Styling Web Components: custom properties and ::part theming</title>
+  <style>
+    my-card:not(:defined) { visibility: hidden; }
+
+    /* Theme from outside via inherited custom properties (they cross the boundary). */
+    body { --card-bg: #f6f8fa; --card-fg: #111; }
+
+    /* Unrestricted styling of an exposed internal, without knowing the structure. */
+    my-card::part(action) {
+      background: navy;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+      padding: .4rem .8rem;
+    }
+  </style>
+</head>
+<body>
+  <my-card>
+    <span slot="title">Themed card</span>
+  </my-card>
+
+  <script>
+    const template = document.createElement('template');
+    template.innerHTML = `
+      <style>
+        :host { container-type: inline-size; display: block; max-inline-size: 28rem; }
+        .card {
+          /* Consumers override these from outside; fallbacks keep it usable. */
+          background: var(--card-bg, white);
+          color: var(--card-fg, black);
+          border-radius: 8px;
+          padding: 1rem;
+          display: grid;
+          gap: .75rem;
+        }
+        /* A component should respond to its own size, not the viewport. */
+        @container (min-width: 24rem) {
+          .card { grid-template-columns: 1fr auto; align-items: center; }
+        }
+      </style>
+      <div class="card">
+        <strong><slot name="title">Card</slot></strong>
+        <button type="button" part="action">Action</button>
+      </div>
+    `;
+
+    class MyCard extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.append(template.content.cloneNode(true));
+      }
+    }
+
+    customElements.define('my-card', MyCard);
+  </script>
+</body>
+</html>
