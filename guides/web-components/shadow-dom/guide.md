@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Shadow DOM, Templates & Slots
 
-A shadow root is an encapsulated DOM subtree attached to a host element. Styles defined inside it do not leak out, and page styles do not leak in (apart from a few inherited exceptions, covered in the styling guide). Templates construct the tree efficiently and slots project consumer content into it; the three are one mental model, documented together here.
+A shadow root is an encapsulated DOM subtree attached to a host element: styles inside it do not leak out, and page styles do not leak in (except inherited properties). Templates construct the tree efficiently; slots project Light DOM content into it.
 
 ## Attaching a shadow root
 
@@ -17,7 +17,7 @@ this.attachShadow({ mode: 'open', delegatesFocus: true });
 ```
 
 - Prefer `mode: 'open'` so dev tools and `element.shadowRoot` can inspect the tree. Use `'closed'` only when you must hide the internal structure from page scripts.
-- `delegatesFocus: true` makes focusing the host move focus to the first focusable element inside the shadow tree, and routes `:focus` styling to the host. Set it whenever the component wraps focusable controls; it is essential for label-click and keyboard accessibility.
+- `delegatesFocus: true` makes focusing the host move focus to the first focusable element inside the shadow tree, and routes `:focus` styling to the host. Set it whenever the component wraps focusable controls; it is required for label-click and keyboard accessibility.
 
 {{ BASELINE_STATUS("shadow-dom") }}
 

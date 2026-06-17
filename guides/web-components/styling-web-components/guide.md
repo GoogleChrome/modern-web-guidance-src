@@ -10,7 +10,7 @@ web-feature-ids:
 
 # Styling Web Components
 
-Shadow DOM is a style boundary: page rules don't reach in and component rules don't leak out, except for **inherited** properties. This guide covers every selector and channel for styling across that boundary.
+Shadow DOM is a style boundary: page rules don't reach in and component rules don't leak out, except **inherited** properties (including custom properties). Cross it deliberately through the channels below.
 
 ## `:host`, `:host()`, `:host-context()`
 

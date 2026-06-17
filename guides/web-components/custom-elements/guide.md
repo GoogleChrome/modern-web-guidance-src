@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Custom Elements
 
-A custom element is a class registered against a tag name via `customElements.define()`. Registration and basic lifecycle are well understood by most tools; what follows leads with the parts routinely gotten wrong.
+A custom element is a class registered against a tag name via `customElements.define()`. Registration and basic lifecycle are well understood; the rules below target the parts routinely implemented incorrectly.
 
 ## Registration and base class
 
@@ -89,7 +89,7 @@ Pitfalls:
 
 - **`observedAttributes` discipline**: list only attributes whose change must re-render or trigger a side effect. Observing everything adds a callback to every mutation for no benefit.
 - **Reflection loops**: a setter that writes an attribute will re-enter `attributeChangedCallback`. Guard with an `oldVal !== newVal` check, as above.
-- **Style-only state**: you may reflect a property to an attribute purely for CSS targeting (`:host([loading])`) *without* observing it, as long as the component is the sole writer of that attribute.
+- **Style-only state**: reflect a property to an attribute purely for CSS targeting (`:host([loading])`) *without* observing it, but only when the component is the sole writer of that attribute.
 
 ## Naming conventions
 
