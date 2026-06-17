@@ -7,7 +7,7 @@ web-feature-ids:
 
 # Form-Associated Custom Elements
 
-Models routinely fall back to a hidden `<input>` to get a custom control's value into a form. The platform solution is **Form-Associated Custom Elements** (FACE): with `formAssociated` and `ElementInternals`, a custom element submits its own value, participates in validation, and reflects form state natively.
+Do not fall back to a hidden `<input>` to surface a custom control's value to a form. Use **Form-Associated Custom Elements** (FACE): with `formAssociated` and `ElementInternals`, the element submits its own value, participates in validation, and reflects form state natively.
 
 ```javascript
 class RatingInput extends HTMLElement {

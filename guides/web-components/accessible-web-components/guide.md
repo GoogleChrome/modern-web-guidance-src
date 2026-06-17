@@ -8,9 +8,9 @@ web-feature-ids:
 
 # Accessible Web Components
 
-A shadow boundary changes how semantics and ARIA work. The two failures that dominate: missing semantics inside the shadow tree, and ARIA references that silently break because they cannot cross shadow roots. This guide is about making custom elements accessible by default.
+A shadow boundary changes how semantics and ARIA work. Two failures dominate: missing semantics inside the shadow tree, and ARIA references that silently break because they cannot cross shadow roots.
 
-The foundation is semantic markup: use real `<button>`, `<nav>`, `<ul>` inside the template so most semantics come for free, and reserve `ElementInternals`/ARIA for the gaps.
+Start from semantic markup: use real `<button>`, `<nav>`, `<ul>` inside the template so most semantics come for free, and reserve `ElementInternals`/ARIA for the gaps.
 
 ## Default semantics via the ElementInternals ARIA mixin
 

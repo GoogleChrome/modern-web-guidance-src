@@ -56,7 +56,7 @@ Set `shadowrootmode="open"` (not `closed`) for almost all cases, so scripts and 
 
 ## Avoiding FOUC
 
-The whole point of DSD is that styles ship inside the declarative template, so the component renders correctly on first paint. To keep that guarantee:
+DSD renders correctly on first paint only if styles ship inside the declarative template. To preserve that:
 
 - Put component CSS **inside** the `<template shadowrootmode>` (a `<style>` tag or a `<link>`), not in a separate script-loaded sheet.
 - Pair with `my-card:not(:defined) { … }` only for styles that must wait for JS; the structural styles should already be in the shadow root and need no such guard.
