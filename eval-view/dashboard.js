@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, formatTokens, isDisciplineSkillRun } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, isDisciplineSkillRun } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability_trend.js';
@@ -256,7 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
-            const [taskName, guide, runType] = currentDetails.testName.split(' - ');
+            const parsed = parseResultKey(currentDetails.testName);
+            if (!parsed) return;
+            const { task: taskName, guide, runType } = parsed;
             const currentScenario = `${taskName} - ${guide}`;
 
             let sIdx = sortedScenarios.indexOf(currentScenario);
@@ -1357,13 +1359,15 @@ function renderDashboardDumbbellChart(data) {
             const scenarioName = labels[index];
             const runType = type.toLowerCase();
             const originalKey = Object.keys(disciplineResults).find(key => {
-                const parts = key.split(' - ');
-                return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
+                const parsed = parseResultKey(key);
+                if (!parsed) return false;
+                return `${parsed.task} (${parsed.guide})` === scenarioName && parsed.runType === runType;
             });
 
             if (originalKey) {
                 const testName = originalKey;
-                const scenarioPart = testName.split(' - ')[1] || '';
+                const parsed = parseResultKey(testName);
+                const scenarioPart = parsed ? parsed.guide : '';
                 const accordions = document.querySelectorAll('.task-accordion');
                 for (const acc of accordions) {
                     const titleEl = acc.querySelector('.task-title');

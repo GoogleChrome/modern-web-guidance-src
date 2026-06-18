@@ -85,6 +85,72 @@ test.describe('Eval View Dashboard', () => {
     expect(partsCount).toBeGreaterThan(0);
   });
 
+  test('should show By Guide panel and navigate to guide.html on click', async ({ page }) => {
+    await page.goto('/');
+
+    // Expand the drawer if it's closed
+    const insightsDrawer = page.locator('.insights-drawer');
+    if (!(await insightsDrawer.getAttribute('open') !== null)) {
+      await page.locator('.insights-summary').click();
+    }
+
+    // Verify By Guide panel is visible and has the correct title
+    const guidePanel = page.locator('.insights-panel', { hasText: 'By Guide' });
+    await expect(guidePanel).toBeVisible();
+
+    // Verify guides are listed under By Guide
+    const contentVisRow = guidePanel.locator('tr', { hasText: 'content-vis' });
+    await expect(contentVisRow).toBeVisible();
+
+    // Click the row to navigate to guide.html
+    await contentVisRow.click();
+    
+    // Check navigation
+    await expect(page).toHaveURL(/.*guide.html\?guide=content-vis/);
+
+    // Verify guide.html loads and header has the guide name
+    await expect(page.locator('#guide-name-header')).toContainText('content-vis');
+
+    // Verify timeline charts are visible
+    const graphsGrid = page.locator('#graphs-grid');
+    await expect(graphsGrid).toBeVisible();
+    await expect(page.locator('.timeline-point').first()).toBeVisible();
+
+    // Hover over a timeline point to verify tooltip behavior
+    await page.locator('.timeline-point').first().hover();
+    const tooltip = page.locator('#tooltip-container');
+    await expect(tooltip).toBeVisible();
+    await expect(page.locator('#tooltip-content')).toBeVisible();
+  });
+
+  test('should support autocomplete search and prev/next guide navigation', async ({ page }) => {
+    await page.goto('/guide.html?guide=content-vis');
+
+    // Test search autocomplete list
+    const searchInput = page.locator('#guide-search');
+    await searchInput.fill('pre');
+    
+    const autocompleteList = page.locator('#autocomplete-list');
+    await expect(autocompleteList).toBeVisible();
+
+    const option = autocompleteList.locator('.autocomplete-item', { hasText: 'preload-prerender' });
+    await expect(option).toBeVisible();
+    
+    // Choose preload-prerender option
+    await option.click();
+    
+    // Check it immediately navigates
+    await expect(page).toHaveURL(/.*guide.html\?guide=preload-prerender/);
+    await expect(page.locator('#guide-name-header')).toContainText('preload-prerender');
+
+    // Test next/prev navigation buttons
+    const nextBtn = page.locator('#next-guide-btn');
+    await nextBtn.click();
+    
+    // Check it navigated to another guide
+    await expect(page).toHaveURL(/.*guide.html\?guide=.+/);
+  });
+
   test('should block access to hidden files', async ({ page }) => {
     const response = await page.request.get('/.gitignore');
     expect(response.status()).toBe(403);
