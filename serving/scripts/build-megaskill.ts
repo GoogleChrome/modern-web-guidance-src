@@ -97,7 +97,7 @@ function createLocalSymlink(repoRoot: string, distDir: string): void {
 function buildMegaskill(): void {
   const repoRoot = path.resolve(import.meta.dirname, '../..');
 
-  // Validate we are actually rooted in the guidance project
+  // Validate we are actually rooted in the modern-web-guidance-src project
   if (!fs.existsSync(path.join(repoRoot, 'package.json'))) {
     console.error(`Safety Abort: Script must be run from a directory where the repo root can be found (missing package.json in ${repoRoot}).`);
     process.exit(1);

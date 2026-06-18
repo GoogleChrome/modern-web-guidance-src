@@ -4,12 +4,6 @@ description: Build a pull-to-reveal feature that would enable the user to pull d
 web-feature-ids:
   - scroll-initial-target
   - scroll-snap
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
-  - https://github.com/DavMila/explainer-scroll-initial-target
-  - https://chromestatus.com/feature/6276178888097792
-  - https://drafts.csswg.org/css-scroll-snap-2/#propdef-scroll-initial-target
-  - https://webstatus.dev/features/scroll-initial-target
 ---
 
 # Pull to Reveal

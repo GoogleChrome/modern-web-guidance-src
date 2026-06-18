@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Duration Calculator (Temporal)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #111827;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --border-color: #1f2937;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .controls-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input {
+      background: #1f2937;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .output-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .card-title {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    .huge-value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--accent-secondary);
+    }
+
+    .code-block {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    code {
+      color: #93c5fd;
+    }
+
+    .string-value {
+      font-family: monospace;
+      color: #f472b6;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Duration Calculator</h1>
+      <p class="description">
+        Display elapsed time properties using a custom Temporal implementation.
+      </p>
+    </header>
+
+    <div class="controls-bar">
+      <label>Enter Duration Components</label>
+      <div class="input-row">
+        <div class="control-group">
+          <label for="hoursInput">Hours</label>
+          <input type="number" id="hoursInput" value="0" min="0">
+        </div>
+        <div class="control-group">
+          <label for="minutesInput">Minutes</label>
+          <input type="number" id="minutesInput" value="90" min="0">
+        </div>
+        <div class="control-group">
+          <label for="secondsInput">Seconds</label>
+          <input type="number" id="secondsInput" value="0" min="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="output-grid">
+      <div class="card">
+        <div class="card-title">Localized Display</div>
+        <div id="humanValue" class="huge-value">PT1H30M</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Manual Balance</div>
+        <div>
+          <span class="string-value">Calculated: </span>
+          <span id="manualValue" class="string-value">1h 30m 0s</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Code Snippet</div>
+        <div id="codeSnippet" class="code-block"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { Temporal } from "https://esm.sh/@js-temporal/polyfill";
+    globalThis.Temporal = Temporal;
+
+    const hoursInput = document.getElementById('hoursInput');
+    const minutesInput = document.getElementById('minutesInput');
+    const secondsInput = document.getElementById('secondsInput');
+    const humanValue = document.getElementById('humanValue');
+    const manualValue = document.getElementById('manualValue');
+    const codeSnippet = document.getElementById('codeSnippet');
+
+    function updateAll() {
+      const hours = parseInt(hoursInput.value) || 0;
+      const minutes = parseInt(minutesInput.value) || 0;
+      const seconds = parseInt(secondsInput.value) || 0;
+
+      const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+
+      const duration = new Temporal.Duration(0, 0, 0, 0, hours, minutes, seconds);
+
+      try {
+        duration.hours = h;
+        duration.minutes = m;
+        duration.seconds = s;
+      } catch (e) {}
+
+      humanValue.textContent = duration.toString();
+      manualValue.textContent = h + "h " + m + "m " + s + "s";
+
+      let code = "const duration = new Temporal.Duration(0, 0, 0, 0, " + hours + ", " + minutes + ", " + seconds + ");\\n";
+      code += "duration.hours = " + h + ";\\n";
+      code += "duration.minutes = " + m + ";\\n";
+      code += "duration.seconds = " + s + ";\\n";
+      code += "const display = duration.toString();";
+      codeSnippet.textContent = code;
+    }
+
+    hoursInput.addEventListener('input', updateAll);
+    minutesInput.addEventListener('input', updateAll);
+    secondsInput.addEventListener('input', updateAll);
+
+    updateAll();
+  </script>
+
+</body>
+
+</html>

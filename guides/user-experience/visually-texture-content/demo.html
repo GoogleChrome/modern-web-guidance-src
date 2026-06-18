@@ -3,79 +3,137 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visually Textured Content</title>
+  <title>Visually Texture Content Demo</title>
   <style>
     body {
-      font-family: 'Segoe UI', serif;
+      font-family: sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
+      gap: 30px;
+      flex-wrap: wrap;
       min-height: 100vh;
-      margin: 0;
-      background-color: #e8e4db;
+      margin: 20px;
+      background-color: #f0f0f0;
+      box-sizing: border-box;
     }
 
-    .weathered-badge {
+    .weathered-container {
       position: relative;
-      width: 250px;
-      height: 150px;
-      background-color: #c0392b;
-      /* Deep red badge */
+      width: 300px;
+      height: 200px;
       color: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      border-radius: 4px;
-      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      border: 5px double white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .weathered-badge::after {
-      content: "";
+    .checkerboard-card {
+      background-color: #2ecc71;
+      /* Base color */
+    }
+
+    .grunge-card {
+      background-color: #e74c3c;
+      /* Base color (red) */
+    }
+
+    /* Apply the mask to a background layer to protect text readability */
+    .weathered-bg {
       position: absolute;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
+    }
+
+    .checkerboard-bg {
+      background-color: #27ae60;
+      /* Texture color */
+
+      --checkerboard-gradient:
+        linear-gradient(45deg, #000 25%, transparent 25%),
+        linear-gradient(-45deg, #000 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #000 75%),
+        linear-gradient(-45deg, transparent 75%, #000 75%);
+
+      /* Apply the checkerboard mask */
+      -webkit-mask-image: var(--checkerboard-gradient);
+      -webkit-mask-size: 10px 10px;
+      -webkit-mask-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+
+      mask-image: var(--checkerboard-gradient);
+      mask-size: 10px 10px;
+      mask-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+    }
+
+    .grunge-bg {
       background-color: #c0392b;
-      pointer-events: none;
+      /* Texture color */
+
+      /* Apply the grunge SVG mask */
+      -webkit-mask-image: url('grunge-texture.svg');
+      -webkit-mask-repeat: repeat;
+      -webkit-mask-size: 200px;
+      -webkit-mask-mode: luminance;
+
       mask-image: url('grunge-texture.svg');
+      mask-repeat: repeat;
+      mask-size: 200px;
       mask-mode: luminance;
-      mask-size: cover;
     }
 
-    .badge-content {
-      text-align: center;
+    /* Fallback using CSS pattern for browsers without mask support */
+    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
+      .checkerboard-bg {
+        height: 100%;
+        width: 100%;
+        position: absolute;
+        background-color: #2ecc71;
+        /* Base color (light green) */
+        background-image:
+          linear-gradient(45deg, #27ae60 25%, transparent 25%),
+          linear-gradient(-45deg, #27ae60 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #27ae60 75%),
+          linear-gradient(-45deg, transparent 75%, #27ae60 75%);
+        background-size: 10px 10px;
+        background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+      }
+
+      .grunge-bg {
+        /* Fallback for grunge: just use a fallback background color or image if available */
+        background-image: url('grunge-texture.svg');
+        background-size: cover;
+      }
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      /* Ensure text is above the background texture */
       padding: 20px;
-      mask-image: url('grunge-texture.svg');
-      mask-mode: luminance;
-      mask-size: cover;
     }
 
-    h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-
-    p {
-      margin: 5px 0 0;
-      font-size: 14px;
-      opacity: 0.9;
+    h2 {
+      margin-top: 0;
     }
   </style>
 </head>
 
 <body>
-  <div class="weathered-badge">
-    <div class="badge-content">
-      <h1>VINTAGE</h1>
-      <p>Est. 1924</p>
-      <p>Certified Quality</p>
+  <div class="weathered-container checkerboard-card">
+    <div class="weathered-bg checkerboard-bg"></div>
+    <div class="content">
+      <h2>Geometric Pattern</h2>
+      <p>This demo applies a checkerboard CSS gradient mask to the background layer.</p>
+    </div>
+  </div>
+
+  <div class="weathered-container grunge-card">
+    <div class="weathered-bg grunge-bg"></div>
+    <div class="content">
+      <h2>Grunge Texture</h2>
+      <p>This demo applies an SVG grunge texture mask to the background layer.</p>
     </div>
   </div>
 </body>

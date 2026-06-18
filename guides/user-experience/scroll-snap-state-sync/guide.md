@@ -4,11 +4,6 @@ description: Synchronize navigation indicators, linked content panels, and analy
 web-feature-ids:
   - scroll-snap-events
   - scroll-snap
-sources:
-  - https://developer.chrome.com/blog/scroll-snap-events
-  - https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollsnapchange_event
-  - https://developer.mozilla.org/en-US/docs/Web/API/SnapEvent
-  - https://blog.logrocket.com/javascript-scroll-snap-events-scroll-triggered-animations/
 ---
 
 Synchronizing UI state with a scrollable container's snap position traditionally required complex scroll event listeners, manual calculations of scroll offsets, and intersection observers. The `scrollsnapchange` event provides a native, efficient way to detect when a scroller has settled on a new snap target, making it useful for synchronizing sidebars or highlighting the active section in a table of contents.
@@ -33,6 +28,16 @@ h2 {
 
 ### 2. Listen for Snap Changes
 Use the `scrollsnapchange` event on the scroll container to react when the user finishes scrolling and the browser snaps to a new element. In our TOC demo, we use this to highlight the active link in the sidebar.
+
+```html
+<!-- MANDATORY: Wrap table of contents links inside a proper navigation landmark -->
+<nav aria-label="Table of contents">
+  <ul>
+    <li><a href="#section-1" aria-current="location">Section 1</a></li>
+    <li><a href="#section-2">Section 2</a></li>
+  </ul>
+</nav>
+```
 
 ```javascript
 const main = document.getElementById('main');
@@ -61,7 +66,7 @@ In addition, be careful when using the `mandatory` value for `scroll-snap-type`,
 
 ## Fallback strategies
 
-{{ BASELINE_STATUS("scroll-snap-events") }}
+{{ FEATURE_FALLBACKS("scroll-snap-events") }}
 
 If `scrollsnapchange` is not supported, use `IntersectionObserver` to detect which element is currently at the top of the scroller. Note this is different behavior than `scrollsnapchange`, as this will trigger while the scroll happens, rather than only when the scroll has settled.
 

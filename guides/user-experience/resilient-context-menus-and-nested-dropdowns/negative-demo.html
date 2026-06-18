@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resilient Action Panel</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 0;
+        background-color: #f6f8fa;
+        overflow: hidden;
+      }
+
+      .wrapper {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 1.5rem 2rem;
+        border: 2px dashed #d0d7de;
+        border-radius: 8px;
+        background: #ffffff;
+        cursor: grab;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        touch-action: none;
+      }
+
+      .wrapper:active {
+        cursor: grabbing;
+      }
+
+      .drag-hint {
+        font-size: 12px;
+        color: #768390;
+        user-select: none;
+        pointer-events: none;
+        min-inline-size: max-content;
+      }
+
+      .kebab-button-container {
+        position: relative;
+      }
+
+      .kebab-button {
+        background-color: #ffffff;
+        border: 1px solid #d0d7de;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        font-size: 24px;
+        line-height: 1;
+        padding: 4px 12px;
+        border-radius: 4px;
+        color: #333;
+        transition: background-color 0.2s;
+      }
+
+      .kebab-button:hover,
+      .kebab-button:focus-visible {
+        background-color: #e0e0e0;
+      }
+
+      .panel {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        padding: 8px 0;
+        border: 1px solid #d0d7de;
+        border-radius: 8px;
+        background-color: white;
+        box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+        min-width: 160px;
+        z-index: 1000;
+      }
+
+      .panel.show {
+        display: block;
+      }
+
+      .has-subpanel {
+        position: relative;
+      }
+
+      .subpanel {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 100%;
+        padding: 8px 0;
+        border: 1px solid #d0d7de;
+        border-radius: 8px;
+        background-color: white;
+        box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+        min-width: 140px;
+        z-index: 1001;
+      }
+
+      .subpanel.show {
+        display: block;
+      }
+
+      .action-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        text-align: left;
+        padding: 8px 16px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #24292f;
+      }
+
+      .action-item:hover,
+      .action-item:focus-visible {
+        background-color: #f3f4f6;
+      }
+
+      .action-item::after {
+        content: "›";
+        font-size: 18px;
+        color: #768390;
+        display: none;
+      }
+
+      .has-subpanel > .action-item::after {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <span class="drag-hint">Drag me near the edges!</span>
+      <div class="kebab-button-container">
+        <button
+          id="trigger-btn"
+          class="kebab-button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-label="Open action panel"
+        >
+          &#8942;
+        </button>
+        <div id="action-panel" class="panel" role="menu">
+          <button class="action-item" role="menuitem" type="button">Edit</button>
+          <div class="has-subpanel">
+            <button
+              id="subpanel-trigger-btn"
+              class="action-item"
+              role="menuitem"
+              aria-haspopup="true"
+              aria-expanded="false"
+              type="button"
+            >
+              Share
+            </button>
+            <div id="subpanel-options" class="subpanel" role="menu">
+              <button class="action-item" role="menuitem" type="button">Copy Link</button>
+              <button class="action-item" role="menuitem" type="button">Email</button>
+            </div>
+          </div>
+          <button class="action-item" role="menuitem" type="button">Duplicate</button>
+          <button class="action-item" role="menuitem" type="button" style="color: #cf222e">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const wrapper = document.querySelector(".wrapper");
+      let isDragging = false;
+      let startX, startY, startLeft, startTop;
+
+      wrapper.addEventListener("pointerdown", (e) => {
+        if (e.target.closest(".kebab-button") || e.target.closest(".panel")) return;
+
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        const rect = wrapper.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+
+        wrapper.style.transform = "none";
+        wrapper.style.left = `${startLeft}px`;
+        wrapper.style.top = `${startTop}px`;
+
+        wrapper.setPointerCapture(e.pointerId);
+      });
+
+      wrapper.addEventListener("pointermove", (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        wrapper.style.left = `${startLeft + dx}px`;
+        wrapper.style.top = `${startTop + dy}px`;
+      });
+
+      wrapper.addEventListener("pointerup", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        wrapper.releasePointerCapture(e.pointerId);
+      });
+
+      const triggerBtn = document.getElementById("trigger-btn");
+      const actionPanel = document.getElementById("action-panel");
+      const subpanelTriggerBtn = document.getElementById("subpanel-trigger-btn");
+      const subpanelOptions = document.getElementById("subpanel-options");
+
+      triggerBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isExpanded = triggerBtn.getAttribute("aria-expanded") === "true";
+        triggerBtn.setAttribute("aria-expanded", !isExpanded);
+        actionPanel.classList.toggle("show");
+        if (isExpanded) {
+          subpanelTriggerBtn.setAttribute("aria-expanded", "false");
+          subpanelOptions.classList.remove("show");
+        }
+      });
+
+      subpanelTriggerBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isExpanded = subpanelTriggerBtn.getAttribute("aria-expanded") === "true";
+        subpanelTriggerBtn.setAttribute("aria-expanded", !isExpanded);
+        subpanelOptions.classList.toggle("show");
+      });
+
+      document.addEventListener("click", () => {
+        triggerBtn.setAttribute("aria-expanded", "false");
+        subpanelTriggerBtn.setAttribute("aria-expanded", "false");
+        actionPanel.classList.remove("show");
+        subpanelOptions.classList.remove("show");
+      });
+    </script>
+  </body>
+</html>

@@ -41,6 +41,11 @@ test.describe(`content-based-styling Expectations: ${demoName}`, () => {
     }
   });
 
+  test('Standalone component examples must document or assume a complete heading hierarchy outline', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/Assume an <h1>|<h1>/i.test(html)).toBe(true);
+  });
+
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {

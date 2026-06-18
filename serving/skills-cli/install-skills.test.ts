@@ -38,28 +38,36 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
             env: { ...process.env, HOME: homeDir, DISABLE_TELEMETRY: '1' }
         });
 
-        if (fs.existsSync(geminiBin)) {
-            console.log(`\nVerifying Gemini can use the added skill...`);
-            const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
-            const output = execSync(promptCmd, { 
-                stdio: ['ignore', 'pipe', 'pipe'], 
-                timeout: 90000,
-                env: { ...process.env, HOME: homeDir }
-            });
-
-            console.log(`\nVerifying Gemini used the skill...`);
-            const outputStr = output.toString();
-            const { skillActivated, searchCalled, retrieveCalled } = parseGeminiStreamOutput(outputStr);
-            
-            console.log(`\n[Validation State]`);
-            console.log(`- Skill Activated: ${skillActivated}`);
-            console.log(`- Search Called: ${searchCalled}`);
-            console.log(`- Retrieve Called: ${retrieveCalled}\n`);
-            
-            assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
-            assert.ok(searchCalled, 'Modern web search should be called');
-            assert.ok(retrieveCalled, 'Modern web retrieve should be called');
+        if (!fs.existsSync(geminiBin)) {
+            return;
         }
+
+        const hasGeminiAuth = process.env.GEMINI_API_KEY;
+        if (!hasGeminiAuth) {
+            console.log(`Skipping Gemini prompt verification because no Gemini API auth environment variables are set.`);
+            return;
+        }
+
+        console.log(`\nVerifying Gemini can use the added skill...`);
+        const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
+        const output = execSync(promptCmd, {
+            stdio: ['ignore', 'pipe', 'pipe'],
+            timeout: 90000,
+            env: { ...process.env, HOME: homeDir }
+        });
+
+        console.log(`\nVerifying Gemini used the skill...`);
+        const outputStr = output.toString();
+        const { skillActivated, searchCalled, retrieveCalled } = parseGeminiStreamOutput(outputStr);
+
+        console.log(`\n[Validation State]`);
+        console.log(`- Skill Activated: ${skillActivated}`);
+        console.log(`- Search Called: ${searchCalled}`);
+        console.log(`- Retrieve Called: ${retrieveCalled}\n`);
+
+        assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
+        assert.ok(searchCalled, 'Modern web search should be called');
+        assert.ok(retrieveCalled, 'Modern web retrieve should be called');
         
     } finally {
         if (homeDir) {

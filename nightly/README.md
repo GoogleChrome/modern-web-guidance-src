@@ -24,6 +24,7 @@ By default, it sets the schedule to 2:00 AM (`0 2 * * *`) and runs all 3 agents 
 
 You can customize the schedule and the agents to run using flags:
 *   `--schedule SCHEDULE`: Specify a custom cron schedule (must be quoted).
+*   `--prefix PREFIX`: Specify a custom prefix for this periodic run (default: "nightly") (optional).
 *   `--agents AGENTS`: Specify a space-separated list of agents to run (must be quoted).
 *   `--workers WORKERS`: The number of concurrent workers to use (optional).
 
@@ -31,6 +32,12 @@ For example, to run only `jetski_cli` and `claude_code` at 3:30 AM with 20 worke
 
 ```bash
 ./setup_cron.sh --schedule "30 3 * * *" --agents "jetski_cli claude_code" --workers 20
+```
+
+Or, to setup the cron job to run once a week on **Sunday night at 10:00 PM** (using prefix `"weekly"`):
+
+```bash
+./setup_cron.sh --schedule "0 22 * * 0" --prefix "weekly"
 ```
 
 To modify or remove the cron job later, run `crontab -e`.

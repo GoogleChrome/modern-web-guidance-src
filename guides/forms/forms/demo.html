@@ -306,6 +306,11 @@
       box-sizing: border-box;
     }
 
+    /* Accessible name stays constant; swap the icon to communicate state visually. */
+    .password-toggle .icon-eye-off { display: none; }
+    .password-toggle[aria-pressed="true"] .icon-eye { display: none; }
+    .password-toggle[aria-pressed="true"] .icon-eye-off { display: inline; }
+
     /* Datalist */
     .datalist-wrapper {
       position: relative;
@@ -402,7 +407,11 @@
           <div class="form-group password-wrapper">
             <label for="password">Password <span class="required-indicator" aria-hidden="true">*</span></label>
             <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8" aria-required="true" aria-describedby="passwordHint">
-            <button type="button" id="togglePassword" class="password-toggle" aria-label="Show password">Show</button>
+            <button type="button" id="togglePassword" class="password-toggle" aria-pressed="false" aria-label="Show password" aria-describedby="toggleWarning">
+              <svg class="icon-eye" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="icon-eye-off" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.77 19.77 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.86 19.86 0 0 1-3.17 4.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+            <span id="toggleWarning" class="visually-hidden">Warning: this will display your password on the screen.</span>
             <span id="passwordHint" class="hint">Must be at least 8 characters long.</span>
             <span id="passwordError" class="error-message" role="alert"></span>
           </div>
@@ -595,10 +604,9 @@
     const passwordInput = document.getElementById('password');
     
     togglePassword.addEventListener('click', () => {
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
-      togglePassword.textContent = type === 'password' ? 'Show' : 'Hide';
-      togglePassword.setAttribute('aria-label', type === 'password' ? 'Show password' : 'Hide password');
+      const isPassword = passwordInput.getAttribute('type') === 'password';
+      passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+      togglePassword.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
     });
     
     // Validation Logic

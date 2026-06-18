@@ -3,11 +3,6 @@ name: scrollability-affordance-hints
 description: Build scroll-shadow overlays, gradient fades, or directional arrow indicators that appear only when there's actually more content to scroll to in that direction.
 web-feature-ids:
   - container-scroll-state-queries
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Conditional_rules/Container_scroll-state_queries
-  - https://developer.chrome.com/blog/css-scroll-state-queries
-  - https://css-tricks.com/scrollytelling-on-steroids-with-scroll-state-queries/
-  - https://una.im/scroll-state-scrolled
 ---
 
 ## Overview

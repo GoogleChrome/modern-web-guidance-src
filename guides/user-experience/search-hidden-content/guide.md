@@ -44,26 +44,26 @@ If you need to use `hidden="until-found"` instead, follow these instructions:
 </details>
 ```
 
-#### Mutually exclusive content (e.g. tabs)
+#### Mutually exclusive disclosures
 
-When handling mutually exclusive regions, like tabs, use the native HTML `<details>` element with a shared `name` attribute.
+When handling mutually exclusive content regions, like an exclusive accordion, use the native HTML `<details>` element with a shared `name` attribute.
 
 ```html
-<div class="tab-container">
-  <!-- The name attribute creates an exclusive accordion/tab group -->
-  <details class="tab" name="my-tabs">
-    <summary>Tab 1 (closed)</summary>
-    <p>Tab 1 content</p>
+<div class="accordion-group">
+  <!-- The name attribute creates an exclusive disclosure group -->
+  <details class="disclosure" name="my-accordion">
+    <summary>Section 1</summary>
+    <p>Section 1 content</p>
   </details>
 
-  <details class="tab" name="my-tabs" open>
-    <summary>Tab 2 (open)</summary>
-    <p>Tab 2 content</p>
+  <details class="disclosure" name="my-accordion" open>
+    <summary>Section 2</summary>
+    <p>Section 2 content</p>
   </details>
 
-  <details class="tab" name="my-tabs">
-    <summary>Tab 3 (closed)</summary>
-    <p>Tab 3 content</p>
+  <details class="disclosure" name="my-accordion">
+    <summary>Section 3</summary>
+    <p>Section 3 content</p>
   </details>
 </div>
 ```
@@ -77,33 +77,40 @@ When handling mutually exclusive regions, like tabs, use the native HTML `<detai
 </div>
 ```
 
-#### Mutually exclusive content (e.g. tabs)
+#### Custom mutually exclusive disclosures
 
-When handling mutually exclusive regions, like tabs, ensure only the matched tab becomes visible. Since the `beforematch` event bubbles, you can listen on a parent container to manage state before the browser reveals the matched content.
+When handling custom mutually exclusive regions controlled by external buttons, ensure only the matched panel remains visible. In the `beforematch` event handler, you MUST synchronize related ARIA states such as setting `aria-expanded="true"` on the controlling button.
 
 ```html
-<div class="tab-container">
-  <div class="tab">
-    <p>Tab 1 content (visible)</p>
+<div class="custom-accordion">
+  <div class="controls">
+    <button aria-expanded="true" aria-controls="panel-1" id="btn-1">Section 1</button>
+    <button aria-expanded="false" aria-controls="panel-2" id="btn-2">Section 2</button>
   </div>
 
-  <div class="tab" hidden="until-found">
-    <p>Tab 2 content (hidden)</p>
+  <div id="panel-1" class="panel">
+    <p>Section 1 content (visible)</p>
   </div>
 
-  <div class="tab" hidden="until-found">
-    <p>Tab 3 content (hidden)</p>
+  <div id="panel-2" class="panel" hidden="until-found">
+    <p>Section 2 content (hidden)</p>
   </div>
 </div>
 ```
 
 ```javascript
-const tabContainer = document.querySelector('.tab-container');
+const accordion = document.querySelector('.custom-accordion');
 
-tabContainer.addEventListener('beforematch', () => {
-  // Hide all tabs before the browser reveals the matched tab
-  tabContainer.querySelectorAll('.tab').forEach((tab) => {
-    tab.hidden = 'until-found';
+accordion.addEventListener('beforematch', (e) => {
+  // Hide all panels and synchronize button states before the browser reveals the matched panel
+  accordion.querySelectorAll('.panel').forEach((panel) => {
+    if (panel !== e.target) {
+      panel.hidden = 'until-found';
+    }
+  });
+  accordion.querySelectorAll('button').forEach((btn) => {
+    const controls = btn.getAttribute('aria-controls');
+    btn.setAttribute('aria-expanded', controls === e.target.id ? 'true' : 'false');
   });
 });
 ```
@@ -135,4 +142,4 @@ if (!('onbeforematch' in HTMLElement.prototype)) {
 }
 ```
 
-For mutually exclusive UI paradigms (like tabs where content shares the same visual region), the fallback should extract and display all content linearly below the main interactive area, using URL anchor fragments to allow users to navigate directly to the respective sections.
+For mutually exclusive UI paradigms (like custom exclusive panels where content shares the same visual region), the fallback should extract and display all content linearly below the main interactive area, using URL anchor fragments to allow users to navigate directly to the respective sections.

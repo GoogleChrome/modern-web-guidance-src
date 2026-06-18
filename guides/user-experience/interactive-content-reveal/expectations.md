@@ -10,3 +10,4 @@
 - For users who prefer reduced motion, the `--inner-size` and `--outer-size` transition must happen immediately, by setting `transition-duration: 0`. 
 - The `--inner-size` and `--outer-size` custom properties must have a non-zero transition duration on the revealed content element.
 - The `--mouse-x` and `--mouse-y` must not have a transition on the revealed content element.
+- The implementation MUST guarantee that underlying content remains fully persistent and independently keyboard-reachable by default, using the spotlight purely as an enhancement.

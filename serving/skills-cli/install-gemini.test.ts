@@ -29,6 +29,12 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
             env: { ...process.env, HOME: homeDir }
         });
 
+        const hasGeminiAuth = process.env.GEMINI_API_KEY;
+        if (!hasGeminiAuth) {
+            console.log(`Skipping Gemini prompt verification because no Gemini API auth environment variables are set.`);
+            return;
+        }
+
         console.log(`\nRunning Gemini prompt using the skill...`);
         const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
         const output = execSync(promptCmd, { 

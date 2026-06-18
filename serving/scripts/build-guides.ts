@@ -10,6 +10,7 @@ export interface StoreUseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount?: number;
   chunkContent?: string;
   vector?: number[];
   distance?: number;
@@ -17,6 +18,7 @@ export interface StoreUseCase {
 import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
 
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
+import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
@@ -28,6 +30,7 @@ interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount?: number;
 }
 
 export interface BuildOptions {
@@ -64,11 +67,25 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   };
 }
 
-async function computePipelineHash(guides: GuideInventory[], target: string, noChunking: boolean): Promise<string> {
+async function computePipelineHash(
+  guides: GuideInventory[],
+  target: string,
+  noChunking: boolean
+): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
 
-  hash.update(fs.readFileSync(import.meta.filename, "utf-8"));
+  const deps = [
+    import.meta.filename,
+    path.resolve(import.meta.dirname, "../lib/macros.ts"),
+    path.resolve(import.meta.dirname, "../lib/transformers-embedder.ts"),
+    path.resolve(import.meta.dirname, "../../lib/guide-validation.ts"),
+  ];
+
+  for (const dep of deps) {
+    hash.update(fs.readFileSync(dep, "utf-8"));
+  }
+
   hash.update(target);
   hash.update(noChunking.toString());
 
@@ -82,10 +99,20 @@ async function computePipelineHash(guides: GuideInventory[], target: string, noC
   return hash.digest("hex");
 }
 
-function evaluateCacheHit(paths: CachePaths, currentHash: string): boolean {
-  if (!fs.existsSync(paths.cachedTs) || !fs.existsSync(paths.cachedVectors) || !fs.existsSync(paths.cachedManifest)) {
+function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides: GuideInventory[]): boolean {
+  const cacheFiles = [paths.cachedTs, paths.cachedVectors, paths.cachedManifest, paths.cachedGuides];
+  if (cacheFiles.some(file => !fs.existsSync(file))) {
     return false;
   }
+
+  // Verify that all expected guide files are present in the cache
+  for (const inv of expectedGuides) {
+    const cachedFilePath = path.join(paths.cachedGuides, inv.category, `${inv.name}.md`);
+    if (!fs.existsSync(cachedFilePath)) {
+      return false;
+    }
+  }
+
   try {
     const manifest = JSON.parse(fs.readFileSync(paths.cachedManifest, "utf-8"));
     return manifest.hash === currentHash;
@@ -128,11 +155,14 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   BUILD_GUIDES_DIR = cachePaths.cachedGuides;
 
   // 2. Scan & Hash
-  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  let readyGuides = scanAllGuides().filter(inv => {
+    const excluded = config.monoskill.excludeFromBundling || [];
+    return inv.hasGuide && !excluded.includes(inv.category) && !excluded.includes(inv.name);
+  });
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
 
   // 3. Cache Evaluation
-  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash);
+  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides);
   if (isHit) {
     restoreFromCache(cachePaths, outputDir, TARGET);
     console.log("👌");
@@ -182,6 +212,7 @@ export interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+  tokenCount: number;
 }
 
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
@@ -249,12 +280,14 @@ async function processSingleGuideFile(
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
+  const tokenCount = await embedder.countTokens(processedMarkdown);
 
   useCases.push({
     id,
     description: data.description,
     category,
     featuresUsed,
+    tokenCount,
   });
 
   const chunks = IS_NO_CHUNKING
@@ -262,7 +295,7 @@ async function processSingleGuideFile(
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
   for (const chunk of chunks) {
-    const embeddingText = `${id} (${category})\n\n${chunk}`;
+    const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({
@@ -270,6 +303,7 @@ async function processSingleGuideFile(
       description: data.description,
       category,
       featuresUsed,
+      tokenCount,
       chunkContent: chunk,
       vector
     });

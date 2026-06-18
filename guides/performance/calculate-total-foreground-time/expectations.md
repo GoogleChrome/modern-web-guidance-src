@@ -1,3 +1,3 @@
-- The application requires that the total time the browser tab is visible (total foreground time) be measured across the life of the page.
+- The application wants to record the total time the page was visible (total foreground time) across the life of the page.
 - Total foreground time _must_ be measured using the `VisibilityStateEntry` API, which uses `PerformanceObserver`.
-- If a fallback is necessary, the application _must_ first check if `VisibilityStateEntry` API is available. If not, `performance.now()` can be used instead.
+- If a fallback is necessary, the application _must_ first check if `VisibilityStateEntry` API is available. If not, `performance.now()` can be used instead with the caveat that it will include background time in it's results.

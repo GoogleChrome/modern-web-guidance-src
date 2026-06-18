@@ -52,7 +52,7 @@ export function createIsolatedHome(prefix: string): string {
   const originalHome = process.env.HOME || process.cwd();
   copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
-  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/guidance/pull/479
+  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/modern-web-guidance-src/pull/479
   try {
     const geminiDir = path.join(tempHome, '.gemini');
     fs.mkdirSync(geminiDir, { recursive: true });
@@ -525,9 +525,10 @@ export async function runCliAgentCommand(
   targetDir: string,
   agentName: string
 ): Promise<void> {
+  const sanitizedEnv = { ...process.env, PWD: workDir };
   const child = spawn(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
     stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
   });
 
@@ -584,6 +585,20 @@ export async function runCliAgentCommand(
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
     
+    // Save generation failure info so results collector registers early failure
+    try {
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      fs.writeFileSync(failureFile, JSON.stringify({
+        agentName,
+        exitCode: -1,
+        stderr: stderrData || err.message || String(err),
+        stdout: stdoutData
+      }, null, 2));
+      console.log(`Saved generation failure info to: ${failureFile}`);
+    } catch (writeErr) {
+      console.error(`Failed to write generation_failed.json:`, writeErr);
+    }
+
     // Fallback: Save whatever we have to agent_stderr.log even if it failed
     const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
     let fallbackContent = `Execution failed: ${err.message || err}\n`;

@@ -3,8 +3,6 @@ name: agentic-forms
 description: Expose client-side functionality as tools to AI agents by annotating standard HTML forms with WebMCP attributes.
 web-feature-ids:
   - declarative-webmcp
-sources:
-  - https://webmachinelearning.github.io/webmcp/
 ---
 
 The Declarative API transforms standard HTML `<form>` elements into WebMCP tools via attributes. The browser synthesizes a JSON Schema from the form inputs and handles agent interactions.

@@ -66,3 +66,22 @@ export function setupIsolatedWorkDir(prefix: string): string {
 export function escapeLeftAngleBracket(text: string): string {
   return text.replaceAll('<', '&lt;');
 }
+
+export interface PassRates {
+  unguided: string;
+  guided: string;
+}
+
+export function parsePassRates(output: string): PassRates | null {
+  const unguidedMatch = output.match(
+    /Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/,
+  );
+  const guidedMatch = output.match(
+    /Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/,
+  );
+
+  if (unguidedMatch && guidedMatch) {
+    return {unguided: unguidedMatch[1], guided: guidedMatch[1]};
+  }
+  return null;
+}

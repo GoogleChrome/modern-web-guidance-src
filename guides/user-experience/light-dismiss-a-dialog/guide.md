@@ -3,12 +3,6 @@ name: light-dismiss-a-dialog
 description: Create a modal dialog that can be closed via light dismiss (i.e. clicking or tapping outside of the dialog)
 web-feature-ids:
   - dialog-closedby
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/closedBy
-  - https://web-platform-dx.github.io/web-features-explorer/features/dialog-closedby/
-  - https://html.spec.whatwg.org/multipage/interactive-elements.html#dom-dialog-closedby
-  - https://chromestatus.com/feature/5196420352540672
-  - https://github.com/GoogleChrome/dialog-polyfill
 ---
 
 Modern modal dialogs often support "light-dismiss," allowing users to close a dialog by clicking or tapping the backdrop (the area outside the dialog). The `closedby` attribute provides a declarative way to enable this behavior without custom JavaScript.

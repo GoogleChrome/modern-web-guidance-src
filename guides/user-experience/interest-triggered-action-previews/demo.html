@@ -81,7 +81,9 @@
       const previewBox = document.getElementById('preview-box');
       let appliedColor = '';
 
-      // The 'interest' event fires on the target element
+      // The 'interest' event fires on the target element.
+      // Note: we intentionally do NOT broadcast preview state to a live region —
+      // interest can fire on every passing hover/focus, which would create noise.
       previewBox.addEventListener('interest', (e) => {
         // e.source is the element that triggered the interest
         previewBox.style.backgroundColor = e.source.dataset.color;

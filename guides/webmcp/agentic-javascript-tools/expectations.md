@@ -1,5 +1,5 @@
-- The code checks for `modelContext` in `navigator` before registering a tool.
-- `navigator.modelContext.registerTool` is called with a tool definition object.
+- The code checks for `modelContext` in `document` before registering a tool.
+- `document.modelContext.registerTool` is called with a tool definition object.
 - The tool definition includes a `name`, `description`, `inputSchema`, and `execute`.
 - The `inputSchema` is a valid JSON Schema object with property descriptions.
 - An `AbortController` is created and its signal is passed to `registerTool`.

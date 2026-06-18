@@ -374,4 +374,9 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     expect(halfOpacity).toBeLessThan(initialOpacity);
   });
 
+  test('Any inline decorative SVG icons inside the trigger button must explicitly define aria-hidden="true"', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/<svg[^>]*aria-hidden=["']true["']/i.test(html)).toBe(true);
+  });
+
 });

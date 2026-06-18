@@ -243,8 +243,9 @@ Check for any existing conventions around naming and levels before inventing you
 - Use `color-scheme: light dark` on `:root` to enable dark mode support that automatically adapts to the system setting. You can also specify `color-scheme` on individual elements to force a different value for that subtree (`light`/`dark` or `light dark` for the system default)
 - Use `light-dark()` to provide alternatives that automatically resolve based on the element's `color-scheme`.
 Typically this happens in Tier 2 or Tier 3 tokens.
-- IMPORTANT: When using `light-dark()` on an inherited `<color>` property, it will resolve to a specific color based on that element's `color-scheme` and inherit as that resolved color, not as a `light-dark()` value. It will NOT adapt to any descendant-specific `color-scheme` overrides. To keep `light-dark()` color tokens dynamic resolve them as late as possible by only passing them around as unregistered custom properties.
+- IMPORTANT: When using `light-dark()` on an inherited `<color>` property, it will resolve to a specific color based on that element's `color-scheme` and inherit as that resolved color, not as a `light-dark()` value. It will NOT adapt to any descendant-specific `color-scheme` overrides. To keep `light-dark()` color tokens dynamic resolve them as late as possible by only passing them around as unregistered custom properties and avoid relying on inherited color values across `color-scheme` boundaries.
 
+See {{ GUIDE_REF("dark-mode") }} for tips & best practices on supporting dark mode switching and {{ GUIDE_REF("component-specific-light-dark-theme") }} for more on applying different `color-scheme` modes than the page-wide setting on certain elements.
 
 ### Forced Colors Mode
 
@@ -432,7 +433,7 @@ Simple pie chart:
 }
 ```
 
-**Important:** When using gradients to render charts, ensure there is a textual fallback for screen readers.
+**Important:** When using gradients to render charts, ensure there is a textual fallback for screen readers. MANDATORY: You MUST provide a semantic data table as an accessible alternative, as detailed in {{ GUIDE_REF("accessibility") }} under the alternate text and media guidelines.
 
 ## 9. Transitions & animations
 
@@ -447,6 +448,7 @@ Rendering performance is critical for smooth user experiences, especially in hea
 - Prefer to animate `opacity` and `transform` (including individual transform properties, e.g. `translate` instead of `left/right/top/bottom`) to ensure animations stay on the compositor thread.
 - Use `transition-behavior: allow-discrete` + `@starting-style` to animate layout properties like `display` or `<dialog>` state natively.
 - Always pair `content-visibility` with `contain-intrinsic-size` to prevent scrollbar jumps (CLS).
+- When setting `contain-intrinsic-size` use the `auto` keyword and a value that’s derived from what is known about the contents (i.e. text size, spacing, size of graphics, character count). Preferably use units such as `rem`, `lh`, `cap`, or `ch` that match values used for the elements within the contents rather than `px`. If the content for items in a group is not consistently sized, then use an average size.
 - Use `contain: layout style paint` to isolate component rendering updates.
 
 #### Code Example: Render Optimization
@@ -454,7 +456,19 @@ Rendering performance is critical for smooth user experiences, especially in hea
 ```css
 .large-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 800px;
+  contain-intrinsic-block-size: auto 800px;
+}
+
+.row {
+  --row-gap: .4rem;
+  --title-height: 1lh;
+  --description-height: 0.85lh;
+
+  display: grid;
+  row-gap: var(--row-gap);
+  content-visibility: auto;
+  /* The sum of the title height, row gap, and description height should be the size of the contents when skipped for rendering. */
+  contain-intrinsic-block-size: auto calc(var(--title-height) + var(--row-gap) + var(--description-height));
 }
 
 .popover-reveal {

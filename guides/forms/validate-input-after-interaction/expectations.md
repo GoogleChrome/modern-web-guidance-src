@@ -4,3 +4,6 @@
 - Submitting the form with an empty required field MUST trigger the error state.
 - DO NOT assert the presence of a Password field, complexity lists, or specific labels unless explicitly asked for by the test prompt.
 - If "Force Fallback Mode" is active via a checkbox, the behavior across elements MUST be identical using the `.user-invalid-fallback` class.
+- Input format hints and password complexity rules MUST be positioned above the input element in the markup to prevent obstruction by mobile keyboards.
+- The `placeholder` attribute MUST NOT be used to communicate format constraints or examples.
+- Visual error feedback MUST incorporate multiple state indicators (e.g. an icon alongside border color changes) to avoid color-only communication.

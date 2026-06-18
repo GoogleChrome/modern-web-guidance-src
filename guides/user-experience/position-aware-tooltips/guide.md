@@ -4,11 +4,6 @@ description: Build tooltips and popovers with directional arrows (or other visua
 web-feature-ids:
   - container-anchor-position-queries
   - popover
-sources:
-  - https://developer.chrome.com/blog/anchored-container-queries
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Anchor_positioning/Anchored_container_queries
-  - https://oidaisdes.org/blog/anchored-container-queries/
-  - https://developer.mozilla.org/en-US/docs/Web/API/Popover_API
 ---
 
 When building tooltips or popovers with CSS Anchor Positioning, the browser can automatically "flip" the element to a fallback position if it would otherwise overflow the viewport. When this happens, you may want to adjust the style of the positioned content, for instance to reposition an arrow that points from the positioned content to the anchor.
@@ -28,7 +23,7 @@ By setting `container-type: anchored` on your positioned element, you turn it in
 Use the Popover API to create a tooltip. This creates an implicit anchor connection that can be used for positioning.
 
 ```html
-<button popovertarget="tooltip" id="anchor">anchor</button>
+<button popovertarget="tooltip" id="anchor" aria-describedby="tooltip">anchor</button>
 <div id="tooltip" popover role="tooltip"></div>
 ```
 

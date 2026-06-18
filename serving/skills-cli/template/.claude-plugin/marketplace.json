@@ -7,7 +7,7 @@
     {
       "name": "modern-web-guidance",
       "source": "./",
-      "description": "Google Chrome's agent skills collection",
+      "description": "Keep your coding agent up to date with the latest web best practices",
       "version": "0.0.26"
     }
   ]

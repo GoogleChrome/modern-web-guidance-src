@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Typography and Layout Demo</title>
+  <style>
+    * {
+      text-wrap: balance;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      max-width: 80ch;
+      margin: 0 auto;
+      text-wrap: balance;
+    }
+
+    h1, h2 {
+      text-wrap: wrap;
+    }
+
+    p, blockquote {
+      text-wrap: balance;
+      margin-bottom: 1.5em;
+    }
+
+    blockquote {
+      border-left: 4px solid #ccc;
+      padding-left: 1rem;
+      font-style: italic;
+      color: #555;
+    }
+
+    .container {
+      width: 400px;
+      resize: horizontal;
+      overflow: auto;
+      border: 1px solid #333;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>A Very Long Heading That Needs To Be Balanced Across Multiple Lines</h1>
+    
+    <p>
+      The layout of text, particularly at the ends of lines and ends of paragraphs, can impact the legibility and aesthetic appeal of a page. CSS provides several text wrapping options that can improve specific use cases. Using advanced typography tools allows developers to build clean interfaces that scale beautifully.
+    </p>
+
+    <blockquote>
+      By enabling this feature, the browser evaluates the last few lines of text to ensure that the final line has a reasonable length, rather than leaving a single word alone. This creates a much more polished and professional look for articles, blog posts, and other long-form content.
+    </blockquote>
+
+    <p>
+      The result is improved legibility and a better overall user experience, as the text feels more stable and deliberately laid out regardless of the screen size or container width. When text wraps correctly, readers are less likely to experience eye fatigue, making long-form content far more engaging and easier to digest over extended reading sessions.
+    </p>
+  </div>
+</body>
+</html>

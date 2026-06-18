@@ -7,3 +7,4 @@
 - Elements with `view-transition-name` that contain text have `width: fit-content` applied to maintain a stable aspect ratio during transition.
 - The `::view-transition-old(hero)` and `::view-transition-new(hero)` pseudo-elements are styled with `height: 100%` to prevent stretching across different aspect ratios.
 - All view transition animations are disabled when `prefers-reduced-motion: reduce` is active.
+- Programmatic focus MUST be shifted to the newly revealed main heading or active view container after the view transition completes to prevent focus abandonment.

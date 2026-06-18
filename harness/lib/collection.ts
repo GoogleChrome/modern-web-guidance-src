@@ -168,10 +168,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
     try {
       console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
-      spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit' });
+      spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
 
       console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
-      spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit' });
+      spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
     } finally {
       if (fs.existsSync(pnpmWorkspacePath)) {
         fs.unlinkSync(pnpmWorkspacePath);

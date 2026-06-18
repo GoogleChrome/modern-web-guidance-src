@@ -19,7 +19,7 @@ function assertSearchResults(output: string) {
     const topResult = results[0];
     assert.ok(topResult.id, 'Top result should have an id');
     assert.ok(topResult.description, 'Top result should have a description');
-    assert.ok(topResult.distance, 'Top result should have a distance');
+    assert.ok(topResult.similarity, 'Top result should have a similarity');
 }
 
 test('copySkills sets up the isolated environment with the skill and its data', async () => {

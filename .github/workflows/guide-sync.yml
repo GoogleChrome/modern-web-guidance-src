@@ -36,7 +36,7 @@ jobs:
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6.3.0
+        uses: actions/setup-node@v6.4.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -45,6 +45,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate GitHub App token
+        if: ${{ vars.GH_APP_ID != '' }}
         uses: actions/create-github-app-token@v2
         id: app-token
         with:

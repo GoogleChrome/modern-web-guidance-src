@@ -39,12 +39,9 @@ name: slugified-use-case-name
 description: <do thing> <with feature> (e.g., "Create dynamic color systems using modern color syntax")
 web-feature-ids:
   - webstatus-feature-id
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/Feature
 ---
 ```
 * **web-features**: Must be a list of accurate IDs found via webstatus.dev. Include ALL features referenced in the guide body, not just the primary one. If an ID is missing, inform the USER.
-* **sources**: Must be a list of ALL reference URLs used to synthesize the document. Add any URL referenced in the guide's research or inline links here.
 
 ### 2. Tone and Formatting
 * **Formatting Directives:** Use strict imperative directives (`MANDATORY:`, `DO`, `DO NOT`) only when emphasis is strictly needed (e.g., for critical constraints, security, or common pitfalls). Do not overuse them for every single instruction. Coding agents respond best to rigid constraints when they are selectively applied.

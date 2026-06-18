@@ -4,10 +4,6 @@ description: Enhance scrollbar visibility for users who prefer high-contrast int
 web-feature-ids:
   - scrollbar-color
   - prefers-contrast
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-color
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-contrast
-  - https://developer.chrome.com/en/docs/css-ui/scrollbar-styling
 ---
 
 # Adapt scrollbar to high-contrast preferences

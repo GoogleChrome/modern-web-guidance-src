@@ -3,10 +3,6 @@ name: stabilize-reactive-state
 description: Manage task deadlines or schedules in data-driven views without unexpected side effects from shared mutable state.
 web-feature-ids:
   - temporal
-sources:
-  - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
-  - https://tc39.es/proposal-temporal/docs/
-  - https://www.w3schools.com/js/js_temporal.asp
 ---
 
 # Stabilize Reactive State with Temporal

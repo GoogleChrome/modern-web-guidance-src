@@ -4,15 +4,6 @@ description: Identify slow running JavaScript that is impacting INP metric
 web-feature-ids:
   - long-animation-frames
   - event-timing
-sources:
-  - https://web.dev/articles/inp
-  - https://web.dev/articles/find-slow-interactions-in-the-field
-  - https://developer.chrome.com/docs/web-platform/long-animation-frames
-  - https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing
-  - https://www.speedcurve.com/blog/guide-long-animation-frames-loaf/
-  - https://www.debugbear.com/blog/long-animation-frames
-  - https://requestmetrics.com/web-performance/long-animation-frame-loaf/
-  - https://github.com/GoogleChrome/web-vitals
 ---
 
 # Identify causes of poor INP
