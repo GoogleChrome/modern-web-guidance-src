@@ -1,11 +1,11 @@
 ---
-name: declarative-button-actions
+name: custom-button-actions
 description: Declaratively connect a button to any element to trigger custom, application-specific actions using declarative button commands, invoker commands, button commands, custom commands, or declarative toggle actions.
 web-feature-ids:
   - invoker-commands
 ---
 
-# Declarative Button Actions
+# Custom Button Actions
 The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
 
 ## Implementation steps
