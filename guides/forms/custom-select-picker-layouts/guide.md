@@ -20,10 +20,12 @@ This is ideal for color pickers, emoji selectors, or product variants where a ri
 Apply `appearance: base-select` to both the `<select>` element and its internal picker pseudo-element `select::picker(select)`:
 
 ```css
-select.grid-picker,
-select.grid-picker::picker(select) {
-  appearance: base-select;
+select.grid-picker {
+  &, &::picker(select) {
+    appearance: base-select;
+  }
 }
+
 ```
 
 ### 2. Style the Picker Container
@@ -34,12 +36,12 @@ Define columns and gaps as you would for any container.
 ```css
 select.grid-picker:open::picker(select) {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 2 columns */
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
 }
 ```
 
-IMPORTANT: The `:open` is necessary. If you style `select::picker(select)`, it will make the picker visible when the select is closed!
+IMPORTANT: The `:open` is necessary. If you style `select::picker(select)`, it will make the picker visible even when the select is closed!
 
 ### 3. Style the Options
 
