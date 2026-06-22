@@ -229,6 +229,9 @@ window.__featuresMapping = {
   "context-sensitive-sticky-headers": [
     "container-scroll-state-queries"
   ],
+  "contrast-color": [
+    "contrast-color"
+  ],
   "coordinate-global-events": [
     "temporal"
   ],
