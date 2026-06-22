@@ -46,6 +46,12 @@
       background: #0056b3;
     }
 
+    button[aria-pressed="true"] {
+      color: #007bff;
+      background: white;
+      outline: 1px solid currentColor;
+    }
+
     .target {
       width: 150px;
       height: 150px;
@@ -61,19 +67,11 @@
     }
 
     .target.is-spun {
-      transform: rotate(180deg);
+      rotate: 180deg;
     }
 
     .target.is-grown {
-      transform: scale(1.25);
-    }
-    
-    .target.is-rounded {
-      border-radius: 50%;
-    }
-    
-    .target.is-spun.is-grown {
-      transform: rotate(180deg) scale(1.25);
+      scale: 1.25;
     }
 
     .actions {
@@ -132,8 +130,8 @@
         using the 'commandfor' attribute. They dispatch custom 
         commands (e.g. '--spin') to that element when clicked. 
       -->
-      <button commandfor="action-target" command="--spin" aria-expanded="false">Spin</button>
-      <button commandfor="action-target" command="--grow" aria-expanded="false">Grow</button>
+      <button commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
+      <button commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
       <button commandfor="action-target" command="--reset">Reset All</button>
     </div>
     
@@ -163,18 +161,18 @@
     const commandRegistry = {
       '--spin': (target, source) => {
         const isSpun = target.classList.toggle('is-spun');
-        // Manually sync ARIA states as the polyfill does not handle this automatically
-        source?.setAttribute('aria-expanded', isSpun);
+        // Set ARIA states, as custom commands have no inherent semantics.
+        source?.setAttribute('aria-pressed', isSpun);
       },
       '--grow': (target, source) => {
         const isGrown = target.classList.toggle('is-grown');
-        source?.setAttribute('aria-expanded', isGrown);
+        source?.setAttribute('aria-pressed', isGrown);
       },
       '--reset': (target) => {
         target.classList.remove('is-spun', 'is-grown');
         // Reset all associated buttons' ARIA states
         document.querySelectorAll(`button[commandfor="${target.id}"]`).forEach(btn => {
-          btn.setAttribute('aria-expanded', 'false');
+          btn.setAttribute('aria-pressed', 'false');
         });
       },
     };
@@ -218,16 +216,15 @@
     // 3. Unified listener for the command event on the target element.
     // This works identically whether triggered natively or via the polyfill.
     targetEl.addEventListener('command', (event) => {
-      // Robustly handle both native API (event.command) and polyfill (event.detail.command)
-      const command = event.command || event.detail?.command;
-      const target = event.currentTarget;
+      const command = event.command;
+      const target = event.target;
       const source = event.source; // event.source refers to the triggering button
       const action = commandRegistry[command];
 
       if (action) {
         action(target, source);
       }
-    }, { capture: true });
+    });
   </script>
 
 </body>

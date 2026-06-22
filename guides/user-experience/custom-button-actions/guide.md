@@ -6,13 +6,16 @@ web-feature-ids:
 ---
 
 # Custom Button Actions
-The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
+The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. 
+This approach reduces the need for manual event listeners and decouples the UI from implementation details.
+For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
 
 ## Implementation steps
 
 1.  **Define the target element**: Identify the element that will respond to the action. If it doesn’t have a unique `id`, add one.
 2.  **Configure the invoker button**: Use the `commandfor` attribute to point to the target's `id`, and the `command` attribute to specify the custom command name (prefixed with `--`).
 3.  **Handle the command event**: Attach a `command` event listener directly on the target element. The event object contains a `command` property and a `target` property (referring to the element identified by `commandfor`).
+4.  **Handle aria states**: Custom commands do not have inherent semantics, and you must handle states like `aria-pressed` or `aria-expanded`.
 
 ## Example: Custom Animation Controls
 
@@ -39,22 +42,36 @@ The Invoker Commands API allows buttons to trigger actions on target elements de
 <script>
   // 1. **Optional:** Define a registry of requested actions for cleaner logic
 const commandRegistry = {
-  '--spin': (target) => target.classList.toggle('is-spun'),
-  '--grow': (target) => target.classList.toggle('is-grown'),
-  '--reset': (target) => target.classList.remove('is-spun', 'is-grown'),
+  '--spin': (target, source) => {
+    const isSpun = target.classList.toggle('is-spun');
+    // Set ARIA states, as custom commands have no inherent semantics.
+    source?.setAttribute('aria-pressed', isSpun);
+  },
+  '--grow': (target, source) => {
+    const isGrown = target.classList.toggle('is-grown');
+    source?.setAttribute('aria-pressed', isGrown);
+  },
+  '--reset': (target) => {
+    target.classList.remove('is-spun', 'is-grown');
+    // Reset all associated buttons' ARIA states
+    document.querySelectorAll(`button[commandfor="${target.id}"]`).forEach(btn => {
+      btn.setAttribute('aria-pressed', 'false');
+    });
+  },
 };
 
   // 2. **Mandatory:** Listen for the 'command' event directly on the target element
   // (This is necessary because the native 'command' event does not bubble)
   document.getElementById('action-target').addEventListener('command', (event) => {
     const command = event.command;
-    const target = event.currentTarget;
+    const target = event.target;
+    const source = event.source; // event.source refers to the triggering button
     const action = commandRegistry[command];
 
     if (action) {
-      action(target);
+      action(target, source);
     }
-  }, {capture: true});
+  });
 </script>
 ```
 
@@ -62,6 +79,9 @@ const commandRegistry = {
 
 *   **Prefix custom commands**: MANDATORY: All custom command names must start with `--` (e.g., `command="--my-action"`).
 *   **Targeting**: The `commandfor` attribute must match the `id` of an element in the same document tree.
+*   **No bubbling**: The `command` event does not bubble. If there multiple possible targets, add `{ capture: true }` to the event handler and listen on an ancestor.
+*   **Shadow roots**: If the target may be in a shadow root, use `event.composedPath()[0]` instead of `event.target`.
+*   **Accessibility**: Custom commands have no inherent semantics, and you must explicitly apply any states.
 
 ## Fallback strategies
 
@@ -75,7 +95,7 @@ This polyfill fully supports custom actions (starting with `--`) and dispatches 
 
 For the best performance, you should only load the polyfill if the browser doesn't support the API natively. This saves bandwidth and reduces script execution time for users on modern browsers.
 
-**NOTE:** This polyfill does not manage ARIA states (like `aria-expanded`) for custom commands. You must manually synchronize these states in your event listener to ensure your site is accessible.
+**NOTE:** This polyfill does not manage ARIA states (like `aria-pressed` or `aria-expanded`) for custom commands. You must manually synchronize these states in your event listener to ensure your site is accessible.
 
 ```javascript
 // 1. Conditionally load the polyfill
@@ -94,17 +114,17 @@ if (!hasNativeSupport) {
 
 // 2. Manually manage ARIA states in your listener
 document.getElementById('action-target').addEventListener('command', (event) => {
-  const command = event.command || event.detail?.command;
-  const target = event.currentTarget;
+  const command = event.command;
+  const target = event.target;
   const source = event.source; // The button that triggered the command
 
   if (command === '--spin') {
     const isSpun = target.classList.toggle('is-spun');
     
     // Polyfill tip: Manually update ARIA to match the new state
-    source?.setAttribute('aria-expanded', isSpun);
+    source?.setAttribute('aria-pressed', isSpun);
   }
-}, { capture: true });
+});
 ```
 
 ### Manual fallback (Traditional pattern)
@@ -132,7 +152,7 @@ if (!globalThis.CommandEvent) {
 
 // 3. The fallback: Dispatch events manually if native support is missing
   document.addEventListener('click', (event) => {
-    const button = event.target.closest('button[commandfor]');
+    const button = event.composedPath().find((el) => el.matches?.("button[commandfor]"));
     if (!button) return;
 
     const target = document.getElementById(button.getAttribute('commandfor'));
@@ -148,12 +168,12 @@ if (!globalThis.CommandEvent) {
 
 // 4. **Mandatory:** Register the unified listener directly on the target element
 document.getElementById('action-target').addEventListener('command', (event) => {
-  const command = event.command || event.detail?.command;
-  const target = event.currentTarget;
+  const command = event.command;
+  const target = event.target;
   const action = commandRegistry[command];
 
   if (action) {
     action(target);
   }
- }, {capture: true});
+ });
 ```
