@@ -240,6 +240,9 @@ window.__featuresMapping = {
     "cross-document-view-transitions",
     "navigation"
   ],
+  "custom-button-actions": [
+    "invoker-commands"
+  ],
   "customize-scrollbar-color-and-thickness": [
     "scrollbar-color",
     "scrollbar-width"
@@ -249,9 +252,6 @@ window.__featuresMapping = {
     "prefers-color-scheme",
     "light-dark",
     "accent-color"
-  ],
-  "declarative-button-actions": [
-    "invoker-commands"
   ],
   "declarative-dialog-popover-control": [
     "invoker-commands",
