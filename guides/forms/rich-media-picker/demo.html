@@ -150,6 +150,15 @@
       display: none;
     }
 
+    /* Checked option state using multiple visual cues */
+    select.custom-select option:checked {
+      background-color: #3b82f6;
+      color: #ffffff;
+    }
+    select.custom-select option:checked .option-title {
+      font-weight: 700;
+    }
+
     select.custom-select option:hover,
     select.custom-select option:focus-visible {
       background-color: #1e293b;
@@ -202,6 +211,13 @@
       transform: translateY(-8px);
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      select.custom-select::picker(select),
+      .arrow {
+        transition: none !important;
+      }
+    }
+
     select.custom-select:open::picker(select) {
       opacity: 1;
       transform: translateY(0);
@@ -232,8 +248,8 @@
         <selectedcontent></selectedcontent>
       </button>
       <!-- Rich options -->
-      <option value="frontend">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      <option value="frontend" aria-label="Frontend Developer">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
           <line x1="8" y1="21" x2="16" y2="21"></line>
@@ -244,8 +260,8 @@
           <span class="option-desc">React, Vue, CSS</span>
         </div>
       </option>
-      <option value="backend">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      <option value="backend" aria-label="Backend Developer">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
         </svg>
@@ -254,8 +270,8 @@
           <span class="option-desc">Node.js, Python, Databases</span>
         </div>
       </option>
-      <option value="design">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      <option value="design" aria-label="UX/UI Designer">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
@@ -267,8 +283,8 @@
           <span class="option-desc">Figma, Prototyping</span>
         </div>
       </option>
-      <option value="devops">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      <option value="devops" aria-label="DevOps Engineer">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
           <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>

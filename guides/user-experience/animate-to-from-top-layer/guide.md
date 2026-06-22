@@ -8,13 +8,6 @@ web-feature-ids:
   - popover
   - starting-style
   - transition-behavior
-sources:
-  - https://web.dev/articles/baseline-in-action-dialog-popover
-  - https://web.dev/blog/baseline-entry-animations
-  - https://developer.chrome.com/blog/entry-exit-animations
-  - https://www.smashingmagazine.com/2025/01/transitioning-top-layer-entries-display-property-css/
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/@starting-style
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/overlay
 ---
 
 Elements that render in the "top layer" (like `<dialog>`, elements with the `popover` attribute, or tooltips) have historically been difficult to animate because they toggle between `display: none` and a visible state. Modern CSS provides `@starting-style`, `transition-behavior: allow-discrete`, and the `overlay` property to enable smooth entry and exit transitions for these elements. Note that native CSS nesting is used in the examples below.

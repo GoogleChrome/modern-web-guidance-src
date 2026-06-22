@@ -80,11 +80,16 @@
                 };
 
                 const observer = new ResizeObserver(([entry]) => {
-                    canvas.width = entry.devicePixelContentBoxSize[0].inlineSize;
-                    canvas.height = entry.devicePixelContentBoxSize[0].blockSize;
+                    const dpc = entry.devicePixelContentBoxSize;
+                    canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
+                    canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
                     canvas.requestPaint();
                 });
-                observer.observe(canvas, {box: 'device-pixel-content-box'});
+                const supportsDevicePixelContentBox = 
+                    typeof ResizeObserverEntry !== 'undefined' && 
+                    'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
+                const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
+                observer.observe(canvas, options);
             </script>
         </div>
 
@@ -157,11 +162,15 @@
                 }
 
                 const observer_manual = new ResizeObserver(([entry]) => {
-                    canvas_manual.width = entry.devicePixelContentBoxSize[0].inlineSize;
-                    canvas_manual.height = entry.devicePixelContentBoxSize[0].blockSize;
+                    const dpc = entry.devicePixelContentBoxSize;
+                    canvas_manual.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
+                    canvas_manual.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
                     drawManual();
                 });
-                observer_manual.observe(canvas_manual, {box: 'device-pixel-content-box'});
+                
+                const supportsDevicePixelContentBoxManual = typeof ResizeObserverEntry !== 'undefined' &&  'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
+                const optionsManual = supportsDevicePixelContentBoxManual ? { box: 'device-pixel-content-box' } : {};
+                observer_manual.observe(canvas_manual, optionsManual);
             </script>
         </div>
     </div>

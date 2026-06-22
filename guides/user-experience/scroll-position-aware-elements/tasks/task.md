@@ -1,0 +1,6 @@
+---
+base_app: daily-grind
+---
+- add a floating "back to top" button to the coffee shop page. make sure the page contents are wrapped in a scrollable container with the class name "scroller" that can scroll. the button itself should have the class name "back-to-top" and start out hidden when the user is at the very top of the page. when they scroll down, the button should smoothly transition (fade and slide in) into view. ensure the transition handles visibility so the button is completely removed from the tab navigation order when it's hidden.
+- can you make the coffee shop site easier to navigate by adding a floating button that helps users jump back to the header? make sure it looks nice, animates in only when needed, and doesn't clutter the page or mess up keyboard tab access when it's not visible.
+- implement a scroll-activated "back to top" link with the class "back-to-top" for the coffee shop. set up a dedicated scroll container with class "scroller" wrapping the main content so we can detect when the user has scrolled away from the very top. use smooth CSS transitions for opacity and visibility so it disappears from keyboard tab order when hidden, and slides up when it appears.

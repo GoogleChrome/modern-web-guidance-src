@@ -5,12 +5,6 @@ web-feature-ids:
   - invoker-commands
   - popover
   - dialog
-sources:
-  - https://developer.chrome.com/blog/command-and-commandfor
-  - https://developer.mozilla.org/en-US/docs/Web/API/Invoker_Commands_API
-  - https://open-ui.org/components/invokers.explainer/
-  - https://html.spec.whatwg.org/multipage/form-elements.html#attr-button-command
-  - https://css-tricks.com/invoker-commands-additional-ways-to-work-with-dialog-popover-and-more/
 ---
 
 # Overview
@@ -44,7 +38,7 @@ If you need to control opening and closing with separate buttons, you can use th
   Show Popover
 </button>
 
-<div id="my-explicit-popover" popover>
+<div id="my-explicit-popover" popover="manual">
   <p>This popover is explicitly opened and closed by separate buttons.</p>
 
   <!-- MANDATORY: Use 'hide-popover' to explicitly close the targeted popover. -->
@@ -85,9 +79,10 @@ Because Invoker Commands and Popovers are not yet universally supported, you MUS
 ### Polyfilling Invoker Commands
 
 MANDATORY: Feature detect support by checking for the `commandForElement` property on the `HTMLButtonElement` prototype. Do NOT check the window or document object. You MUST dynamically import the polyfill only when the native feature is missing. DO NOT unconditionally load the polyfill.
+Mandatory: Listen for the 'command' event directly on the target element because the native 'command' event does not bubble.
 
-**Option 1: Using a package manager (e.g., npm)**
-Install the polyfill in your project (`npm install invokers-polyfill`).
+**Option 1: Using a bundler**
+Install the polyfill via npm (`npm install invokers-polyfill`). This approach is for projects using a bundler (like Vite or Webpack) or import maps. For all other setups, use the CDN option below.
 
 ```javascript
 // MANDATORY: Feature detect 'commandForElement' on HTMLButtonElement.prototype.
@@ -97,23 +92,23 @@ if (!('commandForElement' in HTMLButtonElement.prototype)) {
 }
 ```
 
-**Option 2: Manual installation without npm**
-If you are not using a package manager, dynamically import the polyfill directly from a CDN (such as unpkg) inside a `<script type="module">`.
+**Option 2: Using a CDN**
+For projects without a bundler, dynamically import the polyfill directly from a CDN inside a `<script type="module">`.
 
 ```html
 <script type="module">
   // MANDATORY: Feature detect 'commandForElement' on HTMLButtonElement.prototype.
   // Conditionally load the invokers-polyfill from a CDN only in browsers lacking native support.
   if (!('commandForElement' in HTMLButtonElement.prototype)) {
-    import('https://unpkg.com/invokers-polyfill@latest/invoker.min.js');
+    import('https://esm.run/invokers-polyfill');
   }
 </script>
 ```
 
 **Invokers Polyfill Limitations**
-Unlike the native Invoker Commands API, `invokers-polyfill` does not automatically handle ARIA attributes (such as `aria-expanded`) on the command button.
+MANDATORY: This polyfill does not handle the ARIA states (e.g., `aria-expanded`) of the command button the way native browsers do. You are strongly encouraged to handle these states yourself to ensure your site is fully accessible.
 
-MANDATORY: You MUST manually manage these ARIA states to ensure your site remains fully accessible to screen readers in browsers relying on the polyfill.
+{{ INCLUDE("../declarative-button-actions/guide.md#fallback-strategies") }}
 
 ### Polyfilling the Popover Attribute
 
@@ -121,8 +116,8 @@ To support the `popover` attribute in older browsers, use the `@oddbird/popover-
 
 MANDATORY: Feature detect popover support by checking for the `popover` property on the `HTMLElement` prototype. Conditionally initialize the polyfill only if native support is missing.
 
-**Option 1: Using a package manager**
-Install the package (`npm install @oddbird/popover-polyfill`).
+**Option 1: Using a bundler**
+Install the package via npm (`npm install @oddbird/popover-polyfill`). This method requires a bundler or import maps to resolve the module path.
 
 ```javascript
 // MANDATORY: Feature detect 'popover' on HTMLElement.prototype.
@@ -133,8 +128,8 @@ if (!('popover' in HTMLElement.prototype)) {
 }
 ```
 
-**Option 2: Manual installation without npm**
-If you are not using a package manager, dynamically import the polyfill directly from a CDN (such as unpkg) inside a `<script type="module">`.
+**Option 2: Using a CDN**
+For projects without a bundler, dynamically import the polyfill directly from a CDN inside a `<script type="module">`.
 
 ```html
 <script type="module">

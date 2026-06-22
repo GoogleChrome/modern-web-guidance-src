@@ -58,6 +58,90 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
+.insight-dumbbell-cell {
+  width: 150px;
+  vertical-align: middle;
+}
+
+.insight-dumbbell-track {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  position: relative;
+  width: 130px;
+}
+
+.suite-dumbbell-track {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  position: relative;
+}
+
+.agent-badge {
+  margin-right: 4px;
+}
+.agent-badge.gemini {
+  color: #8B5CF6;
+}
+.agent-badge.openai {
+  color: #10A37F;
+}
+.agent-badge.claude {
+  color: #E06A3B;
+}
+
+.insight-dumbbell-track .dot,
+.suite-dumbbell-track .dot {
+  position: absolute;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.insight-dumbbell-track .dot.unguided,
+.suite-dumbbell-track .dot.unguided {
+  border: 1.5px solid #8b949e;
+  background: transparent;
+}
+
+.insight-dumbbell-track .dot.guided,
+.suite-dumbbell-track .dot.guided {
+  background: var(--color-primary);
+}
+
+.insight-dumbbell-track .connector,
+.suite-dumbbell-track .connector {
+  position: absolute;
+  background: var(--color-primary);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.insight-dumbbell-track .dot.unguided {
+  width: 4px;
+  height: 4px;
+}
+.insight-dumbbell-track .dot.guided {
+  width: 6px;
+  height: 6px;
+}
+.insight-dumbbell-track .connector {
+  height: 1.5px;
+}
+
+.suite-dumbbell-track .dot.unguided {
+  width: 6px;
+  height: 6px;
+}
+.suite-dumbbell-track .dot.guided {
+  width: 8px;
+  height: 8px;
+}
+.suite-dumbbell-track .connector {
+  height: 2px;
+}
+
 .suites-table {
   width: 100%;
   border-collapse: collapse;
@@ -76,9 +160,28 @@
   text-align: center;
 }
 
+.suite-table-row {
+  position: relative;
+}
+
 .suite-table-row:hover {
   background-color: var(--bg-tertiary);
   transition: background-color 0.2s;
+}
+
+.suite-table-row.faulty {
+  opacity: 0.2;
+}
+
+/* Stretched link: expands the clickable area of the first column's <a> tag to cover the entire row (<tr>). */
+.suite-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
 }
 
 .header-filter-select {
@@ -608,11 +711,11 @@
   position: fixed;
   z-index: 2000;
   max-width: 300px;
-  background: rgba(13, 17, 23, 0.95);
+  background: var(--card-bg);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   pointer-events: none;
   padding: 15px;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -628,6 +731,11 @@
   opacity: 1;
   transform: translateY(0);
   display: block;
+}
+
+#tooltip-chart {
+  max-height: 250px;
+  overflow: hidden;
 }
 
 .tooltip-title {

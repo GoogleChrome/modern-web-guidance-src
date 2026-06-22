@@ -3,10 +3,6 @@ name: scroll-entry-exit-effects
 description: Create fade-in, scale-up, or other complex reveal-type effects on elements as they enter and exit the scrollport (or viewport) while the user is scrolling.
 web-feature-ids:
   - scroll-driven-animations
-sources:
-  - https://developer.chrome.com/docs/css-ui/scroll-driven-animations
-  - https://scroll-driven-animations.style/demos/image-reveal/css/
-  - https://scroll-driven-animations.style/demos/contact-list/css/multiple-animations.html
 ---
 
 # Add entry and exit effects to elements as they enter or exit the scrollport
@@ -30,14 +26,14 @@ To add entry and exit effects to an element, you need to combine a few CSS prope
 
 2.  **Attach the entry and exit keyframes to the element.** You can do this by defining multiple animations in the `animation` property.
 
-    -   Give the entry animation a `animation-fill-mode` of `forwards` so that it maintains its final state after the animation is complete.
-    -   Give the exit animation a `animation-fill-mode` of `backwards` so that it doesn't affect the element before it starts.
+    -   Give the entry animation an `animation-fill-mode` of `backwards` so that it applies its initial state before the animation starts.
+    -   Give the exit animation an `animation-fill-mode` of `forwards` so that it maintains its final state after the animation is complete.
 
     ```css
     .animated-element {
       animation:
-        slide-in 1s linear forwards,
-        slide-out 1s linear backwards;
+        slide-in 1s linear backwards,
+        slide-out 1s linear forwards;
     }
     ```
 

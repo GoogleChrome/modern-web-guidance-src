@@ -1,0 +1,8 @@
+{
+  "name": "modern-web-guidance",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "modern-web-guidance": "modern-web.mjs"
+  }
+}

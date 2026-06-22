@@ -10,6 +10,7 @@ export class DumbbellChart {
       title: options.title || '',
       hideZeros: options.hideZeros || false,
       height: options.height || null,
+      maxHeight: options.maxHeight || null,
       hideSeparators: options.hideSeparators || false,
       hideLabels: options.hideLabels || false,
       ...options
@@ -32,7 +33,7 @@ export class DumbbellChart {
   }
 
   render(data) {
-    const offsetStep = 8;
+    let offsetStep = 8;
     this.init();
 
     const labels = data.labels || [];
@@ -90,22 +91,34 @@ export class DumbbellChart {
 
     const featureNames = Object.keys(groups).sort();
     
-    // Calculate total height dynamically based on the number of stacked dumbbells per feature
-    let totalHeight = this.options.margin.top;
+    // Calculate natural CONTENT height (excluding margins)
+    let naturalContentHeight = 0;
     featureNames.forEach(f => {
         const count = groups[f].length;
-        totalHeight += this.options.rowHeight + (count - 1) * offsetStep;
+        naturalContentHeight += this.options.rowHeight + (count - 1) * offsetStep;
     });
-    totalHeight += this.options.margin.bottom;
 
-    const height = totalHeight;
+    const verticalMargins = this.options.margin.top + this.options.margin.bottom;
+    let totalNaturalHeight = verticalMargins + naturalContentHeight;
+    let finalSvgHeight = totalNaturalHeight;
+
+    if (this.options.maxHeight && totalNaturalHeight > this.options.maxHeight && naturalContentHeight > 0) {
+        const availableContentHeight = this.options.maxHeight - verticalMargins;
+        const compressionFactor = availableContentHeight / naturalContentHeight;
+        this.options.rowHeight *= compressionFactor;
+        offsetStep *= compressionFactor;
+        finalSvgHeight = this.options.maxHeight;
+    }
+
+    // If an explicit height is passed (like dashboard), use it. Otherwise use our tightly bounded finalSvgHeight.
+    const height = this.options.height || finalSvgHeight;
 
     this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.svg.setAttribute("width", "100%");
-    this.svg.setAttribute("height", this.options.height || height);
+    this.svg.setAttribute("height", `${height}px`);
     this.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    // If fixed height is forced, we want it to stretch to fill it!
-    this.svg.setAttribute("preserveAspectRatio", this.options.height ? "none" : "xMidYMin meet");
+    // If we have a maxHeight constraint (like tooltip), use 'none' so it locks to width without downscaling. Otherwise use meet.
+    this.svg.setAttribute("preserveAspectRatio", (this.options.maxHeight || this.options.height) ? "none" : "xMidYMin meet");
     
     // Add Gradients in defs
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");

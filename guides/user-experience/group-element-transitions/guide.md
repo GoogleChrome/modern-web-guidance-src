@@ -4,10 +4,6 @@ description: Transition a group of similar elements simultaneously using the sam
 web-feature-ids:
   - view-transitions
   - view-transition-class
-sources:
-  - https://developer.chrome.com/blog/view-transitions-update-io24
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/view-transition-class
-  - https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-class
 ---
  
 As items are added or removed from a list, or rearranged, transitions can help users maintain context. View transitions provide a way to transition between two states of an element by giving the element a unique `view-transition-name`. When multiple elements on a page share the same transition behavior, `view-transition-class` allows you to define that logic once in CSS rather than repeating it for every unique `view-transition-name`. This keeps your stylesheets maintainable while ensuring consistent animations across a group of elements.

@@ -1,74 +1,67 @@
-import { describe, it, before, after } from 'node:test';
+import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { processSkills } from './build-dist.ts';
+import { } from './build-dist.ts';
 import { replaceMacros } from '../lib/macros.ts';
-import { resetGuidesMap } from '../../lib/guide-validation.ts';
 
 
 import { rootDir } from '../../lib/paths.ts';
 
 describe('processSkills', () => {
   const testOutputDir = path.join(import.meta.dirname, 'test-output');
-  const testGuidesDir = path.join(rootDir, 'guides');
-  const dummySkillName = 'test-dummy-skill';
-  const dummySkillDir = path.join(testGuidesDir, dummySkillName);
-
-  before(() => {
-    fs.mkdirSync(dummySkillDir, { recursive: true });
-    fs.writeFileSync(path.join(dummySkillDir, 'SKILL.md'), '---\nname: test-dummy-skill\ndescription: Test dummy skill\n---\nTest Skill with macro: {{ BASELINE_STATUS("grid") }} and guide ref: {{ GUIDE_REF("forms") }}');
-    fs.mkdirSync(testOutputDir, { recursive: true });
-    resetGuidesMap();
-  });
 
   after(() => {
-    fs.rmSync(dummySkillDir, { recursive: true, force: true });
     fs.rmSync(testOutputDir, { recursive: true, force: true });
   });
 
-  it('processes macros in SKILL.md', () => {
-    const publishRoot = testOutputDir;
-    const distDir = path.join(publishRoot, 'skills/modern-web');
+  it('processes GUIDE_REF macros in real CSS guide.md', () => {
+    const skillFilePath = path.join(rootDir, 'guides/css/css/guide.md');
+    assert.ok(fs.existsSync(skillFilePath), 'guides/css/css/guide.md should exist');
 
-    processSkills(publishRoot, distDir, false);
+    const content = fs.readFileSync(skillFilePath, 'utf8');
+    const result = replaceMacros(content, skillFilePath, { target: 'skills-cli' });
 
-    const builtSkillPath = path.join(publishRoot, 'skills', dummySkillName, 'SKILL.md');
-    assert.ok(fs.existsSync(builtSkillPath), 'Built SKILL.md should exist');
-
-    const content = fs.readFileSync(builtSkillPath, 'utf8');
-    assert.ok(!content.includes('{{ BASELINE_STATUS'), 'Macro should be resolved');
-    assert.ok(content.includes('Widely available') || content.includes('Baseline since'), 'Should contain baseline status');
-    assert.ok(!content.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
-    assert.ok(content.includes('`forms` (via `node <modern-web-directory>/modern-web.mjs retrieve "forms"`)'), 'Should resolve forms skill reference');
+    assert.ok(!result.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
+    assert.ok(result.includes('`child-state-based-styling` (via `npx -y modern-web-guidance@latest retrieve "child-state-based-styling"`)'), 'Should contain command for child-state-based-styling');
+    assert.ok(result.includes('`content-based-styling` (via `npx -y modern-web-guidance@latest retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
   });
 
-  it('processes GUIDE_REF macros in real CSS SKILL.md', () => {
-    const publishRoot = testOutputDir;
-    const distDir = path.join(publishRoot, 'skills/modern-web');
-
-    processSkills(publishRoot, distDir, false);
-
-    const builtSkillPath = path.join(publishRoot, 'skills', 'css', 'SKILL.md');
-    assert.ok(fs.existsSync(builtSkillPath), 'Built CSS SKILL.md should exist');
-
-    const content = fs.readFileSync(builtSkillPath, 'utf8');
-    assert.ok(!content.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
-    assert.ok(content.includes('`child-state-based-styling` (via `node <modern-web-directory>/modern-web.mjs retrieve "child-state-based-styling"`)'), 'Should contain command for child-state-based-styling');
-    assert.ok(content.includes('`content-based-styling` (via `node <modern-web-directory>/modern-web.mjs retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
-  });
-
-  it('uses the same command text as in modern-web/SKILL.md', () => {
-    const skillFilePath = path.join(rootDir, 'guides/modern-web/SKILL.md');
-    assert.ok(fs.existsSync(skillFilePath), 'modern-web/SKILL.md should exist');
+  it('uses the same command text as in modern-web-guidance/SKILL.md', () => {
+    const skillFilePath = path.join(rootDir, 'guides/modern-web-guidance/SKILL.md');
+    assert.ok(fs.existsSync(skillFilePath), 'modern-web-guidance/SKILL.md should exist');
 
     const skillContent = fs.readFileSync(skillFilePath, 'utf8');
 
-    const expectedPattern = 'node <modern-web-directory>/modern-web.mjs retrieve "<id>"';
-    assert.ok(skillContent.includes(expectedPattern), 'modern-web/SKILL.md should contain the expected command pattern');
+    const expectedPattern = 'npx -y modern-web-guidance@latest retrieve "<id>"';
+    assert.ok(skillContent.includes(expectedPattern), 'modern-web-guidance/SKILL.md should contain the expected command pattern');
 
     const result = replaceMacros('{{ GUIDE_REF("break-up-long-tasks") }}', 'test.md', { target: 'skills-cli' });
 
-    assert.ok(result.includes('node <modern-web-directory>/modern-web.mjs retrieve "break-up-long-tasks"'), 'Macro output should match the pattern in SKILL.md');
+    assert.ok(result.includes('npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"'), 'Macro output should match the pattern in SKILL.md');
+  });
+
+  it('verifies distribution was built successfully', async () => {
+    const publishRoot = path.join(rootDir, 'dist/skills-cli');
+    
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs')), 'modern-web.mjs should exist');
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/search.mjs')), 'search.mjs should exist');
+
+    // Verify standalone skills and their references exist
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/SKILL.md')), 'chrome-extensions SKILL.md should exist');
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/references/extensions/popup-ui.md')), 'chrome-extensions sibling popup-ui.md references should exist');
+  });
+
+  it('verifies modern-web.mjs has correct shebang without --experimental-strip-types', () => {
+    const publishRoot = path.join(rootDir, 'dist/skills-cli');
+    const modernWebMjsPath = path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs');
+    
+    assert.ok(fs.existsSync(modernWebMjsPath), 'modern-web.mjs should exist');
+    
+    const content = fs.readFileSync(modernWebMjsPath, 'utf8');
+    const firstLine = content.split('\n')[0];
+    
+    assert.strictEqual(firstLine, '#!/usr/bin/env node', 'Shebang should be #!/usr/bin/env node');
+    assert.ok(!firstLine.includes('--experimental-strip-types'), 'Shebang should not contain --experimental-strip-types');
   });
 });

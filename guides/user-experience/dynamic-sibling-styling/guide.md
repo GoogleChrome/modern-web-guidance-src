@@ -4,11 +4,6 @@ description: Create dynamic visual spectrums or layout arrangements that automat
 web-feature-ids:
   - sibling-count
   - trig-functions
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/sibling-count
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/sibling-index
-  - https://css-tricks.com/how-to-wait-for-the-sibling-count-and-sibling-index-functions/
-  - https://utilitybend.com/blog/styling-siblings-with-CSS-has-never-been-easier.-Experimenting-with-sibling-count-and-sibling-index/
 ---
 
 # Styling siblings based on count and index

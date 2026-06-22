@@ -4,8 +4,6 @@ description:
   Detect the language of user-generated content or already present site content.
 web-feature-ids:
   - languagedetector
-sources:
-  - https://developer.chrome.com/docs/ai/language-detection
 ---
 
 The **Language Detector API** is a client-side web API designed to identify the language of a given text string. By performing detection locally in the browser, it enhances user privacy and reduces the need for heavy external libraries or costly server-side calls.

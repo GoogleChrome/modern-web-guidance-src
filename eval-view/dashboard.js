@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, formatTokens, isDisciplineSkillRun } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, isDisciplineSkillRun } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability_trend.js';
@@ -256,7 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
-            const [taskName, guide, runType] = currentDetails.testName.split(' - ');
+            const parsed = parseResultKey(currentDetails.testName);
+            if (!parsed) return;
+            const { task: taskName, guide, runType } = parsed;
             const currentScenario = `${taskName} - ${guide}`;
 
             let sIdx = sortedScenarios.indexOf(currentScenario);
@@ -398,6 +400,23 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     }
 }
 
+function renderSparkline(uRate, gRate, isSmall = false, uTitle = '', gTitle = '') {
+    const barClass = isSmall ? 'sparkline-bar small' : 'sparkline-bar';
+    const dotClass = isSmall ? 'sparkline-dot small' : 'sparkline-dot';
+    const rangeClass = isSmall ? 'sparkline-range small' : 'sparkline-range';
+    const min = Math.min(uRate, gRate);
+    const abs = Math.abs(gRate - uRate);
+    const leftOffset = uRate < gRate ? 3 : 4;
+    
+    return `
+        <div class="${barClass}">
+            <div class="${dotClass} unguided" style="left: calc(${uRate}% - 3px);" title="${escapeHtml(uTitle)}"></div>
+            <div class="${dotClass} guided" style="left: calc(${gRate}% - 4px);" title="${escapeHtml(gTitle)}"></div>
+            <div class="${rangeClass}" style="left: calc(${min}% + ${leftOffset}px); width: calc(${abs}% - 7px);"></div>
+        </div>
+    `;
+}
+
 function renderSummary(data) {
     const container = document.getElementById('summary-side-panel');
     if (!container) return;
@@ -465,11 +484,7 @@ function renderSummary(data) {
                 <span class="meta-value-highlight">+${upliftDelta}%</span>
             </div>
             <div class="sparkline-container">
-                                <div class="sparkline-bar">
-                    <div class="sparkline-dot unguided" style="left: calc(${unguidedPassRate}% - 6px);" title="Unguided: ${unguidedPassRate}%"></div>
-                    <div class="sparkline-dot guided" style="left: calc(${guidedPassRate}% - 8px);" title="Guided: ${guidedPassRate}%"></div>
-                    <div class="sparkline-range" style="left: calc(${Math.min(unguidedPassRate, guidedPassRate)}% + 4px); width: calc(${Math.abs(guidedPassRate - unguidedPassRate)}% - 8px);"></div>
-                </div>
+                    ${renderSparkline(unguidedPassRate, guidedPassRate, false, `Unguided: ${unguidedPassRate}%`, `Guided: ${guidedPassRate}%`)}
                 <span class="sparkline-labels">${unguidedPassRate}% → <span>${guidedPassRate}%</span></span>
             </div>
             ${summary.expectedTotalRuns !== undefined ? `
@@ -492,11 +507,11 @@ function renderSummary(data) {
                 <span class="meta-label">Assertions Passed</span>
             </div>
             <div class="sparkline-container">
-                <div class="sparkline-bar small">
-                    <div class="sparkline-dot unguided small" style="left: calc(${(totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100}% - 3px);" title="Unguided Count: ${totalUnguidedPassed}"></div>
-                    <div class="sparkline-dot guided small" style="left: calc(${(totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100}% - 4px);" title="Guided Count: ${totalGuidedPassed}"></div>
-                    <div class="sparkline-range small" style="left: calc(${Math.min((totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100, (totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100)}% + 2px); width: calc(${Math.abs((totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100 - (totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100)}% - 4px);"></div>
-                </div>
+                    ${(() => {
+                        const uPct = (totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100;
+                        const gPct = (totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100;
+                        return renderSparkline(uPct, gPct, true, `Unguided Count: ${totalUnguidedPassed}`, `Guided Count: ${totalGuidedPassed}`);
+                    })()}
                 <span class="sparkline-labels-small">${totalUnguidedPassed} → <span>${totalGuidedPassed}</span> <span>/ ${Math.max(totalUnguidedChecks, totalGuidedChecks)}</span></span>
             </div>
         </div>
@@ -616,9 +631,8 @@ function renderGrid(data, testId) {
             accordion.className = 'task-accordion';
             accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
 
-            // Draw mini dumbbell slider track
-            const leftDot = Math.min(unguidedAvg, guidedAvg) + 2;
-            const rightDot = Math.max(unguidedAvg, guidedAvg);
+            const minVal = Math.min(unguidedAvg, guidedAvg);
+            const maxVal = Math.max(unguidedAvg, guidedAvg);
             const trackWidth = 250; // matches css
             const scale = (val) => (val / 100) * trackWidth;
 
@@ -631,7 +645,7 @@ function renderGrid(data, testId) {
                     </div>
                     <div class="right-section">
                         <div class="mini-dumbbell-track">
-                            <div class="connector" style="left: ${scale(leftDot)}px; width: ${scale(rightDot - leftDot)}px;"></div>
+                            <div class="connector" style="left: ${scale(minVal)}px; width: ${scale(maxVal - minVal)}px;"></div>
                             <div class="dot unguided" style="left: ${scale(unguidedAvg)}px;"></div>
                             <div class="dot guided" style="left: ${scale(guidedAvg)}px;"></div>
                         </div>
@@ -1345,13 +1359,15 @@ function renderDashboardDumbbellChart(data) {
             const scenarioName = labels[index];
             const runType = type.toLowerCase();
             const originalKey = Object.keys(disciplineResults).find(key => {
-                const parts = key.split(' - ');
-                return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
+                const parsed = parseResultKey(key);
+                if (!parsed) return false;
+                return `${parsed.task} (${parsed.guide})` === scenarioName && parsed.runType === runType;
             });
 
             if (originalKey) {
                 const testName = originalKey;
-                const scenarioPart = testName.split(' - ')[1] || '';
+                const parsed = parseResultKey(testName);
+                const scenarioPart = parsed ? parsed.guide : '';
                 const accordions = document.querySelectorAll('.task-accordion');
                 for (const acc of accordions) {
                     const titleEl = acc.querySelector('.task-title');

@@ -3,17 +3,6 @@ name: interest-triggered-action-previews
 description: Show a live preview of a button's effect when a user signals interest (e.g. hovering, focusing, or long-pressing) but before they commit to clicking.
 web-feature-ids:
   - interest-invokers
-sources:
-  - https://developer.mozilla.org/docs/Web/API/Popover_API/Using_interest_invokers
-  - https://developer.mozilla.org/docs/Web/HTML/Reference/Elements/button#interestfor
-  - https://developer.mozilla.org/docs/Web/API/InterestEvent
-  - https://developer.mozilla.org/docs/Web/API/HTMLElement/interest_event
-  - https://developer.mozilla.org/docs/Web/API/HTMLElement/loseinterest_event
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/interest-delay
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/interest-delay-start
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/interest-delay-end
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Selectors/:interest-source
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Selectors/:interest-target
 ---
 
 It can be beneficial to provide users a preview of their actions before they commit to them. Interest invokers are an experimental web platform feature that provides a declarative-based way of creating interest relationships between an interest source (i.e. a button or a link) and an interest target. Once the declarative relationship has been established there are a number of methods a developer can respond to based on interest and loss of interest using both CSS and JavaScript. For this use case, we can leverage the `interest` and `loseinterest` events to preview various effects for an interest target.
@@ -43,6 +32,9 @@ interestingElement.addEventListener("loseinterest", event => {
 });
 ```
 
+> [!NOTE]
+> **Don't announce interest-driven previews via a live region.** Interest can be triggered just by moving the pointer across the page or tabbing through nearby buttons, so apply/unapply announcements quickly become noise that can drown out content the user actually cares about. The preview itself is the affordance; users who can perceive it benefit directly, and those who can't will not benefit from a verbal echo of "Previewing effect: A". If you decide you genuinely need an announcement for a specific case, make sure to test it carefully with users.
+
 Active interest sources and targets can be selected with CSS using the `:interest-source` and `:interest-target` pseudo-selectors respectively.
 
 ```css
@@ -62,9 +54,9 @@ The start and end delay for an interest invoker (i.e. the element with the `inte
 
 ### Fallback strategies
 
-{{ BASELINE_STATUS("interest-invokers") }}
+{{ FEATURE_FALLBACKS("interest-invokers") }}
 
-Interest invokers must be conditionally polyfilled with the `interestfor` polyfill, available at https://github.com/mfreed7/interestfor or on NPM. Do prefer bundling the polyfill over using the CDN.
+Interest invokers must be conditionally polyfilled using the `interestfor` polyfill package from NPM. Do prefer bundling the polyfill over using the CDN.
 
 ```html
 <script type="module">

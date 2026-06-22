@@ -3,8 +3,6 @@ name: scrollytelling
 description: Animate visual properties on a target element — such as fading a backdrop, shifting a background color, or to create scrollytelling experiences — driven entirely by the scrollport position of a completely different element.
 web-feature-ids:
   - scroll-driven-animations
-sources:
-  - https://scroll-driven-animations.style/
 ---
 
 # Scrollytelling
@@ -96,6 +94,15 @@ html {
   section:nth-child(4){ animation-timeline: --tl-4; }
   section:nth-child(5){ animation-timeline: --tl-5; }
 }
+
+/* MANDATORY Copy-Paste Safety: Disable continuous storytelling motion for sensitive users */
+@media (prefers-reduced-motion: reduce) {
+  #animated section {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
 ```
 
 ## Best Practices
@@ -116,9 +123,9 @@ When using the `view-timeline` property to create a scroll-driven animation:
 - **OPTIONAL** be explicit about the axis to track: When not targeting the default `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `view-timeline-axis`.
 - **DO** make sure the scope of the lookup works: When the element that is declaring the `view-timeline` is not a flat tree ancestor of the animated element, hoist up the visibility of the `view-timeline`’s name by using `timeline-scope` on a shared ancestor.
 
-## Browser support and fallback strategies
+## Fallback strategies
 
-{{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
+{{ FEATURE_FALLBACKS("scroll-driven-animations") }}
 
 For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 
@@ -164,6 +171,15 @@ And the accompanying CSS:
   opacity: 0;
   transform: scale(0.5)  rotateY(-180deg);
   backface-visibility: hidden;
+}
+
+/* MANDATORY Copy-Paste Safety: Ensure content remains fully visible and legible for assistive technologies or users with motion sensitivities */
+@media (prefers-reduced-motion: reduce) {
+  #animated section {
+    opacity: 1 !important;
+    transform: none !important;
+    translate: 0 0 !important;
+  }
 }
 ```
 

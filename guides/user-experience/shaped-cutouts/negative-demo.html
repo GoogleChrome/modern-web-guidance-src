@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alternative Shaped Cutouts Demo</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --accent-primary: #6366f1;
+      --accent-secondary: #3b82f6;
+      --text-light: #f8fafc;
+      --text-muted: #94a3b8;
+      --gradient-bg: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    }
+
+    body {
+      font-family: sans-serif;
+      background: var(--gradient-bg);
+      color: var(--text-muted);
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-image: radial-gradient(rgba(99, 102, 241, 0.15) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    header {
+      text-align: center;
+      max-width: 800px;
+      margin-bottom: 60px;
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    @media (min-width: 768px) {
+      .demo-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .demo-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    .demo-section {
+      border: 1px solid rgba(30, 41, 59, 0.4);
+      border-radius: 24px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-top: 0;
+      margin-bottom: 8px;
+      align-self: flex-start;
+      color: #c7d2fe;
+    }
+
+    .section-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      line-height: 1.5;
+      align-self: flex-start;
+    }
+
+    .bad-text-masked-container {
+      width: 100%;
+      max-width: 400px;
+      background-color: var(--bg-card);
+      border-radius: 16px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+      mask-image: url(#unresponsive-mask);
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .bad-text-masked-container h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .bad-text-masked-container p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .bad-split-card {
+      display: flex;
+      width: 100%;
+      max-width: 400px;
+      box-sizing: border-box;
+    }
+
+    .bad-card-body {
+      flex: 1;
+      background-color: var(--bg-card);
+      padding: 24px;
+      border-top-left-radius: 16px;
+      border-bottom-left-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .bad-card-body h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .bad-card-body p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .bad-card-accent {
+      width: 70px;
+      background-color: var(--bg-card);
+      border-top-right-radius: 16px;
+      border-bottom-right-radius: 16px;
+      mask-image: url(#unresponsive-mask);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .fake-gradient-card {
+      position: relative;
+      background: linear-gradient(135deg, #4f46e5 0%, #1e1b4b 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 44px 24px 24px 24px;
+      text-align: center;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 240px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .fake-gradient-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .fake-gradient-card p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .fake-notch {
+      position: absolute;
+      top: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 20px;
+      background-color: #0f172a;
+      border-bottom-left-radius: 20px;
+      border-bottom-right-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+    <defs>
+      <mask id="unresponsive-mask">
+        <path d="M 0,0 L 120,0 C 120,40 160,80 120,120 L 0,120 Z" fill="white" />
+      </mask>
+    </defs>
+  </svg>
+
+  <header>
+    <h1>Shaped Cutouts Demo</h1>
+    <p>
+      Explore our implementation of shaped cutouts using modern and alternative layout techniques for web design.
+    </p>
+  </header>
+
+  <div class="demo-grid">
+
+    <section class="demo-section">
+      <h2 class="section-title">Direct Element Masking</h2>
+      <p class="section-desc">
+        We apply the SVG mask directly to the container holding our text. The mask coordinates are absolute, meaning they do not scale with the container size.
+      </p>
+
+      <div class="bad-text-masked-container">
+        <h3>Creative Space</h3>
+        <p>This layout applies an absolute pixel mask to the entire container containing text. Notice how the text gets severely clipped as the screen size or content changes.</p>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="section-title">Split Container Masking</h2>
+      <p class="section-desc">
+        Applying mask effects with individual shadows on separate adjoining parts of the container instead of silhouetting the parent element.
+      </p>
+
+      <div class="bad-split-card">
+        <div class="bad-card-body">
+          <h3>Unfiltered Layout</h3>
+          <p>This layout uses standard box shadows on both elements individually. The square bounding box of the masked element remains clearly visible, breaking the illusion.</p>
+        </div>
+        <div class="bad-card-accent"></div>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <h2 class="section-title">Solid Notch Overlays</h2>
+      <p class="section-desc">
+        Creating shaped notches by positioning a solid colored element over our container instead of using a true gradient mask.
+      </p>
+
+      <div class="fake-gradient-card">
+        <div class="fake-notch"></div>
+        <h3>Overlapping Notch</h3>
+        <p>A solid-colored circle is positioned on top of the gradient background. This shape stands out as a solid block because the body uses a gradient, failing to reveal what is behind it.</p>
+      </div>
+    </section>
+
+  </div>
+
+</body>
+</html>

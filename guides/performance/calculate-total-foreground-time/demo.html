@@ -61,12 +61,12 @@
   <div class="card">
     <h1>Total Foreground Time</h1>
     <p>This demo accurately measures how long you've spent actively viewing this page using the <code>VisibilityStateEntry</code> API.</p>
-    
+
     <div class="metric">
       <span class="label">Total Foreground Time</span>
       <span id="foreground-time" class="value">0ms</span>
     </div>
-    
+
     <div class="metric">
       <span class="label">Total Page Time (Elapsed)</span>
       <span id="total-time" class="value">0ms</span>
@@ -86,15 +86,19 @@
   <script>
     /**
      * Calculates total time the page was in the visible state.
-     * 
+     *
+     * This function uses the VisibilityStateEntry API via performance.getEntriesByType
+     * to reconstruct the visibility history of the page.
+     *
      * @returns {number} Total foreground time in milliseconds.
      */
     function getTotalForegroundTime() {
       // MANDATORY: Query the visibility-state entries from the performance timeline.
+      // This retrieves all VisibilityStateEntry objects recorded since the page loaded.
       const entries = performance.getEntriesByType('visibility-state');
 
-      // Fallback: If the browser does not support VisibilityStateEntry, 
-      // the API will gracefully return an empty array.
+      // Fallback: If the browser does not support VisibilityStateEntry,
+      // the array will be empty.
       if (entries.length === 0) {
         // Return total time since navigation start as a fallback.
         return performance.now();
@@ -103,16 +107,16 @@
       let totalForegroundTime = 0;
 
       for (let i = 0; i < entries.length; i++) {
-        // Only calculate duration for periods where the state was 'visible'
+        // Only accumulate time for 'visible' periods.
         if (entries[i].name === 'visible') {
           const start = entries[i].startTime;
-          
-          // The end time is the start time of the next state change, 
-          // or the current time if this is the final entry.
+
+          // The end of this state is the start of the next state change,
+          // or the current time if this is the most recent entry.
           const end = i + 1 < entries.length
               ? entries[i + 1].startTime
               : performance.now();
-              
+
           totalForegroundTime += (end - start);
         }
       }
@@ -124,10 +128,10 @@
       const foregroundTime = getTotalForegroundTime();
       const totalTime = performance.now();
       const state = document.visibilityState;
-      
+
       document.getElementById('foreground-time').textContent = `${Math.round(foregroundTime)}ms`;
       document.getElementById('total-time').textContent = `${Math.round(totalTime)}ms`;
-      
+
       const stateEl = document.getElementById('current-state');
       stateEl.textContent = state;
       stateEl.className = `status-badge status-${state}`;
@@ -135,7 +139,7 @@
       // Check for API support and update status
       const modeEl = document.getElementById('api-mode');
       const entries = performance.getEntriesByType('visibility-state');
-      
+
       if (entries.length > 0) {
         modeEl.textContent = 'VisibilityStateEntry API';
         modeEl.className = 'status-badge status-visible';

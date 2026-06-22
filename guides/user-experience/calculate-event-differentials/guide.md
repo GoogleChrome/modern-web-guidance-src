@@ -3,8 +3,6 @@ name: calculate-event-differentials
 description: Calculate the duration and time remaining between dates and times.
 web-feature-ids:
   - temporal
-sources:
-  - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
 ---
 
 # Calculating Event Differentials with Temporal

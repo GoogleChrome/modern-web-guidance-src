@@ -179,4 +179,19 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
     expect(usesMaxHeightHack).toBe(false);
   });
 
+  test('Elements collapsed to zero dimensions must be programmatically hidden from assistive technologies', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/hidden\s*=\s*true|aria-hidden/i.test(html)).toBe(true);
+  });
+
+  test('Buttons controlling collapsible or expandable panels must dynamically synchronize their aria-expanded attribute', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/aria-expanded/i.test(html)).toBe(true);
+  });
+
+  test('Sizing transitions must be disabled when prefers-reduced-motion: reduce is active', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/prefers-reduced-motion/i.test(html)).toBe(true);
+  });
+
 });

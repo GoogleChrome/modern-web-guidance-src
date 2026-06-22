@@ -4,12 +4,6 @@ description: Calculate the size of an element based on its intrinsic size, while
 web-feature-ids:
   - calc-size
   - interpolate-size
-sources:
- - https://developer.chrome.com/docs/css-ui/animate-to-height-auto
- - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/calc-size
- - https://12daysofweb.dev/2024/calc-size-and-interpolate-size/
- - https://drafts.csswg.org/css-values-5/#calc-size
- - https://web.dev/articles/prefers-reduced-motion
 ---
 
 `calc-size()` is a CSS function for performing mathematical operations on intrinsic sizing keywords like `auto`, `min-content`, and `fit-content`. **MANDATORY**: Use `calc-size()` only when you need to modify an intrinsic size with a calculation or constraint; for simple keyword-based animations (e.g., `0` to `auto`), you must use `interpolate-size: allow-keywords`.

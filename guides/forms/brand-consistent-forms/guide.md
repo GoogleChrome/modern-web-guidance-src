@@ -3,10 +3,6 @@ name: brand-consistent-forms
 description: Match checkboxes, radio buttons, range sliders, and progress bars to your site's color palette without replacing them with custom components.
 web-feature-ids:
   - accent-color
-sources:
-  - https://web.dev/en/articles/accent-color
-  - https://web.dev/en/learn/forms/styling-form-controls
-  - https://webstatus.dev/features/accent-color
 ---
 
 # Brand-Consistent Forms
@@ -46,18 +42,18 @@ body {
 ```html
 <form>
   <!-- Checkbox -->
-  <label>
-    <input type="checkbox" checked>
+  <label for="subscribe">
+    <input type="checkbox" id="subscribe" checked>
     Subscribe to newsletter
   </label>
 
   <!-- Radio Buttons -->
-  <label>
-    <input type="radio" name="plan" value="monthly">
+  <label for="plan-monthly">
+    <input type="radio" id="plan-monthly" name="plan" value="monthly">
     Monthly
   </label>
-  <label>
-    <input type="radio" name="plan" value="yearly" checked>
+  <label for="plan-yearly">
+    <input type="radio" id="plan-yearly" name="plan" value="yearly" checked>
     Yearly
   </label>
 
@@ -92,8 +88,8 @@ You MUST use the `@supports not` rule to apply custom fallback styles only when 
 #### 1. HTML Structure
 Ensure your labels wrap the text in a `<span>` to allow for sibling selectors in CSS:
 ```html
-<label>
-  <input type="checkbox" checked>
+<label for="subscribe-fallback">
+  <input type="checkbox" id="subscribe-fallback" class="visually-hidden" checked>
   <span>Subscribe to newsletter</span>
 </label>
 ```
@@ -103,12 +99,17 @@ Apply custom styles within a `@supports not` block:
 ```css
 /* Fallback for older browsers without accent-color */
 @supports not (accent-color: var(--brand-color)) {
-  /* Visually hide the native input */
-  form input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
+  /* Visually hide the native input using the canonical accessible recipe */
+  form input[type="checkbox"].visually-hidden {
+    position: absolute !important;
+    clip-path: inset(50%) !important;
+    overflow: hidden !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    white-space: nowrap !important;
   }
 
   /* Style the wrapper label */
@@ -134,6 +135,12 @@ Apply custom styles within a `@supports not` block:
     border-radius: 4px;
     box-sizing: border-box;
     transition: all 0.2s ease;
+  }
+
+  /* Ensure custom checkbox shows focus for keyboard users */
+  input[type="checkbox"]:focus-visible + span::before {
+    outline: 2px solid #000;
+    outline-offset: 2px;
   }
 
   /* Checked State */

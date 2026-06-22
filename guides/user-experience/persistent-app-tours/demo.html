@@ -26,11 +26,17 @@
 </head>
 <body>
   <div id="feature">New Feature</div>
-  <div id="tour-step" popover="manual">
-    <h3>Step 1</h3>
+  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title">
+    <h2 id="tour-title">Step 1</h2>
     <p>Interact with this feature!</p>
     <button popovertarget="tour-step" popovertargetaction="hide">Got it</button>
   </div>
-  <script>window.onload = () => document.getElementById('tour-step').showPopover();</script>
+  <script>
+    window.onload = () => {
+      const tour = document.getElementById('tour-step');
+      tour.showPopover();
+      tour.querySelector('button').focus();
+    };
+  </script>
 </body>
 </html>

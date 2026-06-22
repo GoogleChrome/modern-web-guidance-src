@@ -4,9 +4,6 @@ description: Reliably determine whether a page was initially loaded in the backg
 web-feature-ids:
   - page-visibility-state
   - page-visibility
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/VisibilityStateEntry
-  - https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
 ---
 
 Determining if a page was initially loaded in the background (e.g., opened in a new background tab) is critical for accurate performance monitoring. Pages loaded in the background often have delayed rendering and longer metric times (like First Contentful Paint). Identifying these pages allows you to filter them out of performance analytics to avoid skewed data.

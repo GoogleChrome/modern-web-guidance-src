@@ -3,19 +3,11 @@ name: deliver-optimized-decorative-images
 description: Deliver optimized decorative images (such as backgrounds, UI icons, or complex masks) by simultaneously providing next-generation image formats (like AVIF or WebP) alongside multiple pixel densities (like 1x and 2x) so the browser can dynamically negotiate the best combination of file size and visual quality for the user's device capabilities.
 web-feature-ids: 
   - image-set
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/image/image-set
-  - https://css-tricks.com/almanac/functions/i/image-set/
-  - https://css-tricks.com/using-performant-next-gen-images-in-css-with-image-set/
-  - https://uploadcare.com/blog/image-set-for-responsive-images
-  - https://web.dev/articles/preload-responsive-images
-  - https://web.dev/learn/design/responsive-images
-  - https://web.dev/articles/responsive-images
 ---
 
 Delivering optimized decorative images via CSS improves perceived performance without sacrificing visual quality. By using the `image-set()` CSS function, you can provide the browser with multiple options for a single background or mask image. You can specify modern formats (like AVIF or WebP) alongside different resolutions (like `1x` and `2x`). The browser will dynamically select the smallest compatible image that provides the appropriate pixel density for the user's device.
 
-**CAUTION**: If the image is likely to be the Largest Contentful Paint (LCP) element (e.g., a large hero banner), be aware that images referenced in CSS via image-set() are not discoverable by the browser's preload scanner. This can significantly delay image loading and harm LCP. For LCP candidates, consider using a standard HTML <img> or <picture> tag instead or alternatively, preloading the image as well using `<link rel=preload>` option with a `media` attribute.
+**CAUTION**: If the image is likely to be the Largest Contentful Paint (LCP) element (e.g., a large hero banner), be aware that images referenced in CSS via image-set() are not discoverable by the browser's preload scanner. This can significantly delay image loading and harm LCP. For LCP candidates, consider using a standard HTML `<img>` or `<picture>` tag instead or alternatively, preloading the image as well using `<link rel=preload>` option with a `media` attribute.
 
 ### Implementation
 

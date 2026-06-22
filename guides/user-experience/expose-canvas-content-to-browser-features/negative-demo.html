@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas Dashboard</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+        canvas {
+            border: 1px solid red;
+            display: block;
+            width: 500px;
+            height: 300px;
+        }
+        .canvas-ui {
+            padding: 15px;
+            background: #eef;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Canvas Component</h1>
+    <canvas id="canvas">
+        <div id="ui-container" class="canvas-ui">
+            <h2>User Account Form</h2>
+            <iframe src="https://example.com" width="300" height="150"></iframe>
+            <input type="text" id="username" placeholder="Username">
+            <button id="btn">Submit</button>
+        </div>
+    </canvas>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const ui = document.getElementById("ui-container");
+
+        function draw() {
+            const observer = new ResizeObserver(() => {
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+            });
+            observer.observe(canvas);
+
+            ctx.reset();
+            ctx.drawElementImage(ui, 0, 0);
+        }
+
+        setInterval(draw, 100);
+    </script>
+</body>
+</html>

@@ -184,6 +184,14 @@
     .dismiss-btn:hover {
       opacity: 1;
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card-content-wrapper,
+      .badge,
+      .alert {
+        transition: none !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -224,7 +232,7 @@
         </div>
       </div>
       <footer class="card-footer">
-        <button class="expand-btn" id="faq-trigger" onclick="toggleCard('product-card')">
+        <button class="expand-btn" id="faq-trigger" aria-expanded="false" aria-controls="faq-content" onclick="toggleCard('product-card')">
           Show Details
         </button>
       </footer>
@@ -244,6 +252,7 @@
       const btn = card.querySelector('.expand-btn');
       const isExpanded = card.classList.toggle('is-expanded');
       btn.textContent = isExpanded ? 'Hide Details' : 'Show Details';
+      btn.setAttribute('aria-expanded', isExpanded);
     }
 
     function dismissAlert(id) {
@@ -251,8 +260,18 @@
     }
 
     function resetAlert(id) {
-      document.getElementById(id).classList.remove('is-dismissed');
+      const alertEl = document.getElementById(id);
+      alertEl.hidden = false;
+      alertEl.offsetHeight; // Trigger reflow
+      alertEl.classList.remove('is-dismissed');
     }
+
+    document.getElementById('promo-alert').addEventListener('transitionend', (e) => {
+      const alertEl = e.currentTarget;
+      if (e.propertyName === 'block-size' && alertEl.classList.contains('is-dismissed')) {
+        alertEl.hidden = true;
+      }
+    });
   </script>
 
 </body>

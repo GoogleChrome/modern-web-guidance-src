@@ -8,3 +8,5 @@ test('getNextVersion derive from git tag', async () => {
   const version = await getNextVersion(mockGetTag);
   assert.strictEqual(version, '0.0.23');
 });
+
+

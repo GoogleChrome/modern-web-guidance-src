@@ -27,7 +27,7 @@ function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
     }
   }
 
-  return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [], skillsToEnable: ['modern-web'] };
+  return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [], skillsToEnable: ['modern-web-guidance'] };
 }
 
 export async function evaluateSuite(suiteResultsDir: string, suiteName: string, suiteStartTime?: number) {

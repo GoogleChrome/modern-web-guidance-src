@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   let allGuides = {};
-  let selectedSkills = new Set(['modern-web']);
+  let selectedSkills = new Set(['modern-web-guidance']);
 
   try {
     const response = await fetch('/api/grouped-tasks');
@@ -53,8 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderSkills(skills) {
     // Sort skills to put modern-web first
     const sortedSkills = [...skills].sort((a, b) => {
-      if (a === 'modern-web') return -1;
-      if (b === 'modern-web') return 1;
+      if (a.startsWith('modern-web')) return -1;
+      if (b.startsWith('modern-web')) return 1;
       return a.localeCompare(b);
     });
 
