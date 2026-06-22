@@ -40,7 +40,7 @@ function pullRecentGcsSuites(): string[] {
     for (const line of lines) {
       const clean = line.trim();
       if (!clean) continue;
-      const match = clean.match(/gs:\/\/guidance-evals\/(nightly-[^\/]+)\//);
+      const match = clean.match(/gs:\/\/guidance-evals\/(nightly-[^/]+)\//);
       if (match) {
         targetFolders.push(match[1]);
       }
