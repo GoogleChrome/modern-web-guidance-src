@@ -478,6 +478,6 @@ window.__featuresMapping = {
     "declarative-webmcp"
   ],
   "agentic-javascript-tools": [
-    "navigator-modelcontext"
+    "document-modelcontext"
   ]
 };
