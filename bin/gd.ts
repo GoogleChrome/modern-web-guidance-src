@@ -33,12 +33,15 @@ const ALL_OPTIONS = {
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
+  guide: { type: 'string', desc: 'Run detection for a specific guide' },
+  json: { type: 'boolean', desc: 'Output detection results in JSON format' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
+  detect: { desc: 'Verify and rate an existing website URL', flags: ['json', 'verbose', 'guide'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'no-test', 'cross-app'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
@@ -167,7 +170,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'audit'],
+      commands: ['dev', 'audit', 'detect'],
     },
 
     {
@@ -197,7 +200,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = cmd === 'dev' ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
+      const args = cmd === 'dev' ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'detect' ? ' <url>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
@@ -276,6 +279,17 @@ async function main() {
     case 'audit': {
       const { auditGuides } = await import('../guides/dev-guide.ts');
       auditGuides({ groupByUsecases: !!values.usecases });
+      break;
+    }
+
+    case 'detect': {
+      const url = requireArg(positionals[1], 'gd detect <url>');
+      const { runWebsiteAudit } = await import('../harness/detect.ts');
+      await runWebsiteAudit(url, {
+        guide: values.guide as string | undefined,
+        json: !!values.json,
+        verbose: !!values.verbose
+      });
       break;
     }
 
