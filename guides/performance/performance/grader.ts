@@ -170,7 +170,7 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     });
     await page.addInitScript(() => {
       const observer = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
+        for (const _entry of list.getEntries()) {
           // @ts-ignore
           window.reportLongTask();
         }
