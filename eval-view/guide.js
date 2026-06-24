@@ -183,7 +183,7 @@ function setupTimelineFilterControls(guideName) {
     limitInput.addEventListener('change', () => {
         let val = parseInt(limitInput.value);
         if (isNaN(val) || val < 1) {
-            limitInput.value = '45';
+            limitInput.value = '30';
         }
         renderGraphs(guideName);
     });
@@ -386,7 +386,7 @@ function renderGraphs(guideName) {
     const limitInput = /** @type {HTMLInputElement} */ ($('#timeline-limit-input'));
     const showAllCheck = /** @type {HTMLInputElement} */ ($('#timeline-show-all-check'));
     const showAll = showAllCheck ? showAllCheck.checked : false;
-    const limit = limitInput ? (parseInt(limitInput.value) || 45) : 45;
+    const limit = limitInput ? (parseInt(limitInput.value) || 30) : 30;
 
     if (!showAll && globalTimeline.length > limit) {
         globalTimeline = globalTimeline.slice(-limit);
