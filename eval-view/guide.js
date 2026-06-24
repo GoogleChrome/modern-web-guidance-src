@@ -294,7 +294,14 @@ function renderGraphs(guideName) {
     grid.innerHTML = '';
 
     const testKeys = Object.keys(allTestData);
-    const filteredKeys = testKeys.filter(key => allTestData[key].guides && allTestData[key].guides[guideName]);
+    
+    // Filter out suites that don't have this guide, or have 0 trials for it
+    const filteredKeys = testKeys.filter(key => {
+        const run = allTestData[key];
+        if (!run.guides || !run.guides[guideName]) return false;
+        const g = run.guides[guideName];
+        return g.guidedTotal > 0 || g.unguidedTotal > 0;
+    });
 
     if (filteredKeys.length === 0) {
         $('#empty-state').style.display = 'block';
@@ -312,12 +319,50 @@ function renderGraphs(guideName) {
         combinations[combKey].push(run);
     });
 
+    const getDateKey = (timestamp) => {
+        const d = new Date(timestamp);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Group by date (keep latest run per day) and slice to last 50 for each combination
     Object.keys(combinations).forEach(combKey => {
-        combinations[combKey].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        if (combinations[combKey].length > 50) {
-            combinations[combKey] = combinations[combKey].slice(-50);
+        const runs = combinations[combKey];
+        runs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        
+        const runsByDate = new Map();
+        runs.forEach(run => {
+            const dateKey = getDateKey(run.timestamp);
+            runsByDate.set(dateKey, run);
+        });
+        
+        let uniqueRuns = Array.from(runsByDate.values());
+        if (uniqueRuns.length > 50) {
+            uniqueRuns = uniqueRuns.slice(-50);
         }
+        combinations[combKey] = uniqueRuns;
     });
+
+    // Build the global timeline of unique dates from the sliced runs across all combinations
+    const globalDatesMap = new Map();
+    Object.values(combinations).forEach(runs => {
+        runs.forEach(run => {
+            const dateKey = getDateKey(run.timestamp);
+            if (!globalDatesMap.has(dateKey)) {
+                globalDatesMap.set(dateKey, {
+                    dateKey: dateKey,
+                    shortDate: new Date(run.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                });
+            }
+        });
+    });
+
+    const globalTimeline = Array.from(globalDatesMap.values())
+        .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+    const globalWidth = Math.max(450, globalTimeline.length * 30);
 
     const sortedCombKeys = Object.keys(combinations).sort((keyA, keyB) => {
         const runsA = combinations[keyA];
@@ -326,25 +371,6 @@ function renderGraphs(guideName) {
         const newestB = new Date(runsB[runsB.length - 1].timestamp).getTime();
         return newestB - newestA;
     });
-
-    // Build the global timeline of unique suites from the sliced runs across all combinations
-    const globalSuitesMap = new Map();
-    Object.values(combinations).forEach(runs => {
-        runs.forEach(run => {
-            if (!globalSuitesMap.has(run.testId)) {
-                globalSuitesMap.set(run.testId, {
-                    testId: run.testId,
-                    timestamp: run.timestamp,
-                    shortDate: new Date(run.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                });
-            }
-        });
-    });
-
-    const globalTimeline = Array.from(globalSuitesMap.values())
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    const globalWidth = Math.max(450, globalTimeline.length * 30);
 
     sortedCombKeys.forEach(combKey => {
         const [agent, model] = combKey.split('|||');
@@ -394,7 +420,7 @@ function renderGraphs(guideName) {
         globalTimeline.forEach((suite, i) => {
             const x = globalTimeline.length > 1 ? paddingX + i * stepX : globalWidth / 2;
             
-            const run = runs.find(r => r.testId === suite.testId);
+            const run = runs.find(r => getDateKey(r.timestamp) === suite.dateKey);
             if (run) {
                 const stats = run.guides[guideName];
                 const yU = rateToY(stats.unguidedRate);
@@ -427,7 +453,7 @@ function renderGraphs(guideName) {
                 }
 
                 svgContent += `
-                    <g class="timeline-point" data-testid="${suite.testId}" data-comb="${combKey}" style="cursor: pointer;">
+                    <g class="timeline-point" data-testid="${run.testId}" data-comb="${combKey}" style="cursor: pointer;">
                         ${elementHtml}
                         <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${suite.shortDate}</text>
                         <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
