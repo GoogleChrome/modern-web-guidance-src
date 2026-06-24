@@ -1,0 +1,5 @@
+---
+base_app: daily-grind
+---
+- Add new section headers inside the main content area of the page (e.g., within the cards or sections). These headers should stick to the top when scrolling. Use the class `sticky-container` for the container and `sticky-header` for the header. To avoid collisions with the existing site navigation, use a named container. When the headers are stuck at the top, change their background color to blue and add a shadow. Ensure there is enough scrollable content *above* the first sticky header so that it is not stuck on initial page load. The implementation should assume the document/viewport is the scroll root.
+- Add sticky headers to the main sections of the page that stick to the top of the viewport as I scroll down. I want them to look compact and distinct when they are stuck, maybe a blue background with a shadow. Please use modern CSS container queries instead of Javascript so it's performant. Ensure there is enough scrollable content *above* the first sticky header so that it is not stuck on initial page load.
