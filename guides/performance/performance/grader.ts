@@ -200,9 +200,9 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
       yieldCalled = true;
     });
     await page.addInitScript(() => {
-      if (window.scheduler && window.scheduler.yield) {
-        const originalYield = window.scheduler.yield;
-        window.scheduler.yield = function() {
+      if ((window as any).scheduler && (window as any).scheduler.yield) {
+        const originalYield = (window as any).scheduler.yield;
+        (window as any).scheduler.yield = function() {
           // @ts-ignore
           window.reportYieldBtn();
           return originalYield.apply(this, arguments as any);
@@ -351,7 +351,7 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     const overused = await page.evaluate(() => {
       const allElements = document.querySelectorAll('*');
       let count = 0;
-      for (const el of allElements) {
+      for (const el of Array.from(allElements)) {
         if (window.getComputedStyle(el).willChange !== 'auto') {
           count++;
         }
