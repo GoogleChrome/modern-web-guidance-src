@@ -327,6 +327,25 @@ function renderGraphs(guideName) {
         return newestB - newestA;
     });
 
+    // Build the global timeline of unique suites from the sliced runs across all combinations
+    const globalSuitesMap = new Map();
+    Object.values(combinations).forEach(runs => {
+        runs.forEach(run => {
+            if (!globalSuitesMap.has(run.testId)) {
+                globalSuitesMap.set(run.testId, {
+                    testId: run.testId,
+                    timestamp: run.timestamp,
+                    shortDate: new Date(run.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                });
+            }
+        });
+    });
+
+    const globalTimeline = Array.from(globalSuitesMap.values())
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    const globalWidth = Math.max(450, globalTimeline.length * 30);
+
     sortedCombKeys.forEach(combKey => {
         const [agent, model] = combKey.split('|||');
         const runs = combinations[combKey];
@@ -353,13 +372,12 @@ function renderGraphs(guideName) {
         chartWrapper.style.overflowX = 'auto';
         chartWrapper.style.width = '100%';
 
-        const width = Math.max(450, runs.length * 30);
         const height = 230;
         const paddingX = 40;
         const paddingY = 25;
         const plotHeight = height - 2 * paddingY - 35;
-        const plotWidth = width - 2 * paddingX;
-        const stepX = runs.length > 1 ? plotWidth / (runs.length - 1) : 0;
+        const plotWidth = globalWidth - 2 * paddingX;
+        const stepX = globalTimeline.length > 1 ? plotWidth / (globalTimeline.length - 1) : 0;
 
         const rateToY = (rate) => paddingY + plotHeight - (rate / 100 * plotHeight);
 
@@ -368,56 +386,63 @@ function renderGraphs(guideName) {
         [0, 50, 100].forEach(percent => {
             const y = rateToY(percent);
             svgContent += `
-                <line x1="${paddingX}" y1="${y}" x2="${width - paddingX}" y2="${y}" stroke="var(--border-color)" stroke-dasharray="4" stroke-width="1" />
+                <line x1="${paddingX}" y1="${y}" x2="${globalWidth - paddingX}" y2="${y}" stroke="var(--border-color)" stroke-dasharray="4" stroke-width="1" />
                 <text x="${paddingX - 10}" y="${y + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">${percent}%</text>
             `;
         });
 
-        runs.forEach((run, i) => {
-            const x = runs.length > 1 ? paddingX + i * stepX : width / 2;
-            const stats = run.guides[guideName];
-            const yU = rateToY(stats.unguidedRate);
-            const yG = rateToY(stats.guidedRate);
-            const shortDate = new Date(run.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-            const isPositive = stats.guidedRate >= stats.unguidedRate;
+        globalTimeline.forEach((suite, i) => {
+            const x = globalTimeline.length > 1 ? paddingX + i * stepX : globalWidth / 2;
             
-            let elementHtml = '';
-            if (yU === yG) {
-                elementHtml = `<circle cx="${x}" cy="${yG}" r="5" fill="var(--color-primary)" />`;
-            } else {
-                const dist = Math.abs(yU - yG);
-                const arrowHeight = 10;
-                const lineColor = isPositive ? 'var(--color-primary)' : 'var(--color-accent-failure)';
-                let lineY2 = yG;
-                let lineHtml = '';
-                if (dist > arrowHeight) {
-                    lineY2 = yG < yU ? yG + arrowHeight : yG - arrowHeight;
-                    lineHtml = `<line x1="${x}" y1="${yU}" x2="${x}" y2="${lineY2}" stroke="${lineColor}" stroke-width="4" />`;
+            const run = runs.find(r => r.testId === suite.testId);
+            if (run) {
+                const stats = run.guides[guideName];
+                const yU = rateToY(stats.unguidedRate);
+                const yG = rateToY(stats.guidedRate);
+                const isPositive = stats.guidedRate >= stats.unguidedRate;
+                
+                let elementHtml = '';
+                if (yU === yG) {
+                    elementHtml = `<circle cx="${x}" cy="${yG}" r="5" fill="var(--color-primary)" />`;
+                } else {
+                    const dist = Math.abs(yU - yG);
+                    const arrowHeight = 10;
+                    const lineColor = isPositive ? 'var(--color-primary)' : 'var(--color-accent-failure)';
+                    let lineY2 = yG;
+                    let lineHtml = '';
+                    if (dist > arrowHeight) {
+                        lineY2 = yG < yU ? yG + arrowHeight : yG - arrowHeight;
+                        lineHtml = `<line x1="${x}" y1="${yU}" x2="${x}" y2="${lineY2}" stroke="${lineColor}" stroke-width="4" />`;
+                    }
+
+                    const arrowPoints = yG < yU
+                        ? `${x},${yG} ${x - 6},${yG + 10} ${x + 6},${yG + 10}`
+                        : `${x},${yG} ${x - 6},${yG - 10} ${x + 6},${yG - 10}`;
+
+                    elementHtml = `
+                        ${lineHtml}
+                        <circle cx="${x}" cy="${yU}" r="4" stroke="#8b949e" stroke-width="1.5" fill="var(--color-surface-container-lowest)" />
+                        <polygon points="${arrowPoints}" fill="${lineColor}" />
+                    `;
                 }
 
-                const arrowPoints = yG < yU
-                    ? `${x},${yG} ${x - 6},${yG + 10} ${x + 6},${yG + 10}`
-                    : `${x},${yG} ${x - 6},${yG - 10} ${x + 6},${yG - 10}`;
-
-                elementHtml = `
-                    ${lineHtml}
-                    <circle cx="${x}" cy="${yU}" r="4" stroke="#8b949e" stroke-width="1.5" fill="var(--color-surface-container-lowest)" />
-                    <polygon points="${arrowPoints}" fill="${lineColor}" />
+                svgContent += `
+                    <g class="timeline-point" data-testid="${suite.testId}" data-comb="${combKey}" style="cursor: pointer;">
+                        ${elementHtml}
+                        <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${suite.shortDate}</text>
+                        <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
+                    </g>
+                `;
+            } else {
+                // Draw faded date label for missing runs to preserve axis alignment
+                svgContent += `
+                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle" style="opacity: 0.3;">${suite.shortDate}</text>
                 `;
             }
-
-            svgContent += `
-                <g class="timeline-point" data-index="${i}" data-comb="${combKey}" style="cursor: pointer;">
-                    ${elementHtml}
-                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${shortDate}</text>
-                    <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
-                </g>
-            `;
         });
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', width.toString());
+        svg.setAttribute('width', globalWidth.toString());
         svg.setAttribute('height', height.toString());
         svg.style.display = 'block';
         svg.innerHTML = svgContent;
@@ -428,8 +453,11 @@ function renderGraphs(guideName) {
 
         svg.querySelectorAll('.timeline-point').forEach(group => {
             group.addEventListener('mouseenter', () => {
-                const idx = parseInt(group.getAttribute('data-index'));
-                const runData = combinations[group.getAttribute('data-comb')][idx];
+                const combKey = group.getAttribute('data-comb');
+                const testId = group.getAttribute('data-testid');
+                const runData = combinations[combKey].find(r => r.testId === testId);
+                if (!runData) return;
+
                 const stats = runData.guides[guideName];
                 const formattedDate = new Date(runData.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -491,9 +519,12 @@ function renderGraphs(guideName) {
             });
 
             group.addEventListener('click', () => {
-                const idx = parseInt(group.getAttribute('data-index'));
-                const runData = combinations[group.getAttribute('data-comb')][idx];
-                window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}`;
+                const combKey = group.getAttribute('data-comb');
+                const testId = group.getAttribute('data-testid');
+                const runData = combinations[combKey].find(r => r.testId === testId);
+                if (runData) {
+                    window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}`;
+                }
             });
         });
     });
