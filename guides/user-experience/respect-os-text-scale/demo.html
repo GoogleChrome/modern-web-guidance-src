@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!--
+    Opt this document into OS-level text scaling. With content="scale", the
+    user agent's initial font size becomes 16px x OS scale x UA scale, so any
+    rem/em-based text below follows the user's accessibility preference.
+  -->
+  <meta name="text-scale" content="scale" />
+  <title>Respect OS text scale preference</title>
+  <style>
+    /*
+      The :root font-size is left at the default. Authors should NOT override
+      it with calc(1rem * env(preferred-text-scale)) when the meta tag is set,
+      or the page will scale twice.
+    */
+    body {
+      font-family: system-ui, sans-serif;
+      /* rem follows the scaled root font-size. */
+      font-size: 1rem;
+      line-height: 1.5;
+      max-width: 40rem;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #111;
+      background: #fafafa;
+    }
+
+    h1 {
+      /* Headings in rem also scale with the user's preference. */
+      font-size: 2rem;
+      margin: 0 0 0.5rem;
+    }
+
+    p {
+      margin: 0 0 1rem;
+    }
+
+    /*
+      Container layout that absorbs larger text by reflowing rather than
+      overflowing. Each card column shrinks down to the available inline
+      size when the user enlarges the text.
+    */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .card {
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1 data-testid="page-heading">Respecting OS text scale</h1>
+
+  <p data-testid="scaled-paragraph">
+    This paragraph inherits its size from <code>body</code>, which is declared
+    in <code>rem</code>, so it follows the user's operating system text scale
+    preference.
+  </p>
+
+  <div class="card-grid" data-testid="card-grid">
+    <article class="card">
+      <h2>One</h2>
+      <p>Card body text in <code>rem</code> scales with the user preference.</p>
+    </article>
+    <article class="card">
+      <h2>Two</h2>
+      <p>The grid uses <code>auto-fit</code> so columns reflow when text grows.</p>
+    </article>
+    <article class="card">
+      <h2>Three</h2>
+      <p>No JavaScript and no extra CSS calc is required.</p>
+    </article>
+  </div>
+</body>
+</html>
