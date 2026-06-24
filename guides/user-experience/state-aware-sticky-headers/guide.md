@@ -74,15 +74,17 @@ Use the `@container scroll-state(...)` query to apply styles when the header is 
 
 Without scroll anchoring disabled, changing layout-affecting properties (height, padding, font-size) when stuck can cause visual flickering. Scroll anchoring on the in-flow content below the sticky element adjusts the scroll offset to compensate for the layout change, which pushes the element back out of its stuck position and triggers an oscillation.
 
-Disable scroll anchoring on the scroll container to avoid this:
+Disable scroll anchoring on the parent of the sticky element to avoid this:
 
 ```css
-:root {
+.section {
   overflow-anchor: none;
 }
 ```
 
-Apply it to whichever element is the scroll container (typically `:root` for the document scroller). With this in place, you can freely change any property in the stuck state, including box-model properties and transforms.
+Apply `overflow-anchor: none` to the direct parent of the `position: sticky` element — not to `:root` or `body`, which would disable scroll anchoring for the entire page. With this in place, you can freely change any property in the stuck state, including box-model properties and transforms.
+
+DO NOT: Rely on `overflow-anchor: none` for elements stuck to the **bottom**. Scroll anchoring only compensates for layout shifts above the current scroll position, so it has no effect on bottom-stuck elements. Avoid changing box-model properties in the stuck state for bottom-stuck headers.
 
 ### Fallback strategies
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
