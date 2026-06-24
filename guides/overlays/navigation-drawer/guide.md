@@ -300,8 +300,6 @@ document.addEventListener('keydown', (event) => {
 
 ### Fallback strategies
 
-{{ FEATURE_FALLBACKS("popover") }}
-
 The drawer's core mechanics — scroll snap, `IntersectionObserver`, and `inert` — are all Baseline Widely available and required for the component to function. The popover API, the scroll-driven animation that fades the backdrop, and `scroll-initial-target` are progressive enhancements with simple fallbacks that can be easily implemented if wide browser support is required.
 
 #### Backdrop fade fallback (no `animation-timeline` support):
