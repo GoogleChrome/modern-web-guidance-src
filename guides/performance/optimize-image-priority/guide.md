@@ -3,11 +3,16 @@ name: optimize-image-priority
 description: Optimize the loading priority of Largest Contentful Paint (LCP) candidate images and deprioritize non-critical images to reduce critical resource load delays.
 web-feature-ids:
     - fetch-priority
+    - loading-lazy
 ---
 
 # Optimize image priority
 
-Browsers use heuristics to assign loading priorities to images, but these defaults may not always align with your page's Largest Contentful Paint (LCP). Using `fetchpriority` on an `<img>` element allows you to explicitly signal an image's importance to the browser, ensuring critical images load faster while non-essential ones don't compete for bandwidth.
+Browsers use heuristics to assign loading priorities to images, but these defaults may not always align with your page's Largest Contentful Paint (LCP).
+
+Using `fetchpriority` on an `<img>` element allows you to explicitly signal an image's importance to the browser, ensuring critical images load faster while non-essential ones don't compete for bandwidth.
+
+The `loading=lazy` prevents images from being downloaded at all when sufficiently off-screen which can further help prioritize images.
 
 ## How to implement
 
@@ -27,10 +32,17 @@ Browsers use heuristics to assign loading priorities to images, but these defaul
      width="800" height="400">
 
 <!-- Deprioritize initially hidden images above the fold -->
-<img src="/images/gallery-alt.jpg"
-     alt="Gallery Image"
-     fetchpriority="low"
-     width="400" height="300">
+<!-- Additionally use `loading="lazy"` if there are likely to be many images-->
+ <div class="carousel">
+     <img src="/images/gallery-alt.jpg"
+          alt="Gallery Image 1"
+          width="400" height="300">
+     <img src="/images/gallery-alt.jpg"
+          alt="Gallery Image 2"
+          fetchpriority="low"
+          loading="lazy"
+          width="400" height="300">
+<div>
 
 <!-- Deprioritize images revealed only after user interaction -->
 <img src="/images/mega-menu-promo.jpg"
@@ -57,8 +69,9 @@ Browsers use heuristics to assign loading priorities to images, but these defaul
 - **MANDATORY**: Use `fetchpriority="low"` for images that are technically "above the fold" but initially hidden (e.g., hidden carousel slides, mega menu images).
 - **MANDATORY**: **Do not** use `fetchpriority="low"` on standard below-the-fold images that are already using `loading="lazy"`. These images should load at normal priority once they enter the viewport.
 - **RECOMMENDED**: Avoid using `fetchpriority="auto"`. If you want the default priority, omit the attribute entirely to keep your HTML clean.
-- **DO NOT** combine `fetchpriority="high"` with `loading="lazy"` for the LCP image.
+- **DO NOT** combine `fetchpriority="high"` with `loading="lazy"`.
 - **DO NOT** use the deprecated `importance` attribute. It has been replaced by `fetchpriority` and is not supported by any browser.
+- **DO NOT** use the deprecated `loading="auto"` value. It was initially supported by Chrome but has been removed and is not supported by any browser.
 
 ## Fallback strategy
 
