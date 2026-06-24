@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     $('#guide-name-header').textContent = guideName;
+    setupTimelineFilterControls(guideName);
 
     try {
         initGoogleAuth(async () => {
@@ -171,6 +172,26 @@ async function loadRemoteTests() {
     } catch (error) {
         console.error('Error loading remote suites:', error);
     }
+}
+
+function setupTimelineFilterControls(guideName) {
+    const limitInput = /** @type {HTMLInputElement} */ ($('#timeline-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement} */ ($('#timeline-show-all-check'));
+
+    if (!limitInput || !showAllCheck) return;
+
+    limitInput.addEventListener('change', () => {
+        let val = parseInt(limitInput.value);
+        if (isNaN(val) || val < 1) {
+            limitInput.value = '45';
+        }
+        renderGraphs(guideName);
+    });
+
+    showAllCheck.addEventListener('change', () => {
+        limitInput.disabled = showAllCheck.checked;
+        renderGraphs(guideName);
+    });
 }
 
 function setupNavigationControls(currentGuide) {
@@ -359,8 +380,17 @@ function renderGraphs(guideName) {
         });
     });
 
-    const globalTimeline = Array.from(globalDatesMap.values())
+    let globalTimeline = Array.from(globalDatesMap.values())
         .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+    const limitInput = /** @type {HTMLInputElement} */ ($('#timeline-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement} */ ($('#timeline-show-all-check'));
+    const showAll = showAllCheck ? showAllCheck.checked : false;
+    const limit = limitInput ? (parseInt(limitInput.value) || 45) : 45;
+
+    if (!showAll && globalTimeline.length > limit) {
+        globalTimeline = globalTimeline.slice(-limit);
+    }
 
     const globalWidth = Math.max(450, globalTimeline.length * 30);
 
@@ -372,7 +402,22 @@ function renderGraphs(guideName) {
         return newestB - newestA;
     });
 
-    sortedCombKeys.forEach(combKey => {
+    // Filter out combinations that have no data points in the filtered timeline
+    const activeCombKeys = sortedCombKeys.filter(combKey => {
+        const runs = combinations[combKey];
+        return runs.some(run => {
+            const runDateKey = getDateKey(run.timestamp);
+            return globalTimeline.some(t => t.dateKey === runDateKey);
+        });
+    });
+
+    if (activeCombKeys.length === 0) {
+        $('#empty-state').style.display = 'block';
+        return;
+    }
+    $('#empty-state').style.display = 'none';
+
+    activeCombKeys.forEach(combKey => {
         const [agent, model] = combKey.split('|||');
         const runs = combinations[combKey];
 
