@@ -51,7 +51,7 @@
 
     /* Styling the picker (the dropdown) */
     select::picker(select) {
-      /* Default hidden state is handled by base-select, 
+      /* Default hidden state is handled by base-select,
          but we ensure it's grid only when open */
       display: none;
       grid-template-columns: repeat(2, 1fr);
@@ -75,21 +75,45 @@
       align-items: center;
       justify-content: center;
       padding: 15px;
-      border: 1px solid #eee;
+      border: 1px solid oklab(from var(--border-color) l a b / 60%);
       border-radius: 6px;
       transition: background-color 0.2s;
     }
 
     option:hover,
     option:checked {
-      background-color: #e9ecef;
-      outline: none;
+      border-color: oklab(from var(--primary-color) l a b / 60%);
+      background-color: oklab(from var(--primary-color) l a b / 8%);
+    }
+
+    option::checkmark {
+      display: none;
     }
 
     option:checked {
+      position: relative;
       border: 2px solid var(--primary-color);
-      background-color: #f0f7ff;
-      font-weight: 700;
+      background-color: oklab(from var(--primary-color) l a b / 8%);
+
+
+      &::checkmark {
+        position: absolute;
+        inset-block-start: -.4em;
+        inset-inline-end: -.5em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        min-inline-size: 1.6em;
+        aspect-ratio: 1;
+        padding-bottom: 0.12em;
+        padding-left: 0.05em;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        font-size: 70%;
+        font-weight: bold;
+      }
     }
 
     .icon {
@@ -120,7 +144,7 @@
     <h1>Custom Grid Picker</h1>
     <p>This demo uses <code>appearance: base-select</code> to style the <code>&lt;select&gt;</code> element's dropdown
       as a grid.</p>
-      
+
     <label for="weather-picker">Select weather</label>
     <select name="weather" id="weather-picker">
       <button>
