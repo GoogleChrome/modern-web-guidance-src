@@ -171,6 +171,7 @@ const character = await session.prompt([
 - **Aborting Tasks**: Use `AbortController` to allow users to stop long-running generations. Pass the `signal` to `prompt()` or `promptStreaming()`, not to `LanguageModel.create()`.
 - **Security**: Use Permission Policies to control access in iframes: `<iframe src="..." allow="language-model"></iframe>`.
 - **Design**: Review the [People + AI Guidebook](https://pair.withgoogle.com/guidebook/) to ensure responsible AI implementation.
+- **Dos and Don'ts**: See this collection of [technical and UX considerations to help you avoid common pitfalls](https://developer.chrome.com/docs/ai/built-in-ai-dos-donts).
 
 By combining structured outputs with robust session management, developers can build complex, stateful AI applications that run entirely on the user's device.
 
