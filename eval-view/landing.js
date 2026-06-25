@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Initialize UI
         setupTestFilters(); // New filter setup
         setupTableFilters();
+        setupInsightsTimelineFilters();
 
         const params = new URLSearchParams(window.location.search);
         
@@ -170,6 +171,35 @@ function setupTableFilters() {
         });
         syncSelectStyles(el);
     });
+}
+
+function setupInsightsTimelineFilters() {
+    const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
+
+    if (limitInput) {
+        limitInput.addEventListener('change', () => {
+            let val = parseInt(limitInput.value);
+            if (isNaN(val) || val < 1) val = 15;
+            limitInput.value = val.toString();
+            renderPivotInsights();
+        });
+        limitInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                limitInput.blur();
+            }
+        });
+    }
+
+    if (showAllCheck) {
+        showAllCheck.addEventListener('change', () => {
+            if (limitInput) {
+                limitInput.disabled = showAllCheck.checked;
+                limitInput.style.opacity = showAllCheck.checked ? '0.5' : '1';
+            }
+            renderPivotInsights();
+        });
+    }
 }
 
 function syncSelectStyles(el) {
@@ -756,7 +786,38 @@ function getSortedTestIds() {
 }
 
 function renderPivotInsights() {
-    const testIds = getSortedTestIds(); // Uses selected filters!
+    let testIds = getSortedTestIds(); // Uses selected filters!
+
+    const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
+    const showAll = showAllCheck ? showAllCheck.checked : false;
+    const limit = limitInput ? (parseInt(limitInput.value) || 15) : 15;
+
+    if (!showAll && testIds.length > 0) {
+        // Get all unique dates for these test runs
+        const datesMap = new Map();
+        testIds.forEach(id => {
+            const testInfo = allTestData[id];
+            if (testInfo) {
+                const dateKey = testInfo.timestamp.split('T')[0];
+                datesMap.set(dateKey, true);
+            }
+        });
+        
+        // Sort dates chronologically
+        const sortedDates = Array.from(datesMap.keys()).sort((a, b) => a.localeCompare(b));
+        
+        // Slice the last N dates
+        const activeDates = new Set(sortedDates.slice(-limit));
+        
+        // Filter testIds to only include runs falling on active dates
+        testIds = testIds.filter(id => {
+            const testInfo = allTestData[id];
+            if (!testInfo) return false;
+            const dateKey = testInfo.timestamp.split('T')[0];
+            return activeDates.has(dateKey);
+        });
+    }
     const grouped = {
         agent: {},
         serving: {},
@@ -824,6 +885,13 @@ function renderPivotInsights() {
         return sorted[mid];
     };
 
+    const calculateSD = (vals) => {
+        if (vals.length <= 1) return 0;
+        const mean = vals.reduce((sum, v) => sum + v, 0) / vals.length;
+        const variance = vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / vals.length;
+        return Math.sqrt(variance);
+    };
+
     const renderPivotTable = (groupObj, filterKey) => {
         let keys = Object.keys(groupObj);
 
@@ -845,6 +913,14 @@ function renderPivotInsights() {
                 } else if (currentGuideSort === 'guided') {
                     valA = itemA.gRate;
                     valB = itemB.gRate;
+                } else if (currentGuideSort === 'variance') {
+                    const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
+                    const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
+                    valA = Math.max(sdUA, sdGA);
+
+                    const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
+                    const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
+                    valB = Math.max(sdUB, sdGB);
                 }
 
                 if (valA < valB) return currentGuideSortDir === 'asc' ? -1 : 1;
@@ -856,6 +932,8 @@ function renderPivotInsights() {
             keys.sort((a, b) => a.localeCompare(b));
         }
 
+        const showVariance = filterKey === 'guide';
+
         let rowsHtml = '';
         keys.forEach(key => {
             const items = groupObj[key];
@@ -864,9 +942,22 @@ function renderPivotInsights() {
             const uRate = medianItem.uRate;
             const gRate = medianItem.gRate;
 
+            // Calculate Standard Deviation
+            const uSD = showVariance ? calculateSD(items.map(item => item.uRate)) : 0;
+            const gSD = showVariance ? calculateSD(items.map(item => item.gRate)) : 0;
+
+            const uSD_left = Math.max(0, uRate - uSD);
+            const uSD_width = Math.min(100, uRate + uSD) - uSD_left;
+
+            const gSD_left = Math.max(0, gRate - gSD);
+            const gSD_width = Math.min(100, gRate + gSD) - gSD_left;
+
             const clickAttr = filterKey === 'guide'
                 ? `onclick="window.location.href='guide.html?guide=${encodeURIComponent(key)}'"`
                 : `onclick="setInsightFilter('${filterKey}', '${key}')"`;
+
+            const uBandHtml = uSD > 0 ? `<div class="variance-band unguided" style="left: ${uSD_left}%; width: ${uSD_width}%;"></div>` : '';
+            const gBandHtml = gSD > 0 ? `<div class="variance-band guided" style="left: ${gSD_left}%; width: ${gSD_width}%;"></div>` : '';
 
             rowsHtml += `
                 <tr ${clickAttr} style="cursor: pointer;">
@@ -876,6 +967,8 @@ function renderPivotInsights() {
                     </td>
                     <td class="insight-dumbbell-cell">
                         <div class="insight-dumbbell-track">
+                            ${uBandHtml}
+                            ${gBandHtml}
                             <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px);"></div>
                             <div class="dot unguided" style="left: calc(${uRate}% - 2px);"></div>
                             <div class="dot guided" style="left: calc(${gRate}% - 3px);"></div>
@@ -894,7 +987,8 @@ function renderPivotInsights() {
             { value: 'alphabetic', label: 'Alphabetic' },
             { value: 'uplift', label: 'By Uplift' },
             { value: 'unguided', label: 'Unguided Rate' },
-            { value: 'guided', label: 'Guided Rate' }
+            { value: 'guided', label: 'Guided Rate' },
+            { value: 'variance', label: 'By Variance' }
         ];
 
         const sortOptionsHtml = sortOptions.map(opt => 
