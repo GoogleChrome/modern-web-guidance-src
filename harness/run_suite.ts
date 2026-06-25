@@ -371,7 +371,7 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
   return workspaceBaseAppDir;
 }
 
-function generateTransientPackage(
+export function generateTransientPackage(
   targetDir: string,
   agentScript: string,
   promptContent: string,
