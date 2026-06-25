@@ -783,3 +783,68 @@
   box-sizing: border-box;
   text-align: right;
 }
+
+/* Uplift Comparisons Grid Layout Tweaks */
+.insights-top-row {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.insights-panel-full {
+  flex: 1 1 100%;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.insights-panel-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.guide-sort-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--color-surface-container-low);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.sort-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.sort-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.sort-direction-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.sort-direction-btn:hover {
+  color: var(--color-primary);
+}

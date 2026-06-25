@@ -8,6 +8,10 @@ let currentAgentFilter = 'all';
 let currentServingFilter = 'all';
 let currentModelFilter = 'all';
 
+// Guides Pivot Table Sort State
+let currentGuideSort = 'alphabetic';
+let currentGuideSortDir = 'asc';
+
 function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 }
@@ -821,8 +825,39 @@ function renderPivotInsights() {
     };
 
     const renderPivotTable = (groupObj, filterKey) => {
+        let keys = Object.keys(groupObj);
+
+        if (filterKey === 'guide') {
+            keys.sort((a, b) => {
+                const itemA = getDumbbellMedian(groupObj[a]);
+                const itemB = getDumbbellMedian(groupObj[b]);
+
+                let valA, valB;
+                if (currentGuideSort === 'alphabetic') {
+                    valA = a.toLowerCase();
+                    valB = b.toLowerCase();
+                } else if (currentGuideSort === 'uplift') {
+                    valA = itemA.uplift;
+                    valB = itemB.uplift;
+                } else if (currentGuideSort === 'unguided') {
+                    valA = itemA.uRate;
+                    valB = itemB.uRate;
+                } else if (currentGuideSort === 'guided') {
+                    valA = itemA.gRate;
+                    valB = itemB.gRate;
+                }
+
+                if (valA < valB) return currentGuideSortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentGuideSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        } else {
+            // Default alphabetical sort for others
+            keys.sort((a, b) => a.localeCompare(b));
+        }
+
         let rowsHtml = '';
-        Object.keys(groupObj).forEach(key => {
+        keys.forEach(key => {
             const items = groupObj[key];
             const medianItem = getDumbbellMedian(items);
             const medUplift = medianItem.uplift;
@@ -855,24 +890,71 @@ function renderPivotInsights() {
 
     const container = document.getElementById('insights-container');
     if (container) {
+        const sortOptions = [
+            { value: 'alphabetic', label: 'Alphabetic' },
+            { value: 'uplift', label: 'By Uplift' },
+            { value: 'unguided', label: 'Unguided Rate' },
+            { value: 'guided', label: 'Guided Rate' }
+        ];
+
+        const sortOptionsHtml = sortOptions.map(opt => 
+            `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
+
         container.innerHTML = `
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Agent</div>
-                ${renderPivotTable(grouped.agent, 'agent')}
+            <div class="insights-top-row">
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Agent</div>
+                    ${renderPivotTable(grouped.agent, 'agent')}
+                </div>
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Serving</div>
+                    ${renderPivotTable(grouped.serving, 'serving')}
+                </div>
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Model</div>
+                    ${renderPivotTable(grouped.model, 'model')}
+                </div>
             </div>
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Serving</div>
-                ${renderPivotTable(grouped.serving, 'serving')}
-            </div>
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Model</div>
-                ${renderPivotTable(grouped.model, 'model')}
-            </div>
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Guide</div>
+            <div class="insights-panel insights-panel-full">
+                <div class="insights-panel-header-row">
+                    <div class="insights-panel-title" style="margin-bottom: 0;">By Guide</div>
+                    <div class="guide-sort-controls">
+                        <span class="sort-label">Sort:</span>
+                        <select id="guide-sort-select" class="sort-select">
+                            ${sortOptionsHtml}
+                        </select>
+                        <button id="guide-sort-dir-btn" class="sort-direction-btn" title="Toggle Direction">
+                            <span style="font-size: 1rem; font-weight: bold;">${dirArrow}</span>
+                        </button>
+                    </div>
+                </div>
                 ${renderPivotTable(grouped.guide, 'guide')}
             </div>
         `;
+
+        // Attach Event Listeners
+        const sortSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById('guide-sort-select'));
+        const sortDirBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('guide-sort-dir-btn'));
+
+        if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+                const target = e.target;
+                if (target instanceof HTMLSelectElement) {
+                    currentGuideSort = target.value;
+                    renderPivotInsights();
+                }
+            });
+        }
+
+        if (sortDirBtn) {
+            sortDirBtn.addEventListener('click', () => {
+                currentGuideSortDir = currentGuideSortDir === 'asc' ? 'desc' : 'asc';
+                renderPivotInsights();
+            });
+        }
     }
 }
 
