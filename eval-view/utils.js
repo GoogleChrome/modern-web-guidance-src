@@ -69,14 +69,44 @@ export function timeAgo(date) {
     return rtf.format(-Math.floor(diff / u.s), /** @type {Intl.RelativeTimeFormatUnit} */ (u.name));
 }
 
+export function parseResultKey(key) {
+    const parts = key.split(' - ');
+    if (parts.length !== 3) return null;
+    let [task, guide, runType] = parts;
+
+    const featuresMap = window.__featuresMapping;
+    let isFlipped = false;
+
+    if (featuresMap) {
+        const isGuideValid = featuresMap[guide] !== undefined;
+        const isTaskValidGuide = featuresMap[task] !== undefined;
+        if (isTaskValidGuide && !isGuideValid) {
+            isFlipped = true;
+        } else if (!isGuideValid && !isTaskValidGuide) {
+            isFlipped = guide === 'task' || guide.endsWith('-task');
+        }
+    } else {
+        isFlipped = guide === 'task' || guide.endsWith('-task');
+    }
+
+    if (isFlipped) {
+        const temp = task;
+        task = guide;
+        guide = temp;
+    }
+
+    return { task, guide, runType };
+}
+
+
 export function calculateChartData(results) {
     const apps = {};
     const taskNames = {};
     
     Object.keys(results).forEach(key => {
-        const parts = key.split(' - ');
-        if (parts.length < 3) return;
-        const [taskName, guide, runType] = parts;
+        const parsedKey = parseResultKey(key);
+        if (!parsedKey) return;
+        const { task: taskName, guide, runType } = parsedKey;
 
         if (!['guided', 'unguided'].includes(runType)) return;
         const scenario = `${taskName} (${guide})`;
@@ -129,10 +159,9 @@ export function calculateChartData(results) {
 
 export function formatTestName(name, isDisciplineSkill = false) {
     if (!name) return name;
-    const parts = name.split(' - ');
-    if (parts.length >= 2) {
-        const appName = parts[0];
-        const guideName = parts[1];
+    const parsedKey = parseResultKey(name);
+    if (parsedKey) {
+        const { task: appName, guide: guideName } = parsedKey;
         
         const featuresMap = window.__featuresMapping || {};
         let featureId = '';

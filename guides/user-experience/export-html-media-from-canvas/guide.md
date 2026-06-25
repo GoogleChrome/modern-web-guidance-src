@@ -68,14 +68,11 @@ canvas.onpaint = () => {
 ```js
 canvas.onpaint = () => {
   if (gl.texElementImage2D) {
-    gl.texElementImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      uiElement,
-    );
+    try {
+      gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, uiElement);
+    } catch (err) {
+      console.error('texElementImage2D copy failed:', err);
+    }
   }
 };
 ```
@@ -84,9 +81,19 @@ canvas.onpaint = () => {
 
 ```js
 canvas.onpaint = () => {
-  root.device.queue.copyElementImageToTexture(valueElement, 512, 128, {
-    texture: targetTexture,
-  });
+  if (root.device.queue.copyElementImageToTexture) {
+    try {
+      const sourceDict = { source: valueElement };
+      const destDict = {
+        destination: { texture: targetTexture },
+        width: 512,
+        height: 128,
+      };
+      root.device.queue.copyElementImageToTexture(sourceDict, destDict);
+    } catch (err) {
+      console.error('copyElementImageToTexture copy failed:', err);
+    }
+  }
 };
 ```
 

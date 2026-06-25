@@ -57,14 +57,11 @@ observer.observe(canvas, options);
 ```js
 canvas.onpaint = () => {
   if (gl.texElementImage2D) {
-    gl.texElementImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      uiElement,
-    );
+    try {
+      gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, uiElement);
+    } catch (err) {
+      console.error('texElementImage2D copy failed:', err);
+    }
   }
 };
 ```
@@ -168,14 +165,11 @@ targetHTMLElement.style.transform = computedTransform.toString();
   canvas.onpaint = () => {
     // 1. Update texture with HTML content
     if (gl.texElementImage2D) {
-      gl.texElementImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.RGBA,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        uiElement,
-      );
+      try {
+        gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, uiElement);
+      } catch (err) {
+        console.error('texElementImage2D copy failed:', err);
+      }
     }
 
     // ... Render your 3D scene here, calculating htmlElementMVP matrix ...
