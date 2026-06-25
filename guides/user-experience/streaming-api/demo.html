@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body>
+    <div id="content-to-update"></div>
+
+    <script type="module">
+      const contentElement = document.querySelector("#content-to-update");
+      const writer = contentElement.streamHTML().getWriter();
+      let i = 0;
+      // Example stream of updating content
+      while (true) {
+        await writer.write(`<p>${++i}</p>`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      writer.close();
+    </script>
+  </body>
+</html>
