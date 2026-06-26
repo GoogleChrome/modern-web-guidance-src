@@ -10,27 +10,32 @@ sources:
 
 # Semantic Component Adaptation
 
-Use style queries (`@container style()`) to trigger component variations based on inherited semantic context flags rather than viewport or container dimensions. This replaces deep descendant selectors (e.g., `.sidebar .card`) and improves component encapsulation.
+Use style queries (`@container style()`) to trigger contextual variations without hardcoding what produces or reacts to each context. This reduces design system coupling and improves extensibility and component encapsulation.
 
-In design systems, this lets a component respond to its surrounding context without that context needing to know the component exists. For example, a card placed inside a section marked `--surface: featured` can swap to a filled button and reveal a promotional badge — the section never names `.button` or `.badge`, and the card never inspects its parent.
+For example, a `section.featured { --surface: featured }` rule can mark a context, and a landing page might also default to it via `main { --surface: featured }`. Components then opt in to react to `--surface: featured`: a card reveals a promotional badge, a button defaults to its filled variant, and so on.
 
-## How is this different from design-token-reactivity?
+Style queries let **both sides stay decoupled**: the featured surfaces never name the elements that adapt to them, and the components never inspect what produced the context. Either side can be extended independently — new components, new featured surfaces — without touching the other. Descendant selectors (e.g., `.featured .button`) force the opposite: the selector must encode both sides of the relationship and must change whenever either side does.
 
-[`design-token-reactivity`](../design-token-reactivity/guide.md) covers *token-level* changes: density modes, themes, and other higher-order tokens that uniformly shift values (paddings, colors) across many components.
+## When to use this guide
 
-This guide covers *behavioral* changes: a component deciding **what to render, how to arrange itself, or which variant to present** in response to its context. Hiding/showing a badge, switching layout direction, or swapping a button variant all fit here.
+This guide covers *behavioral* changes: a component deciding **what to render, how to arrange itself, or which variant to present** in response to its context — hiding or showing a badge, switching layout direction, or swapping a button variant.
 
-## Mental Model
+If instead you need *token-level* changes — density modes, themes, or other higher-order tokens that uniformly shift values like padding and color across many components — see {{ GUIDE_REF("design-token-reactivity") }}.
 
-- **Size Queries:** Use for layout/density changes (width/height).
-- **Style Queries:** Use for semantic logic — what the component should *do* in this context.
+## Choosing the right tool
+
+Reach for a style query when **both sides of a contextual relationship may change independently** — new elements may start producing the context, or new components may start reacting to it. The indirection pays for itself in extensibility and encapsulation, and style queries cross shadow DOM boundaries that descendant selectors cannot. When that flexibility isn't needed, prefer the simpler tool:
+
+- **Descendant selectors** (`.toolbar .button`): a fixed, one-off relationship that isn't reusable or extensible. YAGNI applies — don't add indirection you won't use.
+- **Size queries** (`@container (min-width: …)`): layout and density changes driven by available space, not semantic state.
+- **Style queries** (`@container style(…)`): semantic state — what a component should render, arrange, or present in a given context.
 
 ## Implementation Directives
 
 1. Define a semantic context flag using a CSS custom property on a container.
 2. **DO NOT** set `container-type` for style queries; they query inherited custom properties on the nearest ancestor and don't require an explicit containment context.
 3. **MANDATORY**: Use `@container style(--property: value)` to apply conditional styles to descendant elements. Style queries cannot match the element the property is set on — only its descendants.
-4. **DO** prefer style queries over descendant selectors to avoid specificity inflation and hardcoded DOM dependencies.
+4. **DO** prefer style queries over descendant selectors when the relationship must stay extensible or cross component/shadow DOM boundaries (see *Choosing the right tool* above) — but keep descendant selectors for fixed, one-off relationships where the indirection buys nothing.
 
 ## Implementation Example
 
