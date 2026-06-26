@@ -24,6 +24,8 @@ interface EvalsSummary {
   assertionCount: number;
   unguidedPassRate: number;
   guidedPassRate: number;
+  skillVersion?: string;
+  cliVersion?: string;
 }
 
 function pullRecentGcsSuites(): string[] {
@@ -139,6 +141,8 @@ function collectResults() {
         assertionCount: summary.guidedTotal ?? 0,
         unguidedPassRate: summary.unguidedPassRate ?? 0,
         guidedPassRate: summary.guidedPassRate ?? 0,
+        skillVersion: data.skillVersion,
+        cliVersion: data.cliVersion,
       });
     } catch (e) {
       console.error(`Error reading/parsing ${folderName}/evals.json:`, e);
