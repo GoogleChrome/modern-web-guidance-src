@@ -11,7 +11,7 @@ With a bundler or import map:
 ```js
 // MANDATORY: Feature detect 'popover' on HTMLElement.prototype.
 if (!("popover" in HTMLElement.prototype)) {
-  import("@oddbird/popover-polyfill/fn").then(({ apply }) => apply());
+  import("@oddbird/popover-polyfill");
 }
 ```
 
