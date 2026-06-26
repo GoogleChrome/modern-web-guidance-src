@@ -20,7 +20,7 @@ Without a bundler, import from a CDN inside a `<script type="module">`:
 ```html
 <script type="module">
   if (!("popover" in HTMLElement.prototype)) {
-    import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js").then(({ apply }) => apply());
+    import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
   }
 </script>
 ```
