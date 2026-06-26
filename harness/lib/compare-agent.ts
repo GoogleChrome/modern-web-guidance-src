@@ -28,16 +28,30 @@ async function getSortedModelsList(apiKey: string): Promise<string[]> {
       .filter((m: any) => {
         const isGemini = m.name.startsWith('models/gemini-');
         const supportsText = m.supportedGenerationMethods?.includes('generateContent');
-        return isGemini && supportsText;
+        if (!isGemini || !supportsText) return false;
+
+        // Rule 0: Exclude all models with "image" or "tts" in their names
+        const nameLower = m.name.toLowerCase();
+        if (nameLower.includes('image') || nameLower.includes('tts')) {
+          return false;
+        }
+        return true;
       })
       .map((m: any) => {
-        // Parse version and tier from name, e.g. "models/gemini-3.5-flash" -> version: 3.5, tier: "flash"
+        // Parse major version, minor version, and tier from name
+        // e.g. "models/gemini-3.5-flash" -> version: 3.5, tier: "flash"
         const match = m.name.match(/gemini-(\d+(?:\.\d+)?)-(pro|flash)/i);
-        const version = match ? parseFloat(match[1]) : 0.0;
+        const versionStr = match ? match[1] : '0.0';
         const tier = match ? match[2].toLowerCase() : 'flash';
+
+        const parts = versionStr.split('.');
+        const major = parseInt(parts[0], 10) || 0;
+        const minor = parts[1] ? parseFloat('0.' + parts[1]) : 0.0;
+
         return {
           name: m.name,
-          version,
+          major,
+          minor,
           tier
         };
       });
@@ -46,13 +60,26 @@ async function getSortedModelsList(apiKey: string): Promise<string[]> {
       return fallbackList;
     }
 
-    // Sort: 1. Version descending (3.5 > 2.5) | 2. Tier descending (pro > flash)
+    // Sort hierarchy:
+    // 1. Major version descending (3 > 2)
+    // 2. Tier descending (pro > flash)
+    // 3. Minor version descending (3.5 > 3.1)
     geminiModels.sort((a: any, b: any) => {
-      if (b.version !== a.version) {
-        return b.version - a.version;
+      // 1. Major version
+      if (b.major !== a.major) {
+        return b.major - a.major;
       }
+      
+      // 2. Tier (Pro > Flash)
       const tierScore = (t: string) => t === 'pro' ? 2 : 1;
-      return tierScore(b.tier) - tierScore(a.tier);
+      const scoreB = tierScore(b.tier);
+      const scoreA = tierScore(a.tier);
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+      
+      // 3. Minor version
+      return b.minor - a.minor;
     });
 
     const sortedNames = geminiModels.map((m: any) => m.name);
@@ -384,7 +411,9 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
 
   const systemInstruction = `You are an expert software engineering diagnostic agent. Your task is to compare two runs of an AI coding agent executing the same task, and write a highly technical, objective, and extremely precise diagnostic report in Markdown format.
 
-You MUST structure your report into exactly the following three sections. Do not include any conversational introductions, conclusions, or raw analysis notes/thought processes outside these sections. Start directly with the section headings:
+Be extremely thorough, exhaustive, and detailed in your analysis. Under the Root Cause Explanation, write a comprehensive, step-by-step technical breakdown of any race conditions, event sequences, execution flows, or metric finalizations, ensuring no detail is omitted.
+
+You MUST structure your report into exactly the following three sections. Do not summarize or truncate your explanations early; provide complete trace analyses and ensure all three sections are fully populated. Start directly with the section headings:
 
 1. **Divergence Point**: Identify the exact step or moment in the trajectories where the two runs diverged in their approach or quality of execution.
 2. **Root Cause Explanation**: Explain the technical reason why this divergence caused the difference in outcomes, referencing the code differences, failed assertions, or trajectory logs.

@@ -277,6 +277,10 @@ function initParams() {
     alert('Missing required parameters: trialA and guide are required.');
     return false;
   }
+
+  // Update browser tab title with active guide name
+  document.title = `${guideName} - AI Variance Diagnosis`;
+  document.getElementById('compare-title').innerHTML = `Cross-Run Variance Diagnosis <span style="font-weight: 400; color: #64748b;">(${guideName})</span>`;
   return true;
 }
 
