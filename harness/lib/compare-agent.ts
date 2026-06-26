@@ -67,7 +67,10 @@ async function getSortedModelsList(apiKey: string): Promise<string[]> {
 /**
  * Attempts to generate content with a specific model.
  */
-async function attemptGenerateContent(apiKey: string, model: string, prompt: string): Promise<string> {
+/**
+ * Attempts to generate content with a specific model using both systemInstruction and prompt.
+ */
+async function attemptGenerateContent(apiKey: string, model: string, systemInstruction: string, prompt: string): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
@@ -79,6 +82,9 @@ async function attemptGenerateContent(apiKey: string, model: string, prompt: str
       contents: [{
         parts: [{ text: prompt }]
       }],
+      systemInstruction: {
+        parts: [{ text: systemInstruction }]
+      },
       generationConfig: {
         temperature: 0.2,
         maxOutputTokens: 8192
@@ -97,9 +103,37 @@ async function attemptGenerateContent(apiKey: string, model: string, prompt: str
   }
 
   const data = await response.json() as any;
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
+  
+  // Write data to a debug file for precise JSON structure analysis
+  try {
+    const debugDir = path.resolve('./results/compare_work');
+    if (!fs.existsSync(debugDir)) {
+      fs.mkdirSync(debugDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(debugDir, 'response_debug.json'), JSON.stringify(data, null, 2), 'utf8');
+    console.log(`[Compare Agent] 🧪 Wrote API response debug log to results/compare_work/response_debug.json`);
+  } catch (e) {}
+
+  const parts = data.candidates?.[0]?.content?.parts;
+  if (!parts || !Array.isArray(parts) || parts.length === 0) {
     throw new Error('Failed to parse content from response: ' + JSON.stringify(data));
+  }
+
+  // Filter out thinking parts (where thought: true) and extract only the final answer text
+  const nonThoughtParts = parts.filter((part: any) => !part.thought);
+  
+  if (nonThoughtParts.length === 0) {
+    // Fallback to the first part if no non-thought parts are present
+    const fallbackText = parts[0]?.text;
+    if (!fallbackText) {
+      throw new Error('No text content found in response parts: ' + JSON.stringify(data));
+    }
+    return fallbackText;
+  }
+
+  const text = nonThoughtParts.map((part: any) => part.text).filter(Boolean).join('');
+  if (!text) {
+    throw new Error('No valid text content found in final response parts: ' + JSON.stringify(data));
   }
 
   return text;
@@ -108,7 +142,7 @@ async function attemptGenerateContent(apiKey: string, model: string, prompt: str
 /**
  * Direct call to the Gemini Developer API using fetch with automatic model failover.
  */
-async function callGeminiApiDirectly(prompt: string): Promise<string> {
+async function callGeminiApiDirectly(systemInstruction: string, prompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not set. Please add GEMINI_API_KEY="your_api_key_here" to a .env file at the project root.');
@@ -132,7 +166,7 @@ async function callGeminiApiDirectly(prompt: string): Promise<string> {
 
     console.log(`[Compare Agent] Attempting diagnosis with model: ${model}...`);
     try {
-      const result = await attemptGenerateContent(apiKey, model, prompt);
+      const result = await attemptGenerateContent(apiKey, model, systemInstruction, prompt);
       console.log(`[Compare Agent] ✅ Successful diagnosis using model: ${model}`);
       return result;
     } catch (err: any) {
@@ -348,10 +382,15 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
 
-  const prompt = `
-You are an expert software engineering diagnostic agent. Your task is to compare two runs of an AI coding agent executing the same task, and write a natural-language explanation of why one run performed better than the other (or how they differed).
+  const systemInstruction = `You are an expert software engineering diagnostic agent. Your task is to compare two runs of an AI coding agent executing the same task, and write a highly technical, objective, and extremely precise diagnostic report in Markdown format.
 
-### Task Prompt
+You MUST structure your report into exactly the following three sections. Do not include any conversational introductions, conclusions, or raw analysis notes/thought processes outside these sections. Start directly with the section headings:
+
+1. **Divergence Point**: Identify the exact step or moment in the trajectories where the two runs diverged in their approach or quality of execution.
+2. **Root Cause Explanation**: Explain the technical reason why this divergence caused the difference in outcomes, referencing the code differences, failed assertions, or trajectory logs.
+3. **Trajectory Contrast**: Provide a summary comparing the steps taken, highlighting the contrasting decisions made by the agents (using a markdown table where appropriate).`;
+
+  const prompt = `### Task Prompt
 """
 ${taskPrompt}
 """
@@ -383,16 +422,7 @@ ${ctxB.trajectorySummary ? JSON.stringify(ctxB.trajectorySummary.steps, null, 2)
 - Line-by-line Diff (Run A vs Run B):
 """
 ${codeDiff.slice(0, 5000)}
-"""
-
-Please write a highly technical, objective, and extremely precise diagnostic report.
-Structure your report into the following three sections:
-1. **Divergence Point**: Identify the exact step or moment in the trajectories where the two runs diverged in their approach or quality of execution.
-2. **Root Cause Explanation**: Explain the technical reason why this divergence caused the difference in outcomes, referencing the code differences, failed assertions, or trajectory logs.
-3. **Trajectory Contrast**: Provide a summary comparing the steps taken, highlighting the contrasting decisions made by the agents.
-
-Write your report in Markdown format. Start directly with the markdown content.
-`;
+"""`;
 
   // Create a temporary workspace inside the results directory for prompt logging
   const suiteMatch = successCtx.dir.match(/(.*[/\\]results[/\\][^/\\]+)/);
@@ -407,7 +437,7 @@ Write your report in Markdown format. Start directly with the markdown content.
 
   try {
     console.log(`Sending trajectories to Gemini API for variance diagnosis...`);
-    const markdownReport = await callGeminiApiDirectly(prompt);
+    const markdownReport = await callGeminiApiDirectly(systemInstruction, prompt);
     
     // Determine where to save the report
     let savedPath = '';

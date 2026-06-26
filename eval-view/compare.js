@@ -32,7 +32,7 @@ let runDirB = '';
 let suiteDataA = null;
 let suiteDataB = null;
 
-// Robust line-by-line markdown to HTML compiler with ANSI stripping
+// Robust line-by-line markdown to HTML compiler with ANSI stripping & GFM Table support
 function renderMarkdown(md) {
   if (!md) return '';
   
@@ -44,8 +44,12 @@ function renderMarkdown(md) {
   let inList = false;
   let inParagraph = false;
   let inCodeBlock = false;
+  let inTable = false;
   let codeLanguage = '';
   let codeContent = [];
+  let tableHeaders = [];
+  let tableAlignments = [];
+  let tableRows = [];
   
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
@@ -75,6 +79,13 @@ function renderMarkdown(md) {
       .replace(/>/g, '&gt;');
       
     if (!line) {
+      if (inTable) {
+        html += renderTableHtml(tableHeaders, tableAlignments, tableRows);
+        inTable = false;
+        tableHeaders = [];
+        tableAlignments = [];
+        tableRows = [];
+      }
       if (inList) {
         html += '</ul>';
         inList = false;
@@ -85,8 +96,57 @@ function renderMarkdown(md) {
       }
       continue;
     }
+
+    // 2. Handle Tables
+    const isTableLine = line.startsWith('|') && line.endsWith('|');
+    if (inTable && !isTableLine) {
+      html += renderTableHtml(tableHeaders, tableAlignments, tableRows);
+      inTable = false;
+      tableHeaders = [];
+      tableAlignments = [];
+      tableRows = [];
+    }
+
+    if (isTableLine) {
+      if (inParagraph) { html += '</p>'; inParagraph = false; }
+      if (inList) { html += '</ul>'; inList = false; }
+      
+      if (!inTable) {
+        // Look ahead to check if the next line is a divider
+        const nextLine = (lines[i+1] || '').trim();
+        const escapedNextLine = nextLine
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        const isNextDivider = escapedNextLine.startsWith('|') && /^[\s|:-]+$/.test(escapedNextLine);
+        
+        if (isNextDivider) {
+          inTable = true;
+          tableRows = [];
+          
+          const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+          tableHeaders = cells;
+          
+          const dividerCells = escapedNextLine.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+          tableAlignments = dividerCells.map(cell => {
+            const left = cell.startsWith(':');
+            const right = cell.endsWith(':');
+            if (left && right) return 'center';
+            if (right) return 'right';
+            return 'left';
+          });
+          
+          i++; // Skip the divider line
+          continue;
+        }
+      } else {
+        const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+        tableRows.push(cells);
+        continue;
+      }
+    }
     
-    // 2. Handle Headings
+    // 3. Handle Headings
     if (line.startsWith('#')) {
       const match = line.match(/^(#{1,6})\s+(.*)$/);
       if (match) {
@@ -98,7 +158,7 @@ function renderMarkdown(md) {
       }
     }
     
-    // 3. Handle Lists
+    // 4. Handle Lists
     const listMatch = line.match(/^([-*+])\s+(.*)$/);
     if (listMatch) {
       if (inParagraph) { html += '</p>'; inParagraph = false; }
@@ -110,7 +170,7 @@ function renderMarkdown(md) {
       continue;
     }
     
-    // 4. Handle Horizontal Rules
+    // 5. Handle Horizontal Rules
     if (line === '---' || line === '***') {
       if (inList) { html += '</ul>'; inList = false; }
       if (inParagraph) { html += '</p>'; inParagraph = false; }
@@ -118,7 +178,7 @@ function renderMarkdown(md) {
       continue;
     }
     
-    // 5. Handle Paragraphs
+    // 6. Handle Paragraphs
     if (!inParagraph) {
       html += '<p>';
       inParagraph = true;
@@ -128,9 +188,38 @@ function renderMarkdown(md) {
     }
   }
   
+  if (inTable) html += renderTableHtml(tableHeaders, tableAlignments, tableRows);
   if (inList) html += '</ul>';
   if (inParagraph) html += '</p>';
   if (inCodeBlock) html += `<pre><code>${codeContent.join('\n')}</code></pre>`;
+  
+  return html;
+}
+
+// Helper to compile a parsed markdown table into structured HTML
+function renderTableHtml(headers, alignments, rows) {
+  let html = '<table class="markdown-table">';
+  
+  // Header Row
+  html += '<thead><tr>';
+  headers.forEach((h, idx) => {
+    const align = alignments[idx] || 'left';
+    html += `<th style="text-align:${align}">${parseInline(h)}</th>`;
+  });
+  html += '</tr></thead>';
+  
+  // Body Rows
+  html += '<tbody>';
+  rows.forEach(row => {
+    html += '<tr>';
+    for (let idx = 0; idx < headers.length; idx++) {
+      const cell = row[idx] || '';
+      const align = alignments[idx] || 'left';
+      html += `<td style="text-align:${align}">${parseInline(cell)}</td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
   
   return html;
 }
@@ -636,9 +725,11 @@ function switchTab(tab) {
   if (currentTab === 'assertions') {
     document.getElementById('tab-content-assertions').style.display = 'block';
   } else if (currentTab === 'timeline') {
-    document.getElementById('tab-content-timeline').style.display = 'grid';
+    document.getElementById('tab-content-timeline').style.display = 'flex';
+    updateSyncScrollHeight('timeline-scroll-container', 'timeline-scroll-spacer', 'timeline-a', 'timeline-b');
   } else if (currentTab === 'code') {
-    document.getElementById('tab-content-code').style.display = 'grid';
+    document.getElementById('tab-content-code').style.display = 'flex';
+    updateSyncScrollHeight('code-scroll-container', 'code-scroll-spacer', 'code-a', 'code-b');
   }
 }
 
@@ -715,7 +806,7 @@ async function runDiagnosticAgent() {
     diagnosisText.innerHTML = `
       <div style="font-size:0.9em; font-weight:600; color:#d97706; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
         <div class="spinner" style="width:16px; height:16px; border-width:2px; margin-bottom:0;"></div>
-        <span>Streaming JetskiCLI progress...</span>
+        <span>Streaming Gemini API diagnosis...</span>
       </div>
       <pre id="compare-log-stream" style="font-family:monospace; font-size:0.85em; background:#ffffff; border:1px solid #fde68a; padding:12px; border-radius:6px; overflow-x:auto; max-height:250px; overflow-y:auto; margin:0; white-space:pre-wrap; color:#334155; line-height:1.4; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);"></pre>
     `;
@@ -725,6 +816,17 @@ async function runDiagnosticAgent() {
     const decoder = new TextDecoder();
     let accumulatedText = '';
 
+    let lastUpdate = 0;
+    let updatePending = false;
+
+    function updateDOM() {
+      if (logPre) {
+        logPre.textContent = accumulatedText;
+        logPre.scrollTop = logPre.scrollHeight;
+      }
+      updatePending = false;
+    }
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -732,12 +834,23 @@ async function runDiagnosticAgent() {
       const chunk = decoder.decode(value, { stream: true });
       accumulatedText += chunk;
       
-      if (logPre) {
-        logPre.textContent = accumulatedText;
-        // Scroll to the bottom as new logs stream in
-        logPre.scrollTop = logPre.scrollHeight;
+      const now = performance.now();
+      if (now - lastUpdate > 100) { // Limit DOM rendering to at most once per 100ms
+        updateDOM();
+        lastUpdate = now;
+      } else if (!updatePending) {
+        updatePending = true;
+        // Schedule trailing update on the next animation frame to keep CPU load low
+        requestAnimationFrame(() => {
+          if (updatePending) {
+            updateDOM();
+            lastUpdate = performance.now();
+          }
+        });
       }
     }
+    // Guarantee final, complete update when stream completes
+    updateDOM();
 
     // Extraction of the final report from the accumulated stream text
     const startMarker = '--- DIAGNOSTIC REPORT ---';
@@ -794,9 +907,82 @@ function escapeHtml(str) {
 // Global initialization
 window.onload = async () => {
   if (initParams()) {
+    // Create temporary scroll debug overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'debug-scroll-overlay';
+    overlay.style.cssText = 'position: fixed; top: 10px; right: 10px; background: rgba(15, 23, 42, 0.95); color: #22c55e; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 11px; z-index: 99999; pointer-events: none; border: 1px solid #334155; line-height: 1.5; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);';
+    overlay.innerHTML = '<strong>Scroll Telemetry Debug:</strong><br>Drag scrollbar or scroll wheel to activate...';
+    document.body.appendChild(overlay);
+
     await loadTrialMetadata();
+    
+    // Initialize combined scroll synchronization for Timeline and Code tabs
+    setupSyncScroll('timeline-scroll-container', 'timeline-scroll-spacer', 'timeline-a', 'timeline-b');
+    setupSyncScroll('code-scroll-container', 'code-scroll-spacer', 'code-a', 'code-b');
   }
 };
+
+/**
+ * Sets up bidirectional, synchronized scrolling between a combined scrollbar container and two columns.
+ * Also captures mouse wheel events on the columns and redirects them to the scrollbar container.
+ */
+function setupSyncScroll(scrollContainerId, spacerId, colAId, colBId) {
+  const container = document.getElementById(scrollContainerId);
+  const colA = document.getElementById(colAId);
+  const colB = document.getElementById(colBId);
+
+  if (!container || !colA || !colB) return;
+
+  // 1. Synchronize scroll from scrollbar container to both columns
+  container.addEventListener('scroll', () => {
+    const top = container.scrollTop;
+    colA.scrollTop = top;
+    colB.scrollTop = top;
+
+    // Update real-time debug overlay
+    const overlay = document.getElementById('debug-scroll-overlay');
+    if (overlay) {
+      overlay.innerHTML = `
+        <strong>Scroll Telemetry (${scrollContainerId.split('-')[0].toUpperCase()}):</strong><br>
+        • Scrollbar scrollTop: ${Math.round(top)}px (max: ${container.scrollHeight - container.clientHeight}px)<br>
+        • Col A (${colAId}) scrollTop: ${Math.round(colA.scrollTop)}px (scrollHeight: ${colA.scrollHeight}px, clientHeight: ${colA.clientHeight}px)<br>
+        • Col B (${colBId}) scrollTop: ${Math.round(colB.scrollTop)}px (scrollHeight: ${colB.scrollHeight}px, clientHeight: ${colB.clientHeight}px)
+      `;
+    }
+  });
+
+  // 2. Capture wheel events on columns and redirect to the scrollbar container to enable native scrolling
+  const handleWheel = (e) => {
+    e.preventDefault();
+    container.scrollTop += e.deltaY;
+  };
+
+  colA.addEventListener('wheel', handleWheel, { passive: false });
+  colB.addEventListener('wheel', handleWheel, { passive: false });
+}
+
+/**
+ * Updates the height of the combined scrollbar spacer dynamically to match the maximum scrollable height of the columns.
+ */
+function updateSyncScrollHeight(scrollContainerId, spacerId, colAId, colBId) {
+  const container = document.getElementById(scrollContainerId);
+  const spacer = document.getElementById(spacerId);
+  const colA = document.getElementById(colAId);
+  const colB = document.getElementById(colBId);
+
+  if (!container || !spacer || !colA || !colB) return;
+
+  // Tiny timeout to ensure DOM layout is fully rendered and scrollHeights are accurate
+  setTimeout(() => {
+    const maxScrollHeight = Math.max(colA.scrollHeight, colB.scrollHeight);
+    spacer.style.height = `${maxScrollHeight}px`;
+    
+    // Reset scrollbars to top
+    container.scrollTop = 0;
+    colA.scrollTop = 0;
+    colB.scrollTop = 0;
+  }, 80);
+}
 
 // Expose module functions globally for inline HTML event handlers (since compare.js is loaded as a module)
 window.switchTab = switchTab;

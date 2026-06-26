@@ -258,6 +258,15 @@
       overflow-y: auto;
     }
     
+    /* Hide scrollbars visually while keeping scroll functionality */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+    }
+    
     /* Trajectory Timeline Styles */
     .timeline {
       display: flex;
@@ -339,6 +348,37 @@
     }
     .pass-icon { color: #22c55e; font-weight: bold; }
     .fail-icon { color: #ef4444; font-weight: bold; }
+
+    /* Markdown Table Styles */
+    .markdown-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .markdown-table th, .markdown-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .markdown-table th {
+      background-color: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .markdown-table tr:last-child td {
+      border-bottom: none;
+    }
+    .markdown-table tbody tr:hover {
+      background-color: #f8fafc;
+    }
 
     /* Loading Spinner */
     .loading-container {
@@ -468,32 +508,50 @@
           </table>
         </div>
 
-        <div id="tab-content-timeline" class="split-view" style="display:none;">
-          <div class="split-col">
-            <div class="split-col-title" id="timeline-title-a">Trial A Steps</div>
-            <div class="timeline" id="timeline-a">
-              <!-- Steps -->
-            </div>
+        <!-- Trajectory Timeline Section with Combined Scrollbar -->
+        <div id="tab-content-timeline" style="display:none; align-items: stretch; gap: 15px; width: 100%;">
+          <!-- Combined Scrollbar Container -->
+          <div id="timeline-scroll-container" style="width: 12px; overflow-y: scroll; height: 500px; flex-shrink: 0; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; cursor: pointer; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+            <div id="timeline-scroll-spacer" style="width: 1px; height: 0px;"></div>
           </div>
-          <div class="split-col">
-            <div class="split-col-title" id="timeline-title-b">Trial B Steps</div>
-            <div class="timeline" id="timeline-b">
-              <!-- Steps -->
+          
+          <!-- Columns Grid -->
+          <div class="split-view" style="flex-grow: 1;">
+            <div class="split-col">
+              <div class="split-col-title" id="timeline-title-a">Trial A Steps</div>
+              <div class="timeline no-scrollbar" id="timeline-a" style="overflow-y: scroll; padding-right: 0;">
+                <!-- Steps -->
+              </div>
+            </div>
+            <div class="split-col">
+              <div class="split-col-title" id="timeline-title-b">Trial B Steps</div>
+              <div class="timeline no-scrollbar" id="timeline-b" style="overflow-y: scroll; padding-right: 0;">
+                <!-- Steps -->
+              </div>
             </div>
           </div>
         </div>
 
-        <div id="tab-content-code" class="split-view" style="display:none;">
-          <div class="split-col">
-            <div class="split-col-title" id="code-title-a">Trial A Code Output</div>
-            <div class="code-container" id="code-a">
-              <!-- Code -->
-            </div>
+        <!-- Code Output Diff Section with Combined Scrollbar -->
+        <div id="tab-content-code" style="display:none; align-items: stretch; gap: 15px; width: 100%;">
+          <!-- Combined Scrollbar Container -->
+          <div id="code-scroll-container" style="width: 12px; overflow-y: scroll; height: 500px; flex-shrink: 0; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; cursor: pointer; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+            <div id="code-scroll-spacer" style="width: 1px; height: 0px;"></div>
           </div>
-          <div class="split-col">
-            <div class="split-col-title" id="code-title-b">Trial B Code Output</div>
-            <div class="code-container" id="code-b">
-              <!-- Code -->
+          
+          <!-- Columns Grid -->
+          <div class="split-view" style="flex-grow: 1;">
+            <div class="split-col">
+              <div class="split-col-title" id="code-title-a">Trial A Code Output</div>
+              <div class="code-container no-scrollbar" id="code-a" style="overflow-y: scroll;">
+                <!-- Code -->
+              </div>
+            </div>
+            <div class="split-col">
+              <div class="split-col-title" id="code-title-b">Trial B Code Output</div>
+              <div class="code-container no-scrollbar" id="code-b" style="overflow-y: scroll;">
+                <!-- Code -->
+              </div>
             </div>
           </div>
         </div>
