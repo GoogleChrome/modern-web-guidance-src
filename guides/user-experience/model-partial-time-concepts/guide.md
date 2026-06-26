@@ -3,8 +3,6 @@ name: model-partial-time-concepts
 description: Model date and time concepts that inherently lack a standard component (such as a specific year, day, or date) without using arbitrary placeholder values that introduce calculation errors.
 web-feature-ids:
   - temporal
-sources:
-  - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
 ---
 
 # Modeling Partial Time Concepts with Temporal
@@ -80,26 +78,4 @@ console.log(`Snoozed alarm: ${snoozedTime.toString()}`);
 
 ## Fallback Strategy
 
-{{ BASELINE_STATUS("temporal") }}
-
-For environments without native `Temporal` support, use feature detection and load the `@js-temporal/polyfill`.
-
-```javascript
-// Check if Temporal is supported natively
-(async () => {
-  if (typeof Temporal === 'undefined') {
-    // Load the polyfill conditionally
-    const module = await import("https://esm.sh/@js-temporal/polyfill");
-    globalThis.Temporal = module.Temporal;
-    // Extend Date.prototype if needed
-    Date.prototype.toTemporalInstant = module.toTemporalInstant;
-    initializeApp();
-  }
-})();
-
-function initializeApp() {
-  // Application logic using Temporal
-  const time = Temporal.PlainTime.from("12:00:00");
-  console.log(`Initialized at ${time.toString()}`);
-}
-```
+{{ FEATURE_FALLBACKS("temporal") }}

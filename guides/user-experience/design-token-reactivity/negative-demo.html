@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+    .container {
+      padding: 1rem;
+      border: 1px solid #ccc;
+    }
+
+    @container style(padding: 1rem) {
+      .container {
+        border-color: red;
+      }
+    }
+
+    .item {
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="target-container">
+    <div class="item" id="target-item">I react to density</div>
+  </div>
+
+  <button id="toggle-spacious">Toggle Spacious</button>
+
+  <script>
+    if (navigator.userAgent.indexOf("Chrome") > -1) {
+      document.getElementById('toggle-spacious').style.display = 'block';
+    }
+
+    document.getElementById('toggle-spacious').addEventListener('click', () => {
+      const item = document.getElementById('target-item');
+      if (item.style.padding === '2.5rem') {
+        item.style.padding = '0.5rem';
+      } else {
+        item.style.padding = '2.5rem';
+      }
+    });
+  </script>
+</body>
+</html>

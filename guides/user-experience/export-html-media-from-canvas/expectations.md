@@ -1,0 +1,6 @@
+- Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API for HTML content export.
+- The `<canvas>` element MUST include the `layoutsubtree` attribute to allow descendant HTML elements to be exposed to canvas rendering and export features.
+- Canvas rendering MUST be executed inside an `onpaint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.
+- The rendering logic MUST use `drawElementImage`, `texElementImage2D`, or `copyElementImageToTexture` to draw HTML elements onto the canvas.
+- The CSS `transform` property of the descendant HTML element MUST be updated based on the transform matrix calculated during rendering.
+- Screen size changes MUST be observed to update the canvas size to match device pixels to prevent blurriness.

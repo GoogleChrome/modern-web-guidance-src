@@ -8,37 +8,85 @@
     body {
       font-family: system-ui, sans-serif;
       padding: 2rem;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    section {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid #ddd;
+    }
+
+    h2 {
+      margin-top: 0;
     }
 
     button {
       padding: 0.5rem 1rem;
       font-size: 1rem;
+      font-weight: bold;
       cursor: pointer;
-      margin-bottom: 1rem;
+      border: 1px solid #007bff;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background: #0056b3;
+      border-color: #0056b3;
     }
 
     [popover] {
-      padding: 1rem;
+      padding: 1.5rem;
       border: 1px solid #ccc;
-      border-radius: 4px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      max-width: 300px;
     }
 
     /* Native & polyfill styling for open popover */
     [popover]:is(:popover-open, .\:popover-open) {
-      /* Example of styling an open popover */
-      background-color: #f9f9f9;
+      background-color: white;
     }
 
     dialog {
-      padding: 1.5rem;
+      padding: 2rem;
       border: none;
-      border-radius: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     }
 
     dialog::backdrop {
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(2px);
+    }
+
+    .status-controls {
+      margin-top: 3rem;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #eee;
+    }
+
+    .status {
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .status.supported {
+      color: #2e7d32;
+    }
+
+    .status.fallback {
+      color: #ef6c00;
     }
   </style>
 </head>
@@ -47,8 +95,11 @@
 
   <section>
     <h2>Popover Toggle</h2>
-    <!-- Invoker button to toggle the popover -->
-    <button commandfor="my-popover" command="toggle-popover">
+    <!-- 
+      Invoker button to toggle the popover. 
+      MANDATORY: Initial aria-expanded state for accessibility.
+    -->
+    <button id="popover-toggle-btn" commandfor="my-popover" command="toggle-popover" aria-expanded="false">
       Toggle Popover
     </button>
 
@@ -65,9 +116,12 @@
       Show Popover
     </button>
 
-    <!-- The explicit popover target -->
-    <div id="my-explicit-popover" popover>
-      <p>This popover uses explicit show and hide commands rather than toggle.</p>
+    <!-- 
+      The explicit popover target.
+      MANDATORY: Use popover="manual" for explicit controls to avoid light-dismiss interference.
+    -->
+    <div id="my-explicit-popover" popover="manual">
+      <p>This popover is explicitly opened and closed by separate buttons.</p>
 
       <!-- Invoker button to exclusively hide the popover -->
       <button commandfor="my-explicit-popover" command="hide-popover">
@@ -95,18 +149,77 @@
     </dialog>
   </section>
 
-  <script type="module">
-    // Fallback strategy: Dynamically import the invokers-polyfill for browsers that do not support Invoker Commands natively.
-    if (!('commandForElement' in HTMLButtonElement.prototype)) {
-      import('https://esm.run/invokers-polyfill');
-    }
+  <!-- Status indicator for the demo -->
+  <div class="status-controls">
+    <div id="support-status" class="status">Checking support...</div>
+  </div>
 
-    // Fallback strategy: Dynamically import the popover-polyfill for browsers that do not support the popover attribute natively.
-    if (!('popover' in HTMLElement.prototype)) {
-      import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js').then(({ apply }) => {
-        apply();
+  <script type="module">
+    const statusEl = document.getElementById('support-status');
+
+    // 1. Feature Detection: Always check the prototype for maximum reliability
+    const hasInvokerSupport = 'commandForElement' in HTMLButtonElement.prototype;
+    const hasPopoverSupport = 'popover' in HTMLElement.prototype;
+
+    /**
+     * DYNAMIC FALLBACK STRATEGY: 
+     * We use an async IIFE to ensure the polyfills are loaded conditionally 
+     * while avoiding top-level await for older browser compatibility.
+     */
+    (async () => {
+      // 1. Handle Popover Polyfill FIRST
+      if (!hasPopoverSupport) {
+        try {
+          const { apply } = await import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js');
+          apply();
+        } catch (err) {
+          console.error('Popover Polyfill load failed:', err);
+        }
+      }
+
+      // 2. Handle Invoker Commands Polyfill SECOND
+      if (hasInvokerSupport) {
+        statusEl.textContent = 'Status: Native Invoker Commands supported';
+        statusEl.classList.add('supported');
+      } else {
+        statusEl.textContent = 'Status: Using Invoker fallback strategy...';
+        statusEl.classList.add('fallback');
+
+        try {
+          await import('https://esm.run/invokers-polyfill');
+          statusEl.textContent = 'Status: Invoker Fallback strategy active';
+        } catch (err) {
+          statusEl.textContent = 'Error: Invoker Fallback strategy failed to load';
+          console.error('Invoker Polyfill load failed:', err);
+        }
+      }
+    })();
+
+    /**
+     * ACCESSIBILITY & COMMAND MANAGEMENT:
+     * MANDATORY: We attach the 'command' event listener directly to each target 
+     * element because the native 'command' event does not bubble.
+     */
+    const targets = document.querySelectorAll('#my-popover, #my-explicit-popover, #my-dialog');
+    
+    targets.forEach(target => {
+      target.addEventListener('command', (event) => {
+        if (hasInvokerSupport) return;
+
+        const command = event.command || event.detail?.command;
+        const source = event.source || event.detail?.source;
+
+        if (source?.hasAttribute('aria-expanded')) {
+          const isOpening = ['show-popover', 'show-modal'].includes(command);
+          const isToggle = command === 'toggle-popover';
+          
+          source.setAttribute('aria-expanded', isToggle 
+            ? source.getAttribute('aria-expanded') !== 'true' 
+            : isOpening
+          );
+        }
       });
-    }
+    });
   </script>
 </body>
 </html>

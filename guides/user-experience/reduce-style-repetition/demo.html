@@ -5,45 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reduce Style Repetition with @function</title>
     <style>
-        /* Define the custom function */
-        @function --fluid-size(--min-size, --max-size, --min-vw, --max-vw) {
-            result: clamp(
-                var(--min-size),
-                calc(var(--min-size) + (var(--max-size) - var(--min-size)) * ((100vw - var(--min-vw)) / (var(--max-vw) - var(--min-vw)))),
-                var(--max-size)
-            );
+        /* Define the custom functions */
+        @function --fancy-gradient(--start-color <color>, --end-color <color>, --angle: 98deg) returns <image> {
+            result: linear-gradient(in oklab var(--angle), var(--start-color), var(--end-color) );
+        }
+
+        @function --grid-template(--count <number>){
+            result: 1fr;
+            @media (min-width: 800px) {
+                result: repeat(var(--count), 1fr);
+            }
         }
 
         body {
             font-family: system-ui, sans-serif;
-            /* Direct call to the custom function */
-            font-size: --fluid-size(16px, 24px, 320px, 1200px);
             line-height: 1.6;
             padding: 2rem;
-            background: #0f172a;
+            background: #5d87e9;
+            background: --fancy-gradient(#ed73d7, #5d87e9);
             color: #f8fafc;
-            margin: 0;
-            display: flex;
+            min-height: 100vh;
+        }
+        main {
+            display: grid;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            gap: 1em;
+            grid-template-columns: 1fr;
+            grid-template-columns: --grid-template(2);
         }
 
         .card {
             background: #1e293b;
-            padding: --fluid-size(20px, 40px, 320px, 1200px);
+            padding: 12px;
             border-radius: 12px;
-            max-width: 600px;
-            width: 100%;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
 
-        h1 {
-            /* Direct call to the custom function */
-            font-size: --fluid-size(24px, 48px, 320px, 1200px);
+        h1{
+            color: #1e293b;
+            text-align: center;
+        }
+
+        h2 {
             margin: 0 0 1rem 0;
-            background: linear-gradient(to right, #38bdf8, #818cf8);
+            background: #f37ed8;
+            background: --fancy-gradient( #82c4e0, #f37ed8, to right);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -64,10 +72,16 @@
     </style>
 </head>
 <body>
-    <div class="card">
-         <h1>Reduce Style Repetition</h1>
-        <p>This text scales smoothly as the viewport expands from 320px to 1200px.</p>
-        <p>By encapsulating this complex fluid sizing logic inside a custom <code>@function</code> called <code>--fluid-size</code>, you reduce style repetition across your stylesheet.</p>
-    </div>
+    <h1>Reduce Style Repetition</h1>
+    <main>
+        <div class="card">
+            <h2>Dynamic Gradients</h2>
+            <p>The <code>--fancy-gradient</code> function allows us to define complex color transitions once and reuse them anywhere in our styles, ensuring visual consistency.</p>
+        </div>
+        <div class="card">
+            <h2>Adaptive Grids</h2>
+            <p>With <code>--grid-template</code>, our layout remains fluid and responsive, seamlessly transitioning between stacked and grid views based on the viewport size.</p>
+        </div>
+    </main>
 </body>
 </html>

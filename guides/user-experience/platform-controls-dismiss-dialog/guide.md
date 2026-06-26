@@ -3,11 +3,6 @@ name: platform-controls-dismiss-dialog
 description: Create a modal dialog that can be closed via standard platform-specific user actions, such as pressing the `Esc` key on desktop platforms, or a "back" or "dismiss" gesture on mobile platforms
 web-feature-ids:
   - dialog-closedby
-sources:
-  - https://developer.mozilla.org/docs/Web/HTML/Reference/Elements/dialog#closedby
-  - https://developer.mozilla.org/docs/Web/API/HTMLDialogElement/closedBy
-  - https://html.spec.whatwg.org/multipage/interactive-elements.html#dom-dialog-closedby
-  - https://html.spec.whatwg.org/multipage/interaction.html#close-requests
 ---
 
 When a modal dialog is open, users expect to use familiar controls to dismiss them: pressing the <kbd>Esc</kbd> key on a keyboard, using the back button or gesture on mobile platforms, or a dismiss gesture with assistive technologies.

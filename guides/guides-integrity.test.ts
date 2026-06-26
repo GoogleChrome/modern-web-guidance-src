@@ -2,11 +2,13 @@ import test, { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execSync } from 'node:child_process';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 
 // Import shared utilities
 import { scanAllGuides, processGuideInventory } from '../lib/guide-validation.ts';
+import { MACRO_PATTERN, replaceMacros } from '../serving/lib/macros.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -19,6 +21,20 @@ describe('Guides Validation (Single Source of Truth)', () => {
     });
     return;
   }
+
+  it('ensures all guide IDs are unique', () => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const guide of guides) {
+      if (seen.has(guide.name)) {
+        duplicates.add(guide.name);
+      }
+      seen.add(guide.name);
+    }
+    if (duplicates.size > 0) {
+      assert.fail(`Duplicate guide IDs found: ${Array.from(duplicates).join(', ')}`);
+    }
+  });
 
   for (const guide of guides) {
     const relativeDir = path.relative(REPO_ROOT, guide.dir);
@@ -64,13 +80,69 @@ describe('Guides Validation (Single Source of Truth)', () => {
         assert.fail(`Marked parsing failed: ${e}`);
       }
 
-      // 4. Check for git conflict markers
+      // 4. Check for git conflict markers at the start of a line
       const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
       for (const marker of conflictMarkers) {
-        if (content.includes(marker)) {
+        if (lines.some(l => l.startsWith(marker))) {
           assert.fail(`File contains git conflict marker "${marker}" in ${relativeDir}`);
         }
       }
     });
+
+    // Transclusion macros silently return "" for missing files/sections, which
+    // validateMacros (error-throw based) does not catch. Guard against
+    // accidentally referencing a path/section that doesn't exist.
+    //
+    // Excluded macros:
+    // - FEATURE_ISSUES: "" is its documented return when #issues is empty/missing,
+    //   so an empty result is not a bug.
+    // - BASELINE_STATUS: not a transclusion macro; it either returns content or
+    //   throws (already caught by validateMacros), so a non-empty check is redundant.
+    it(`validates transclusion macros for ${relativeDir}`, () => {
+      const guidePath = path.join(guide.dir, 'guide.md');
+      if (!fs.existsSync(guidePath)) return;
+
+      const { content: body } = matter(fs.readFileSync(guidePath, 'utf8'));
+      const REQUIRED = new Set(['INCLUDE', 'FEATURE', 'FEATURE_FALLBACKS']);
+
+      for (const match of body.matchAll(MACRO_PATTERN)) {
+        const [full, name] = match;
+        if (!REQUIRED.has(name)) continue;
+        const result = replaceMacros(full, guidePath);
+        if (!result.trim()) {
+          assert.fail(`${full} in ${relativeDir} returned empty content (file or section not found).`);
+        }
+      }
+    });
   }
+
+  it('checks all tracked files for conflict markers', () => {
+    const files = execSync('git ls-files', { encoding: 'utf8' }).trim().split('\n');
+    const extensions = ['.md', '.html', '.txt', '.yaml', '.yml'];
+    const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
+    const failedFiles: string[] = [];
+
+    for (const file of files) {
+      const ext = path.extname(file);
+      if (!extensions.includes(ext)) continue;
+
+      const filePath = path.resolve(REPO_ROOT, file);
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const fileLines = content.split('\n');
+        for (const marker of conflictMarkers) {
+          if (fileLines.some(l => l.startsWith(marker))) {
+            failedFiles.push(`${file} (contains "${marker}")`);
+            break;
+          }
+        }
+      } catch (e) {
+        // Ignore files that cannot be read
+      }
+    }
+
+    if (failedFiles.length > 0) {
+      assert.fail(`Conflict markers found in the following files:\n${failedFiles.join('\n')}`);
+    }
+  });
 });

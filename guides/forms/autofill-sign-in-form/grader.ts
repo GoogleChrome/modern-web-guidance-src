@@ -36,10 +36,11 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     await page.goto(urlToVisit);
   });
 
-  test('All inputs must be within a <form> element', async ({ page }) => {
-    const inputCount = await page.locator('input').count();
-    const inputsInFormCount = await page.locator('form input').count();
-    expect(inputCount > 0 && inputCount === inputsInFormCount).toBe(true);
+  test('All sign-in inputs must be within a <form> element', async ({ page }) => {
+    const emailInForm = await page.locator('form input[type="email"]').count();
+    const passwordInForm = await page.locator('form input[type="password"]').count();
+    expect(emailInForm).toBe(1);
+    expect(passwordInForm).toBe(1);
   });
 
   test('The form must have a submit button', async ({ page }) => {

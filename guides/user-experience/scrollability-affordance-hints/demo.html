@@ -12,12 +12,9 @@
       border: 1px solid #999;
       background: #fff;
       font-family: system-ui, sans-serif;
-      
-      /* Establish this element as a scroll-state query container */
-      container-type: scroll-state;
+      position: relative;
     }
 
-    /* Style the directional shadows */
     .shadow-top, .shadow-bottom {
       position: sticky;
       left: 0;
@@ -40,17 +37,39 @@
       margin-top: -20px;
     }
 
-    /* Target descendants of the scroller using container scroll-state queries */
-    @container scroll-state(scrollable: top) {
-      .shadow-top {
-        opacity: 1;
+    /* Progressive Enhancement for supported browsers */
+    @supports (container-type: scroll-state) {
+      .scroller {
+        container-type: scroll-state;
+      }
+
+      @container scroll-state(scrollable: top) {
+        .shadow-top {
+          opacity: 1;
+        }
+      }
+
+      @container scroll-state(scrollable: bottom) {
+        .shadow-bottom {
+          opacity: 1;
+        }
       }
     }
 
-    @container scroll-state(scrollable: bottom) {
-      .shadow-bottom {
-        opacity: 1;
-      }
+    /* Fallback using classes toggled by JS */
+    .scroller.scrolled-down .shadow-top {
+      opacity: 1;
+    }
+
+    .scroller.can-scroll-down .shadow-bottom {
+      opacity: 1;
+    }
+
+    /* Sentinel elements styling */
+    .sentinel-top, .sentinel-bottom {
+      height: 1px;
+      width: 0;
+      visibility: hidden;
     }
 
     .content {
@@ -62,6 +81,9 @@
 <body>
 
   <div class="scroller">
+    <!-- Sentinel at the top -->
+    <div class="sentinel-top"></div>
+    
     <div class="shadow-top"></div>
     <div class="content">
       <p>Scroll down to see the top shadow appear.</p>
@@ -75,7 +97,32 @@
       <p>At the bottom, the bottom shadow hides.</p>
     </div>
     <div class="shadow-bottom"></div>
+    
+    <!-- Sentinel at the bottom -->
+    <div class="sentinel-bottom"></div>
   </div>
 
+  <script>
+    // Fallback using IntersectionObserver
+    if (!CSS.supports('container-type', 'scroll-state')) {
+      const topSentinel = document.querySelector('.sentinel-top');
+      const bottomSentinel = document.querySelector('.sentinel-bottom');
+      const scroller = document.querySelector('.scroller');
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.target === topSentinel) {
+            scroller.classList.toggle('scrolled-down', !entry.isIntersecting);
+          }
+          if (entry.target === bottomSentinel) {
+            scroller.classList.toggle('can-scroll-down', !entry.isIntersecting);
+          }
+        });
+      }, { root: scroller });
+
+      observer.observe(topSentinel);
+      observer.observe(bottomSentinel);
+    }
+  </script>
 </body>
 </html>

@@ -103,14 +103,13 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
   });
 
   test('should smoothly animate size property when triggered', async ({ page }) => {
-    // Attempt to find and click an expansion trigger - avoid the alert reset button
     const trigger = page.locator('#faq-trigger');
-    const target = page.locator('#faq-content');
+    const target = page.locator('.faq-item, details').first();
 
     const initialHeight = await target.evaluate(el => el.getBoundingClientRect().height);
 
     // Trigger
-    await trigger.click().catch(() => {}); // Catch if not clickable
+    await trigger.click().catch(() => {});
 
     // Wait a short duration (middle of transition)
     await page.waitForTimeout(250);
@@ -178,6 +177,21 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
     });
 
     expect(usesMaxHeightHack).toBe(false);
+  });
+
+  test('Elements collapsed to zero dimensions must be programmatically hidden from assistive technologies', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/hidden\s*=\s*true|aria-hidden/i.test(html)).toBe(true);
+  });
+
+  test('Buttons controlling collapsible or expandable panels must dynamically synchronize their aria-expanded attribute', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/aria-expanded/i.test(html)).toBe(true);
+  });
+
+  test('Sizing transitions must be disabled when prefers-reduced-motion: reduce is active', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/prefers-reduced-motion/i.test(html)).toBe(true);
   });
 
 });

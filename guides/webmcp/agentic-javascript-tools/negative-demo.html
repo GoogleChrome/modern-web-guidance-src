@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebMCP Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    #status {
+      margin-top: 10px;
+      color: blue;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>WebMCP Legacy Integration</h1>
+  <p>Initializing custom services...</p>
+  <div id="status">Loading...</div>
+
+  <script>
+    const status = document.getElementById('status');
+
+    navigator.modelContext.provideContext({
+      role: "administrator"
+    });
+
+    navigator.modelContext.registerTool(
+      "fetch_data",
+      "Fetches some random data",
+      { url: "string" },
+      (input) => {
+        return fetch(input.url).then(response => response.json());
+      }
+    );
+
+    navigator.modelContext.clearContext();
+
+    navigator.modelContext.unregisterTool("fetch_data");
+
+    status.textContent = "Initialization complete.";
+  </script>
+</body>
+
+</html>

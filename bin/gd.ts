@@ -31,13 +31,15 @@ const ALL_OPTIONS = {
   usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
   config: { type: 'string', desc: 'Custom config file (defaults to root config.ts)' },
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
+  'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
+  'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
-  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'no-test', 'cross-app'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
@@ -45,6 +47,7 @@ const COMMAND_METADATA = {
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
+
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -138,8 +141,6 @@ const { positionals, values } = parseArgs({
 
 // --- Helpers ---
 
-
-
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const p = spawn(command, args, { stdio: 'inherit', cwd: rootDir, ...options });
@@ -168,6 +169,7 @@ function showHelp() {
       title: 'Guide Development',
       commands: ['dev', 'audit'],
     },
+
     {
       title: 'Evaluation & Dashboard',
       commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill'],
@@ -181,7 +183,7 @@ function showHelp() {
   // AI-First Safety: Enforce at compile-time that every command is documented in the help text
   type AssertEmpty<_T extends never> = true;
   type _CheckAllCmdsRendered = AssertEmpty<Exclude<CommandName, typeof groups[number]['commands'][number]>>;
-  
+
   // AI-First Safety: Enforce that every flag in ALL_OPTIONS is assigned to a command or rendered globally
   type GlobalFlags = 'help' | 'version' | 'verbose';
   type CmdFlags = typeof COMMAND_METADATA[keyof typeof COMMAND_METADATA]['flags'][number];
@@ -258,6 +260,7 @@ async function main() {
       const success = await devGuide(dir, {
         guidedOnly: !!values.guided,
         verbose: !!values.verbose,
+        test: !values['no-test'],
         suiteConfig: mergedSuiteConfig,
       });
       process.exit(success ? 0 : 1);
@@ -295,13 +298,6 @@ async function main() {
 
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
-      if (values['ui']) {
-        process.env.LAUNCH_UI = 'true';
-        process.chdir(evalViewDir);
-        await import('../eval-view/server.js');
-        break;
-      }
-
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
       let buildCode = 0;
@@ -312,6 +308,13 @@ async function main() {
       }
 
       if (buildCode !== 0) process.exit(buildCode);
+
+      if (values['ui']) {
+        process.env.LAUNCH_UI = 'true';
+        process.chdir(evalViewDir);
+        await import('../eval-view/server.js');
+        break;
+      }
 
       const { runSuite } = await import('../harness/run_suite.ts');
 
@@ -356,22 +359,22 @@ async function main() {
         };
         if (remap[action]) {
           const rest = positionals.slice(2).join(' ');
-          console.error(`${cRed(`'gd guide ${action}' has moved.`)}  Run: ${cCyan(`gd ${remap[action]}${rest ? ' ' + rest : ''}`)}\n`);
+          console.error(cRed("gd guide " + action + " has moved.") + "  Run: " + cCyan("gd " + remap[action] + (rest ? " " + rest : "")) + "\n");
         } else {
-          console.error(`${cRed(`The 'guide' namespace has been removed.`)} Run ${cCyan('gd --help')} for the new commands.\n`);
+          console.error(cRed("The 'guide' namespace has been removed.") + " Run " + cCyan("gd --help") + " for the new commands.\n");
         }
       } else if (['suite', 'task', 'smoke', 'report'].includes(command)) {
-        console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd eval ${command}`)}\n`);
+        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd eval " + command) + "\n");
       } else if (command === 'agent') {
-        console.error(`${cRed(`'gd agent' has moved.`)}  Run: ${cCyan(`gd run <template> <prompt>`)}\n`);
+        console.error(cRed("'gd agent' has moved.") + "  Run: " + cCyan("gd run <template> <prompt>") + "\n");
       } else if (['grade'].includes(command)) {
-        console.error(`${cRed(`'gd grade' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --grade`)}\n`);
+        console.error(cRed("'gd grade' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --grade") + "\n");
       } else if (['test', 'test-grader'].includes(command)) {
-        console.error(`${cRed(`'gd test' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --test-grader`)}\n`);
+        console.error(cRed("'gd test' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --test-grader") + "\n");
       } else if (['gen', 'gen-grader', 'gen-negative', 'gen:grader', 'gen:negative'].includes(command)) {
-        console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --gen-grader`)} or ${cCyan(`--gen-negative`)}\n`);
+        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --gen-grader") + " or " + cCyan("--gen-negative") + "\n");
       } else {
-        console.error(`${cRed(`Unknown command: ${command}.`)} Run ${cCyan('gd --help')} for usage.`);
+        console.error(cRed("Unknown command: " + command + ".") + " Run " + cCyan("gd --help") + " for usage.");
       }
       process.exit(1);
     }

@@ -7,3 +7,4 @@
 - Dynamically assigned `view-transition-name` values are removed after the transition finishes (using `event.viewTransition.finished`) to preserve bfcache compatibility.
 - No two elements on the same page share the same `view-transition-name` value.
 - In browsers that do not support `blocking="render"` or view transitions, the page loads normally without errors (graceful degradation).
+- Cross-document view transitions MUST be disabled when `prefers-reduced-motion: reduce` is active.

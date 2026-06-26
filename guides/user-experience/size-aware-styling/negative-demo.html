@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viewport-Aware Styling Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      background: #f0f2f5;
+    }
+
+    .resizable-container {
+      background: #e9ecef;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 2px dashed #ccc;
+      resize: horizontal;
+      overflow: auto;
+      min-width: 250px;
+      max-width: 800px;
+      width: 350px;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .card-image {
+      background: #dc3545;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      height: 100px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .card-text {
+      margin: 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    @media (min-width: 600px) {
+      .card {
+        flex-direction: row;
+        align-items: center;
+      }
+      
+      .card-image {
+        width: 100px;
+        height: 100px;
+      }
+      
+      .card-content {
+        flex: 1;
+      }
+    }
+
+    .instruction {
+      margin-bottom: 1rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="instruction">
+    Resize the dashed box or change the browser window width to see how the card layout responds.
+  </div>
+
+  <div class="resizable-container">
+    <div class="card">
+      <div class="card-image">Image</div>
+      <div class="card-content">
+        <h2 class="card-title">Responsive Card</h2>
+        <p class="card-text">
+          This card changes its layout based on the viewport, not its container size.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

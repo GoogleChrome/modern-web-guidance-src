@@ -1,57 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Identify slow running JavaScript that is impacting INP metric Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identify INP Causes Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; }
+        .card { border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+        button { background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
+        .metric-card { background: #f1f3f5; padding: 1rem; border-radius: 4px; text-align: center; border: 1px solid #dee2e6; }
+        .metric-val { font-size: 1.25rem; font-weight: bold; color: #007bff; }
+    </style>
 </head>
-
 <body>
-  <h1>Identify slow running JavaScript that is impacting INP metric Demo</h1>
-  <button id="interact-button">Click me</button>
-  <div id="output"></div>
+    <div class="card">
+        <h1>Identify INP Causes Demo</h1>
+        <p>Trigger a slow interaction. The metrics below show the breakdown of why the interaction was slow.</p>
+        <button id="slow-handler">Slow Event Handler (200ms)</button>
+        <button id="input-delay">Delayed Handler (Wait up to 500ms first)</button>
 
-  <script type="module">
-    // Load web-vitals from unpkg, but in a real application this would likely
-    // be bundled in the application analytics code
-    import { onINP } from 'https://unpkg.com/web-vitals/attribution?module';
-    // Observe INP with debug information
-    function sendToAnalytics(metric) {
-      const longestScript = metric.attribution.longestScript;
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div>Input Delay</div>
+                <div id="input-delay-val" class="metric-val">0ms</div>
+            </div>
+            <div class="metric-card">
+                <div>Processing Duration</div>
+                <div id="processing-duration-val" class="metric-val">0ms</div>
+            </div>
+            <div class="metric-card">
+                <div>Presentation Delay</div>
+                <div id="presentation-delay-val" class="metric-val">0ms</div>
+            </div>
+        </div>
+        <p><small>Total Duration: <span id="total-duration-val">0ms</span>. Target element: <code id="target-element-val">none</code></small></p>
 
-      const inpDebugInfo = {
-        name: 'INP',
-        value: metric.value,
-        rating: metric.rating,
-        interactionType: metric.attribution.interactionType,
-        interactionTarget: metric.attribution.interactionTarget,
-        // Note script entries will be empty when loading this demo from a
-        // local file, instead of from a server.
-        longestScriptInvokerType: longestScript?.entry?.invokerType,
-        longestScriptSourceURL: longestScript?.entry?.sourceURL,
-        longestScriptSourceFunctionName: longestScript?.entry?.sourceFunctionName,
-        longestScriptSourceCharPosition: longestScript?.entry?.sourceCharPosition,
-        longestScriptSubpart: longestScript?.subpart,
-        longestScriptIntersectingDuration: longestScript?.intersectingDuration
-      }
+        <p>
+          <small>Longest Script: <code id="longest-script">none</code>.</small>
+          <small>Character Position: <code id="char-position">none</code>.</small>
+          <small>Invoker Type: <code id="invoker-type">none</code>.</small>
+        </p>
+    </div>
 
-      // Console log for now, but in a real application would want to beacon
-      // back to an anlytics endpoint
-      console.log(inpDebugInfo);
-    }
+    <script type="module">
 
-    onINP(sendToAnalytics, { reportAllChanges: true });
+        // Load web-vitals from unpkg, but in a real application this would likely
+        // be bundled in the application analytics code
+        import { onINP } from 'https://unpkg.com/web-vitals/attribution?module';
+        // Observe INP with debug information
+        function sendToAnalytics(metric) {
+        const longestScript = metric.attribution.longestScript;
 
-    function handleClickSlowly() {
-      // Simulate work that delays the frame rendering
-      const start = performance.now();
-      while (performance.now() - start < 150) {
-        // block main thread for 150ms
-      }
-    }
+        document.getElementById('input-delay-val').textContent = `${(metric.attribution.inputDelay).toFixed(0)}ms`;
+        document.getElementById('processing-duration-val').textContent = `${metric.attribution.processingDuration.toFixed(0)}ms`;
+        document.getElementById('presentation-delay-val').textContent = `${metric.attribution.presentationDelay.toFixed(0)}ms`;
+        document.getElementById('total-duration-val').textContent = `${metric.value.toFixed(0)}ms`;
+        document.getElementById('target-element-val').textContent = metric.attribution.interactionTarget;
+        document.getElementById('target-element-val').textContent = metric.attribution.interactionTarget;
 
-    document.getElementById('interact-button').addEventListener('click', handleClickSlowly);
-  </script>
+        document.getElementById('longest-script').textContent = longestScript?.entry?.sourceURL;
+        document.getElementById('char-position').textContent = longestScript?.entry?.sourceCharPosition;
+        document.getElementById('invoker-type').textContent = longestScript?.entry?.invokerType;
+
+        const inpDebugInfo = {
+            name: 'INP',
+            value: metric.value,
+            rating: metric.rating,
+            interactionType: metric.attribution.interactionType,
+            interactionTarget: metric.attribution.interactionTarget,
+            inputDelay: metric.attribution.inputDelay,
+            presentationDelay: metric.attribution.presentationDelay,
+            interactionTarget: metric.attribution.interactionTarget,
+            // Note script entries will be empty when loading this demo from a
+            // local file, instead of from a server.
+            longestScriptInvokerType: longestScript?.entry?.invokerType,
+            longestScriptSourceURL: longestScript?.entry?.sourceURL,
+            longestScriptSourceFunctionName: longestScript?.entry?.sourceFunctionName,
+            longestScriptSourceCharPosition: longestScript?.entry?.sourceCharPosition,
+            longestScriptSubpart: longestScript?.subpart,
+            longestScriptIntersectingDuration: longestScript?.intersectingDuration
+        }
+
+        // Console log for now, but in a real application would want to beacon
+        // back to an analytics endpoint
+        console.log(inpDebugInfo);
+        }
+
+        onINP(sendToAnalytics, { reportAllChanges: true });
+
+        function block(ms) {
+            const start = performance.now();
+            while (performance.now() - start < ms) {}
+        }
+
+        document.getElementById('slow-handler').addEventListener('click', () => {
+            block(200); // 200ms in the handler
+        });
+
+        document.getElementById('input-delay').addEventListener('pointerdown', () => {
+            // In the pointerdown event, schedule a blocking task in a separate task
+            // to simulate an input delay caused to the upcoming click by other processing
+            setTimeout(() => {
+                block(500);
+                console.log('Delayed handler executed');
+            }, 0);
+        });
+
+        document.getElementById('input-delay').addEventListener('click', () => {
+            // This button's handler is already scheduled.
+            // If we block the main thread *right now*, the click handler will wait.
+            block(50);
+            console.log('Delayed handler executed');
+        });
+    </script>
 </body>
-
 </html>

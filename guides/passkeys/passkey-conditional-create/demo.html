@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Conditional Create Demo</title>
+</head>
+<body>
+  <div class="card">
+    <h2>Silent Passkey Creation</h2>
+    <p>This demo automatically triggers passkey creation silently after a password sign-in event.</p>
+    <button id="signin-btn" data-testid="signin-button">Sign In with Password</button>
+    <div id="status" class="status" data-testid="status">Idle</div>
+  </div>
+
+  <script type="module">
+    const statusEl = document.getElementById('status');
+    
+    // Active conditional get abort controller
+    const loginAbortController = new AbortController();
+
+    async function initAutofill() {
+      if (window.PublicKeyCredential) {
+        const capabilities = await PublicKeyCredential.getClientCapabilities();
+        if (capabilities.conditionalGet) {
+          // Note: This initAutofill represents production scaffolding that the eval base app does not provide natively.
+          // Setup an actual in-flight autofill operation representing standard on-load Autofill UI setup
+          try {
+            await navigator.credentials.get({
+              publicKey: {
+                challenge: new Uint8Array(32),
+                allowCredentials: []
+              },
+              mediation: 'conditional',
+              signal: loginAbortController.signal
+            });
+          } catch (e) {
+            console.log('Autofill get aborted as expected:', e.name);
+          }
+        }
+      }
+    }
+    initAutofill();
+
+    async function executeConditionalCreate() {
+      if (!window.PublicKeyCredential) {
+        return;
+      }
+
+      const capabilities = await PublicKeyCredential.getClientCapabilities();
+      if (capabilities.conditionalCreate !== true) {
+        return;
+      }
+
+      // 1. Abort prior active conditional UI controllers to clear the pipeline
+      loginAbortController.abort();
+
+      try {
+        // 2. Retrieve server registration options
+        const responseOptions = await fetch('/api/register/options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conditional: true })
+        });
+
+        if (!responseOptions.ok) {
+          throw new Error('Options endpoint returned non-OK');
+        }
+        const optionsJSON = await responseOptions.json();
+        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
+
+        // 3. Invoke browser silent creation biometrics prompt
+        const credential = await navigator.credentials.create({
+          publicKey,
+          mediation: 'conditional'
+        });
+
+        if (credential) {
+          const encodedResponse = credential.toJSON();
+          
+          // 4. POST attestation verification to the server
+          try {
+            const verifyResponse = await fetch('/api/register/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(encodedResponse)
+            });
+
+            if (verifyResponse.ok) {
+              statusEl.textContent = 'Passkey created successfully!';
+              statusEl.style.color = '#228b22';
+            } else {
+              throw new Error('Verification failed');
+            }
+          } catch (verifyErr) {
+            console.error('Server verification failed:', verifyErr);
+            if (PublicKeyCredential.signalUnknownCredential) {
+              await PublicKeyCredential.signalUnknownCredential({
+                rpId: window.location.hostname,
+                credentialId: encodedResponse.id
+              });
+            }
+          }
+        }
+      } catch (e) {
+        // 5. MUST swallow typical browser WebAuthn exceptions silently without visible DOM text or alert changes
+        if (['InvalidStateError', 'NotAllowedError', 'AbortError'].includes(e.name)) {
+          console.log(`Swallowed error silently: ${e.name}`);
+          return;
+        }
+        console.error('Unexpected error:', e);
+      }
+    }
+
+    // Simulate successful sign in
+    document.getElementById('signin-btn').addEventListener('click', async () => {
+      await executeConditionalCreate();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+- Apply a dynamic WebGL ripple distortion shader to the hero text and call-to-action buttons. Project the HTML content into the WebGL texture while ensuring the underlying DOM elements remain fully interactive and accessible.
+- A media card component containing text and interactive controls requires custom GPU color grading and lighting effects. Apply WebGL fragment shaders directly to the rendered HTML content without breaking native hover and click interactions.
+- Apply a WebGL vertex bending shader to fold an interactive HTML menu as users scroll.

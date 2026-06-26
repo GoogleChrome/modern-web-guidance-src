@@ -1,17 +1,5 @@
-/* Dashboard Layout & Tabs */
-:root {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #21262d;
-  --border-color: #30363d;
-  --text-primary: #c9d1d9;
-  --text-secondary: #8b949e;
-  --accent-color: #58a6ff;
-  --accent-success: #238636;
-  --accent-failure: #da3633;
-  --accent-warning: #d29922;
-}
 
+/* Dashboard Layout & Tabs */
 /* Tab Content Areas */
 .tab-content {
   animation: fadeIn 0.2s ease-out;

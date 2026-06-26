@@ -29,34 +29,9 @@ test.describe(`Carousel Item Effects Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test(`MANDATORY: The agent has defined an @keyframes block that defines states for start, center, and end.`, async ({ page }) => {
-    // We check if there is any keyframe rule that has 0%, 50%, and 100% (or equivalent from/to)
-    // But since reading keyframes via CSSOM is complex, we can check file content as a fallback or use a simplified CSSOM check.
-    // Let's try to check file content for '@keyframes' and percentages or just use CSSOM if we can.
-    // Let's use CSSOM to find the keyframes rule.
-    const hasKeyframes = await page.evaluate(() => {
-      const sheets = Array.from(document.styleSheets);
-      for (const sheet of sheets) {
-        try {
-          const rules = Array.from(sheet.cssRules);
-          for (const rule of rules) {
-            if (rule.type === CSSRule.KEYFRAMES_RULE) {
-              const kfRule = rule as CSSKeyframesRule;
-              const texts = Array.from(kfRule.cssRules).flatMap(r => (r as CSSKeyframeRule).keyText.split(',').map(s => s.trim()));
-              // Check if it has something for start (0% or from), center (50%), and end (100% or to)
-              const hasStart = texts.includes('0%') || texts.includes('from');
-              const hasCenter = texts.includes('50%');
-              const hasEnd = texts.includes('100%') || texts.includes('to');
-              if (hasStart && hasCenter && hasEnd) return true;
-
-            }
-          }
-        } catch (e) {
-          // Ignore CORS errors
-        }
-      }
-      return false;
-    });
+  test(`MANDATORY: The agent has defined an @keyframes block that defines states for start, center, and end.`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    const hasKeyframes = /@keyframes\s+[\w-]+\s*\{[\s\S]*?(0%|from)[\s\S]*?50%[\s\S]*?(100%|to)[\s\S]*?\}/i.test(html);
     expect(hasKeyframes).toBe(true);
   });
 

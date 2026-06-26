@@ -1,4 +1,4 @@
-import { authenticatedFetch } from './utils.js';
+import { authenticatedFetch, parseResultKey } from './utils.js';
 
 export class ApiClient {
     constructor() {
@@ -153,7 +153,9 @@ export class ApiClient {
 
     /** Resolves the correct base path for specific run details, parsing legacy logic. */
     async getResultInfo(testId, run, testName) {
-        const [taskName, guideName, runType] = testName.split(' - ');
+        const parsed = parseResultKey(testName);
+        if (!parsed) return null;
+        const { task: taskName, guide: guideName, runType } = parsed;
         const actualBaseApp = run.baseApp;
         let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
         let entryPointPath = await this._findBestEntryPoint(logicalBasePath);

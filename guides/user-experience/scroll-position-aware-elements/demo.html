@@ -1,106 +1,147 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scroll Position Aware Elements</title>
-    <style>
-      body {
-        font-family: system-ui, sans-serif;
-        margin: 0;
-        padding: 20px;
-        display: flex;
-        justify-content: center;
-        background: #fafafa;
-      }
 
-      h2 {
-        margin-top: 0;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scroll Position Aware Elements</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      background: #fafafa;
+    }
 
+    h2 {
+      margin-top: 0;
+      /* Same length as container padding, so sentinel is in the scroll window. */
+      scroll-margin-top: 30px;
+    }
+
+    .scroller {
+      width: 100%;
+      max-width: 400px;
+      height: 500px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      position: relative;
+      scroll-behavior: smooth;
+    }
+
+    .content {
+      padding: 30px;
+      /* Make sure it's tall enough to scroll */
+      height: 150vh;
+    }
+
+    /* Container for the FAB to handle sticky positioning within the scroller */
+    .sticky-wrapper {
+      position: sticky;
+      bottom: 20px;
+      display: flex;
+      justify-content: flex-end;
+      padding-right: 20px;
+      /* Let clicks pass through the empty space */
+      pointer-events: none;
+    }
+
+    .back-to-top {
+      /* Floating Action Button styles */
+      background: #1976d2;
+      color: white;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      /* Re-enable clicks on the button */
+      pointer-events: auto;
+
+      /* Hidden by default */
+      visibility: hidden;
+      opacity: 0;
+      translate: 0 20px;
+      transition:
+        visibility 0.3s,
+        opacity 0.3s ease,
+        translate 0.3s ease;
+    }
+
+    /* Progressive Enhancement for supported browsers */
+    @supports (container-type: scroll-state) {
       .scroller {
-        width: 100%;
-        max-width: 400px;
-        height: 500px;
-        overflow-y: auto;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 12px;
-
-        /* Make this element a scroll-state query container */
         container-type: scroll-state;
       }
 
-      .content {
-        padding: 30px;
-        height: 150vh; /* Make sure it's tall enough to scroll */
-      }
-
-      /* Container for the FAB to handle sticky positioning within the scroller */
-      .sticky-wrapper {
-        position: sticky;
-        bottom: 20px;
-        display: flex;
-        justify-content: flex-end;
-        padding-right: 20px;
-        pointer-events: none; /* Let clicks pass through the empty space */
-        /* No height hacking needed */
-      }
-
-      .back-to-top {
-        /* Floating Action Button styles */
-        background: #1976d2;
-        color: white;
-        text-decoration: none;
-        padding: 12px 24px;
-        border-radius: 30px;
-        font-weight: bold;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-        pointer-events: auto; /* Re-enable clicks on the button */
-
-        /* Hidden by default */
-        opacity: 0;
-        translate: 0 20px;
-        transition:
-          opacity 0.3s ease,
-          translate 0.3s ease;
-      }
-
-      /* Use container scroll-state to detect if we can scroll toward the top */
-      /* If the test passes, the user has scrolled downwards */
       @container scroll-state(scrollable: top) {
         .back-to-top {
+          visibility: visible;
           opacity: 1;
           translate: 0 0;
         }
       }
-    </style>
-  </head>
-  <body>
-    <div class="scroller">
-      <div class="content">
-        <h2>Scroll down 👇</h2>
-        <p>
-          This demo uses <code>scroll-state(scrollable: top)</code> to reveal a
-          floating action button only when you are no longer at the very top of
-          the scroll container.
-        </p>
-      </div>
+    }
 
-      <!-- Floating button wrapper stuck to the bottom of the scroll container -->
-      <div class="sticky-wrapper">
-        <a href="#" class="back-to-top">↑ Top</a>
-      </div>
+    /* Fallback using class toggled by JS */
+    .scroller.scrolled .back-to-top {
+      visibility: visible;
+      opacity: 1;
+      translate: 0 0;
+    }
+
+    /* Sentinel element styling */
+    .scroll-sentinel {
+      height: 0;
+      width: 0;
+      visibility: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="scroller">
+    <!-- Sentinel at the top of the scroller -->
+    <div class="scroll-sentinel"></div>
+
+    <div class="content">
+      <h2 id="title">Scroll down 👇</h2>
+      <p>
+        This demo uses <code>scroll-state(scrollable: top)</code> to reveal a
+        floating action button only when you are no longer at the very top of
+        the scroll container.
+      </p>
     </div>
 
-    <script>
-      // Just a bit of JS to make the link functionally scroll us back to the top of our local container
-      document.querySelector('.back-to-top').addEventListener('click', (e) => {
-        e.preventDefault();
-        document
-          .querySelector('.scroller')
-          .scrollTo({top: 0, behavior: 'smooth'});
-      });
-    </script>
-  </body>
+    <!-- Floating button wrapper stuck to the bottom of the scroll container -->
+    <div class="sticky-wrapper">
+      <a href="#title" class="back-to-top">↑ Top</a>
+    </div>
+  </div>
+
+  <script>
+    // Fallback using IntersectionObserver
+    if (!CSS.supports('container-type', 'scroll-state')) {
+      const sentinel = document.querySelector('.scroll-sentinel');
+      const scroller = document.querySelector('.scroller');
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) {
+            scroller.classList.add('scrolled');
+          } else {
+            scroller.classList.remove('scrolled');
+          }
+        });
+      }, { root: scroller });
+
+      observer.observe(sentinel);
+    }
+  </script>
+</body>
+
 </html>

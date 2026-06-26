@@ -93,7 +93,7 @@
       <label for="full-name">Full Name *</label>
       <input type="text" id="full-name" name="full-name" required aria-errormessage="name-error">
       <div id="name-error" class="error-msg">
-        Name is required.
+        <span aria-hidden="true">❌</span> Name is required.
       </div>
     </div>
 
@@ -101,7 +101,7 @@
       <label for="username">Username *</label>
       <input type="text" id="username" name="username" required aria-describedby="username-error">
       <div id="username-error" class="error-msg">
-        Username is required.
+        <span aria-hidden="true">❌</span> Username is required.
       </div>
     </div>
 
@@ -216,6 +216,33 @@
 
       return { init };
     })();
+
+    // Mandatory Aria-Invalid synchronization for Native Mode
+    const syncNativeAriaInvalid = (input) => {
+      if (!input.checkValidity()) {
+        input.setAttribute('aria-invalid', 'true');
+      } else {
+        input.removeAttribute('aria-invalid');
+      }
+    };
+
+    form.addEventListener('blur', (e) => {
+      if (useNativeLogic && e.target.matches('input[required]')) {
+        syncNativeAriaInvalid(e.target);
+      }
+    }, true);
+
+    form.addEventListener('submit', () => {
+      if (useNativeLogic) {
+        form.querySelectorAll('input[required]').forEach(syncNativeAriaInvalid);
+      }
+    });
+
+    form.addEventListener('input', (e) => {
+      if (useNativeLogic && e.target.matches('input[required]') && e.target.checkValidity()) {
+        e.target.removeAttribute('aria-invalid');
+      }
+    });
 
     // Init
     updateFeatureState();

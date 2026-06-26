@@ -43,7 +43,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
     const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.JETSKI_CLI, approach === Serving.SKILLS_CLI);
+      copySkills(tempHome, Agents.JETSKI_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(jetskiDest, 'mcp_config.json'),
@@ -99,12 +99,13 @@ async function run() {
     // Capture trajectory
     const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
+    exportTrajectories(conversationsDir, '*.db', targetDir);
 
     console.log("Jetski CLI agent finished successfully.");
 
   } catch (err) {
     console.error("Error during Jetski CLI execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }

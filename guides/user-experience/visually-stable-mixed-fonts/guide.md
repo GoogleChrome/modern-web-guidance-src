@@ -3,9 +3,6 @@ name: visually-stable-mixed-fonts
 description: Define font styles such that text remains readable and visually consistent in situations where multiple fonts are used to render a single block of text.
 web-feature-ids:
   - font-size-adjust
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust
-  - https://web.dev/blog/font-size-adjust
 ---
 
 When mixing different font families, for instance when inserting inline code snippets, or switching out font families for different themes, differences in "x-height" (the height of lowercase letters) can make one font appear much smaller or larger than the other font. This can lead to poor legibility and layout shifts.
@@ -15,8 +12,8 @@ The `font-size-adjust` property allows you to normalize the visual size of text 
 ### Implementation Steps
 
 1.  **MANDATORY**: Apply `font-size-adjust` to elements where font consistency is critical, such as containers using web fonts or blocks with mixed font families.
-2.  Use the `from-font` keyword on the element to automatically match font size in nested elements to the proportions of the primary font on the element.
-3.  Use a specific aspect ratio value to match font size when switching between fonts.
+2.  **MANDATORY**: Use the `from-font` keyword on elements to automatically match font size in nested elements to the proportions of the primary font.
+3.  **MANDATORY**: Use a specific numeric aspect-ratio override value for `font-size-adjust` (e.g., `font-size-adjust: 0.5`) to normalize proportions independently when the font proportions to base on are from different themes.
 
 ### Example: Normalizing x-height automatically
 
@@ -52,9 +49,9 @@ When the font to adjust is not a child of the font to base the size on, specify 
 
 {{ BASELINE_STATUS("font-size-adjust") }}
 
-In browsers that do not support `font-size-adjust`, fonts will render at their natural `font-size` value. To mitigate this without support:
+**MANDATORY**: In browsers that do not support `font-size-adjust`, fonts will render at their natural `font-size` value. You must provide a valid fallback strategy for non-supporting browsers using a `@supports` block to mitigate this:
 
-- Use `@supports not (font-size-adjust: from-font)` to detect `font-size-adjust` support.
+- Use `@supports not (font-size-adjust: from-font)` to detect `font-size-adjust` support and provide fallback styles (e.g. adjusted line-height or font-size).
 - Choose fonts with similar x-heights to your primary font.
 - Apply specific `font-size` and `line-height` overrides for alternate and nested font families.
 

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ to Web Hello World</title>
+</head>
+<body>
+    <h1>C++ to Web Hello World</h1>
+    <p id="output">Loading module...</p>
+    <script type="module">
+        import Module from './hello.mjs';
+
+        async function init() {
+            try {
+                const instance = await Module();
+                const greeting = instance.sayHello("Modern Web");
+                document.getElementById('output').textContent = greeting;
+                console.log('Successfully called C++ function:', greeting);
+            } catch (err) {
+                console.error('Error loading module:', err);
+                document.getElementById('output').textContent = 'Error loading module. Check console.';
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

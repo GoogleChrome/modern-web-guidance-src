@@ -7,3 +7,6 @@
 - The `::picker(select)` popup MUST use the CSS Anchor Positioning API (e.g., `width: anchor-size(width)`) to align itself with the button trigger.
 - The implementation MUST NOT rely on heavy custom JavaScript to replicate keyboard focus or top-layer rendering if `appearance: base-select` is supported natively.
 - The `<select>` MUST have a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.
+- Decorative inline SVG icons inside `<option>` elements MUST explicitly define `aria-hidden="true"`.
+- Complex `<option>` elements with rich nested content MUST set a concise `aria-label` to prevent awkward concatenated screen reader readouts.
+- The checked state of an `<option>` MUST be indicated by multiple visual cues (e.g., changing both background color and title font weight) to avoid color-only state communication.

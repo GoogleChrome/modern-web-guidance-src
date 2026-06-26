@@ -48,12 +48,12 @@ You can use `gd audit` to see exactly where every guide sits in the Kanban board
 gd audit
 ```
 
-This will output a categorized table sorted into the 4 workflow states (`Needs use cases`, `Needs guidance`, `Needs evals`, `Done`), along with recommended next steps.
+This will output a categorized table sorted into the 6 maturity stages (`Stub`, `Incomplete`, `Needs expectations`, `Needs calibration`, `Needs test`, `Eval-ready`), along with recommended next steps.
 
-### Manual Piece-wise execution 
+### Manual Piece-wise execution
 
 Occasionally, you may want to generate or test specific pieces of the pipeline manually.
-Ensure `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are in `guidance/.env`:
+Ensure `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are in `modern-web-guidance-src/.env`:
 
 ```sh
 GEMINI_API_KEY=api-key
@@ -140,7 +140,7 @@ If you need more control, you can run each step individually:
 1. Configure the following settings for your run in the [harness config](../harness/config.ts):
 
 ```
-mcpServersToEnable: ['modern-web'],
+mcpServersToEnable: ['modern-web-guidance'],
 serving: Serving.MCP,
 agent: Agents.GEMINI_CLI
 ```

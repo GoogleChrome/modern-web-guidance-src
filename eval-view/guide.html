@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guide Performance Trend</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="landing.css">
+  <link rel="stylesheet" href="dashboard-layout.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 1001;
+      background: var(--color-surface-container-lowest);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      max-height: 250px;
+      overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .autocomplete-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+    }
+    .autocomplete-item:hover, .autocomplete-item.active {
+      background: var(--hover-bg);
+      color: var(--color-primary);
+    }
+    .guide-nav-controls button.secondary-btn {
+      margin-bottom: 0 !important;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
+      <div>
+        <h1 style="margin: 0;">Guide: <span id="guide-name-header">...</span></h1>
+        
+        <div class="guide-nav-controls" style="display: flex; align-items: center; gap: 10px; margin-top: 12px; position: relative;">
+          <button id="prev-guide-btn" class="secondary-btn" title="Previous Guide" style="margin-bottom: 0;">←</button>
+          <button id="next-guide-btn" class="secondary-btn" title="Next Guide" style="margin-bottom: 0;">→</button>
+          
+          <div style="position: relative; width: 280px;">
+            <input type="text" id="guide-search" placeholder="Search guides..." autocomplete="off"
+                   style="width: 100%; box-sizing: border-box; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9em; outline: none;">
+            <div id="autocomplete-list" class="autocomplete-list hidden"></div>
+          </div>
+          <button id="go-guide-btn" class="secondary-btn" style="margin-bottom: 0; padding: 6px 16px;">Go</button>
+        </div>
+
+        <div style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px;">Performance over time by agent and model combination</div>
+
+        <div class="timeline-filter-controls" style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.85em; color: var(--text-primary);">
+          <span>Show last</span>
+          <input type="number" id="timeline-limit-input" value="30" min="1" style="width: 50px; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); outline: none;">
+          <span>days</span>
+          <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; margin-left: 8px;">
+            <input type="checkbox" id="timeline-show-all-check">
+            <span>Show all</span>
+          </label>
+        </div>
+      </div>
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <a href="./" class="secondary-btn" style="text-decoration: none; margin-bottom: 0;">← Back to Results</a>
+        <button id="auth-btn" class="secondary-btn" style="display: none; margin-bottom: 0;">
+          Sign in with Google
+        </button>
+      </div>
+    </header>
+
+    <div id="graphs-grid" style="display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 20px;">
+      <!-- Graph cards injected by JS -->
+    </div>
+
+    <div id="empty-state" class="empty-state" style="display: none;">
+      <p>No historical runs found for this guide.</p>
+    </div>
+  </div>
+
+  <div id="tooltip-container" class="tooltip-container hidden">
+    <div id="tooltip-header"></div>
+    <div id="tooltip-content" style="padding: 8px 12px; font-size: 0.85rem;"></div>
+  </div>
+
+  <script src="features_mapping.gen.js"></script>
+  <script type="module" src="guide.js"></script>
+</body>
+</html>

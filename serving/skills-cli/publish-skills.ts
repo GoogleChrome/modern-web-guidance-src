@@ -4,11 +4,22 @@ import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
 import { buildDist } from './build-dist.ts';
 import { fileURLToPath } from 'node:url';
+import { minimatch } from 'minimatch';
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
+const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
-const SKILLS_CLI_TEMPLATE_DIR = path.join(SERVING_DIR, "skills-cli/template");
+
+// This controls what is published to https://github.com/GoogleChrome/modern-web-guidance.
+const GH_PUBLISH_PATTERNS = [
+  '**/*',
+  '!**/.cache/**',
+  '!**/tfjs_model_minilm/**',
+  '!**/*.{js,mjs,ts,bin,map,gz}',
+  '!**/skill-version.txt',
+  '!THIRD_PARTY_NOTICES',
+  '!skills/modern-web-guidance/package.json',
+];
 
 const isDryRun = process.argv.includes('--dry-run');
 
@@ -18,53 +29,131 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
+const getLatestGitTag = (target = 'HEAD') => {
+  const output = execSync(`git tag --merged ${target} -l "v*.*.*" --sort=-v:refname`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  if (!output) {
+    throw new Error(`No tag matching v*.*.* found reachable from ${target}`);
+  }
+  return output.split('\n')[0].trim();
+};
 
-const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+function gitTagExists(version: string, targetRepo = 'origin'): boolean {
+  const localCheck = execSync(`git tag -l "v${version}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  if (localCheck) return true;
+
+  try {
+    const remoteCheck = execSync(`git ls-remote --tags ${targetRepo} "refs/tags/v${version}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (remoteCheck) return true;
+  } catch (err) {
+    console.log(`Warning: Failed to check remote tags on ${targetRepo}:`, err instanceof Error ? err.message : err);
+  }
+
+  return false;
+}
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
-  let currentVersion = "0.0.0";
 
+  const target = isDryRun ? 'origin/main' : 'HEAD';
+  console.log(`Checking latest tag against ${target}...`);
+  
+  let latestTag: string;
   try {
-    // Get the latest tag that looks like v*.*.*
-    const latestTag = getLatestTag();
-    currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
-    console.log(`Found latest tag: ${latestTag}`);
-  } catch (e) {
-    console.warn("No version tags found, falling back to package.json version.");
-    const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "package.json");
-    const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
-    currentVersion = vscodeData.version;
+    latestTag = getLatestTag(target);
+  } catch (err) {
+    if (isDryRun) {
+      console.log(`Could not find tags on ${target}. Falling back to HEAD.`);
+      latestTag = getLatestTag('HEAD');
+    } else {
+      throw err;
+    }
   }
+
+  console.log(`Found latest tag: ${latestTag}`);
+  const currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
 
   const newVersion = incrementVersion(currentVersion);
   console.log(`Next version will be: ${newVersion}`);
   return newVersion;
 }
 
+async function publishToDistributionRepo(publishCliDir: string, newVersion: string, releaseNotes: string) {
+  console.log(`Creating GitHub release v${newVersion} on GoogleChrome/modern-web-guidance...`);
+  console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
 
+  await ghpages.publish(publishCliDir, {
+    branch: 'main',
+    repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
+    dotfiles: true,
+    message: `Release v${newVersion}`,
+    tag: `v${newVersion}`,
+    src: GH_PUBLISH_PATTERNS,
+  });
 
-async function main() {
-  const newVersion = await getNextVersion();
-  
+  // TODO: not working. Think we need a GH API key from the modern-web-guidance repo.
+  // Create GitHub release on the distribution repo.
+  // execSync(`gh release create v${newVersion} -R GoogleChrome/modern-web-guidance --title "v${newVersion}" --notes -`, {
+  //   input: releaseNotes,
+  //   stdio: ['pipe', 'inherit', 'inherit']
+  // });
+  // console.log(`✅ GitHub release v${newVersion} created successfully!`);
+  console.log(releaseNotes);
+
+  console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
+}
+
+/**
+ * Validate using the local build.
+ */
+async function validate(newVersion: string) {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
-  await fs.mkdir(publishCliDir, {recursive: true});
-  await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist(newVersion);
+  const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
-  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
-  
+
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
-  execSync('node --test skills-cli/*.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' ,  env: { ...process.env, TEST_REPORTER: 'spec'}});
-  
+  execSync('node --test skills-cli/*.test.ts', {
+    cwd: SERVING_DIR,
+    stdio: 'inherit' ,
+    env: { ...process.env, TEST_REPORTER: 'spec' }
+  });
+
+  return result;
+}
+
+async function main() {
+  let newVersion = await getNextVersion();
+
+  // Self-healing loop: ensure the version tag doesn't exist locally or on remote origin
+  while (gitTagExists(newVersion)) {
+    console.log(`⚠️ Version v${newVersion} has already been tagged! Bumping version to next patch...`);
+    newVersion = incrementVersion(newVersion);
+  }
+
+  const result = await validate(newVersion);
+  const publishCliDir = path.join(DIST_DIR, "skills-cli");
+
+  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
 
   if (isDryRun) {
-    const files = await fs.readdir(publishCliDir, {recursive: true});
-    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.filter(f => !f.includes('node_modules')).sort((a,b) => a.localeCompare(b)).join('\n - ')}`);
+    const files = await fs.readdir(publishCliDir, {recursive: true, withFileTypes: true});
+    const filteredFiles = files
+      .filter(f => !f.parentPath.includes('node_modules') && f.isFile())
+      .map(f => path.relative(publishCliDir, path.join(f.parentPath, f.name)))
+      .filter(f => {
+        return GH_PUBLISH_PATTERNS.every(pattern => {
+          if (pattern.startsWith('!')) {
+            return !minimatch(f, pattern.slice(1), { dot: true });
+          }
+          return minimatch(f, pattern, { dot: true });
+        });
+      })
+      .sort((a,b) => a.localeCompare(b));
+
+    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${filteredFiles.join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
 
     console.log(`\n[Dry Run] Summary:`);
@@ -78,20 +167,12 @@ async function main() {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
-    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
-    
-    await ghpages.publish(publishCliDir, {
-      src: ['**/*'], // No longer vendor node_modules! Users will install via npx -y!
-      branch: 'main',
-      repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
-      dotfiles: true,
-      message: `Release v${newVersion}`,
-      tag: `v${newVersion}`,
-      remove: "**/*"
-    });
-
-
-    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
+    const releaseNotes = `### Summary
+- Use cases: ${useCasesCount}
+- Features: ${featuresCount}
+- Skills: ${skillsCount}
+${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
+    await publishToDistributionRepo(publishCliDir, newVersion, releaseNotes);
 
     // Create and push tag on current repo
     console.log(`Creating and pushing Git tag v${newVersion}...`);
@@ -103,7 +184,7 @@ async function main() {
     console.log(`${featuresCount} features`);
     console.log(`${skillsCount} skills (${skillNames.join(', ')})`);
 
-    console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
+    console.log('\nPerhaps also:\n    pushd ~/code/modern-web-guidance && git pull gh && git push gob && popd');
   }
 }
 

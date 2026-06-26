@@ -150,7 +150,7 @@ The output should be a single file named negative-demo.html. Do not modify any o
 
   } catch (err) {
     console.error("Error during Gemini CLI execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }

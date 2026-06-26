@@ -8,11 +8,10 @@ import { testGrader, findGrader, runPlaywright, type CalibrationResult } from '.
 import {
   createIsolatedHome,
   cleanupIsolatedHome,
-  copyFileIfExists,
-  createTrustedFolders,
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
 import { environmentConfig, defaultSuiteConfig, Serving, type SuiteConfig } from '../harness/config.ts';
+import { setupIsolatedWorkDir } from './lib/utils.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
 import {
   type GuideInventory,
@@ -206,12 +205,12 @@ async function generateArtifact(name: string, generator: () => Promise<void>, ch
 async function generateTask(targetDir: string): Promise<void> {
   const baseApp = 'daily-grind';
   const originalHome = process.env.HOME;
-  const tempHome = createIsolatedHome('ghh-prompt-gen');
+  
+  const workDir = setupIsolatedWorkDir('ghh-prompt-gen');
+  const tempHome = path.dirname(workDir);
 
   try {
-    // Copy guide dir contents into a work directory
-    const workDir = path.join(tempHome, 'work');
-    fs.mkdirSync(workDir, { recursive: true });
+    // Copy guide dir contents into the isolated work directory
     fs.cpSync(targetDir, workDir, { recursive: true });
 
     // Copy the base app so Gemini can see what app the prompts target
@@ -219,19 +218,6 @@ async function generateTask(targetDir: string): Promise<void> {
     if (fs.existsSync(baseAppHtml)) {
       fs.copyFileSync(baseAppHtml, path.join(workDir, 'base-app.html'));
     }
-
-    // Copy Gemini auth files
-    const geminiSource = path.join(originalHome || process.cwd(), '.gemini');
-    const geminiDest = path.join(tempHome, '.gemini');
-    fs.mkdirSync(geminiDest, { recursive: true });
-
-    for (const file of ['oauth_creds.json', 'google_accounts.json', 'installation_id']) {
-      copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
-    }
-
-    createTrustedFolders(geminiDest, [workDir]);
-
-    process.env.HOME = tempHome;
 
     let guideFileName = 'guide.md';
     if (!fs.existsSync(path.join(targetDir, 'guide.md')) && fs.existsSync(path.join(targetDir, 'SKILL.md'))) {
@@ -338,10 +324,19 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   const results: Record<string, { passed: number; total: number }> = {};
 
   // 1. Grade base app
-  const baseAppHtml = path.join(baseAppsDir, taskInfo.baseApp, 'index.html');
+  const baseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
+  const baseAppHtml = path.join(baseAppDir, 'index.html');
   if (fs.existsSync(baseAppHtml)) {
-    const preResults = await gradeOutput(baseAppHtml, graderPath, path.join(targetDir, 'test-app-results', 'pre-grade-report'));
-    if (preResults) results['pre'] = preResults;
+    const tempHome = createIsolatedHome('gd-pre-grade');
+    try {
+      const stagingDir = path.join(tempHome, taskInfo.baseApp);
+      fs.cpSync(baseAppDir, stagingDir, { recursive: true });
+      const stagedHtml = path.join(stagingDir, 'index.html');
+      const preResults = await gradeOutput(stagedHtml, graderPath, path.join(targetDir, 'test-app-results', 'pre-grade-report'));
+      if (preResults) results['pre'] = preResults;
+    } finally {
+      cleanupIsolatedHome(tempHome);
+    }
   }
 
   // 2. Run agent suite
@@ -397,7 +392,7 @@ async function gradeOutput(htmlPath: string, graderPath: string, outputDir: stri
   }
 }
 
-function printTestComparison(results: Record<string, { passed: number; total: number }>): void {
+export function printTestComparison(results: Record<string, { passed: number; total: number }>): void {
   const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;
   if (total === 0) return;
 

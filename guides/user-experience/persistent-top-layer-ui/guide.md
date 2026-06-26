@@ -3,11 +3,6 @@ name: persistent-top-layer-ui
 description: Keep a modal dialog, fullscreen element, or native popover visibly open and functionally active when its underlying DOM node is moved or reparented in the DOM.
 web-feature-ids:
 - move-before
-sources:
-- https://developer.mozilla.org/en-US/docs/Web/API/Element/moveBefore
-- https://developer.chrome.com/blog/movebefore-api
-- https://developer.mozilla.org/en-US/docs/Web/API/Document/moveBefore
-- https://chromestatus.com/feature/5135990159835136
 ---
 
 When moving an open `<dialog>`, `popover`, or fullscreen element in the DOM using traditional methods like `appendChild()` or `insertBefore()`, the browser implicitly removes the element from the DOM and re-inserts it. This removal resets the state, causing open modals, popovers, and fullscreen elements to close abruptly.

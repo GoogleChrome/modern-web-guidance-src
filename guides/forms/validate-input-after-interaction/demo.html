@@ -49,6 +49,13 @@
       background-color: #e6f4ea;
     }
 
+    .hint {
+      display: block;
+      color: #5f6368;
+      font-size: 0.85rem;
+      margin-bottom: 0.25rem;
+    }
+
     /* Error Message Visibility (Email) */
     .error-msg {
       display: none;
@@ -64,22 +71,23 @@
 
     /* Rules List Styling (Password) */
     .rules-list {
-      margin: 0;
+      margin-bottom: 0.5rem;
       padding-left: 1.5rem;
       color: #5f6368;
       font-size: 0.875rem;
       transition: color 0.2s;
     }
 
-    /* If invalid (after interaction), highlight rules in red */
-    input:user-invalid+.rules-list,
-    input.user-invalid-fallback+.rules-list {
+    /* If invalid (after interaction), highlight rules in red using :has() */
+    .form-group:has(input:user-invalid) .rules-list,
+    .form-group:has(input.user-invalid-fallback) .rules-list {
       color: #d93025;
+      font-weight: 600;
     }
 
     /* If valid, strike through or green */
-    input:user-valid+.rules-list,
-    input.user-valid-fallback+.rules-list {
+    .form-group:has(input:user-valid) .rules-list,
+    .form-group:has(input.user-valid-fallback) .rules-list {
       color: #188038;
       text-decoration: line-through;
       opacity: 0.6;
@@ -116,18 +124,17 @@
     <!-- Use Case 1: Email Validation -->
     <div class="form-group">
       <label for="email">Email Address</label>
-      <input type="email" id="email" name="email" autocomplete="email" required placeholder="you@example.com"
+      <span id="email-hint" class="hint">Format: you@example.com</span>
+      <input type="email" id="email" name="email" autocomplete="email" required aria-describedby="email-hint"
         aria-errormessage="email-error">
       <div id="email-error" class="error-msg">
-        Please enter a valid email address (e.g. name@domain.com).
+        <span aria-hidden="true">❌</span> Please enter a valid email address.
       </div>
     </div>
 
     <!-- Use Case 2: Password Complexity -->
     <div class="form-group">
       <label for="password">New Password</label>
-      <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8"
-        pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}" aria-describedby="password-rules">
       <ul id="password-rules" class="rules-list">
         <li>At least 8 characters</li>
         <li>One uppercase letter</li>
@@ -135,6 +142,8 @@
         <li>One number</li>
         <li>One special character</li>
       </ul>
+      <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8"
+        pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}" aria-describedby="password-rules">
     </div>
 
     <div style="display: flex; gap: 1rem;">

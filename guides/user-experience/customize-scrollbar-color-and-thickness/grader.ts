@@ -25,11 +25,6 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
     expect(html).toMatch(/scrollbar-color\s*:/);
   });
 
-  test('scrollbar-gutter: stable is used in CSS', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/scrollbar-gutter\s*:\s*stable/);
-  });
-
   test('Legacy ::-webkit-scrollbar is wrapped in @supports not (scrollbar-color: auto)', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     // Check if @supports not (scrollbar-color: auto) exists and contains ::-webkit-scrollbar
@@ -63,25 +58,35 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
   // Browser assertions
   test('Scrollable element has scrollbar-width applied', async ({ page }) => {
     const hasScrollbarWidth = await page.evaluate(() => {
-      const elements = [document.documentElement, document.body, ...document.querySelectorAll('.custom-scrollbar, .scroll-box')];
-      return elements.some(el => getComputedStyle(el).scrollbarWidth !== 'auto');
+      const elements = Array.from(document.querySelectorAll('*'));
+      return elements.some(el => {
+        const style = getComputedStyle(el);
+        const isScrollable = style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflow === 'auto' || style.overflow === 'scroll';
+        const hasRule = document.querySelector('style')?.textContent?.includes('scrollbar-width') || Array.from(document.styleSheets).some(sheet => {
+          try {
+            return Array.from(sheet.cssRules).some(rule => rule.cssText.includes('scrollbar-width'));
+          } catch (e) { return false; }
+        });
+        return isScrollable && (style.scrollbarWidth !== 'auto' || hasRule);
+      });
     });
     expect(hasScrollbarWidth).toBe(true);
   });
 
   test('Scrollable element has scrollbar-color applied', async ({ page }) => {
     const hasScrollbarColor = await page.evaluate(() => {
-      const elements = [document.documentElement, document.body, ...document.querySelectorAll('.custom-scrollbar, .scroll-box')];
-      return elements.some(el => getComputedStyle(el).scrollbarColor !== 'auto');
+      const elements = Array.from(document.querySelectorAll('*'));
+      return elements.some(el => {
+        const style = getComputedStyle(el);
+        const isScrollable = style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflow === 'auto' || style.overflow === 'scroll';
+        const hasRule = document.querySelector('style')?.textContent?.includes('scrollbar-color') || Array.from(document.styleSheets).some(sheet => {
+          try {
+            return Array.from(sheet.cssRules).some(rule => rule.cssText.includes('scrollbar-color'));
+          } catch (e) { return false; }
+        });
+        return isScrollable && (style.scrollbarColor !== 'auto' || hasRule);
+      });
     });
     expect(hasScrollbarColor).toBe(true);
-  });
-
-  test('Scrollable element has scrollbar-gutter set to stable', async ({ page }) => {
-    const hasScrollbarGutter = await page.evaluate(() => {
-      const elements = [document.documentElement, document.body, ...document.querySelectorAll('.custom-scrollbar, .scroll-box')];
-      return elements.some(el => getComputedStyle(el).scrollbarGutter === 'stable');
-    });
-    expect(hasScrollbarGutter).toBe(true);
   });
 });

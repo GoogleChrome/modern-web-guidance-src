@@ -11,12 +11,15 @@ eval-view/suites.gen.json
 dist/
 
 # Test artifacts
-eval-view/test-results/
+**/test-results/
 harness/results/
-harness/test-results/
+harness/results.bak/
 tasks/test-results/
 grade-report/
 test-app-results/
+guides/**/test-results/
+guides/**/test-app-results/
+guides/**/.last-run.json
 
 # legacy paths (any content here should be deleted)
 serving/.mcp-data/
@@ -26,6 +29,7 @@ serving/mcp-server/data/use-cases.gen.ts
 # Environment and Logs
 .env
 *.log
+dev.log
 .vscode
 
 # OS Junk
@@ -46,10 +50,11 @@ project-gleam/
 # Local agent stuff
 .gemini/
 .claude/
+.antigravitycli/
 GEMINI.md
 
 # Research drafts
-skills-drafts/.research/
+
 
 # Generated vector and benchmark evaluation files
 serving/lib/use-cases.vectors.gen.json
@@ -61,3 +66,6 @@ serving/lib/tfjs_model_minilm/saved_model*/
 
 # Caches
 **/.cache/
+
+# Agent skills artifacts
+.agents/skills/nightly-eval-investigation/artifacts/

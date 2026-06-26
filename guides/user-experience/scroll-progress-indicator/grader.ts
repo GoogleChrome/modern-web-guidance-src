@@ -198,4 +198,9 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasScrollListener).toBe(false);
   });
 
+  test(`MANDATORY: Purely decorative scroll progress indicators must define aria-hidden="true"`, async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/aria-hidden=["']true["']/i.test(html)).toBe(true);
+  });
+
 });

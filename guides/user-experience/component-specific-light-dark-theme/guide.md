@@ -1,129 +1,114 @@
 ---
 name: component-specific-light-dark-theme
-description: Create component-specific themes by forcing explicit color schemes on individual UI elements, giving users theme choices that are decoupled from their global operating system preferences
+description: Force certain elements to be in light mode or dark mode (e.g. code blocks, media players, etc) independently of the page's color-scheme.
 web-feature-ids:
   - color-scheme
   - light-dark
-sources:
-  - https://web.dev/articles/light-dark
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark
-  - https://web.dev/articles/baseline-in-action-color-theme?hl=en
-  - https://web.dev/articles/building/a-theme-switch-component?hl=en
-  - https://nerdy.dev/page-and-component-light-dark-strategies
-  - https://www.bram.us/2023/10/09/the-future-of-css-easy-light-dark-mode-color-switching-with-light-dark/
-  - https://css-tricks.com/almanac/functions/l/light-dark/
-  - https://www.bram.us/2020/04/26/the-quest-for-the-perfect-dark-mode-using-vanilla-javascript/
-  - https://css-tricks.com/come-to-the-light-dark-side/
 ---
 
-# Component-Specific Light/Dark Themes
+# Component-specific light/dark themes
 
-The `light-dark()` function allows you to define two colors for a single property, which the browser automatically switches based on the current `color-scheme`. By scoping both the `light-dark()` variables and the `color-scheme` property to a specific component, you can create UI elements that can be independently forced into light or dark mode, regardless of the user's global system preference.
+While more commonly set on the root, the `color-scheme` property can be set on individual elements to force them into a different color scheme from the rest of the page.
+This can be useful for components that must always be viewed in a specific color scheme (e.g. always in dark or light mode).
 
-## Implementation steps
+Example use cases include:
+- Elements that are often in dark mode even on light mode pages for aesthetic reasons, e.g. code blocks, media players, photo galleries
+- Areas that contain media designed for a light background (e.g. images, videos, illustrations, print previews) can be set to light mode even if the rest of the page is in dark mode.
+- Elements whose color-scheme is controlled by a user-level setting, such as component previews
+- Embeds that don't support both light and dark modes
+- Design tools, maps, visualizations, games etc.
 
-1. **MANDATORY: Enable `color-scheme` support.** The `light-dark()` function only resolves if the element (or an ancestor) has an explicit `color-scheme` value of `light`, `dark`, or `light dark`.
+## When to change colors vs. when to force `color-scheme`?
 
-    ```css
-    :root {
-      /* 
-         MANDATORY: Enable system-wide support for both themes.
-         Without this, the browser will not know how to resolve light-dark().
-      */
-      color-scheme: light dark;
-    }
-    ```
+Not every element that uses lighter text on darker background in light mode or darker text on lighter background in dark mode needs a different `color-scheme`.
+For example, a primary button may be rendered as blue with white text in light mode, but that does not warrant a `color-scheme: dark`.
 
-2. **Define semantic variables or properties using `light-dark()`.** Use the `light-dark(light-color, dark-color)` syntax. 
+As a rule of thumb, typically elements using a different `color-scheme` are complex surfaces establishing their own visual context, rather than simple shallow containers.
 
-    ```css
-    .themed-card {
-      /* 
-         DO: Use semantic variables to define theme-aware colors.
-         The first argument is used when color-scheme is 'light'.
-         The second argument is used when color-scheme is 'dark'.
-      */
-      --card-bg: light-dark(#ffffff, #2d2e31);
-      --card-text: light-dark(#202124, #f8f9fa);
-      
-      background-color: var(--card-bg);
-      color: var(--card-text);
-      padding: 1.5rem;
-      border-radius: 8px;
-    }
-    ```
+When considering using a different `color-scheme` on an element, ask yourself:
 
-3. **Create theme overrides.** You can force a component instance into a specific theme by setting its `color-scheme` property using any valid CSS selector (classes, data attributes, etc.). This overrides the inherited system preference for that specific subtree.
+- Should built-in browser UI that is not otherwise customized (e.g. form controls, scrollbars, etc) use that color-scheme or adapt to the page's color-scheme? -> if the former, don't use `color-scheme`.
+- Should any `light-dark()` colors resolve like they do for the rest of the page or based on the override? -> if the former, don't use `color-scheme`.
+- Should descendants be in that `color-scheme`? If not, don't use `color-scheme`.
 
-    ```css
-    /* 
-       DO: Use color-scheme to force a specific theme on a component.
-       You can use classes, data attributes, or any other selector.
-    */
-    
-    /* Using classes */
-    .themed-card.force-light {
-      color-scheme: light;
-    }
+## Basic implementation
 
-    /* Using data attributes (often preferred for state) */
-    .themed-card[data-theme="dark"] {
-      color-scheme: dark;
-    }
-    ```
+Component-specific overrides are typically (though not strictly necessarily) used on pages that also support multiple color schemes via a global `color-scheme`.
+For implementing page-wide dark mode well, see {{ GUIDE_REF("dark-mode") }}.
 
-## Critical Considerations
-
-- **Supported Types**: Currently, `light-dark()` is only used for color values. It cannot be used for lengths, numbers, or other non-color types (e.g., `padding`, `font-size`, `opacity`).
-- **MANDATORY: Two Arguments**: The function must always have exactly two arguments.
+Once a page-wide `color-scheme` is in place, and you are using color tokens sensitive to it (e.g. via `light-dark()`), you can simply set `color-scheme` on specific components to override the color mode for that subtree:
 
 ```css
-/* 
-   DO NOT: Attempt to use light-dark() for non-color properties like padding.
-   This will result in an invalid property value.
-*/
-.themed-card {
-  padding: light-dark(10px, 20px); 
+pre, code, .dark {
+  color-scheme: dark;
 }
 ```
+
+Note that some browsers automatically adapt components to a different color scheme anyway.
+To force the specified color scheme in all cases, use `only`, i.e. `color-scheme: only dark;` instead of `color-scheme: dark;`.
+
+### Adapting non-color values
+
+`light-dark()` currently only works for colors.
+
+## Best practices
+
+- **MANDATORY**: Do not set `color-scheme` on elements without a background, as that risks mixing background and text color pairs from different color-schemes, resulting in unreadable text.
+- **OPTIONAL**: While it is easier to reuse the same color pairs as the page-wide dark mode, we _can_ define different color pairs for these components. For example, we may want a dark mode component used in a light mode page to be a little less dark than when the same dark mode component is used in a page that is overall in dark mode.
+
+## Known issues to be aware of
+
+### Important gotcha: Inheritance of `light-dark()` colors
+
+**`light-dark()` resolves at computed value time.**
+This means that any inherited `<color>` properties set to a `light-dark()` color will only pass down one of the two colors to their descendants, not the `light-dark()` expression itself.
+
+This includes:
+- Built-in color properties that inherit, such as `color`, `accent-color`, `fill`, `stroke`, `text-shadow`, `caret-color`
+- Any registered inheritable custom properties with `syntax: <color>` and `inherits: true`
+- Any other `<color>` property set to `inherit`
+
+This means you should:
+- **NOT** register custom properties meant to hold *design tokens* (e.g. `--surface-color`) as `<color>`. Tokens need to keep their `light-dark()` expression live so descendants can re-resolve them under a different `color-scheme`.
+- When setting `color-scheme` on an element, re-specify any inherited `<color>` properties that may have been set to `light-dark()` values (directly or via design tokens), even if that's to the same design token.
+- **NOT** use `inherit` on `<color>` properties on elements with a `color-scheme` override (fine to use on their descendants).
+- **DO** use registered `<color>` properties for the *opposite* use case: when you deliberately want to snapshot the ancestor's resolved color and prevent it from re-resolving under the descendant's `color-scheme`. For example, capturing the page background to use elsewhere.
+- If you need to animate a color, use a separate `@property`-registered `<color>` property on the element being animated (registration is required for color interpolation) — this is not a design token, but a per-element animation target, so it does not conflict with the rule above.
+
+Example:
+
+```css
+:root {
+	--accent-color: light-dark(blue, skyblue);
+	--surface-color: light-dark(white, #222);
+	--text-color: light-dark(#111, white);
+
+	color-scheme: light dark;
+	accent-color: var(--accent-color);
+	color: var(--text-color);
+}
+
+body {
+	/* --surface-color dynamically switches despite being inherited because --surface-color is not registered */
+	background: var(--surface-color);
+}
+
+pre, code {
+	color-scheme: dark;
+	background: var(--surface-color);
+
+	/* Without this, accent-color would be blue, not skyblue! */
+	accent-color: var(--accent-color);
+
+	/* Without this, text-color would be #111, not white! */
+	color: var(--text-color);
+}
+```
+
+{{ FEATURE_ISSUES("color-scheme") }}
 
 ## Fallback strategies
 
-{{ BASELINE_STATUS("light-dark") }}
-{{ BASELINE_STATUS("color-scheme") }}
+{{ FEATURE_FALLBACKS("color-scheme") }}
 
-### Color Fallbacks
-For browsers that do not support `light-dark()` or the `color-scheme` property, provide a fallback using `@media (prefers-color-scheme: dark)` or manual variable overrides.
-
-```css
-.themed-card {
-  /* 
-     MANDATORY: Define base fallback colors for browsers without light-dark().
-     Default to light mode values.
-  */
-  --card-bg: #ffffff;
-  --card-text: #202124;
-}
-
-/* 
-   DO: Update variables based on system preference for older browsers.
-*/
-@media (prefers-color-scheme: dark) {
-  .themed-card {
-    --card-bg: #2d2e31;
-    --card-text: #f8f9fa;
-  }
-}
-
-/* 
-   DO: Use @supports to provide progressive enhancement for light-dark().
-   This ensures that per-component overrides (via color-scheme) work where supported.
-*/
-@supports (color: light-dark(white, black)) {
-  .themed-card {
-    --card-bg: light-dark(#ffffff, #2d2e31);
-    --card-text: light-dark(#202124, #f8f9fa);
-  }
-}
-```
+{{ FEATURE_FALLBACKS("light-dark") }}

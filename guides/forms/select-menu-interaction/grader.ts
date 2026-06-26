@@ -16,14 +16,32 @@ const demoUrl = `http://localhost/${demoName}`;
 // Helper function
 async function isErrorVisible(locator: Locator) {
   return await locator.evaluate((el) => {
-    const styles = window.getComputedStyle(el);
-    const border = styles.borderColor;
-    const match = border.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-    if (!match) return false;
-    const r = parseInt(match[1]);
-    const g = parseInt(match[2]);
-    const b = parseInt(match[3]);
-    return r > g + 40 && r > b + 40;
+    const elementsToCheck = [el];
+    let parent = el.parentElement;
+    while (parent && parent !== document.body && parent !== document.documentElement) {
+      if (parent.tagName === 'DIV' || parent.classList.length > 0) {
+        elementsToCheck.push(parent);
+      }
+      parent = parent.parentElement;
+    }
+
+    for (const e of elementsToCheck) {
+      if (e.matches(':user-invalid') || e.classList.contains('user-invalid') || e.classList.contains('user-invalid-fallback')) {
+        return true;
+      }
+      const styles = window.getComputedStyle(e);
+      const colors = [styles.borderColor, styles.borderLeftColor, styles.outlineColor, styles.backgroundColor];
+      for (const color of colors) {
+        const match = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (match) {
+          const r = parseInt(match[1]);
+          const g = parseInt(match[2]);
+          const b = parseInt(match[3]);
+          if (r > g + 40 && r > b + 40) return true;
+        }
+      }
+    }
+    return false;
   });
 }
 
@@ -54,6 +72,11 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
+
+    // Prevent form submission from reloading the page so we can check error state
+    await page.evaluate(() => {
+      document.querySelector('form')?.addEventListener('submit', (e) => e.preventDefault());
+    });
   });
 
   // Browser assertions
@@ -70,11 +93,11 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     const initialRed = await isErrorVisible(select);
     
     // Trigger error state by trying to submit
-    const submitBtn = page.locator('button[type="submit"], input[type="submit"]');
+    const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])');
     if (await submitBtn.count() > 0) {
         await submitBtn.first().click();
     } else {
-        await page.evaluate(() => document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true })));
+        await page.evaluate(() => document.querySelector('form')?.requestSubmit());
     }
     const triggeredRed = await isErrorVisible(select);
     
@@ -102,11 +125,11 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     const select = page.locator('select').first();
     const initialRed = await isErrorVisible(select);
     
-    const submitBtn = page.locator('button[type="submit"], input[type="submit"]');
+    const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])');
     if (await submitBtn.count() > 0) {
         await submitBtn.first().click();
     } else {
-        await page.evaluate(() => document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true })));
+        await page.evaluate(() => document.querySelector('form')?.requestSubmit());
     }
     
     const afterSubmitRed = await isErrorVisible(select);

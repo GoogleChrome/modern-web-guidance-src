@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Management Negative Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #fafafa; color: #333; }
+    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 500px; }
+    .credential-list { margin-top: 1rem; }
+    .credential-item { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; padding: 1rem 0; }
+    button { background: #cc0000; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Manage Your Passkeys</h2>
+    
+    <div id="list-container" class="credential-list" data-testid="credential-list"></div>
+    
+    <div id="status" style="margin-top: 1rem; font-weight: bold;" data-testid="management-status">Idle</div>
+  </div>
+
+  <script type="module">
+    // Violates expectation: does not bypass zeroed AAGUID provider lookup and crashes/fails lookup
+    const mockAaguids = {};
+
+    async function loadManagementUI() {
+      const container = document.getElementById('list-container');
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Loading...';
+
+      try {
+        const response = await fetch('/api/credentials');
+        const list = await response.json();
+        
+        container.innerHTML = '';
+        list.forEach(cred => {
+          // Violates expectation: attempts to look up zeroed AAGUID directly which throws/crashes rendering
+          const provider = mockAaguids[cred.aaguid];
+          
+          const item = document.createElement('div');
+          item.className = 'credential-item';
+          item.innerHTML = `
+            <span class="provider-name">${provider.name}</span>
+            <button class="delete-btn">Delete</button>
+          `;
+          
+          container.appendChild(item);
+        });
+
+        statusEl.textContent = 'Idle';
+        // Violates expectation: does not automatically invoke signalAllAcceptedCredentials on DOMContentLoaded
+      } catch (e) {
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadManagementUI);
+  </script>
+</body>
+</html>

@@ -8,11 +8,12 @@ export interface UseCaseResult {
   id: string;
   description: string;
   category: string;
-  featuresUsed: string[];
-  distance: string;
+  featuresUsed?: string[];
+  tokenCount: number;
+  similarity: number;
 }
 
-let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; vector: number[]; norm: number }[] | null = null;
+let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; tokenCount: number; vector: number[]; norm: number }[] | null = null;
 
 function dotProduct(a: number[], b: number[]): number {
   let dotProduct = 0;
@@ -30,7 +31,7 @@ function calculateNorm(v: number[]): number {
   return Math.sqrt(sum);
 }
 
-export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5, embedder?: any): Promise<UseCaseResult[]> {
+export async function searchUseCases(query: string, limit = 5, minSimilarity = 0.3, embedder?: any): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder || TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
   const queryNorm = calculateNorm(queryVector);
@@ -50,42 +51,43 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
       description: item.description,
       category: item.category,
       featuresUsed: item.featuresUsed || [],
+      tokenCount: item.tokenCount || 0,
       vector: item.vector,
       norm: item.vector ? calculateNorm(item.vector) : 0
     })).filter(item => item.vector);
   }
 
-  const resultsMap = new Map<string, { item: (typeof cachedVectors)[0]; distance: number }>();
+  const resultsMap = new Map<string, { item: (typeof cachedVectors)[0]; similarity: number }>();
 
   for (const item of cachedVectors) {
     if (item.norm === 0 || queryNorm === 0) continue;
     
     const sim = dotProduct(queryVector, item.vector) / (queryNorm * item.norm);
-    const distance = 1 - sim;
     
-    if (distance > maxDistance) continue;
+    if (sim < minSimilarity) continue;
 
     const existing = resultsMap.get(item.id);
-    if (!existing || distance < existing.distance) {
-      resultsMap.set(item.id, { item, distance });
+    if (!existing || sim > existing.similarity) {
+      resultsMap.set(item.id, { item, similarity: sim });
     }
   }
 
   const results = Array.from(resultsMap.values());
 
-  // Sort by distance ascending
-  results.sort((a, b) => a.distance - b.distance);
+  // Sort by similarity descending
+  results.sort((a, b) => b.similarity - a.similarity);
 
   const limitedResults = results.slice(0, limit).map(r => ({
     id: r.item.id,
     description: r.item.description,
     category: r.item.category,
-    featuresUsed: r.item.featuresUsed,
-    distance: r.distance.toFixed(4)
+    featuresUsed: r.item.featuresUsed?.length ? r.item.featuresUsed : undefined,
+    tokenCount: r.item.tokenCount,
+    similarity: parseFloat(r.similarity.toFixed(4))
   }));
 
   // Log the result
-  logToolResult("search_use_cases", limitedResults.map(r => ({ id: r.id, distance: r.distance })));
+  logToolResult("search_use_cases", limitedResults.map(r => ({ id: r.id, similarity: r.similarity })));
 
   return limitedResults;
 }

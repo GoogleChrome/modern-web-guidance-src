@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Button Actions Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f9f9f9;
+      color: #333;
+      padding: 20px;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      background: white;
+      padding: 2rem 4rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      border: 1px solid #ddd;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    button[aria-pressed="true"] {
+      color: #007bff;
+      background: white;
+      outline: 1px solid currentColor;
+    }
+
+    .target {
+      width: 150px;
+      height: 150px;
+      background-color: #f06292;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.25rem;
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .target.is-spun {
+      rotate: 180deg;
+    }
+
+    .target.is-grown {
+      scale: 1.25;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .status {
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+
+    .status.supported {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border-color: #c8e6c9;
+    }
+
+    .status.fallback {
+      background: #fff3e0;
+      color: #ef6c00;
+      border-color: #ffe0b2;
+    }
+
+    .status-controls {
+      margin-top: 2rem;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f5f5f5;
+    }
+
+    .status-controls .status {
+      margin-bottom: 0.5rem;
+    }
+
+    .fallback-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="actions">
+      <!-- 
+        Buttons are declaratively connected to the target element 
+        using the 'commandfor' attribute. They dispatch custom 
+        commands (e.g. '--spin') to that element when clicked. 
+      -->
+      <button commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
+      <button commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
+      <button commandfor="action-target" command="--reset">Reset All</button>
+    </div>
+    
+    <div id="action-target" class="target">
+      Action Target
+    </div>
+
+    <!-- 
+      DEMO CONTROLS: 
+      These help visualize and test both the native and fallback implementation.
+    -->
+    <div class="status-controls">
+      <div id="support-status" class="status">Checking support...</div>
+      <label class="fallback-label">
+        <input type="checkbox" id="force-fallback">
+        <strong>Force Fallback Mode</strong> (Simulate older browser)
+      </label>
+    </div>
+  </div>
+
+  <script type="module">
+    const targetEl = document.getElementById('action-target');
+    const statusEl = document.getElementById('support-status');
+    const forceFallbackCheckbox = document.getElementById('force-fallback');
+
+    // 1. Define a registry of requested actions for cleaner logic
+    const commandRegistry = {
+      '--spin': (target, source) => {
+        const isSpun = target.classList.toggle('is-spun');
+        // Set ARIA states, as custom commands have no inherent semantics.
+        source?.setAttribute('aria-pressed', isSpun);
+      },
+      '--grow': (target, source) => {
+        const isGrown = target.classList.toggle('is-grown');
+        source?.setAttribute('aria-pressed', isGrown);
+      },
+      '--reset': (target) => {
+        target.classList.remove('is-spun', 'is-grown');
+        // Reset all associated buttons' ARIA states
+        document.querySelectorAll(`button[commandfor="${target.id}"]`).forEach(btn => {
+          btn.setAttribute('aria-pressed', 'false');
+        });
+      },
+    };
+    
+    // 2. Feature Detection: Always check the prototype for maximum reliability
+    const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
+
+    /**
+     * DYNAMIC FALLBACK STRATEGY: 
+     * We use an async IIFE to ensure the polyfill is loaded BEFORE the rest 
+     * of the logic runs, while avoiding top-level await for older browser compatibility.
+     */
+    (async () => {
+      const isForced = forceFallbackCheckbox.checked;
+
+      if (hasNativeSupport && !isForced) {
+        statusEl.textContent = 'Status: Using Native Invoker Commands';
+        statusEl.className = 'status supported';
+      } else {
+        const reason = isForced ? '(Forced)' : '(Unsupported)';
+        statusEl.textContent = `Status: Using fallback strategy ${reason}...`;
+        statusEl.className = 'status fallback';
+
+        try {
+          // Conditionally load the polyfill only for browsers that need it (or when forced)
+          await import('https://esm.run/invokers-polyfill');
+          statusEl.textContent = `Status: Fallback strategy active ${reason}`;
+        } catch (err) {
+          statusEl.textContent = 'Error: Fallback strategy failed to load';
+          console.error('Polyfill load failed:', err);
+        }
+      }
+    })();
+
+    // Handle 'Force Fallback' toggle
+    forceFallbackCheckbox.addEventListener('change', () => {
+      // Reload the page to reset the environment for the forced fallback test
+      window.location.reload();
+    });
+    
+    // 3. Unified listener for the command event on the target element.
+    // This works identically whether triggered natively or via the polyfill.
+    targetEl.addEventListener('command', (event) => {
+      const command = event.command;
+      const target = event.target;
+      const source = event.source; // event.source refers to the triggering button
+      const action = commandRegistry[command];
+
+      if (action) {
+        action(target, source);
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,13 +1,14 @@
 name: Publish Skills
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'serving/skills-cli/**'
-      - 'guides/**'
-      - '.github/workflows/publish.yml'
+  schedule:
+    # 20:00 UTC is 12:00 PM PST / 1:00 PM PDT
+    - cron: '0 20 * * 1'
   workflow_dispatch: {}
+
+concurrency:
+  group: publish-skills
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -30,17 +31,37 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
+      - name: Check for changes since last release
+        run: |
+          if git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
+            echo "Error: The latest commit already has a version tag. No new changes to publish."
+            exit 1
+          fi
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.4.0
         with:
           node-version: 24
           cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org/'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build distribution
+        run: pnpm --filter serving run build
+
+      - name: Verify installation with install-skills test
+        env:
+          FULL: 1
+          TEST_REPORTER: spec
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: pnpm --filter serving exec node --test skills-cli/install-skills.test.ts
+
+
 
       - name: Configure Git for Auth and Commit
         run: |
@@ -50,25 +71,11 @@ jobs:
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
 
       - name: Publish Skills to GitHub (modern-web-guidance)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
 
-      # =========================================================================
-      # Future: Enable these steps when ready to publish to npm publicly!
-      # =========================================================================
-      # - name: Setup Node with npm registry
-      #   uses: actions/setup-node@v6
-      #   with:
-      #     node-version: 24
-      #     registry-url: 'https://registry.npmjs.org'
-      # 
-      # - name: Publish to npm via OIDC Provenance
-      #   run: |
-      #     npm install -g npm@latest
-      #     cd dist/skills-cli
-      #     
-      #     # Run dry-run for safety or full publish
-      #     # npm publish --provenance --access public --registry https://registry.npmjs.org/
-      #     npm publish --dry-run --provenance --access public --registry https://registry.npmjs.org/
-      # =========================================================================
-
-
+      - name: Publish to npm via OIDC Provenance
+        run: |
+          cd dist/skills-cli
+          npm publish --provenance --access public --registry https://registry.npmjs.org/

@@ -56,9 +56,9 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string,
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
     await runCommand('node', [
-      '--experimental-strip-types', 
-      agentScript, 
-      JSON.stringify(promptContent), 
+      '--experimental-strip-types',
+      agentScript,
+      JSON.stringify(promptContent),
       'guided', // Default to guided for ad-hoc tool execution
       targetDir,
       templateDir
@@ -160,7 +160,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
         const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-        
+
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
           generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath);
@@ -282,7 +282,7 @@ async function runCommand(command: string, args: string[] = [], envOverrides?: R
   return new Promise((resolve, reject) => {
     const childProcess = spawn(command, args, {
       stdio: 'inherit',
-      shell: true,
+      shell: process.platform === 'win32',
       cwd,
       env: envOverrides ? { ...process.env, ...envOverrides } : process.env
     });
@@ -371,7 +371,7 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
   return workspaceBaseAppDir;
 }
 
-function generateTransientPackage(
+export function generateTransientPackage(
   targetDir: string,
   agentScript: string,
   promptContent: string,
@@ -388,6 +388,22 @@ function generateTransientPackage(
   // Generate grade.mjs using shared function
   const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
+
+  // Create npx wrapper to intercept modern-web-guidance calls during evals
+  const rootDir = path.resolve(harnessDir, '..');
+  const templatePath = path.join(harnessDir, 'npx-intercept.template.ts');
+  const localCliPath = path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs');
+
+  if (fs.existsSync(templatePath)) {
+    let templateContent = fs.readFileSync(templatePath, 'utf8');
+    templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
+
+    const npxWrapperPath = path.join(targetDir, 'npx');
+    fs.writeFileSync(npxWrapperPath, templateContent);
+    fs.chmodSync(npxWrapperPath, 0o755); // Make executable
+  } else {
+    console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
+  }
 
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
@@ -408,18 +424,49 @@ const args = [
   workspaceBaseAppDir
 ])}
 ];
+
+// Intercept npx by prepending targetDir to PATH
+const env = { ...process.env };
+env.PATH = \`${targetDir}:\${env.PATH}\`;
+
 const start = Date.now();
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000 });
+let result;
+let attempts = 0;
+const maxAttempts = 3; // 1 initial attempt + 2 retries
+
+while (attempts < maxAttempts) {
+  attempts++;
+  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
+  if (result.status === 0) break;
+  if (attempts < maxAttempts) {
+    console.warn('⚠️ Attempt ' + attempts + ' failed with status ' + result.status + '. Waiting 20 seconds before retrying...');
+    spawnSync(process.execPath, ['-e', 'setTimeout(()=>{}, 20000)']);
+  }
+}
 const runtime = Date.now() - start;
 
 let graderRuntime = null;
 let graderStatus = null;
 
 if (result.status === 0) {
+  const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+  if (fs.existsSync(failureFile)) {
+    fs.unlinkSync(failureFile);
+  }
   const gradeStart = Date.now();
-  const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status;
+} else {
+  const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+  if (!fs.existsSync(failureFile)) {
+    fs.writeFileSync(failureFile, JSON.stringify({
+      agentName: path.basename(${JSON.stringify(agentScript)}),
+      exitCode: result.status,
+      stderr: 'Agent execution failed unexpectedly during setup or wrapper invocation',
+      stdout: ''
+    }, null, 2));
+  }
 }
 
 fs.writeFileSync(path.join(${JSON.stringify(targetDir)}, 'runtime.json'), JSON.stringify({

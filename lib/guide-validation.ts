@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
+import { marked } from 'marked';
 
 // Import shared utilities (using relative paths from guides/)
 import { validateMacros } from '../serving/lib/macros.ts';
@@ -115,8 +116,53 @@ export function validateGuide(filePath: string): ValidationResult {
   }
 
   errors.push(...validateMacros(body, relativePath));
+  errors.push(...validateHtmlTags(body, relativePath));
 
   return { errors, data, body, filePath };
+}
+
+/**
+ * Parses expectations.md content into structured sections.
+ * Supports both the legacy flat bullet format (all items treated as mustPass)
+ * and the new structured format with ## Must pass / ## Must fail / ## App-agnostic rules sections.
+ */
+export function parseExpectations(content: string): {
+  mustPass: string[];
+  mustFail: string[];
+  appAgnostic: string[];
+} {
+  const hasStructuredHeadings = /^##\s+(Must pass|Must fail|App-agnostic rules)/im.test(content);
+
+  if (!hasStructuredHeadings) {
+    // Legacy format: treat all bullet items as mustPass
+    const bullets = content
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '))
+      .map(l => l.slice(2).trim());
+    return { mustPass: bullets, mustFail: [], appAgnostic: [] };
+  }
+
+  const extract = (heading: string): string[] => {
+    const pattern = new RegExp(`^##\\s+${heading}\\s*$`, 'im');
+    const match = pattern.exec(content);
+    if (!match) return [];
+    const start = match.index + match[0].length;
+    const rest = content.slice(start);
+    const nextHeading = /^##\s/m.exec(rest);
+    const section = nextHeading ? rest.slice(0, nextHeading.index) : rest;
+    return section
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '))
+      .map(l => l.slice(2).trim());
+  };
+
+  return {
+    mustPass: extract('Must pass'),
+    mustFail: extract('Must fail'),
+    appAgnostic: extract('App-agnostic rules'),
+  };
 }
 
 /**
@@ -134,10 +180,13 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
   for (const inv of guides) {
     const subdir = inv.dir;
-    const { hasGuide, hasDemo, hasGrader, hasTask } = inv;
+    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
-    if (guideExists !== hasDemo) {
+    const isDisciplineGuide = inv.name === inv.category;
+    
+    // Discipline skills don't need demo.html
+    if (!isDisciplineSkill && !isDisciplineGuide && guideExists !== hasDemo) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
@@ -162,10 +211,15 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     let guideBody = '';
 
     if (hasGuide || inv.isStub) {
-      const validation = validateGuide(path.join(subdir, GUIDE_FILE));
+      const validation = validateGuide(getGuideMarkdownPath(inv));
       guideErrors = validation.errors;
       guideData = validation.data;
       guideBody = validation.body;
+
+      if (isDisciplineSkill || isDisciplineGuide) {
+        // Discipline skills/guides don't require the same frontmatter as use cases
+        guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
+      }
 
       if (guideErrors.length > 0) {
         for (const error of guideErrors) {
@@ -212,6 +266,7 @@ function readFileSafe(filePath: string): string {
 }
 
 export const GUIDE_FILE = 'guide.md';
+export const SKILL_FILE = 'SKILL.md';
 export const DEMO_FILE = 'demo.html';
 export const EXPECTATIONS_FILE = 'expectations.md';
 export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
@@ -231,6 +286,22 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
+  isDisciplineSkill: boolean;
+}
+
+/**
+ * Returns the path to the main markdown file for a guide (guide.md or SKILL.md).
+ */
+export function getGuideMarkdownPath(inv: GuideInventory): string {
+  return path.join(inv.dir, inv.isDisciplineSkill ? SKILL_FILE : GUIDE_FILE);
+}
+
+/**
+ * Returns true if the directory represents a discipline-level skill (e.g. guides/css/).
+ */
+export function isDisciplineSkillDir(dir: string): boolean {
+  const parentDir = path.dirname(dir);
+  return path.basename(parentDir) === 'guides' && fs.existsSync(path.join(dir, SKILL_FILE));
 }
 
 export interface TaskInfo {
@@ -316,17 +387,15 @@ export function getTaskMap(): Map<string, TaskInfo> {
 export function inventoryGuide(dir: string): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
+  const isDisciplineSkill = isDisciplineSkillDir(dir);
 
   const expectationsContent = readFileSafe(path.join(dir, EXPECTATIONS_FILE));
   const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
 
-  let guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
+  const guideFilePath = path.join(dir, isDisciplineSkill ? SKILL_FILE : GUIDE_FILE);
+  const guideContent = readFileSafe(guideFilePath);
   let hasGuide = false;
   let isStub = false;
-
-  if (!guideContent) {
-    guideContent = readFileSafe(path.join(dir, 'SKILL.md'));
-  }
 
   if (guideContent) {
     const parsed = matter(guideContent);
@@ -358,6 +427,7 @@ export function inventoryGuide(dir: string): GuideInventory {
     hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
     hasTask: fs.existsSync(path.join(dir, 'tasks', TASK_FILE)),
     featureIds,
+    isDisciplineSkill,
   };
 }
 
@@ -379,16 +449,114 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   if (!fs.existsSync(guidesDir)) return guides;
 
   const categories = fs.readdirSync(scanDir, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
+     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+     .map(d => d.name);
 
   for (const category of categories) {
     const categoryDir = path.join(scanDir, category);
     if (!fs.existsSync(categoryDir)) continue;
+
+    // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
+      if (!entry.isDirectory() || entry.name.startsWith('.') || ['node_modules', 'test-app-results', 'grade-report', 'test-results'].includes(entry.name)) continue;
       guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
     }
   }
   return guides;
 }
+
+export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
+  const skills: GuideInventory[] = [];
+
+  if (!fs.existsSync(scanDir)) return skills;
+
+  // Read top-level directories in guides/
+  const categories = fs.readdirSync(scanDir, { withFileTypes: true })
+     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+     .map(d => d.name);
+
+  for (const category of categories) {
+    const categoryDir = path.join(scanDir, category);
+    
+    // If the category directory itself contains a SKILL.md, it's a discipline skill
+    if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
+      skills.push(inventoryGuide(categoryDir));
+    }
+  }
+
+  return skills;
+}
+
+let cachedGuidesMap: Map<string, GuideInventory> | null = null;
+
+export function getGuidesMap(): Map<string, GuideInventory> {
+  if (!cachedGuidesMap) {
+    const allItems = [...scanAllGuides(), ...scanDisciplineSkills()];
+    cachedGuidesMap = new Map(allItems.map(g => [g.name, g]));
+  }
+  return cachedGuidesMap;
+}
+
+export function resetGuidesMap() {
+  cachedGuidesMap = null;
+}
+
+// Safe typographic inline tags that don't represent interactive elements or cause layout breakage.
+const ALLOWED_HTML_TAGS = new Set(['kbd', 'br', 'wbr']);
+
+export function validateHtmlTags(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+
+  try {
+    const tokens = marked.lexer(body);
+    findInvalidHtmlTokens(tokens, errors, relativePath, body);
+  } catch (e) {
+    errors.push(`Failed to parse markdown with marked lexer for HTML validation in ${relativePath}: ${e}`);
+  }
+
+  return errors;
+}
+
+function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: string, content: string) {
+  for (const token of tokens) {
+    if (token.type === 'html') {
+      const raw = token.raw.trim();
+
+      // Allow HTML comments
+      if (raw.startsWith('<!--') && raw.endsWith('-->')) {
+        continue;
+      }
+
+      // Parse tag name
+      const match = raw.match(/^<\/?([a-zA-Z0-9:-]+)(?:\s+[^>]*)?\/?>$/);
+      if (match) {
+        const tagName = match[1].toLowerCase();
+        if (!ALLOWED_HTML_TAGS.has(tagName)) {
+          // Find line number in content
+          const offset = content.indexOf(token.raw);
+          const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
+          const lineSuffix = line !== -1 ? ` on line ${line}` : '';
+          errors.push(`Unescaped HTML tag <${tagName}> found${lineSuffix} in ${relativePath}. Use backticks or escape angle brackets if it is a tag name reference.`);
+        }
+      } else {
+        // If it does not match a standard tag, but is still parsed as HTML token, warn/fail
+        const offset = content.indexOf(token.raw);
+        const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
+        const lineSuffix = line !== -1 ? ` on line ${line}` : '';
+        errors.push(`Potentially invalid or unescaped HTML block/tag "${raw}" found${lineSuffix} in ${relativePath}.`);
+      }
+    }
+
+    if (token.tokens) {
+      findInvalidHtmlTokens(token.tokens, errors, relativePath, content);
+    }
+    if (token.items) {
+      for (const item of token.items) {
+        if (item.tokens) {
+          findInvalidHtmlTokens(item.tokens, errors, relativePath, content);
+        }
+      }
+    }
+  }
+}
+

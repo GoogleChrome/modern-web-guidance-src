@@ -4,12 +4,6 @@ description: Build a scrollable list of elements (e.g. a carousel of images or a
 web-feature-ids:
   - scroll-initial-target
   - scroll-into-view
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
-  - https://github.com/DavMila/explainer-scroll-initial-target
-  - https://chromestatus.com/feature/6276178888097792
-  - https://drafts.csswg.org/css-scroll-snap-2/#propdef-scroll-initial-target
-  - https://webstatus.dev/features/scroll-initial-target
 ---
 
 # Set a scroll target for the initial render

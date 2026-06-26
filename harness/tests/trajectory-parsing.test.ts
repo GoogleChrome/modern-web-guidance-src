@@ -23,12 +23,12 @@ test('collectGemini metrics from a single trajectory file', async () => {
           type: 'gemini',
           toolCalls: [
             {
-              name: 'mcp_modern-web_get_best_practices',
+              name: 'mcp_modern-web-guidance_get_best_practices',
               args: { use_case_id: 'accessible-error-announcement' }
             },
             {
               name: 'read_file',
-              args: { file_path: '/path/to/skills/modern-web/references/forms/required-field-feedback.md' }
+              args: { file_path: '/path/to/skills/modern-web-guidance/references/forms/required-field-feedback.md' }
             }
           ]
         },
@@ -37,11 +37,11 @@ test('collectGemini metrics from a single trajectory file', async () => {
           toolCalls: [
             {
               name: 'run_shell_command',
-              args: { command: 'npx modern-web --retrieve dialog-closedby' }
+              args: { command: 'npx modern-web-guidance retrieve dialog-closedby' }
             },
             {
               name: 'activate_skill',
-              args: { name: 'modern-web' }
+              args: { name: 'modern-web-guidance' }
             }
           ]
         }
@@ -57,8 +57,56 @@ test('collectGemini metrics from a single trajectory file', async () => {
 
     // Test Tools
     const tools = collectGeminiToolsFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, ['modern-web']);
+    assert.deepStrictEqual(tools, ['modern-web-guidance']);
     
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('collectGemini metrics from a .jsonl trajectory file', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      JSON.stringify({
+        type: 'gemini',
+        toolCalls: [
+          {
+            name: 'mcp_modern-web_get_best_practices',
+            args: { use_case_id: 'accessible-error-announcement' }
+          },
+          {
+            name: 'read_file',
+            args: { file_path: '/path/to/skills/modern-web/references/forms/required-field-feedback.md' }
+          }
+        ]
+      }),
+      JSON.stringify({
+        type: 'gemini',
+        toolCalls: [
+          {
+            name: 'run_shell_command',
+            args: { command: 'npx modern-web retrieve dialog-closedby' }
+          },
+          {
+            name: 'activate_skill',
+            args: { name: 'modern-web' }
+          }
+        ]
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
+
+    // Test Guides
+    const guides = await collectGeminiGuidesFromTrajectory(tempDir, 'mcp');
+    assert.deepStrictEqual(guides.retrievedGuides.sort(), ['accessible-error-announcement', 'dialog-closedby'].sort());
+    assert.deepStrictEqual(guides.fileReadGuides, ['required-field-feedback']);
+
+    // Test Tools
+    const tools = collectGeminiToolsFromTrajectory(tempDir);
+    assert.deepStrictEqual(tools.sort(), ['modern-web-guidance', 'modern-web'].sort());
+
   } finally {
     removeTempDir(tempDir);
   }
@@ -74,12 +122,12 @@ test('collectClaude metrics from a single trajectory file', async () => {
             {
               type: 'tool_use',
               name: 'Bash',
-              input: { command: 'npx modern-web --retrieve accessible-error-announcement' }
+              input: { command: 'npx modern-web-guidance retrieve accessible-error-announcement' }
             },
             {
               type: 'tool_use',
               name: 'Read',
-              input: { file_path: '/path/to/skills/modern-web/accessible-error-announcement/guide.md' }
+              input: { file_path: '/path/to/skills/modern-web-guidance/accessible-error-announcement/guide.md' }
             }
           ]
         }
@@ -90,12 +138,12 @@ test('collectClaude metrics from a single trajectory file', async () => {
             {
               type: 'tool_use',
               name: 'Skill',
-              input: { skill: 'modern-web' }
+              input: { skill: 'modern-web-guidance' }
             },
             {
               type: 'tool_use',
               name: 'activate_skill',
-              input: { name: 'modern-web' }
+              input: { name: 'modern-web-guidance' }
             }
           ]
         }
@@ -111,7 +159,7 @@ test('collectClaude metrics from a single trajectory file', async () => {
 
     // Test Tools
     const tools = collectClaudeToolsFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, ['modern-web']);
+    assert.deepStrictEqual(tools, ['modern-web-guidance']);
 
   } finally {
     removeTempDir(tempDir);

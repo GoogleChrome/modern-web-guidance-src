@@ -5,7 +5,7 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/');
 
     // Check title
-    await expect(page.locator('.landing-title')).toContainText('Guidance Evals');
+    await expect(page.locator('.landing-title')).toContainText('Modern Web Guidance Evals');
 
     // Check suites content
     await expect(page.locator('.suite-table-row').first()).toBeVisible();
@@ -23,8 +23,8 @@ test.describe('Eval View Dashboard', () => {
   test('should show dumbbell chart tooltip on rate-cell hover', async ({ page }) => {
     await page.goto('/');
     
-    await page.waitForSelector('.rate-cell');
-    await page.locator('.rate-cell').first().hover();
+    await page.waitForSelector('.uplift-cell');
+    await page.locator('.uplift-cell').first().hover();
     
     const tooltip = page.locator('.tooltip-container');
     await expect(tooltip).toBeVisible();
@@ -38,7 +38,7 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/dashboard.html?testId=example-result');
 
     // Check title
-    await expect(page.locator('h1')).toContainText('Suite Results');
+    await expect(page).toHaveTitle('Suite Results');
 
     // Check header info
     await expect(page.locator('#test-header')).toContainText('example-result');
@@ -46,29 +46,29 @@ test.describe('Eval View Dashboard', () => {
     // Check grid exists and has content
     await expect(page.locator('#guide-grid')).toBeVisible();
     
-    // Wait for actual cards to be rendered by JS
-    const firstCard = page.locator('.test-card').first();
-    await expect(firstCard).toBeVisible();
+    // Wait for actual accordions to be rendered by JS
+    const firstAccordion = page.locator('.task-accordion-header').first();
+    await expect(firstAccordion).toBeVisible();
     
-    const count = await page.locator('.test-card').count();
+    const count = await page.locator('.task-accordion-header').count();
     expect(count).toBeGreaterThan(0);
   });
 
   test('should show details and toggle diff view', async ({ page }) => {
     await page.goto('/dashboard.html?testId=example-result');
 
-    // Wait for cards and click the first one
-    const firstCard = page.locator('.test-card').first();
-    await firstCard.click();
+    // Wait for accordions and click the first one
+    const firstAccordion = page.locator('.task-accordion-header').first();
+    await firstAccordion.click();
+
+    // Verify Diff button exists and click it to open modal
+    const diffButton = page.locator('.tfoot-action-btn', { hasText: 'Diff' }).first();
+    await expect(diffButton).toBeVisible();
+    await diffButton.click();
 
     // Verify modal is shown
     const modal = page.locator('#modal');
     await expect(modal).toBeVisible();
-
-    // Verify dropdown exists and select "Diff"
-    const dropdown = page.locator('.run-actions-dropdown').first();
-    await expect(dropdown).toBeVisible();
-    await dropdown.selectOption('diff');
 
     // Verify diff content is displayed
     // The title changes to "Diff: ..."
@@ -83,6 +83,72 @@ test.describe('Eval View Dashboard', () => {
     const diffParts = page.locator('.diff-added, .diff-removed, .diff-unchanged');
     const partsCount = await diffParts.count();
     expect(partsCount).toBeGreaterThan(0);
+  });
+
+  test('should show By Guide panel and navigate to guide.html on click', async ({ page }) => {
+    await page.goto('/');
+
+    // Expand the drawer if it's closed
+    const insightsDrawer = page.locator('.insights-drawer');
+    if (!(await insightsDrawer.getAttribute('open') !== null)) {
+      await page.locator('.insights-summary').click();
+    }
+
+    // Verify By Guide panel is visible and has the correct title
+    const guidePanel = page.locator('.insights-panel', { hasText: 'By Guide' });
+    await expect(guidePanel).toBeVisible();
+
+    // Verify guides are listed under By Guide
+    const contentVisRow = guidePanel.locator('tr', { hasText: 'content-vis' });
+    await expect(contentVisRow).toBeVisible();
+
+    // Click the row to navigate to guide.html
+    await contentVisRow.click();
+    
+    // Check navigation
+    await expect(page).toHaveURL(/.*guide.html\?guide=content-vis/);
+
+    // Verify guide.html loads and header has the guide name
+    await expect(page.locator('#guide-name-header')).toContainText('content-vis');
+
+    // Verify timeline charts are visible
+    const graphsGrid = page.locator('#graphs-grid');
+    await expect(graphsGrid).toBeVisible();
+    await expect(page.locator('.timeline-point').first()).toBeVisible();
+
+    // Hover over a timeline point to verify tooltip behavior
+    await page.locator('.timeline-point').first().hover();
+    const tooltip = page.locator('#tooltip-container');
+    await expect(tooltip).toBeVisible();
+    await expect(page.locator('#tooltip-content')).toBeVisible();
+  });
+
+  test('should support autocomplete search and prev/next guide navigation', async ({ page }) => {
+    await page.goto('/guide.html?guide=content-vis');
+
+    // Test search autocomplete list
+    const searchInput = page.locator('#guide-search');
+    await searchInput.fill('pre');
+    
+    const autocompleteList = page.locator('#autocomplete-list');
+    await expect(autocompleteList).toBeVisible();
+
+    const option = autocompleteList.locator('.autocomplete-item', { hasText: 'preload-prerender' });
+    await expect(option).toBeVisible();
+    
+    // Choose preload-prerender option
+    await option.click();
+    
+    // Check it immediately navigates
+    await expect(page).toHaveURL(/.*guide.html\?guide=preload-prerender/);
+    await expect(page.locator('#guide-name-header')).toContainText('preload-prerender');
+
+    // Test next/prev navigation buttons
+    const nextBtn = page.locator('#next-guide-btn');
+    await nextBtn.click();
+    
+    // Check it navigated to another guide
+    await expect(page).toHaveURL(/.*guide.html\?guide=.+/);
   });
 
   test('should block access to hidden files', async ({ page }) => {

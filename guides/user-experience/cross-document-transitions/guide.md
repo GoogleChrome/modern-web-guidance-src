@@ -5,11 +5,6 @@ web-feature-ids:
   - view-transitions
   - cross-document-view-transitions
   - navigation
-sources:
-  - https://developer.chrome.com/docs/web-platform/view-transitions/cross-document
-  - https://blog.robino.dev/posts/cross-document-view-transitions
-  - https://css-tricks.com/toe-dipping-into-view-transitions/
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@view-transition
 ---
 
 Cross-document view transitions allow you to create smooth, app-like transitions between different pages of a Multi-Page Application (MPA). By default, the browser performs a cross-fade, but you can customize this to match your site's aesthetic.
