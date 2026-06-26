@@ -77,6 +77,8 @@ export interface EvalsReport {
   serving: string;
   model: string;
   totalRuntime?: number;
+  skillVersion?: string;
+  cliVersion?: string;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
