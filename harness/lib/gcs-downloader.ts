@@ -70,6 +70,50 @@ async function listFilesWithToken(token: string, prefix: string): Promise<string
 }
 
 /**
+ * Downloads a suite-level evals.json file from GCS if it is missing locally.
+ */
+async function downloadSuiteEvalsIfMissing(suiteName: string, token: string | undefined) {
+  const destPath = path.join(baseResultsDir, suiteName, 'evals.json');
+  if (fs.existsSync(destPath)) {
+    return; // Already exists locally
+  }
+
+  const gcsFileName = `${suiteName}/evals.json`;
+  console.log(cCyan(`[GCS Downloader] Suite-level evals.json is missing. Downloading from GCS: gs://${BUCKET_NAME}/${gcsFileName}...`));
+  
+  const destDir = path.dirname(destPath);
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
+
+  if (token && token.startsWith('Bearer ')) {
+    try {
+      await downloadFileWithToken(token, gcsFileName, destPath);
+      console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via REST API!`));
+      return;
+    } catch (err: any) {
+      console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via REST: ${err.message}`);
+    }
+  }
+
+  // Fallback to Storage SDK (ADC)
+  try {
+    const storage = new Storage({ projectId: PROJECT_ID });
+    const bucket = storage.bucket(BUCKET_NAME);
+    const file = bucket.file(gcsFileName);
+    const [exists] = await file.exists();
+    if (exists) {
+      await file.download({ destination: destPath });
+      console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via Storage SDK!`));
+    } else {
+      console.warn(`[GCS Downloader] Suite evals.json does not exist on GCS: gs://${BUCKET_NAME}/${gcsFileName}`);
+    }
+  } catch (err: any) {
+    console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via SDK: ${err.message}`);
+  }
+}
+
+/**
  * Lazily downloads a run directory from GCS if it is missing locally.
  * Resolves the path relative to the harness results directory.
  * Supports both Bearer token authentication (passed from the browser) and standard ADC.
@@ -91,6 +135,12 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
     'chat_log.txt'
   ];
 
+  const suiteName = relativeRunPath.split(/[/\\]/)[0];
+  const token = process.env.GD_GCS_TOKEN;
+
+  // Lazily download the suite-level evals.json if it is missing
+  await downloadSuiteEvalsIfMissing(suiteName, token);
+
   const isCached = crucialFiles.every(f => fs.existsSync(path.join(absoluteRunDir, f)));
   if (isCached) {
     return true; // Already cached
@@ -98,7 +148,6 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
 
   console.log(cCyan(`[GCS Downloader] Run directory not found or incomplete locally: ${relativeRunPath}`));
   
-  const token = process.env.GD_GCS_TOKEN;
   const gcsPrefix = relativeRunPath.replace(/\\/g, '/') + '/';
 
   if (token && token.startsWith('Bearer ')) {

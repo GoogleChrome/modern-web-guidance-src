@@ -380,12 +380,28 @@
           <h4>Trial A</h4>
           <div class="trial-title" id="title-a">Loading...</div>
           <div class="trial-meta" id="meta-a">-</div>
+          <div class="trial-agent-model" id="agent-model-a" style="font-size:0.85em; color:#475569; margin-top:5px; font-weight:500; word-break:break-all;">-</div>
+          <div style="display:flex; align-items:center; gap:6px; margin-top:8px;">
+            <span style="font-size:0.8em; color:#64748b; font-weight:600;">Type:</span>
+            <select id="run-type-a" style="padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1; font-size:0.8em; background:#fff; color:#334155; font-weight:600; cursor:pointer;">
+              <option value="guided" selected>Guided</option>
+              <option value="unguided">Unguided</option>
+            </select>
+          </div>
           <div id="score-badge-a" class="score-badge">--</div>
         </div>
         <div class="summary-card" id="card-trial-b">
           <h4>Trial B</h4>
           <div class="trial-title" id="title-b">Loading...</div>
           <div class="trial-meta" id="meta-b">-</div>
+          <div class="trial-agent-model" id="agent-model-b" style="font-size:0.85em; color:#475569; margin-top:5px; font-weight:500; word-break:break-all;">-</div>
+          <div style="display:flex; align-items:center; gap:6px; margin-top:8px;">
+            <span style="font-size:0.8em; color:#64748b; font-weight:600;">Type:</span>
+            <select id="run-type-b" style="padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1; font-size:0.8em; background:#fff; color:#334155; font-weight:600; cursor:pointer;">
+              <option value="guided" selected>Guided</option>
+              <option value="unguided">Unguided</option>
+            </select>
+          </div>
           <div id="score-badge-b" class="score-badge">--</div>
         </div>
         <div class="summary-card">
@@ -425,9 +441,9 @@
       <!-- Main workspace -->
       <div class="diagnostic-pane">
         <div class="tab-bar">
-          <button class="tab-btn active" onclick="switchTab('assertions')">Assertions Comparison</button>
-          <button class="tab-btn" onclick="switchTab('timeline')">Trajectory Timeline</button>
-          <button class="tab-btn" onclick="switchTab('code')">Code Output Diff</button>
+          <button class="tab-btn active" data-tab="assertions" onclick="switchTab('assertions')">Assertions Comparison</button>
+          <button class="tab-btn" data-tab="timeline" onclick="switchTab('timeline')">Trajectory Timeline</button>
+          <button class="tab-btn" data-tab="code" onclick="switchTab('code')">Code Output Diff</button>
         </div>
 
         <!-- Content sections -->

@@ -1,4 +1,4 @@
-import { getAccessToken } from './utils.js';
+import { getAccessToken, capitalize } from './utils.js';
 
 // Cross-Run Performance Variance Diagnosis Dashboard JavaScript
 
@@ -13,6 +13,18 @@ let runNumA = '1';
 let runNumB = '1';
 let guideName = '';
 let isStatic = false;
+let agentA = '';
+let modelA = '';
+let scoreAParam = null;
+let agentB = '';
+let modelB = '';
+let scoreBParam = null;
+
+// Live Run Types & Scores
+let runTypeA = 'guided';
+let runTypeB = 'guided';
+let currentScoreA = 0;
+let currentScoreB = 0;
 
 // Parsed run data
 let runDirA = '';
@@ -20,44 +32,117 @@ let runDirB = '';
 let suiteDataA = null;
 let suiteDataB = null;
 
-// Simple markdown to HTML parser
+// Robust line-by-line markdown to HTML compiler with ANSI stripping
 function renderMarkdown(md) {
   if (!md) return '';
-  let html = md
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // Code blocks
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
-    return `<pre><code class="language-${lang}">${code.trim()}</code></pre>`;
-  });
-
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Bold
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-  // Headings
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-
-  // Lists
-  html = html.replace(/^\s*-\s+(.*$)/gim, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
-  // Clean up consecutive <ul> lists
-  html = html.replace(/<\/ul>\s*<ul>/g, '\n');
-
-  // Paragraphs
-  html = html.replace(/\n\n/g, '</p><p>');
-  html = '<p>' + html + '</p>';
   
-  // Clean up empty paragraphs
-  html = html.replace(/<p><\/p>/g, '');
+  // Strip ANSI escape sequences (e.g. \x1b[36m)
+  let cleanMd = md.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '').trim();
+  
+  const lines = cleanMd.split('\n');
+  let html = '';
+  let inList = false;
+  let inParagraph = false;
+  let inCodeBlock = false;
+  let codeLanguage = '';
+  let codeContent = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    
+    // 1. Handle Code Blocks
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        html += `<pre><code class="language-${codeLanguage}">${codeContent.join('\n')}</code></pre>`;
+        inCodeBlock = false;
+        codeContent = [];
+      } else {
+        inCodeBlock = true;
+        codeLanguage = line.substring(3).trim();
+      }
+      continue;
+    }
+    
+    if (inCodeBlock) {
+      codeContent.push(line);
+      continue;
+    }
+    
+    // Escape HTML in non-code lines
+    line = line
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+      
+    if (!line) {
+      if (inList) {
+        html += '</ul>';
+        inList = false;
+      }
+      if (inParagraph) {
+        html += '</p>';
+        inParagraph = false;
+      }
+      continue;
+    }
+    
+    // 2. Handle Headings
+    if (line.startsWith('#')) {
+      const match = line.match(/^(#{1,6})\s+(.*)$/);
+      if (match) {
+        if (inList) { html += '</ul>'; inList = false; }
+        if (inParagraph) { html += '</p>'; inParagraph = false; }
+        const level = match[1].length;
+        html += `<h${level}>${parseInline(match[2])}</h${level}>`;
+        continue;
+      }
+    }
+    
+    // 3. Handle Lists
+    const listMatch = line.match(/^([-*+])\s+(.*)$/);
+    if (listMatch) {
+      if (inParagraph) { html += '</p>'; inParagraph = false; }
+      if (!inList) {
+        html += '<ul>';
+        inList = true;
+      }
+      html += `<li>${parseInline(listMatch[2])}</li>`;
+      continue;
+    }
+    
+    // 4. Handle Horizontal Rules
+    if (line === '---' || line === '***') {
+      if (inList) { html += '</ul>'; inList = false; }
+      if (inParagraph) { html += '</p>'; inParagraph = false; }
+      html += '<hr>';
+      continue;
+    }
+    
+    // 5. Handle Paragraphs
+    if (!inParagraph) {
+      html += '<p>';
+      inParagraph = true;
+      html += parseInline(line);
+    } else {
+      html += '<br>' + parseInline(line);
+    }
+  }
+  
+  if (inList) html += '</ul>';
+  if (inParagraph) html += '</p>';
+  if (inCodeBlock) html += `<pre><code>${codeContent.join('\n')}</code></pre>`;
   
   return html;
+}
+
+function parseInline(text) {
+  // Bold: **text**
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic: *text*
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Inline code: `code`
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  return text;
 }
 
 // Extract query parameters
@@ -70,6 +155,30 @@ function initParams() {
   guideName = urlParams.get('guide') || '';
   isStatic = urlParams.get('source') === 'static' || window.location.hostname.includes('github.io');
 
+  agentA = urlParams.get('agentA') || '';
+  modelA = urlParams.get('modelA') || '';
+  scoreAParam = urlParams.get('scoreA');
+  agentB = urlParams.get('agentB') || '';
+  modelB = urlParams.get('modelB') || '';
+  scoreBParam = urlParams.get('scoreB');
+
+  runTypeA = urlParams.get('runTypeA') || 'guided';
+  runTypeB = urlParams.get('runTypeB') || 'guided';
+
+  // Initialize dropdown selections
+  document.getElementById('run-type-a').value = runTypeA;
+  document.getElementById('run-type-b').value = runTypeB;
+
+  // Set up dropdown change listeners
+  document.getElementById('run-type-a').addEventListener('change', async (e) => {
+    runTypeA = e.target.value;
+    await handleRunTypeChange();
+  });
+  document.getElementById('run-type-b').addEventListener('change', async (e) => {
+    runTypeB = e.target.value;
+    await handleRunTypeChange();
+  });
+
   // Back button setup
   const backBtn = document.getElementById('back-btn');
   backBtn.href = `guide.html?guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
@@ -80,6 +189,14 @@ function initParams() {
     return false;
   }
   return true;
+}
+
+/**
+ * Handles reloading of workspace files and running diagnosis when run type is toggled.
+ */
+async function handleRunTypeChange() {
+  await loadActiveTaskDetails();
+  await runDiagnosticAgent();
 }
 
 async function loadTrialMetadata() {
@@ -163,6 +280,10 @@ function updateExecutiveSummary() {
   document.getElementById('title-a').innerText = `${trialA.slice(0, 18)} (Run ${runNumA})`;
   document.getElementById('meta-a').innerText = trialA.includes('test-') ? `Date: ${trialA.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   
+  const displayAgentA = agentA || 'Unknown';
+  const displayModelA = modelA || 'Unknown';
+  document.getElementById('agent-model-a').innerText = `Agent: ${displayAgentA} | Model: ${displayModelA}`;
+
   // Trial B
   if (trialA === trialB) {
     document.getElementById('title-b').innerText = `${trialA.slice(0, 18)} (Run ${runNumB})`;
@@ -171,10 +292,15 @@ function updateExecutiveSummary() {
     document.getElementById('title-b').innerText = `${trialB.slice(0, 18)} (Run ${runNumB})`;
     document.getElementById('meta-b').innerText = trialB.includes('test-') ? `Date: ${trialB.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   }
+  
+  const displayAgentB = agentB || 'Unknown';
+  const displayModelB = modelB || 'Unknown';
+  document.getElementById('agent-model-b').innerText = `Agent: ${displayAgentB} | Model: ${displayModelB}`;
 
   // Calculate Scores for the specific guide
-  const scoreA = calculateGuideScore(suiteDataA, runNumA);
-  const scoreB = calculateGuideScore(suiteDataB, runNumB);
+  // Fall back to forwarded score parameters if evals.json is missing
+  const scoreA = suiteDataA ? calculateGuideScore(suiteDataA, runNumA) : (scoreAParam !== null ? parseInt(scoreAParam) : 0);
+  const scoreB = suiteDataB ? calculateGuideScore(suiteDataB, runNumB) : (scoreBParam !== null ? parseInt(scoreBParam) : 0);
 
   const badgeA = document.getElementById('score-badge-a');
   badgeA.innerText = `${scoreA}%`;
@@ -229,21 +355,20 @@ async function loadActiveTaskDetails() {
 
   const resultsBase = isStatic ? 'results' : '';
   
-  // Format run directory paths
-  // e.g. results/test-xxx/1/guideName/taskName/guided
-  const pathPartA = `${trialA}/${runNumA}/${guideName}/${activeTask}/guided`;
-  const pathPartB = `${trialB}/${runNumB}/${guideName}/${activeTask}/guided`;
+  // Format run directory paths using active run types
+  const pathPartA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
+  const pathPartB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
   
   runDirA = `${resultsBase}/${pathPartA}`;
   runDirB = `${resultsBase}/${pathPartB}`;
 
-  // Update split-pane column titles
-  document.getElementById('timeline-title-a').innerText = `Trial A (Run ${runNumA})`;
-  document.getElementById('timeline-title-b').innerText = `Trial B (Run ${runNumB})`;
-  document.getElementById('code-title-a').innerText = `Trial A (Run ${runNumA})`;
-  document.getElementById('code-title-b').innerText = `Trial B (Run ${runNumB})`;
-  document.getElementById('header-assert-a').innerText = `Trial A (Run ${runNumA})`;
-  document.getElementById('header-assert-b').innerText = `Trial B (Run ${runNumB})`;
+  // Update split-pane column titles to display both run number and run type
+  document.getElementById('timeline-title-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
+  document.getElementById('timeline-title-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
+  document.getElementById('code-title-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
+  document.getElementById('code-title-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
+  document.getElementById('header-assert-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
+  document.getElementById('header-assert-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
 
   // 1. Load Assertions Comparison
   await loadAssertions(pathPartA, pathPartB);
@@ -310,6 +435,40 @@ async function loadAssertions(pathA, pathB) {
       resultsB = parsePlaywrightResults(rawB);
     }
   } catch (e) {}
+
+  // Calculate live scores from parsed assertions and update badges dynamically
+  if (resultsA.length > 0) {
+    const passedA = resultsA.filter(r => r.passed).length;
+    currentScoreA = Math.round((passedA / resultsA.length) * 100);
+    const badgeA = document.getElementById('score-badge-a');
+    badgeA.innerText = `${currentScoreA}%`;
+    badgeA.className = `score-badge ${currentScoreA >= 70 ? 'score-high' : 'score-low'}`;
+  } else {
+    currentScoreA = scoreAParam !== null ? parseInt(scoreAParam) : 0;
+    const badgeA = document.getElementById('score-badge-a');
+    badgeA.innerText = `${currentScoreA}%`;
+    badgeA.className = `score-badge ${currentScoreA >= 70 ? 'score-high' : 'score-low'}`;
+  }
+
+  if (resultsB.length > 0) {
+    const passedB = resultsB.filter(r => r.passed).length;
+    currentScoreB = Math.round((passedB / resultsB.length) * 100);
+    const badgeB = document.getElementById('score-badge-b');
+    badgeB.innerText = `${currentScoreB}%`;
+    badgeB.className = `score-badge ${currentScoreB >= 70 ? 'score-high' : 'score-low'}`;
+  } else {
+    currentScoreB = scoreBParam !== null ? parseInt(scoreBParam) : 0;
+    const badgeB = document.getElementById('score-badge-b');
+    badgeB.innerText = `${currentScoreB}%`;
+    badgeB.className = `score-badge ${currentScoreB >= 70 ? 'score-high' : 'score-low'}`;
+  }
+
+  // Update Score Delta dynamically
+  const delta = currentScoreB - currentScoreA;
+  const deltaText = delta === 0 ? 'No change (0%)' : delta > 0 ? `+${delta}% Improvement` : `${delta}% Regression`;
+  const deltaSpan = document.getElementById('summary-delta');
+  deltaSpan.innerText = deltaText;
+  deltaSpan.style.color = delta === 0 ? '#475569' : delta > 0 ? '#166534' : '#991b1b';
 
   // Merge assertions list to compare side-by-side
   const allAssertionMessages = Array.from(new Set([
@@ -467,9 +626,9 @@ async function loadCodeOutputs(pathA, pathB) {
 function switchTab(tab) {
   currentTab = tab;
   
-  // Update tab buttons active state
+  // Update tab buttons active state using data-tab attribute
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    const btnTab = btn.onclick.toString().match(/'(\w+)'/)[1];
+    const btnTab = btn.getAttribute('data-tab');
     btn.classList.toggle('active', btnTab === currentTab);
   });
 
@@ -538,9 +697,9 @@ async function runDiagnosticAgent() {
   }
 
   // Local Mode: Call Node dev server API to run comparison on the fly!
-  // Relative run directories are passed, which are resolved relative to results/ on the server
-  const relativeA = `${trialA}/${runNumA}/${guideName}/${activeTask}/guided`;
-  const relativeB = `${trialB}/${runNumB}/${guideName}/${activeTask}/guided`;
+  // Use dynamic runTypeA and runTypeB values
+  const relativeA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
+  const relativeB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
 
   const apiUrl = `/api/compare?runDirA=${encodeURIComponent(relativeA)}&runDirB=${encodeURIComponent(relativeB)}`;
   

@@ -622,7 +622,7 @@ function renderGraphs(guideName) {
                 const runData = combinations[combKey].find(r => r.testId === testId);
                 if (runData) {
                     if (isCompareMode) {
-                        handlePointSelection(runData, group, combKey);
+                        handlePointSelection(runData, group, combKey, guideName);
                     } else {
                         window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}#guide-${guideName}`;
                     }
@@ -654,7 +654,7 @@ function setupCompareMode(guideName) {
             const urlParams = new URLSearchParams(window.location.search);
             const isStatic = urlParams.get('source') === 'static' || window.location.hostname.includes('github.io');
             
-            window.location.href = `compare.html?trialA=${pA.testId}&trialB=${pB.testId}&guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
+            window.location.href = `compare.html?trialA=${pA.testId}&trialB=${pB.testId}&agentA=${encodeURIComponent(pA.agent || '')}&modelA=${encodeURIComponent(pA.model || '')}&scoreA=${pA.score || 0}&agentB=${encodeURIComponent(pB.agent || '')}&modelB=${encodeURIComponent(pB.model || '')}&scoreB=${pB.score || 0}&guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
         }
     });
 }
@@ -683,7 +683,7 @@ function clearSelections() {
     updateCompareBanner();
 }
 
-function handlePointSelection(runData, group, combKey) {
+function handlePointSelection(runData, group, combKey, guideName) {
     const testId = runData.testId;
     const existingIdx = selectedPoints.findIndex(p => p.testId === testId);
 
@@ -697,7 +697,14 @@ function handlePointSelection(runData, group, combKey) {
             if (oldGroup) oldGroup.querySelector('.compare-highlight')?.remove();
         }
 
-        selectedPoints.push({ testId, source: runData.source, combKey });
+        const stats = runData.guides[guideName];
+        selectedPoints.push({ 
+            testId, 
+            source: runData.source, 
+            agent: runData.agent, 
+            model: runData.model,
+            score: stats ? stats.guidedRate : 0
+        });
 
         const x = parseFloat(group.getAttribute('data-x'));
         const y = parseFloat(group.getAttribute('data-yg'));
