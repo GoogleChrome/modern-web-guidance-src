@@ -6,6 +6,7 @@ import config, { Agents, Serving } from '../config.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
 // NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
 // However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
@@ -139,6 +140,12 @@ async function run() {
     }
 
     exportClaudeCodeTrajectories(workDir, targetDir);
+    
+    try {
+      await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, getSuiteConfig().serving);
+    } catch (e: any) {
+      console.error("Failed to generate normalized trajectory:", e.message);
+    }
 
     console.log("Claude Code agent finished successfully.");
 

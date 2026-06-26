@@ -1,6 +1,8 @@
 import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, parseResultKey, $ } from './utils.js';
 
 let allTestData = {}; // Cache all test data by testId
+let isCompareMode = false;
+let selectedPoints = []; // array of { testId, source, combKey }
 
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
@@ -12,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     $('#guide-name-header').textContent = guideName;
     setupTimelineFilterControls(guideName);
+    setupCompareMode(guideName);
 
     try {
         initGoogleAuth(async () => {
@@ -509,7 +512,7 @@ function renderGraphs(guideName) {
                 }
 
                 svgContent += `
-                    <g class="timeline-point" data-testid="${run.testId}" data-comb="${combKey}" style="cursor: pointer;">
+                    <g class="timeline-point" data-testid="${run.testId}" data-comb="${combKey}" data-x="${x}" data-yg="${yG}" style="cursor: pointer;">
                         ${elementHtml}
                         <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${suite.shortDate}</text>
                         <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
@@ -618,9 +621,116 @@ function renderGraphs(guideName) {
                 const testId = group.getAttribute('data-testid');
                 const runData = combinations[combKey].find(r => r.testId === testId);
                 if (runData) {
-                    window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}#guide-${guideName}`;
+                    if (isCompareMode) {
+                        handlePointSelection(runData, group, combKey);
+                    } else {
+                        window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}#guide-${guideName}`;
+                    }
                 }
             });
         });
     });
+}
+
+function setupCompareMode(guideName) {
+    const compareBtn = $('#compare-mode-btn');
+    const banner = $('#compare-banner');
+    const launchBtn = $('#launch-compare-btn');
+    const cancelBtn = $('#cancel-compare-btn');
+
+    if (!compareBtn || !banner || !launchBtn || !cancelBtn) return;
+
+    compareBtn.addEventListener('click', () => {
+        toggleCompareMode(!isCompareMode);
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        toggleCompareMode(false);
+    });
+
+    launchBtn.addEventListener('click', () => {
+        if (selectedPoints.length === 2) {
+            const [pA, pB] = selectedPoints;
+            const urlParams = new URLSearchParams(window.location.search);
+            const isStatic = urlParams.get('source') === 'static' || window.location.hostname.includes('github.io');
+            
+            window.location.href = `compare.html?trialA=${pA.testId}&trialB=${pB.testId}&guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
+        }
+    });
+}
+
+function toggleCompareMode(on) {
+    isCompareMode = on;
+    const compareBtn = $('#compare-mode-btn');
+    const banner = $('#compare-banner');
+    
+    if (isCompareMode) {
+        compareBtn.textContent = 'Exit Compare';
+        compareBtn.style.backgroundColor = '#cbd5e1';
+        banner.style.display = 'flex';
+        clearSelections();
+    } else {
+        compareBtn.textContent = 'Compare Trials';
+        compareBtn.style.backgroundColor = '#f1f5f9';
+        banner.style.display = 'none';
+        clearSelections();
+    }
+}
+
+function clearSelections() {
+    document.querySelectorAll('.compare-highlight').forEach(el => el.remove());
+    selectedPoints = [];
+    updateCompareBanner();
+}
+
+function handlePointSelection(runData, group, combKey) {
+    const testId = runData.testId;
+    const existingIdx = selectedPoints.findIndex(p => p.testId === testId);
+
+    if (existingIdx !== -1) {
+        selectedPoints.splice(existingIdx, 1);
+        group.querySelector('.compare-highlight')?.remove();
+    } else {
+        if (selectedPoints.length >= 2) {
+            const removed = selectedPoints.shift();
+            const oldGroup = document.querySelector(`[data-testid="${removed.testId}"]`);
+            if (oldGroup) oldGroup.querySelector('.compare-highlight')?.remove();
+        }
+
+        selectedPoints.push({ testId, source: runData.source, combKey });
+
+        const x = parseFloat(group.getAttribute('data-x'));
+        const y = parseFloat(group.getAttribute('data-yg'));
+        
+        const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        highlight.setAttribute('class', 'compare-highlight');
+        highlight.setAttribute('cx', x.toString());
+        highlight.setAttribute('cy', y.toString());
+        highlight.setAttribute('r', '12');
+        highlight.setAttribute('stroke', '#2563eb');
+        highlight.setAttribute('stroke-width', '3');
+        highlight.setAttribute('fill', 'none');
+        highlight.setAttribute('style', 'stroke-dasharray: 2; transform-origin: center;');
+        
+        group.appendChild(highlight);
+    }
+
+    updateCompareBanner();
+}
+
+function updateCompareBanner() {
+    const text = $('#compare-banner-text');
+    const launchBtn = $('#launch-compare-btn');
+    if (!text || !launchBtn) return;
+
+    if (selectedPoints.length === 0) {
+        text.innerText = 'Select two trials on the chart to compare.';
+        launchBtn.disabled = true;
+    } else if (selectedPoints.length === 1) {
+        text.innerHTML = `Selected 1 trial: <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[0].testId.slice(0, 15)}...</span>. Select one more.`;
+        launchBtn.disabled = true;
+    } else if (selectedPoints.length === 2) {
+        text.innerHTML = `Ready to compare: <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[0].testId.slice(0, 10)}...</span> vs <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[1].testId.slice(0, 10)}...</span>`;
+        launchBtn.disabled = false;
+    }
 }

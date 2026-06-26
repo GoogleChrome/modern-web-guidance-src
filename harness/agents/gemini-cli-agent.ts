@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 
 import config, { Agents, Serving } from '../config.ts';
 import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
 import type { ConversationRecord } from '@google/gemini-cli-core';
 
@@ -115,6 +116,12 @@ async function run() {
     const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
     exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
+
+    try {
+      await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, getSuiteConfig().serving);
+    } catch (e: any) {
+      console.error("Failed to generate normalized trajectory:", e.message);
+    }
 
     console.log("Gemini CLI agent finished successfully.");
 

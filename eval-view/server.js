@@ -289,6 +289,78 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // --- /api/compare : runs comparison on the fly, streaming output ---
+  if (decodedPath === '/api/compare') {
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
+    const relativeDirA = parsedUrl.searchParams.get('runDirA');
+    const relativeDirB = parsedUrl.searchParams.get('runDirB');
+
+    if (!relativeDirA || !relativeDirB) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Missing runDirA or runDirB parameter');
+      return;
+    }
+
+    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+    const absoluteResultsDir = path.resolve(resultsDir);
+    const absDirA = path.resolve(resultsDir, relativeDirA);
+    const absDirB = path.resolve(resultsDir, relativeDirB);
+
+    // Security check: ensure both paths are strictly within the results directory
+    const relA = path.relative(absoluteResultsDir, absDirA);
+    const relB = path.relative(absoluteResultsDir, absDirB);
+
+    if (relA.startsWith('..') || path.isAbsolute(relA) || relB.startsWith('..') || path.isAbsolute(relB)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Forbidden: Paths must be within the results directory');
+      return;
+    }
+
+    // Set headers for chunked streaming
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    res.write(`[Server] Starting on-the-fly comparison between:\n  A: ${absDirA}\n  B: ${absDirB}\n\n`);
+
+    // Extract Bearer token from request headers to forward to the comparison agent
+    const authHeader = req.headers.authorization || '';
+
+    // Run gd compare command in the root directory
+    const p = spawn('pnpm', ['gd', 'compare', absDirA, absDirB], {
+      cwd: path.resolve('..'), // Run from root to resolve bin/gd.ts and dependencies correctly
+      env: { ...process.env, GD_GCS_TOKEN: authHeader }
+    });
+
+    p.stdout.on('data', (data) => {
+      const str = data.toString();
+      res.write(str); // Stream to browser client
+      process.stdout.write(str); // Stream to server console
+    });
+
+    p.stderr.on('data', (data) => {
+      const str = data.toString();
+      res.write(str); // Stream to browser client
+      process.stderr.write(str); // Stream to server console
+    });
+
+    p.on('close', (code) => {
+      if (code !== 0) {
+        res.write(`\n[Server Error] Comparison command failed with code ${code}.\n`);
+      }
+      res.end();
+    });
+
+    p.on('error', (err) => {
+      res.write(`\n[Server Error] Failed to spawn comparison command: ${err.message}\n`);
+      res.end();
+    });
+    return;
+  }
+
   if (decodedPath === '/api/run-files') {
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const relativePath = parsedUrl.searchParams.get('dir');
