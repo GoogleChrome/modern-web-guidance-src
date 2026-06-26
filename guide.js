@@ -314,6 +314,9 @@ function renderGraphs(guideName) {
     const grid = $('#graphs-grid');
     grid.innerHTML = '';
 
+    const params = new URLSearchParams(window.location.search);
+    const highlightTestId = params.get('testId');
+
     const testKeys = Object.keys(allTestData);
     
     // Filter out suites that don't have this guide, or have 0 trials for it
@@ -466,6 +469,14 @@ function renderGraphs(guideName) {
             const x = globalTimeline.length > 1 ? paddingX + i * stepX : globalWidth / 2;
             
             const run = runs.find(r => getDateKey(r.timestamp) === suite.dateKey);
+            
+            const isHighlighted = run && run.testId === highlightTestId;
+            if (isHighlighted) {
+                svgContent += `
+                    <rect x="${x - 12}" y="${paddingY - 5}" width="24" height="${plotHeight + 10}" fill="var(--color-primary)" style="opacity: 0.12; rx: 4px;" />
+                `;
+            }
+
             if (run) {
                 const stats = run.guides[guideName];
                 const yU = rateToY(stats.unguidedRate);
@@ -521,6 +532,19 @@ function renderGraphs(guideName) {
         chartWrapper.appendChild(svg);
         card.appendChild(chartWrapper);
         grid.appendChild(card);
+
+        // Auto-scroll to highlighted point if it exists in this chart
+        if (highlightTestId) {
+            const highlightedEl = svg.querySelector(`[data-testid="${highlightTestId}"]`);
+            if (highlightedEl) {
+                setTimeout(() => {
+                    const wrapperRect = chartWrapper.getBoundingClientRect();
+                    const elRect = highlightedEl.getBoundingClientRect();
+                    const targetScroll = chartWrapper.scrollLeft + (elRect.left - wrapperRect.left) - (wrapperRect.width / 2) + (elRect.width / 2);
+                    chartWrapper.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                }, 200);
+            }
+        }
 
         svg.querySelectorAll('.timeline-point').forEach(group => {
             group.addEventListener('mouseenter', () => {
@@ -594,7 +618,7 @@ function renderGraphs(guideName) {
                 const testId = group.getAttribute('data-testid');
                 const runData = combinations[combKey].find(r => r.testId === testId);
                 if (runData) {
-                    window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}`;
+                    window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}#guide-${guideName}`;
                 }
             });
         });

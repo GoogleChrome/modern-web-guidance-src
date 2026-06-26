@@ -141,6 +141,21 @@ async function loadDashboardData(testId) {
                 }
             }
         }
+        // Check for deep link to guide in hash
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#guide-')) {
+            const targetGuide = hash.substring(7); // remove '#guide-'
+            setTimeout(() => {
+                const accordionEl = document.querySelector(`.task-accordion[data-guide="${targetGuide}"]`);
+                if (accordionEl) {
+                    accordionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    if (!accordionEl.classList.contains('open')) {
+                        const header = $('.task-accordion-header', accordionEl);
+                        if (header) header.click();
+                    }
+                }
+            }, 200);
+        }
     } catch (error) {
         console.error('Error:', error);
         dashboardLoaded = false;
@@ -635,11 +650,22 @@ function renderGrid(data, testId) {
             const accordion = document.createElement('div');
             accordion.className = 'task-accordion';
             accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
+            accordion.setAttribute('data-guide', guide);
 
             const minVal = Math.min(unguidedAvg, guidedAvg);
             const maxVal = Math.max(unguidedAvg, guidedAvg);
             const trackWidth = 250; // matches css
             const scale = (val) => (val / 100) * trackWidth;
+
+            const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
+            const trendLinkHtml = `
+                <a href="${trendUrl}" class="trend-link" title="View trend over time" style="margin-left: 8px; text-decoration: none; color: var(--color-primary); display: inline-flex; align-items: center; vertical-align: middle;" onclick="event.stopPropagation();">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="7" y1="17" x2="17" y2="7"></line>
+                        <polyline points="7 7 17 7 17 17"></polyline>
+                    </svg>
+                </a>
+            `;
 
             accordion.innerHTML = `
                 <div class="task-accordion-header">
@@ -647,6 +673,7 @@ function renderGrid(data, testId) {
                         <span class="chevron" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
                         <span class="feature-chip">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[0])}</span>
                         <span class="task-title" style="${hasFailure ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[1] || '')}</span>
+                        ${trendLinkHtml}
                         ${hasFailure ? `<span style="font-size: 0.8rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;">Generation Failed</span>` : ''}
                     </div>
                     <div class="right-section">
@@ -834,7 +861,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const isCorrespondingDiscipline = !isDisciplineSkillRun(run) && g === run.discipline;
 
             let className = 'default-guide';
-            let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
+            let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace; text-decoration: none;';
 
             if (isGreen) {
                 className = 'matching-guide';
@@ -843,7 +870,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 style += ' background-color: rgba(218, 165, 32, 0.15); color: #daa520; border: 1px solid rgba(218, 165, 32, 0.3);';
             }
 
-            return `<span class="${className}" style="${style}">${escapeHtml(g)}</span>`;
+            const url = `guide.html?guide=${encodeURIComponent(g)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
+            return `<a href="${url}" class="${className}" style="${style}" title="View guide trend">${escapeHtml(g)}</a>`;
         };
 
                 const getTfootChips = async (runs, typeLabel) => {
@@ -1379,19 +1407,16 @@ function renderDashboardDumbbellChart(data) {
             });
 
             if (originalKey) {
-                const testName = originalKey;
-                const parsed = parseResultKey(testName);
-                const scenarioPart = parsed ? parsed.guide : '';
-                const accordions = document.querySelectorAll('.task-accordion');
-                for (const acc of accordions) {
-                    const titleEl = acc.querySelector('.task-title');
-                    if (titleEl && titleEl.textContent.trim() === scenarioPart.trim()) {
-                        const headerEl = $('.task-accordion-header', acc);
-                        if (!acc.classList.contains('open')) {
-                            headerEl.click();
+                const parsed = parseResultKey(originalKey);
+                if (parsed) {
+                    const guide = parsed.guide;
+                    const accordionEl = document.querySelector(`.task-accordion[data-guide="${guide}"]`);
+                    if (accordionEl) {
+                        accordionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        if (!accordionEl.classList.contains('open')) {
+                            const header = $('.task-accordion-header', accordionEl);
+                            if (header) header.click();
                         }
-                        acc.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        break;
                     }
                 }
             }
