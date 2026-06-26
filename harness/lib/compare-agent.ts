@@ -318,17 +318,17 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   const ctxA = loadRunContext(runDirA);
   const ctxB = loadRunContext(runDirB);
 
-  // Identify which is successful and which is failed/poorer
+  // Identify which is successful and which is failed/poorer for diagnostic orientation
   const isAProblem = ctxA.score < ctxB.score;
   const successCtx = isAProblem ? ctxB : ctxA;
   const failCtx = isAProblem ? ctxA : ctxB;
 
-  console.log(`Comparing Success (Score: ${successCtx.score}%) vs Poorer Run (Score: ${failCtx.score}%)...`);
+  console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
 
   // Extract prompt from run.mjs if possible
   let taskPrompt = 'Unknown prompt';
   try {
-    const runScriptPath = path.join(successCtx.dir, 'run.mjs');
+    const runScriptPath = path.join(ctxA.dir, 'run.mjs');
     if (fs.existsSync(runScriptPath)) {
       const runScriptText = fs.readFileSync(runScriptPath, 'utf8');
       const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
@@ -340,52 +340,56 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
     }
   } catch (e) {}
 
-  // Generate code diff
-  const codeDiff = simpleTextDiff(successCtx.codeOutput, failCtx.codeOutput);
+  // Generate code diff (A vs B)
+  const codeDiff = simpleTextDiff(ctxA.codeOutput, ctxB.codeOutput);
 
   // Construct the LLM Prompt
+  // Explicitly map Run A -> ctxA and Run B -> ctxB to prevent name inversions on the dashboard
+  const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
+  const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
+
   const prompt = `
-You are an expert software engineering diagnostic agent. Your task is to compare two runs of an AI coding agent executing the same task, and write a natural-language explanation of why one run succeeded and the other failed or performed poorly.
+You are an expert software engineering diagnostic agent. Your task is to compare two runs of an AI coding agent executing the same task, and write a natural-language explanation of why one run performed better than the other (or how they differed).
 
 ### Task Prompt
 """
 ${taskPrompt}
 """
 
-### Run A (SUCCESSFUL - Score: ${successCtx.score}%)
-- Dir: ${successCtx.dir}
+### Run A (${statusA} - Score: ${ctxA.score}%)
+- Dir: ${ctxA.dir}
 - Passed Assertions:
-${successCtx.resultsJson ? JSON.stringify(successCtx.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
+${ctxA.resultsJson ? JSON.stringify(ctxA.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
 - Failed Assertions:
-${successCtx.resultsJson ? JSON.stringify(successCtx.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
+${ctxA.resultsJson ? JSON.stringify(ctxA.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
 
-### Run B (FAILED/POORER - Score: ${failCtx.score}%)
-- Dir: ${failCtx.dir}
+### Run B (${statusB} - Score: ${ctxB.score}%)
+- Dir: ${ctxB.dir}
 - Passed Assertions:
-${failCtx.resultsJson ? JSON.stringify(failCtx.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
+${ctxB.resultsJson ? JSON.stringify(ctxB.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
 - Failed Assertions:
-${failCtx.resultsJson ? JSON.stringify(failCtx.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
+${ctxB.resultsJson ? JSON.stringify(ctxB.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
 
 ### Trajectory Comparison (Normalized Steps)
-#### Run A (Success) Steps:
-${successCtx.trajectorySummary ? JSON.stringify(successCtx.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}
+#### Run A Steps:
+${ctxA.trajectorySummary ? JSON.stringify(ctxA.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}
 
-#### Run B (Failure) Steps:
-${failCtx.trajectorySummary ? JSON.stringify(failCtx.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}
+#### Run B Steps:
+${ctxB.trajectorySummary ? JSON.stringify(ctxB.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}
 
-### Generated Code Differences (${successCtx.codePath})
-- Run A Output Length: ${successCtx.codeOutput.length} chars
-- Run B Output Length: ${failCtx.codeOutput.length} chars
-- Line-by-line Diff (A vs B):
+### Generated Code Differences (${ctxA.codePath || 'code output'})
+- Run A Output Length: ${ctxA.codeOutput.length} chars
+- Run B Output Length: ${ctxB.codeOutput.length} chars
+- Line-by-line Diff (Run A vs Run B):
 """
 ${codeDiff.slice(0, 5000)}
 """
 
-### Instructions for your Diagnostic Report:
-1. **Divergence Point**: Pinpoint the exact step in Run B's trajectory where it went wrong (e.g. tool error, looping, failing to read the guide, or writing incorrect code).
-2. **Root Cause Explanation**: Write a clear, concise, purely descriptive natural-language explanation of why Run B failed to adopt the guide successfully while Run A succeeded. Avoid jargon or generic filler. Focus on the cold technical facts.
-3. **Trajectory Contrast**: Contrast key decisions made by the agent in Run A vs Run B (e.g., "Run A read the 'content-vis' guide and applied both content-visibility and contain-intrinsic-size, whereas Run B only applied content-visibility and missed the size constraint").
-4. **Conclusion**: Give a brief summary. Do NOT write guide edits or suggest changes to the guide.md file itself; just describe the issue clearly.
+Please write a highly technical, objective, and extremely precise diagnostic report.
+Structure your report into the following three sections:
+1. **Divergence Point**: Identify the exact step or moment in the trajectories where the two runs diverged in their approach or quality of execution.
+2. **Root Cause Explanation**: Explain the technical reason why this divergence caused the difference in outcomes, referencing the code differences, failed assertions, or trajectory logs.
+3. **Trajectory Contrast**: Provide a summary comparing the steps taken, highlighting the contrasting decisions made by the agents.
 
 Write your report in Markdown format. Start directly with the markdown content.
 `;

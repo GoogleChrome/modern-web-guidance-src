@@ -222,8 +222,9 @@
     /* Side-by-Side Split View */
     .split-view {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 20px;
+      width: 100%;
     }
     .split-col {
       border: 1px solid #e2e8f0;

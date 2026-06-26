@@ -334,19 +334,16 @@ function calculateGuideScore(suiteData, runNum) {
 
   return totalAsserts > 0 ? Math.round((passedAsserts / totalAsserts) * 100) : 0;
 }
-
 async function switchTask(task) {
-  if (task === activeTask) return;
   activeTask = task;
   
   // Update sidebar active state
   document.querySelectorAll('.task-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.innerText === activeTask);
+    btn.classList.toggle('active', btn.textContent.trim() === activeTask);
   });
 
   await loadActiveTaskDetails();
 }
-
 async function loadActiveTaskDetails() {
   document.getElementById('compare-loading').style.display = 'flex';
   document.getElementById('tab-content-assertions').style.display = 'none';
@@ -562,17 +559,15 @@ function renderTimeline(container, trajectory) {
     if (step.thought) {
       html += `<div class="step-thought"><strong>Thought:</strong> ${escapeHtml(step.thought)}</div>`;
     }
-
     if (step.action) {
       const argsStr = step.action.params ? JSON.stringify(step.action.params, null, 2) : '';
       html += `
         <div class="step-action">
           <strong>Tool:</strong> ${escapeHtml(step.action.name)} (${step.action.type})
-          ${argsStr ? `<pre style="margin-top:5px; font-size:0.85em; background:#ffffff; border:1px solid #e2e8f0; padding:5px; border-radius:4px; overflow-x:auto;">${escapeHtml(argsStr)}</pre>` : ''}
+          ${argsStr ? `<pre style="margin-top:5px; font-size:0.85em; background:#ffffff; border:1px solid #e2e8f0; padding:5px; border-radius:4px; white-space:pre-wrap; word-break:break-word; overflow-x:auto;">${escapeHtml(argsStr)}</pre>` : ''}
         </div>
       `;
     }
-
     if (step.outcome) {
       const outcomeClass = isErr ? 'step-outcome error' : 'step-outcome';
       html += `<div class="${outcomeClass}"><strong>Outcome:</strong> ${escapeHtml(step.outcome.message || 'Success')}</div>`;
@@ -802,3 +797,7 @@ window.onload = async () => {
     await loadTrialMetadata();
   }
 };
+
+// Expose module functions globally for inline HTML event handlers (since compare.js is loaded as a module)
+window.switchTab = switchTab;
+window.switchTask = switchTask;

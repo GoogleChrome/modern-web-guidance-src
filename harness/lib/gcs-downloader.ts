@@ -118,28 +118,23 @@ async function downloadSuiteEvalsIfMissing(suiteName: string, token: string | un
  * Resolves the path relative to the harness results directory.
  * Supports both Bearer token authentication (passed from the browser) and standard ADC.
  */
-export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boolean> {
+/**
+ * Lazily downloads a single directory prefix from GCS if it is missing locally.
+ */
+async function downloadSingleDirFromGcs(runDir: string, token: string | undefined): Promise<boolean> {
   const absoluteRunDir = path.resolve(runDir);
   const absoluteResultsDir = path.resolve(baseResultsDir);
   
-  // Verify that the run directory is inside our results directory
   const relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
   if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
     console.warn(`[GCS Downloader] Path is outside results directory: ${absoluteRunDir}`);
     return false;
   }
 
-  // Crucial files that indicate a complete run is cached locally
   const crucialFiles = [
     'trajectory_summary.json',
     'chat_log.txt'
   ];
-
-  const suiteName = relativeRunPath.split(/[/\\]/)[0];
-  const token = process.env.GD_GCS_TOKEN;
-
-  // Lazily download the suite-level evals.json if it is missing
-  await downloadSuiteEvalsIfMissing(suiteName, token);
 
   const isCached = crucialFiles.every(f => fs.existsSync(path.join(absoluteRunDir, f)));
   if (isCached) {
@@ -188,11 +183,10 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
       return true;
     } catch (err: any) {
       console.error(cRed(`[GCS Downloader] ❌ REST API Download failed: ${err.message}`));
-      // Fall through to standard ADC storage library download as a backup
     }
   }
 
-  // Backup / CLI Fallback: Use standard @google-cloud/storage library (requires local ADC login)
+  // Backup / CLI Fallback: Use standard SDK
   console.log(cYellow(`[GCS Downloader] Attempting standard Google Cloud Storage library authentication (ADC)...`));
   try {
     const storage = new Storage({ projectId: PROJECT_ID });
@@ -233,8 +227,6 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
     return true;
   } catch (err: any) {
     console.error(cRed(`[GCS Downloader] ❌ Storage SDK Download failed: ${err.message}`));
-    
-    // Provide actionable instructions for CLI users if both fail
     console.log(cYellow(`
 💡 Hint: If you are running gd compare directly from the CLI, run:
    gcloud auth application-default login
@@ -242,4 +234,42 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
     `));
     return false;
   }
+}
+
+/**
+ * Lazily downloads a run directory from GCS if it is missing locally.
+ * Resolves the path relative to the harness results directory.
+ * Orchestrates downloading suite evals.json, the primary requested run, and the sibling run type (guided/unguided).
+ */
+export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boolean> {
+  const absoluteRunDir = path.resolve(runDir);
+  const absoluteResultsDir = path.resolve(baseResultsDir);
+  
+  const relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
+  if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
+    console.warn(`[GCS Downloader] Path is outside results directory: ${absoluteRunDir}`);
+    return false;
+  }
+
+  const suiteName = relativeRunPath.split(/[/\\]/)[0];
+  const token = process.env.GD_GCS_TOKEN;
+
+  // 1. Lazily download the suite-level evals.json
+  await downloadSuiteEvalsIfMissing(suiteName, token);
+
+  // 2. Download the primary requested directory (e.g., guided)
+  const success = await downloadSingleDirFromGcs(runDir, token);
+
+  // 3. Pre-emptively download the sibling run type directory (guided/unguided)
+  if (runDir.endsWith('guided')) {
+    const unguidedDir = runDir.slice(0, -6) + 'unguided';
+    console.log(cCyan(`[GCS Downloader] Pre-emptively downloading sibling unguided run: ${unguidedDir}`));
+    await downloadSingleDirFromGcs(unguidedDir, token);
+  } else if (runDir.endsWith('unguided')) {
+    const guidedDir = runDir.slice(0, -8) + 'guided';
+    console.log(cCyan(`[GCS Downloader] Pre-emptively downloading sibling guided run: ${guidedDir}`));
+    await downloadSingleDirFromGcs(guidedDir, token);
+  }
+
+  return success;
 }
