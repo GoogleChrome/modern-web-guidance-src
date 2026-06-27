@@ -83,6 +83,6 @@
     "glob": "^13.0.6",
     "mdn-data": "^2.28.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.27.0"
+    "web-features": "^3.30.0"
   }
 }
