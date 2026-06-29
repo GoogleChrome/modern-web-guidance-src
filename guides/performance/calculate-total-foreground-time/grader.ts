@@ -75,7 +75,10 @@ test.describe('Total Foreground Time Grader', () => {
   });
 
   test('should use VisibilityStateEntry API (via getEntriesByType or PerformanceObserver)', async ({ page }) => {
-    // Wait for the app to initialize and potentially call the API
+    const buttons = await page.locator('button').all();
+    for (const btn of buttons) {
+      if (await btn.isVisible()) await btn.click().catch(() => {});
+    }
     await page.waitForFunction(() => (window as any)._visibilityAPIUsed === true || performance.now() > 2000);
     const used = await page.evaluate(() => (window as any)._visibilityAPIUsed);
     expect(used).toBe(true);
@@ -90,6 +93,11 @@ test.describe('Total Foreground Time Grader', () => {
     
     // Give the UI time to update
     await page.waitForTimeout(500);
+
+    const buttons = await page.locator('button').all();
+    for (const btn of buttons) {
+      if (await btn.isVisible()) await btn.click().catch(() => {});
+    }
 
     const values = await page.evaluate(() => {
       const results: { value: number, now: number }[] = [];
@@ -127,6 +135,10 @@ test.describe('Total Foreground Time Grader', () => {
 
   test('should check for VisibilityStateEntry support before falling back', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
+    const buttons = await page.locator('button').all();
+    for (const btn of buttons) {
+      if (await btn.isVisible()) await btn.click().catch(() => {});
+    }
     await page.waitForFunction(() => (window as any)._visibilityAPIUsed === true || performance.now() > 2000);
     const checked = await page.evaluate(() => {
       return (window as any)._visibilityAPIUsed;

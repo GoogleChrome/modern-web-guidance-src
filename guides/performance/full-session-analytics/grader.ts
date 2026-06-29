@@ -65,7 +65,7 @@ test.describe(`Full-Session Analytics Expectations: ${demoName}`, () => {
 });
 
 test.describe(`Browser tests for Full-Session Analytics: ${demoName}`, () => {
-  test.beforeEach(async ({ page, TARGET_URL }) => {
+  test.beforeEach(async ({ page }) => {
     await page.route('**/*', async (route) => {
       const urlStr = route.request().url();
       if (urlStr.includes('/analytics/endpoint')) {
