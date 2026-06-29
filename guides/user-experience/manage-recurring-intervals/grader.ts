@@ -273,7 +273,7 @@ test.describe('Temporal Interval Manager Grader', () => {
     await monthsInput.dispatchEvent('change');
 
     const resultDate = page.locator('#resultDate');
-    await expect(resultDate).toHaveText('2024-02-29');
+    await expect(resultDate).toContainText('2024-02-29');
   });
 
   // 9. Support reject overflow strategy

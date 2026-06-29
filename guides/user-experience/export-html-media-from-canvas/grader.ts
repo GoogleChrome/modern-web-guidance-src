@@ -146,6 +146,12 @@ test.beforeEach(async ({ page }) => {
   await page.goto(`file://${process.env.TARGET_FILE || ''}`);
   // Give time for initial load and observation to register
   await page.waitForTimeout(500);
+
+  const exportBtn = page.locator('#export-card-btn, #export-btn, button').first();
+  if (await exportBtn.isVisible()) {
+    await exportBtn.click();
+    await page.waitForTimeout(500);
+  }
 });
 
 // Test 1: Feature detection is conducted

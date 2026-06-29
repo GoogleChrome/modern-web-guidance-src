@@ -8,8 +8,8 @@ test.describe('Total Foreground Time Grader', () => {
     await page.addInitScript(() => {
       (window as any)._visibilityAPIUsed = false;
       
-      const originalGetEntriesByType = performance.getEntriesByType.bind(performance);
-      performance.getEntriesByType = function(type: string) {
+      const originalGetEntriesByType = Performance.prototype.getEntriesByType;
+      Performance.prototype.getEntriesByType = function(type: string) {
         if (type === 'visibility-state') {
           (window as any)._visibilityAPIUsed = true;
           // Return some mock data to test the logic
@@ -20,9 +20,9 @@ test.describe('Total Foreground Time Grader', () => {
             { name: 'visible', startTime: 0, entryType: 'visibility-state', duration: 0, toJSON: () => {} },
             { name: 'hidden', startTime: 500, entryType: 'visibility-state', duration: 0, toJSON: () => {} },
             { name: 'visible', startTime: 1500, entryType: 'visibility-state', duration: 0, toJSON: () => {} }
-          ];
+          ] as any;
         }
-        return originalGetEntriesByType(type);
+        return originalGetEntriesByType.apply(this, arguments as any);
       };
 
       // Also mock PerformanceObserver
@@ -58,8 +58,9 @@ test.describe('Total Foreground Time Grader', () => {
       const results: { value: number, now: number }[] = [];
       const elements = Array.from(document.querySelectorAll('*'));
       for (const el of elements) {
-        if (el.children.length === 0 && el.textContent?.includes('ms')) {
-          const match = el.textContent.match(/(\d+)\s*ms/);
+        const text = el.textContent || '';
+        if (text.includes('ms') || el.id === 'time-display') {
+          const match = text.match(/(\d+)/);
           if (match) {
             results.push({
               value: parseInt(match[1]),

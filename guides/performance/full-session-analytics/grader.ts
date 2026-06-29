@@ -13,35 +13,53 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
+function getCombinedCode(): string {
+  let code = fs.readFileSync(filePath, 'utf-8');
+  function scanDir(dir: string) {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.')) {
+        scanDir(fullPath);
+      } else if (entry.isFile() && (entry.name.endsWith('.js') || entry.name.endsWith('.ts') || entry.name.endsWith('.mjs'))) {
+        code += '\n' + fs.readFileSync(fullPath, 'utf-8');
+      }
+    }
+  }
+  scanDir(targetDir);
+  return code;
+}
+
 test.describe(`Full-Session Analytics Expectations: ${demoName}`, () => {
   
   test('The fetchLater() API is invoked with a URL string and optionally a DeferredRequestInit object', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const fetchLaterCalls = html.match(/fetchLater\s*\(/g) || [];
+    const code = getCombinedCode();
+    const fetchLaterCalls = code.match(/fetchLater\s*\(/g) || [];
     // Expect at least two matches: one for the polyfill definition and one for the actual invocation.
     expect(fetchLaterCalls.length).toBeGreaterThan(1);
   });
 
   test('The fetchLater() API is the only API used for beacons (no direct fetch, sendBeacon, XMLHttpRequest, or new Image)', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const usesXhr = html.includes('XMLHttpRequest');
-    const usesImage = html.includes('new Image');
-    const directFetch = html.includes('fetch(ANALYTICS_ENDPOINT');
-    const directSendBeacon = html.includes('sendBeacon(ANALYTICS_ENDPOINT');
+    const code = getCombinedCode();
+    const usesXhr = code.includes('XMLHttpRequest');
+    const usesImage = code.includes('new Image');
+    const directFetch = code.includes('fetch(ANALYTICS_ENDPOINT');
+    const directSendBeacon = code.includes('sendBeacon(ANALYTICS_ENDPOINT');
     
     const hasForbiddenUsage = usesXhr || usesImage || directFetch || directSendBeacon;
     expect(hasForbiddenUsage).toBeFalsy();
   });
 
   test('If a fetchLater() call throws a QuotaExceededError, it is properly handled with a try/catch', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
+    const code = getCombinedCode();
     const tryCatchRegex = /try\s*\{[\s\S]*?fetchLater\s*\([\s\S]*?\}[\s\S]*?catch\s*\(/;
-    expect(tryCatchRegex.test(html)).toBeTruthy();
+    expect(tryCatchRegex.test(code)).toBeTruthy();
   });
 
   test('The fetchLater() polyfill should be included in the bundle', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasPolyfill = html.includes('globalThis.fetchLater ??=');
+    const code = getCombinedCode();
+    const hasPolyfill = code.includes('globalThis.fetchLater ??=');
     expect(hasPolyfill).toBeTruthy();
   });
 
