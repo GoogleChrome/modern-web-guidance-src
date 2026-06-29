@@ -12,7 +12,7 @@ Browsers use heuristics to assign loading priorities to images, but these defaul
 
 Using `fetchpriority` on an `<img>` element allows you to explicitly signal an image's importance to the browser, ensuring critical images load faster while non-essential ones don't compete for bandwidth.
 
-The `loading=lazy` prevents images from being downloaded at all when sufficiently off-screen which can further help prioritize images.
+The `loading=lazy` attribute prevents images from being downloaded at all when sufficiently off-screen which can further help prioritize images.
 
 ## How to implement
 
