@@ -74,6 +74,76 @@ export function parseResultPath(relPath: string): { guide: string, taskName: str
   return { guide, taskName, runType };
 }
 
+function getAppFiles(currentDir: string, base = ''): string[] {
+  let results: string[] = [];
+  const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (
+      entry.name === 'node_modules' ||
+      entry.name === 'dist' ||
+      entry.name === 'test-results' ||
+      entry.name === 'grade-report' ||
+      entry.name.startsWith('.')
+    ) {
+      continue;
+    }
+    const relPath = base ? `${base}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      results.push(...getAppFiles(path.join(currentDir, entry.name), relPath));
+    } else {
+      results.push(relPath);
+    }
+  }
+  return results;
+}
+
+export function extractTargetModifiedFile(dir: string, prompt?: string): string | undefined {
+  try {
+    const appFiles = getAppFiles(dir).filter(f => {
+      if (
+        f.endsWith('.log') ||
+        f.endsWith('.txt') ||
+        f.endsWith('.mjs') ||
+        f.endsWith('.json') ||
+        f.endsWith('.jsonl') ||
+        f.endsWith('.yaml') ||
+        f.endsWith('.svg')
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    if (prompt) {
+      const promptTarget = appFiles.find(
+        f => prompt.includes(f) || prompt.includes(f.split('/').pop()!)
+      );
+      if (promptTarget) return promptTarget;
+    }
+
+    const chatLogPath = path.join(dir, 'chat_log.txt');
+    if (fs.existsSync(chatLogPath)) {
+      try {
+        const chatLog = fs.readFileSync(chatLogPath, 'utf-8');
+        const modifiedFile = appFiles.find(
+          f => chatLog.includes(f) || chatLog.includes(f.split('/').pop()!)
+        );
+        if (modifiedFile) return modifiedFile;
+      } catch (e) {}
+    }
+
+    const standardCandidates = ['src/App.jsx', 'src/App.js', 'src/main.jsx', 'src/main.js', 'index.html'];
+    for (const candidate of standardCandidates) {
+      if (appFiles.includes(candidate)) {
+        return candidate;
+      }
+    }
+  } catch (e) {
+    console.error(`Error calculating targetModifiedFile for ${dir}:`, e);
+  }
+  return undefined;
+}
+
 export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
   const taskMap = getTaskMap();
 
@@ -305,55 +375,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         }
       }
 
-      let targetModifiedFile: string | undefined = undefined;
-      try {
-        const readRecursive = (currentDir: string, base = ''): string[] => {
-          let results: string[] = [];
-          const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-          for (const entry of entries) {
-            if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'test-results' || entry.name === 'grade-report' || entry.name.startsWith('.')) {
-              continue;
-            }
-            const relPath = base ? `${base}/${entry.name}` : entry.name;
-            if (entry.isDirectory()) {
-              results.push(...readRecursive(path.join(currentDir, entry.name), relPath));
-            } else {
-              results.push(relPath);
-            }
-          }
-          return results;
-        };
-        
-        const appFiles = readRecursive(dir).filter(f => {
-          if (f.endsWith('.log') || f.endsWith('.txt') || f.endsWith('.mjs') || f.endsWith('.json') || f.endsWith('.jsonl') || f.endsWith('.yaml') || f.endsWith('.svg')) return false;
-          return true;
-        });
-
-        if (taskInfo.prompt) {
-          const promptTarget = appFiles.find(f => taskInfo.prompt.includes(f) || taskInfo.prompt.includes(f.split('/').pop()!));
-          if (promptTarget) targetModifiedFile = promptTarget;
-        }
-
-        if (!targetModifiedFile && fs.existsSync(path.join(dir, 'chat_log.txt'))) {
-          try {
-            const chatLog = fs.readFileSync(path.join(dir, 'chat_log.txt'), 'utf-8');
-            const modifiedFile = appFiles.find(f => chatLog.includes(f) || chatLog.includes(f.split('/').pop()!));
-            if (modifiedFile) targetModifiedFile = modifiedFile;
-          } catch (e) {}
-        }
-
-        if (!targetModifiedFile) {
-          const standardCandidates = ['src/App.jsx', 'src/App.js', 'src/main.jsx', 'src/main.js', 'index.html'];
-          for (const candidate of standardCandidates) {
-            if (appFiles.includes(candidate)) {
-              targetModifiedFile = candidate;
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        console.error(`Error calculating targetModifiedFile for ${dir}:`, e);
-      }
+      const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
 
       allResults[testName].push({
         runNumber: parseInt(runDir),

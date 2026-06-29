@@ -49,6 +49,7 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
 
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
 
+    // Running install on base app
     console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
     const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install'], {
       cwd: targetDir,
