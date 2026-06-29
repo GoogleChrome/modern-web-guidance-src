@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../test-fixture.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -11,7 +11,6 @@ if (!targetFile) {
 const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
 
 function getCombinedCode(): string {
   let code = fs.readFileSync(filePath, 'utf-8');
@@ -66,27 +65,28 @@ test.describe(`Full-Session Analytics Expectations: ${demoName}`, () => {
 });
 
 test.describe(`Browser tests for Full-Session Analytics: ${demoName}`, () => {
-  test.beforeEach(async ({ page }) => {
-    // Route for serving the HTML file
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const sanitizedPath = requestPath === '/' ? demoName : requestPath.replace(/^\//, '');
-      const localFilePath = path.join(targetDir, sanitizedPath);
-
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
+  test.beforeEach(async ({ page, TARGET_URL }) => {
+    await page.route('**/*', async (route) => {
+      const urlStr = route.request().url();
+      if (urlStr.includes('/analytics/endpoint')) {
+        await route.fulfill({ status: 200, body: 'ok' });
+        return;
       }
-    });
+      if (urlStr.startsWith('http://localhost') || urlStr.startsWith('http://127.0.0.1')) {
+        const requestPath = new URL(urlStr).pathname;
+        const sanitizedPath = requestPath === '/' ? demoName : requestPath.replace(/^\//, '');
+        const localFilePath = path.join(targetDir, sanitizedPath);
 
-    // Mock analytics endpoint to return 200 OK (matched first since it's registered last)
-    await page.route(/.*\/path\/to\/analytics\/endpoint.*/, async (route) => {
-      await route.fulfill({ status: 200, body: 'ok' });
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+          return;
+        }
+      }
+      await route.continue();
     });
   });
 
-  test('Only a single beacon should be sent, after the user leaves the page', async ({ page }) => {
+  test('Only a single beacon should be sent, after the user leaves the page', async ({ page, TARGET_URL }) => {
     let analyticsRequests = 0;
     page.on('request', request => {
       if (request.url().includes('/analytics/endpoint')) {
@@ -100,7 +100,7 @@ test.describe(`Browser tests for Full-Session Analytics: ${demoName}`, () => {
       delete (globalThis as any).fetchLater;
     });
 
-    await page.goto(demoUrl);
+    await page.goto(TARGET_URL);
     
     // Wait a brief moment to allow any immediate incorrect beacons to fire
     await page.waitForTimeout(1000);

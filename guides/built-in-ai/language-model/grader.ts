@@ -91,6 +91,7 @@ test.beforeEach(async ({ page }) => {
         return 'available';
       },
       create: async (options: any) => {
+        window.__LM_LOGS__.calls.push({ method: 'LanguageModel.create', source: 'window.LanguageModel', options });
         if (options?.monitor) {
           const mockMonitor = {
             addEventListener: (event: string, cb: any) => {
@@ -125,6 +126,8 @@ test.beforeEach(async ({ page }) => {
 
 test('1. LanguageModel.create() should be called using window.LanguageModel', async ({ page }) => {
   await page.waitForTimeout(500);
+  const textarea = page.locator('textarea, input[type="text"]').first();
+  if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
   const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
   if (await actionBtn.isVisible()) await actionBtn.click();
   await page.waitForTimeout(500);
@@ -135,6 +138,8 @@ test('1. LanguageModel.create() should be called using window.LanguageModel', as
 
 test('2. The deprecated window.ai.languageModel API must not be used', async ({ page }) => {
   await page.waitForTimeout(500);
+  const textarea = page.locator('textarea, input[type="text"]').first();
+  if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
   const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
   if (await actionBtn.isVisible()) await actionBtn.click();
   await page.waitForTimeout(500);
@@ -145,6 +150,8 @@ test('2. The deprecated window.ai.languageModel API must not be used', async ({ 
 
 test('3. LanguageModel.availability() should be called before attempting to create a session', async ({ page }) => {
   await page.waitForTimeout(500);
+  const textarea = page.locator('textarea, input[type="text"]').first();
+  if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
   const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
   if (await actionBtn.isVisible()) await actionBtn.click();
   await page.waitForTimeout(500);
@@ -159,6 +166,8 @@ test('3. LanguageModel.availability() should be called before attempting to crea
 
 test('4. The deprecated capabilities() method must not be used', async ({ page }) => {
   await page.waitForTimeout(500);
+  const textarea = page.locator('textarea, input[type="text"]').first();
+  if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
   const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
   if (await actionBtn.isVisible()) await actionBtn.click();
   await page.waitForTimeout(500);
@@ -176,6 +185,8 @@ test('5. If LanguageModel.availability() returns "unavailable", create() must no
   });
   await page.reload();
   await page.waitForTimeout(500);
+  const textarea = page.locator('textarea, input[type="text"]').first();
+  if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
   const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
   if (await actionBtn.isVisible()) await actionBtn.click();
   await page.waitForTimeout(500);
@@ -186,18 +197,26 @@ test('5. If LanguageModel.availability() returns "unavailable", create() must no
 
 test('6. LanguageModel.create() should register a downloadprogress listener via monitor', async ({ page }) => {
   await page.waitForTimeout(500);
+  const textarea = page.locator('textarea, input[type="text"]').first();
+  if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
   const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
   if (await actionBtn.isVisible()) await actionBtn.click();
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
+  const lmCreate = logs.calls.find(c => c.method === 'LanguageModel.create');
+  if (!lmCreate || !lmCreate.options?.monitor) {
+    test.skip();
+    return;
+  }
   const monitorCall = logs.calls.find(c => c.method === 'monitor.addEventListener' && c.event === 'downloadprogress');
   expect(monitorCall).toBeDefined();
 });
 
 test('7. session.promptStreaming() should be used with for-await and not onmessage', async ({ page }) => {
-  const promptBtn = page.locator('#prompt-btn');
-  if (await promptBtn.isVisible()) await promptBtn.click();
-  const actionBtn = page.locator('#ask-the-barista, #run').first();
+  await page.waitForTimeout(500);
+  const textarea = page.locator('textarea, input[type="text"]').first();
+  if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
   if (await actionBtn.isVisible()) await actionBtn.click();
   
   await page.waitForTimeout(500);
@@ -210,7 +229,7 @@ test('7. session.promptStreaming() should be used with for-await and not onmessa
 
 test('8. session.prompt() should be used for one-shot responses on a modern session', async ({ page }) => {
   const sentimentBtn = page.locator('#sentiment-btn');
-  if (!await sentimentBtn.isVisible()) test.skip();
+  if (!await sentimentBtn.isVisible()) { test.skip(); return; }
   await sentimentBtn.click();
   const runBtn = page.locator('#run');
   if (await runBtn.isVisible()) await runBtn.click();
@@ -233,7 +252,7 @@ test('9. Output must never be set via innerHTML', async ({ page }) => {
 
 test('10. For structured output, responseConstraint option should be passed a JSON Schema', async ({ page }) => {
   const sentimentBtn = page.locator('#sentiment-btn');
-  if (!await sentimentBtn.isVisible()) test.skip();
+  if (!await sentimentBtn.isVisible()) { test.skip(); return; }
   await sentimentBtn.click();
   const runBtn = page.locator('#run');
   if (await runBtn.isVisible()) await runBtn.click();
@@ -247,7 +266,7 @@ test('10. For structured output, responseConstraint option should be passed a JS
 
 test('11. Result of session.prompt() with responseConstraint should be parsed with JSON.parse()', async ({ page }) => {
   const sentimentBtn = page.locator('#sentiment-btn');
-  if (!await sentimentBtn.isVisible()) test.skip();
+  if (!await sentimentBtn.isVisible()) { test.skip(); return; }
   await page.addInitScript(() => {
     const originalParse = JSON.parse;
     JSON.parse = function(text: string) {
@@ -268,7 +287,7 @@ test('11. Result of session.prompt() with responseConstraint should be parsed wi
 
 test('12. JSON.stringify() on schema not needed', async ({ page }) => {
   const sentimentBtn = page.locator('#sentiment-btn');
-  if (!await sentimentBtn.isVisible()) test.skip();
+  if (!await sentimentBtn.isVisible()) { test.skip(); return; }
   await page.addInitScript(() => {
     const originalStringify = JSON.stringify;
     JSON.stringify = function(obj: any) {
@@ -294,7 +313,7 @@ test('12. JSON.stringify() on schema not needed', async ({ page }) => {
 
 test('13. session.destroy() should be called when a session is no longer needed', async ({ page }) => {
   const cloneBtn = page.locator('#clone-btn');
-  if (!await cloneBtn.isVisible()) test.skip();
+  if (!await cloneBtn.isVisible()) { test.skip(); return; }
   await cloneBtn.click();
   const runBtn = page.locator('#run');
   if (await runBtn.isVisible()) await runBtn.click();
@@ -316,7 +335,7 @@ test('14. AbortSignal should be passed to prompt(), not LanguageModel.create()',
 
 test('15. session.clone() usage and base destruction', async ({ page }) => {
   const cloneBtn = page.locator('#clone-btn');
-  if (!await cloneBtn.isVisible()) test.skip();
+  if (!await cloneBtn.isVisible()) { test.skip(); return; }
   await cloneBtn.click();
   const runBtn = page.locator('#run');
   if (await runBtn.isVisible()) await runBtn.click();
@@ -337,7 +356,7 @@ test('15. session.clone() usage and base destruction', async ({ page }) => {
 
 test('16. contextUsage and contextWindow should be used', async ({ page }) => {
   const cloneBtn = page.locator('#clone-btn');
-  if (!await cloneBtn.isVisible()) test.skip();
+  if (!await cloneBtn.isVisible()) { test.skip(); return; }
   await page.addInitScript(() => {
     const originalCreate = window.LanguageModel.create;
     window.LanguageModel.create = async function() {

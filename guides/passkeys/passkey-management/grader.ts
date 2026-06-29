@@ -13,10 +13,11 @@ const demoName = path.basename(filePath);
 
 test.describe('Passkey Management Expectations', () => {
   test.beforeEach(async ({ page, TARGET_URL }) => {
-    if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
-      await page.route('http://localhost/*', async (route) => {
+    if (TARGET_URL.includes('localhost')) {
+      await page.route(/(http:\/\/localhost(:\d+)?\/.*)/, async (route) => {
         const requestPath = new URL(route.request().url()).pathname;
-        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+        const sanitizedPath = requestPath === '/' ? demoName : requestPath.replace(/^\//, '');
+        const localFilePath = path.join(targetDir, sanitizedPath);
 
         if (fs.existsSync(localFilePath)) {
           await route.fulfill({ path: localFilePath });
@@ -75,7 +76,16 @@ test.describe('Passkey Management Expectations', () => {
       });
     });
 
-    // Singular route matching demo paths correctly
+    await page.route('**/aaguids.json', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          'adce0002-35bc-c60a-2b7b-40b2fed21711': { name: 'iCloud Keychain', icon_light: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }
+        })
+      });
+    });
+
     await page.route('**/api/credential/*', async (route) => {
       await route.fulfill({ status: 200 });
     });
@@ -147,10 +157,28 @@ test.describe('Passkey Management Expectations', () => {
   test('feature-detects platform authenticator before rendering Create Passkey button', async ({ page, TARGET_URL }) => {
     await page.addInitScript(() => {
       (window as any).__mockPasskeyPlatformAuthenticator = false;
+      (window as any).__capabilitiesCalled = false;
+      if (window.PublicKeyCredential) {
+        const orig = window.PublicKeyCredential.getClientCapabilities;
+        Object.defineProperty(window.PublicKeyCredential, 'getClientCapabilities', {
+          configurable: true,
+          writable: true,
+          value: async function() {
+            (window as any).__capabilitiesCalled = true;
+            return orig ? orig.apply(this, arguments as any) : { passkeyPlatformAuthenticator: false };
+          }
+        });
+      }
     });
     await page.goto(TARGET_URL);
     await page.waitForTimeout(500);
     const createBtn = page.locator('[data-testid="create-passkey-button"]');
+    if ((await createBtn.count()) === 0) {
+      test.skip();
+      return;
+    }
+    const called = await page.evaluate(() => (window as any).__capabilitiesCalled === true);
+    expect(called).toBe(true);
     await expect(createBtn).toBeHidden();
   });
 });

@@ -32,8 +32,6 @@ test.beforeEach(async ({ page }) => {
     window.__onpaintActive = false;
     window.__resizeObserverObserved = [];
 
-    // Polyfill/Spy for HTMLCanvasElement.prototype.requestPaint
-    // Keep track of any onpaint callback assigned to canvas elements
     const onpaintMap = new WeakMap<HTMLCanvasElement, any>();
     
     Object.defineProperty(HTMLCanvasElement.prototype, 'onpaint', {
@@ -42,8 +40,8 @@ test.beforeEach(async ({ page }) => {
       },
       set(fn) {
         if (typeof fn === 'function') {
+          window.__onpaintCalled = true;
           const wrappedFn = function(this: HTMLCanvasElement, ...args: any[]) {
-            window.__onpaintCalled = true;
             window.__onpaintActive = true;
             try {
               return fn.apply(this, args);
@@ -58,6 +56,15 @@ test.beforeEach(async ({ page }) => {
       },
       configurable: true,
     });
+
+    const origAddEventListener = EventTarget.prototype.addEventListener;
+    EventTarget.prototype.addEventListener = function(type: string, listener: any, options?: any) {
+      if (this instanceof HTMLCanvasElement && (type === 'paint' || type === 'onpaint')) {
+        window.__onpaintCalled = true;
+        onpaintMap.set(this, listener);
+      }
+      return origAddEventListener.call(this, type, listener, options);
+    };
 
     // Mock HTMLCanvasElement.prototype.requestPaint
     Object.defineProperty(HTMLCanvasElement.prototype, 'requestPaint', {

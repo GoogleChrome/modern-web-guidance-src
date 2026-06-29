@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../test-fixture.ts';
 
 declare const process: any;
 
@@ -15,7 +15,7 @@ interface GraderStats {
   temporalUsed: boolean;
 }
 
-async function setupNormalPage(page: any): Promise<GraderStats> {
+async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderStats> {
   await page.addInitScript(() => {
     const stats: GraderStats = {
       assignCount: 0,
@@ -143,8 +143,12 @@ async function setupNormalPage(page: any): Promise<GraderStats> {
   });
 
   // Intercept js-temporal polyfill requests to dynamically inject our ESM spies wrapper!
-  await page.route(/.*\/@js-temporal\/polyfill(@[0-9.]+)?$/, async (route: any) => {
+  await page.route(/.*(@js-temporal\/polyfill|cdn\.jsdelivr\.net\/npm\/@js-temporal\/polyfill).*/, async (route: any) => {
     const reqUrl = route.request().url();
+    if (reqUrl.includes('bypass=true')) {
+      await route.continue();
+      return;
+    }
     const targetUrlWithParam = reqUrl.includes('?') ? `${reqUrl}&bypass=true` : `${reqUrl}?bypass=true`;
     
     const wrapperScript = `
@@ -231,24 +235,24 @@ async function setupNormalPage(page: any): Promise<GraderStats> {
     });
   });
 
-  const url = 'file://' + process.env.TARGET_FILE;
+  const url = targetUrl || ('file://' + process.env.TARGET_FILE);
   await page.goto(url);
 
   // Wait for the UI to be fully updated
   await page.waitForFunction(() => {
     const el = document.getElementById('islamic-date');
     return el && el.innerText !== 'Loading...' && el.innerText !== '';
-  }, { timeout: 3000 }).catch(() => {});
+  }, { timeout: 500 }).catch(() => {});
 
   // Return the stats from the browser context
   return await page.evaluate(() => (globalThis as any).__grader_stats__);
 }
 
-async function setupNativePage(page: any): Promise<{ stats: GraderStats, polyfillRequested: boolean }> {
+async function setupNativePage(page: any, targetUrl?: string): Promise<{ stats: GraderStats, polyfillRequested: boolean }> {
   let polyfillRequested = false;
   await page.route('**/*', (route: any) => {
     const url = route.request().url();
-    if (url.includes('@js-temporal/polyfill')) {
+    if (url.includes('@js-temporal/polyfill') || url.includes('cdn.jsdelivr.net/npm/@js-temporal/polyfill')) {
       polyfillRequested = true;
     }
     route.continue();
@@ -365,7 +369,7 @@ async function setupNativePage(page: any): Promise<{ stats: GraderStats, polyfil
     });
   });
 
-  const url = 'file://' + process.env.TARGET_FILE;
+  const url = targetUrl || ('file://' + process.env.TARGET_FILE);
   await page.goto(url);
 
   await page.waitForFunction(() => {
@@ -378,40 +382,41 @@ async function setupNativePage(page: any): Promise<{ stats: GraderStats, polyfil
 }
 
 test.describe('Temporal API Support Grader', () => {
+  test.setTimeout(30000);
   
-  test('should feature-detect and manually assign the loaded polyfill', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should feature-detect and manually assign the loaded polyfill', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     expect(stats.assignCount).toBeGreaterThan(0);
   });
 
-  test('should conditionally load polyfill only if native support is absent', async ({ page }) => {
-    const { stats, polyfillRequested } = await setupNativePage(page);
+  test('should conditionally load polyfill only if native support is absent', async ({ page, TARGET_URL }) => {
+    const { stats, polyfillRequested } = await setupNativePage(page, TARGET_URL);
     expect(polyfillRequested).toBe(false);
     expect(stats.temporalUsed).toBe(true);
   });
 
-  test('should verify target calendar support using Intl.supportedValuesOf', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should verify target calendar support using Intl.supportedValuesOf', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     expect(stats.supportedValuesCalls).toContain('calendar');
   });
 
-  test('should use withCalendar to associate non-ISO calendar systems', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should use withCalendar to associate non-ISO calendar systems', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     expect(stats.originalWithCalendarCalled).toBe(true);
   });
 
-  test('should use monthCode instead of numeric month for lunisolar calendars', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should use monthCode instead of numeric month for lunisolar calendars', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     expect(stats.monthCodeGetterCalled).toBe(true);
   });
 
-  test('should use monthsInYear as the upper bound when iterating through months', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should use monthsInYear as the upper bound when iterating through months', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     expect(stats.monthsInYearGetterCalled).toBe(true);
   });
 
-  test('should use toLocaleString specifying the calendar in locale or options', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should use toLocaleString specifying the calendar in locale or options', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     const hasLocalizedCalendar = stats.toLocaleStringCalls.some(call => {
       const localesStr = String(call.locales || '');
       return localesStr.includes('-u-ca-') || (call.options && call.options.calendar);
@@ -419,23 +424,23 @@ test.describe('Temporal API Support Grader', () => {
     expect(hasLocalizedCalendar).toBe(true);
   });
 
-  test('should use Temporal.PlainDate.compare to compare dates', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should use Temporal.PlainDate.compare to compare dates', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     expect(stats.originalCompareCalled).toBe(true);
   });
 
-  test('should use daysInMonth when checking month invariants or doing day iterations', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should use daysInMonth when checking month invariants or doing day iterations', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     expect(stats.daysInMonthGetterCalled).toBe(true);
   });
 
-  test('should not use legacy Date object for non-Gregorian calculations', async ({ page }) => {
-    const stats = await setupNormalPage(page);
+  test('should not use legacy Date object for non-Gregorian calculations', async ({ page, TARGET_URL }) => {
+    const stats = await setupNormalPage(page, TARGET_URL);
     expect(stats.legacyDateConstructorCalledWithArgs).toBe(false);
   });
 
-  test('should account for era names in systems relying on eras', async ({ page }) => {
-    await page.goto('file://' + process.env.TARGET_FILE);
+  test('should account for era names in systems relying on eras', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     await page.waitForFunction(() => {
       const el = document.getElementById('islamic-date');
       return el && el.innerText !== 'Loading...' && el.innerText !== '';
