@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CSS if() Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html {
+      font-size: 16px;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      --theme: light;
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    /* Change theme to dark for testing */
+    body.dark {
+      --theme: dark;
+    }
+
+    .card {
+      border: 1px solid #ccc;
+      
+      /* Base styles for unsupported browsers */
+      background-color: white;
+      color: black;
+      padding: 1rem;
+
+      /* Inline conditional values using if() */
+      background-color: if(style((--theme: dark)): black; else: white);
+      color: if(style((--theme: dark)): white; else: black);
+      padding: if(media((min-width: 600px)): 2rem; else: 1rem);
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="target">
+    <p>This card adapts its styling inline based on viewport and custom properties.</p>
+  </div>
+  <script>
+    // Toggle the theme for testing expectations
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+    }
+    window.toggleTheme = toggleTheme;
+  </script>
+</body>
+</html>
