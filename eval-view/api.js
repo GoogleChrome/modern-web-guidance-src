@@ -158,7 +158,7 @@ export class ApiClient {
         const { task: taskName, guide: guideName, runType } = parsed;
         const actualBaseApp = run.baseApp;
         let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
-        let entryPointPath = await this._findBestEntryPoint(logicalBasePath);
+        let entryPointPath = run.targetFile ? `${logicalBasePath}/${run.targetFile}` : await this._findBestEntryPoint(logicalBasePath);
 
         // Fallback for older results stored in a depth-2 folder structure (runDir/taskName/runType)
         if (!entryPointPath) {

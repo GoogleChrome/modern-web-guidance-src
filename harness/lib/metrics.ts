@@ -16,6 +16,7 @@ export interface RunResult {
   taskName?: string;
   baseApp?: string;
   prompt?: string;
+  targetFile?: string;
   tokenUsage?: { total: number; cached: number };
 }
 
