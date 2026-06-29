@@ -35,8 +35,6 @@ customElements.define('toggle-switch', ToggleSwitch);
 
 This avoids polluting the DOM with ARIA attributes and prevents consumers from accidentally clobbering them, while the accessibility tree still sees the correct role and state.
 
-{{ BASELINE_STATUS("aria-attribute-reflection") }}
-
 ## Focus management and `delegatesFocus`
 
 - Attach the shadow root with `delegatesFocus: true` when the component wraps focusable controls. Focusing the host then forwards focus to the first focusable child, and `:focus`/label clicks behave as users expect.
@@ -47,3 +45,10 @@ This avoids polluting the DOM with ARIA attributes and prevents consumers from a
 - **MANDATORY**: an `id` referenced by `aria-labelledby`, `aria-describedby`, `aria-controls`, etc. must live in the **same** tree as the referencing element. An attribute in the Light DOM cannot point at an `id` inside the shadow tree, and vice versa; the reference is silently ignored.
 - Keep each ARIA relationship within one root. If a label in the shadow tree must describe a slotted Light DOM element, move the relationship into one tree (e.g. render the label in the Light DOM, or use `aria-label` text instead of an `id` reference).
 - For element-to-element references that genuinely must cross roots, the emerging **Reference Target** mechanism is the standards direction, but it is not yet broadly available; design to keep references within a single tree today.
+- The reflected ARIA *element* properties — `ariaLabelledByElements`, `ariaDescribedByElements`, and siblings — let you set these relationships to actual element references in JS, with no `id` needed. Browser support is still limited and the rules for referencing across shadow roots are constrained and evolving, so verify before relying on them; today, treat them mainly as a cleaner way to wire *same-tree* relationships without minting ids.
+
+## Fallback strategies
+
+{{ BASELINE_STATUS("aria-attribute-reflection") }}
+
+Where the `ElementInternals` ARIA mixin is unavailable, set the role and ARIA state as attributes on the host instead (`this.setAttribute('role', 'switch')`). It works everywhere, at the cost of putting attributes in the DOM that a consumer could override.

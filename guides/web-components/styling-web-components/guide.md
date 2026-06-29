@@ -25,9 +25,7 @@ Shadow DOM is a style boundary: page rules don't reach in and component rules do
 :host-context([theme="dark"]) { background: #111; color: #eee; }
 ```
 
-`:host-context()` reaches *outside* the boundary to test ancestors, which makes it powerful for theming but has weaker support; gate any reliance on it and prefer an inherited CSS custom property (below) where possible.
-
-{{ BASELINE_STATUS("host-context") }}
+**Avoid `:host-context()`.** It reaches *outside* the boundary to test ancestors, but Firefox and Safari have declined to ship it and the CSSWG is leaning toward not developing it further — treat it as a Chromium-only dead end, not a forward-looking option. Theme through an inherited CSS custom property instead (below): the consumer sets the property on an ancestor and the component reads it across the boundary, which works everywhere and keeps both sides decoupled.
 
 ## Inherited properties and custom properties cross the boundary
 
@@ -74,7 +72,27 @@ Expose a few **high-level** parts (button, input, label), not every `<div>`; bro
 
 Choose between the two channels deliberately: **custom properties** for a constrained, design-system-safe set of values; **parts** for unrestricted styling of a specific element.
 
-{{ BASELINE_STATUS("shadow-parts") }}
+## Forwarding styles to a wrapped native element
+
+When a custom element wraps a native control (`<my-button>` around a real `<button>`), three things routinely trip people up:
+
+- **Form controls don't inherit typography.** `color` and custom properties cross the boundary, but `<button>`, `<input>`, and `<select>` take `font` and friends from the UA stylesheet, which does *not* inherit. The wrapped control therefore renders in the platform font, not the page font, until you set `font: inherit` (and usually `color: inherit`) on it inside the shadow tree. This is the single most common miss.
+- **`:host` styles don't reach the inner element.** Setting `background`/`border`/`padding` on `:host` styles the host box, not the control inside it. Forward deliberately: expose the control as a `::part` for open-ended styling, or pipe a fixed set of values through custom properties — a `:host` rule does not cascade into the wrapped element.
+- **Avoid the `display: contents` + `all: inherit` shortcut.** Collapsing the host with `display: contents` and resetting the control with `all: inherit` looks like a way to make the wrapper "disappear," but `all` is a sledgehammer that also wipes useful UA defaults, `display: contents` removes the host's own box (so it can no longer carry padding, border, or background), and it interferes with anchor positioning against the host. Prefer `::part` or custom properties.
+
+## `:state()`: style the component's own states
+
+A custom element can expose internal boolean states through `ElementInternals` (see {{ GUIDE_REF("custom-elements") }} for setting them), and those states become a styling channel across the boundary — like `::part` and custom properties, but for *state* rather than structure or values. Match them inside the shadow tree with `:host(:state(name))`, and from a consumer's stylesheet with `tag-name:state(name)`:
+
+```css
+/* Inside the component's shadow tree. */
+:host(:state(busy)) button { opacity: 0.6; pointer-events: none; }
+
+/* From the consumer's stylesheet — a read-only public hook. */
+favorite-button:state(favorited) { filter: drop-shadow(0 0 4px crimson); }
+```
+
+Unlike a reflected attribute, a custom state is **read-only to the outside**: consumers can style it but cannot set or forge it, so the component stays the sole writer. Prefer it over a `data-*` attribute whenever the state is owned by the component and only needs to be styled.
 
 ## `@layer` and container queries inside components
 
@@ -89,6 +107,14 @@ Choose between the two channels deliberately: **custom properties** for a constr
 }
 ```
 
+## Fallback strategies
+
+{{ BASELINE_STATUS("shadow-parts") }}
+
 {{ BASELINE_STATUS("cascade-layers") }}
 
 {{ BASELINE_STATUS("container-queries") }}
+
+{{ BASELINE_STATUS("host-context") }}
+
+`::part`, cascade layers, and container queries are broadly available; theme primarily through inherited custom properties, which work even where these don't. As noted above, do **not** rely on `:host-context()` — it is effectively Chromium-only and not a forward-looking option.

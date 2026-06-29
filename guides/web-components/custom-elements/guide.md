@@ -10,36 +10,14 @@ web-feature-ids:
 
 A custom element is a class registered against a tag name via `customElements.define()`. Registration and basic lifecycle are well understood; the rules below target the parts routinely implemented incorrectly.
 
-## Registration and base class
+## Lifecycle: the parts that get implemented wrong
 
-- **MANDATORY**: The tag name must be kebab-case with at least one hyphen (e.g. `my-element`). This is what distinguishes custom elements from current and future built-ins.
-- Extend the base `HTMLElement` class. Avoid *customized built-in elements* (`extends HTMLButtonElement` with `is="…"`); Safari has permanently declined to ship them.
+The callbacks themselves are well documented; these are the misconceptions that cause bugs:
 
-```javascript
-class MyElement extends HTMLElement {
-  constructor() {
-    super(); // ✅ MANDATORY: call super() first, before touching `this`.
-    this.attachShadow({ mode: 'open' });
-  }
-  connectedCallback() {
-    this.render();
-  }
-}
-customElements.define('my-element', MyElement);
-```
-
-{{ BASELINE_STATUS("customized-built-in-elements") }}
-
-## Lifecycle: do the right work in the right callback
-
-| Callback | Use for | Avoid |
-| :--- | :--- | :--- |
-| `constructor` | Attaching the shadow root, initializing internal state. | DOM reads/writes, reading attributes or children (the element may not be in the document yet). |
-| `connectedCallback` | Setup that needs the DOM: rendering, adding listeners, reading attributes. May run more than once if the element is moved. | Assuming it runs only once; assuming all Light DOM children are present (see upgrade timing below). |
-| `disconnectedCallback` | Tearing down global listeners, timers, and observers to prevent leaks. | Assuming the element is gone for good (it may be re-inserted). |
-| `attributeChangedCallback(name, old, new)` | Reacting to changes of attributes named in `observedAttributes`. | Heavy work for attributes that don't affect output. |
-
-The constructor **MANDATORY** rule is strict: calling `super()` after any statement that touches `this` throws. Initialize nothing before it.
+- **`connectedCallback` can run more than once.** It fires on every insertion, so moving the element re-runs it. Make setup idempotent — don't assume a single first run.
+- **Tear down in `disconnectedCallback`.** Remove global listeners, timers, and observers or you leak; but the element may be re-inserted, so don't treat teardown as permanent.
+- **The constructor can't see the DOM.** No attributes, children, or layout exist yet — read attributes and children in `connectedCallback` instead.
+- **`attributeChangedCallback` fires only for `observedAttributes`,** and should stay cheap for attributes that don't affect output.
 
 ## Upgrade timing and `:defined`
 
@@ -50,12 +28,18 @@ Two consequences models routinely miss:
 1. **Attributes and children may already be present** when your constructor/`connectedCallback` runs on upgrade. Read existing attributes in `connectedCallback` to sync initial state, and never assume the element started empty.
 2. **Children may still be missing** even in `connectedCallback` if the HTML parser hasn't reached them yet. If you depend on Light DOM children, wait for them: use a `slotchange` listener, or defer with `customElements.whenDefined()`.
 
-Style undefined elements out of view to avoid a flash of unstyled content:
+Hide undefined elements to avoid a flash of unstyled content — but **fail open**, so the content stays reachable if the script never loads. Animate `opacity` with a delay rather than hard-hiding with `visibility: hidden`, so the element reveals itself after a timeout even when it is never upgraded:
 
 ```css
-/* Hide the element until its definition has upgraded it. */
-my-element:not(:defined) { visibility: hidden; }
+my-element:not(:defined) {
+  opacity: 0;
+  /* Reveal anyway after 2s, so a failed or slow script never hides content for good. */
+  animation: defined-fallback 0.2s 2s forwards;
+}
+@keyframes defined-fallback { to { opacity: 1; } }
 ```
+
+Scope these guards to the elements that need them — or to a specific subtree via `:has(:not(:defined))` — rather than the whole `body`. One slow, non-critical widget (a share button, say) should not delay paint for the entire page.
 
 ```javascript
 await customElements.whenDefined('my-element'); // resolves once registered
@@ -85,14 +69,66 @@ class MyToggle extends HTMLElement {
 }
 ```
 
+### Where the value lives
+
+The example above keeps the **DOM as the source of truth** — each getter reads `getAttribute`. That's the right default for a handful of simple, string-ish attributes: there is only one place the state can live, so it can't desync.
+
+For richer components, keep the **source of truth in a JS field** and reflect *outward* to an attribute only when something else must see it — CSS targeting, or a consumer reading it. Reading a field is far cheaper than parsing and coercing an attribute on every access, and non-string values never round-trip through serialization. This is why libraries like Lit hold state in JS and reflect selectively rather than treating attributes as storage: reflect only what the outside world must observe, not every property.
+
 Pitfalls:
 
 - **`observedAttributes` discipline**: list only attributes whose change must re-render or trigger a side effect. Observing everything adds a callback to every mutation for no benefit.
 - **Reflection loops**: a setter that writes an attribute will re-enter `attributeChangedCallback`. Guard with an `oldVal !== newVal` check, as above.
-- **Style-only state**: reflect a property to an attribute purely for CSS targeting (`:host([loading])`) *without* observing it, but only when the component is the sole writer of that attribute.
+- **Style-only state**: for internal state that exists only to drive styling (loading, active, expanded), prefer **custom states** over reflecting a synthetic attribute — see [Custom states](#custom-states) below. Reflect to an attribute only when consumers must be able to set the state from markup.
+
+## Custom states
+
+Custom states are boolean flags an element exposes *about itself* for CSS to target, set through `ElementInternals` and matched with the `:state()` pseudo-class. Use them for internal, runtime UI state — `busy`, `expanded`, `invalid` — instead of reflecting a synthetic attribute: they can't collide with a consumer's attributes, never appear in the DOM, and are read-only from outside (a consumer can *style* `:state()` but can't forge it).
+
+```javascript
+class AsyncButton extends HTMLElement {
+  #internals;
+  #action = async () => {};
+
+  constructor() {
+    super();
+    this.#internals = this.attachInternals();
+  }
+
+  set action(fn) { this.#action = fn; } // host supplies the work to run
+
+  async run() {
+    if (this.#internals.states.has('busy')) return; // guard re-entry
+    this.#internals.states.add('busy');
+    this.#internals.states.delete('success');
+    try {
+      await this.#action();
+      this.#internals.states.add('success');
+    } catch {
+      this.#internals.states.add('error');
+    } finally {
+      this.#internals.states.delete('busy');
+    }
+  }
+}
+```
+
+`CustomStateSet` is a set, so independent states compose (`busy` plus `error`) without inventing a combined `data-status` enum.
+
+**Custom state is runtime-only.** It is not serialized to the DOM, so it does not survive a reload, the element being re-created, or server rendering. If the state must be set declaratively in markup or persist across loads, that is a job for an **attribute** (see [Where the value lives](#where-the-value-lives)) — restore it in `connectedCallback` from your source of truth. Rule of thumb: custom state for what the component derives and owns at runtime and only needs to *style*; an attribute for what must be set from markup or serialized.
+
+For styling these states — both inside the component and from a consumer's stylesheet — see {{ GUIDE_REF("styling-web-components") }}.
 
 ## Naming conventions
 
-- Public properties and methods: `camelCase`, matching DOM conventions (`this.userName`, `this.refresh()`).
-- True-private state: native `#` fields (`#count`) for hard encapsulation; a `_` prefix only when subclasses must still reach it.
+- True-private state: native `#` fields (`#count`) for hard encapsulation; a `_` prefix only when subclasses must still reach it. Note `#` fields are not inherited — a subclass cannot see a base class's private fields.
+- Symbol-keyed properties are a middle ground: hidden from ordinary enumeration, but reachable by any code holding the symbol (export it, or expose it as a `static` field on the class). Because each symbol is unique, two symbols sharing a description never collide — handy when a subclass or sibling needs controlled access that `#` fields can't provide.
 - Do **not** shadow global attributes (`style`, `class`, `id`, `slot`, `part`, `title`, `lang`, `dir`) with your own properties; doing so breaks their built-in behavior. Note `disabled` is only global on form controls; on other elements you must implement its effect yourself.
+
+When naming a new API surface, follow the platform's own conventions — see the [W3C naming principles](https://www.w3.org/TR/design-principles/#naming-is-hard).
+
+## Fallback strategies
+
+{{ BASELINE_STATUS("customized-built-in-elements") }}
+
+Customized built-in elements (`is="…"`) are not universally supported — Safari has permanently declined them. Build **autonomous** custom elements (extending `HTMLElement`) instead, or wrap the native element and forward what you need; do not ship `is="…"` to production.

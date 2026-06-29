@@ -56,7 +56,12 @@ Key points:
 
 - `static formAssociated = true` is **MANDATORY**; it unlocks the form-related `ElementInternals` methods and the `formXxxCallback` lifecycle.
 - `setFormValue(value)` is what submits, with no hidden input required. Pass a `FormData` for multi-value controls.
-- `setValidity(flags, message, anchor)` integrates with native constraint validation: the form won't submit while invalid, `:invalid`/`:valid` apply, and the anchor element receives focus on report. Call `setValidity({})` to clear.
+- `setValidity(flags, message, anchor)` integrates with native constraint validation: the form won't submit while invalid, `:invalid`/`:valid` apply, and the anchor element receives focus on report. Call `setValidity({})` to clear. The interaction-aware `:user-valid`/`:user-invalid` pseudo-classes are *not* consistently wired up for form-associated elements across browsers — verify support before relying on them rather than assuming they track user interaction the way they do for native controls.
 - Implement `formResetCallback`, `formDisabledCallback`, and `formStateRestoreCallback` so the element behaves like a native control on reset, `fieldset[disabled]`, and back/forward autofill restore.
+- Follow platform conventions for dispatched events and prefer the built-in `input` and `change` events over custom ones. `input` fires when the value changes as a direct result of user action (typing, dragging a slider); `change` fires once per stream of changes, when the user commits (releasing the slider, blurring the field). Construct them with `InputEvent` and `Event` respectively.
+
+## Fallback strategies
 
 {{ BASELINE_STATUS("form-associated-custom-elements") }}
+
+Feature-detect with `static formAssociated` support before relying on it: `'attachInternals' in HTMLElement.prototype && 'setFormValue' in ElementInternals.prototype`. Where it is unavailable, fall back to a visually-hidden native `<input>` synced to the control's value so the form still submits — the one case where the hidden-input pattern is justified.

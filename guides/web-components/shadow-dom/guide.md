@@ -16,10 +16,7 @@ A shadow root is an encapsulated DOM subtree attached to a host element: styles 
 this.attachShadow({ mode: 'open', delegatesFocus: true });
 ```
 
-- Prefer `mode: 'open'` so dev tools and `element.shadowRoot` can inspect the tree. Use `'closed'` only when you must hide the internal structure from page scripts.
-- `delegatesFocus: true` makes focusing the host move focus to the first focusable element inside the shadow tree, and routes `:focus` styling to the host. Set it whenever the component wraps focusable controls; it is required for label-click and keyboard accessibility.
-
-{{ BASELINE_STATUS("shadow-dom") }}
+`delegatesFocus: true` makes focusing the host move focus to the first focusable element inside the shadow tree, and routes `:focus` styling to the host. Set it whenever the component wraps focusable controls; it is required for label-click and keyboard accessibility. (Use `mode: 'open'` in almost all cases — see the cross-cutting rules in {{ GUIDE_REF("web-components") }}.)
 
 ## Templates: construct the tree efficiently
 
@@ -48,22 +45,13 @@ customElements.define('my-card', MyCard);
 
 Keep templates lean. Deeply nested "div soup" and many levels of nested shadow roots both add measurable style-resolution and layout cost, a major performance hit at scale. Prefer a flat structure and semantic elements.
 
-## Slots: project Light DOM content
+## Slots: the parts that surprise people
 
-A `<slot>` is a placeholder in the shadow tree that displays Light DOM children of the host. The unnamed `<slot>` is the **default** slot; any child not assigned to a named slot lands there (including whitespace text nodes). Named slots receive children carrying a matching `slot="name"` attribute.
+Default vs. named slots work as documented; these are the behaviors that bite:
 
-```html
-<my-card>
-  <h2 slot="header">Title</h2>
-  <p>Body content goes to the default slot.</p>
-  <small slot="footer">Footer</small>
-</my-card>
-```
-
-- **MANDATORY**: use semantic elements inside the template. Most accessibility failures in shadow trees come from non-semantic markup; a slot does not change the role of what it projects.
-- **DOM order is preserved, not slot order**: projected nodes keep their original Light DOM order for `:first-child`/`:last-child` purposes, regardless of which slot they fill. A `::slotted(*:first-child)` rule targets the first *DOM* child, not the first child of that slot, so it often will not match what you expect.
-
-React to content changes with the `slotchange` event, which fires when the set of assigned nodes changes (including on initial assignment):
+- **Whitespace counts.** Text nodes between elements (including pure whitespace) are assigned to the default slot, so a default slot is rarely truly "empty."
+- **DOM order is preserved, not slot order.** Projected nodes keep their original Light DOM order for `:first-child`/`:last-child` purposes, regardless of which slot they fill. A `::slotted(*:first-child)` rule targets the first *DOM* child, not the first child of that slot, so it often will not match what you expect.
+- **`slotchange` is the upgrade-timing signal.** It fires when assigned nodes change (including initial assignment) and is the reliable way to know Light DOM children have arrived after an upgrade, when they may not have existed during `connectedCallback`.
 
 ```javascript
 this.shadowRoot.querySelector('slot[name="header"]')
@@ -72,8 +60,6 @@ this.shadowRoot.querySelector('slot[name="header"]')
     this.toggleAttribute('has-header', nodes.length > 0);
   });
 ```
-
-`slotchange` is also the reliable signal that Light DOM children have arrived after an upgrade, when they may not have existed during `connectedCallback`.
 
 ## Loading stylesheets into a shadow root
 
@@ -98,3 +84,11 @@ class MyCard extends HTMLElement {
   }
 }
 ```
+
+## Fallback strategies
+
+{{ BASELINE_STATUS("shadow-dom") }}
+
+{{ BASELINE_STATUS("slot") }}
+
+Shadow DOM and slots are broadly available. Where you must support engines without them (or run without JS), render the component's markup into the Light DOM instead and scope styles with a class or BEM convention — you lose encapsulation, but the content stays functional.

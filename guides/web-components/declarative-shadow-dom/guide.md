@@ -31,8 +31,6 @@ Nest a `<template>` with the `shadowrootmode` attribute as the first child of th
 </my-card>
 ```
 
-{{ BASELINE_STATUS("declarative-shadow-dom") }}
-
 ## Hydration timing
 
 When the matching class is registered, the browser upgrades the host. Because the shadow root **already exists**, the constructor must not blindly create a second one:
@@ -61,3 +59,9 @@ DSD renders correctly on first paint only if styles ship inside the declarative 
 - Put component CSS **inside** the `<template shadowrootmode>` (a `<style>` tag or a `<link>`), not in a separate script-loaded sheet.
 - Pair with `my-card:not(:defined) { … }` only for styles that must wait for JS; the structural styles should already be in the shadow root and need no such guard.
 - Do not re-render the shadow tree on hydration. Treat the server markup as authoritative and attach behavior to it.
+
+## Fallback strategies
+
+{{ BASELINE_STATUS("declarative-shadow-dom") }}
+
+In engines that don't parse `shadowrootmode`, the template is inert and its content is not attached as a shadow root. Detect this (`HTMLTemplateElement.prototype.hasOwnProperty('shadowRootMode')`) and, if absent, attach the shadow root imperatively from the same markup during upgrade so the component still renders.

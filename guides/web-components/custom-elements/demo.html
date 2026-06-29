@@ -3,10 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Custom Elements: counter with attribute/property reflection</title>
+  <title>Custom Elements: attribute/property reflection and custom states</title>
   <style>
-    /* Hide the element until its definition has upgraded it (no FOUC). */
-    my-counter:not(:defined) { visibility: hidden; }
+    /* Hide the elements until their definitions have upgraded them (no FOUC). */
+    my-counter:not(:defined),
+    async-button:not(:defined) { visibility: hidden; }
+
+    /* Consumer-facing styling hook: a custom state, not an attribute. */
+    async-button:state(success) { outline: 2px solid seagreen; }
+    async-button:state(error)   { outline: 2px solid firebrick; }
+
+    body { font-family: system-ui, sans-serif; display: grid; gap: 1.5rem; padding: 1rem; }
   </style>
 </head>
 <body>
@@ -14,10 +21,14 @@
        reads its initial state from the attribute in connectedCallback. -->
   <my-counter count="3"></my-counter>
 
+  <!-- Transient lifecycle state (busy/success/error) is internal and runtime-only,
+       so it lives as a custom state rather than a reflected attribute. -->
+  <async-button>Save changes</async-button>
+
   <script>
     // Build the shadow tree once, then update only the text node that changes.
-    const template = document.createElement('template');
-    template.innerHTML = `
+    const counterTemplate = document.createElement('template');
+    counterTemplate.innerHTML = `
       <style>
         :host { display: inline-flex; gap: .5rem; align-items: center;
                 padding: 1rem; border: 1px solid #ccc; border-radius: 8px; }
@@ -33,7 +44,7 @@
       constructor() {
         super(); // MANDATORY: first statement, before touching `this`.
         this.attachShadow({ mode: 'open' });
-        this.shadowRoot.append(template.content.cloneNode(true));
+        this.shadowRoot.append(counterTemplate.content.cloneNode(true));
         this.#output = this.shadowRoot.getElementById('value');
         this.shadowRoot.getElementById('inc')
           .addEventListener('click', () => { this.count += 1; });
@@ -55,6 +66,59 @@
     }
 
     customElements.define('my-counter', MyCounter);
+
+    // --- Custom states: a button that reflects its async lifecycle ---
+
+    const buttonTemplate = document.createElement('template');
+    buttonTemplate.innerHTML = `
+      <style>
+        button { padding: .5em 1em; cursor: pointer; }
+        .spinner { display: none; }
+        /* The component styles its OWN states from inside the shadow tree. */
+        :host(:state(busy)) button    { opacity: .6; pointer-events: none; }
+        :host(:state(busy)) .spinner  { display: inline; }
+        :host(:state(success)) button { background: seagreen; color: white; }
+      </style>
+      <button type="button"><span class="spinner">⏳</span> <slot>Run</slot></button>
+    `;
+
+    class AsyncButton extends HTMLElement {
+      #internals;
+      // Demo action: resolves after a short delay to simulate a network call.
+      #action = () => new Promise((resolve) => setTimeout(resolve, 1200));
+
+      constructor() {
+        super();
+        this.#internals = this.attachInternals();
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.append(buttonTemplate.content.cloneNode(true));
+      }
+
+      // The host supplies the work to perform.
+      set action(fn) { this.#action = fn; }
+
+      connectedCallback() {
+        this.shadowRoot.querySelector('button')
+          .addEventListener('click', () => this.run());
+      }
+
+      async run() {
+        if (this.#internals.states.has('busy')) return; // guard re-entry
+        this.#internals.states.add('busy');
+        this.#internals.states.delete('success');
+        this.#internals.states.delete('error');
+        try {
+          await this.#action();
+          this.#internals.states.add('success'); // CustomStateSet composes states
+        } catch {
+          this.#internals.states.add('error');
+        } finally {
+          this.#internals.states.delete('busy');
+        }
+      }
+    }
+
+    customElements.define('async-button', AsyncButton);
   </script>
 </body>
 </html>

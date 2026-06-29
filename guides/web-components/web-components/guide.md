@@ -17,7 +17,18 @@ Reach for a custom element only when you need encapsulated behavior, lifecycle, 
 - The thing is purely presentational with no behavior. A class on a native element is more performant, and scopable with `@layer` or `@scope`.
 - You only need style scoping on the server with no interactivity; a scoped stylesheet or Declarative Shadow DOM (without an upgrade) may be enough.
 
-Rebuilding native semantics (a custom `<my-button>` that re-creates focus, activation, and ARIA) is the most common misuse: you inherit the platform's accessibility for free only if you reuse the native element.
+Rebuilding native semantics (a custom `<my-button>` that re-creates focus, activation, and ARIA) is the most common misuse: you inherit the platform's accessibility for free only if you reuse the native element. When a `<my-button>`-style wrapper *is* warranted — usually for shared styling hooks, extra markup, or behavior a native element can't express — wrap the real `<button>` rather than re-implementing it (see {{ GUIDE_REF("styling-web-components") }} for forwarding styles to an internal native element).
+
+The test is whether you need **encapsulated state, a scriptable API, or behavior the native element can't express** — not merely a different look. A like/favorite toggle qualifies: it carries latched domain state, exposes that state as a styling hook for the surrounding page, and dispatches its own `change` event — none of which a styled `<button>` gives you. A button that only changes color when pressed does not: reach for `<button>` + CSS. When you do build it, model its state with a custom state or attribute as appropriate (see {{ GUIDE_REF("custom-elements") }}).
+
+## Match the tool to the codebase
+
+Whether something *should* be a custom element depends on what the project already uses. Agents tend to over-abstract and reach for a new element too eagerly — when in doubt, the lighter option (native element, CSS, a server template) is usually right, and you can promote to a custom element later if reuse or behavior actually demands it. Heuristics, in rough priority:
+
+- **The codebase already has a component model (React, Vue, Svelte, …).** Default to that framework's component for in-app UI. Reach for a custom element only when the thing must escape or outlive the framework: a design-system primitive shared across apps or frameworks, a widget dropped into markup the framework doesn't control, or output that must work as plain HTML (email, CMS, SSR fragments). Don't stand up a parallel component system for ordinary in-app views.
+- **No tooling, mostly static markup.** Prefer plain HTML + CSS, or a server template/partial. A custom element earns its keep only where you genuinely need behavior, lifecycle, or a JS-backed API on the tag — not merely to share markup, which a server include or `<template>` does without shipping any JS.
+- **Static site generator with islands of interactivity.** Render the markup statically; reserve the custom element for the interactive part. For "lots of markup, a little interactivity," keep the markup in Light DOM (or Declarative Shadow DOM) and let a small custom element progressively enhance it, rather than re-rendering everything from JS.
+- **You could push a built-in element further instead.** Taking a native element as far as it goes (CSS, a few listeners, the occasional pseudo-element) is usually preferable to a custom element, because you keep the platform's accessibility and behavior for free. Cross over to a custom element when the workarounds stop being maintainable — when you'd be fighting the element's built-in behavior, or the authoring experience becomes worse than a clean component API would be. Needing a little JS on a built-in element is not, by itself, a reason to replace it.
 
 ## Cross-cutting rules
 
@@ -29,22 +40,6 @@ These hold across every guide below:
 - **MANDATORY**: ARIA `id` references (`aria-labelledby`, `aria-describedby`, `aria-controls`) cannot cross a shadow boundary; the referencing element and the `id` it points to must live in the same tree.
 - Prefer `attachShadow({ mode: 'open' })` so dev tools, page scripts, and server hydration can reach `element.shadowRoot`. Use `'closed'` only when you must hide internal structure from page scripts.
 - Avoid *customized built-in elements* (`extends HTMLButtonElement` with `is="…"`); Safari has permanently declined to ship them.
-
-## Glossary
-
-| Term | Definition |
-| :--- | :--- |
-| **Custom Element** | A user-defined HTML tag registered via `customElements.define()`. |
-| **Autonomous Custom Element** | A custom element extending the base `HTMLElement` class (e.g. `<my-card>`). |
-| **Customized Built-in Element** | A custom element extending a specific native element (e.g. `<button is="my-button">`). Not recommended for production; Safari has declined to implement them. |
-| **Shadow DOM** | An encapsulated DOM subtree attached to an element, isolated from the main document's styles and markup. |
-| **Shadow Root** | The root node of a Shadow DOM subtree. |
-| **Shadow Host** | The regular DOM node a shadow root is attached to. |
-| **Light DOM** | The regular DOM inside an element that is *not* part of its shadow tree. Slotted content lives here. |
-| **Slot** | A placeholder (`<slot>`) inside a shadow tree that projects Light DOM content into the component. |
-| **HTML Template** | The `<template>` element: inert markup that is parsed but not rendered, cloned for reuse. |
-| **ElementInternals** | The object returned by `this.attachInternals()`, exposing form participation, validity, and ARIA semantics to a custom element. |
-| **Observed Attributes** | The static list of attribute names that trigger `attributeChangedCallback` when changed. |
 
 ## Use-case guide matrix
 
