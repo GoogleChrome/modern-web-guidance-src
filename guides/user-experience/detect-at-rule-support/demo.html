@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detect at-rule support</title>
+  <style>
+    /*
+      Baseline. Always applies, including in browsers that do not implement
+      the at-rule() function. The card's transition lives here so the fade
+      timing carries over to the unsupporting fallback path.
+    */
+    .card {
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      border: 2px solid #999;
+      background: rgb(220, 220, 220);
+      color: #111;
+      margin: 0.75rem 0;
+      opacity: 1;
+      transition: opacity 0.4s ease-out;
+    }
+
+    .card h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+    .card p { margin: 0; font-size: 0.95rem; }
+
+    /*
+      Enhancement gated on at-rule support. The argument is a single
+      at-keyword token. The body uses the @starting-style at-rule whose
+      grammar this query is detecting. Browsers that do not implement
+      at-rule() drop the entire block, so the cards still render — just
+      without the fade-in.
+    */
+    @supports at-rule(@starting-style) {
+      @starting-style {
+        .card {
+          opacity: 0;
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Detect at-rule support</h1>
+  <p>The cards keep a universal baseline. The fade-in animation is gated on
+    <code>@supports at-rule(@starting-style)</code>.</p>
+
+  <div class="card">
+    <h2>Card one</h2>
+    <p>Renders in every browser; fades in only where <code>@starting-style</code> is recognized.</p>
+  </div>
+  <div class="card">
+    <h2>Card two</h2>
+    <p>Same baseline, same enhancement.</p>
+  </div>
+  <div class="card">
+    <h2>Card three</h2>
+    <p>Same baseline, same enhancement.</p>
+  </div>
+</body>
+</html>
