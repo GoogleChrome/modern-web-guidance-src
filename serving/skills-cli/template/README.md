@@ -136,6 +136,14 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 </details>
 
 <details>
+<summary><b>Grok Build CLI</b></summary>
+
+```shell
+grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
+```
+</details>
+
+<details>
 <summary><b>Claude Code Plugin</b></summary>
 
 ```shell
