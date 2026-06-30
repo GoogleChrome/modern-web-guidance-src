@@ -884,10 +884,9 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const run = runs[i];
                  const s = getRunStats(run.results);
                  const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
-                 let files = run.files || [];
-                 if (files.length === 0) {
-                     try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
-                 }
+                 let files = [];
+                 try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
+                 if (files.length === 0) files = run.files || [];
 
                  const sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
                  const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
@@ -895,11 +894,12 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;
                  const isEarlyFailure = run.results && run.results.some(c => c.isEarlyFailure);
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
-                 const appUrl = api.source === 'remote'
+                 const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                 const appUrl = (api.source === 'remote' && !isLocalServer)
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
 
-                 const playWUrl = api.source === 'remote'
+                 const playWUrl = (api.source === 'remote' && !isLocalServer)
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}/grade-report/index.html`
                      : api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`);
 
