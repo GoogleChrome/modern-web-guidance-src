@@ -108,7 +108,7 @@ dialog[open]::backdrop,
 
 ## Fallback strategies
 
-#### Top-layer animation features
+### Top-layer animation features
 
 {{ BASELINE_STATUS("starting-style") }}
 {{ BASELINE_STATUS("transition-behavior") }}
@@ -130,18 +130,4 @@ if (!supportsTopLayerAnimation) {
 }
 ```
 
-#### popover
-
-{{ BASELINE_STATUS("popover") }}
-
-If the browser does not support Popover, use the `@oddbird/popover-polyfill`:
-
-```html
-<script type="module">
-  if (!HTMLElement.prototype.hasOwnProperty('popover')) {
-    await import('https://unpkg.com/@oddbird/popover-polyfill');
-  }
-</script>
-```
-
-Alternatively, for legacy support without a polyfill, use `position: fixed` and manually calculate coordinates via JavaScript `getBoundingClientRect()`.
+{{ FEATURE_FALLBACKS("popover") }}

@@ -23,9 +23,7 @@ Toast notifications are transient status messages. Unlike menus, they should not
 
 ### Fallback Strategies
 
-#### popover
-
-* **Guidance:** Use the [Popover Polyfill](https://github.com/oddbird/popover-polyfill). For legacy browsers, fall back to a fixed-position div with a high z-index.
+{{ FEATURE_FALLBACKS("popover") }}
 
 #### sibling-index()
 
