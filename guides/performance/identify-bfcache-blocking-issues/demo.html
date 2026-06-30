@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>bfcache Diagnostics Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      line-height: 1.5;
+    }
+    .status {
+      padding: 1rem;
+      border-radius: 4px;
+      background: #f0f0f0;
+      margin-bottom: 1rem;
+    }
+    .reason-list {
+      color: #d32f2f;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>bfcache Diagnostics</h1>
+  <div id="status" class="status" data-testid="bfcache-status">Checking bfcache status...</div>
+  
+  <div id="reasons-container" style="display: none;">
+    <h3>Blocking Reasons:</h3>
+    <ul id="reasons-list" class="reason-list" data-testid="blocking-reasons"></ul>
+  </div>
+
+  <p>
+    To test this demo:
+    <ol>
+      <li>Navigate away from this page (e.g., click <a href="https://example.com">Example.com</a>).</li>
+      <li>Click the browser's "Back" button.</li>
+      <li>Check the status above to see if it was restored from bfcache or why it wasn't.</li>
+    </ol>
+  </p>
+
+  <script>
+    // 1. Monitor bfcache restoration via pageshow event
+    window.addEventListener('pageshow', (event) => {
+      const statusEl = document.getElementById('status');
+      if (event.persisted) {
+        statusEl.textContent = 'Restored from bfcache! (Instant)';
+        statusEl.style.backgroundColor = '#e8f5e9';
+      } else {
+        statusEl.textContent = 'Full reload performed (Not from bfcache).';
+        statusEl.style.backgroundColor = '#ffebee';
+        
+        // 2. Use NotRestoredReasons API to identify why (if available)
+        checkBlockingReasons();
+      }
+    });
+
+    function checkBlockingReasons() {
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length === 0) return;
+
+      const navTiming = navEntries[0];
+      
+      // Feature check for notRestoredReasons
+      if ('notRestoredReasons' in navTiming && navTiming.notRestoredReasons) {
+        const reasons = navTiming.notRestoredReasons;
+        if (reasons.reasons && reasons.reasons.length > 0) {
+          displayReasons(reasons);
+        } else {
+          console.log('No specific blocking reasons reported by the API.');
+        }
+      } else {
+        console.warn('bfcache-blocking-reasons (notRestoredReasons) API is not supported in this browser.');
+      }
+    }
+
+    function displayReasons(reasons) {
+      const container = document.getElementById('reasons-container');
+      const list = document.getElementById('reasons-list');
+      container.style.display = 'block';
+      list.innerHTML = '';
+
+      reasons.reasons.forEach(reason => {
+        const li = document.createElement('li');
+        li.textContent = reason.reason;
+        list.appendChild(li);
+      });
+
+      // Also handle iframe reasons if present in the API structure
+      if (reasons.children) {
+        reasons.children.forEach(child => {
+          if (child.reasons) {
+            child.reasons.forEach(r => {
+              const li = document.createElement('li');
+              li.textContent = `(Iframe) ${r.reason}`;
+              list.appendChild(li);
+            });
+          }
+        });
+      }
+    }
+
+    // Recommendation: Avoid unload listeners to keep page eligible for bfcache
+    // Use pagehide instead for cleanup logic
+    window.addEventListener('pagehide', (event) => {
+      if (event.persisted) {
+        console.log('Page is entering bfcache...');
+      } else {
+        console.log('Page is being destroyed.');
+      }
+    });
+  </script>
+</body>
+</html>
