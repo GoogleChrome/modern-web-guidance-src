@@ -102,6 +102,13 @@ test.describe('Passkey Conditional Create', () => {
             json: async () => ({ status: 'ok' })
           } as any;
         }
+        if (url.includes('/api/signin') || url.includes('/api/login') || url.includes('/api/auth')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ status: 'ok', success: true })
+          } as any;
+        }
         return originalFetch(input, init);
       };
     });

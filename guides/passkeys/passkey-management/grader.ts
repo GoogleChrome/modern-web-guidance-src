@@ -99,65 +99,57 @@ test.describe('Passkey Management Expectations', () => {
 
   test('renders credentials list containing zeroed AAGUID bypassed item', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
-    await page.waitForTimeout(500); // DOM parsing delay
-    
-    await expect(page.locator('body')).toContainText('My Security Key');
+    await expect(page.locator('body')).toContainText('My Security Key', { timeout: 5000 });
   });
 
   test('invokes signalAllAcceptedCredentials on DOMContentLoaded load', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
-    await page.waitForFunction(() => (window as any).__signalAcceptedCalled === true, { timeout: 2000 }).catch(() => {});
-    
+    await page.waitForFunction(() => (window as any).__signalAcceptedCalled === true, { timeout: 5000 });
     const called = await page.evaluate(() => (window as any).__signalAcceptedCalled);
     expect(called).toBe(true);
   });
 
   test('invokes signalAllAcceptedCredentials upon credentials deletion triggers', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
-    await page.waitForTimeout(500);
-
     page.on('dialog', async dialog => {
-      await dialog.accept();
+      await dialog.accept().catch(() => {});
     });
 
-    const deleteBtn = page.locator('button').filter({ hasText: /Remove|Delete/i });
-    const count = await deleteBtn.count();
-    expect(count).toBeGreaterThan(0); // Ensures button actually exists and fails if absent!
+    const deleteBtn = page.locator('button').filter({ hasText: /Remove|Delete/i }).first();
+    await expect(deleteBtn).toBeVisible({ timeout: 5000 });
 
-    await deleteBtn.first().click();
-    await page.waitForFunction(() => (window as any).__signalAcceptedCalled === true, { timeout: 2000 }).catch(() => {});
+    await deleteBtn.click();
+    await page.waitForFunction(() => (window as any).__signalAcceptedCalled === true, { timeout: 5000 });
     const called = await page.evaluate(() => (window as any).__signalAcceptedCalled);
     expect(called).toBe(true);
   });
 
   test('invokes signalCurrentUserDetails upon credential rename', async ({ page, TARGET_URL }) => {
+    await page.addInitScript(() => {
+      window.prompt = () => 'Renamed Passkey';
+      window.confirm = () => true;
+    });
     await page.goto(TARGET_URL);
-    await page.waitForTimeout(500);
-
     page.on('dialog', async dialog => {
-      if (dialog.type() === 'prompt') {
-        await dialog.accept('Renamed Passkey');
-      } else {
-        await dialog.accept();
-      }
+      await dialog.accept('Renamed Passkey').catch(() => {});
     });
 
     const renameBtn = page.locator('button').filter({ hasText: /Rename/i }).first();
+    await expect(renameBtn).toBeVisible({ timeout: 5000 });
+
     await renameBtn.click();
-    await page.waitForFunction(() => (window as any).__signalDetailsCalled === true, { timeout: 2000 }).catch(() => {});
+    await page.waitForFunction(() => (window as any).__signalDetailsCalled === true, { timeout: 5000 });
     const called = await page.evaluate(() => (window as any).__signalDetailsCalled);
     expect(called).toBe(true);
   });
 
   test('renders provider icon and last-used timestamp for AAGUID-resolvable credentials', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
-    await page.waitForTimeout(500);
-
     const icon = page.locator('[data-testid="provider-icon"]').first();
-    await expect(icon).toBeVisible();
+    await expect(icon).toBeVisible({ timeout: 5000 });
 
     const lastUsed = page.locator('[data-testid="last-used"]').first();
-    await expect(lastUsed).toBeVisible();
+    await expect(lastUsed).toBeVisible({ timeout: 5000 });
   });
 
   test('feature-detects platform authenticator before rendering Create Passkey button', async ({ page, TARGET_URL }) => {
@@ -165,19 +157,27 @@ test.describe('Passkey Management Expectations', () => {
       (window as any).__mockPasskeyPlatformAuthenticator = false;
       (window as any).__capabilitiesCalled = false;
       if (window.PublicKeyCredential) {
-        const orig = window.PublicKeyCredential.getClientCapabilities;
+        const origCap = window.PublicKeyCredential.getClientCapabilities;
         Object.defineProperty(window.PublicKeyCredential, 'getClientCapabilities', {
           configurable: true,
           writable: true,
           value: async function() {
             (window as any).__capabilitiesCalled = true;
-            return orig ? orig.apply(this, arguments as any) : { passkeyPlatformAuthenticator: false };
+            return origCap ? origCap.apply(this, arguments as any) : { passkeyPlatformAuthenticator: false };
+          }
+        });
+        const origIsUser = window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable;
+        Object.defineProperty(window.PublicKeyCredential, 'isUserVerifyingPlatformAuthenticatorAvailable', {
+          configurable: true,
+          writable: true,
+          value: async function() {
+            (window as any).__capabilitiesCalled = true;
+            return origIsUser ? origIsUser.apply(this, arguments as any) : false;
           }
         });
       }
     });
     await page.goto(TARGET_URL);
-    await page.waitForTimeout(500);
     const createBtn = page.locator('[data-testid="create-passkey-button"]');
     if ((await createBtn.count()) === 0) {
       test.skip();
