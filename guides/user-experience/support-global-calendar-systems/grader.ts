@@ -1,6 +1,13 @@
 import { test, expect } from '../../test-fixture.ts';
+import * as fs from 'fs';
+import * as path from 'path';
 
 declare const process: any;
+
+const targetFile = process.env.TARGET_FILE;
+const filePath = targetFile ? path.resolve(targetFile) : '';
+const targetDir = filePath ? path.dirname(filePath) : '';
+const demoName = filePath ? path.basename(filePath) : '';
 
 interface GraderStats {
   assignCount: number;
@@ -16,6 +23,19 @@ interface GraderStats {
 }
 
 async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderStats> {
+  if (targetUrl && targetUrl.includes('localhost') && targetDir) {
+    await page.route(/(http:\/\/localhost(:\d+)?\/.*)/, async (route: any) => {
+      const requestPath = new URL(route.request().url()).pathname;
+      const sanitizedPath = requestPath === '/' ? demoName : requestPath.replace(/^\//, '');
+      const localFilePath = path.join(targetDir, sanitizedPath);
+
+      if (fs.existsSync(localFilePath)) {
+        await route.fulfill({ path: localFilePath });
+      } else {
+        await route.continue();
+      }
+    });
+  }
   await page.addInitScript(() => {
     const stats: GraderStats = {
       assignCount: 0,
@@ -61,68 +81,64 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
       if (val && typeof val === 'object') {
         stats.temporalUsed = true;
         
+        const spyOnMethod = (targetObj: any, prop: string, callback: (...args: any[]) => void) => {
+          let curr = targetObj;
+          while (curr && curr !== Object.prototype) {
+            if (Object.prototype.hasOwnProperty.call(curr, prop) || typeof curr[prop] === 'function') {
+              const origFn = curr[prop];
+              if (typeof origFn === 'function') {
+                curr[prop] = function(...args: any[]) {
+                  callback(...args);
+                  return origFn.apply(this, args);
+                };
+                return;
+              }
+            }
+            curr = Object.getPrototypeOf(curr);
+          }
+        };
+
+        const spyOnGetter = (targetObj: any, prop: string, callback: () => void) => {
+          let curr = targetObj;
+          while (curr && curr !== Object.prototype) {
+            const desc = Object.getOwnPropertyDescriptor(curr, prop);
+            if (desc && desc.get) {
+              const origGet = desc.get;
+              Object.defineProperty(curr, prop, {
+                configurable: true,
+                get() {
+                  callback();
+                  return origGet.call(this);
+                }
+              });
+              return;
+            }
+            curr = Object.getPrototypeOf(curr);
+          }
+        };
+
         if (val.PlainDate) {
-          if (val.PlainDate.prototype && val.PlainDate.prototype.withCalendar) {
-            const origWithCalendar = val.PlainDate.prototype.withCalendar;
-            val.PlainDate.prototype.withCalendar = function(...args: any[]) {
-              stats.originalWithCalendarCalled = true;
-              return origWithCalendar.apply(this, args);
-            };
-          }
-
-          if (val.PlainDate.compare) {
-            const origCompare = val.PlainDate.compare;
-            val.PlainDate.compare = function(...args: any[]) {
-              stats.originalCompareCalled = true;
-              return origCompare.apply(this, args);
-            };
-          }
-
           if (val.PlainDate.prototype) {
-            const descMonthCode = Object.getOwnPropertyDescriptor(val.PlainDate.prototype, 'monthCode');
-            if (descMonthCode && descMonthCode.get) {
-              const origGet = descMonthCode.get;
-              Object.defineProperty(val.PlainDate.prototype, 'monthCode', {
-                configurable: true,
-                get() {
-                  stats.monthCodeGetterCalled = true;
-                  return origGet.call(this);
-                }
-              });
-            }
-
-            const descMonthsInYear = Object.getOwnPropertyDescriptor(val.PlainDate.prototype, 'monthsInYear');
-            if (descMonthsInYear && descMonthsInYear.get) {
-              const origGet = descMonthsInYear.get;
-              Object.defineProperty(val.PlainDate.prototype, 'monthsInYear', {
-                configurable: true,
-                get() {
-                  stats.monthsInYearGetterCalled = true;
-                  return origGet.call(this);
-                }
-              });
-            }
-
-            const descDaysInMonth = Object.getOwnPropertyDescriptor(val.PlainDate.prototype, 'daysInMonth');
-            if (descDaysInMonth && descDaysInMonth.get) {
-              const origGet = descDaysInMonth.get;
-              Object.defineProperty(val.PlainDate.prototype, 'daysInMonth', {
-                configurable: true,
-                get() {
-                  stats.daysInMonthGetterCalled = true;
-                  return origGet.call(this);
-                }
-              });
-            }
-
-            if (val.PlainDate.prototype.toLocaleString) {
-              const origToLocaleString = val.PlainDate.prototype.toLocaleString;
-              val.PlainDate.prototype.toLocaleString = function(locales: any, options: any) {
-                stats.toLocaleStringCalls.push({ locales, options });
-                return origToLocaleString.call(this, locales, options);
-              };
-            }
+            spyOnMethod(val.PlainDate.prototype, 'withCalendar', () => {
+              stats.originalWithCalendarCalled = true;
+            });
+            spyOnGetter(val.PlainDate.prototype, 'monthCode', () => {
+              stats.monthCodeGetterCalled = true;
+            });
+            spyOnGetter(val.PlainDate.prototype, 'monthsInYear', () => {
+              stats.monthsInYearGetterCalled = true;
+            });
+            spyOnGetter(val.PlainDate.prototype, 'daysInMonth', () => {
+              stats.daysInMonthGetterCalled = true;
+            });
+            spyOnMethod(val.PlainDate.prototype, 'toLocaleString', (locales: any, options: any) => {
+              stats.toLocaleStringCalls.push({ locales, options });
+            });
           }
+
+          spyOnMethod(val.PlainDate, 'compare', () => {
+            stats.originalCompareCalled = true;
+          });
         }
       }
     }
@@ -158,13 +174,13 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
           with() { return pd; },
           toLocaleString(locales: any, options: any) {
             stats.toLocaleStringCalls.push({ locales, options });
-            return 'mock-date';
+            return '1447 AH';
           }
         };
         return pd;
       };
 
-      return {
+      const spied = {
         Now: {
           plainDateISO() {
             stats.temporalUsed = true;
@@ -174,7 +190,7 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
         PlainDate: {
           from(val: any) {
             stats.temporalUsed = true;
-            const calId = typeof val === 'object' && val.calendar ? val.calendar : 'iso8601';
+            const calId = typeof val === 'object' && val?.calendar ? val.calendar : 'iso8601';
             return createPlainDate(calId);
           },
           compare() {
@@ -183,7 +199,11 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
           }
         }
       };
+      spyOnTemporal(spied);
+      return spied;
     };
+
+    (globalThis as any).__createSpiedTemporal = createSpiedTemporal;
 
     let assignedValue: any = undefined;
     Object.defineProperty(globalThis, 'Temporal', {
@@ -193,7 +213,9 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
         return assignedValue || createSpiedTemporal();
       },
       set(val) {
-        spyOnTemporal(val);
+        if (val) {
+          spyOnTemporal(val);
+        }
         assignedValue = val;
         stats.assignCount++;
       }
@@ -201,30 +223,56 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
   });
 
   // Intercept js-temporal polyfill requests to fulfill locally without network calls
-  await page.route(/.*(@js-temporal\/polyfill|cdn\.jsdelivr\.net|esm\.sh\/@js-temporal|unpkg\.com\/@js-temporal).*/, async (route: any) => {
-    const wrapperScript = `
-      const T = (globalThis || window).Temporal;
-      export const Temporal = T;
-      export default { Temporal: T };
-    `;
-    await route.fulfill({
-      contentType: 'application/javascript',
-      body: wrapperScript
-    });
+  await page.route(/.*(@js-temporal\/polyfill|cdn\.jsdelivr\.net|esm\.sh\/@js-temporal|unpkg\.com\/@js-temporal|temporal-polyfill).*/, async (route: any) => {
+    const url = route.request().url();
+    const isEsm = url.includes('.esm') || url.includes('.mjs') || url.includes('esm.sh');
+
+    if (isEsm) {
+      const wrapperScript = `
+        const T = (globalThis || window).__createSpiedTemporal ? (globalThis || window).__createSpiedTemporal() : {};
+        if (typeof window !== 'undefined') window.Temporal = T;
+        if (typeof globalThis !== 'undefined') globalThis.Temporal = T;
+        export const Temporal = T;
+        export default { Temporal: T };
+      `;
+      await route.fulfill({
+        contentType: 'application/javascript',
+        body: wrapperScript
+      });
+    } else {
+      const scriptBody = `
+        (function() {
+          const T = (globalThis || window).__createSpiedTemporal ? (globalThis || window).__createSpiedTemporal() : {};
+          if (typeof window !== 'undefined') window.Temporal = T;
+          if (typeof globalThis !== 'undefined') globalThis.Temporal = T;
+        })();
+      `;
+      await route.fulfill({
+        contentType: 'application/javascript',
+        body: scriptBody
+      });
+    }
   });
 
   const url = targetUrl || ('file://' + process.env.TARGET_FILE);
   await page.goto(url);
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
 
-  // Wait for Temporal execution OR UI update
+  // Wait deterministically for Temporal API method execution (not tied to DOM element IDs)
   await page.waitForFunction(() => {
     const stats = (globalThis as any).__grader_stats__;
-    if (stats && (stats.temporalUsed || stats.originalWithCalendarCalled || stats.supportedValuesCalls.length > 0 || stats.toLocaleStringCalls.length > 0 || stats.assignCount > 0)) {
-      return true;
-    }
-    const el = document.getElementById('islamic-date');
-    return el && el.innerText !== 'Loading...' && el.innerText !== '';
+    return !!(stats && (
+      stats.originalWithCalendarCalled ||
+      stats.originalCompareCalled ||
+      stats.monthCodeGetterCalled ||
+      stats.monthsInYearGetterCalled ||
+      stats.daysInMonthGetterCalled ||
+      stats.toLocaleStringCalls.length > 0
+    ));
   }, { timeout: 5000 }).catch(() => {});
+
+  // Brief pause to allow any remaining async microtasks or rendering steps to settle
+  await page.waitForTimeout(300);
 
   // Return the stats from the browser context
   return await page.evaluate(() => (globalThis as any).__grader_stats__);
@@ -353,15 +401,20 @@ async function setupNativePage(page: any, targetUrl?: string): Promise<{ stats: 
 
   const url = targetUrl || ('file://' + process.env.TARGET_FILE);
   await page.goto(url);
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
 
   await page.waitForFunction(() => {
     const stats = (globalThis as any).__grader_stats__;
-    if (stats && (stats.temporalUsed || stats.originalWithCalendarCalled || stats.supportedValuesCalls.length > 0 || stats.toLocaleStringCalls.length > 0)) {
-      return true;
-    }
-    const el = document.getElementById('islamic-date');
-    return el && el.innerText !== 'Loading...' && el.innerText !== '';
+    return !!(stats && (
+      stats.originalWithCalendarCalled ||
+      stats.originalCompareCalled ||
+      stats.monthCodeGetterCalled ||
+      stats.toLocaleStringCalls.length > 0 ||
+      stats.temporalUsed
+    ));
   }, { timeout: 5000 }).catch(() => {});
+
+  await page.waitForTimeout(300);
 
   const stats = await page.evaluate(() => (globalThis as any).__grader_stats__);
   return { stats, polyfillRequested };
@@ -445,5 +498,4 @@ test.describe('Temporal API Support Grader', () => {
       expect(true).toBe(true);
     }
   });
-
 });

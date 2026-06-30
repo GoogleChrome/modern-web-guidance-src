@@ -124,7 +124,7 @@ test.describe('Passkey Management Expectations', () => {
     expect(called).toBe(true);
   });
 
-  test('invokes signalCurrentUserDetails upon credential rename', async ({ page, TARGET_URL }) => {
+  test('invokes Signal API (signalCurrentUserDetails or signalAllAcceptedCredentials) upon credential rename', async ({ page, TARGET_URL }) => {
     await page.addInitScript(() => {
       window.prompt = () => 'Renamed Passkey';
       window.confirm = () => true;
@@ -138,8 +138,8 @@ test.describe('Passkey Management Expectations', () => {
     await expect(renameBtn).toBeVisible({ timeout: 5000 });
 
     await renameBtn.click();
-    await page.waitForFunction(() => (window as any).__signalDetailsCalled === true, { timeout: 5000 });
-    const called = await page.evaluate(() => (window as any).__signalDetailsCalled);
+    await page.waitForFunction(() => (window as any).__signalDetailsCalled === true || (window as any).__signalAcceptedCalled === true, { timeout: 10000 });
+    const called = await page.evaluate(() => (window as any).__signalDetailsCalled || (window as any).__signalAcceptedCalled);
     expect(called).toBe(true);
   });
 

@@ -43,10 +43,24 @@ test.beforeEach(async ({ page }) => {
     });
 
     class MockSession {
-      contextUsage = 10;
-      contextWindow = 1024;
+      _contextUsage = 10;
+      _contextWindow = 1024;
       __source: string;
       __id: number;
+      get contextUsage() {
+        window.__LM_LOGS__.calls.push({ method: 'session.contextUsage.access' });
+        return this._contextUsage;
+      }
+      set contextUsage(val) {
+        this._contextUsage = val;
+      }
+      get contextWindow() {
+        window.__LM_LOGS__.calls.push({ method: 'session.contextWindow.access' });
+        return this._contextWindow;
+      }
+      set contextWindow(val) {
+        this._contextWindow = val;
+      }
       constructor(source: string) {
         this.__source = source;
         this.__id = ++window.__LM_LOGS__.sessionCounter;
@@ -227,7 +241,20 @@ test('7. session.promptStreaming() should be used with for-await and not onmessa
   expect(onmessageCall).toBeUndefined();
 });
 
+async function fillInputsIfEmpty(page: any) {
+  const inputs = await page.locator('textarea, input[type="text"]').all();
+  for (const input of inputs) {
+    if (await input.isVisible().catch(() => false)) {
+      const val = await input.inputValue().catch(() => '');
+      if (!val) {
+        await input.fill('Great coffee and delicious roast!').catch(() => {});
+      }
+    }
+  }
+}
+
 test('8. session.prompt() should be used for one-shot responses on a modern session', async ({ page }) => {
+  await fillInputsIfEmpty(page);
   const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
   if (await sentimentBtn.isVisible()) {
     await sentimentBtn.click();
@@ -243,6 +270,7 @@ test('8. session.prompt() should be used for one-shot responses on a modern sess
 });
 
 test('9. Output must never be set via innerHTML', async ({ page }) => {
+  await fillInputsIfEmpty(page);
   const buttons = await page.locator('button').all();
   for (const btn of buttons) {
     if (await btn.isVisible()) await btn.click();
@@ -253,6 +281,7 @@ test('9. Output must never be set via innerHTML', async ({ page }) => {
 });
 
 test('10. For structured output, responseConstraint option should be passed a JSON Schema', async ({ page }) => {
+  await fillInputsIfEmpty(page);
   const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
   if (await sentimentBtn.isVisible()) {
     await sentimentBtn.click();
@@ -277,6 +306,7 @@ test('11. Result of session.prompt() with responseConstraint should be parsed wi
     };
   });
   await page.reload();
+  await fillInputsIfEmpty(page);
   const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
   if (await sentimentBtn.isVisible()) {
     await sentimentBtn.click();
@@ -302,6 +332,7 @@ test('12. JSON.stringify() on schema not needed', async ({ page }) => {
     };
   });
   await page.reload();
+  await fillInputsIfEmpty(page);
   const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
   if (await sentimentBtn.isVisible()) {
     await sentimentBtn.click();
@@ -321,6 +352,7 @@ test('12. JSON.stringify() on schema not needed', async ({ page }) => {
 });
 
 test('13. session.destroy() should be called when a session is no longer needed', async ({ page }) => {
+  await fillInputsIfEmpty(page);
   const cloneBtn = page.locator('#clone-btn, #branch-btn, [data-testid="clone-btn"], button:has-text("Clone"), button:has-text("Branch")').first();
   if (await cloneBtn.isVisible()) {
     await cloneBtn.click();
@@ -336,6 +368,7 @@ test('13. session.destroy() should be called when a session is no longer needed'
 });
 
 test('14. AbortSignal should be passed to prompt(), not LanguageModel.create()', async ({ page }) => {
+  await fillInputsIfEmpty(page);
   const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
   if (await actionBtn.isVisible()) await actionBtn.click();
   await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.length > 0, { timeout: 4000 }).catch(() => {});
@@ -345,6 +378,7 @@ test('14. AbortSignal should be passed to prompt(), not LanguageModel.create()',
 });
 
 test('15. session.clone() usage and base destruction', async ({ page }) => {
+  await fillInputsIfEmpty(page);
   const cloneBtn = page.locator('#clone-btn, #branch-btn, [data-testid="clone-btn"], button:has-text("Clone"), button:has-text("Branch")').first();
   if (await cloneBtn.isVisible()) {
     await cloneBtn.click();
@@ -368,23 +402,9 @@ test('15. session.clone() usage and base destruction', async ({ page }) => {
 });
 
 test('16. contextUsage and contextWindow should be used', async ({ page }) => {
-  await page.addInitScript(() => {
-    const originalCreate = window.LanguageModel.create;
-    window.LanguageModel.create = async function() {
-      const session = await originalCreate.apply(this, arguments);
-      return new Proxy(session, {
-        get(target, prop) {
-          if (prop === 'contextUsage') window.__LM_LOGS__.calls.push({ method: 'session.contextUsage.access' });
-          if (prop === 'contextWindow') window.__LM_LOGS__.calls.push({ method: 'session.contextWindow.access' });
-          return (target as any)[prop];
-        }
-      });
-    };
-  });
-  await page.reload();
-  await page.waitForTimeout(500);
-  const cloneBtn = page.locator('#clone-btn, #branch-btn, [data-testid="clone-btn"], button:has-text("Clone"), button:has-text("Branch"), button').first();
-  if (await cloneBtn.isVisible()) await cloneBtn.click();
+  await fillInputsIfEmpty(page);
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
+  if (await actionBtn.isVisible()) await actionBtn.click();
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const usageAccess = logs.calls.find(c => c.method === 'session.contextUsage.access');

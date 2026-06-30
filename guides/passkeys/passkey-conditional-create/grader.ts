@@ -96,6 +96,14 @@ test.describe('Passkey Conditional Create', () => {
           } as any;
         }
         if (url.includes('/api/register/verify')) {
+          if ((window as any).__mockVerifyFail) {
+            return {
+              ok: false,
+              status: 400,
+              headers: new Headers({ 'Content-Type': 'application/json' }),
+              json: async () => ({ error: 'bad signature' })
+            } as any;
+          }
           return {
             ok: true,
             status: 200,
@@ -200,19 +208,7 @@ test.describe('Passkey Conditional Create', () => {
 
   test('Invokes signalUnknownCredential passing the Base64URL credential ID if server verification fails', async ({ page, TARGET_URL }) => {
     await page.addInitScript(() => {
-      const verifyFetch = window.fetch;
-      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = typeof input === 'string' ? input : (input as any).url || '';
-        if (url.includes('/api/register/verify')) {
-          return {
-            ok: false,
-            status: 400,
-            headers: new Headers({ 'Content-Type': 'application/json' }),
-            json: async () => ({ error: 'bad signature' })
-          } as any;
-        }
-        return verifyFetch(input, init);
-      };
+      (window as any).__mockVerifyFail = true;
     });
 
     await page.goto(TARGET_URL);
