@@ -128,9 +128,7 @@ const notes = await getAllNotes(db);
 
 {{ BASELINE_STATUS("indexeddb") }}
 
-IndexedDB is Baseline Widely Available and supported in all modern browsers. A fallback strategy is not typically required.
-
-### Feature detection
+IndexedDB is supported in all modern browsers. However, if it doesn't meet your Baseline target, use feature detection to check its availability and conditionally fall back to `localStorage` for older browsers.
 
 ```javascript
 if (indexedDB) {
