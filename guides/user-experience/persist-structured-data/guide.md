@@ -3,9 +3,6 @@ name: persist-structured-data
 description: Store and retrieve structured application data client-side using IndexedDB, enabling offline access, fast local reads, and reduced network dependency without relying on cookies or localStorage for complex data.
 web-feature-ids:
   - indexeddb
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
-  - https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB
 ---
 
 # Persist structured data with IndexedDB
