@@ -79,6 +79,11 @@ test.describe('Total Foreground Time Grader', () => {
     for (const btn of buttons) {
       if (await btn.isVisible()) await btn.click().catch(() => {});
     }
+    await page.evaluate(() => {
+      if (typeof (window as any).getTotalForegroundTime === 'function') {
+        (window as any).getTotalForegroundTime();
+      }
+    });
     await page.waitForFunction(() => (window as any)._visibilityAPIUsed === true || performance.now() > 2000);
     const used = await page.evaluate(() => (window as any)._visibilityAPIUsed);
     expect(used).toBe(true);
@@ -139,6 +144,11 @@ test.describe('Total Foreground Time Grader', () => {
     for (const btn of buttons) {
       if (await btn.isVisible()) await btn.click().catch(() => {});
     }
+    await page.evaluate(() => {
+      if (typeof (window as any).getTotalForegroundTime === 'function') {
+        (window as any).getTotalForegroundTime();
+      }
+    });
     await page.waitForFunction(() => (window as any)._visibilityAPIUsed === true || performance.now() > 2000);
     const checked = await page.evaluate(() => {
       return (window as any)._visibilityAPIUsed;

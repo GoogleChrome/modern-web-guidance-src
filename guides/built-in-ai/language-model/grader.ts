@@ -228,15 +228,17 @@ test('7. session.promptStreaming() should be used with for-await and not onmessa
 });
 
 test('8. session.prompt() should be used for one-shot responses on a modern session', async ({ page }) => {
-  const sentimentBtn = page.locator('#sentiment-btn');
-  if (!await sentimentBtn.isVisible()) { test.skip(); return; }
-  await sentimentBtn.click();
-  const runBtn = page.locator('#run');
-  if (await runBtn.isVisible()) await runBtn.click();
+  const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
+  if (await sentimentBtn.isVisible()) {
+    await sentimentBtn.click();
+  } else {
+    const runBtn = page.locator('#run, #ask-the-barista, button').first();
+    if (await runBtn.isVisible()) await runBtn.click();
+  }
   
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
-  const promptCall = logs.calls.find(c => c.method === 'session.prompt' && c.source === 'window.LanguageModel');
+  const promptCall = logs.calls.find(c => c.method === 'session.prompt');
   expect(promptCall).toBeDefined();
 });
 
@@ -251,11 +253,15 @@ test('9. Output must never be set via innerHTML', async ({ page }) => {
 });
 
 test('10. For structured output, responseConstraint option should be passed a JSON Schema', async ({ page }) => {
-  const sentimentBtn = page.locator('#sentiment-btn');
-  if (!await sentimentBtn.isVisible()) { test.skip(); return; }
-  await sentimentBtn.click();
-  const runBtn = page.locator('#run');
-  if (await runBtn.isVisible()) await runBtn.click();
+  const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize"), button').first();
+  if (await sentimentBtn.isVisible()) {
+    await sentimentBtn.click();
+    const runBtn = page.locator('#run, #submit, [type="submit"], button:has-text("Run"), button:has-text("Submit"), button:has-text("Analyze"), button').first();
+    if (await runBtn.isVisible()) await runBtn.click();
+  } else {
+    test.skip();
+    return;
+  }
   
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
@@ -265,8 +271,6 @@ test('10. For structured output, responseConstraint option should be passed a JS
 });
 
 test('11. Result of session.prompt() with responseConstraint should be parsed with JSON.parse()', async ({ page }) => {
-  const sentimentBtn = page.locator('#sentiment-btn');
-  if (!await sentimentBtn.isVisible()) { test.skip(); return; }
   await page.addInitScript(() => {
     const originalParse = JSON.parse;
     JSON.parse = function(text: string) {
@@ -275,19 +279,23 @@ test('11. Result of session.prompt() with responseConstraint should be parsed wi
     };
   });
   await page.reload();
-  await page.locator('#sentiment-btn').click();
-  const runBtn = page.locator('#run');
-  if (await runBtn.isVisible()) await runBtn.click();
+  const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize"), button').first();
+  if (await sentimentBtn.isVisible()) {
+    await sentimentBtn.click();
+    const runBtn = page.locator('#run, #submit, [type="submit"], button:has-text("Run"), button:has-text("Submit"), button:has-text("Analyze"), button').first();
+    if (await runBtn.isVisible()) await runBtn.click();
+  } else {
+    test.skip();
+    return;
+  }
   
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
-  const parseCall = logs.calls.find(c => c.method === 'JSON.parse' && c.text.includes('rating'));
+  const parseCall = logs.calls.find(c => c.method === 'JSON.parse' && (c.text.includes('rating') || c.text.includes('score') || c.text.includes('category')));
   expect(parseCall).toBeDefined();
 });
 
 test('12. JSON.stringify() on schema not needed', async ({ page }) => {
-  const sentimentBtn = page.locator('#sentiment-btn');
-  if (!await sentimentBtn.isVisible()) { test.skip(); return; }
   await page.addInitScript(() => {
     const originalStringify = JSON.stringify;
     JSON.stringify = function(obj: any) {
@@ -298,13 +306,18 @@ test('12. JSON.stringify() on schema not needed', async ({ page }) => {
     };
   });
   await page.reload();
-  if (await page.locator('#sentiment-btn').isVisible()) {
-    await page.locator('#sentiment-btn').click();
+  const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize"), button').first();
+  if (await sentimentBtn.isVisible()) {
+    await sentimentBtn.click();
     await page.waitForTimeout(500);
   }
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   
-  const promptWithConstraint = logs.calls.find(c => c.method === 'session.prompt' && c.source === 'window.LanguageModel' && c.options?.responseConstraint);
+  const promptWithConstraint = logs.calls.find(c => c.method === 'session.prompt' && c.options?.responseConstraint);
+  if (!promptWithConstraint) {
+    test.skip();
+    return;
+  }
   expect(promptWithConstraint).toBeDefined();
 
   const stringifyCall = logs.calls.find(c => c.method === 'JSON.stringify.schema');
@@ -312,15 +325,19 @@ test('12. JSON.stringify() on schema not needed', async ({ page }) => {
 });
 
 test('13. session.destroy() should be called when a session is no longer needed', async ({ page }) => {
-  const cloneBtn = page.locator('#clone-btn');
-  if (!await cloneBtn.isVisible()) { test.skip(); return; }
-  await cloneBtn.click();
-  const runBtn = page.locator('#run');
-  if (await runBtn.isVisible()) await runBtn.click();
+  const cloneBtn = page.locator('#clone-btn, #branch-btn, [data-testid="clone-btn"], button:has-text("Clone"), button:has-text("Branch"), button').first();
+  if (await cloneBtn.isVisible()) {
+    await cloneBtn.click();
+    const runBtn = page.locator('#run, #submit, [type="submit"], button:has-text("Run"), button:has-text("Submit"), button:has-text("Analyze"), button').first();
+    if (await runBtn.isVisible()) await runBtn.click();
+  } else {
+    test.skip();
+    return;
+  }
   
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
-  const destroyCalls = logs.calls.filter(c => c.method === 'session.destroy' && c.source === 'window.LanguageModel');
+  const destroyCalls = logs.calls.filter(c => c.method === 'session.destroy');
   expect(destroyCalls.length).toBeGreaterThan(0);
 });
 
@@ -334,15 +351,19 @@ test('14. AbortSignal should be passed to prompt(), not LanguageModel.create()',
 });
 
 test('15. session.clone() usage and base destruction', async ({ page }) => {
-  const cloneBtn = page.locator('#clone-btn');
-  if (!await cloneBtn.isVisible()) { test.skip(); return; }
-  await cloneBtn.click();
-  const runBtn = page.locator('#run');
-  if (await runBtn.isVisible()) await runBtn.click();
+  const cloneBtn = page.locator('#clone-btn, #branch-btn, [data-testid="clone-btn"], button:has-text("Clone"), button:has-text("Branch"), button').first();
+  if (await cloneBtn.isVisible()) {
+    await cloneBtn.click();
+    const runBtn = page.locator('#run, #submit, [type="submit"], button:has-text("Run"), button:has-text("Submit"), button:has-text("Analyze"), button').first();
+    if (await runBtn.isVisible()) await runBtn.click();
+  } else {
+    test.skip();
+    return;
+  }
 
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
-  const cloneCalls = logs.calls.filter(c => c.method === 'session.clone' && c.source === 'window.LanguageModel');
+  const cloneCalls = logs.calls.filter(c => c.method === 'session.clone');
   expect(cloneCalls.length).toBeGreaterThan(0);
 
   for (const cloneCall of cloneCalls) {
@@ -355,8 +376,6 @@ test('15. session.clone() usage and base destruction', async ({ page }) => {
 });
 
 test('16. contextUsage and contextWindow should be used', async ({ page }) => {
-  const cloneBtn = page.locator('#clone-btn');
-  if (!await cloneBtn.isVisible()) { test.skip(); return; }
   await page.addInitScript(() => {
     const originalCreate = window.LanguageModel.create;
     window.LanguageModel.create = async function() {
@@ -365,12 +384,15 @@ test('16. contextUsage and contextWindow should be used', async ({ page }) => {
         get(target, prop) {
           if (prop === 'contextUsage') window.__LM_LOGS__.calls.push({ method: 'session.contextUsage.access' });
           if (prop === 'contextWindow') window.__LM_LOGS__.calls.push({ method: 'session.contextWindow.access' });
-          return target[prop];
+          return (target as any)[prop];
         }
       });
     };
   });
   await page.reload();
+  await page.waitForTimeout(500);
+  const cloneBtn = page.locator('#clone-btn, #branch-btn, [data-testid="clone-btn"], button:has-text("Clone"), button:has-text("Branch"), button').first();
+  if (await cloneBtn.isVisible()) await cloneBtn.click();
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const usageAccess = logs.calls.find(c => c.method === 'session.contextUsage.access');

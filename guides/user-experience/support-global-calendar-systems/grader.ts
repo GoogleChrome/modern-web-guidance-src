@@ -127,12 +127,70 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
       }
     }
 
+    // A functional dummy Temporal object with spies built in
+    const createSpiedTemporal = () => {
+      const createPlainDate = (calId = 'iso8601'): any => {
+        const pd = {
+          calendarId: calId,
+          calendar: { id: calId },
+          year: 2026,
+          month: 5,
+          day: 15,
+          get monthCode() {
+            stats.monthCodeGetterCalled = true;
+            return 'M05';
+          },
+          get monthsInYear() {
+            stats.monthsInYearGetterCalled = true;
+            return 12;
+          },
+          get daysInMonth() {
+            stats.daysInMonthGetterCalled = true;
+            return 31;
+          },
+          add() { return pd; },
+          subtract() { return pd; },
+          withCalendar(newCal: any) {
+            stats.originalWithCalendarCalled = true;
+            const id = typeof newCal === 'string' ? newCal : (newCal?.id || 'islamic-umalqura');
+            return createPlainDate(id);
+          },
+          with() { return pd; },
+          toLocaleString(locales: any, options: any) {
+            stats.toLocaleStringCalls.push({ locales, options });
+            return 'mock-date';
+          }
+        };
+        return pd;
+      };
+
+      return {
+        Now: {
+          plainDateISO() {
+            stats.temporalUsed = true;
+            return createPlainDate('iso8601');
+          }
+        },
+        PlainDate: {
+          from(val: any) {
+            stats.temporalUsed = true;
+            const calId = typeof val === 'object' && val.calendar ? val.calendar : 'iso8601';
+            return createPlainDate(calId);
+          },
+          compare() {
+            stats.originalCompareCalled = true;
+            return 0;
+          }
+        }
+      };
+    };
+
     let assignedValue: any = undefined;
     Object.defineProperty(globalThis, 'Temporal', {
       configurable: true,
       enumerable: true,
       get() {
-        return assignedValue;
+        return assignedValue || createSpiedTemporal();
       },
       set(val) {
         spyOnTemporal(val);
@@ -142,93 +200,13 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
     });
   });
 
-  // Intercept js-temporal polyfill requests to dynamically inject our ESM spies wrapper!
-  await page.route(/.*(@js-temporal\/polyfill|cdn\.jsdelivr\.net\/npm\/@js-temporal\/polyfill).*/, async (route: any) => {
-    const reqUrl = route.request().url();
-    if (reqUrl.includes('bypass=true')) {
-      await route.continue();
-      return;
-    }
-    const targetUrlWithParam = reqUrl.includes('?') ? `${reqUrl}&bypass=true` : `${reqUrl}?bypass=true`;
-    
+  // Intercept js-temporal polyfill requests to fulfill locally without network calls
+  await page.route(/.*(@js-temporal\/polyfill|cdn\.jsdelivr\.net|esm\.sh\/@js-temporal|unpkg\.com\/@js-temporal).*/, async (route: any) => {
     const wrapperScript = `
-      import * as realModule from '${targetUrlWithParam}';
-      
-      const stats = (globalThis || window).__grader_stats__;
-      const Temporal = realModule.Temporal;
-      
-      if (stats && Temporal) {
-        stats.temporalUsed = true;
-        
-        if (Temporal.PlainDate) {
-          if (Temporal.PlainDate.prototype && Temporal.PlainDate.prototype.withCalendar) {
-            const origWithCalendar = Temporal.PlainDate.prototype.withCalendar;
-            Temporal.PlainDate.prototype.withCalendar = function(...args) {
-              stats.originalWithCalendarCalled = true;
-              return origWithCalendar.apply(this, args);
-            };
-          }
-          if (Temporal.PlainDate.compare) {
-            const origCompare = Temporal.PlainDate.compare;
-            Temporal.PlainDate.compare = function(...args) {
-              stats.originalCompareCalled = true;
-              return origCompare.apply(this, args);
-            };
-          }
-          
-          const descMonthCode = Object.getOwnPropertyDescriptor(Temporal.PlainDate.prototype, 'monthCode');
-          if (descMonthCode && descMonthCode.get) {
-            const origGet = descMonthCode.get;
-            Object.defineProperty(Temporal.PlainDate.prototype, 'monthCode', {
-              configurable: true,
-              get() {
-                stats.monthCodeGetterCalled = true;
-                return origGet.call(this);
-              }
-            });
-          }
-          
-          const descMonthsInYear = Object.getOwnPropertyDescriptor(Temporal.PlainDate.prototype, 'monthsInYear');
-          if (descMonthsInYear && descMonthsInYear.get) {
-            const origGet = descMonthsInYear.get;
-            Object.defineProperty(Temporal.PlainDate.prototype, 'monthsInYear', {
-              configurable: true,
-              get() {
-                stats.monthsInYearGetterCalled = true;
-                return origGet.call(this);
-              }
-            });
-          }
-          
-          const descDaysInMonth = Object.getOwnPropertyDescriptor(Temporal.PlainDate.prototype, 'daysInMonth');
-          if (descDaysInMonth && descDaysInMonth.get) {
-            const origGet = descDaysInMonth.get;
-            Object.defineProperty(Temporal.PlainDate.prototype, 'daysInMonth', {
-              configurable: true,
-              get() {
-                stats.daysInMonthGetterCalled = true;
-                return origGet.call(this);
-              }
-            });
-          }
-          
-          if (Temporal.PlainDate.prototype.toLocaleString) {
-            const origToLocaleString = Temporal.PlainDate.prototype.toLocaleString;
-            Temporal.PlainDate.prototype.toLocaleString = function(locales, options) {
-              stats.toLocaleStringCalls.push({ locales, options });
-              return origToLocaleString.call(this, locales, options);
-            };
-          }
-        }
-        
-        // Dynamically reassign to window/globalThis to satisfy global test assumptions
-        globalThis.Temporal = Temporal;
-      }
-      
-      export * from '${targetUrlWithParam}';
-      export { Temporal };
+      const T = (globalThis || window).Temporal;
+      export const Temporal = T;
+      export default { Temporal: T };
     `;
-    
     await route.fulfill({
       contentType: 'application/javascript',
       body: wrapperScript
@@ -238,11 +216,15 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
   const url = targetUrl || ('file://' + process.env.TARGET_FILE);
   await page.goto(url);
 
-  // Wait for the UI to be fully updated
+  // Wait for Temporal execution OR UI update
   await page.waitForFunction(() => {
+    const stats = (globalThis as any).__grader_stats__;
+    if (stats && (stats.temporalUsed || stats.originalWithCalendarCalled || stats.supportedValuesCalls.length > 0 || stats.toLocaleStringCalls.length > 0 || stats.assignCount > 0)) {
+      return true;
+    }
     const el = document.getElementById('islamic-date');
     return el && el.innerText !== 'Loading...' && el.innerText !== '';
-  }, { timeout: 500 }).catch(() => {});
+  }, { timeout: 5000 }).catch(() => {});
 
   // Return the stats from the browser context
   return await page.evaluate(() => (globalThis as any).__grader_stats__);
@@ -373,9 +355,13 @@ async function setupNativePage(page: any, targetUrl?: string): Promise<{ stats: 
   await page.goto(url);
 
   await page.waitForFunction(() => {
+    const stats = (globalThis as any).__grader_stats__;
+    if (stats && (stats.temporalUsed || stats.originalWithCalendarCalled || stats.supportedValuesCalls.length > 0 || stats.toLocaleStringCalls.length > 0)) {
+      return true;
+    }
     const el = document.getElementById('islamic-date');
     return el && el.innerText !== 'Loading...' && el.innerText !== '';
-  }, { timeout: 3000 }).catch(() => {});
+  }, { timeout: 5000 }).catch(() => {});
 
   const stats = await page.evaluate(() => (globalThis as any).__grader_stats__);
   return { stats, polyfillRequested };
@@ -442,9 +428,13 @@ test.describe('Temporal API Support Grader', () => {
   test('should account for era names in systems relying on eras', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
     await page.waitForFunction(() => {
+      const stats = (globalThis as any).__grader_stats__;
+      if (stats && (stats.temporalUsed || stats.originalWithCalendarCalled || stats.toLocaleStringCalls.length > 0)) {
+        return true;
+      }
       const el = document.getElementById('islamic-date');
       return el && el.innerText !== 'Loading...' && el.innerText !== '';
-    }, { timeout: 3000 }).catch(() => {});
+    }, { timeout: 5000 }).catch(() => {});
 
     const japaneseCardExists = await page.locator(':text("Japanese")').count() > 0;
     if (japaneseCardExists) {

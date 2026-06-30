@@ -108,8 +108,15 @@ test.describe('Passkey Conditional Create', () => {
   });
 
   async function clickSigninButton(page: any) {
-    const button = page.locator('[data-testid="signin-button"], button[type="submit"], #signin-btn, #login-btn, button:has-text("Sign In"), button:has-text("Log In")').first();
-    await button.click();
+    const email = page.locator('input[type="email"], #email, input[name="username"], input[name="email"]').first();
+    const password = page.locator('input[type="password"], #password, input[name="password"]').first();
+    if (await email.isVisible().catch(() => false)) await email.fill('user@example.com').catch(() => {});
+    if (await password.isVisible().catch(() => false)) await password.fill('password123').catch(() => {});
+
+    const button = page.locator('[data-testid="signin-button"], #signin-btn, #login-btn, button[type="submit"], input[type="submit"], button:has-text("Sign In"), button:has-text("Log In"), button').first();
+    if (await button.isVisible().catch(() => false)) {
+      await button.click().catch(() => {});
+    }
   }
 
   test('Feature-detects conditionalCreate support', async ({ page, TARGET_URL }) => {

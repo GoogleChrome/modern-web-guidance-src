@@ -63,16 +63,26 @@ test.describe('Passkey Management Expectations', () => {
             name: 'My Security Key',
             aaguid: '00000000-0000-0000-0000-000000000000',
             registeredAt: Date.now() - 100000,
-            lastUsedAt: Date.now() - 50000
+            lastUsedAt: Date.now() - 50000,
+            userId: 'M2YPl-KGnA8'
           },
           {
             id: 'fake-cred-2',
             name: 'iCloud Keychain',
             aaguid: 'adce0002-35bc-c60a-2b7b-40b2fed21711',
             registeredAt: Date.now() - 200000,
-            lastUsedAt: Date.now() - 10000
+            lastUsedAt: Date.now() - 10000,
+            userId: 'M2YPl-KGnA8'
           }
         ])
+      });
+    });
+
+    await page.route('**/api/credential/*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'ok' })
       });
     });
 
@@ -84,10 +94,6 @@ test.describe('Passkey Management Expectations', () => {
           'adce0002-35bc-c60a-2b7b-40b2fed21711': { name: 'iCloud Keychain', icon_light: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }
         })
       });
-    });
-
-    await page.route('**/api/credential/*', async (route) => {
-      await route.fulfill({ status: 200 });
     });
   });
 
