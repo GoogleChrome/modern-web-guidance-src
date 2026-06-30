@@ -75,14 +75,18 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.82",
     "@mdn/browser-compat-data": "^7.3.15",
     "@webref/css": "^8.5.6",
     "@webref/elements": "^2.7.1",
     "@webref/idl": "^3.75.3",
+    "ai": "^6.0.205",
     "caniuse-lite": "^1.0.30001791",
     "glob": "^13.0.6",
     "mdn-data": "^2.28.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.27.0"
+    "playwright": "^1.58.2",
+    "web-features": "^3.27.0",
+    "zod": "^4.4.3"
   }
 }
