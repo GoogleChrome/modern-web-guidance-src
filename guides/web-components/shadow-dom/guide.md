@@ -85,10 +85,3 @@ class MyCard extends HTMLElement {
 }
 ```
 
-## Fallback strategies
-
-{{ BASELINE_STATUS("shadow-dom") }}
-
-{{ BASELINE_STATUS("slot") }}
-
-Shadow DOM and slots are broadly available. Where you must support engines without them (or run without JS), render the component's markup into the Light DOM instead and scope styles with a class or BEM convention — you lose encapsulation, but the content stays functional.

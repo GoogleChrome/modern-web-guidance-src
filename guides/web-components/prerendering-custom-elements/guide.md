@@ -1,13 +1,13 @@
 ---
-name: declarative-shadow-dom
-description: Server-render a custom element's shadow tree as plain HTML with Declarative Shadow DOM, then hydrate it in place without re-rendering or a flash of unstyled content.
+name: prerendering-custom-elements
+description: Server-render a custom element, then hydrate it in place without re-rendering or a flash of unstyled content.
 web-feature-ids:
   - declarative-shadow-dom
 ---
 
-# Declarative Shadow DOM
+# Pre-rendering custom elements
 
-Declarative Shadow DOM (DSD) lets the server send a shadow tree as plain HTML, so the component is styled and structured *before* any JavaScript runs. This is a different task from runtime composition: the markup arrives complete, and the element is later upgraded ("hydrated") by its class if one is registered. Use DSD for server-side rendering, streaming, and avoiding a flash of unstyled content (FOUC).
+Pre-rendering means shipping a custom element's markup — including its shadow tree — from the server, so the component is styled and structured *before* any JavaScript runs. The main platform primitive for this is **Declarative Shadow DOM (DSD)**: the parser attaches the shadow root from HTML alone, and the element is later upgraded ("hydrated") by its class if one is registered. Use this pattern for server-side rendering, streaming, and avoiding a flash of unstyled content (FOUC).
 
 ## Authoring a declarative shadow root
 
@@ -57,7 +57,7 @@ Set `shadowrootmode="open"` (not `closed`) for almost all cases, so scripts and 
 DSD renders correctly on first paint only if styles ship inside the declarative template. To preserve that:
 
 - Put component CSS **inside** the `<template shadowrootmode>` (a `<style>` tag or a `<link>`), not in a separate script-loaded sheet.
-- Pair with `my-card:not(:defined) { … }` only for styles that must wait for JS; the structural styles should already be in the shadow root and need no such guard.
+- Pair with `my-card:not(:defined) { … }` only for styles that must wait for JS — typically page-level guard rules like a fade-out on client-rendered instances that miss the SSR pass. These live in the light-DOM (page) stylesheet, since the shadow root doesn't yet exist there and `:host` selectors don't apply from outside. Structural styles inside the DSD template need no such guard.
 - Do not re-render the shadow tree on hydration. Treat the server markup as authoritative and attach behavior to it.
 
 ## Fallback strategies

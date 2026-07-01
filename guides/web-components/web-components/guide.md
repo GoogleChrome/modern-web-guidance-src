@@ -1,6 +1,10 @@
 ---
 name: web-components
 description: Orientation and cross-cutting principles for authoring and using Web Components, covering Custom Elements, Shadow DOM, templates and slots, Declarative Shadow DOM, styling across the shadow boundary, Form-Associated Custom Elements, and accessibility requirements. Use this guide when building reusable UI components, design systems, or server-rendered custom elements.
+web-feature-ids:
+  - autonomous-custom-elements
+  - shadow-dom
+  - declarative-shadow-dom
 ---
 
 # Web Components Orientation Guide
@@ -49,7 +53,7 @@ Identify the task and retrieve its guide:
 | :--- | :--- |
 | Define a new semantic tag with behavior and lifecycle | {{ GUIDE_REF("custom-elements") }} |
 | Scope styles and markup to a component, and project consumer content into it | {{ GUIDE_REF("shadow-dom") }} |
-| Render a component's shadow tree on the server (SSR) without a flash of unstyled content | {{ GUIDE_REF("declarative-shadow-dom") }} |
+| Render a component's shadow tree on the server (SSR) without a flash of unstyled content | {{ GUIDE_REF("prerendering-custom-elements") }} |
 | Style across the shadow boundary (theming, `::part`, custom properties) | {{ GUIDE_REF("styling-web-components") }} |
 | Submit a custom control's value to a surrounding `<form>` | {{ GUIDE_REF("form-associated-custom-elements") }} |
 | Make a custom element accessible (roles, focus, ARIA across shadow roots) | {{ GUIDE_REF("accessible-web-components") }} |

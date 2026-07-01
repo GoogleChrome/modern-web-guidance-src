@@ -3,7 +3,6 @@ name: custom-elements
 description: Define, register, and manage the lifecycle of autonomous custom elements, covering constructor rules, lifecycle callbacks, upgrade timing, attribute/property reflection, and naming conventions.
 web-feature-ids:
   - autonomous-custom-elements
-  - customized-built-in-elements
 ---
 
 # Custom Elements
@@ -129,8 +128,3 @@ For styling these states — both inside the component and from a consumer's sty
 
 When naming a new API surface, follow the platform's own conventions — see the [W3C naming principles](https://www.w3.org/TR/design-principles/#naming-is-hard).
 
-## Fallback strategies
-
-{{ BASELINE_STATUS("customized-built-in-elements") }}
-
-Customized built-in elements (`is="…"`) are not universally supported — Safari has permanently declined them. Build **autonomous** custom elements (extending `HTMLElement`) instead, or wrap the native element and forward what you need; do not ship `is="…"` to production.

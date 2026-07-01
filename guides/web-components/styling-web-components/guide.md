@@ -39,11 +39,23 @@ Inherited CSS properties (`color`, `font-family`, `line-height`, and CSS custom 
 }
 ```
 
-A custom property *defined* on `:host` can only be overridden by rules targeting the host element specifically. To let it inherit and be overridable from anywhere up the tree, leave it unset on `:host` and rely on the fallback in each `var()`; do not seed it with a value on `:host`.
+A custom property *defined* on `:host` can only be overridden by rules targeting the host element specifically. To let it inherit and be overridable from anywhere up the tree, leave the public property unset on `:host` and rely on the fallback in each `var()`; do not seed the public property on `:host`.
+
+To keep the fallback declared once rather than repeated at every `var()`, define a private "shadow" property on `:host` that reads the public one, and reference the private property internally:
+
+```css
+:host {
+  --_card-bg: var(--card-bg, white);
+  --_card-fg: var(--card-fg, black);
+}
+.card { background: var(--_card-bg); color: var(--_card-fg); }
+```
+
+Consumers still override `--card-bg` from outside; the leading underscore signals the alias is internal, and the fallback lives in exactly one place.
 
 ## `::slotted()`: styling projected Light DOM
 
-`::slotted(selector)` targets the **top-level** nodes assigned to a slot. It cannot reach their descendants, and it loses to any Light DOM rule (the consumer owns their own content), so use it for light touch-ups, not control.
+`::slotted(selector)` targets the **top-level** nodes assigned to a slot. It cannot reach their descendants, and it loses to any Light DOM rule (the consumer owns their own content), so use it for light touch-ups, not control. `::slotted(...) !important` can beat consumer rules, but doing so overrides styling the consumer is entitled to own — reserve it for structural fixes, not aesthetic overrides.
 
 ```css
 /* Matches a slotted <p>, but NOT a <p> nested inside a slotted <div>. */
@@ -78,7 +90,7 @@ When a custom element wraps a native control (`<my-button>` around a real `<butt
 
 - **Form controls don't inherit typography.** `color` and custom properties cross the boundary, but `<button>`, `<input>`, and `<select>` take `font` and friends from the UA stylesheet, which does *not* inherit. The wrapped control therefore renders in the platform font, not the page font, until you set `font: inherit` (and usually `color: inherit`) on it inside the shadow tree. This is the single most common miss.
 - **`:host` styles don't reach the inner element.** Setting `background`/`border`/`padding` on `:host` styles the host box, not the control inside it. Forward deliberately: expose the control as a `::part` for open-ended styling, or pipe a fixed set of values through custom properties — a `:host` rule does not cascade into the wrapped element.
-- **Avoid the `display: contents` + `all: inherit` shortcut.** Collapsing the host with `display: contents` and resetting the control with `all: inherit` looks like a way to make the wrapper "disappear," but `all` is a sledgehammer that also wipes useful UA defaults, `display: contents` removes the host's own box (so it can no longer carry padding, border, or background), and it interferes with anchor positioning against the host. Prefer `::part` or custom properties.
+- **`display: contents` + `all: inherit` is a real tradeoff, not a shortcut.** Collapsing the host with `display: contents` and resetting the inner control with `all: inherit` is currently the only generic way to pass arbitrary styles through to a wrapped native element without consumers learning per-component parts or custom properties — and removing the host's own box is usually *the point* of the pattern (composition compensating for a missing built-in inheritance). Two real caveats: `all: inherit` wipes UA defaults, so scope to specific properties or use `revert` when you want defaults back; and the concrete blocker — `getBoundingClientRect()` and `getClientRects()` return zero for `display: contents` elements, so anchor positioning against the host is broken. Reach for `::part` or custom properties when those tradeoffs don't fit.
 
 ## `:state()`: style the component's own states
 
