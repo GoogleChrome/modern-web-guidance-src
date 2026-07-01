@@ -28,7 +28,7 @@ An element can exist in the DOM *before* its class is registered (in server-rend
 Two consequences models routinely miss:
 
 1. **Attributes and children may already be present** when your constructor/`connectedCallback` runs on upgrade. Read existing attributes in `connectedCallback` to sync initial state, and never assume the element started empty.
-2. **Children may still be missing** even in `connectedCallback` if the HTML parser hasn't reached them yet. If you depend on Light DOM children, wait for them: use a `slotchange` listener, or defer with `customElements.whenDefined()`.
+2. **Children may still be missing** even in `connectedCallback` — the HTML parser can yield mid-parse of long child lists, so the callback sometimes runs before every child is attached. See the constructor bullet in *Lifecycle* above for the pattern (`slotchange` + `attributeChangedCallback`).
 
 Hide undefined elements to avoid a flash of unstyled content — but **fail open**, so the content stays reachable if the script never loads. Animate `opacity` with a delay rather than hard-hiding with `visibility: hidden`, so the element reveals itself after a timeout even when it is never upgraded:
 
