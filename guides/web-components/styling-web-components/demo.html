@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Styling Web Components: custom properties, ::part theming, and :state()</title>
+  <style>
+    my-card:not(:defined),
+    favorite-button:not(:defined) { visibility: hidden; }
+
+    /* Theme from outside via inherited custom properties (they cross the boundary). */
+    body { --card-bg: #f6f8fa; --card-fg: #111; font-family: system-ui, sans-serif; }
+
+    /* Unrestricted styling of an exposed internal, without knowing the structure. */
+    my-card::part(action) {
+      background: navy;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+      padding: .4rem .8rem;
+    }
+
+    /* :state() is a read-only public styling hook — the consumer can style the
+       component's own state but cannot set or forge it. */
+    favorite-button:state(favorited) { filter: drop-shadow(0 0 4px crimson); }
+  </style>
+</head>
+<body>
+  <my-card>
+    <span slot="title">Themed card</span>
+  </my-card>
+
+  <favorite-button></favorite-button>
+
+  <script>
+    const cardTemplate = document.createElement('template');
+    cardTemplate.innerHTML = `
+      <style>
+        :host { container-type: inline-size; display: block; max-inline-size: 28rem; }
+        .card {
+          /* Consumers override these from outside; fallbacks keep it usable. */
+          background: var(--card-bg, white);
+          color: var(--card-fg, black);
+          border-radius: 8px;
+          padding: 1rem;
+          display: grid;
+          gap: .75rem;
+        }
+        /* A component should respond to its own size, not the viewport. */
+        @container (min-width: 24rem) {
+          .card { grid-template-columns: 1fr auto; align-items: center; }
+        }
+      </style>
+      <div class="card">
+        <strong><slot name="title">Card</slot></strong>
+        <button type="button" part="action">Action</button>
+      </div>
+    `;
+
+    class MyCard extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.append(cardTemplate.content.cloneNode(true));
+      }
+    }
+
+    customElements.define('my-card', MyCard);
+
+    // --- :state() as a styling channel: a like/favorite toggle ---
+
+    const favTemplate = document.createElement('template');
+    favTemplate.innerHTML = `
+      <style>
+        button { border: 0; background: none; cursor: pointer; font-size: 2rem; line-height: 1; }
+        .icon { color: #999; }
+        /* The component styles its own state from inside the shadow tree. */
+        :host(:state(favorited)) .icon { color: crimson; }
+      </style>
+      <button type="button" aria-pressed="false" aria-label="Favorite">
+        <span class="icon">&#9829;</span>
+      </button>
+    `;
+
+    class FavoriteButton extends HTMLElement {
+      #internals;
+
+      constructor() {
+        super();
+        this.#internals = this.attachInternals();
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.append(favTemplate.content.cloneNode(true));
+      }
+
+      connectedCallback() {
+        // The inner native <button> provides role, focus, and keyboard activation;
+        // the host does not re-declare button semantics.
+        this.shadowRoot.querySelector('button')
+          .addEventListener('click', () => this.toggle());
+      }
+
+      get favorited() { return this.#internals.states.has('favorited'); }
+      set favorited(on) {
+        // CustomStateSet is setlike: add/delete, no toggle() — no DOM attribute involved.
+        if (on) this.#internals.states.add('favorited');
+        else this.#internals.states.delete('favorited');
+        this.shadowRoot.querySelector('button')
+          .setAttribute('aria-pressed', String(!!on));
+      }
+
+      toggle() {
+        this.favorited = !this.favorited;
+        // Follow platform conventions: dispatch a built-in change event.
+        this.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+
+    customElements.define('favorite-button', FavoriteButton);
+  </script>
+</body>
+</html>
