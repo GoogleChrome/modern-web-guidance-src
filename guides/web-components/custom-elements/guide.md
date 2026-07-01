@@ -15,9 +15,11 @@ A custom element is a class registered against a tag name via `customElements.de
 The callbacks themselves are well documented; these are the misconceptions that cause bugs:
 
 - **`connectedCallback` can run more than once.** It fires on every insertion, so moving the element re-runs it. Make setup idempotent — don't assume a single first run.
+- **`connectedMoveCallback` skips the disconnect/reconnect pair on a move.** When an element is relocated with `Node.moveBefore()`, this callback fires *instead of* `disconnectedCallback` → `connectedCallback`, so state, focus, and iframe/media playback survive the move. Define it when your setup or teardown is expensive or observably re-runs.
 - **Tear down in `disconnectedCallback`.** Remove global listeners, timers, and observers or you leak; but the element may be re-inserted, so don't treat teardown as permanent.
-- **The constructor can't see the DOM.** No attributes, children, or layout exist yet — read attributes and children in `connectedCallback` instead.
+- **Do not depend on the full DOM being present in the constructor.** Attributes are usually (but not always) present; long lists of children may not have finished parsing. Use `connectedCallback` for one-shot initialization, `slotchange` to monitor direct children, and `attributeChangedCallback` to monitor attributes. `connectedCallback` may still fire before all children are parsed, so do not ignore subsequent `slotchange` / `attributeChangedCallback` calls.
 - **`attributeChangedCallback` fires only for `observedAttributes`,** and should stay cheap for attributes that don't affect output.
+- **Lifecycle hooks and `observedAttributes` are snapshotted at registration.** `customElements.define()` reads both once; adding a hook or extending `observedAttributes` on the class *after* the call is silently ignored. In particular, `attributeChangedCallback` never fires unless `observedAttributes` was already present at `define()` time.
 
 ## Upgrade timing and `:defined`
 
