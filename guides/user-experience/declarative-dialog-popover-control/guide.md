@@ -108,7 +108,7 @@ For projects without a bundler, dynamically import the polyfill directly from a 
 **Invokers Polyfill Limitations**
 MANDATORY: This polyfill does not handle the ARIA states (e.g., `aria-expanded`) of the command button the way native browsers do. You are strongly encouraged to handle these states yourself to ensure your site is fully accessible.
 
-{{ INCLUDE("../declarative-button-actions/guide.md#fallback-strategies") }}
+{{ INCLUDE("../custom-button-actions/guide.md#fallback-strategies") }}
 
 ### Polyfilling the Popover Attribute
 

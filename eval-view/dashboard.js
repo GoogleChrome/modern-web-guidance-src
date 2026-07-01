@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, formatTokens, isDisciplineSkillRun } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, isDisciplineSkillRun } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability_trend.js';
@@ -141,6 +141,21 @@ async function loadDashboardData(testId) {
                 }
             }
         }
+        // Check for deep link to guide in hash
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#guide-')) {
+            const targetGuide = hash.substring(7); // remove '#guide-'
+            setTimeout(() => {
+                const accordionEl = document.querySelector(`.task-accordion[data-guide="${targetGuide}"]`);
+                if (accordionEl) {
+                    accordionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    if (!accordionEl.classList.contains('open')) {
+                        const header = $('.task-accordion-header', accordionEl);
+                        if (header) header.click();
+                    }
+                }
+            }, 200);
+        }
     } catch (error) {
         console.error('Error:', error);
         dashboardLoaded = false;
@@ -256,7 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
-            const [taskName, guide, runType] = currentDetails.testName.split(' - ');
+            const parsed = parseResultKey(currentDetails.testName);
+            if (!parsed) return;
+            const { task: taskName, guide, runType } = parsed;
             const currentScenario = `${taskName} - ${guide}`;
 
             let sIdx = sortedScenarios.indexOf(currentScenario);
@@ -625,21 +642,39 @@ function renderGrid(data, testId) {
             const guidedAvg = getAvg(guidedRuns);
             const uplift = guidedAvg - unguidedAvg;
 
+            const isRunEarlyFailure = (runs) => runs && runs.some(r => r.results?.some(c => c.isEarlyFailure));
+            const unguidedFailed = isRunEarlyFailure(unguidedRuns);
+            const guidedFailed = isRunEarlyFailure(guidedRuns);
+            const hasFailure = unguidedFailed || guidedFailed;
+
             const accordion = document.createElement('div');
             accordion.className = 'task-accordion';
             accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
+            accordion.setAttribute('data-guide', guide);
 
             const minVal = Math.min(unguidedAvg, guidedAvg);
             const maxVal = Math.max(unguidedAvg, guidedAvg);
             const trackWidth = 250; // matches css
             const scale = (val) => (val / 100) * trackWidth;
 
+            const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
+            const trendLinkHtml = `
+                <a href="${trendUrl}" class="trend-link" title="View trend over time" style="margin-left: 8px; text-decoration: none; color: var(--color-primary); display: inline-flex; align-items: center; vertical-align: middle;" onclick="event.stopPropagation();">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="7" y1="17" x2="17" y2="7"></line>
+                        <polyline points="7 7 17 7 17 17"></polyline>
+                    </svg>
+                </a>
+            `;
+
             accordion.innerHTML = `
                 <div class="task-accordion-header">
                     <div class="left-section">
                         <span class="chevron" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
                         <span class="feature-chip">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[0])}</span>
-                        <span class="task-title">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[1] || '')}</span>
+                        <span class="task-title" style="${hasFailure ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[1] || '')}</span>
+                        ${trendLinkHtml}
+                        ${hasFailure ? `<span style="font-size: 0.8rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;">Generation Failed</span>` : ''}
                     </div>
                     <div class="right-section">
                         <div class="mini-dumbbell-track">
@@ -766,13 +801,17 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         processResultsToMap(unguidedRuns, 'unguided');
         processResultsToMap(guidedRuns, 'guided');
 
+        const isRunEarlyFailure = (runs) => runs && runs.some(r => r.results?.some(c => c.isEarlyFailure));
+        const uFailed = isRunEarlyFailure(unguidedRuns);
+        const gFailed = isRunEarlyFailure(guidedRuns);
+
         let truthMatrixHtml = `<div style="margin-bottom: 16px;"><table class="truth-matrix"><thead>`;
 
         if (maxRuns > 1) {
             truthMatrixHtml += `
                 <tr>
-                    <th class="center" colspan="${maxRuns}">Unguided</th>
-                    <th class="center" colspan="${maxRuns}">Guided</th>
+                    <th class="center" style="${uFailed ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}" colspan="${maxRuns}">Unguided</th>
+                    <th class="center" style="${gFailed ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}" colspan="${maxRuns}">Guided</th>
                     <th rowspan="2">Assertion Requirement</th>
                 </tr>
                 <tr>
@@ -783,8 +822,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         } else {
             truthMatrixHtml += `
                 <tr>
-                    <th class="center">Unguided</th>
-                    <th class="center">Guided</th>
+                    <th class="center" style="${uFailed ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">Unguided</th>
+                    <th class="center" style="${gFailed ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">Guided</th>
                     <th>Assertion Requirement</th>
                 </tr>
             `;
@@ -822,7 +861,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const isCorrespondingDiscipline = !isDisciplineSkillRun(run) && g === run.discipline;
 
             let className = 'default-guide';
-            let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
+            let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace; text-decoration: none;';
 
             if (isGreen) {
                 className = 'matching-guide';
@@ -831,7 +870,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 style += ' background-color: rgba(218, 165, 32, 0.15); color: #daa520; border: 1px solid rgba(218, 165, 32, 0.3);';
             }
 
-            return `<span class="${className}" style="${style}">${escapeHtml(g)}</span>`;
+            const url = `guide.html?guide=${encodeURIComponent(g)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
+            return `<a href="${url}" class="${className}" style="${style}" title="View guide trend">${escapeHtml(g)}</a>`;
         };
 
                 const getTfootChips = async (runs, typeLabel) => {
@@ -853,6 +893,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
                  const jsonFile = files.find(f => f.endsWith('_results.json'));
                  const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;
+                 const isEarlyFailure = run.results && run.results.some(c => c.isEarlyFailure);
+                 const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
                  const appUrl = api.source === 'remote'
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
@@ -875,8 +917,10 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
                              ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
+                             ${failureFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${failureFile}`)}', '${escapeHtml(`${usedBasePath}/${failureFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
                              <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
                          </div>
+
                      </div>
                  `);
              }
@@ -1334,7 +1378,7 @@ function renderDashboardDumbbellChart(data) {
 
     disciplines.forEach(discipline => {
         const disciplineResults = groupedByDiscipline[discipline];
-        const { labels, guided, unguided, guided_tokens, unguided_tokens } = calculateChartData(disciplineResults);
+        const { labels, guided, unguided, guided_tokens, unguided_tokens, guided_failed, unguided_failed } = calculateChartData(disciplineResults);
 
         if (labels.length === 0) return;
 
@@ -1357,31 +1401,30 @@ function renderDashboardDumbbellChart(data) {
             const scenarioName = labels[index];
             const runType = type.toLowerCase();
             const originalKey = Object.keys(disciplineResults).find(key => {
-                const parts = key.split(' - ');
-                return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
+                const parsed = parseResultKey(key);
+                if (!parsed) return false;
+                return `${parsed.task} (${parsed.guide})` === scenarioName && parsed.runType === runType;
             });
 
             if (originalKey) {
-                const testName = originalKey;
-                const scenarioPart = testName.split(' - ')[1] || '';
-                const accordions = document.querySelectorAll('.task-accordion');
-                for (const acc of accordions) {
-                    const titleEl = acc.querySelector('.task-title');
-                    if (titleEl && titleEl.textContent.trim() === scenarioPart.trim()) {
-                        const headerEl = $('.task-accordion-header', acc);
-                        if (!acc.classList.contains('open')) {
-                            headerEl.click();
+                const parsed = parseResultKey(originalKey);
+                if (parsed) {
+                    const guide = parsed.guide;
+                    const accordionEl = document.querySelector(`.task-accordion[data-guide="${guide}"]`);
+                    if (accordionEl) {
+                        accordionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        if (!accordionEl.classList.contains('open')) {
+                            const header = $('.task-accordion-header', accordionEl);
+                            if (header) header.click();
                         }
-                        acc.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        break;
                     }
                 }
             }
         };
 
         const datasets = [
-            { label: 'Unguided', data: unguided, tokens: unguided_tokens, onClick: handlePointClick },
-            { label: 'Guided', data: guided, tokens: guided_tokens, onClick: handlePointClick }
+            { label: 'Unguided', data: unguided, tokens: unguided_tokens, failed: unguided_failed, onClick: handlePointClick },
+            { label: 'Guided', data: guided, tokens: guided_tokens, failed: guided_failed, onClick: handlePointClick }
         ];
 
         const chart = new DumbbellChart(svgContainer, {

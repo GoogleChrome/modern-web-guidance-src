@@ -109,7 +109,7 @@ The API supports a wide range of BCP 47 language codes: Here are the languages s
 - **hu**: Hungarian
 - **id**: Indonesian
 - **it**: Italian
-- **iw**: Hebrew
+- **he**: Hebrew
 - **ja**: Japanese
 - **kn**: Kannada
 - **ko**: Korean

@@ -127,6 +127,17 @@ function buildMegaskill(): void {
   fs.writeFileSync(path.join(distDir, 'SKILL.md'), finalContent);
   console.log(`Generated megaskill successfully in ${distDir}`);
 
+  // Create a symbolic link for prompt-api pointing to language-model.md
+  const promptApiLink = path.join(distRefsDir, "built-in-ai/prompt-api.md");
+  const categoryDir = path.dirname(promptApiLink);
+  if (fs.existsSync(categoryDir)) {
+    if (fs.existsSync(promptApiLink)) {
+      fs.unlinkSync(promptApiLink);
+    }
+    fs.symlinkSync("language-model.md", promptApiLink);
+    console.log("Created prompt-api.md symlink pointing to language-model.md in megaskill references");
+  }
+
   createLocalSymlink(repoRoot, distDir);
 }
 

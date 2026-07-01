@@ -75,6 +75,8 @@ export class DumbbellChart {
         const gVal = guidedSet.data[i] || 0;
         const uTokens = unguidedSet.tokens ? (unguidedSet.tokens[i] || 0) : 0;
         const gTokens = guidedSet.tokens ? (guidedSet.tokens[i] || 0) : 0;
+        const uFailed = unguidedSet.failed ? !!unguidedSet.failed[i] : false;
+        const gFailed = guidedSet.failed ? !!guidedSet.failed[i] : false;
         
         if (this.options.hideZeros && uVal === 0 && gVal === 0) return;
 
@@ -85,6 +87,8 @@ export class DumbbellChart {
             gVal,
             uTokens,
             gTokens,
+            uFailed,
+            gFailed,
             originalIndex: i
         });
     });
@@ -275,13 +279,14 @@ export class DumbbellChart {
       this.svg.appendChild(rowBg);
 
       if (!this.options.hideLabels) {
+        const hasFailure = items.some(item => item.uFailed || item.gFailed);
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", scale(100) + 15);
         text.setAttribute("y", rowY);
-        text.setAttribute("fill", "var(--color-outline)");
+        text.setAttribute("fill", hasFailure ? "var(--color-accent-failure, #da3633)" : "var(--color-outline)");
         text.setAttribute("font-size", "11");
         text.setAttribute("font-family", "var(--font-sans)");
-        text.setAttribute("font-weight", "600");
+        text.setAttribute("font-weight", hasFailure ? "bold" : "600");
         text.setAttribute("text-anchor", "start");
         text.setAttribute("alignment-baseline", "middle");
         text.textContent = featureName;
@@ -324,7 +329,7 @@ export class DumbbellChart {
           uDot.setAttribute("cy", y);
           uDot.setAttribute("r", "3");
           uDot.setAttribute("fill", "var(--color-surface-container-lowest)");
-          uDot.setAttribute("stroke", "var(--color-primary)");
+          uDot.setAttribute("stroke", item.uFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
           uDot.setAttribute("stroke-width", "1.5");
           this.svg.appendChild(uDot);
 
@@ -333,7 +338,7 @@ export class DumbbellChart {
           gDot.setAttribute("cx", gX);
           gDot.setAttribute("cy", y);
           gDot.setAttribute("r", "3");
-          gDot.setAttribute("fill", "var(--color-primary)");
+          gDot.setAttribute("fill", item.gFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
           this.svg.appendChild(gDot);
 
 
@@ -368,7 +373,7 @@ export class DumbbellChart {
                 <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px; color: var(--color-on-surface);">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap;">${item.useCaseId || "Default"}</div>
+                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId || "Default"}</div>
                           <div style="font-size: 11px; color: var(--color-outline);">feature: ${featureName}</div>
                          ${uTokens > 0 || gTokens > 0 ? `
                          <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
@@ -383,8 +388,8 @@ export class DumbbellChart {
                     <!-- Right Column -->
                     <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">
                          <div style="font-weight: bold; color: ${deltaColor}; font-size: 14px;">Uplift: ${deltaSign}${delta}%</div>
-                         <div style="white-space: nowrap;">Guided: ${Math.round(gVal)}%</div>
-                         <div style="white-space: nowrap;">Unguided: ${Math.round(uVal)}%</div>
+                         <div style="white-space: nowrap; color: ${item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Guided: ${Math.round(gVal)}% ${item.gFailed ? '(Failed)' : ''}</div>
+                         <div style="white-space: nowrap; color: ${item.uFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Unguided: ${Math.round(uVal)}% ${item.uFailed ? '(Failed)' : ''}</div>
                     </div>
                 </div>
             `;

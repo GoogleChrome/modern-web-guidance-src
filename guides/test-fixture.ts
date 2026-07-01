@@ -49,8 +49,19 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
 
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
 
+    // Running install on base app
+    console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
+    const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install'], {
+      cwd: targetDir,
+      stdio: 'ignore',
+      shell: process.platform === 'win32'
+    });
+    if (installResult.status !== 0) {
+      throw new Error(`pnpm install failed in ${targetDir}`);
+    }
+
     if (pkgJson.scripts && pkgJson.scripts.build) {
-      const buildResult = spawnSync('pnpm', ['run', 'build'], {
+      const buildResult = spawnSync('pnpm', ['--ignore-workspace', 'run', 'build'], {
         cwd: targetDir,
         stdio: 'ignore',
         shell: process.platform === 'win32'
@@ -66,7 +77,7 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
     }
 
     const port = await getFreePort();
-    const serverProcess = spawn('pnpm', ['run', 'start'], {
+    const serverProcess = spawn('pnpm', ['--ignore-workspace', 'run', 'start'], {
       cwd: targetDir,
       env: { ...process.env, PORT: port.toString() },
       detached: true,
