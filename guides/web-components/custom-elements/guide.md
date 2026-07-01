@@ -42,10 +42,6 @@ my-element:not(:defined) {
 
 Scope these guards to the elements that need them — or to a specific subtree via `:has(:not(:defined))` — rather than the whole `body`. One slow, non-critical widget (a share button, say) should not delay paint for the entire page.
 
-```javascript
-await customElements.whenDefined('my-element'); // resolves once registered
-```
-
 ## Attribute ⇄ property reflection
 
 Keep the HTML attribute and the JS property in sync so the element is usable from both markup and script. Attribute values are **always strings**; coerce them.
