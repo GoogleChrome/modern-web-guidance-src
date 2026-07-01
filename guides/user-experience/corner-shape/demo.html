@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corner Shape Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #fafafa;
+      color: #3e2723;
+      padding: 2rem;
+      margin: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #4e342e;
+      color: #fafafa;
+      padding: 1.5rem;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: 600;
+
+      /* MANDATORY for every card: corner-shape paints inside the area that
+         border-radius reserves. Without a non-zero radius, corner-shape
+         is invisible. */
+      border-radius: 24px;
+    }
+
+    /* Each card overrides only corner-shape; border-radius is applied
+       from the .card base rule above via the cascade. */
+
+    .card-squircle {
+      corner-shape: squircle;
+    }
+
+    .card-bevel {
+      corner-shape: bevel;
+    }
+
+    .card-notch {
+      corner-shape: notch;
+    }
+
+    .card-scoop {
+      corner-shape: scoop;
+    }
+
+    .card-asymmetric {
+      /* Per-corner logical longhand: only the block-start / inline-start
+         corner is notched, which mirrors automatically in RTL contexts.
+         The other three corners keep the default round shape. */
+      corner-start-start-shape: notch;
+    }
+
+    .card-superellipse {
+      /* superellipse(3) sits between squircle (K=2) and square (K=infinity). */
+      corner-shape: superellipse(3);
+    }
+  </style>
+</head>
+<body>
+  <div class="grid">
+    <div class="card card-squircle" data-testid="shape-squircle">Squircle</div>
+    <div class="card card-bevel" data-testid="shape-bevel">Bevel</div>
+    <div class="card card-notch" data-testid="shape-notch">Notch</div>
+    <div class="card card-scoop" data-testid="shape-scoop">Scoop</div>
+    <div class="card card-asymmetric" data-testid="shape-asymmetric">Asymmetric</div>
+    <div class="card card-superellipse" data-testid="shape-superellipse">Superellipse(3)</div>
+  </div>
+</body>
+</html>
