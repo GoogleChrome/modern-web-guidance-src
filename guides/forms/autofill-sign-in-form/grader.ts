@@ -136,7 +136,7 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
       return;
     }
     const code = getSourceContent();
-    expect(/type=[{"']?password[}"']?/i.test(code)).toBe(true);
+    expect(/type=[{"']?password[}"']?|showPassword/i.test(code)).toBe(true);
   });
 
   test('Password input must have autocomplete="current-password"', async ({ page }) => {

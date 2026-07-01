@@ -25,18 +25,18 @@ test.describe('Resolution Optimized Pseudo Elements Grader', () => {
 
   test('The pseudo-element has a standard image declaration acting as a fallback for the content or background-image property', async ({ page }) => {
     const code = getFileContent();
-    const hasFallback = code.includes('url(') && (code.includes('::before') || code.includes('::after') || code.includes(':before') || code.includes(':after'));
+    const hasFallback = /url\([^)]+\)/i.test(code) && (code.includes('::before') || code.includes('::after') || code.includes(':before') || code.includes(':after'));
     expect(hasFallback).toBe(true);
   });
 
   test('The pseudo-element uses the image-set() function for the same property, defined after the fallback', async ({ page }) => {
     const code = getFileContent();
-    const fallbackIdx = Math.max(code.indexOf('background: url('), code.indexOf('background-image: url('), code.indexOf('content: url('));
-    const imageSetIdx = Math.max(code.indexOf('image-set('), code.indexOf('-webkit-image-set('));
+    const fallbackMatch = code.match(/(content|background|background-image):\s*url\([^)]+\)/i);
+    const imageSetMatch = code.match(/(content|background|background-image):\s*(-webkit-)?image-set\(/i);
     
-    expect(imageSetIdx > -1).toBe(true);
-    if (fallbackIdx > -1) {
-      expect(imageSetIdx > fallbackIdx).toBe(true);
+    expect(!!imageSetMatch).toBe(true);
+    if (fallbackMatch && imageSetMatch) {
+      expect(imageSetMatch.index!).toBeGreaterThan(fallbackMatch.index!);
     }
   });
 
