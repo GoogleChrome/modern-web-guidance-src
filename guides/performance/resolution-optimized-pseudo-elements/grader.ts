@@ -17,19 +17,19 @@ function getFileContent(): string {
 
 test.describe('Resolution Optimized Pseudo Elements Grader', () => {
 
-  test('A pseudo-element (::before or ::after) is used on a target element', async ({ page }) => {
+  test('A pseudo-element (::before or ::after) is used on a target element', async () => {
     const code = getFileContent();
     const hasPseudoInCode = code.includes('::before') || code.includes('::after') || code.includes(':before') || code.includes(':after');
     expect(hasPseudoInCode).toBe(true);
   });
 
-  test('The pseudo-element has a standard image declaration acting as a fallback for the content or background-image property', async ({ page }) => {
+  test('The pseudo-element has a standard image declaration acting as a fallback for the content or background-image property', async () => {
     const code = getFileContent();
     const hasFallback = /url\([^)]+\)/i.test(code) && (code.includes('::before') || code.includes('::after') || code.includes(':before') || code.includes(':after'));
     expect(hasFallback).toBe(true);
   });
 
-  test('The pseudo-element uses the image-set() function for the same property, defined after the fallback', async ({ page }) => {
+  test('The pseudo-element uses the image-set() function for the same property, defined after the fallback', async () => {
     const code = getFileContent();
     const fallbackMatch = code.match(/(content|background|background-image):\s*url\([^)]+\)/i);
     const imageSetMatch = code.match(/(content|background|background-image):\s*(-webkit-)?image-set\(/i);
@@ -40,7 +40,7 @@ test.describe('Resolution Optimized Pseudo Elements Grader', () => {
     }
   });
 
-  test('The image-set() function includes multiple pixel density descriptors (e.g., 1x and 2x)', async ({ page }) => {
+  test('The image-set() function includes multiple pixel density descriptors (e.g., 1x and 2x)', async () => {
     const code = getFileContent();
     const hasImageSet = code.includes('image-set(') || code.includes('-webkit-image-set(');
     const has1x = code.includes('1x');

@@ -105,7 +105,7 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     expect(hasCodePriorities).toBe(true);
   });
 
-  test('The application uses a polyfill to support task prioritization in browsers that do not support the Scheduler API natively', async ({ page }) => {
+  test('The application uses a polyfill to support task prioritization in browsers that do not support the Scheduler API natively', async () => {
     const code = getScriptContent();
     const hasPolyfillCode = code.includes('scheduler-polyfill') || code.includes('postTask') || (code.includes('scheduler') && code.includes('import'));
     expect(hasPolyfillCode).toBe(true);

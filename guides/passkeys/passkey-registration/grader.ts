@@ -8,7 +8,6 @@ if (!targetFile) {
 }
 
 const filePath = path.resolve(targetFile);
-const targetDir = path.dirname(filePath);
 
 function getFileContent(): string {
   if (fs.existsSync(filePath)) {
@@ -18,7 +17,7 @@ function getFileContent(): string {
 }
 
 test.describe('Passkey Registration Expectations', () => {
-  test.beforeEach(async ({ page, TARGET_URL }) => {
+  test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       (window as any).__createCalled = false;
       (window as any).__createOptions = null;

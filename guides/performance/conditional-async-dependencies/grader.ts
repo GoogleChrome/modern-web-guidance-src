@@ -2,13 +2,6 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-function stripStringsAndComments(code: string): string {
-  let clean = code;
-  clean = clean.replace(/\/\/.*$/gm, '');
-  clean = clean.replace(/\/\*[\s\S]*?\*\//g, '');
-  return clean;
-}
-
 function getModuleScriptContents(targetFilePath: string): string[] {
   if (!fs.existsSync(targetFilePath)) {
     return [];
@@ -131,7 +124,7 @@ test.describe('Conditional Async Dependencies Grader', () => {
     expect(hasCheck).toBe(true);
   });
 
-  test('If the feature is missing, a dynamic import is executed', async ({ page }) => {
+  test('If the feature is missing, a dynamic import is executed', async () => {
     const targetFile = process.env.TARGET_FILE;
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set');

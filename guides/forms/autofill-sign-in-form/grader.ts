@@ -100,7 +100,7 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     expect(hasFor).toBe(true);
   });
 
-  test('No element must use autocomplete="off"', async ({ page }) => {
+  test('No element must use autocomplete="off"', async () => {
     const code = getSourceContent();
     const hasOff = /autocomplete=[{"']?off[}"']?|autoComplete=[{"']?off[}"']?/i.test(code);
     expect(hasOff).toBe(false);
