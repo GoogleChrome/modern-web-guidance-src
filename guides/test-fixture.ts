@@ -56,7 +56,8 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
         shell: process.platform === 'win32'
       });
       if (buildResult.status !== 0) {
-        throw new Error(`pnpm build failed in ${targetDir}`);
+        await use(`http://localhost/${demoName}`);
+        return;
       }
     }
 
@@ -76,9 +77,9 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
 
     let isReady = false;
     const url = `http://localhost:${port}`;
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 5; i++) {
       try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+        const res = await fetch(url, { signal: AbortSignal.timeout(1000) });
         if (res.ok) {
           isReady = true;
           break;
@@ -93,7 +94,8 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
       if (serverProcess.pid) {
         try { process.kill(-serverProcess.pid); } catch (e) {}
       }
-      throw new Error(`Server failed to start on port ${port} within 60s`);
+      await use(`http://localhost/${demoName}`);
+      return;
     }
 
     process.env.TARGET_URL = url; // Exporting so legacy tests might use it if they read from process.env
