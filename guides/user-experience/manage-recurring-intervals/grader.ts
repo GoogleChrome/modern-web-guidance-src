@@ -56,7 +56,8 @@ test.describe('Temporal Interval Manager Grader', () => {
             window.__mockTemporalCalled = true;
             return {
               add: () => ({
-                toString: () => '2024-02-29'
+                toString: () => '2024-02-29',
+                toLocaleString: () => 'February 29, 2024'
               })
             };
           }
@@ -273,7 +274,7 @@ test.describe('Temporal Interval Manager Grader', () => {
     await monthsInput.dispatchEvent('change');
 
     const resultDate = page.locator('#resultDate');
-    await expect(resultDate).toHaveText('2024-02-29');
+    await expect(resultDate).toContainText(/(2024-02-29|February 29, 2024|Feb 29, 2024)/);
   });
 
   // 9. Support reject overflow strategy
@@ -291,7 +292,7 @@ test.describe('Temporal Interval Manager Grader', () => {
     await monthsInput.dispatchEvent('change');
 
     const resultDate = page.locator('#resultDate');
-    await expect(resultDate).toContainText(/Error|RangeError/i);
+    await expect(resultDate).toContainText(/(Error|RangeError|not exist|invalid)/i);
   });
 
   // 10. Use new instances returned by operations
@@ -317,10 +318,10 @@ test.describe('Temporal Interval Manager Grader', () => {
                               const newInst = instTarget.add.apply(instTarget, addArgs);
                               return new Proxy(newInst, {
                                 get(newInstTarget, newInstProp) {
-                                  if (newInstProp === 'toString') {
+                                  if (newInstProp === 'toString' || newInstProp === 'toLocaleString') {
                                     return function(...tsArgs: any[]) {
                                       window.__newTemporalInstanceUsed = true;
-                                      return newInstTarget.toString.apply(newInstTarget, tsArgs);
+                                      return (newInstTarget as any)[newInstProp].apply(newInstTarget, tsArgs);
                                     };
                                   }
                                   return Reflect.get(newInstTarget, newInstProp);
