@@ -256,7 +256,7 @@ export class ApiClient {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.items) {
-                        files = data.items.map(item => item.name.split('/').pop());
+                        files = data.items.map(item => item.name.startsWith(gcsPrefix) ? item.name.substring(gcsPrefix.length) : item.name.split('/').pop());
                     }
                 }
             }
@@ -293,6 +293,10 @@ export class ApiClient {
     getAbsoluteUrl(path) {
         if (this.source === 'remote') {
             let fixedPath = path.split('?')[0];
+            const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (isLocalServer) {
+                return `/gcs-proxy/${fixedPath}`;
+            }
             return `${this.gcsPrefix}${encodeURIComponent(fixedPath)}?alt=media`;
         }
         return this._formatUrl(path);
