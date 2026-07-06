@@ -512,3 +512,59 @@ tr:hover td {
   font-size: 0.8125rem;
   font-weight: 800;
 }
+
+/* Switch toggle */
+.switch-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-toggle .slider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background-color: #11141c;
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-block;
+}
+
+.switch-toggle .slider::before {
+  content: '';
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--text-secondary);
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.switch-toggle input:checked + .slider {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
+}
+
+.switch-toggle input:checked + .slider::before {
+  transform: translateX(20px);
+  background-color: var(--primary-color);
+}
+
+.switch-toggle .toggle-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
