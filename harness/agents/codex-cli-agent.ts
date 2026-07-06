@@ -104,11 +104,12 @@ async function run() {
     console.log(`Starting Codex agent in: ${workDir}`);
 
     const command = config.environment.codexCliBin;
+    const model = process.env.CODEX_MODEL;
     const commandArgs = [
       'exec', 
       userPrompt,
       '--yolo',
-      '--model', process.env.CODEX_MODEL || 'gpt-5.5'
+      ...(model ? ['--model', model] : [])
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);

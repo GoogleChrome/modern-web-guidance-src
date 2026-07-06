@@ -73,8 +73,10 @@ async function run() {
     console.log(`Starting Jetski CLI agent in ${workDir}`);
 
     const command = config.environment.jetskiCliBin;
+    const model = process.env.JETSKI_MODEL;
     const commandArgs = [
-      '-p', userPrompt
+      '-p', userPrompt,
+      ...(model ? ['--model', model] : [])
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
