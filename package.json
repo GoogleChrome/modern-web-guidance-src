@@ -25,7 +25,6 @@
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter serving build",
     "build:megaskill": "pnpm --filter serving build:megaskill",
-    "test:mcp": "pnpm --filter serving test",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-negative": "node --env-file=.env --experimental-strip-types guides/negative-gen.ts",
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
