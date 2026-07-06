@@ -404,6 +404,18 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                     <span class="meta-value">${formatRuntime(data.totalRuntime)}</span>
                     <span class="meta-label">Total Runtime</span>
                 </div>` : ''}
+                ${data.cliVersion ? `
+                <div class="header-meta-item">
+                    <span class="meta-value">${escapeHtml(data.cliVersion)}</span>
+                    <span class="meta-label">CLI Version</span>
+                </div>
+                ` : ''}
+                ${data.skillVersion ? `
+                <div class="header-meta-item">
+                    <span class="meta-value" title="${escapeHtml(data.skillVersion)}">${escapeHtml(data.skillVersion)}</span>
+                    <span class="meta-label">Skill Version</span>
+                </div>
+                ` : ''}
                 ${jetskiVersion ? `
                 <div class="header-meta-item">
                     <span class="meta-value">${escapeHtml(jetskiVersion)}</span>
