@@ -190,7 +190,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   return calibrationResult?.success ?? false;
 }
 
-export async function saveSolution(targetDirRaw: string): Promise<void> {
+export async function saveSolution(targetDirRaw: string, patchType: 'solution' | 'demo' | 'broken' = 'solution'): Promise<void> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
   if (!fs.existsSync(targetDirAbs)) {
     console.error(cRed(`Error: Directory not found: ${targetDirAbs}`));
@@ -215,7 +215,18 @@ export async function saveSolution(targetDirRaw: string): Promise<void> {
   }
 
   const baseAppRel = path.relative(rootDir, baseAppAbs);
-  console.log(cCyan(`Saving solution for guide ${guideName} (base app: ${baseAppRel})...`));
+  console.log(cCyan(`Saving ${patchType} for guide ${guideName} (base app: ${baseAppRel})...`));
+
+  const targetsDir = path.join(targetDirAbs, 'targets', baseAppName);
+  const hasTargets = fs.existsSync(targetsDir);
+  
+  let patchPath: string;
+  if (hasTargets || patchType !== 'solution') {
+    fs.mkdirSync(targetsDir, { recursive: true });
+    patchPath = path.join(targetsDir, `${patchType}.patch`);
+  } else {
+    patchPath = path.join(targetDirAbs, 'solution.patch');
+  }
 
   const solutionDir = path.join(targetDirAbs, 'solution');
   if (fs.existsSync(solutionDir)) {
@@ -226,7 +237,6 @@ export async function saveSolution(targetDirRaw: string): Promise<void> {
   // Run git diff
   let diff = '';
   try {
-    // We run from rootDir to ensure paths in diff are relative to repo root
     diff = execSync(`git diff ${baseAppRel}`, { cwd: rootDir, encoding: 'utf8' });
   } catch (err) {
     console.error(cRed(`Error running git diff: ${err}`));
@@ -238,12 +248,11 @@ export async function saveSolution(targetDirRaw: string): Promise<void> {
     return;
   }
 
-  const patchPath = path.join(targetDirAbs, 'solution.patch');
   try {
     fs.writeFileSync(patchPath, diff);
-    console.log(cGreen(`✅ Solution patch saved to ${patchPath}`));
+    console.log(cGreen(`✅ ${patchType} patch saved to ${patchPath}`));
   } catch (err) {
-    console.error(cRed(`Error writing solution patch: ${err}`));
+    console.error(cRed(`Error writing patch: ${err}`));
     process.exit(1);
   }
 

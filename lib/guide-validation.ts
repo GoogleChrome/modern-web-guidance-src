@@ -6,6 +6,7 @@ import matter from 'gray-matter';
 import { validateMacros } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
 import { rootDir, guidesDir } from './paths.ts';
+import { getBaseAppsForGuide } from './evaluation-matrix.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -334,8 +335,12 @@ export function getTaskMap(): Map<string, TaskInfo> {
       const firstLine = content.split('\n').find((l: string) => l.trim().startsWith('- '));
       const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : content.trim();
 
+      const relativeGuidePath = path.relative(guidesDir, guideDir);
+      const baseApps = getBaseAppsForGuide(relativeGuidePath);
+      const baseApp = baseApps[0] || data?.base_app || 'daily-grind';
+
       const info: TaskInfo = {
-        baseApp: data?.base_app || 'daily-grind',
+        baseApp,
         prompt: prompt,
         guideDir: guideDir,
       };

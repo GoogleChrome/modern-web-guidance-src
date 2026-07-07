@@ -211,8 +211,24 @@ async function runGraderGeneration(targetDir: string, prompt: string): Promise<v
       throw new Error(`Gemini CLI exited with code ${exitCode}`);
     }
 
+    const useCaseName = path.basename(targetDir);
+    const taskMap = getTaskMap();
+    const taskInfo = taskMap.get(`${useCaseName}/task`);
+    const baseAppName = taskInfo?.baseApp || 'daily-grind';
+
+    const targetsDir = path.join(targetDir, 'targets', baseAppName);
+    const hasTargets = fs.existsSync(targetsDir);
+    const isLegacy = fs.existsSync(path.join(targetDir, 'grader.ts')) && !fs.existsSync(path.join(targetDir, 'targets'));
+
+    let destFile: string;
+    if (isLegacy) {
+      destFile = path.join(targetDir, 'grader.ts');
+    } else {
+      fs.mkdirSync(targetsDir, { recursive: true });
+      destFile = path.join(targetsDir, 'grader.ts');
+    }
+
     const generatedFile = path.join(workDirRepository, relativeUseCaseDir, 'grader.ts');
-    const destFile = path.join(targetDir, 'grader.ts');
     if (fs.existsSync(generatedFile)) {
       fs.copyFileSync(generatedFile, destFile);
       console.log(`Successfully generated grader.ts at ${destFile}`);
@@ -244,8 +260,15 @@ export async function generateGrader(targetDirRaw: string): Promise<void> {
   }
   const expectationsPath = path.join(targetDir, 'expectations.md');
   const templatePath = path.join(guidesDir, 'template.grader.ts');
-  const solutionPath = path.join(targetDir, 'solution');
-  const hasSolution = fs.existsSync(solutionPath);
+  const useCaseName = path.basename(targetDir);
+  const taskMap = getTaskMap();
+  const taskInfo = taskMap.get(`${useCaseName}/task`);
+  const baseAppName = taskInfo?.baseApp || 'daily-grind';
+
+  const hasSolutionFolder = fs.existsSync(path.join(targetDir, 'solution'));
+  const hasSolutionPatch = fs.existsSync(path.join(targetDir, 'solution.patch'));
+  const hasTargets = fs.existsSync(path.join(targetDir, 'targets', baseAppName));
+  const hasSolution = hasSolutionFolder || hasSolutionPatch || hasTargets;
 
   if (hasSolution) {
     if (!fs.existsSync(guidePath) || !fs.existsSync(expectationsPath) || !fs.existsSync(templatePath)) {
@@ -269,13 +292,7 @@ export async function generateGrader(targetDirRaw: string): Promise<void> {
 
   let prompt: string;
   if (hasSolution) {
-    const useCaseName = path.basename(targetDir);
-    const taskMap = getTaskMap();
-    const taskInfo = taskMap.get(`${useCaseName}/task`);
-    if (!taskInfo) {
-      throw new Error(`Could not find task info for guide space: ${useCaseName}`);
-    }
-    prompt = getBasePromptOptionB(path.basename(guidePath), relativeTestFixturePath, taskInfo.baseApp);
+    prompt = getBasePromptOptionB(path.basename(guidePath), relativeTestFixturePath, baseAppName);
   } else {
     prompt = getBasePrompt(path.basename(guidePath), relativeTestFixturePath);
   }
@@ -290,8 +307,15 @@ export async function generateGraderWithContext(targetDirRaw: string, calibratio
     throw new Error(`Directory not found: ${targetDir}`);
   }
 
-  const solutionPath = path.join(targetDir, 'solution');
-  const hasSolution = fs.existsSync(solutionPath);
+  const useCaseName = path.basename(targetDir);
+  const taskMap = getTaskMap();
+  const taskInfo = taskMap.get(`${useCaseName}/task`);
+  const baseAppName = taskInfo?.baseApp || 'daily-grind';
+
+  const hasSolutionFolder = fs.existsSync(path.join(targetDir, 'solution'));
+  const hasSolutionPatch = fs.existsSync(path.join(targetDir, 'solution.patch'));
+  const hasTargets = fs.existsSync(path.join(targetDir, 'targets', baseAppName));
+  const hasSolution = hasSolutionFolder || hasSolutionPatch || hasTargets;
 
   const failureLines: string[] = [];
   if (calibrationResult.demo.failingTests.length > 0) {
@@ -322,13 +346,7 @@ Revise the grader to fix these issues.`;
 
   let prompt: string;
   if (hasSolution) {
-    const useCaseName = path.basename(targetDir);
-    const taskMap = getTaskMap();
-    const taskInfo = taskMap.get(`${useCaseName}/task`);
-    if (!taskInfo) {
-      throw new Error(`Could not find task info for guide: ${useCaseName}`);
-    }
-    prompt = getBasePromptOptionB(path.basename(guidePath), relativeTestFixturePath, taskInfo.baseApp);
+    prompt = getBasePromptOptionB(path.basename(guidePath), relativeTestFixturePath, baseAppName);
   } else {
     prompt = getBasePrompt(path.basename(guidePath), relativeTestFixturePath);
   }

@@ -34,13 +34,15 @@ const ALL_OPTIONS = {
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
   'save-solution': { type: 'boolean', desc: 'Save the current base app state as the solution patch' },
+  'save-demo': { type: 'boolean', desc: 'Save the current base app state as the demo patch' },
+  'save-broken': { type: 'boolean', desc: 'Save the current base app state as the broken patch' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
-  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'no-test', 'cross-app', 'save-solution'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'no-test', 'cross-app', 'save-solution', 'save-demo', 'save-broken'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
@@ -257,7 +259,17 @@ async function main() {
       }
       if (values['save-solution']) {
         const { saveSolution } = await import('../guides/dev-guide.ts');
-        await saveSolution(dir);
+        await saveSolution(dir, 'solution');
+        break;
+      }
+      if (values['save-demo']) {
+        const { saveSolution } = await import('../guides/dev-guide.ts');
+        await saveSolution(dir, 'demo');
+        break;
+      }
+      if (values['save-broken']) {
+        const { saveSolution } = await import('../guides/dev-guide.ts');
+        await saveSolution(dir, 'broken');
         break;
       }
       // Default dev-guide pipeline
