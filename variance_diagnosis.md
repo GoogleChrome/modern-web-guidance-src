@@ -1,35 +1,23 @@
 ### 1. Divergence Point
 
-The divergence between the two runs occurred during the implementation of the metric registration scripts (**Step 16 in Run A** vs. **Step 12 in Run B**):
-
-*   **Run A** imported and registered both the Core Web Vitals (`onLCP`, `onINP`, `onCLS`) and auxiliary page-load metrics (`onFCP`, `onTTFB`) from a locally installed `web-vitals` package.
-*   **Run B** strictly registered only the three Core Web Vitals (`onLCP`, `onINP`, `onCLS`) imported from `web-vitals@4` via CDN.
-
-By registering early-firing, non-core metrics (`FCP` and `TTFB`), Run A introduced a race condition within the `fetchLater()` polyfill lifecycle during page unload.
-
----
+The divergence occurred at **Step 5**, specifically regarding the architectural implementation of the CSS styling rules. While both agents successfully retrieved guidance on `transition-behavior: allow-discrete`, **Run A** correctly mapped the CSS selectors to the mandatory `.card` class requirement, whereas **Run B** introduced a custom class `.promo-card`. This decision at the CSS definition stage created a fundamental disconnect between the JavaScript DOM manipulation (which appended elements with the class `.card`) and the CSS transition rules (which were scoped to `.promo-card`), rendering the animations non-functional for the test harness.
 
 ### 2. Root Cause Explanation
 
-The failure of Run A to send only a single beacon on page unload is caused by a precise sequence of event listeners and state transitions:
+The failure in Run B is attributed to a combination of **CSS selector mismatch** and **logic fragmentation**, which prevented the browser's rendering engine from applying the requested discrete transitions.
 
-1.  **Early Metric Execution**: Metrics like `TTFB` and `FCP` finalize and fire their callbacks during the initial page load phase while `document.visibilityState` is `'visible'`.
-2.  **Initial Polyfill Registration**: When `onTTFB` or `onFCP` fires, `queueBeacon()` is invoked. Because the page is visible, the `fetchLater()` polyfill registers a `'visibilitychange'` event listener on `document` to flush the payload (`sendNow`) when the page eventually hides.
-3.  **Page Hide Transition**: When the user navigates away, the browser transitions the page to `'hidden'`, triggering the `'visibilitychange'` event.
-4.  **First Beacon Dispatch**: The browser executes `'visibilitychange'` listeners in registration order. The polyfill's listener (registered early during page load) runs first, executing `sendNow()` and dispatching the first beacon via `fetch` keepalive or `sendBeacon`.
-5.  **Late Core Metric Finalization**: The `web-vitals` library also listens to `'visibilitychange'` to finalize the Core Web Vitals (`LCP`, `INP`, `CLS`). When its listener runs, it fires the corresponding callbacks.
-6.  **Second Beacon Dispatch**: The callbacks invoke `queueBeacon()`. Although `queueBeacon()` calls `fetchLaterController.abort()`, the previous controller has already executed and dispatched its beacon. Because `document.visibilityState` is now `'hidden'`, the new `fetchLater()` call immediately schedules `sendNow()` in a microtask, dispatching a second, redundant beacon.
-
-In contrast, Run B avoided registering early-firing metrics, ensuring no beacon was queued or registered to the `'visibilitychange'` listener prior to the page hide transition, resulting in exactly one consolidated beacon.
-
----
+*   **Selector Mismatch (The Primary Failure):** The task requirements explicitly mandated that all promo cards use the class `card`. Run A adhered to this, ensuring that the CSS rules for transitions, `@starting-style`, and `[hidden]` states were applied directly to the elements injected by the JavaScript. Run B defined its transition logic for a class named `.promo-card`. Consequently, when the JavaScript appended a new element with the class `card`, the browser ignored the CSS rules defined for `.promo-card`, causing the transition assertions to fail because no animation was detected on the target elements.
+*   **Logic Fragmentation:** In Run B, the CSS properties were split across disparate blocks. Specifically, the `@starting-style` block was decoupled from the `[hidden]` attribute selector. When using `allow-discrete` transitions, the browser requires a tight coupling between the `display` property change and the `starting-style` definition to calculate the interpolation. By separating these, Run B failed to provide the browser with a clear transition path for the `display` property, leading to the failure of the "includes display property in transition list" assertion.
+*   **Execution Flow:** Run B suffered from "analysis paralysis." It prioritized redundant verification steps (e.g., `nl -ba`, multiple `sed` reads) over verifying the structural integrity of its CSS selectors. While Run B’s use of `node --check` was technically sound for syntax, it failed to perform a semantic check of the CSS-to-DOM mapping, which would have revealed that the `.promo-card` class was orphaned from the JavaScript logic.
 
 ### 3. Trajectory Contrast
 
-| Dimension | Run A (Failed) | Run B (Successful) |
+| Feature | Run A (Successful) | Run B (Failed) |
 | :--- | :--- | :--- |
-| **Metrics Monitored** | Core Web Vitals (`LCP`, `INP`, `CLS`) + Supporting (`FCP`, `TTFB`). | Strictly Core Web Vitals (`LCP`, `INP`, `CLS`). |
-| **Dependency Source** | Installed locally via `pnpm` (`web-vitals` v5.3.0). | Loaded via CDN (`web-vitals` v4). |
-| **Beacon Queueing Behavior** | Queues a beacon early during page load due to immediate `TTFB`/`FCP` events. | Queues beacons only when Core Web Vitals are updated or finalized. |
-| **Unload Event Sequence** | Early-registered listener flushes first beacon; subsequent finalized metrics trigger a second beacon. | Single consolidated beacon is queued and dispatched during the unload transition. |
-| **Outcome** | Failed assertion: Multiple beacons sent. | Passed all assertions. |
+| **CSS Class Naming** | Used `.card` (Compliant) | Used `.promo-card` (Non-compliant) |
+| **CSS Logic** | Consolidated; `@starting-style` linked to `.card` | Fragmented; logic split across multiple selectors |
+| **Tool Usage** | Focused on implementation | Over-indexed on verification (`nl`, `sed`, `node --check`) |
+| **Error Handling** | Recovered from `git` failure by proceeding | Pivoted to `sed` to inspect files (Methodical but verbose) |
+| **Final State** | Correctly implemented animations | Animations failed due to selector mismatch |
+
+**Summary:** Run A succeeded by maintaining strict adherence to the naming requirements, which ensured the CSS transition rules were correctly bound to the DOM elements. Run B failed because it prioritized redundant verification steps over the fundamental requirement of class-name consistency, leading to a broken CSS-to-DOM binding that the test harness correctly identified as a failure.

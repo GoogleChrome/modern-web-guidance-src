@@ -140,51 +140,52 @@
       color: #92400e;
     }
     
-    /* Split Diagnostic Workspace */
-    .workspace-layout {
-      display: grid;
-      grid-template-columns: 240px 1fr;
-      gap: 20px;
-      width: 100%;
-    }
-    .task-sidebar {
+    /* Horizontal Task Selector Bar */
+    .task-bar-container {
       background-color: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 12px;
-      padding: 15px;
-      height: fit-content;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .task-sidebar h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-      font-size: 0.9em;
+    .task-bar-label {
+      font-size: 0.82em;
+      font-weight: 700;
       color: #64748b;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
     }
     .task-list {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       gap: 8px;
+      flex-wrap: wrap;
     }
     .task-btn {
-      background: none;
-      border: 1px solid transparent;
-      padding: 10px 12px;
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      padding: 6px 14px;
       border-radius: 6px;
-      text-align: left;
+      text-align: center;
       cursor: pointer;
-      font-size: 0.9em;
+      font-size: 0.88em;
       font-weight: 500;
       color: #475569;
       transition: all 0.2s;
     }
     .task-btn:hover {
       background-color: #f1f5f9;
+      color: #1e293b;
     }
     .task-btn.active {
       background-color: #eff6ff;
-      border-color: #bfdbfe;
+      border-color: #2563eb;
       color: #1d4ed8;
+      font-weight: 600;
     }
     
     /* Diagnostic Tabs & Content */
@@ -194,6 +195,7 @@
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      width: 100%;
     }
     .tab-bar {
       display: flex;
@@ -490,18 +492,16 @@
       </div>
     </div>
 
-    <!-- Workspace -->
-    <div class="workspace-layout">
-      <!-- Sidebar tasks list -->
-      <div class="task-sidebar">
-        <h3>Tasks in Guide</h3>
-        <div class="task-list" id="task-sidebar-list">
-          <!-- Populated by JS -->
-        </div>
+    <!-- Horizontal Task Selector Bar -->
+    <div class="task-bar-container">
+      <span class="task-bar-label">Tasks in Guide:</span>
+      <div class="task-list" id="task-sidebar-list">
+        <!-- Populated by JS -->
       </div>
+    </div>
 
-      <!-- Main workspace -->
-      <div class="diagnostic-pane">
+    <!-- Main workspace -->
+    <div class="diagnostic-pane" style="margin-top: 20px;">
         <div class="tab-bar">
           <button class="tab-btn active" data-tab="assertions" onclick="switchTab('assertions')">Assertions Comparison</button>
           <button class="tab-btn" data-tab="timeline" onclick="switchTab('timeline')">Trajectory Timeline</button>
@@ -566,7 +566,6 @@
         </div>
       </div>
     </div>
-  </div>
 
   <script type="module" src="compare.js"></script>
 </body>
