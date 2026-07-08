@@ -1138,6 +1138,10 @@ function renderBackButton() {
     btn.className = 'secondary-btn';
     btn.style.cssText = 'margin-bottom: 20px; padding: 5px 15px; font-size: 0.9em;';
     btn.onclick = () => {
+        const modal = $('dialog#modal');
+        if (modal && modal.open) {
+            modal.close();
+        }
         if (currentDetails) {
             showDetails(currentDetails.testName, currentDetails.runs, currentDetails.stats, currentDetails.testId);
         }
@@ -1237,7 +1241,17 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 
     modal.dataset.runNumber = runNumber;
 
-    title.textContent = `Diff: ${formatTestName(testName)} (Run ${runNumber})`;
+    let fileName = '';
+    if (resultPath && resultPath.includes('/guided/')) {
+        fileName = resultPath.split('/guided/')[1];
+    } else if (resultPath && resultPath.includes('/unguided/')) {
+        fileName = resultPath.split('/unguided/')[1];
+    } else if (setupPath && setupPath.includes('/base_app/')) {
+        fileName = setupPath.split('/base_app/')[1];
+    } else if (resultPath) {
+        fileName = resultPath.split('/').pop();
+    }
+    title.textContent = fileName || 'index.html';
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Computing diff...</div>';
 
     // Optional: Make modal wider for diff
