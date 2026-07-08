@@ -1251,7 +1251,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     } else if (resultPath) {
         fileName = resultPath.split('/').pop();
     }
-    title.textContent = fileName || 'index.html';
+    title.textContent = fileName;
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Computing diff...</div>';
 
     // Optional: Make modal wider for diff
