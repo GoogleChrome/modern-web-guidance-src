@@ -295,8 +295,11 @@ async function handleRunTypeChange() {
 async function loadTrialMetadata() {
   const resultsBase = isStatic ? 'results' : '';
   
-  // Update UI titles and dates
-  document.getElementById('summary-guide').innerText = guideName;
+  const guideLinkEl = document.getElementById('summary-guide-link');
+  if (guideLinkEl) {
+    guideLinkEl.innerText = guideName;
+    guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'local' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
+  }
   
   // Fetch Trial A suite metadata
   try {
@@ -408,6 +411,12 @@ function updateExecutiveSummary() {
   const deltaSpan = document.getElementById('summary-delta');
   deltaSpan.innerText = deltaText;
   deltaSpan.style.color = delta === 0 ? '#475569' : delta > 0 ? '#166534' : '#991b1b';
+
+  const guideLinkEl = document.getElementById('summary-guide-link');
+  if (guideLinkEl) {
+    guideLinkEl.innerText = guideName;
+    guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'local' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
+  }
 }
 
 function calculateGuideScore(suiteData, runNum) {
@@ -625,6 +634,8 @@ async function loadTrajectories(pathA, pathB) {
   let trajB = null;
   let chatA = '';
   let chatB = '';
+  let sessionUrlA = '';
+  let sessionUrlB = '';
 
   try {
     const resA = await fetch(`${resultsBase}/${pathA}/trajectory_summary.json`);
@@ -646,7 +657,25 @@ async function loadTrajectories(pathA, pathB) {
     if (chatResB.ok) chatB = await chatResB.text();
   } catch (e) {}
 
-  renderTimelineRows(container, trajA, trajB, chatA, chatB);
+  try {
+    const filesResA = await fetch(`/api/run-files?dir=${encodeURIComponent(pathA)}&source=local`);
+    if (filesResA.ok) {
+      const filesA = (await filesResA.json()).files || [];
+      const sessionFileA = filesA.find(f => f.startsWith('session-') && f.endsWith('.html'));
+      if (sessionFileA) sessionUrlA = `${resultsBase}/${pathA}/${sessionFileA}`;
+    }
+  } catch (e) {}
+
+  try {
+    const filesResB = await fetch(`/api/run-files?dir=${encodeURIComponent(pathB)}&source=local`);
+    if (filesResB.ok) {
+      const filesB = (await filesResB.json()).files || [];
+      const sessionFileB = filesB.find(f => f.startsWith('session-') && f.endsWith('.html'));
+      if (sessionFileB) sessionUrlB = `${resultsBase}/${pathB}/${sessionFileB}`;
+    }
+  } catch (e) {}
+
+  renderTimelineRows(container, trajA, trajB, chatA, chatB, sessionUrlA, sessionUrlB);
 }
 
 function findDivergenceInfo(trajA, trajB) {
@@ -702,7 +731,7 @@ function findDivergenceInfo(trajA, trajB) {
   };
 }
 
-function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '') {
+function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', sessionUrlA = '', sessionUrlB = '') {
   container.innerHTML = '';
 
   const stepsA = trajA?.steps || [];
@@ -750,7 +779,7 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '') {
       rowHtml += `
         <div class="divergence-banner">
           <span class="divergence-badge" style="background:#fef3c7; color:#92400e; border-color:#fcd34d;">⚠️ DIVERGENT STEP (${stepNum})</span>
-          <span class="divergence-desc" style="color:#78350f;">Post-divergence trajectory step with differing actions/outcomes.</span>
+          <span class="divergence-desc">Post-divergence trajectory step with differing actions/outcomes.</span>
         </div>
       `;
     }
@@ -758,10 +787,10 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '') {
     rowHtml += `
       <div class="timeline-cols-grid">
         <div class="timeline-col col-a">
-          ${stepA ? renderStepCardHtml(stepA, isDivergent) : '<div class="timeline-empty-card">No step in Trial A</div>'}
+          ${stepA ? renderStepCardHtml(stepA, isDivergent, sessionUrlA) : '<div class="timeline-empty-card">No step in Trial A</div>'}
         </div>
         <div class="timeline-col col-b">
-          ${stepB ? renderStepCardHtml(stepB, isDivergent) : '<div class="timeline-empty-card">No step in Trial B</div>'}
+          ${stepB ? renderStepCardHtml(stepB, isDivergent, sessionUrlB) : '<div class="timeline-empty-card">No step in Trial B</div>'}
         </div>
       </div>
     `;
@@ -804,14 +833,22 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '') {
   }
 }
 
-function renderStepCardHtml(step, isDivergent = false) {
+function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
   const isErr = step.outcome?.status === 'error';
   const cardClass = `timeline-step ${isErr ? 'error' : 'success'} ${isDivergent ? 'divergence-card' : ''}`;
+  const stepAnchorUrl = sessionUrl ? `${sessionUrl}#step-${step.stepNumber}` : '';
 
   let html = `
     <div class="${cardClass}">
       <div class="step-header">
-        <span>STEP ${step.stepNumber}</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>STEP ${step.stepNumber}</span>
+          ${stepAnchorUrl ? `
+            <a href="${stepAnchorUrl}" target="_blank" title="Open source trajectory file at Step ${step.stepNumber}" style="font-size:0.82em; font-weight:600; color:#2563eb; text-decoration:none; display:inline-flex; align-items:center; gap:3px; background:#eff6ff; padding:2px 8px; border-radius:4px; border:1px solid #bfdbfe;">
+              <span>🔗 Source Trajectory</span>
+            </a>
+          ` : ''}
+        </div>
         <span style="color:${isErr ? '#ef4444' : '#22c55e'}">${(step.outcome?.status || 'UNKNOWN').toUpperCase()}</span>
       </div>
   `;

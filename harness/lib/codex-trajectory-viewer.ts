@@ -126,6 +126,10 @@ export function generateCodexTrajectoryHtml(logData: any[]): string {
 
   html += '      if (contentHtml) {\n';
   html += '          div.className = "log-entry role-" + escapeHtml(role);\n';
+  html += '          div.id = "entry-" + (i + 1);\n';
+  html += '          if (entry.type === "response_item" && entry.payload && (entry.payload.type === "function_call" || entry.payload.type === "custom_tool_call")) {\n';
+  html += '            div.id = "step-" + (logsContainer.querySelectorAll(".role-assistant").length + 1);\n';
+  html += '          }\n';
   html += "          let innerHTML = '<div class=\"meta\"><span>' + escapeHtml(role).toUpperCase() + '</span><span class=\"timestamp\">' + timestamp + '</span></div>';\n";
   html += "          innerHTML += '<div class=\"content-block\">' + contentHtml + '</div>';\n";
   html += "          innerHTML += '<div class=\"toggle-raw\" onclick=\"this.nextElementSibling.style.display = (this.nextElementSibling.style.display === \\'block\\' ? \\'none\\' : \\'block\\')\">Toggle Raw JSON</div>';\n";
@@ -137,6 +141,17 @@ export function generateCodexTrajectoryHtml(logData: any[]): string {
 
   html += '    if (logsContainer.children.length === 0) {\n';
   html += '        logsContainer.innerHTML = \'<div style="text-align:center; padding: 100px; color: #484f58;">No visible events present in session log.</div>\';\n';
+  html += '    }\n';
+
+  html += '    if (window.location.hash) {\n';
+  html += '      const target = document.querySelector(window.location.hash);\n';
+  html += '      if (target) {\n';
+  html += '        setTimeout(() => {\n';
+  html += '          target.scrollIntoView({ behavior: "smooth", block: "center" });\n';
+  html += '          target.style.outline = "3px solid #58a6ff";\n';
+  html += '          target.style.boxShadow = "0 0 20px rgba(88, 166, 255, 0.5)";\n';
+  html += '        }, 100);\n';
+  html += '      }\n';
   html += '    }\n';
   html += '  </script>\n';
   html += '</body>\n';
