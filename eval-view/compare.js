@@ -623,6 +623,8 @@ async function loadTrajectories(pathA, pathB) {
 
   let trajA = null;
   let trajB = null;
+  let chatA = '';
+  let chatB = '';
 
   try {
     const resA = await fetch(`${resultsBase}/${pathA}/trajectory_summary.json`);
@@ -634,7 +636,17 @@ async function loadTrajectories(pathA, pathB) {
     if (resB.ok) trajB = await resB.json();
   } catch (e) {}
 
-  renderTimelineRows(container, trajA, trajB);
+  try {
+    const chatResA = await fetch(`${resultsBase}/${pathA}/chat_log.txt`);
+    if (chatResA.ok) chatA = await chatResA.text();
+  } catch (e) {}
+
+  try {
+    const chatResB = await fetch(`${resultsBase}/${pathB}/chat_log.txt`);
+    if (chatResB.ok) chatB = await chatResB.text();
+  } catch (e) {}
+
+  renderTimelineRows(container, trajA, trajB, chatA, chatB);
 }
 
 function findDivergenceInfo(trajA, trajB) {
@@ -690,14 +702,14 @@ function findDivergenceInfo(trajA, trajB) {
   };
 }
 
-function renderTimelineRows(container, trajA, trajB) {
+function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '') {
   container.innerHTML = '';
 
   const stepsA = trajA?.steps || [];
   const stepsB = trajB?.steps || [];
   const maxSteps = Math.max(stepsA.length, stepsB.length);
 
-  if (maxSteps === 0) {
+  if (maxSteps === 0 && !chatA && !chatB) {
     container.innerHTML = '<div style="padding:30px; text-align:center; color:#64748b;">No normalized trajectory available. Ensure trajectory_summary.json is generated.</div>';
     return;
   }
@@ -756,6 +768,39 @@ function renderTimelineRows(container, trajA, trajB) {
 
     row.innerHTML = rowHtml;
     container.appendChild(row);
+  }
+
+  // Render Final Assistant Response at the bottom of the timeline
+  if (chatA || chatB) {
+    const finalRow = document.createElement('div');
+    finalRow.className = 'timeline-step-row final-answer-row';
+    finalRow.innerHTML = `
+      <div class="final-answer-banner">
+        <span class="final-answer-badge">🏁 FINAL ASSISTANT OUTPUT</span>
+        <span style="font-size:0.9em; color:#15803d; font-weight:500;">Agent final response after completing or halting execution.</span>
+      </div>
+      <div class="timeline-cols-grid">
+        <div class="timeline-col col-a">
+          <div class="final-answer-card">
+            <div class="final-answer-header">
+              <span>ASSISTANT</span>
+              <span style="font-size:0.8em; color:#64748b;">Trial A</span>
+            </div>
+            <div class="final-answer-body">${escapeHtml(chatA || 'No final message recorded for Trial A.')}</div>
+          </div>
+        </div>
+        <div class="timeline-col col-b">
+          <div class="final-answer-card">
+            <div class="final-answer-header">
+              <span>ASSISTANT</span>
+              <span style="font-size:0.8em; color:#64748b;">Trial B</span>
+            </div>
+            <div class="final-answer-body">${escapeHtml(chatB || 'No final message recorded for Trial B.')}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    container.appendChild(finalRow);
   }
 }
 

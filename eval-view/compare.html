@@ -424,18 +424,78 @@
       color: #2563eb;
     }
     .step-outcome {
-      font-size: 0.9em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
       line-height: 1.5;
-      color: #475569;
-      background-color: #ffffff;
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid #e2e8f0;
+      color: #334155;
+      background-color: #f8fafc;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow-y: auto;
     }
     .step-outcome.error {
       color: #991b1b;
       background-color: #fef2f2;
       border-color: #fecaca;
+    }
+
+    /* Final Assistant Answer Card */
+    .final-answer-card {
+      background-color: #0f172a;
+      border: 1px solid #1e293b;
+      border-left: 6px solid #22c55e;
+      border-radius: 10px;
+      padding: 18px 20px;
+      color: #f8fafc;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+      height: 100%;
+    }
+    .final-answer-header {
+      font-size: 0.85em;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .final-answer-body {
+      font-size: 0.95em;
+      line-height: 1.6;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .final-answer-banner {
+      grid-column: 1 / -1;
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-left: 5px solid #16a34a;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .final-answer-badge {
+      font-weight: 800;
+      font-size: 0.85em;
+      color: #14532d;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: #dcfce7;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid #86efac;
     }
 
     /* Assertion Table */
