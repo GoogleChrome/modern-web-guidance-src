@@ -272,83 +272,168 @@
     }
     
     /* Trajectory Timeline Styles */
-    .timeline {
+    .timeline-header-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 20px;
+      margin-bottom: 15px;
+      width: 100%;
+    }
+    .timeline-header-col {
+      font-weight: 700;
+      font-size: 1.05em;
+      color: #1e293b;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .timeline-step-row {
+      margin-bottom: 24px;
+      width: 100%;
+    }
+    .timeline-cols-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 20px;
+      align-items: flex-start;
+      width: 100%;
+    }
+    .timeline-col {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      min-width: 0;
     }
     .timeline-step {
       background-color: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 16px 18px;
       position: relative;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      height: auto;
     }
     .timeline-step.error {
-      border-left: 5px solid #ef4444;
+      border-left: 6px solid #ef4444;
     }
     .timeline-step.success {
-      border-left: 5px solid #22c55e;
+      border-left: 6px solid #22c55e;
     }
+    .timeline-step.divergence-card {
+      border: 2px solid #f59e0b;
+      border-left: 6px solid #d97706;
+      background-color: #fffbeb;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);
+    }
+    
+    /* Divergence Point Indicator Banner */
+    .divergence-banner {
+      grid-column: 1 / -1;
+      background-color: #fef3c7;
+      border: 1px solid #fde68a;
+      border-left: 5px solid #d97706;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 6px rgba(217, 119, 6, 0.1);
+    }
+    .divergence-banner.primary {
+      background-color: #fef2f2;
+      border-color: #fecaca;
+      border-left-color: #dc2626;
+    }
+    .divergence-badge {
+      font-weight: 800;
+      font-size: 0.85em;
+      color: #991b1b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: #fee2e2;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid #fca5a5;
+    }
+    .divergence-desc {
+      font-size: 0.9em;
+      color: #7f1d1d;
+      font-weight: 500;
+    }
+
+    .timeline-empty-card {
+      background-color: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.9em;
+      font-style: italic;
+    }
+
     .step-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.82em;
-      color: #64748b;
-      margin-bottom: 8px;
+      font-size: 0.9em;
+      color: #475569;
+      margin-bottom: 12px;
       font-weight: 700;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 6px;
     }
     .step-thought {
-      font-size: 0.92em;
-      line-height: 1.55;
+      font-size: 0.98rem;
+      line-height: 1.6;
       color: #0f172a;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       background-color: #f0f9ff;
       border: 1px solid #bae6fd;
       border-left: 4px solid #0284c7;
-      padding: 10px 14px;
-      border-radius: 6px;
+      padding: 12px 16px;
+      border-radius: 8px;
       white-space: pre-wrap;
       word-break: break-word;
+      height: auto;
     }
     .step-thought-header {
-      font-weight: 700;
-      color: #0369a1;
-      font-size: 0.85em;
+      font-weight: 800;
+      color: #0284c7;
+      font-size: 0.88em;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
     }
     .step-action {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       background-color: #f8fafc;
-      padding: 8px 10px;
-      border-radius: 6px;
-      font-size: 0.85em;
-      color: #334155;
-      margin-bottom: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.92em;
+      line-height: 1.5;
+      color: #1e293b;
+      margin-bottom: 10px;
       border: 1px solid #e2e8f0;
     }
     .step-action-title {
-      font-weight: 600;
+      font-weight: 700;
       color: #2563eb;
     }
     .step-outcome {
-      font-size: 0.85em;
+      font-size: 0.9em;
+      line-height: 1.5;
       color: #475569;
       background-color: #ffffff;
-      padding: 6px 10px;
-      border-radius: 4px;
+      padding: 8px 12px;
+      border-radius: 6px;
       border: 1px solid #e2e8f0;
     }
     .step-outcome.error {
-      color: #b91c1c;
+      color: #991b1b;
       background-color: #fef2f2;
       border-color: #fecaca;
     }
@@ -531,20 +616,7 @@
 
         <!-- Trajectory Timeline Section -->
         <div id="tab-content-timeline" style="display:none; width: 100%;">
-          <div class="split-view">
-            <div class="split-col">
-              <div class="split-col-title" id="timeline-title-a">Trial A Steps</div>
-              <div class="timeline" id="timeline-a">
-                <!-- Steps -->
-              </div>
-            </div>
-            <div class="split-col">
-              <div class="split-col-title" id="timeline-title-b">Trial B Steps</div>
-              <div class="timeline" id="timeline-b">
-                <!-- Steps -->
-              </div>
-            </div>
-          </div>
+          <!-- Populated as aligned step rows by JS -->
         </div>
 
         <!-- Code Output Diff Section -->

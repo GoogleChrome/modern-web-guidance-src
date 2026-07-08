@@ -453,12 +453,24 @@ async function loadActiveTaskDetails() {
   runDirB = `${resultsBase}/${pathPartB}`;
 
   // Update split-pane column titles to display both run number and run type
-  document.getElementById('timeline-title-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
-  document.getElementById('timeline-title-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
-  document.getElementById('code-title-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
-  document.getElementById('code-title-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
-  document.getElementById('header-assert-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
-  document.getElementById('header-assert-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
+  if (document.getElementById('timeline-title-a')) {
+    document.getElementById('timeline-title-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
+  }
+  if (document.getElementById('timeline-title-b')) {
+    document.getElementById('timeline-title-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
+  }
+  if (document.getElementById('code-title-a')) {
+    document.getElementById('code-title-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
+  }
+  if (document.getElementById('code-title-b')) {
+    document.getElementById('code-title-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
+  }
+  if (document.getElementById('header-assert-a')) {
+    document.getElementById('header-assert-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
+  }
+  if (document.getElementById('header-assert-b')) {
+    document.getElementById('header-assert-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
+  }
 
   // 1. Load Assertions Comparison
   await loadAssertions(pathPartA, pathPartB);
@@ -606,12 +618,8 @@ async function loadAssertions(pathA, pathB) {
 
 async function loadTrajectories(pathA, pathB) {
   const resultsBase = isStatic ? 'results' : '';
-  
-  const containerA = document.getElementById('timeline-a');
-  const containerB = document.getElementById('timeline-b');
-  
-  containerA.innerHTML = '<div class="trial-meta">Loading trajectory...</div>';
-  containerB.innerHTML = '<div class="trial-meta">Loading trajectory...</div>';
+  const container = document.getElementById('tab-content-timeline');
+  container.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Loading aligned trajectories...</div>';
 
   let trajA = null;
   let trajB = null;
@@ -626,68 +634,181 @@ async function loadTrajectories(pathA, pathB) {
     if (resB.ok) trajB = await resB.json();
   } catch (e) {}
 
-  renderTimeline(containerA, trajA);
-  renderTimeline(containerB, trajB);
+  renderTimelineRows(container, trajA, trajB);
 }
 
-function renderTimeline(container, trajectory) {
+function findDivergenceInfo(trajA, trajB) {
+  const stepsA = trajA?.steps || [];
+  const stepsB = trajB?.steps || [];
+  const maxSteps = Math.max(stepsA.length, stepsB.length);
+
+  let primaryStep = null;
+  const divergentSteps = new Set();
+
+  // Extract diagnosis text if available
+  const diagnosisTextElement = document.getElementById('diagnosis-text');
+  const diagnosisText = diagnosisTextElement ? diagnosisTextElement.innerText || '' : '';
+
+  if (diagnosisText) {
+    const match = diagnosisText.match(/Divergence.*?(?:Step|step)\s*(\d+)/i) || diagnosisText.match(/(?:Step|step)\s*(\d+)/i);
+    if (match) {
+      primaryStep = parseInt(match[1], 10);
+    }
+  }
+
+  for (let i = 0; i < maxSteps; i++) {
+    const stepNum = i + 1;
+    const sA = stepsA[i];
+    const sB = stepsB[i];
+
+    if (!sA || !sB) {
+      divergentSteps.add(stepNum);
+      if (!primaryStep) primaryStep = stepNum;
+      continue;
+    }
+
+    const tA = (sA.thought || '').toLowerCase();
+    const tB = (sB.thought || '').toLowerCase();
+    const aA = (sA.action?.name || '').toLowerCase();
+    const aB = (sB.action?.name || '').toLowerCase();
+    const isErrA = sA.outcome?.status === 'error';
+    const isErrB = sB.outcome?.status === 'error';
+
+    const isThoughtDiff = (tA && tB && tA !== tB && (tA.includes('.card') !== tB.includes('.card') || tA.includes('promo-card') !== tB.includes('promo-card') || tA.includes('allow-discrete') !== tB.includes('allow-discrete')));
+    const isActionDiff = (aA && aB && aA.split(' ')[0] !== aB.split(' ')[0]);
+    const isStatusDiff = (isErrA !== isErrB);
+
+    if (isThoughtDiff || isActionDiff || isStatusDiff) {
+      divergentSteps.add(stepNum);
+      if (!primaryStep) primaryStep = stepNum;
+    }
+  }
+
+  return {
+    primaryStep: primaryStep || (divergentSteps.size > 0 ? Array.from(divergentSteps)[0] : null),
+    divergentSteps: Array.from(divergentSteps)
+  };
+}
+
+function renderTimelineRows(container, trajA, trajB) {
   container.innerHTML = '';
-  if (!trajectory || !trajectory.steps || trajectory.steps.length === 0) {
-    container.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">No normalized trajectory available. Ensure trajectory_summary.json is generated.</div>';
+
+  const stepsA = trajA?.steps || [];
+  const stepsB = trajB?.steps || [];
+  const maxSteps = Math.max(stepsA.length, stepsB.length);
+
+  if (maxSteps === 0) {
+    container.innerHTML = '<div style="padding:30px; text-align:center; color:#64748b;">No normalized trajectory available. Ensure trajectory_summary.json is generated.</div>';
     return;
   }
 
-  trajectory.steps.forEach(step => {
-    const card = document.createElement('div');
-    const isErr = step.outcome?.status === 'error';
-    card.className = `timeline-step ${isErr ? 'error' : 'success'}`;
+  const { primaryStep, divergentSteps } = findDivergenceInfo(trajA, trajB);
 
-    let html = `
+  // Top header row
+  const headerRow = document.createElement('div');
+  headerRow.className = 'timeline-header-row';
+  headerRow.innerHTML = `
+    <div class="timeline-header-col">Trial A (Run ${runNumA} - ${capitalize(runTypeA)})</div>
+    <div class="timeline-header-col">Trial B (Run ${runNumB} - ${capitalize(runTypeB)})</div>
+  `;
+  container.appendChild(headerRow);
+
+  // Render each step row
+  for (let i = 0; i < maxSteps; i++) {
+    const stepNum = i + 1;
+    const stepA = stepsA[i];
+    const stepB = stepsB[i];
+    const isPrimary = stepNum === primaryStep;
+    const isDivergent = isPrimary || divergentSteps.includes(stepNum);
+
+    const row = document.createElement('div');
+    row.className = `timeline-step-row ${isDivergent ? 'divergence-row' : ''}`;
+    row.id = `step-row-${stepNum}`;
+
+    let rowHtml = '';
+
+    if (isPrimary) {
+      rowHtml += `
+        <div class="divergence-banner primary">
+          <span class="divergence-badge">🚨 PRIMARY DIVERGENCE POINT (STEP ${stepNum})</span>
+          <span class="divergence-desc">Agent reasoning or tool execution diverged at this step between Trial A and Trial B.</span>
+        </div>
+      `;
+    } else if (isDivergent && stepNum > primaryStep) {
+      rowHtml += `
+        <div class="divergence-banner">
+          <span class="divergence-badge" style="background:#fef3c7; color:#92400e; border-color:#fcd34d;">⚠️ DIVERGENT STEP (${stepNum})</span>
+          <span class="divergence-desc" style="color:#78350f;">Post-divergence trajectory step with differing actions/outcomes.</span>
+        </div>
+      `;
+    }
+
+    rowHtml += `
+      <div class="timeline-cols-grid">
+        <div class="timeline-col col-a">
+          ${stepA ? renderStepCardHtml(stepA, isDivergent) : '<div class="timeline-empty-card">No step in Trial A</div>'}
+        </div>
+        <div class="timeline-col col-b">
+          ${stepB ? renderStepCardHtml(stepB, isDivergent) : '<div class="timeline-empty-card">No step in Trial B</div>'}
+        </div>
+      </div>
+    `;
+
+    row.innerHTML = rowHtml;
+    container.appendChild(row);
+  }
+}
+
+function renderStepCardHtml(step, isDivergent = false) {
+  const isErr = step.outcome?.status === 'error';
+  const cardClass = `timeline-step ${isErr ? 'error' : 'success'} ${isDivergent ? 'divergence-card' : ''}`;
+
+  let html = `
+    <div class="${cardClass}">
       <div class="step-header">
         <span>STEP ${step.stepNumber}</span>
         <span style="color:${isErr ? '#ef4444' : '#22c55e'}">${(step.outcome?.status || 'UNKNOWN').toUpperCase()}</span>
       </div>
+  `;
+
+  if (step.thought) {
+    html += `
+      <div class="step-thought">
+        <div class="step-thought-header">💡 AGENT THINKING / REASONING</div>
+        <div>${escapeHtml(step.thought)}</div>
+      </div>
     `;
+  }
 
-    if (step.thought) {
-      html += `
-        <div class="step-thought">
-          <div class="step-thought-header">💡 AGENT THINKING / REASONING</div>
-          <div>${escapeHtml(step.thought)}</div>
-        </div>
-      `;
-    }
+  if (step.action) {
+    const argsStr = step.action.params ? JSON.stringify(step.action.params, null, 2) : '';
+    const actionName = step.action.name || 'Unknown Action';
+    const actionType = step.action.type ? ` (${step.action.type})` : '';
+    html += `
+      <div class="step-action">
+        <span class="step-action-title">🔧 Tool / Action:</span> ${escapeHtml(actionName)}${escapeHtml(actionType)}
+        ${argsStr ? `
+          <details style="margin-top:6px;">
+            <summary style="cursor:pointer; color:#2563eb; font-weight:600; font-size:0.9em;">View Action Parameters</summary>
+            <pre style="margin-top:5px; font-size:0.85em; background:#ffffff; border:1px solid #cbd5e1; padding:8px; border-radius:6px; white-space:pre-wrap; word-break:break-word; overflow-x:auto;">${escapeHtml(argsStr)}</pre>
+          </details>
+        ` : ''}
+      </div>
+    `;
+  }
 
-    if (step.action) {
-      const argsStr = step.action.params ? JSON.stringify(step.action.params, null, 2) : '';
-      const actionName = step.action.name || 'Unknown Action';
-      const actionType = step.action.type ? ` (${step.action.type})` : '';
-      html += `
-        <div class="step-action">
-          <span class="step-action-title">🔧 Tool / Action:</span> ${escapeHtml(actionName)}${escapeHtml(actionType)}
-          ${argsStr ? `
-            <details style="margin-top:6px;">
-              <summary style="cursor:pointer; color:#2563eb; font-weight:500; font-size:0.9em;">View Action Parameters</summary>
-              <pre style="margin-top:5px; font-size:0.85em; background:#ffffff; border:1px solid #cbd5e1; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; overflow-x:auto;">${escapeHtml(argsStr)}</pre>
-            </details>
-          ` : ''}
-        </div>
-      `;
-    }
+  if (step.outcome && step.outcome.message) {
+    const outcomeClass = isErr ? 'step-outcome error' : 'step-outcome';
+    html += `
+      <details style="margin-top:6px;">
+        <summary style="cursor:pointer; color:#64748b; font-size:0.88em; font-weight:600;">View Step Outcome / Output</summary>
+        <div class="${outcomeClass}" style="margin-top:4px;">${escapeHtml(step.outcome.message)}</div>
+      </details>
+    `;
+  }
 
-    if (step.outcome && step.outcome.message) {
-      const outcomeClass = isErr ? 'step-outcome error' : 'step-outcome';
-      html += `
-        <details style="margin-top:6px;">
-          <summary style="cursor:pointer; color:#64748b; font-size:0.85em; font-weight:500;">View Step Outcome / Output</summary>
-          <div class="${outcomeClass}" style="margin-top:4px;">${escapeHtml(step.outcome.message)}</div>
-        </details>
-      `;
-    }
-
-    card.innerHTML = html;
-    container.appendChild(card);
-  });
+  html += `</div>`;
+  return html;
 }
 
 async function loadCodeOutputs(pathA, pathB) {
@@ -748,7 +869,7 @@ function switchTab(tab) {
   if (currentTab === 'assertions') {
     document.getElementById('tab-content-assertions').style.display = 'block';
   } else if (currentTab === 'timeline') {
-    document.getElementById('tab-content-timeline').style.display = 'flex';
+    document.getElementById('tab-content-timeline').style.display = 'block';
   } else if (currentTab === 'code') {
     document.getElementById('tab-content-code').style.display = 'flex';
   }
