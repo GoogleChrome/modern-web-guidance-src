@@ -1,7 +1,9 @@
 ---
 name: tabs
-description: "Build a tabbed interface: a set of tab triggers that switch between associated content panels, with correct keyboard navigation and ARIA semantics."
+description: "Build an accessible, responsive tabbed interface, with assistive technology support and good UX when not all tabs fit on screen."
 web-feature-ids:
   - anchor-positioning
   - hidden-until-found
+  - scroll-snap
+  - popover
 ---
