@@ -749,10 +749,8 @@ function switchTab(tab) {
     document.getElementById('tab-content-assertions').style.display = 'block';
   } else if (currentTab === 'timeline') {
     document.getElementById('tab-content-timeline').style.display = 'flex';
-    updateSyncScrollHeight('timeline-scroll-container', 'timeline-scroll-spacer', 'timeline-a', 'timeline-b');
   } else if (currentTab === 'code') {
     document.getElementById('tab-content-code').style.display = 'flex';
-    updateSyncScrollHeight('code-scroll-container', 'code-scroll-spacer', 'code-a', 'code-b');
   }
 }
 
@@ -930,82 +928,9 @@ function escapeHtml(str) {
 // Global initialization
 window.onload = async () => {
   if (initParams()) {
-    // Create temporary scroll debug overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'debug-scroll-overlay';
-    overlay.style.cssText = 'position: fixed; top: 10px; right: 10px; background: rgba(15, 23, 42, 0.95); color: #22c55e; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 11px; z-index: 99999; pointer-events: none; border: 1px solid #334155; line-height: 1.5; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);';
-    overlay.innerHTML = '<strong>Scroll Telemetry Debug:</strong><br>Drag scrollbar or scroll wheel to activate...';
-    document.body.appendChild(overlay);
-
     await loadTrialMetadata();
-    
-    // Initialize combined scroll synchronization for Timeline and Code tabs
-    setupSyncScroll('timeline-scroll-container', 'timeline-scroll-spacer', 'timeline-a', 'timeline-b');
-    setupSyncScroll('code-scroll-container', 'code-scroll-spacer', 'code-a', 'code-b');
   }
 };
-
-/**
- * Sets up bidirectional, synchronized scrolling between a combined scrollbar container and two columns.
- * Also captures mouse wheel events on the columns and redirects them to the scrollbar container.
- */
-function setupSyncScroll(scrollContainerId, spacerId, colAId, colBId) {
-  const container = document.getElementById(scrollContainerId);
-  const colA = document.getElementById(colAId);
-  const colB = document.getElementById(colBId);
-
-  if (!container || !colA || !colB) return;
-
-  // 1. Synchronize scroll from scrollbar container to both columns
-  container.addEventListener('scroll', () => {
-    const top = container.scrollTop;
-    colA.scrollTop = top;
-    colB.scrollTop = top;
-
-    // Update real-time debug overlay
-    const overlay = document.getElementById('debug-scroll-overlay');
-    if (overlay) {
-      overlay.innerHTML = `
-        <strong>Scroll Telemetry (${scrollContainerId.split('-')[0].toUpperCase()}):</strong><br>
-        • Scrollbar scrollTop: ${Math.round(top)}px (max: ${container.scrollHeight - container.clientHeight}px)<br>
-        • Col A (${colAId}) scrollTop: ${Math.round(colA.scrollTop)}px (scrollHeight: ${colA.scrollHeight}px, clientHeight: ${colA.clientHeight}px)<br>
-        • Col B (${colBId}) scrollTop: ${Math.round(colB.scrollTop)}px (scrollHeight: ${colB.scrollHeight}px, clientHeight: ${colB.clientHeight}px)
-      `;
-    }
-  });
-
-  // 2. Capture wheel events on columns and redirect to the scrollbar container to enable native scrolling
-  const handleWheel = (e) => {
-    e.preventDefault();
-    container.scrollTop += e.deltaY;
-  };
-
-  colA.addEventListener('wheel', handleWheel, { passive: false });
-  colB.addEventListener('wheel', handleWheel, { passive: false });
-}
-
-/**
- * Updates the height of the combined scrollbar spacer dynamically to match the maximum scrollable height of the columns.
- */
-function updateSyncScrollHeight(scrollContainerId, spacerId, colAId, colBId) {
-  const container = document.getElementById(scrollContainerId);
-  const spacer = document.getElementById(spacerId);
-  const colA = document.getElementById(colAId);
-  const colB = document.getElementById(colBId);
-
-  if (!container || !spacer || !colA || !colB) return;
-
-  // Tiny timeout to ensure DOM layout is fully rendered and scrollHeights are accurate
-  setTimeout(() => {
-    const maxScrollHeight = Math.max(colA.scrollHeight, colB.scrollHeight);
-    spacer.style.height = `${maxScrollHeight}px`;
-    
-    // Reset scrollbars to top
-    container.scrollTop = 0;
-    colA.scrollTop = 0;
-    colB.scrollTop = 0;
-  }, 80);
-}
 
 // Expose module functions globally for inline HTML event handlers (since compare.js is loaded as a module)
 window.switchTab = switchTab;
