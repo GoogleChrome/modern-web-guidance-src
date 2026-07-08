@@ -97,7 +97,7 @@ async function getSortedModelsList(apiKey: string): Promise<string[]> {
 /**
  * Attempts to generate content with a specific model using both systemInstruction and prompt.
  */
-async function attemptGenerateContent(apiKey: string, model: string, systemInstruction: string, prompt: string): Promise<string> {
+async function attemptGenerateContent(apiKey: string, model: string, systemInstruction: string, prompt: string, label: string = 'Compare Agent'): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
@@ -137,8 +137,9 @@ async function attemptGenerateContent(apiKey: string, model: string, systemInstr
     if (!fs.existsSync(debugDir)) {
       fs.mkdirSync(debugDir, { recursive: true });
     }
-    fs.writeFileSync(path.join(debugDir, 'response_debug.json'), JSON.stringify(data, null, 2), 'utf8');
-    console.log(`[Compare Agent] 🧪 Wrote API response debug log to results/compare_work/response_debug.json`);
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    fs.writeFileSync(path.join(debugDir, `response_debug_${slug}.json`), JSON.stringify(data, null, 2), 'utf8');
+    console.log(`[${label}] 🧪 Wrote API response debug log to results/compare_work/response_debug_${slug}.json`);
   } catch (e) {}
 
   const parts = data.candidates?.[0]?.content?.parts;
@@ -169,7 +170,7 @@ async function attemptGenerateContent(apiKey: string, model: string, systemInstr
 /**
  * Direct call to the Gemini Developer API using fetch with automatic model failover.
  */
-async function callGeminiApiDirectly(systemInstruction: string, prompt: string): Promise<string> {
+async function callGeminiApiDirectly(systemInstruction: string, prompt: string, label: string = 'Compare Agent'): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not set. Please add GEMINI_API_KEY="your_api_key_here" to a .env file at the project root.');
@@ -191,17 +192,17 @@ async function callGeminiApiDirectly(systemInstruction: string, prompt: string):
       model = `models/${model}`;
     }
 
-    console.log(`[Compare Agent] Attempting diagnosis with model: ${model}...`);
+    console.log(`[${label}] Attempting call with model: ${model}...`);
     try {
-      const result = await attemptGenerateContent(apiKey, model, systemInstruction, prompt);
-      console.log(`[Compare Agent] ✅ Successful diagnosis using model: ${model}`);
+      const result = await attemptGenerateContent(apiKey, model, systemInstruction, prompt, label);
+      console.log(`[${label}] ✅ Successful call using model: ${model}`);
       return result;
     } catch (err: any) {
-      console.warn(`[Compare Agent] ⚠️ Model ${model} failed or overloaded: ${err.message}`);
+      console.warn(`[${label}] ⚠️ Model ${model} failed or overloaded: ${err.message}`);
       errors.push(`${model}: ${err.message}`);
       
       if (i < models.length - 1) {
-        console.log(`[Compare Agent] Retrying with next best model in list...`);
+        console.log(`[${label}] Retrying with next best model in list...`);
       }
     }
   }
@@ -349,9 +350,6 @@ function simpleTextDiff(a: string, b: string): string {
   const linesB = b.split('\n');
   let diff = '';
   
-  // Very basic diff: just list line counts and show them if short,
-  // or do a simple side-by-side. To keep it clean, we'll output a simple unified diff representation.
-  // Since we are in Node, we can just do a basic comparison.
   const maxLines = Math.max(linesA.length, linesB.length);
   for (let i = 0; i < maxLines; i++) {
     const lineA = linesA[i];
@@ -365,7 +363,138 @@ function simpleTextDiff(a: string, b: string): string {
 }
 
 /**
- * Runs the diagnostic agent comparison using Gemini CLI.
+ * Sub-agent 1: Dedicated analysis for test assertions and generated code differences.
+ */
+async function analyzeAssertionsAndCode(
+  taskPrompt: string,
+  ctxA: RunContext,
+  ctxB: RunContext,
+  codeDiff: string,
+  statusA: string,
+  statusB: string
+): Promise<string> {
+  const systemInstruction = `You are a software engineering diagnostic sub-agent specializing in test assertion and code diff analysis. Your task is to analyze test assertion pass/fail differences and generated code differences between two runs of an AI coding agent executing the same task.
+
+Provide a thorough, structured, and detailed analysis:
+1. **Assertion Discrepancies**: Compare which assertions passed or failed in Run A vs Run B. Identify key functional or behavioral discrepancies and why specific assertions failed in one run vs passed in the other.
+2. **Code Implementation Differences**: Examine the code differences. Explain how specific code changes, missing implementations, or faulty logic directly correlate with the passed or failed assertions.`;
+
+  const prompt = `### Task Prompt
+"""
+${taskPrompt}
+"""
+
+### Run A (${statusA} - Score: ${ctxA.score}%)
+- Dir: ${ctxA.dir}
+- Passed Assertions:
+${ctxA.resultsJson ? JSON.stringify(ctxA.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
+- Failed Assertions:
+${ctxA.resultsJson ? JSON.stringify(ctxA.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
+
+### Run B (${statusB} - Score: ${ctxB.score}%)
+- Dir: ${ctxB.dir}
+- Passed Assertions:
+${ctxB.resultsJson ? JSON.stringify(ctxB.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
+- Failed Assertions:
+${ctxB.resultsJson ? JSON.stringify(ctxB.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
+
+### Generated Code Differences (${ctxA.codePath || 'code output'})
+- Run A Output Length: ${ctxA.codeOutput.length} chars
+- Run B Output Length: ${ctxB.codeOutput.length} chars
+- Line-by-line Diff (Run A vs Run B):
+"""
+${codeDiff.slice(0, 5000)}
+"""`;
+
+  return callGeminiApiDirectly(systemInstruction, prompt, 'Assertions & Code Sub-Agent');
+}
+
+/**
+ * Sub-agent 2: Dedicated analysis for agent execution trajectories and step-by-step actions.
+ */
+async function analyzeTrajectories(
+  taskPrompt: string,
+  ctxA: RunContext,
+  ctxB: RunContext,
+  statusA: string,
+  statusB: string
+): Promise<string> {
+  const systemInstruction = `You are a software engineering diagnostic sub-agent specializing in agent trajectory and execution flow analysis. Your task is to compare the step-by-step execution trajectories of two runs of an AI coding agent executing the same task.
+
+Provide a thorough, structured, and detailed analysis:
+1. **Divergence Step**: Identify the exact step or phase in the trajectories where the two agents took different paths, made contrasting decisions, or encountered execution errors.
+2. **Trajectory Breakdown**: Compare tool choices, parameters, thoughts, and error outcomes between Run A and Run B. Highlight any hallucinations, wrong tool usages, unexpected error loops, or missed steps.`;
+
+  const prompt = `### Task Prompt
+"""
+${taskPrompt}
+"""
+
+### Run A (${statusA} - Score: ${ctxA.score}%)
+- Dir: ${ctxA.dir}
+
+### Run B (${statusB} - Score: ${ctxB.score}%)
+- Dir: ${ctxB.dir}
+
+### Trajectory Comparison (Normalized Steps)
+#### Run A Steps (${ctxA.trajectorySummary?.steps?.length || 0} total):
+${ctxA.trajectorySummary ? JSON.stringify(ctxA.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}
+
+#### Run B Steps (${ctxB.trajectorySummary?.steps?.length || 0} total):
+${ctxB.trajectorySummary ? JSON.stringify(ctxB.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}`;
+
+  return callGeminiApiDirectly(systemInstruction, prompt, 'Trajectory Sub-Agent');
+}
+
+/**
+ * Synthesizer: Combines sub-agent outputs into the final 3-section diagnostic report.
+ */
+async function synthesizeDiagnosis(
+  taskPrompt: string,
+  ctxA: RunContext,
+  ctxB: RunContext,
+  codeAnalysis: string,
+  trajectoryAnalysis: string,
+  statusA: string,
+  statusB: string
+): Promise<string> {
+  const systemInstruction = `You are an expert software engineering diagnostic lead. You have received dedicated diagnostic analyses from two sub-agents:
+- Sub-Agent 1: Test Assertions & Code Diff Analysis
+- Sub-Agent 2: Agent Trajectory & Execution Analysis
+
+Your task is to synthesize these analyses into a single, highly technical, objective, and extremely precise diagnostic report in Markdown format.
+
+Be extremely thorough, exhaustive, and detailed in your analysis. Under the Root Cause Explanation, write a comprehensive, step-by-step technical breakdown of any race conditions, event sequences, execution flows, or metric finalizations, ensuring no detail is omitted.
+
+You MUST structure your report into exactly the following three sections. Do not summarize or truncate your explanations early; provide complete trace analyses and ensure all three sections are fully populated. Start directly with the section headings:
+
+1. **Divergence Point**: Identify the exact step or moment in the trajectories where the two runs diverged in their approach or quality of execution.
+2. **Root Cause Explanation**: Explain the technical reason why this divergence caused the difference in outcomes, referencing the code differences, failed assertions, or trajectory logs.
+3. **Trajectory Contrast**: Provide a summary comparing the steps taken, highlighting the contrasting decisions made by the agents (using a markdown table where appropriate).`;
+
+  const prompt = `### Task Prompt
+"""
+${taskPrompt}
+"""
+
+### Run A (${statusA} - Score: ${ctxA.score}%, Dir: ${ctxA.dir})
+### Run B (${statusB} - Score: ${ctxB.score}%, Dir: ${ctxB.dir})
+
+### Sub-Agent 1 Analysis: Assertions & Code Differences
+"""
+${codeAnalysis}
+"""
+
+### Sub-Agent 2 Analysis: Trajectory & Step Execution
+"""
+${trajectoryAnalysis}
+"""`;
+
+  return callGeminiApiDirectly(systemInstruction, prompt, 'Synthesis Sub-Agent');
+}
+
+/**
+ * Runs the diagnostic agent comparison using Gemini API sub-agents.
  */
 export async function runComparison(runDirA: string, runDirB: string): Promise<string> {
   console.log(cCyan(`\n=== Starting Run Comparison ===`));
@@ -382,7 +511,6 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   // Identify which is successful and which is failed/poorer for diagnostic orientation
   const isAProblem = ctxA.score < ctxB.score;
   const successCtx = isAProblem ? ctxB : ctxA;
-  const failCtx = isAProblem ? ctxA : ctxB;
 
   console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
 
@@ -404,54 +532,8 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   // Generate code diff (A vs B)
   const codeDiff = simpleTextDiff(ctxA.codeOutput, ctxB.codeOutput);
 
-  // Construct the LLM Prompt
-  // Explicitly map Run A -> ctxA and Run B -> ctxB to prevent name inversions on the dashboard
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
-
-  const systemInstruction = `You are an expert software engineering diagnostic agent. Your task is to compare two runs of an AI coding agent executing the same task, and write a highly technical, objective, and extremely precise diagnostic report in Markdown format.
-
-Be extremely thorough, exhaustive, and detailed in your analysis. Under the Root Cause Explanation, write a comprehensive, step-by-step technical breakdown of any race conditions, event sequences, execution flows, or metric finalizations, ensuring no detail is omitted.
-
-You MUST structure your report into exactly the following three sections. Do not summarize or truncate your explanations early; provide complete trace analyses and ensure all three sections are fully populated. Start directly with the section headings:
-
-1. **Divergence Point**: Identify the exact step or moment in the trajectories where the two runs diverged in their approach or quality of execution.
-2. **Root Cause Explanation**: Explain the technical reason why this divergence caused the difference in outcomes, referencing the code differences, failed assertions, or trajectory logs.
-3. **Trajectory Contrast**: Provide a summary comparing the steps taken, highlighting the contrasting decisions made by the agents (using a markdown table where appropriate).`;
-
-  const prompt = `### Task Prompt
-"""
-${taskPrompt}
-"""
-
-### Run A (${statusA} - Score: ${ctxA.score}%)
-- Dir: ${ctxA.dir}
-- Passed Assertions:
-${ctxA.resultsJson ? JSON.stringify(ctxA.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
-- Failed Assertions:
-${ctxA.resultsJson ? JSON.stringify(ctxA.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
-
-### Run B (${statusB} - Score: ${ctxB.score}%)
-- Dir: ${ctxB.dir}
-- Passed Assertions:
-${ctxB.resultsJson ? JSON.stringify(ctxB.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
-- Failed Assertions:
-${ctxB.resultsJson ? JSON.stringify(ctxB.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
-
-### Trajectory Comparison (Normalized Steps)
-#### Run A Steps:
-${ctxA.trajectorySummary ? JSON.stringify(ctxA.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}
-
-#### Run B Steps:
-${ctxB.trajectorySummary ? JSON.stringify(ctxB.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}
-
-### Generated Code Differences (${ctxA.codePath || 'code output'})
-- Run A Output Length: ${ctxA.codeOutput.length} chars
-- Run B Output Length: ${ctxB.codeOutput.length} chars
-- Line-by-line Diff (Run A vs Run B):
-"""
-${codeDiff.slice(0, 5000)}
-"""`;
 
   // Create a temporary workspace inside the results directory for prompt logging
   const suiteMatch = successCtx.dir.match(/(.*[/\\]results[/\\][^/\\]+)/);
@@ -461,13 +543,26 @@ ${codeDiff.slice(0, 5000)}
     fs.mkdirSync(workDir, { recursive: true });
   }
 
-  const promptPath = path.join(workDir, 'compare_prompt.txt');
-  fs.writeFileSync(promptPath, prompt, 'utf8');
-
   try {
-    console.log(`Sending trajectories to Gemini API for variance diagnosis...`);
-    const markdownReport = await callGeminiApiDirectly(systemInstruction, prompt);
-    
+    console.log(cBold(`[Compare Agent] Step 1/2: Dispatching sub-agents for dedicated piece analyses...`));
+
+    const [codeAnalysis, trajectoryAnalysis] = await Promise.all([
+      analyzeAssertionsAndCode(taskPrompt, ctxA, ctxB, codeDiff, statusA, statusB),
+      analyzeTrajectories(taskPrompt, ctxA, ctxB, statusA, statusB),
+    ]);
+
+    console.log(cBold(`[Compare Agent] Step 2/2: Synthesizing final diagnostic report...`));
+
+    const markdownReport = await synthesizeDiagnosis(
+      taskPrompt,
+      ctxA,
+      ctxB,
+      codeAnalysis,
+      trajectoryAnalysis,
+      statusA,
+      statusB
+    );
+
     // Determine where to save the report
     let savedPath = '';
     if (suiteMatch) {
@@ -502,11 +597,6 @@ ${codeDiff.slice(0, 5000)}
   } catch (err: any) {
     console.error(cRed(`❌ Diagnosis failed: ${err.message}`));
     throw err;
-  } finally {
-    try {
-      if (fs.existsSync(promptPath)) {
-        fs.unlinkSync(promptPath);
-      }
-    } catch {}
   }
 }
+

@@ -91,6 +91,14 @@ const MIME_TYPES = {
  * @property {string | null} timestamp
  */
 
+const EVAL_VIEW_ROOT = import.meta.dirname;
+const ROOT_DIR = path.resolve(EVAL_VIEW_ROOT, '..');
+const HARNESS_DIR = path.join(ROOT_DIR, 'harness');
+const RESULTS_DIR = process.env.USE_MOCK_RESULTS === 'true' ? path.join(EVAL_VIEW_ROOT, 'mock-results') : path.join(HARNESS_DIR, 'results');
+const BASE_APPS_DIR = path.join(HARNESS_DIR, 'base_apps');
+const TASKS_DIR = path.join(HARNESS_DIR, 'tasks');
+const GUIDES_DIR = path.join(ROOT_DIR, 'guides');
+
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
   
@@ -116,8 +124,6 @@ const server = http.createServer(async (req, res) => {
   // Normalize the URL and decode components for security checks
   const urlPath = reqUrl.split('?')[0];
   const decodedPath = decodeURIComponent(urlPath);
-  // Debug logging. Do not keep enabled.
-  // console.log(`Incoming request: ${req.method} ${reqUrl} (path: ${urlPath}, decoded: ${decodedPath})`);
 
   // Block directory traversal attempts
   if (decodedPath.includes('..')) {
@@ -140,16 +146,14 @@ const server = http.createServer(async (req, res) => {
     /** @type {SuiteInfo[]} */
     let suitesList = [];
 
-    // Local
-    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
     try {
-      if (fs.existsSync(resultsDir)) {
-        const dirs = fs.readdirSync(resultsDir, { withFileTypes: true })
+      if (fs.existsSync(RESULTS_DIR)) {
+        const dirs = fs.readdirSync(RESULTS_DIR, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {
-          const suiteDir = path.join(resultsDir, d);
+          const suiteDir = path.join(RESULTS_DIR, d);
           const evalsJsonPath = path.join(suiteDir, 'evals.json');
           let timestamp = null;
           try {
@@ -215,15 +219,14 @@ const server = http.createServer(async (req, res) => {
   // --- /api/available-skills : lists folders with SKILL.md ---
   if (decodedPath === '/api/available-skills') {
     try {
-      const guidesDir = path.resolve('../guides');
       const skills = [];
-      if (fs.existsSync(guidesDir)) {
-        const candidates = fs.readdirSync(guidesDir, { withFileTypes: true })
+      if (fs.existsSync(GUIDES_DIR)) {
+        const candidates = fs.readdirSync(GUIDES_DIR, { withFileTypes: true })
           .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
           .map(d => d.name);
 
         for (const candidate of candidates) {
-          const skillSource = path.join(guidesDir, candidate, "SKILL.md");
+          const skillSource = path.join(GUIDES_DIR, candidate, "SKILL.md");
           if (fs.existsSync(skillSource)) {
             skills.push(candidate);
           }
@@ -245,7 +248,6 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        // Return 200 immediately so UI can track the run
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
 
@@ -268,7 +270,7 @@ const server = http.createServer(async (req, res) => {
           ...options.tasks
         ], {
           stdio: 'inherit',
-          cwd: path.resolve('..'), // Run from root to resolve paths correctly
+          cwd: ROOT_DIR,
           detached: false
         });
 
@@ -281,7 +283,7 @@ const server = http.createServer(async (req, res) => {
           }
         });
 
-        p.unref(); // Avoid holding parent open if terminating event context
+        p.unref();
       } catch (e) {
         console.error('Launch failure:', e);
       }
@@ -301,10 +303,9 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-    const absoluteResultsDir = path.resolve(resultsDir);
-    const absDirA = path.resolve(resultsDir, relativeDirA);
-    const absDirB = path.resolve(resultsDir, relativeDirB);
+    const absoluteResultsDir = path.resolve(RESULTS_DIR);
+    const absDirA = path.resolve(RESULTS_DIR, relativeDirA);
+    const absDirB = path.resolve(RESULTS_DIR, relativeDirB);
 
     // Security check: ensure both paths are strictly within the results directory
     const relA = path.relative(absoluteResultsDir, absDirA);
@@ -326,25 +327,23 @@ const server = http.createServer(async (req, res) => {
 
     res.write(`[Server] Starting on-the-fly comparison between:\n  A: ${absDirA}\n  B: ${absDirB}\n\n`);
 
-    // Extract Bearer token from request headers to forward to the comparison agent
     const authHeader = req.headers.authorization || '';
 
-    // Run gd compare command in the root directory
     const p = spawn('pnpm', ['gd', 'compare', absDirA, absDirB], {
-      cwd: path.resolve('..'), // Run from root to resolve bin/gd.ts and dependencies correctly
+      cwd: ROOT_DIR,
       env: { ...process.env, GD_GCS_TOKEN: authHeader }
     });
 
     p.stdout.on('data', (data) => {
       const str = data.toString();
-      res.write(str); // Stream to browser client
-      process.stdout.write(str); // Stream to server console
+      res.write(str);
+      process.stdout.write(str);
     });
 
     p.stderr.on('data', (data) => {
       const str = data.toString();
-      res.write(str); // Stream to browser client
-      process.stderr.write(str); // Stream to server console
+      res.write(str);
+      process.stderr.write(str);
     });
 
     p.on('close', (code) => {
@@ -375,8 +374,7 @@ const server = http.createServer(async (req, res) => {
     /** @type {string[]} */
     let files = [];
     if (source === 'local') {
-      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-      const targetDir = path.join(resultsDir, relativePath);
+      const targetDir = path.join(RESULTS_DIR, relativePath);
       try {
         if (fs.existsSync(targetDir)) {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
@@ -397,7 +395,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Silent File Probing API ---
-  // Avoids native browser 404 console errors by returning JSON { exists: boolean }
   if (decodedPath === '/api/exists') {
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const checkPath = parsedUrl.searchParams.get('path');
@@ -409,19 +406,16 @@ const server = http.createServer(async (req, res) => {
 
     let filePath;
     if (checkPath.startsWith('base_apps/')) {
-      filePath = path.join('../harness/base_apps', checkPath.substring(10));
+      filePath = path.join(BASE_APPS_DIR, checkPath.substring(10));
     } else if (checkPath.startsWith('tasks/')) {
-      filePath = path.join('../harness/tasks', checkPath.substring(6));
+      filePath = path.join(TASKS_DIR, checkPath.substring(6));
     } else {
-      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-      filePath = path.join(resultsDir, checkPath);
+      filePath = path.join(RESULTS_DIR, checkPath);
     }
 
     const absolutePath = path.resolve(filePath);
-    const evalViewRoot = path.resolve('.');
-    const harnessRoot = path.resolve('../harness');
-    const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
-    const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
+    const isInsideEvalView = absolutePath === EVAL_VIEW_ROOT || absolutePath.startsWith(EVAL_VIEW_ROOT + path.sep);
+    const isInsideHarness = absolutePath === HARNESS_DIR || absolutePath.startsWith(HARNESS_DIR + path.sep);
 
     let exists = false;
     if (isInsideEvalView || isInsideHarness) {
@@ -436,47 +430,32 @@ const server = http.createServer(async (req, res) => {
   let filePath;
   // Map results and setup to the harness directory
   if (decodedPath.startsWith('/base_apps/')) {
-    filePath = path.join('../harness/base_apps', decodedPath.substring(11));
+    filePath = path.join(BASE_APPS_DIR, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/tasks/')) {
-    filePath = path.join('../harness/tasks', decodedPath.substring(7));
+    filePath = path.join(TASKS_DIR, decodedPath.substring(7));
   } else if (decodedPath.startsWith('/guides/')) {
-    filePath = path.join('../guides', decodedPath.substring(8));
+    filePath = path.join(GUIDES_DIR, decodedPath.substring(8));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
-    let localEvalViewPath = path.join('.', relativePath);
+    let localEvalViewPath = path.join(EVAL_VIEW_ROOT, relativePath);
     if (decodedPath === '/' || decodedPath === '') {
-      localEvalViewPath = './index.html';
+      localEvalViewPath = path.join(EVAL_VIEW_ROOT, 'index.html');
     }
 
     // If the file exists in eval-view, serve it.
-    // Otherwise, assume it's a test result file in ../harness/results
+    // Otherwise, assume it's a test result file in RESULTS_DIR
     if (fs.existsSync(localEvalViewPath)) {
         filePath = localEvalViewPath;
     } else {
-        const useLocal = reqUrl.includes('source=local');
-        const referer = req.headers.referer;
-        const refererLocal = referer && (referer.includes('source=local') || referer.includes('localhost'));
-        
-        if (!useLocal && !refererLocal && decodedPath.includes('/')) {
-            // Give a decent error if someone tries to stream a remote file directly
-            res.writeHead(400);
-            res.end('400 Bad Request: Remote GCS streaming must use client-side authenticated fetches directly to GCS.');
-            return;
-        }
-
-        // If this is an absolute navigation link (e.g. /menu) clicked from inside a test result,
-        // it will lack the <suite>/<run>/... prefix. We must restore it from the referer.
         let finalRelativePath = relativePath;
+        const referer = req.headers.referer;
         if (referer) {
             try {
                 const refererUrl = new URL(referer);
-                const refPath = refererUrl.pathname.substring(1); // remove leading slash
+                const refPath = refererUrl.pathname.substring(1);
                 
-                // If referer is a test result (e.g. suite/1/task/guided/index.html)
-                // and the requested path does NOT start with the suite name
                 const parts = refPath.split('/');
                 if (parts.length >= 4 && !finalRelativePath.startsWith(parts[0] + '/')) {
-                    // Reconstruct the base path up to the run type directory
                     const basePath = parts.slice(0, 4).join('/');
                     finalRelativePath = path.join(basePath, finalRelativePath);
                 }
@@ -485,21 +464,28 @@ const server = http.createServer(async (req, res) => {
             }
         }
 
-        const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-        filePath = path.join(resultsDir, finalRelativePath);
+        filePath = path.join(RESULTS_DIR, finalRelativePath);
+
+        // If file does not exist locally and request is not local, return 400 for remote GCS streaming
+        if (!fs.existsSync(filePath)) {
+            const useLocal = reqUrl.includes('source=local');
+            const refererLocal = referer && (referer.includes('source=local') || referer.includes('localhost') || referer.includes('127.0.0.1'));
+            
+            if (!useLocal && !refererLocal && decodedPath.includes('/')) {
+                res.writeHead(400);
+                res.end('400 Bad Request: Remote GCS streaming must use client-side authenticated fetches directly to GCS.');
+                return;
+            }
+        }
     }
   }
 
   // Final check: Resolve the absolute path and ensure it's within allowed directories
   const absolutePath = path.resolve(filePath);
-  const evalViewRoot = path.resolve('.');
-  const harnessRoot = path.resolve('../harness');
-  const guidesRoot = path.resolve('../guides');
 
-  // Use path.sep to ensure we match whole directory names
-  const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
-  const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
-  const isInsideGuides = absolutePath === guidesRoot || absolutePath.startsWith(guidesRoot + path.sep);
+  const isInsideEvalView = absolutePath === EVAL_VIEW_ROOT || absolutePath.startsWith(EVAL_VIEW_ROOT + path.sep);
+  const isInsideHarness = absolutePath === HARNESS_DIR || absolutePath.startsWith(HARNESS_DIR + path.sep);
+  const isInsideGuides = absolutePath === GUIDES_DIR || absolutePath.startsWith(GUIDES_DIR + path.sep);
 
   if (!isInsideEvalView && !isInsideHarness && !isInsideGuides) {
     console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${reqUrl} -> ${absolutePath}`);
