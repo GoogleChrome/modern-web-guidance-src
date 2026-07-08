@@ -287,35 +287,101 @@ export function parseJetskiTrajectory(dirPath: string, serving: string): Traject
 }
 
 /**
+ * Parses Codex / OpenAI CLI session JSONL files into a normalized TrajectorySummary.
+ */
+export function parseCodexTrajectory(logData: any[], serving: string): TrajectorySummary {
+  const steps: StandardizedStep[] = [];
+  let stepCounter = 1;
+  let currentThought = '';
+  const callMap = new Map<string, StandardizedStep>();
+
+  for (const entry of logData) {
+    if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message') {
+      const msg = entry.payload;
+      if (msg.phase === 'commentary') {
+        currentThought = currentThought ? `${currentThought}\n${msg.message}` : msg.message;
+      }
+    } else if (entry.type === 'response_item' && entry.payload?.type === 'function_call') {
+      const fc = entry.payload;
+      let cmdName = fc.name;
+      let params: Record<string, any> = {};
+      try {
+        params = typeof fc.arguments === 'string' ? JSON.parse(fc.arguments) : (fc.arguments || {});
+      } catch {}
+
+      if (cmdName === 'exec_command' && params.cmd) {
+        cmdName = params.cmd.split(' ')[0] || 'exec_command';
+      }
+
+      const step: StandardizedStep = {
+        stepNumber: stepCounter++,
+        thought: currentThought || `Executing ${cmdName}`,
+        action: {
+          type: mapToolType(cmdName),
+          name: fc.name === 'exec_command' ? (params.cmd || 'exec_command') : fc.name,
+          params
+        }
+      };
+      steps.push(step);
+      currentThought = '';
+      if (fc.call_id) {
+        callMap.set(fc.call_id, step);
+      }
+    } else if (entry.type === 'response_item' && entry.payload?.type === 'function_call_output') {
+      const fco = entry.payload;
+      const step = callMap.get(fco.call_id);
+      if (step) {
+        const out = typeof fco.output === 'string' ? fco.output : JSON.stringify(fco.output || '');
+        const isErr = out.includes('Process exited with code') && !out.includes('code 0');
+        step.outcome = {
+          status: isErr ? 'error' : 'success',
+          message: truncateMessage(out, 500)
+        };
+      }
+    } else if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'final_answer') {
+      steps.push({
+        stepNumber: stepCounter++,
+        thought: currentThought || 'Finalizing response to user',
+        action: {
+          type: 'other',
+          name: 'respond_to_user',
+          params: { response: entry.payload.message }
+        },
+        outcome: { status: 'success' }
+      });
+      currentThought = '';
+    }
+  }
+
+  return {
+    agent: 'Codex',
+    serving,
+    steps
+  };
+}
+
+/**
  * Generates and saves 'trajectory_summary.json' in the target directory.
  */
 export async function generateNormalizedTrajectory(targetDir: string, agentName: string, serving: string): Promise<void> {
   try {
     let summary: TrajectorySummary | null = null;
 
-    if (agentName.toLowerCase().includes('claude')) {
-      // Find session-*.jsonl
-      const sessionFiles = fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
-      if (sessionFiles[0]) {
-        const filePath = path.join(targetDir, sessionFiles[0]);
-        const logData = parseJsonlFile(filePath);
+    const sessionFiles = fs.existsSync(targetDir) ? fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
+
+    if (sessionFiles[0]) {
+      const filePath = path.join(targetDir, sessionFiles[0]);
+      const isJsonl = filePath.endsWith('.jsonl');
+      const logData = isJsonl ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+      if (agentName.toLowerCase().includes('claude')) {
         summary = parseClaudeTrajectory(logData, serving);
-      }
-    } else if (agentName.toLowerCase().includes('gemini')) {
-      // Find session-*.json or session-*.jsonl
-      const sessionFiles = fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
-      if (sessionFiles[0]) {
-        const filePath = path.join(targetDir, sessionFiles[0]);
-        let sessionData: any = [];
-        if (filePath.endsWith('.jsonl')) {
-          sessionData = parseJsonlFile(filePath);
-        } else {
-          sessionData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        }
-        summary = parseGeminiTrajectory(sessionData, serving);
+      } else if (agentName.toLowerCase().includes('gemini')) {
+        summary = parseGeminiTrajectory(logData, serving);
+      } else {
+        summary = parseCodexTrajectory(logData, serving);
       }
     } else {
-      // Jetski / fallbacks
       summary = parseJetskiTrajectory(targetDir, serving);
     }
 

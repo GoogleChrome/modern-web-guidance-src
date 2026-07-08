@@ -272,7 +272,7 @@
       display: flex;
       flex-direction: column;
       gap: 15px;
-      height: 500px;
+      height: 650px;
       overflow-y: auto;
       padding-right: 10px;
     }
@@ -280,49 +280,71 @@
       background-color: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      padding: 12px;
+      padding: 14px;
       position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
     .timeline-step.error {
-      border-left: 4px solid #ef4444;
+      border-left: 5px solid #ef4444;
     }
     .timeline-step.success {
-      border-left: 4px solid #22c55e;
+      border-left: 5px solid #22c55e;
     }
     .step-header {
       display: flex;
       justify-content: space-between;
-      font-size: 0.8em;
+      align-items: center;
+      font-size: 0.82em;
       color: #64748b;
-      margin-bottom: 6px;
-      font-weight: 600;
+      margin-bottom: 8px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
     }
     .step-thought {
-      font-style: italic;
-      font-size: 0.9em;
-      color: #475569;
-      margin-bottom: 8px;
-      background-color: #fef3c7;
-      padding: 6px 10px;
-      border-radius: 4px;
+      font-size: 0.92em;
+      line-height: 1.55;
+      color: #0f172a;
+      margin-bottom: 10px;
+      background-color: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-left: 4px solid #0284c7;
+      padding: 10px 14px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .step-thought-header {
+      font-weight: 700;
+      color: #0369a1;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
     .step-action {
-      font-family: monospace;
-      background-color: #f1f5f9;
-      padding: 8px;
-      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background-color: #f8fafc;
+      padding: 8px 10px;
+      border-radius: 6px;
       font-size: 0.85em;
-      color: #0f172a;
-      margin-bottom: 6px;
-      border-left: 3px solid #3b82f6;
+      color: #334155;
+      margin-bottom: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .step-action-title {
+      font-weight: 600;
+      color: #2563eb;
     }
     .step-outcome {
       font-size: 0.85em;
       color: #475569;
-      background-color: #f8fafc;
-      padding: 6px;
+      background-color: #ffffff;
+      padding: 6px 10px;
       border-radius: 4px;
-      border: 1px dashed #cbd5e1;
+      border: 1px solid #e2e8f0;
     }
     .step-outcome.error {
       color: #b91c1c;

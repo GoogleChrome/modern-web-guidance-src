@@ -650,20 +650,39 @@ function renderTimeline(container, trajectory) {
     `;
 
     if (step.thought) {
-      html += `<div class="step-thought"><strong>Thought:</strong> ${escapeHtml(step.thought)}</div>`;
-    }
-    if (step.action) {
-      const argsStr = step.action.params ? JSON.stringify(step.action.params, null, 2) : '';
       html += `
-        <div class="step-action">
-          <strong>Tool:</strong> ${escapeHtml(step.action.name)} (${step.action.type})
-          ${argsStr ? `<pre style="margin-top:5px; font-size:0.85em; background:#ffffff; border:1px solid #e2e8f0; padding:5px; border-radius:4px; white-space:pre-wrap; word-break:break-word; overflow-x:auto;">${escapeHtml(argsStr)}</pre>` : ''}
+        <div class="step-thought">
+          <div class="step-thought-header">💡 AGENT THINKING / REASONING</div>
+          <div>${escapeHtml(step.thought)}</div>
         </div>
       `;
     }
-    if (step.outcome) {
+
+    if (step.action) {
+      const argsStr = step.action.params ? JSON.stringify(step.action.params, null, 2) : '';
+      const actionName = step.action.name || 'Unknown Action';
+      const actionType = step.action.type ? ` (${step.action.type})` : '';
+      html += `
+        <div class="step-action">
+          <span class="step-action-title">🔧 Tool / Action:</span> ${escapeHtml(actionName)}${escapeHtml(actionType)}
+          ${argsStr ? `
+            <details style="margin-top:6px;">
+              <summary style="cursor:pointer; color:#2563eb; font-weight:500; font-size:0.9em;">View Action Parameters</summary>
+              <pre style="margin-top:5px; font-size:0.85em; background:#ffffff; border:1px solid #cbd5e1; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; overflow-x:auto;">${escapeHtml(argsStr)}</pre>
+            </details>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    if (step.outcome && step.outcome.message) {
       const outcomeClass = isErr ? 'step-outcome error' : 'step-outcome';
-      html += `<div class="${outcomeClass}"><strong>Outcome:</strong> ${escapeHtml(step.outcome.message || 'Success')}</div>`;
+      html += `
+        <details style="margin-top:6px;">
+          <summary style="cursor:pointer; color:#64748b; font-size:0.85em; font-weight:500;">View Step Outcome / Output</summary>
+          <div class="${outcomeClass}" style="margin-top:4px;">${escapeHtml(step.outcome.message)}</div>
+        </details>
+      `;
     }
 
     card.innerHTML = html;
