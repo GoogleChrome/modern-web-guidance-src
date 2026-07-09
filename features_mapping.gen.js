@@ -15,8 +15,125 @@ window.__featuresMapping = {
   "translator": [
     "translator"
   ],
+  "apply-webgl-shaders": [
+    "canvas-html"
+  ],
+  "export-html-media-from-canvas": [
+    "canvas-html"
+  ],
+  "expose-canvas-content-to-browser-features": [
+    "canvas-html"
+  ],
+  "interactive-content-in-3d-scenes": [
+    "canvas-html"
+  ],
+  "adapt-scrollbar-to-contrast-preferences": [
+    "scrollbar-color",
+    "prefers-contrast"
+  ],
+  "child-state-based-styling": [
+    "has",
+    "not"
+  ],
+  "complex-shapes": [
+    "masks",
+    "svg"
+  ],
+  "component-specific-light-dark-theme": [
+    "color-scheme",
+    "light-dark"
+  ],
+  "content-based-styling": [
+    "has",
+    "not"
+  ],
+  "contrast-color": [
+    "contrast-color"
+  ],
+  "customize-scrollbar-color-and-thickness": [
+    "scrollbar-color",
+    "scrollbar-width"
+  ],
+  "dark-mode": [
+    "color-scheme",
+    "prefers-color-scheme",
+    "light-dark",
+    "accent-color"
+  ],
+  "dynamic-sibling-styling": [
+    "sibling-count",
+    "trig-functions"
+  ],
   "highlight-text-ranges": [
     "highlight"
+  ],
+  "interactive-content-reveal": [
+    "masks",
+    "registered-custom-properties"
+  ],
+  "reduce-style-repetition": [
+    "function"
+  ],
+  "shaped-cutouts": [
+    "masks"
+  ],
+  "soft-edge-content-fade": [
+    "masks"
+  ],
+  "style-parent-with-has": [
+    "user-pseudos"
+  ],
+  "visually-texture-content": [
+    "masks"
+  ],
+  "animate-to-intrinsic-sizes": [
+    "calc-size",
+    "interpolate-size"
+  ],
+  "calculate-with-intrinsic-sizes": [
+    "calc-size",
+    "interpolate-size"
+  ],
+  "design-token-reactivity": [
+    "container-style-queries"
+  ],
+  "fluid-scaling": [
+    "container-queries"
+  ],
+  "overflow-clipping-control": [
+    "overflow-clip",
+    "overflow-clip-margin"
+  ],
+  "size-aware-styling": [
+    "container-queries"
+  ],
+  "usage-aware-component-variations": [
+    "container-style-queries"
+  ],
+  "calculate-event-differentials": [
+    "temporal"
+  ],
+  "capture-location-agnostic-data": [
+    "temporal"
+  ],
+  "coordinate-global-events": [
+    "temporal"
+  ],
+  "format-human-readable-durations": [
+    "temporal",
+    "intl-duration-format"
+  ],
+  "manage-recurring-intervals": [
+    "temporal"
+  ],
+  "model-partial-time-concepts": [
+    "temporal"
+  ],
+  "stabilize-reactive-state": [
+    "temporal"
+  ],
+  "support-global-calendar-systems": [
+    "temporal"
   ],
   "animated-select-picker": [
     "customizable-select"
@@ -64,6 +181,113 @@ window.__featuresMapping = {
   "validate-input-after-interaction": [
     "user-pseudos"
   ],
+  "custom-button-actions": [
+    "invoker-commands"
+  ],
+  "move-dom-element-without-losing-state": [
+    "move-before"
+  ],
+  "persistent-top-layer-ui": [
+    "move-before"
+  ],
+  "search-hidden-content": [
+    "details",
+    "details-name",
+    "hidden-until-found"
+  ],
+  "anchor-positioning-tab-underline": [
+    "anchor-positioning",
+    "prefers-reduced-motion"
+  ],
+  "animate-element-entry-exit": [
+    "starting-style",
+    "transition-behavior"
+  ],
+  "consistent-cross-document-transitions": [
+    "blocking-render",
+    "link-rel-expect",
+    "cross-document-view-transitions"
+  ],
+  "cross-document-transitions": [
+    "view-transitions",
+    "cross-document-view-transitions",
+    "navigation"
+  ],
+  "directional-navigation-transitions": [
+    "view-transitions",
+    "active-view-transition"
+  ],
+  "dynamic-sibling-animations": [
+    "sibling-count"
+  ],
+  "group-element-transitions": [
+    "view-transitions",
+    "view-transition-class"
+  ],
+  "individual-transform-properties": [
+    "individual-transforms"
+  ],
+  "physics-based-easing": [
+    "linear-easing"
+  ],
+  "same-document-transitions": [
+    "view-transitions"
+  ],
+  "animate-to-from-top-layer": [
+    "backdrop",
+    "dialog",
+    "overlay",
+    "popover",
+    "starting-style",
+    "transition-behavior"
+  ],
+  "declarative-dialog-popover-control": [
+    "invoker-commands",
+    "popover",
+    "dialog"
+  ],
+  "interest-triggered-action-previews": [
+    "interest-invokers"
+  ],
+  "interest-triggered-tooltips": [
+    "interest-invokers",
+    "popover",
+    "popover-hint",
+    "anchor-positioning"
+  ],
+  "light-dismiss-a-dialog": [
+    "dialog-closedby"
+  ],
+  "navigation-drawer": [
+    "inert",
+    "intersection-observer",
+    "popover",
+    "registered-custom-properties",
+    "scroll-driven-animations",
+    "scroll-initial-target",
+    "scroll-snap"
+  ],
+  "persistent-app-tours": [
+    "popover",
+    "anchor-positioning"
+  ],
+  "persistent-toast-notifications": [
+    "popover",
+    "anchor-positioning",
+    "sibling-count",
+    "transition-behavior"
+  ],
+  "platform-controls-dismiss-dialog": [
+    "dialog-closedby"
+  ],
+  "position-aware-tooltips": [
+    "container-anchor-position-queries",
+    "popover"
+  ],
+  "resilient-context-menus-and-nested-dropdowns": [
+    "anchor-positioning",
+    "popover"
+  ],
   "passkey-authentication": [
     "webauthn",
     "webauthn-signals"
@@ -102,6 +326,12 @@ window.__featuresMapping = {
   "defer-work-until-scroll-ends": [
     "scrollend"
   ],
+  "deliver-optimized-decorative-images": [
+    "image-set"
+  ],
+  "serve-alternative-image-formats": [
+    "image-set"
+  ],
   "deprioritize-background-fetches": [
     "fetch-priority",
     "fetch"
@@ -115,6 +345,9 @@ window.__featuresMapping = {
   ],
   "faster-spa-view-transitions": [
     "content-visibility"
+  ],
+  "flicker-free-client-side-ab-testing": [
+    "blocking-render"
   ],
   "full-session-analytics": [
     "fetchlater",
@@ -161,43 +394,6 @@ window.__featuresMapping = {
     "fedcm",
     "ua-client-hints"
   ],
-  "adapt-scrollbar-to-contrast-preferences": [
-    "scrollbar-color",
-    "prefers-contrast"
-  ],
-  "anchor-positioning-tab-underline": [
-    "anchor-positioning",
-    "prefers-reduced-motion"
-  ],
-  "animate-element-entry-exit": [
-    "starting-style",
-    "transition-behavior"
-  ],
-  "animate-to-from-top-layer": [
-    "backdrop",
-    "dialog",
-    "overlay",
-    "popover",
-    "starting-style",
-    "transition-behavior"
-  ],
-  "animate-to-intrinsic-sizes": [
-    "calc-size",
-    "interpolate-size"
-  ],
-  "apply-webgl-shaders": [
-    "canvas-html"
-  ],
-  "calculate-event-differentials": [
-    "temporal"
-  ],
-  "calculate-with-intrinsic-sizes": [
-    "calc-size",
-    "interpolate-size"
-  ],
-  "capture-location-agnostic-data": [
-    "temporal"
-  ],
   "carousel-slide-effects": [
     "scroll-driven-animations",
     "scroll-snap"
@@ -205,192 +401,15 @@ window.__featuresMapping = {
   "carousel-snap-highlights": [
     "container-scroll-state-queries"
   ],
-  "child-state-based-styling": [
-    "has",
-    "not"
-  ],
-  "complex-shapes": [
-    "masks",
-    "svg"
-  ],
-  "component-specific-light-dark-theme": [
-    "color-scheme",
-    "light-dark"
-  ],
-  "consistent-cross-document-transitions": [
-    "blocking-render",
-    "link-rel-expect",
-    "cross-document-view-transitions"
-  ],
-  "content-based-styling": [
-    "has",
-    "not"
-  ],
   "context-sensitive-sticky-headers": [
     "container-scroll-state-queries"
-  ],
-  "contrast-color": [
-    "contrast-color"
-  ],
-  "coordinate-global-events": [
-    "temporal"
-  ],
-  "cross-document-transitions": [
-    "view-transitions",
-    "cross-document-view-transitions",
-    "navigation"
-  ],
-  "custom-button-actions": [
-    "invoker-commands"
-  ],
-  "customize-scrollbar-color-and-thickness": [
-    "scrollbar-color",
-    "scrollbar-width"
-  ],
-  "dark-mode": [
-    "color-scheme",
-    "prefers-color-scheme",
-    "light-dark",
-    "accent-color"
-  ],
-  "declarative-dialog-popover-control": [
-    "invoker-commands",
-    "popover",
-    "dialog"
-  ],
-  "deliver-optimized-decorative-images": [
-    "image-set"
-  ],
-  "serve-alternative-image-formats": [
-    "image-set"
-  ],
-  "design-token-reactivity": [
-    "container-style-queries"
-  ],
-  "directional-navigation-transitions": [
-    "view-transitions",
-    "active-view-transition"
-  ],
-  "dynamic-sibling-animations": [
-    "sibling-count"
-  ],
-  "dynamic-sibling-styling": [
-    "sibling-count",
-    "trig-functions"
-  ],
-  "export-html-media-from-canvas": [
-    "canvas-html"
-  ],
-  "expose-canvas-content-to-browser-features": [
-    "canvas-html"
-  ],
-  "flicker-free-client-side-ab-testing": [
-    "blocking-render"
-  ],
-  "fluid-scaling": [
-    "container-queries"
-  ],
-  "format-human-readable-durations": [
-    "temporal",
-    "intl-duration-format"
-  ],
-  "group-element-transitions": [
-    "view-transitions",
-    "view-transition-class"
-  ],
-  "improve-text-layout-and-legibility": [
-    "text-wrap-balance",
-    "text-wrap-pretty"
-  ],
-  "individual-transform-properties": [
-    "individual-transforms"
-  ],
-  "interactive-content-in-3d-scenes": [
-    "canvas-html"
-  ],
-  "interactive-content-reveal": [
-    "masks",
-    "registered-custom-properties"
-  ],
-  "interest-triggered-action-previews": [
-    "interest-invokers"
-  ],
-  "interest-triggered-tooltips": [
-    "interest-invokers",
-    "popover",
-    "popover-hint",
-    "anchor-positioning"
-  ],
-  "light-dismiss-a-dialog": [
-    "dialog-closedby"
-  ],
-  "manage-recurring-intervals": [
-    "temporal"
-  ],
-  "model-partial-time-concepts": [
-    "temporal"
-  ],
-  "move-dom-element-without-losing-state": [
-    "move-before"
-  ],
-  "navigation-drawer": [
-    "inert",
-    "intersection-observer",
-    "popover",
-    "registered-custom-properties",
-    "scroll-driven-animations",
-    "scroll-initial-target",
-    "scroll-snap"
-  ],
-  "overflow-clipping-control": [
-    "overflow-clip",
-    "overflow-clip-margin"
   ],
   "parallax-scroll-effects": [
     "scroll-driven-animations"
   ],
-  "persistent-app-tours": [
-    "popover",
-    "anchor-positioning"
-  ],
-  "persistent-toast-notifications": [
-    "popover",
-    "anchor-positioning",
-    "sibling-count",
-    "transition-behavior"
-  ],
-  "persistent-top-layer-ui": [
-    "move-before"
-  ],
-  "physics-based-easing": [
-    "linear-easing"
-  ],
-  "platform-controls-dismiss-dialog": [
-    "dialog-closedby"
-  ],
-  "position-aware-tooltips": [
-    "container-anchor-position-queries",
-    "popover"
-  ],
-  "precise-text-alignment": [
-    "text-box"
-  ],
-  "prevent-text-wrapping": [
-    "text-wrap"
-  ],
   "pull-to-reveal": [
     "scroll-initial-target",
     "scroll-snap"
-  ],
-  "reduce-style-repetition": [
-    "function"
-  ],
-  "resilient-context-menus-and-nested-dropdowns": [
-    "anchor-positioning",
-    "popover"
-  ],
-  "same-document-transitions": [
-    "view-transitions"
   ],
   "scroll-entry-exit-effects": [
     "scroll-driven-animations"
@@ -419,25 +438,8 @@ window.__featuresMapping = {
   "scrollytelling": [
     "scroll-driven-animations"
   ],
-  "search-hidden-content": [
-    "details",
-    "details-name",
-    "hidden-until-found"
-  ],
-  "shaped-cutouts": [
-    "masks"
-  ],
   "shrinking-header-on-scroll": [
     "scroll-driven-animations"
-  ],
-  "size-aware-styling": [
-    "container-queries"
-  ],
-  "soft-edge-content-fade": [
-    "masks"
-  ],
-  "stabilize-reactive-state": [
-    "temporal"
   ],
   "stack-drill-down": [
     "inert",
@@ -445,12 +447,6 @@ window.__featuresMapping = {
     "scroll-driven-animations",
     "scroll-snap",
     "scroll-snap-events"
-  ],
-  "style-parent-with-has": [
-    "user-pseudos"
-  ],
-  "support-global-calendar-systems": [
-    "temporal"
   ],
   "swipe-to-remove": [
     "scroll-snap",
@@ -462,17 +458,21 @@ window.__featuresMapping = {
     "resize-observer",
     "web-animations"
   ],
-  "usage-aware-component-variations": [
-    "container-style-queries"
+  "improve-text-layout-and-legibility": [
+    "text-wrap-balance",
+    "text-wrap-pretty"
+  ],
+  "precise-text-alignment": [
+    "text-box"
+  ],
+  "prevent-text-wrapping": [
+    "text-wrap"
   ],
   "visually-stable-font-fallbacks": [
     "font-size-adjust"
   ],
   "visually-stable-mixed-fonts": [
     "font-size-adjust"
-  ],
-  "visually-texture-content": [
-    "masks"
   ],
   "agentic-forms": [
     "declarative-webmcp"
