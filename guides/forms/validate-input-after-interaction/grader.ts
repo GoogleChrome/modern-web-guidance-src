@@ -27,6 +27,26 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
     expect(html).not.toMatch(/input:invalid\s*\{/);
   });
 
+  test('Format hints and rules must be positioned above their corresponding input elements in the markup', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/class=["'][^"']*(?:hint|rule)[^"']*["'][\s\S]*?<input/i.test(html)).toBe(true);
+  });
+
+  test('Format rules or hints must not use the placeholder attribute', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/placeholder=["'](?=.*[a-z]).*["']/i.test(html)).toBe(false);
+  });
+
+  test('The implementation must dynamically highlight preceding rules blocks upon error using :has', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/:has\(\s*input:user-invalid\s*\)/i.test(html)).toBe(true);
+  });
+
+  test('The visual error representation must incorporate multiple visual indicators', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/border|icon/i.test(html)).toBe(true);
+  });
+
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {

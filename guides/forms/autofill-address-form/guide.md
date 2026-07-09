@@ -3,12 +3,6 @@ name: autofill-address-form
 description: Build an address form with correct autocomplete attributes and autofill support.
 web-feature-ids:
   - autofill
-sources:
-  - https://web.dev/articles/payment-and-address-form-best-practices
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete
-  - https://developer.mozilla.org/docs/Web/HTML/Element/form
-  - https://developer.mozilla.org/docs/Web/HTML/Element/input
-  - https://developer.mozilla.org/docs/Web/HTML/Element/label
 ---
 
 # Build an address form that follows best practice
@@ -28,7 +22,7 @@ Make the most of the elements and attributes built for creating forms:
 
 These enable built-in browser functionality, improve accessibility, and add meaning to markup.
 
-### Use the <label> element to label form fields for data entry
+### Use the `<label>` element to label form fields for data entry
 
 To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by giving the label's `for` attribute the same value as the input's `id`.
 

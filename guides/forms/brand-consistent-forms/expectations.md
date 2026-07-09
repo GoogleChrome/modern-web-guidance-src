@@ -4,5 +4,8 @@
 - The implementation MUST update the `accent-color` value for dark mode using a `prefers-color-scheme` media query if brand colors need adjustment for contrast.
 - The implementation MUST provide a fallback for browsers that do not support `accent-color` using the `@supports not` rule.
 - The fallback implementation MUST style checkboxes and radio buttons to match the brand color using the "visually hidden input" technique.
+- Every `<input>` control MUST have an explicit `id` attribute, and its wrapping `<label>` MUST explicitly set the `for` attribute matching the input's ID.
+- Visually hidden inputs in the fallback MUST use the canonical accessible utility pattern (utilizing `clip-path: inset(50%)`, `width: 1px`, `height: 1px`) rather than using `opacity: 0` or zero dimensions.
+- Custom fallback controls MUST explicitly style the `:focus-visible` state to preserve focus indication for keyboard users.
 - The fallback implementation for range sliders MUST use vendor prefixes to style the thumb and track, and MUST simulate progress.
 - The fallback implementation for progress bars MUST use vendor prefixes to style the progress value.

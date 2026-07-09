@@ -74,7 +74,7 @@ export async function collectGuidanceToolsUsed(dir: string, serving: Serving, ag
   // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
   if (serving === Serving.MCP || agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     if (fs.existsSync(path.join(dir, MODERN_WEB_LOG_FILE))) {
-      return ['modern-web'];
+      return ['modern-web-guidance'];
     }
     return [];
   }

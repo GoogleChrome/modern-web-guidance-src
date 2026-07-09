@@ -1,0 +1,6 @@
+---
+base_app: daily-grind
+---
+- add a popover tooltip next to the maple oat latte 'view details' button triggered by a new info button (with id 'anchor'). the tooltip needs to have role='tooltip' and be linked to the button via aria-describedby. position it above the trigger, but allow fallback flips. use css state querying of the active anchored position to style a pseudo-element arrow so that it dynamically points up or down and alters the tooltip's border radius and margins when it flips to the bottom, ensuring zero javascript is used to handle the flip styling.
+- build a position-aware tooltip for the 'rewards' link in the navigation menu that shows a short promo text. when we scroll the page and the popover flips to its fallback position, its design elements and pointer arrow should automatically adapt to the new orientation purely using modern CSS positioning and state queries instead of scripting.
+- can you implement a responsive info tooltip for the 'dark roast espresso' card that opens when clicking a small badge? the popup should be anchored to the badge, use native popover behavior, and have a visual indicator arrow that repositions itself dynamically to always point towards the badge depending on the layout's fallback placement, completely driven by style queries on the container's active fallback state.

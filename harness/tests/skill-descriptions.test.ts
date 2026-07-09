@@ -15,7 +15,7 @@ test('all skill descriptions are under 1024 characters', () => {
   const repoRoot = path.resolve(currentDir, '../../');
   const patterns = [
     '.agents/skills/**/SKILL.md',
-    'skills-drafts/**/SKILL.md',
+    'skills-src/**/SKILL.md',
     'guides/**/SKILL.md'
   ];
   

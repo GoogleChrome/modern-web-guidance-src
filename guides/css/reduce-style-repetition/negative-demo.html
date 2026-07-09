@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style Repetition Demo</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            background: linear-gradient(135deg, #ed73d7, #5d87e9);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        main {
+            display: grid;
+            align-items: center;
+            justify-content: center;
+            gap: 1em;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 800px) {
+            main {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #1e293b;
+            text-align: center;
+        }
+
+        h2 {
+            margin: 0 0 1rem 0;
+            background: linear-gradient(to right, #82c4e0, #f37ed8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            margin: 0 0 1rem 0;
+            color: #cbd5e1;
+        }
+
+        code {
+            background: #334155;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reduce Style Repetition</h1>
+    <main>
+        <div class="card">
+            <h2>Dynamic Gradients</h2>
+            <p>The gradient background on this element is manually declared using standard background properties rather than utilizing a custom function structure.</p>
+        </div>
+        <div class="card">
+            <h2>Adaptive Grids</h2>
+            <p>The grid system utilizes a hardcoded media query directly inside the style declaration to control column layout across screen sizes.</p>
+        </div>
+    </main>
+</body>
+</html>

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import { defaultSuiteConfig } from '../config.ts';
+import { defaultSuiteConfig, Agents } from '../config.ts';
 import { collectResults } from '../lib/collection.ts';
 import { guidesDir } from '../../lib/paths.ts';
 
@@ -125,7 +125,7 @@ base_app: test-app
         fs.writeFileSync(path.join(targetDir, 'session-mock.jsonl'), sessionLines);
 
         // Execute SUT
-        const { allResults } = await collectResults(resultsBase, defaultSuiteConfig);
+        const { allResults } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
 
         const testKey = `task - ${guideName} - guided`;
         const runPayload = allResults[testKey][0];

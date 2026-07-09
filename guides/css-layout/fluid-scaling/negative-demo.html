@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Responsive Breakpoint Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      background: #f0f2f5;
+    }
+
+    .card-wrapper {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 2rem;
+    }
+
+    .card-title {
+      font-size: 14px;
+      margin-top: 0;
+      color: #1a0dab;
+    }
+
+    .card-content {
+      font-size: 14px;
+      color: #4a4a4a;
+      line-height: 1.5;
+    }
+
+    @media (min-width: 480px) {
+      .card-title {
+        font-size: 28px;
+      }
+      .card-content {
+        padding: 12px;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .card-title {
+        font-size: 56px;
+      }
+      .card-content {
+        padding: 24px;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .card-title {
+        font-size: 84px;
+      }
+      .card-content {
+        padding: 48px;
+      }
+    }
+
+    .instruction {
+      margin-bottom: 1rem;
+      color: #666;
+    }
+
+    .container-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    @media (min-width: 768px) {
+      .container-layout {
+        flex-direction: row;
+      }
+      .card-wrapper {
+        width: 45%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="instruction">
+    Resize the viewport window to see the text and padding jump abruptly at specific pixel widths. The elements scale based on the browser width rather than their actual parent container size.
+  </div>
+
+  <div class="container-layout">
+    <div class="card-wrapper">
+      <h1 class="card-title">Breakpoint Based Title</h1>
+      <p class="card-content">
+        This card scales abruptly based on screen width media queries.
+      </p>
+    </div>
+
+    <div class="card-wrapper" style="max-width: 300px;">
+      <h1 class="card-title">Breakpoint Based Title</h1>
+      <p class="card-content">
+        Even though this card is constrained to a narrow width, its text jumps to a massive size if the browser window is wide.
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>

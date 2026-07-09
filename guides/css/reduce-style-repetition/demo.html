@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reduce Style Repetition with @function</title>
+    <style>
+        /* Define the custom functions */
+        @function --fancy-gradient(--start-color <color>, --end-color <color>, --angle: 98deg) returns <image> {
+            result: linear-gradient(in oklab var(--angle), var(--start-color), var(--end-color) );
+        }
+
+        @function --grid-template(--count <number>){
+            result: 1fr;
+            @media (min-width: 800px) {
+                result: repeat(var(--count), 1fr);
+            }
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            background: #5d87e9;
+            background: --fancy-gradient(#ed73d7, #5d87e9);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        main {
+            display: grid;
+            align-items: center;
+            justify-content: center;
+            gap: 1em;
+            grid-template-columns: 1fr;
+            grid-template-columns: --grid-template(2);
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1{
+            color: #1e293b;
+            text-align: center;
+        }
+
+        h2 {
+            margin: 0 0 1rem 0;
+            background: #f37ed8;
+            background: --fancy-gradient( #82c4e0, #f37ed8, to right);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            margin: 0 0 1rem 0;
+            color: #cbd5e1;
+        }
+
+        code {
+            background: #334155;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reduce Style Repetition</h1>
+    <main>
+        <div class="card">
+            <h2>Dynamic Gradients</h2>
+            <p>The <code>--fancy-gradient</code> function allows us to define complex color transitions once and reuse them anywhere in our styles, ensuring visual consistency.</p>
+        </div>
+        <div class="card">
+            <h2>Adaptive Grids</h2>
+            <p>With <code>--grid-template</code>, our layout remains fluid and responsive, seamlessly transitioning between stacked and grid views based on the viewport size.</p>
+        </div>
+    </main>
+</body>
+</html>

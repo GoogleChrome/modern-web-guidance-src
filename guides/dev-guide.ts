@@ -6,6 +6,7 @@ import { generateNegative } from './negative-gen.ts';
 import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
 import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import {
+  createIsolatedHome,
   cleanupIsolatedHome,
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
@@ -323,10 +324,19 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   const results: Record<string, { passed: number; total: number }> = {};
 
   // 1. Grade base app
-  const baseAppHtml = path.join(baseAppsDir, taskInfo.baseApp, 'index.html');
+  const baseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
+  const baseAppHtml = path.join(baseAppDir, 'index.html');
   if (fs.existsSync(baseAppHtml)) {
-    const preResults = await gradeOutput(baseAppHtml, graderPath, path.join(targetDir, 'test-app-results', 'pre-grade-report'));
-    if (preResults) results['pre'] = preResults;
+    const tempHome = createIsolatedHome('gd-pre-grade');
+    try {
+      const stagingDir = path.join(tempHome, taskInfo.baseApp);
+      fs.cpSync(baseAppDir, stagingDir, { recursive: true });
+      const stagedHtml = path.join(stagingDir, 'index.html');
+      const preResults = await gradeOutput(stagedHtml, graderPath, path.join(targetDir, 'test-app-results', 'pre-grade-report'));
+      if (preResults) results['pre'] = preResults;
+    } finally {
+      cleanupIsolatedHome(tempHome);
+    }
   }
 
   // 2. Run agent suite

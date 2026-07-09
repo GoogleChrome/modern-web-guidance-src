@@ -5,21 +5,24 @@
   <title>Highlight Autofill Inputs</title>
   <style>
     input:autofill,
-    input:-webkit-autofill,
-    input:-webkit-autofill:hover,
-    input:-webkit-autofill:focus {
-      border-color: green;
-      outline: none;
+    input:-webkit-autofill {
+      border: 2px solid #2e7d32;
+      box-shadow: 0 0 0 100vmax #e8f5e9 inset;
+    }
+    input:autofill:focus-visible,
+    input:-webkit-autofill:focus-visible {
+      outline: 3px solid #000;
+      outline-offset: 2px;
     }
   </style>
 </head>
 <body>
   <h1>Name Form</h1>
   <form id="form" name="form">
-    <section>
+    <div>
       <label for="name">Name</label>
       <input id="name" name="name" type="text" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
-    </section>
+    </div>
     <button type="submit">Submit</button>
   </form>
 </body>
