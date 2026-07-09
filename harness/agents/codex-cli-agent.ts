@@ -5,6 +5,7 @@ import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 import { fileURLToPath } from 'url';
 
 const TRAJECTORY_GLOB = 'session-*.jsonl';
@@ -131,6 +132,7 @@ async function run() {
     }
 
     exportCodexTrajectories(workDir, targetDir);
+    await generateNormalizedTrajectory(targetDir, Agents.CODEX, getSuiteConfig().serving);
 
     console.log("Codex agent finished successfully.");
   } catch (err) {

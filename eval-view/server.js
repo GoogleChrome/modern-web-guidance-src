@@ -466,6 +466,22 @@ const server = http.createServer(async (req, res) => {
 
         filePath = path.join(RESULTS_DIR, finalRelativePath);
 
+        // Auto-generate missing trajectory_summary.json on the fly
+        if (path.basename(filePath) === 'trajectory_summary.json' && !fs.existsSync(filePath)) {
+          const runDir = path.dirname(filePath);
+          if (fs.existsSync(runDir)) {
+            try {
+              const { generateNormalizedTrajectory } = await import('../harness/lib/trajectory-parser.ts');
+              let agentName = 'Codex';
+              if (filePath.includes('claude')) agentName = 'Claude Code';
+              else if (filePath.includes('gemini')) agentName = 'Gemini CLI';
+              await generateNormalizedTrajectory(runDir, agentName, 'local');
+            } catch (e) {
+              console.error('Failed to auto-generate trajectory summary:', e);
+            }
+          }
+        }
+
         // If file does not exist locally and request is not local, return 400 for remote GCS streaming
         if (!fs.existsSync(filePath)) {
             const useLocal = reqUrl.includes('source=local');
@@ -518,6 +534,30 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (err.code === 'ENOENT') {
+        if (path.basename(filePath) === 'trajectory_summary.json') {
+          const runDir = path.dirname(filePath);
+          if (fs.existsSync(runDir)) {
+            import('../harness/lib/trajectory-parser.ts').then(async ({ generateNormalizedTrajectory }) => {
+              let agentName = 'Codex';
+              if (filePath.includes('claude')) agentName = 'Claude Code';
+              else if (filePath.includes('gemini')) agentName = 'Gemini CLI';
+              await generateNormalizedTrajectory(runDir, agentName, 'local');
+              if (fs.existsSync(filePath)) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(fs.readFileSync(filePath), 'utf-8');
+                return;
+              }
+              res.writeHead(404);
+              res.end('404 Not Found (Trajectory summary generation failed)');
+            }).catch(e => {
+              console.error('Failed to auto-generate trajectory summary:', e);
+              res.writeHead(404);
+              res.end('404 Not Found');
+            });
+            return;
+          }
+        }
+
         // SPA Fallback: If it's a structural route (no extension or .html) that 404s,
         // try to serve the index.html from the same base run directory instead.
         if (!extname || extname === '.html') {

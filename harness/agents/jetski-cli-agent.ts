@@ -7,6 +7,7 @@ import config, { Agents, Serving } from '../config.ts';
 import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
 // Usage: node jetski-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
@@ -100,6 +101,8 @@ async function run() {
     const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
     exportTrajectories(conversationsDir, '*.db', targetDir);
+
+    await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, getSuiteConfig().serving);
 
     console.log("Jetski CLI agent finished successfully.");
 
