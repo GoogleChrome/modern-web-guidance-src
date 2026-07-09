@@ -329,7 +329,8 @@ const server = http.createServer(async (req, res) => {
 
     const authHeader = req.headers.authorization || '';
 
-    const p = spawn('pnpm', ['gd', 'compare', absDirA, absDirB], {
+    const gdTsPath = path.join(ROOT_DIR, 'bin', 'gd.ts');
+    const p = spawn(process.execPath, ['--experimental-strip-types', gdTsPath, 'compare', absDirA, absDirB], {
       cwd: ROOT_DIR,
       env: { ...process.env, GD_GCS_TOKEN: authHeader }
     });
