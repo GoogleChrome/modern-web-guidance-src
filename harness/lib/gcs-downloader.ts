@@ -121,9 +121,17 @@ async function downloadSuiteEvalsIfMissing(suiteName: string, token: string | un
 /**
  * Lazily downloads a single directory prefix from GCS if it is missing locally.
  */
+function normalizePath(p: string): string {
+  let abs = path.resolve(p);
+  if (abs.startsWith('/home/')) {
+    abs = '/usr/local/google' + abs;
+  }
+  return abs;
+}
+
 async function downloadSingleDirFromGcs(runDir: string, token: string | undefined): Promise<boolean> {
-  const absoluteRunDir = path.resolve(runDir);
-  const absoluteResultsDir = path.resolve(baseResultsDir);
+  const absoluteRunDir = normalizePath(runDir);
+  const absoluteResultsDir = normalizePath(baseResultsDir);
   
   const relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
   if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
@@ -242,8 +250,8 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
  * Orchestrates downloading suite evals.json, the primary requested run, and the sibling run type (guided/unguided).
  */
 export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boolean> {
-  const absoluteRunDir = path.resolve(runDir);
-  const absoluteResultsDir = path.resolve(baseResultsDir);
+  const absoluteRunDir = normalizePath(runDir);
+  const absoluteResultsDir = normalizePath(baseResultsDir);
   
   const relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
   if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {

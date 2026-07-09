@@ -3,10 +3,10 @@ import path from 'path';
 import config from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
+import { rootDir } from '../../lib/paths.ts';
 
 /**
  * Dynamically fetches all active models from the Gemini API and returns them sorted by version and capability.
- * Sorts primarily by version number (e.g. 3.5 > 2.5) and secondarily by capability tier (pro > flash).
  */
 async function getSortedModelsList(apiKey: string): Promise<string[]> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
@@ -30,7 +30,6 @@ async function getSortedModelsList(apiKey: string): Promise<string[]> {
         const supportsText = m.supportedGenerationMethods?.includes('generateContent');
         if (!isGemini || !supportsText) return false;
 
-        // Rule 0: Exclude all models with "image" or "tts" in their names
         const nameLower = m.name.toLowerCase();
         if (nameLower.includes('image') || nameLower.includes('tts')) {
           return false;
@@ -38,8 +37,6 @@ async function getSortedModelsList(apiKey: string): Promise<string[]> {
         return true;
       })
       .map((m: any) => {
-        // Parse major version, minor version, and tier from name
-        // e.g. "models/gemini-3.5-flash" -> version: 3.5, tier: "flash"
         const match = m.name.match(/gemini-(\d+(?:\.\d+)?)-(pro|flash)/i);
         const versionStr = match ? match[1] : '0.0';
         const tier = match ? match[2].toLowerCase() : 'flash';
@@ -60,25 +57,12 @@ async function getSortedModelsList(apiKey: string): Promise<string[]> {
       return fallbackList;
     }
 
-    // Sort hierarchy:
-    // 1. Major version descending (3 > 2)
-    // 2. Tier descending (pro > flash)
-    // 3. Minor version descending (3.5 > 3.1)
     geminiModels.sort((a: any, b: any) => {
-      // 1. Major version
-      if (b.major !== a.major) {
-        return b.major - a.major;
-      }
-      
-      // 2. Tier (Pro > Flash)
+      if (b.major !== a.major) return b.major - a.major;
       const tierScore = (t: string) => t === 'pro' ? 2 : 1;
       const scoreB = tierScore(b.tier);
       const scoreA = tierScore(a.tier);
-      if (scoreB !== scoreA) {
-        return scoreB - scoreA;
-      }
-      
-      // 3. Minor version
+      if (scoreB !== scoreA) return scoreB - scoreA;
       return b.minor - a.minor;
     });
 
@@ -91,9 +75,6 @@ async function getSortedModelsList(apiKey: string): Promise<string[]> {
   }
 }
 
-/**
- * Attempts to generate content with a specific model.
- */
 /**
  * Attempts to generate content with a specific model using both systemInstruction and prompt.
  */
@@ -131,7 +112,6 @@ async function attemptGenerateContent(apiKey: string, model: string, systemInstr
 
   const data = await response.json() as any;
   
-  // Write data to a debug file for precise JSON structure analysis
   try {
     const debugDir = path.resolve('./results/compare_work');
     if (!fs.existsSync(debugDir)) {
@@ -139,7 +119,6 @@ async function attemptGenerateContent(apiKey: string, model: string, systemInstr
     }
     const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
     fs.writeFileSync(path.join(debugDir, `response_debug_${slug}.json`), JSON.stringify(data, null, 2), 'utf8');
-    console.log(`[${label}] 🧪 Wrote API response debug log to results/compare_work/response_debug_${slug}.json`);
   } catch (e) {}
 
   const parts = data.candidates?.[0]?.content?.parts;
@@ -147,11 +126,9 @@ async function attemptGenerateContent(apiKey: string, model: string, systemInstr
     throw new Error('Failed to parse content from response: ' + JSON.stringify(data));
   }
 
-  // Filter out thinking parts (where thought: true) and extract only the final answer text
   const nonThoughtParts = parts.filter((part: any) => !part.thought);
   
   if (nonThoughtParts.length === 0) {
-    // Fallback to the first part if no non-thought parts are present
     const fallbackText = parts[0]?.text;
     if (!fallbackText) {
       throw new Error('No text content found in response parts: ' + JSON.stringify(data));
@@ -176,7 +153,6 @@ async function callGeminiApiDirectly(systemInstruction: string, prompt: string, 
     throw new Error('GEMINI_API_KEY is not set. Please add GEMINI_API_KEY="your_api_key_here" to a .env file at the project root.');
   }
 
-  // Get candidate models: respect user override, or fetch sorted list
   let models: string[] = [];
   if (process.env.GEMINI_MODEL) {
     models = [process.env.GEMINI_MODEL];
@@ -210,6 +186,34 @@ async function callGeminiApiDirectly(systemInstruction: string, prompt: string, 
   throw new Error(`All available Gemini models failed or were overloaded:\n${errors.map(e => `  - ${e}`).join('\n')}`);
 }
 
+interface TaggedStep {
+  stepNumber: number;
+  category: 'skill_search' | 'guide_retrieval' | 'mandatory_rule_thought' | 'code_mutation' | 'incidental_noise';
+  thought?: string;
+  actionName?: string;
+  actionDetails?: string;
+  isError?: boolean;
+  raw: any;
+}
+
+interface PreprocessedTrajectory {
+  taggedSteps: TaggedStep[];
+  searchQueries: string[];
+  retrievedGuideIds: string[];
+  mandatoryRulesAdopted: string[];
+  codeMutationCount: number;
+  noiseCount: number;
+  errorLoopCount: number;
+}
+
+interface GuideContext {
+  guideName: string;
+  taskName: string;
+  guideContent: string;
+  expectationsContent: string;
+  taskPrompt: string;
+}
+
 interface RunContext {
   dir: string;
   runNumber: number;
@@ -219,11 +223,74 @@ interface RunContext {
   chatLog: string;
   codeOutput: string;
   codePath: string;
+  preprocessed: PreprocessedTrajectory;
+}
+
+/**
+ * Helper to find guide.md, expectations.md, and task.md for a given guide/task name.
+ */
+function findGuideContext(guideName: string, taskName: string): GuideContext {
+  const guidesBaseDir = path.join(rootDir, 'guides');
+  let guideContent = '';
+  let expectationsContent = '';
+  let taskPrompt = '';
+
+  if (fs.existsSync(guidesBaseDir)) {
+    // 1. Search for guide directory
+    let guideDir = '';
+    const items = fs.readdirSync(guidesBaseDir, { withFileTypes: true });
+    for (const item of items) {
+      if (item.isDirectory()) {
+        const direct = path.join(guidesBaseDir, guideName);
+        if (fs.existsSync(direct)) {
+          guideDir = direct;
+          break;
+        }
+        const nested = path.join(guidesBaseDir, item.name, guideName);
+        if (fs.existsSync(nested)) {
+          guideDir = nested;
+          break;
+        }
+      }
+    }
+
+    if (guideDir) {
+      const guidePath = path.join(guideDir, 'guide.md');
+      if (fs.existsSync(guidePath)) {
+        guideContent = fs.readFileSync(guidePath, 'utf8');
+      }
+
+      // Expectations
+      const expPath = path.join(guideDir, 'expectations.md');
+      if (fs.existsSync(expPath)) {
+        expectationsContent = fs.readFileSync(expPath, 'utf8');
+      }
+
+      // Task prompt
+      const taskPath1 = path.join(guideDir, 'tasks', `${taskName}.md`);
+      const taskPath2 = path.join(guideDir, 'tasks', 'task.md');
+      const taskPath3 = path.join(guideDir, 'task.md');
+      if (fs.existsSync(taskPath1)) {
+        taskPrompt = fs.readFileSync(taskPath1, 'utf8');
+      } else if (fs.existsSync(taskPath2)) {
+        taskPrompt = fs.readFileSync(taskPath2, 'utf8');
+      } else if (fs.existsSync(taskPath3)) {
+        taskPrompt = fs.readFileSync(taskPath3, 'utf8');
+      }
+    }
+  }
+
+  return {
+    guideName,
+    taskName,
+    guideContent: guideContent || 'No guide.md content found.',
+    expectationsContent: expectationsContent || 'No expectations.md content found.',
+    taskPrompt: taskPrompt || 'No task.md prompt found.'
+  };
 }
 
 /**
  * Helper to find the main generated code file in a run directory.
- * Looks for index.html, App.jsx, App.js, etc.
  */
 function findCodeOutput(dir: string): { path: string; content: string } {
   const candidates = [
@@ -277,7 +344,103 @@ function parsePlaywrightResults(report: any): { message: string; passed: boolean
 }
 
 /**
- * Loads all relevant context for a single run.
+ * Phase 1 Pre-Processor: Categorizes trajectory steps into 5 milestone/noise types and computes metrics.
+ */
+function preprocessTrajectory(trajectorySummary: any, chatLog: string): PreprocessedTrajectory {
+  const steps = trajectorySummary?.steps || [];
+  const taggedSteps: TaggedStep[] = [];
+  const searchQueries: string[] = [];
+  const retrievedGuideIds: string[] = [];
+  const mandatoryRulesAdopted: string[] = [];
+  let codeMutationCount = 0;
+  let noiseCount = 0;
+  let errorLoopCount = 0;
+  let consecutiveErrors = 0;
+
+  for (let i = 0; i < steps.length; i++) {
+    const rawStep = steps[i];
+    const stepNumber = rawStep.stepNumber || i + 1;
+    const thought = rawStep.thought || '';
+    const actionName = (rawStep.action?.name || rawStep.action?.type || '').toLowerCase();
+    const actionParamsStr = JSON.stringify(rawStep.action?.params || rawStep.action || {}).toLowerCase();
+    const isErr = rawStep.outcome?.status === 'error';
+
+    if (isErr) {
+      consecutiveErrors++;
+      if (consecutiveErrors >= 2) {
+        errorLoopCount++;
+      }
+    } else {
+      consecutiveErrors = 0;
+    }
+
+    let category: TaggedStep['category'] = 'incidental_noise';
+
+    // 1. Skill Search
+    if (actionName.includes('search') || actionParamsStr.includes('search') || actionParamsStr.includes('modern-web-guidance') && actionParamsStr.includes('search')) {
+      category = 'skill_search';
+      // Extract search query
+      const match = actionParamsStr.match(/query["\s:]+([^"\}]+)/i) || actionParamsStr.match(/search\s+([^"\n\}]+)/i);
+      if (match) {
+        searchQueries.push(match[1].trim());
+      }
+    }
+    // 2. Guide Retrieval
+    else if (actionName.includes('retrieve') || actionName.includes('get_best_practices') || actionParamsStr.includes('retrieve') || actionParamsStr.includes('get_best_practices')) {
+      category = 'guide_retrieval';
+      const match = actionParamsStr.match(/id["\s:]+([^"\}]+)/i) || actionParamsStr.match(/retrieve\s+([^"\n\}]+)/i);
+      if (match) {
+        retrievedGuideIds.push(match[1].trim());
+      }
+    }
+    // 3. Code Mutation
+    else if (
+      actionName.includes('write') || actionName.includes('replace') || actionName.includes('touch') ||
+      actionParamsStr.includes('write_to_file') || actionParamsStr.includes('replace_file_content') ||
+      actionParamsStr.includes('index.html') || actionParamsStr.includes('app.jsx') || actionParamsStr.includes('style.css')
+    ) {
+      category = 'code_mutation';
+      codeMutationCount++;
+    }
+    // 4. Mandatory Rule Thought / Adoption
+    else if (
+      thought.toLowerCase().includes('mandatory') || thought.toLowerCase().includes('fallback') ||
+      thought.toLowerCase().includes('css') || thought.toLowerCase().includes('baseline') ||
+      thought.toLowerCase().includes('guidance')
+    ) {
+      category = 'mandatory_rule_thought';
+      mandatoryRulesAdopted.push(thought.slice(0, 120));
+    }
+    // 5. Incidental Noise (view_file, ls, list_dir, grep)
+    else {
+      category = 'incidental_noise';
+      noiseCount++;
+    }
+
+    taggedSteps.push({
+      stepNumber,
+      category,
+      thought,
+      actionName: rawStep.action?.name,
+      actionDetails: actionParamsStr.slice(0, 200),
+      isError: isErr,
+      raw: rawStep
+    });
+  }
+
+  return {
+    taggedSteps,
+    searchQueries: Array.from(new Set(searchQueries)),
+    retrievedGuideIds: Array.from(new Set(retrievedGuideIds)),
+    mandatoryRulesAdopted,
+    codeMutationCount,
+    noiseCount,
+    errorLoopCount
+  };
+}
+
+/**
+ * Loads all relevant context for a single run including preprocessed trajectory.
  */
 function loadRunContext(runDir: string): RunContext {
   const absoluteDir = path.resolve(runDir);
@@ -285,16 +448,11 @@ function loadRunContext(runDir: string): RunContext {
     throw new Error(`Run directory not found: ${absoluteDir}`);
   }
 
-  // Parse run details from path
   const pathSegments = absoluteDir.split(/[/\\]/);
   const runNumberMatch = absoluteDir.match(/[/\\](\d+)[/\\]/);
   const runNumber = runNumberMatch ? parseInt(runNumberMatch[1]) : 0;
-
-  // Extract guide name which is 3 levels up from the leaf run type folder
-  // e.g. results/test_xxx/1/guideName/taskName/guided -> guideName is index length - 3
   const guideName = pathSegments[pathSegments.length - 3] || '';
 
-  // 1. Load results JSON using the guide-specific filename
   const resultsPath = path.join(absoluteDir, `${guideName}_results.json`);
   let resultsJson: any = null;
   let score = 0;
@@ -309,7 +467,6 @@ function loadRunContext(runDir: string): RunContext {
     }
   }
 
-  // 2. Load trajectory summary
   let trajectorySummary: any = null;
   const trajPath = path.join(absoluteDir, 'trajectory_summary.json');
   if (fs.existsSync(trajPath)) {
@@ -320,15 +477,14 @@ function loadRunContext(runDir: string): RunContext {
     }
   }
 
-  // 3. Load chat log
   let chatLog = '';
   const chatLogPath = path.join(absoluteDir, 'chat_log.txt');
   if (fs.existsSync(chatLogPath)) {
     chatLog = fs.readFileSync(chatLogPath, 'utf8');
   }
 
-  // 4. Load generated code
   const code = findCodeOutput(absoluteDir);
+  const preprocessed = preprocessTrajectory(trajectorySummary, chatLog);
 
   return {
     dir: absoluteDir,
@@ -338,7 +494,8 @@ function loadRunContext(runDir: string): RunContext {
     trajectorySummary,
     chatLog,
     codeOutput: code.content,
-    codePath: code.path
+    codePath: code.path,
+    preprocessed
   };
 }
 
@@ -363,179 +520,198 @@ function simpleTextDiff(a: string, b: string): string {
 }
 
 /**
- * Sub-agent 1: Dedicated analysis for test assertions and generated code differences.
+ * Phase 2: Sub-agent 1 - Guide Compliance & Requirement Auditor.
  */
-async function analyzeAssertionsAndCode(
-  taskPrompt: string,
+async function runSubAgent1_GuideCompliance(
+  guideCtx: GuideContext,
+  ctxA: RunContext,
+  ctxB: RunContext,
+  statusA: string,
+  statusB: string
+): Promise<string> {
+  const systemInstruction = `You are a specialized Web Guidance Compliance Auditor. Your task is to evaluate whether two agent runs (Run A vs Run B) successfully discovered, retrieved, and adhered to the MANDATORY requirements in guide.md and expectations.md.
+
+Specifically analyze:
+1. **Skill Discovery & Search**: Compare search queries used by Run A vs Run B. Did the search query accurately surface the guide, or did it miss due to vague/generic phrasing?
+2. **Guide Retrieval & Reading**: Did the agent actually retrieve guide.md?
+3. **Mandatory Rule Adoption**: Compare agent thinking/reasoning steps against MANDATORY guide requirements. Did an agent explicitly ignore, bypass, or misunderstand a mandatory rule (e.g. opting for JS instead of CSS, omitting fallback, missing required HTML attributes)?
+4. **Compliance Discrepancy**: Explain how guide compliance directly accounts for the difference in score between Run A (${ctxA.score}%) and Run B (${ctxB.score}%).`;
+
+  const prompt = `### Task Prompt
+"""
+${guideCtx.taskPrompt}
+"""
+
+### Reference Guidance (guide.md)
+"""
+${guideCtx.guideContent.slice(0, 4000)}
+"""
+
+### Expected Outcomes (expectations.md)
+"""
+${guideCtx.expectationsContent.slice(0, 3000)}
+"""
+
+### Run A (${statusA} - Score: ${ctxA.score}%)
+- Search Queries: ${JSON.stringify(ctxA.preprocessed.searchQueries)}
+- Retrieved Guide IDs: ${JSON.stringify(ctxA.preprocessed.retrievedGuideIds)}
+- Key Adopted Thoughts / Rules:
+${JSON.stringify(ctxA.preprocessed.mandatoryRulesAdopted, null, 2)}
+
+### Run B (${statusB} - Score: ${ctxB.score}%)
+- Search Queries: ${JSON.stringify(ctxB.preprocessed.searchQueries)}
+- Retrieved Guide IDs: ${JSON.stringify(ctxB.preprocessed.retrievedGuideIds)}
+- Key Adopted Thoughts / Rules:
+${JSON.stringify(ctxB.preprocessed.mandatoryRulesAdopted, null, 2)}
+`;
+
+  return callGeminiApiDirectly(systemInstruction, prompt, 'Sub-Agent 1 (Guide Compliance)');
+}
+
+/**
+ * Phase 2: Sub-agent 2 - Code-to-Trajectory Backtracking & Friction Diagnostic.
+ */
+async function runSubAgent2_CodeAndFriction(
+  guideCtx: GuideContext,
   ctxA: RunContext,
   ctxB: RunContext,
   codeDiff: string,
   statusA: string,
   statusB: string
 ): Promise<string> {
-  const systemInstruction = `You are a software engineering diagnostic sub-agent specializing in test assertion and code diff analysis. Your task is to analyze test assertion pass/fail differences and generated code differences between two runs of an AI coding agent executing the same task.
+  const systemInstruction = `You are a specialized Code-to-Trajectory Backtracking and Context Friction Diagnostic Sub-Agent. Your task is to connect failed Playwright assertions and generated code diffs back to specific trajectory steps and context friction (noise/error loops).
 
-Provide a thorough, structured, and detailed analysis:
-1. **Assertion Discrepancies**: Compare which assertions passed or failed in Run A vs Run B. Identify key functional or behavioral discrepancies and why specific assertions failed in one run vs passed in the other.
-2. **Code Implementation Differences**: Examine the code differences. Explain how specific code changes, missing implementations, or faulty logic directly correlate with the passed or failed assertions.`;
+Specifically analyze:
+1. **Assertion-to-Code Link**: For each failed assertion in poorer run vs passed in better run, identify the exact lines of code missing or incorrectly written.
+2. **Backtracking to Trajectory Step**: Trace backward to identify the exact step number in the trajectory where the faulty or missing code was introduced.
+3. **Context Friction & Noise Impact**: Evaluate if context noise (e.g. ${ctxA.preprocessed.noiseCount} vs ${ctxB.preprocessed.noiseCount} noise steps) or error/retry loops (${ctxA.preprocessed.errorLoopCount} vs ${ctxB.preprocessed.errorLoopCount}) derailed the LLM's context window and caused it to forget or hallucinate requirements.`;
 
-  const prompt = `### Task Prompt
-"""
-${taskPrompt}
-"""
-
-### Run A (${statusA} - Score: ${ctxA.score}%)
+  const prompt = `### Run A (${statusA} - Score: ${ctxA.score}%)
 - Dir: ${ctxA.dir}
-- Passed Assertions:
-${ctxA.resultsJson ? JSON.stringify(ctxA.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
-- Failed Assertions:
-${ctxA.resultsJson ? JSON.stringify(ctxA.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
+- Passed Assertions: ${JSON.stringify(ctxA.resultsJson?.filter((c: any) => c.passed).map((c: any) => c.message) || [])}
+- Failed Assertions: ${JSON.stringify(ctxA.resultsJson?.filter((c: any) => !c.passed).map((c: any) => c.message) || [])}
+- Trajectory Tagged Steps Summary:
+  - Code Mutations: ${ctxA.preprocessed.codeMutationCount}
+  - Context Noise Steps: ${ctxA.preprocessed.noiseCount}
+  - Error/Retry Loops: ${ctxA.preprocessed.errorLoopCount}
 
 ### Run B (${statusB} - Score: ${ctxB.score}%)
 - Dir: ${ctxB.dir}
-- Passed Assertions:
-${ctxB.resultsJson ? JSON.stringify(ctxB.resultsJson.filter((c: any) => c.passed).map((c: any) => c.message), null, 2) : 'None'}
-- Failed Assertions:
-${ctxB.resultsJson ? JSON.stringify(ctxB.resultsJson.filter((c: any) => !c.passed).map((c: any) => c.message), null, 2) : 'None'}
+- Passed Assertions: ${JSON.stringify(ctxB.resultsJson?.filter((c: any) => c.passed).map((c: any) => c.message) || [])}
+- Failed Assertions: ${JSON.stringify(ctxB.resultsJson?.filter((c: any) => !c.passed).map((c: any) => c.message) || [])}
+- Trajectory Tagged Steps Summary:
+  - Code Mutations: ${ctxB.preprocessed.codeMutationCount}
+  - Context Noise Steps: ${ctxB.preprocessed.noiseCount}
+  - Error/Retry Loops: ${ctxB.preprocessed.errorLoopCount}
 
-### Generated Code Differences (${ctxA.codePath || 'code output'})
-- Run A Output Length: ${ctxA.codeOutput.length} chars
-- Run B Output Length: ${ctxB.codeOutput.length} chars
-- Line-by-line Diff (Run A vs Run B):
+### Generated Code Line-by-line Diff (Run A vs Run B)
 """
 ${codeDiff.slice(0, 5000)}
-"""`;
+"""
 
-  return callGeminiApiDirectly(systemInstruction, prompt, 'Assertions & Code Sub-Agent');
+### Tagged Trajectory Steps Overview
+#### Run A:
+${JSON.stringify(ctxA.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, isErr: s.isError, thought: s.thought?.slice(0, 80) })), null, 2)}
+
+#### Run B:
+${JSON.stringify(ctxB.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, isErr: s.isError, thought: s.thought?.slice(0, 80) })), null, 2)}
+`;
+
+  return callGeminiApiDirectly(systemInstruction, prompt, 'Sub-Agent 2 (Code & Friction)');
 }
 
 /**
- * Sub-agent 2: Dedicated analysis for agent execution trajectories and step-by-step actions.
- */
-async function analyzeTrajectories(
-  taskPrompt: string,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  statusA: string,
-  statusB: string
-): Promise<string> {
-  const systemInstruction = `You are a software engineering diagnostic sub-agent specializing in agent trajectory and execution flow analysis. Your task is to compare the step-by-step execution trajectories of two runs of an AI coding agent executing the same task.
-
-Provide a thorough, structured, and detailed analysis:
-1. **Divergence Step**: Identify the exact step or phase in the trajectories where the two agents took different paths, made contrasting decisions, or encountered execution errors.
-2. **Trajectory Breakdown**: Compare tool choices, parameters, thoughts, and error outcomes between Run A and Run B. Highlight any hallucinations, wrong tool usages, unexpected error loops, or missed steps.`;
-
-  const prompt = `### Task Prompt
-"""
-${taskPrompt}
-"""
-
-### Run A (${statusA} - Score: ${ctxA.score}%)
-- Dir: ${ctxA.dir}
-
-### Run B (${statusB} - Score: ${ctxB.score}%)
-- Dir: ${ctxB.dir}
-
-### Trajectory Comparison (Normalized Steps)
-#### Run A Steps (${ctxA.trajectorySummary?.steps?.length || 0} total):
-${ctxA.trajectorySummary ? JSON.stringify(ctxA.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}
-
-#### Run B Steps (${ctxB.trajectorySummary?.steps?.length || 0} total):
-${ctxB.trajectorySummary ? JSON.stringify(ctxB.trajectorySummary.steps, null, 2) : 'No trajectory summary available.'}`;
-
-  return callGeminiApiDirectly(systemInstruction, prompt, 'Trajectory Sub-Agent');
-}
-
-/**
- * Synthesizer: Combines sub-agent outputs into the final 3-section diagnostic report.
+ * Phase 3: Synthesizer - Combines sub-agent outputs into the 4-section diagnostic report.
  */
 async function synthesizeDiagnosis(
-  taskPrompt: string,
+  guideCtx: GuideContext,
   ctxA: RunContext,
   ctxB: RunContext,
-  codeAnalysis: string,
-  trajectoryAnalysis: string,
+  complianceAnalysis: string,
+  codeAndFrictionAnalysis: string,
   statusA: string,
   statusB: string
 ): Promise<string> {
-  const systemInstruction = `You are an expert software engineering diagnostic lead. You have received dedicated diagnostic analyses from two sub-agents:
-- Sub-Agent 1: Test Assertions & Code Diff Analysis
-- Sub-Agent 2: Agent Trajectory & Execution Analysis
+  const systemInstruction = `You are an expert Lead Diagnostic Engineer synthesizing a variance diagnosis between two AI agent evaluation runs.
 
-Your task is to synthesize these analyses into a single, highly technical, objective, and extremely precise diagnostic report in Markdown format.
+You MUST structure your report into exactly the following four sections in Markdown format. Do not alter section titles:
 
-Be extremely thorough, exhaustive, and detailed in your analysis. Under the Root Cause Explanation, write a comprehensive, step-by-step technical breakdown of any race conditions, event sequences, execution flows, or metric finalizations, ensuring no detail is omitted.
+### 1. First Meaningful Divergence
+- **Step Number**: Step X (Specify exact step number where the first MEANINGFUL divergence occurred, e.g. Step 3)
+- **Event Type**: [Skill Search | Guide Retrieval | Mandatory Rule Adoption | Code Implementation | Error Recovery]
+- **Divergence Summary**: Concise explanation of why this specific step represents the root divergence point.
 
-You MUST structure your report into exactly the following three sections. Do not summarize or truncate your explanations early; provide complete trace analyses and ensure all three sections are fully populated. Start directly with the section headings:
+### 2. Guide Compliance & Milestone Matrix
+Provide a Markdown table summarizing key milestones:
+| Milestone / Metric | Run A (Score: ${ctxA.score}%) | Run B (Score: ${ctxB.score}%) | Status |
+| :--- | :--- | :--- | :---: |
+| **Skill Search Query** | ... | ... | ... |
+| **Guide Retrieval** | ... | ... | ... |
+| **Mandatory Rule Adoption** | ... | ... | ... |
+| **Context Noise / Retries** | ... | ... | ... |
 
-1. **Divergence Point**: Identify the exact step or moment in the trajectories where the two runs diverged in their approach or quality of execution.
-2. **Root Cause Explanation**: Explain the technical reason why this divergence caused the difference in outcomes, referencing the code differences, failed assertions, or trajectory logs.
-3. **Trajectory Contrast**: Provide a summary comparing the steps taken, highlighting the contrasting decisions made by the agents (using a markdown table where appropriate).`;
+### 3. Root Cause & Friction Analysis
+Provide a thorough technical breakdown linking:
+- Failed Playwright test assertions to specific missing or faulty code diffs.
+- How trajectory noise / error loops or guide ambiguity derailed the LLM context.
 
-  const prompt = `### Task Prompt
-"""
-${taskPrompt}
-"""
+### 4. Actionable Fix Recommendation
+Provide a clear, concrete recommendation on whether to update:
+- **Guide (guide.md)**: (e.g. add MANDATORY keyword, clarify code example)
+- **Prompt (tasks/task.md)**: (e.g. add declarative constraint to force guide discovery)
+- **Grader (grader.ts)**: (e.g. relax rigid regular expression locator)
+- **Agent/Model Non-Determinism**: (if guide & prompt are perfect but model had a random reasoning hiccup)`;
+
+  const prompt = `### Guide & Task Context
+- Guide Name: ${guideCtx.guideName}
+- Task Name: ${guideCtx.taskName}
 
 ### Run A (${statusA} - Score: ${ctxA.score}%, Dir: ${ctxA.dir})
 ### Run B (${statusB} - Score: ${ctxB.score}%, Dir: ${ctxB.dir})
 
-### Sub-Agent 1 Analysis: Assertions & Code Differences
+### Sub-Agent 1: Guide Compliance Analysis
 """
-${codeAnalysis}
+${complianceAnalysis}
 """
 
-### Sub-Agent 2 Analysis: Trajectory & Step Execution
+### Sub-Agent 2: Code-to-Trajectory & Friction Analysis
 """
-${trajectoryAnalysis}
+${codeAndFrictionAnalysis}
 """`;
 
-  return callGeminiApiDirectly(systemInstruction, prompt, 'Synthesis Sub-Agent');
+  return callGeminiApiDirectly(systemInstruction, prompt, 'Synthesizer Sub-Agent');
 }
 
 /**
  * Runs the diagnostic agent comparison using Gemini API sub-agents.
  */
 export async function runComparison(runDirA: string, runDirB: string): Promise<string> {
-  console.log(cCyan(`\n=== Starting Run Comparison ===`));
+  console.log(cCyan(`\n=== Starting Run Comparison (Guide-Grounded 3-Phase Pipeline) ===`));
   console.log(`Run A: ${runDirA}`);
   console.log(`Run B: ${runDirB}\n`);
 
-  // Lazily download from GCS if directories are missing locally
   await downloadRunFromGcsIfMissing(runDirA);
   await downloadRunFromGcsIfMissing(runDirB);
 
   const ctxA = loadRunContext(runDirA);
   const ctxB = loadRunContext(runDirB);
 
-  // Identify which is successful and which is failed/poorer for diagnostic orientation
   const isAProblem = ctxA.score < ctxB.score;
   const successCtx = isAProblem ? ctxB : ctxA;
 
   console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
 
-  // Extract prompt from run.mjs if possible
-  let taskPrompt = 'Unknown prompt';
-  try {
-    const runScriptPath = path.join(ctxA.dir, 'run.mjs');
-    if (fs.existsSync(runScriptPath)) {
-      const runScriptText = fs.readFileSync(runScriptPath, 'utf8');
-      const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
-      if (match) {
-        const arrayStr = `[${match[1]}]`;
-        const arr = JSON.parse(arrayStr);
-        taskPrompt = arr[1];
-      }
-    }
-  } catch (e) {}
+  const pathSegments = successCtx.dir.split(/[/\\]/);
+  const runType = pathSegments.pop() || 'guided';
+  const taskName = pathSegments.pop() || 'task';
+  const guideName = pathSegments.pop() || 'guide';
 
-  // Generate code diff (A vs B)
+  const guideCtx = findGuideContext(guideName, taskName);
   const codeDiff = simpleTextDiff(ctxA.codeOutput, ctxB.codeOutput);
 
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
 
-  // Create a temporary workspace inside the results directory for prompt logging
   const suiteMatch = successCtx.dir.match(/(.*[/\\]results[/\\][^/\\]+)/);
   const suiteDir = suiteMatch ? suiteMatch[1] : successCtx.dir;
   const workDir = path.join(suiteDir, 'compare_work');
@@ -544,26 +720,27 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   }
 
   try {
-    console.log(cBold(`[Compare Agent] Step 1/2: Dispatching sub-agents for dedicated piece analyses...`));
+    console.log(cBold(`[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`));
+    console.log(`  Run A: ${ctxA.preprocessed.taggedSteps.length} steps (${ctxA.preprocessed.noiseCount} noise, ${ctxA.preprocessed.errorLoopCount} retries)`);
+    console.log(`  Run B: ${ctxB.preprocessed.taggedSteps.length} steps (${ctxB.preprocessed.noiseCount} noise, ${ctxB.preprocessed.errorLoopCount} retries)`);
 
-    const [codeAnalysis, trajectoryAnalysis] = await Promise.all([
-      analyzeAssertionsAndCode(taskPrompt, ctxA, ctxB, codeDiff, statusA, statusB),
-      analyzeTrajectories(taskPrompt, ctxA, ctxB, statusA, statusB),
+    console.log(cBold(`[Compare Agent] Phase 2: Dispatching parallel sub-agents (Guide Compliance & Code/Friction)...`));
+    const [complianceAnalysis, codeAndFrictionAnalysis] = await Promise.all([
+      runSubAgent1_GuideCompliance(guideCtx, ctxA, ctxB, statusA, statusB),
+      runSubAgent2_CodeAndFriction(guideCtx, ctxA, ctxB, codeDiff, statusA, statusB)
     ]);
 
-    console.log(cBold(`[Compare Agent] Step 2/2: Synthesizing final diagnostic report...`));
-
+    console.log(cBold(`[Compare Agent] Phase 3: Synthesizing final 4-section diagnostic report...`));
     const markdownReport = await synthesizeDiagnosis(
-      taskPrompt,
+      guideCtx,
       ctxA,
       ctxB,
-      codeAnalysis,
-      trajectoryAnalysis,
+      complianceAnalysis,
+      codeAndFrictionAnalysis,
       statusA,
       statusB
     );
 
-    // Determine where to save the report
     let savedPath = '';
     if (suiteMatch) {
       const diagnosesDir = path.join(suiteDir, 'variance_diagnoses');
@@ -571,32 +748,23 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
         fs.mkdirSync(diagnosesDir, { recursive: true });
       }
       
-      const pathSegments = successCtx.dir.split(/[/\\]/);
-      const runType = pathSegments.pop(); // guided
-      const taskName = pathSegments.pop(); // content-vis-task
-      const guideName = pathSegments.pop(); // content-vis
-      
       const fileName = `${guideName}-${taskName}-${runType}.md`;
       savedPath = path.join(diagnosesDir, fileName);
       fs.writeFileSync(savedPath, markdownReport, 'utf8');
       console.log(cGreen(`\n✅ Saved diagnostic report to: ${savedPath}`));
     }
 
-    // Also write to current working directory as a convenience
     const localSavedPath = path.resolve('./variance_diagnosis.md');
     fs.writeFileSync(localSavedPath, markdownReport, 'utf8');
     console.log(cGreen(`✅ Saved local copy to: ${localSavedPath}\n`));
 
-    // Print the report directly to console (this will be streamed in real-time to the dashboard!)
     console.log(cBold(cCyan('--- DIAGNOSTIC REPORT ---')));
     console.log(markdownReport);
     console.log(cCyan('-------------------------'));
 
     return markdownReport;
-
   } catch (err: any) {
     console.error(cRed(`❌ Diagnosis failed: ${err.message}`));
     throw err;
   }
 }
-

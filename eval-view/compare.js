@@ -691,7 +691,11 @@ function findDivergenceInfo(trajA, trajB) {
   const diagnosisText = diagnosisTextElement ? diagnosisTextElement.innerText || '' : '';
 
   if (diagnosisText) {
-    const match = diagnosisText.match(/Divergence.*?(?:Step|step)\s*(\d+)/i) || diagnosisText.match(/(?:Step|step)\s*(\d+)/i);
+    // Specifically look for Step Number in Section 1 or general Step X pattern
+    const match = diagnosisText.match(/Step\s*Number[^\d]*(\d+)/i) ||
+                  diagnosisText.match(/First\s+Meaningful\s+Divergence[^\d]*(\d+)/i) ||
+                  diagnosisText.match(/Divergence.*?(?:Step|step)\s*(\d+)/i) ||
+                  diagnosisText.match(/(?:Step|step)\s*(\d+)/i);
     if (match) {
       primaryStep = parseInt(match[1], 10);
     }
