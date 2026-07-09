@@ -185,8 +185,9 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const guideExists = hasGuide || inv.isStub;
     const isDisciplineGuide = inv.name === inv.category;
     
-    // Discipline skills don't need demo.html
-    if (!isDisciplineSkill && !isDisciplineGuide && guideExists !== hasDemo) {
+    // Discipline skills don't need demo.html; a frontmatter-only stub
+    // (a proposed use case) doesn't need one either
+    if (!isDisciplineSkill && !isDisciplineGuide && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
@@ -231,7 +232,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       }
     }
 
-    const isIncomplete = (!hasGuide && !inv.isStub) || !hasDemo;
+    const isIncomplete = (!hasGuide && !inv.isStub) || (hasGuide && !hasDemo);
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
     const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask) : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
