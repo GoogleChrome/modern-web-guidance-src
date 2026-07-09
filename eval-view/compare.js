@@ -255,22 +255,26 @@ function initParams() {
   runTypeB = urlParams.get('runTypeB') || 'guided';
 
   // Initialize dropdown selections
-  document.getElementById('run-type-a').value = runTypeA;
-  document.getElementById('run-type-b').value = runTypeB;
+  const elA = /** @type {HTMLSelectElement | null} */ (document.getElementById('run-type-a'));
+  const elB = /** @type {HTMLSelectElement | null} */ (document.getElementById('run-type-b'));
+  if (elA) elA.value = runTypeA;
+  if (elB) elB.value = runTypeB;
 
   // Set up dropdown change listeners
-  document.getElementById('run-type-a').addEventListener('change', async (e) => {
-    runTypeA = e.target.value;
+  elA?.addEventListener('change', async (e) => {
+    runTypeA = /** @type {HTMLSelectElement} */ (e.target).value;
     await handleRunTypeChange();
   });
-  document.getElementById('run-type-b').addEventListener('change', async (e) => {
-    runTypeB = e.target.value;
+  elB?.addEventListener('change', async (e) => {
+    runTypeB = /** @type {HTMLSelectElement} */ (e.target).value;
     await handleRunTypeChange();
   });
 
   // Back button setup
-  const backBtn = document.getElementById('back-btn');
-  backBtn.href = `guide.html?guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
+  const backBtn = /** @type {HTMLAnchorElement | null} */ (document.getElementById('back-btn'));
+  if (backBtn) {
+    backBtn.href = `guide.html?guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
+  }
 
   if (!trialA || !guideName) {
     document.getElementById('compare-title').innerText = 'Error: Missing Parameters';
@@ -295,7 +299,7 @@ async function handleRunTypeChange() {
 async function loadTrialMetadata() {
   const resultsBase = isStatic ? 'results' : '';
   
-  const guideLinkEl = document.getElementById('summary-guide-link');
+  const guideLinkEl = /** @type {HTMLAnchorElement | null} */ (document.getElementById('summary-guide-link'));
   if (guideLinkEl) {
     guideLinkEl.innerText = guideName;
     guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'local' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
@@ -412,7 +416,7 @@ function updateExecutiveSummary() {
   deltaSpan.innerText = deltaText;
   deltaSpan.style.color = delta === 0 ? '#475569' : delta > 0 ? '#166534' : '#991b1b';
 
-  const guideLinkEl = document.getElementById('summary-guide-link');
+  const guideLinkEl = /** @type {HTMLAnchorElement | null} */ (document.getElementById('summary-guide-link'));
   if (guideLinkEl) {
     guideLinkEl.innerText = guideName;
     guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'local' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
@@ -1018,6 +1022,7 @@ async function runDiagnosticAgent() {
   const apiUrl = `/api/compare?runDirA=${encodeURIComponent(relativeA)}&runDirB=${encodeURIComponent(relativeB)}`;
   
   try {
+    /** @type {Record<string, string>} */
     const headers = {};
     const token = getAccessToken();
     if (token) {
@@ -1140,5 +1145,5 @@ window.onload = async () => {
 };
 
 // Expose module functions globally for inline HTML event handlers (since compare.js is loaded as a module)
-window.switchTab = switchTab;
-window.switchTask = switchTask;
+/** @type {any} */ (window).switchTab = switchTab;
+/** @type {any} */ (window).switchTask = switchTask;

@@ -132,7 +132,7 @@ async function run() {
     }
 
     exportCodexTrajectories(workDir, targetDir);
-    await generateNormalizedTrajectory(targetDir, Agents.CODEX, getSuiteConfig().serving);
+    await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, getSuiteConfig().serving);
 
     console.log("Codex agent finished successfully.");
   } catch (err) {

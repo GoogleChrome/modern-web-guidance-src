@@ -173,7 +173,7 @@ function showHelp() {
 
     {
       title: 'Evaluation & Dashboard',
-      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill'],
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill', 'compare'],
     },
     {
       title: 'Utilities & Setup',

@@ -593,11 +593,16 @@ const server = http.createServer(async (req, res) => {
               const rawLogData = htmlStr.slice(startIdx + 'const logData = '.length, endIdx + 1);
               const logData = eval(rawLogData);
 
+              /** @param {any} s */
               const escapeHtml = (s) => (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
               let preRenderedLogsHtml = '';
               let toolStepCounter = 0;
 
+              /**
+               * @param {any} entry
+               * @param {number} i
+               */
               logData.forEach((entry, i) => {
                 let role = entry.role || entry.type || 'unknown';
                 let contentHtml = '';

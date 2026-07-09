@@ -727,7 +727,7 @@ function handlePointSelection(runData, group, combKey, guideName) {
 
 function updateCompareBanner() {
     const text = $('#compare-banner-text');
-    const launchBtn = $('#launch-compare-btn');
+    const launchBtn = /** @type {HTMLButtonElement | null} */ ($('#launch-compare-btn'));
     if (!text || !launchBtn) return;
 
     if (selectedPoints.length === 0) {

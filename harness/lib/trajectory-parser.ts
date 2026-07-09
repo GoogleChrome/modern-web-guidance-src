@@ -29,7 +29,7 @@ export interface TrajectorySummary {
 /**
  * Maps a tool name to a standardized action type.
  */
-function mapToolType(toolName: string): StandardizedStep['action']['type'] {
+function mapToolType(toolName: string): NonNullable<StandardizedStep['action']>['type'] {
   const name = toolName.toLowerCase();
   if (['read', 'read_file', 'view_file', 'view'].some(k => name.includes(k))) {
     return 'read_file';
