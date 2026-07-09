@@ -396,9 +396,9 @@ describe('buildUseCaseMaps', () => {
   });
 
   test('maps subdirectory from issue body', () => {
-    const issue = { number: 1, title: 'Some title', body: 'Use case subdir: [guides/user-experience/my-use-case](https://github.com/...)' };
+    const issue = { number: 1, title: 'Some title', body: 'Use case subdir: [guides/html/my-use-case](https://github.com/...)' };
     const { subdirToIssueMap } = buildUseCaseMaps([issue]);
-    assert.strictEqual(subdirToIssueMap.get('guides/user-experience/my-use-case'), issue);
+    assert.strictEqual(subdirToIssueMap.get('guides/html/my-use-case'), issue);
   });
 
   test('ignores issues with non-matching title format', () => {

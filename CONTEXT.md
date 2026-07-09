@@ -26,7 +26,8 @@ Last updated: 2026-03-06.
 modern-web-guidance-src/
   guides/                     # All guide content, organized by discipline
     performance/              # e.g. batch-analytics-events, optimize-image-priority
-    user-experience/          # e.g. light-dismiss-dialog, animate-to-intrinsic-sizes
+    overlays/                 # e.g. light-dismiss-dialog, declarative-dialog-popover-control
+    css-layout/               # e.g. animate-to-intrinsic-sizes
     accessibility/            # (empty so far)
     security/                 # (empty so far)
     AGENTS.md                 # Instructions for AI agents working in this repo

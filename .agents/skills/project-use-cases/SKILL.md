@@ -48,7 +48,13 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 2: Choose a category**
 
-  Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`performance`](/guides/performance) or [`accessibility`](/guides/accessibility). List the current subdirectories under `guides/` and choose the most appropriate one. If a use case doesn't fit into any of these categories, create a new one.
+  Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`motion`](/guides/motion) or [`performance`](/guides/performance). List the current subdirectories under `guides/` and choose the most appropriate one.
+
+  **Categorize by the use case, not the implementation.** This is the "WHAT not HOW" principle applied to taxonomy: a category should name the user's goal (`motion`, `overlays`, `datetime`, `typography`), not the technology used to achieve it. Quick test: *could someone who understands the use case but can't write the code file it correctly?* If the only way to know where a guide belongs is to know which API it uses, the category is implementation-shaped. Two guides solving the same goal with different tech (e.g. a tab underline that morphs via anchor positioning vs. view transitions) belong in the **same** category.
+
+  Some categories are named after a technology domain (`css`, `html`, `canvas`) because they are anchored by a comprehensive reference guide for that technology (e.g. `html/html/guide.md`). These are valid homes for use cases genuinely about that technology, or that don't yet have enough siblings to form a use-case cluster.
+
+  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. (This is why the catch-all `user-experience` category was removed: UX is a vertical every guide addresses, not a bucket of its own.)
 
 * **Step 3: Create the use case subdirectory**
 
