@@ -46,7 +46,8 @@ function extractErrorMessage(dir: string, targetFile: string): string {
   const stderrPath = path.join(dir, 'agent_stderr.log');
   
   if (!fs.existsSync(stderrPath)) {
-    return fs.existsSync(targetFile) ? 'Generation failed' : 'index.html not found';
+    const fileName = path.relative(dir, targetFile) || path.basename(targetFile) || 'index.html';
+    return fs.existsSync(targetFile) ? 'Generation failed' : `${fileName} not found`;
   }
 
   return fs.readFileSync(stderrPath, 'utf8')
@@ -169,54 +170,107 @@ function getTaskRunDirs(runPath: string): string[] {
   ];
 }
 
-function setupGraderForTask(
+interface TaskRunContext {
+  guide: string;
+  taskName: string;
+  runType: string;
+  taskInfo: any;
+  targetModifiedFile: string | undefined;
+  targetFile: string;
+  targetPkgJson: string;
+  graderPath: string;
+  graderResults: string;
+  targetAppExists: boolean;
+}
+
+function getTaskRunContext(
   dir: string,
   runPath: string,
-  resultsDir: string,
-  taskMap: Map<string, any>
-): string | null {
+  taskMap: Map<string, any>,
+  warnIfMissing = false
+): TaskRunContext | null {
   const relPath = path.relative(runPath, dir);
   const parsed = parseResultPath(relPath);
   if (!parsed) return null;
   const { guide, taskName, runType } = parsed;
   if (runType === 'base_app') return null; // Skip the base app setup folder
 
-  const targetFile = path.join(dir, 'index.html');
-  const targetPkgJson = path.join(dir, 'package.json');
-
   const taskInfo = taskMap.get(`${guide}/${taskName}`);
-  if (!taskInfo) return null;
+  if (!taskInfo) {
+    if (warnIfMissing) {
+      console.warn(`Skipping grading: Task ${guide} not found in task map`);
+    }
+    return null;
+  }
 
+  const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
+  const targetFile = path.join(dir, targetModifiedFile || 'index.html');
+  const targetPkgJson = path.join(dir, 'package.json');
   const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
   const graderResults = path.join(dir, `${guide}_results.json`);
   const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
+
+  return {
+    guide,
+    taskName,
+    runType,
+    taskInfo,
+    targetModifiedFile,
+    targetFile,
+    targetPkgJson,
+    graderPath,
+    graderResults,
+    targetAppExists,
+  };
+}
+
+function getTaskDirsForRuns(resultsDir: string, runDirs: string[]): { dir: string; runPath: string; runDir: string }[] {
+  const items: { dir: string; runPath: string; runDir: string }[] = [];
+  for (const runDir of runDirs) {
+    const runPath = path.join(resultsDir, runDir);
+    for (const dir of getTaskRunDirs(runPath)) {
+      items.push({ dir, runPath, runDir });
+    }
+  }
+  return items;
+}
+
+function setupGraderForTask(
+  dir: string,
+  runPath: string,
+  resultsDir: string,
+  taskMap: Map<string, any>
+): string | null {
+  const ctx = getTaskRunContext(dir, runPath, taskMap);
+  if (!ctx) return null;
+
   const failureFile = path.join(dir, 'generation_failed.json');
 
   // If grader is missing, generation failed, target file is missing, or results already exist, skip generating a runner.
-  if (!fs.existsSync(graderPath) || fs.existsSync(failureFile) || !targetAppExists || fs.existsSync(graderResults)) {
+  if (!fs.existsSync(ctx.graderPath) || fs.existsSync(failureFile) || !ctx.targetAppExists || fs.existsSync(ctx.graderResults)) {
     return null;
   }
 
   // Generate a runner script to be picked up by pnpm -r run-grader
-  const gradeScript = getGraderScriptContent(dir, graderPath, guide);
+  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide);
   const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
   fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
 
   let pkgJsonObj: any = {
-    name: `${guide.substring(0, 30)}-${runType}-grader`,
+    name: `${ctx.guide.substring(0, 30)}-${ctx.runType}-grader`,
     type: "module",
     scripts: {}
   };
-  if (fs.existsSync(targetPkgJson)) {
+  if (fs.existsSync(ctx.targetPkgJson)) {
     try {
-      pkgJsonObj = JSON.parse(fs.readFileSync(targetPkgJson, 'utf-8'));
+      pkgJsonObj = JSON.parse(fs.readFileSync(ctx.targetPkgJson, 'utf-8'));
       if (!pkgJsonObj.scripts) pkgJsonObj.scripts = {};
     } catch (e) {
       console.warn("Failed to parse existing package.json, overwriting...");
     }
   }
   pkgJsonObj.scripts["run-grader"] = `node --experimental-strip-types grade.mjs --id ${relativeId}`;
-  fs.writeFileSync(targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
+  fs.writeFileSync(ctx.targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
 
   return relativeId;
 }
@@ -384,15 +438,10 @@ function prepareGradersForRuns(
   taskMap: Map<string, any>
 ): string[] {
   const pnpmWorkspacePackages: string[] = [];
-  for (const runDir of runDirs) {
-    const runPath = path.join(resultsDir, runDir);
-    const taskDirs = getTaskRunDirs(runPath);
-
-    for (const dir of taskDirs) {
-      const pkgId = setupGraderForTask(dir, runPath, resultsDir, taskMap);
-      if (pkgId) {
-        pnpmWorkspacePackages.push(pkgId);
-      }
+  for (const { dir, runPath } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    const pkgId = setupGraderForTask(dir, runPath, resultsDir, taskMap);
+    if (pkgId) {
+      pnpmWorkspacePackages.push(pkgId);
     }
   }
   return pnpmWorkspacePackages;
@@ -405,49 +454,33 @@ async function collectTaskRunEntry(
   taskMap: Map<string, any>,
   suiteConfig: SuiteConfig
 ): Promise<{ testName: string; payload: any } | null> {
-  const relPath = path.relative(runPath, dir);
-  const parsed = parseResultPath(relPath);
-  if (!parsed) return null;
-  const { guide, taskName, runType } = parsed;
-  if (runType === 'base_app') return null; // Skip the base app setup folder
+  const ctx = getTaskRunContext(dir, runPath, taskMap, true);
+  if (!ctx) return null;
 
-  const taskInfo = taskMap.get(`${guide}/${taskName}`);
-  if (!taskInfo) {
-    console.warn(`Skipping grading: Task ${guide} not found in task map`);
-    return null;
-  }
+  const usage = await collectGuideUsage(dir, ctx.runType, suiteConfig);
 
-  const usage = await collectGuideUsage(dir, runType, suiteConfig);
-
-  const targetFile = path.join(dir, 'index.html');
-  const targetPkgJson = path.join(dir, 'package.json');
-  const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-  const graderResults = path.join(dir, `${guide}_results.json`);
-  const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
-
-  const isDisciplineSkill = isDisciplineSkillDir(taskInfo.guideDir);
+  const isDisciplineSkill = isDisciplineSkillDir(ctx.taskInfo.guideDir);
   const taskCategory = isDisciplineSkill
-    ? path.basename(taskInfo.guideDir)
-    : path.basename(path.dirname(taskInfo.guideDir));
+    ? path.basename(ctx.taskInfo.guideDir)
+    : path.basename(path.dirname(ctx.taskInfo.guideDir));
   const expectedToolPrefixes = isDisciplineSkill
     ? [taskCategory].filter(Boolean)
     : ['modern-web'].filter(Boolean);
 
   const scenarioResults = evaluateScenarioResults(
     dir,
-    guide,
-    graderPath,
-    graderResults,
-    targetAppExists,
-    targetFile
+    ctx.guide,
+    ctx.graderPath,
+    ctx.graderResults,
+    ctx.targetAppExists,
+    ctx.targetFile
   );
 
   // For skills, placing the discipline name (`guide`) first ensures it is correctly identified 
   // and displayed as the main category in the dashboard's transposed layout.
-  const testName = isDisciplineSkill ? `${guide} - ${taskName} - ${runType}` : `${taskName} - ${guide} - ${runType}`;
+  const testName = isDisciplineSkill ? `${ctx.guide} - ${ctx.taskName} - ${ctx.runType}` : `${ctx.taskName} - ${ctx.guide} - ${ctx.runType}`;
   const tokenUsage = extractTokenUsageFromResults(dir, suiteConfig.agent);
   const runtimeData = readRuntimeData(dir);
-  const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
 
   const payload = {
     runNumber,
@@ -459,11 +492,11 @@ async function collectTaskRunEntry(
     discipline: taskCategory,
     isDisciplineSkill,
     expectedToolPrefixes,
-    guideName: guide,
-    baseApp: taskInfo.baseApp,
-    taskName,
-    prompt: taskInfo.prompt,
-    targetFile: targetModifiedFile,
+    guideName: ctx.guide,
+    baseApp: ctx.taskInfo.baseApp,
+    taskName: ctx.taskName,
+    prompt: ctx.taskInfo.prompt,
+    targetFile: ctx.targetModifiedFile,
     files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
     runtime: runtimeData,
     tokenUsage,
@@ -480,19 +513,14 @@ async function collectAllResults(
 ): Promise<Record<string, any[]>> {
   const allResults: Record<string, any[]> = {};
 
-  for (const runDir of runDirs) {
-    const runPath = path.join(resultsDir, runDir);
-    const taskDirs = getTaskRunDirs(runPath);
+  for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap, suiteConfig);
+    if (!entry) continue;
 
-    for (const dir of taskDirs) {
-      const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap, suiteConfig);
-      if (!entry) continue;
-
-      if (!allResults[entry.testName]) {
-        allResults[entry.testName] = [];
-      }
-      allResults[entry.testName].push(entry.payload);
+    if (!allResults[entry.testName]) {
+      allResults[entry.testName] = [];
     }
+    allResults[entry.testName].push(entry.payload);
   }
 
   return allResults;
