@@ -26,8 +26,8 @@ function getSessionFiles(dir: string, recursive = false): string[] {
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(templateDir: string, runType: string): string {
-  const tempHome = createIsolatedHome('ghh-gemini');
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
+  const tempHome = createIsolatedHome('ghh-gemini', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   const geminiSource = path.join(os.homedir(), '.gemini');
@@ -77,7 +77,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType);
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -120,7 +120,7 @@ async function run() {
 
   } catch (err) {
     console.error("Error during Gemini CLI execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }

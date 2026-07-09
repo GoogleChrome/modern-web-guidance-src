@@ -38,15 +38,39 @@ export function spawnAsync(command: string, args: string[], options: SpawnOption
 }
 
 /**
+ * Sets up shell profile files (.bashrc, .bash_profile, .zshrc, .zprofile, .profile) in the isolated HOME directory
+ * to ensure that targetDir (containing our npx interceptor shim) remains at the front of PATH even if
+ * an external binary or login shell invokes /usr/libexec/path_helper and resets PATH.
+ * @param homeDir Path to the isolated HOME directory
+ * @param targetDir Path to the directory containing our intercepted binaries (like npx)
+ */
+export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): void {
+  try {
+    const profileContent = `export PATH="${targetDir}:$PATH"\n`;
+    const profileFiles = ['.bashrc', '.bash_profile', '.zshrc', '.zprofile', '.profile'];
+    for (const file of profileFiles) {
+      fs.writeFileSync(path.join(homeDir, file), profileContent, 'utf8');
+    }
+  } catch (err) {
+    console.warn('Warning: Failed to create isolated shell profiles in HOME:', err);
+  }
+}
+
+/**
  * Creates a unique isolated HOME directory in /tmp.
  * @param prefix The prefix for the directory name
+ * @param targetDir Optional path to the target directory containing intercepted binaries
  * @returns The path to the created directory.
  */
-export function createIsolatedHome(prefix: string): string {
+export function createIsolatedHome(prefix: string, targetDir?: string): string {
   // Use /tmp/ deliberately because os.tmpdir() on macOS can return paths that are 
   // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
   const tempHome = `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
+
+  if (targetDir) {
+    setupIsolatedShellProfiles(tempHome, targetDir);
+  }
 
   // Provide authentication to the isolated environment so npm tasks work
   const originalHome = process.env.HOME || process.cwd();
@@ -525,9 +549,10 @@ export async function runCliAgentCommand(
   targetDir: string,
   agentName: string
 ): Promise<void> {
+  const sanitizedEnv = { ...process.env, PWD: workDir };
   const child = spawn(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
     stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
   });
 

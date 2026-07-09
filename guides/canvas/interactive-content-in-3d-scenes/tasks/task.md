@@ -1,6 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- add a 3d coffee blend showcase under the main seasonal favorites on the homepage that features a spinning 3d cube representing a coffee box. inside the canvas, put an interactive html form with an input and a submit button that are texture-mapped onto the cube's faces. make sure the html elements remain fully clickable and interactive even as the cube rotates by mapping the 3d rotation matrices to the html element styles, and make sure that resizing the screen doesn't make the canvas blurry.
-- can we make the seasonal favorites section on the homepage more immersive by putting a webgl canvas showing a rotating coffee package, and let users click directly on a live html details button that is mapped on the face of the rotating 3d package? please ensure the interactive button stays aligned with the rendering so it's fully clickable.
-- please implement a 3d coffee cup showcase where a 3d cup spins on a canvas, and on the side of the cup we have a real interactive html checklist (like selecting milk, sugar level) nested inside the canvas. the checkbox and labels should spin with the cup, be fully clickable, and adapt correctly to high-dpi/screen resizing so they look sharp.
+- Enable interactive HTML content in 3D scenes on the homepage by rendering a spinning 3D coffee box. Place an interactive HTML form with inputs and buttons projected into the 3D scene while keeping the underlying HTML elements fully clickable as the box rotates.

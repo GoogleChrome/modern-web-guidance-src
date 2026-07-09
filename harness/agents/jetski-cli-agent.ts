@@ -13,8 +13,8 @@ import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(templateDir: string, runType: string): string {
-  const tempHome = createIsolatedHome('ghh-jetski-cli');
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
+  const tempHome = createIsolatedHome('ghh-jetski-cli', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   const jetskiSource = path.join(os.homedir(), '.gemini', 'jetski');
@@ -63,7 +63,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType);
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -73,8 +73,10 @@ async function run() {
     console.log(`Starting Jetski CLI agent in ${workDir}`);
 
     const command = config.environment.jetskiCliBin;
+    const model = process.env.JETSKI_MODEL;
     const commandArgs = [
-      '-p', userPrompt
+      '-p', userPrompt,
+      ...(model ? ['--model', model] : [])
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
@@ -105,7 +107,7 @@ async function run() {
 
   } catch (err) {
     console.error("Error during Jetski CLI execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }

@@ -42,6 +42,6 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     assert.match(content, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'Should contain explorer feature links');
     assert.match(content, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'Should link use cases to GitHub blob files');
 
-    assert.ok(content.includes('&lt;iframe&gt; loading state'), 'Should escape angle brackets in descriptions');
+    assert.ok(content.includes('`&lt;iframe&gt;` loading state'), 'Should escape angle brackets in descriptions');
   });
 });

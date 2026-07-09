@@ -6,11 +6,11 @@ description: >
   add-ons, or anything involving the Chrome Extensions API. Trigger on mentions of: 'Chrome
   extension', 'browser extension', 'manifest.json', 'content script', 'service worker' (in
   browser context), 'popup' (in browser extension context), 'side panel', 'chrome.* API',
-  'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), or any request
-  to build functionality that integrates with the Chrome browser UI. Also trigger for
-  publishing to the Chrome Web Store: 'publish extension', preparing an extension for
-  publishing, responding to a review rejection, writing permission justifications, or
-  drafting a privacy policy.
+  'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), 'userScripts',
+  'user script', 'script manager', or any request to build functionality that integrates with
+  the Chrome browser UI. Also trigger for publishing to the Chrome Web Store: 'publish
+  extension', preparing an extension for publishing, responding to a review rejection, writing
+  permission justifications, or drafting a privacy policy.
 ---
 
 # Chrome Extensions
@@ -350,7 +350,19 @@ chrome.desktopCapture.chooseDesktopMedia(['screen', 'window'], tab, (streamId) =
 
 **Note:** Prefer `chrome.tabCapture.getMediaStreamId()` for tab-only recording. Use `chrome.desktopCapture` only when the user should choose which screen/window to capture. See `references/extensions/media-capture.md`.
 
-#### 18. `chrome.windows` has NO `.query()` method — use `getAll`, `getLastFocused`, or `getCurrent`
+#### 18. User scripts: four non-obvious pitfalls
+
+`chrome.userScripts` runs **user-provided code** at runtime. Use it for script managers and
+user automation — not for extension-bundled scripts.
+
+- **API throws on property access if not enabled.** Chrome 138+ requires the user to toggle "Allow User Scripts" on the extension's details page; Chrome < 138 requires Developer mode. Always call `isUserScriptsAvailable()` before any `chrome.userScripts.*` call and show an error UI when it returns false.
+- **Registered scripts are cleared on extension update.** Persist configs in `chrome.storage`; re-register them in `runtime.onInstalled` for the `"update"` reason.
+- **Messaging requires explicit opt-in.** Call `configureWorld({ messaging: true })` first; listen on `runtime.onUserScriptMessage`, not `runtime.onMessage`.
+- **`ScriptSource` constraint:** each `js` entry must have exactly one of `code` or `file`. **`id` constraint:** cannot start with `_`.
+
+See `references/extensions/user-scripts.md`.
+
+#### 19. `chrome.windows` has NO `.query()` method — use `getAll`, `getLastFocused`, or `getCurrent`
 
 Unlike `chrome.tabs.query()`, the `chrome.windows` API does NOT have a `.query()` method.
 
@@ -488,6 +500,7 @@ For detailed API patterns and publishing guidance, read the relevant file BEFORE
 | Storage | `references/extensions/storage.md` |
 | Tab & window management | `references/extensions/tab-management.md` |
 | Tab/desktop capture | `references/extensions/media-capture.md` |
+| User scripts | `references/extensions/user-scripts.md` |
 | Message passing | `references/extensions/message-passing.md` |
 | Icons | `references/extensions/icons.md` |
 | CHROMEWEBSTORE.md template | `references/webstore/chromewebstore-template.md` |
@@ -517,6 +530,11 @@ Verify EVERY item before delivering:
 - [ ] Tab/desktop capture uses state locking to prevent double-start errors
 - [ ] `chrome.desktopCapture.chooseDesktopMedia` passes `targetTab` with `tabs` permission
 - [ ] `chrome.windows` calls use `getAll`/`getLastFocused`/`getCurrent` — NOT `.query()` (it doesn't exist)
+- [ ] `chrome.userScripts` availability checked before use (API throws if user hasn't enabled it)
+- [ ] User script configs persisted in `chrome.storage` and restored on `runtime.onInstalled` `"update"` reason
+- [ ] `configureWorld({ messaging: true })` called before user scripts send messages; listening on `onUserScriptMessage` not `onMessage`
+- [ ] `ScriptSource` entries each have exactly one of `code` or `file` (not both, not neither)
+- [ ] User script `id` values do not start with underscore
 - [ ] `sidePanel.setPanelBehavior` uses `openPanelOnActionClick` — NOT `openPanelOnActionIconClick`
 - [ ] Error handling on all async operations
 - [ ] `host_permissions` scoped to specific domains (not `<all_urls>` unless needed)

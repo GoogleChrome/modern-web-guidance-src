@@ -25,7 +25,7 @@
     "puppeteer-core": "^24.42.0"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "^2.1.126",
+    "@anthropic-ai/claude-code": "^2.1.170",
     "@google/gemini-cli-core": "latest",
     "serving": "workspace:*"
   }

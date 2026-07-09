@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { resultsDir } from '../../lib/paths.ts';
 
@@ -23,27 +24,72 @@ interface EvalsSummary {
   assertionCount: number;
   unguidedPassRate: number;
   guidedPassRate: number;
+  skillVersion?: string;
+  cliVersion?: string;
+}
+
+function pullRecentGcsSuites(): string[] {
+  console.log(`Querying GCS (gs://guidance-evals) for the latest nightly evaluation suites...`);
+  if (!fs.existsSync(resultsDir)) {
+    fs.mkdirSync(resultsDir, { recursive: true });
+  }
+
+  try {
+    const lsOutput = execSync(`gcloud storage ls gs://guidance-evals/`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const lines = lsOutput.split('\n');
+    const targetFolders: string[] = [];
+
+    for (const line of lines) {
+      const clean = line.trim();
+      if (!clean) continue;
+      const match = clean.match(/gs:\/\/guidance-evals\/(nightly-[^/]+)\//);
+      if (match) {
+        targetFolders.push(match[1]);
+      }
+    }
+
+    targetFolders.sort((a, b) => b.localeCompare(a));
+
+    const topRecent = targetFolders.slice(0, 10);
+    console.log(`Discovered ${targetFolders.length} remote suites. Syncing evals.json for top ${topRecent.length} most recent suites...`);
+
+    for (const folderName of topRecent) {
+      const localSuiteDir = path.join(resultsDir, folderName);
+      const targetEvalsPath = path.join(localSuiteDir, 'evals.json');
+
+      if (fs.existsSync(targetEvalsPath)) {
+        console.log(`  - ${folderName}: evals.json already cached locally.`);
+        continue;
+      }
+
+      fs.mkdirSync(localSuiteDir, { recursive: true });
+      console.log(`  - ${folderName}: copying evals.json from GCS...`);
+      try {
+        execSync(`gcloud storage cp gs://guidance-evals/${folderName}/evals.json ${targetEvalsPath}`, { stdio: 'ignore' });
+      } catch (syncErr) {
+        console.warn(`    ⚠️ Failed to copy evals.json for ${folderName}`);
+      }
+    }
+    console.log(`✅ Successfully synced evals.json for top 10 recent nightly evaluation runs from GCS.`);
+    return topRecent;
+  } catch (err: any) {
+    console.error(`❌ Error: Failed to list GCS bucket gs://guidance-evals. Cannot collect evaluation results without access to remote GCS data.`);
+    process.exit(1);
+  }
 }
 
 function collectResults() {
-  console.log(`Scanning results in: ${resultsDir}`);
-  if (!fs.existsSync(resultsDir)) {
-    console.error(`Results directory does not exist: ${resultsDir}`);
-    return;
-  }
+  const targetSuites = pullRecentGcsSuites();
 
-  const items = fs.readdirSync(resultsDir, { withFileTypes: true });
+  console.log(`Aggregating results from ${targetSuites.length} verified suites...`);
   const summaries: EvalsSummary[] = [];
 
-  for (const item of items) {
-    if (!item.isDirectory()) continue;
-    if (!item.name.startsWith('nightly-') && !item.name.startsWith('weekly-')) continue;
-
-    const suiteDir = path.join(resultsDir, item.name);
+  for (let folderName of targetSuites) {
+    const suiteDir = path.join(resultsDir, folderName);
     const evalsPath = path.join(suiteDir, 'evals.json');
 
     if (!fs.existsSync(evalsPath)) {
-      console.warn(`Missing evals.json in ${item.name}`);
+      console.warn(`Missing evals.json in ${folderName}`);
       continue;
     }
 
@@ -54,28 +100,28 @@ function collectResults() {
       let agent = data.agent || 'unknown';
       if (agent.startsWith('jetski')) {
         agent = 'antigravity';
-        item.name = item.name.replace('jetski_cli', 'agy');
+        folderName = folderName.replace('jetski_cli', 'agy');
       }
 
       if (!isAgentAllowed(agent)) {
-        console.log(`Skipping ${item.name} (agent ${agent} not in allowlist)`);
+        console.log(`Skipping ${folderName} (agent ${agent} not in allowlist)`);
         continue;
       }
 
       const summary = data.summary;
       if (!summary) {
-        console.warn(`Missing summary in ${item.name}/evals.json`);
+        console.warn(`Missing summary in ${folderName}/evals.json`);
         continue;
       }
 
       const taskCount = summary.taskCount || 0;
       if (taskCount < 60) {
-        console.log(`Skipping ${item.name} (taskCount ${taskCount} < 60)`);
+        console.log(`Skipping ${folderName} (taskCount ${taskCount} < 60)`);
         continue;
       }
       // broken run.
       if (summary.unguidedPassRate == 0 || summary.guidedPassRate == 0 || summary.guidedTotal < 500) {
-        console.log(`Skipping ${item.name} (broken run probably)`);
+        console.log(`Skipping ${folderName} (broken run probably)`);
         continue;
       }
 
@@ -86,7 +132,7 @@ function collectResults() {
       }
 
       summaries.push({
-        testId: item.name,
+        testId: folderName,
         timestamp: data.timestamp || new Date().toISOString(),
         agent: agent,
         serving: serving,
@@ -95,22 +141,33 @@ function collectResults() {
         assertionCount: summary.guidedTotal ?? 0,
         unguidedPassRate: summary.unguidedPassRate ?? 0,
         guidedPassRate: summary.guidedPassRate ?? 0,
+        skillVersion: data.skillVersion,
+        cliVersion: data.cliVersion,
       });
     } catch (e) {
-      console.error(`Error reading/parsing ${item.name}/evals.json:`, e);
+      console.error(`Error reading/parsing ${folderName}/evals.json:`, e);
     }
   }
 
   // Sort by timestamp descending
   summaries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  console.log(`Collected ${summaries.length} nightly/weekly runs.`);
+  console.log(`Collected ${summaries.length} nightly runs.`);
 
   // Ensure directory exists
   fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
 
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(summaries, null, 2));
   console.log(`Saved summary to ${OUTPUT_PATH}`);
+
+  console.log(`\nVerifying collected summary against evaluation regression guardrails...`);
+  try {
+    execSync('node --experimental-strip-types --test skills-cli/eval-regression.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
+    console.log(`✅ Regression guardrail checks passed successfully.`);
+  } catch (err) {
+    console.error(`\n❌ EVALUATION REGRESSION DETECTED! Please review the failures above before committing.`);
+    process.exit(1);
+  }
 }
 
 collectResults();

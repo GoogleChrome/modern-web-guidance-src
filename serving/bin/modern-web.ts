@@ -95,12 +95,20 @@ async function main() {
       process.exit(1);
     }
   } else if (command === "list") {
-    const catalog = USE_CASES.map(u => ({
-      id: u.id,
-      category: u.category,
-      description: u.description,
-    }));
-    console.log(JSON.stringify(catalog, null, 2));
+    const startTime = Date.now();
+    try {
+      const catalog = USE_CASES.map(u => ({
+        id: u.id,
+        category: u.category,
+        description: u.description,
+      }));
+      console.log(JSON.stringify(catalog, null, 2));
+      await getLogger().logToolCommand(Date.now() - startTime, true, CommandType.LIST);
+    } catch (error) {
+      await getLogger().logToolCommand(Date.now() - startTime, false, CommandType.LIST);
+      console.error("List failed:", error);
+      process.exit(1);
+    }
   } else if (command === "retrieve") {
     const ids = arg ? arg.split(",").map(id => id.trim()).filter(Boolean) : [];
     if (ids.length === 0) {
