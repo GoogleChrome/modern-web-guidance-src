@@ -301,7 +301,7 @@ export function parseCodexTrajectory(logData: any[], serving: string): Trajector
       if (msg.phase === 'commentary') {
         currentThought = currentThought ? `${currentThought}\n${msg.message}` : msg.message;
       }
-    } else if (entry.type === 'response_item' && entry.payload?.type === 'function_call') {
+    } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call' || entry.payload?.type === 'custom_tool_call')) {
       const fc = entry.payload;
       let cmdName = fc.name;
       let params: Record<string, any> = {};
@@ -327,7 +327,7 @@ export function parseCodexTrajectory(logData: any[], serving: string): Trajector
       if (fc.call_id) {
         callMap.set(fc.call_id, step);
       }
-    } else if (entry.type === 'response_item' && entry.payload?.type === 'function_call_output') {
+    } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
       const fco = entry.payload;
       const step = callMap.get(fco.call_id);
       if (step) {

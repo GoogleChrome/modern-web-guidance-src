@@ -540,6 +540,145 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      if (contentType === 'text/html' && path.basename(filePath).startsWith('session-')) {
+        let htmlStr = content.toString('utf-8');
+        
+        // If file contains logData and has an empty logs container, pre-render statically
+        if (htmlStr.includes('const logData = [') && (htmlStr.includes('<div id="logs"></div>') || htmlStr.includes('<div id="logs">\n</div>'))) {
+          try {
+            const startIdx = htmlStr.indexOf('const logData = [');
+            const endIdx = htmlStr.indexOf('];\n    const logsContainer');
+            if (startIdx !== -1 && endIdx !== -1) {
+              const rawLogData = htmlStr.slice(startIdx + 'const logData = '.length, endIdx + 1);
+              const logData = eval(rawLogData);
+
+              const escapeHtml = (s) => (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
+              let preRenderedLogsHtml = '';
+              let toolStepCounter = 0;
+
+              logData.forEach((entry, i) => {
+                let role = entry.role || entry.type || 'unknown';
+                let contentHtml = '';
+                const timestamp = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '';
+
+                if (entry.type === 'turn_context') {
+                  role = 'system';
+                  contentHtml = '<div class="text-content" style="color:#8b949e;">[System Instructions Collapsed]</div>';
+                } else if (entry.type === 'event_msg') {
+                  const p = entry.payload || {};
+                  if (p.type === 'user_message') { role = 'user'; contentHtml = '<div class="text-content">' + escapeHtml(p.message) + '</div>'; }
+                  else if (p.type === 'agent_message') { role = 'assistant'; contentHtml = '<div class="text-content" style="color: #7ee787;">' + escapeHtml(p.message) + '</div>'; }
+                  else if (p.type === 'token_count') { role = 'system'; contentHtml = '<div class="text-content" style="font-size:0.8em; color:#8b949e;">Tokens: ' + (p.total_tokens || 'N/A') + '</div>'; }
+                } else if (entry.type === 'response_item') {
+                  const p = entry.payload || {};
+                  if (p.type === 'message') { role = p.role || 'assistant'; contentHtml = '<div class="text-content">' + escapeHtml(p.content?.[0]?.text || p.content?.[0]?.input_text || '') + '</div>'; }
+                  else if (p.type === 'reasoning') { role = 'assistant'; contentHtml = '<div class="thought"><b>Reasoning Process:</b><br/>' + escapeHtml(p.content || '[Reasoning]') + '</div>'; }
+                  else if (p.type === 'function_call' || p.type === 'custom_tool_call') {
+                    role = 'assistant';
+                    let argsStr = '';
+                    try {
+                      const parsed = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : p.arguments;
+                      argsStr = Object.entries(parsed).map(([k, v]) => `<div style="margin-top:4px;"><strong>${escapeHtml(k)}:</strong> <span style="color:#79c0ff;">${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : String(v))}</span></div>`).join('');
+                    } catch { argsStr = escapeHtml(String(p.arguments)); }
+                    contentHtml = `<div class="tool-use"><b>Tool: ${escapeHtml(p.name)} [${escapeHtml(p.call_id)}]</b><br/>${argsStr}</div>`;
+                  } else if (p.type === 'function_call_output' || p.type === 'custom_tool_call_output') {
+                    role = 'system';
+                    const errCls = p.is_error ? ' error' : '';
+                    contentHtml = `<div class="tool-result${errCls}"><b>Tool Result [${escapeHtml(p.call_id)}]:</b><br/>${escapeHtml(p.output || '')}</div>`;
+                  }
+                }
+
+                if (contentHtml) {
+                  let elId = 'entry-' + (i + 1);
+                  let badge = '';
+                  if (entry.type === 'response_item' && entry.payload && (entry.payload.type === 'function_call' || entry.payload.type === 'custom_tool_call')) {
+                    toolStepCounter++;
+                    elId = 'step-' + toolStepCounter;
+                    badge = '<span class="step-badge" style="background:#1f6feb22; color:#58a6ff; border:1px solid #1f6feb; border-radius:4px; padding:2px 8px; font-size:0.8em; font-weight:bold; margin-left:8px;">STEP ' + toolStepCounter + '</span>';
+                  }
+                  preRenderedLogsHtml += `<div class="log-entry role-${escapeHtml(role)}" id="${elId}"><div class="meta"><div><span>${escapeHtml(role).toUpperCase()}</span>${badge}</div><span class="timestamp">${timestamp}</span></div><div class="content-block">${contentHtml}</div><div class="toggle-raw" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'block' ? 'none' : 'block')">Toggle Raw JSON</div><pre class="raw-json">${escapeHtml(JSON.stringify(entry, null, 2))}</pre></div>\n`;
+                }
+              });
+
+              htmlStr = htmlStr.replace('<div id="logs"></div>', '<div id="logs">\n' + preRenderedLogsHtml + '</div>')
+                               .replace('<div id="logs">\n</div>', '<div id="logs">\n' + preRenderedLogsHtml + '</div>');
+            }
+          } catch (e) {
+            console.error('Failed to pre-render session html:', e);
+          }
+        }
+
+        if (!htmlStr.includes('id="step-auto-scroll-injected"')) {
+          const scriptToInject = `
+<script id="step-auto-scroll-injected">
+(function() {
+  function initStepAnchors() {
+    const logsContainer = document.getElementById("logs");
+    if (!logsContainer) return;
+
+    let toolStepCounter = 0;
+    const entries = Array.from(logsContainer.children);
+    entries.forEach((el, idx) => {
+      if (!el.id) el.id = "entry-" + (idx + 1);
+      const isToolCall = !!el.querySelector(".tool-use");
+      if (isToolCall) {
+        toolStepCounter++;
+        if (!el.id || el.id.startsWith("entry-")) el.id = "step-" + toolStepCounter;
+
+        const meta = el.querySelector(".meta");
+        if (meta && !meta.querySelector(".step-badge")) {
+          const badge = document.createElement("span");
+          badge.className = "step-badge";
+          badge.style.cssText = "background:#1f6feb22; color:#58a6ff; border:1px solid #1f6feb; border-radius:4px; padding:2px 8px; font-size:0.8em; font-weight:bold; margin-left:8px;";
+          badge.textContent = "STEP " + toolStepCounter;
+          const firstChild = meta.firstElementChild;
+          if (firstChild && firstChild.tagName === "SPAN") {
+            meta.insertBefore(badge, firstChild.nextSibling);
+          } else {
+            meta.appendChild(badge);
+          }
+        }
+      }
+    });
+
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#step-')) {
+      const target = document.querySelector(hash);
+      if (target) {
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.style.outline = '3px solid #58a6ff';
+          target.style.boxShadow = '0 0 25px rgba(88, 166, 255, 0.6)';
+        }, 150);
+      }
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(initStepAnchors, 100));
+  } else {
+    setTimeout(initStepAnchors, 100);
+  }
+
+  window.addEventListener('hashchange', () => {
+    const target = document.querySelector(window.location.hash);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.style.outline = '3px solid #58a6ff';
+      target.style.boxShadow = '0 0 25px rgba(88, 166, 255, 0.6)';
+    }
+  });
+})();
+</script>
+`;
+          htmlStr = htmlStr.replace('</body>', scriptToInject + '\n</body>');
+        }
+
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(htmlStr, 'utf-8');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
     }
