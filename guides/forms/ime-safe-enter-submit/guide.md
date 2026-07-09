@@ -1,23 +1,23 @@
 ---
 name: ime-safe-enter-submit
-description: Implement keyboard text submission (like Enter-to-submit in chat/text areas) safely for IME (Input Method Editor) users to prevent premature submission of incomplete text.
+description: Implement keyboard text submission (like enter-to-submit in chat/textareas) safely for IME (Input Method Editor) users to prevent premature submission of incomplete text.
 web-feature-ids:
   - keyboard-events
 ---
 
 # IME-safe enter-to-submit
 
-Many chat-style text inputs submit the message from a `keydown` handler when the user presses `Enter`.
+Many chat interfaces submit their message when the user presses `Enter` in a `<textarea>`.
 
-While this works for users typing with direct Latin keyboard input (e.g. English), it breaks for users who type using an Input Method Editor (IME) to compose text. This includes composition-based languages like Japanese, Chinese, and Korean. 
+This works for users typing with direct Latin keyboard input (e.g. English), but breaks for users typing with an Input Method Editor (IME) to compose text in languages like Japanese, Chinese, or Korean.
 
-In these contexts, the `Enter`/`Return` key is used to confirm the current character conversion candidate. If an application listens to `keydown` on `Enter` and submits immediately, the user's message is sent while they are still converting characters, resulting in incomplete, fragmented, or incorrect messages.
+In these contexts, the `Enter`/`Return` key is used to confirm the current character conversion candidate. If custom JavaScript listens to `keydown` on `Enter` and submits immediately, the user's message is sent while they are still converting characters, resulting in incomplete, fragmented, or incorrect messages.
 
-To ensure inputs are IME-safe, you must check whether text composition is active before treating an `Enter` keystroke as a submit shortcut.
+Note that the composition-active check only matters for multiline `<textarea>` fields where custom JavaScript intercepts `Enter` for submission. For single-line `<input>` fields inside a `<form>`, no explicit handling is required, as browsers natively suppress implicit submission when the `Enter` keystroke is consumed by an IME.
 
 ## Implementation strategy
 
-To ensure inputs are IME-safe, check the native `isComposing` property before treating an `Enter` keystroke as a submit shortcut.
+For a `<textarea>` with custom enter-to-submit, check the native `isComposing` property of the `KeyboardEvent` before submitting the content. The default action of `Enter` in a `<textarea>` is to insert a newline, so you must also call `event.preventDefault()` to suppress that.
 
 ```html
 <form id="chat-form">
@@ -32,65 +32,86 @@ const textarea = document.getElementById('chat-input');
 const form = document.getElementById('chat-form');
 
 textarea.addEventListener('keydown', (event) => {
-  if (
-    event.key === 'Enter' &&
-    !event.shiftKey &&
-    // DO NOT submit the message if the user is currently composing text using an IME.
-    // The Enter key during composition confirms candidate selection, not submission.
-    !event.isComposing
-  ) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    // Prevent the default newline behavior
     event.preventDefault();
+
+    // If the user is composing text, return early.
+    if (event.isComposing) {
+      return;
+    }
+
     form.requestSubmit();
   }
 });
-
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  // Perform actual message sending logic here
-  sendMessage(textarea.value);
-  textarea.value = '';
-});
 ```
 
-Note: Historically, legacy codebases using the deprecated `event.keyCode === 13` check did not trigger this bug because browsers mapped keypresses during active composition to code `229`. If you are modernizing your keyboard event listeners from `keyCode` to `event.key === 'Enter'`, you **MUST** pair it with `!event.isComposing` to avoid introducing a regression for IME users.
+Note: Other custom submission shortcuts (such as `Cmd+Enter` or `Ctrl+Enter`) do not conflict with IME confirmation keys and do not require IME safety checks.
 
 ## Accessibility and testing
 
 1. **Explicit submit button**: Always include a `<button type="submit">` element. Keyboard shortcuts are helpers; they must not replace native form submit paths.
-2. **Visual clues**: Make sure screen readers announce the availability of the input.
-3. **Testing protocol**: When validating your input fields, test by enabling a Japanese, Chinese, or Korean keyboard input layout. Type a word and press `Enter` to confirm the suggestion candidate; the input field must not submit the form.
+2. **Accessible inputs**: Ensure all `<input>` and `<textarea>` elements are programmatically associated with a `<label>` using matching `id` and `for` attributes.
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("keyboard-events") }}
+{{ BASELINE_STATUS("keyboard-events", "api.KeyboardEvent.isComposing") }}
 
-If you need to support legacy browsers, specific framework-wrapped event systems (like some older React/Vue synthetic keyboard events), or mobile webviews where the native `event.isComposing` property might be unreliable or delayed, implement state-based composition tracking manually using composition events:
+In Safari, an event-ordering bug delivers `compositionend` to script handlers before the confirming `Enter` `keydown`, even though the underlying events are dispatched in the opposite order. By the time the keydown handler runs, `event.isComposing` has already been reset to `false`, meaning the standard check alone will fail to prevent premature submission.
+
+If you need to support cross-browser compatibility across Safari and other platforms, adopt one of the following fallback strategies:
+
+### Strategy 1: Add a `keyCode === 229` check (recommended)
+
+By pairing `event.isComposing` with a check for `event.keyCode === 229`, you can reliably catch Safari's out-of-order confirming `Enter` keydown. Because this is nested under the `event.key === 'Enter'` gate, it is safe from mobile virtual keyboards that might use `229` for normal character layout entry.
 
 ```js
-const textarea = document.getElementById('chat-input');
-const form = document.getElementById('chat-form');
+textarea.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
 
-let isComposing = false;
+    // Block submission if composing natively or if keyCode is 229
+    if (event.isComposing || event.keyCode === 229) {
+      return;
+    }
 
-// Track when composition starts and ends to maintain an explicit boolean flag.
-// This acts as a reliable fallback for keydown event timing anomalies.
-textarea.addEventListener('compositionstart', () => {
-  isComposing = true;
+    form.requestSubmit();
+  }
 });
+```
 
-textarea.addEventListener('compositionend', () => {
-  isComposing = false;
+### Strategy 2: The `event.timeStamp` window workaround (alternative)
+
+For codebases that strictly forbid the use of deprecated APIs like `keyCode`, or if there are known issues with the `229` check in specific targeted environments, you can track the browser-reported event dispatch timestamp instead. 
+
+Because Safari dispatches the confirming `Enter` keydown event extremely close to the `compositionend` event (often within 5ms, and sometimes with the keydown timestamp being slightly *earlier* due to handler delivery order inversion), checking the time difference is highly reliable and is unlikely to trigger false-positives on mobile virtual keyboards under standard conditions.
+
+```js
+let lastCompositionEndAt = null;
+
+textarea.addEventListener('compositionend', (event) => {
+  // IMPORTANT: Always use event.timeStamp, not Date.now() or performance.now().
+  // Handler-time measurements are vulnerable to drift when the main thread is blocked.
+  lastCompositionEndAt = event.timeStamp;
 });
 
 textarea.addEventListener('keydown', (event) => {
-  // Check both the native event.isComposing property and our custom flag.
-  if (
-    event.key === 'Enter' &&
-    !event.shiftKey &&
-    !event.isComposing &&
-    !isComposing
-  ) {
+  if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
+
+    if (event.isComposing) {
+      return;
+    }
+
+    // Block submission if the event occurs within a 50ms window of composition ending.
+    // Math.abs handles Safari's inverted event delivery timing bug.
+    if (
+      lastCompositionEndAt !== null &&
+      Math.abs(event.timeStamp - lastCompositionEndAt) < 50
+    ) {
+      return;
+    }
+
     form.requestSubmit();
   }
 });
