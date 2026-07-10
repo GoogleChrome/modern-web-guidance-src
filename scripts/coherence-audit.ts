@@ -1,9 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import matter from 'gray-matter';
 import { globSync } from 'glob';
-import { scanAllGuides, scanDisciplineSkills, validateGuide } from '../lib/guide-validation.ts';
 import { config } from '../lib/skills-config.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
@@ -242,7 +240,7 @@ function main() {
   checkSkillsConfig();
   checkContextSkillCoherence();
   
-  const integrityOk = checkGuidesIntegrity();
+  checkGuidesIntegrity();
 
   if (doPreflight) {
     runPreflight();
