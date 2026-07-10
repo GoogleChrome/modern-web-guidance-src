@@ -5,252 +5,107 @@ import { globSync } from 'glob';
 import { config } from '../lib/skills-config.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+const CANONICAL_ROOT_MD = new Set(['README.md', 'CONTEXT.md', 'CONTRIBUTING.md', 'EVALS.md', 'GEMINI.md', 'CODE_OF_CONDUCT.md']);
 
-// Canonical root markdown files
-const CANONICAL_ROOT_MD = new Set([
-  'README.md',
-  'CONTEXT.md',
-  'CONTRIBUTING.md',
-  'EVALS.md',
-  'GEMINI.md',
-  'CODE_OF_CONDUCT.md'
-]);
+const run = (cmd: string) => {
+  try { return execSync(cmd, { cwd: REPO_ROOT, encoding: 'utf8' }).trim(); }
+  catch { return ''; }
+};
 
-function runCommand(cmd: string): string {
-  try {
-    return execSync(cmd, { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
-  } catch (e) {
-    return '';
-  }
-}
+console.log('================================================\n🕵️  Starting Coherence & Integrity Audit\n================================================\n');
 
-function checkGitState() {
-  console.log('📁 Checking Git State...');
-  const status = runCommand('git status --porcelain');
-  if (status) {
-    console.warn('⚠️  Working tree is dirty:\n' + status.split('\n').map(l => '    ' + l).join('\n'));
-  } else {
-    console.log('✅ Working tree is clean.');
-  }
+// 1. Git State
+console.log('📁 Checking Git State...');
+const status = run('git status --porcelain');
+if (status) console.warn('⚠️  Working tree is dirty:\n' + status.split('\n').map(l => '    ' + l).join('\n'));
+else console.log('✅ Working tree is clean.');
+const branch = run('git branch --show-current');
+console.log(branch === 'main' ? '⚠️  On main branch.' : `ℹ️  Active branch: ${branch || 'Detached HEAD'}`);
 
-  const branch = runCommand('git branch --show-current');
-  if (branch === 'main' || branch === 'master') {
-    console.warn(`⚠️  You are on the "${branch}" branch. It is recommended to work on a feature branch.`);
-  } else if (branch) {
-    console.log(`ℹ️  Active branch: ${branch}`);
-  } else {
-    console.log('ℹ️  Detached HEAD state.');
-  }
-}
+// 2. Root Clutter
+console.log('\n🧹 Checking for Root Clutter...');
+const clutter = globSync('*.md', { cwd: REPO_ROOT }).filter(f => !CANONICAL_ROOT_MD.has(f));
+if (clutter.length) console.warn('⚠️  Potential root clutter:', clutter.join(', '));
+else console.log('✅ No root clutter found.');
 
-function checkClutter() {
-  console.log('\n🧹 Checking for Root Clutter...');
-  const rootMdFiles = globSync('*.md', { cwd: REPO_ROOT });
-  const clutter = rootMdFiles.filter(f => !CANONICAL_ROOT_MD.has(f));
-  if (clutter.length > 0) {
-    console.warn('⚠️  Found potential root clutter (untracked or non-canonical markdown files):');
-    clutter.forEach(f => console.warn(`    - ${f}`));
-  } else {
-    console.log('✅ No root clutter found.');
-  }
-}
-
-function checkLinkIntegrity() {
-  console.log('\n🔗 Checking Link Integrity...');
-  const mdFiles = globSync('**/*.md', {
-    cwd: REPO_ROOT,
-    ignore: ['**/node_modules/**', '**/dist/**', '**/test-app-results/**', '**/test-app-result/**']
-  });
-
-  let brokenLinksCount = 0;
-
-  for (const file of mdFiles) {
-    const filePath = path.join(REPO_ROOT, file);
-    const content = fs.readFileSync(filePath, 'utf8');
-    const dir = path.dirname(filePath);
-
-    // Simple regex to find relative markdown links: [text](path)
-    // Matches links that don't start with http, https, mailto, or #
-    const linkRegex = /\[([^\]]+)\]\(((?!\w+:|#)[^)]+)\)/g;
-    let match;
-
-    while ((match = linkRegex.exec(content)) !== null) {
-      const linkPath = match[2].split('#')[0]; // Remove hash fragment
-      if (!linkPath) continue; // Skip empty links or anchor-only links
-
-      // Resolve relative path
-      const resolvedPath = path.resolve(dir, linkPath);
-      if (!fs.existsSync(resolvedPath)) {
-        console.error(`❌ Broken link in \`${file}\`: [${match[1]}](${match[2]}) -> Points to non-existent path: \`${path.relative(REPO_ROOT, resolvedPath)}\``);
-        brokenLinksCount++;
-      }
+// 3. Link Integrity
+console.log('\n🔗 Checking Link Integrity...');
+let broken = 0;
+for (const file of globSync('**/*.md', { cwd: REPO_ROOT, ignore: ['**/node_modules/**', '**/dist/**', '**/test-app-results/**'] })) {
+  const content = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
+  const dir = path.dirname(path.join(REPO_ROOT, file));
+  let match;
+  const rx = /\[([^\]]+)\]\(((?!\w+:|#)[^)]+)\)/g;
+  while ((match = rx.exec(content)) !== null) {
+    const link = match[2].split('#')[0];
+    if (link && !fs.existsSync(path.resolve(dir, link))) {
+      console.error(`❌ Broken link in \`${file}\`: [${match[1]}](${match[2]})`);
+      broken++;
     }
   }
+}
+if (!broken) console.log('✅ All relative links are valid.');
 
-  if (brokenLinksCount === 0) {
-    console.log('✅ All relative markdown links are valid.');
-  } else {
-    console.error(`❌ Found ${brokenLinksCount} broken links.`);
-  }
+// 4. Feature Map Sync
+console.log('\n📊 Checking Feature Map Sync...');
+const mapPath = path.join(REPO_ROOT, 'guides/features-and-use-cases.md');
+if (fs.existsSync(mapPath)) {
+  const orig = fs.readFileSync(mapPath, 'utf8');
+  run('node guides/guide-features-diagram.mjs');
+  if (orig !== fs.readFileSync(mapPath, 'utf8')) {
+    console.error('❌ features-and-use-cases.md is out of sync! Run `node guides/guide-features-diagram.mjs`.');
+    fs.writeFileSync(mapPath, orig);
+  } else console.log('✅ features-and-use-cases.md is in sync.');
 }
 
-function checkFeatureMapSync() {
-  console.log('\n📊 Checking Feature Map Sync...');
-  const featureMapPath = path.join(REPO_ROOT, 'guides/features-and-use-cases.md');
-  if (!fs.existsSync(featureMapPath)) {
-    console.warn('⚠️  guides/features-and-use-cases.md not found. Skipping sync check.');
-    return;
-  }
-  const originalContent = fs.readFileSync(featureMapPath, 'utf8');
+// 5. TODOs
+console.log('\n📝 Scanning for TODOs/TBDs...');
+const todos = run('git grep -n -I -E "TODO|TBD|FIXME|unresolved|decision needed" -- "guides/*.md" "skills-src/*.md" README.md CONTEXT.md CONTRIBUTING.md EVALS.md GEMINI.md CODE_OF_CONDUCT.md');
+if (todos) console.warn('⚠️  Found items needing attention:\n' + todos.split('\n').map(l => '    ' + l).join('\n'));
+else console.log('✅ No TODOs/TBDs found.');
 
-  // Run generator
-  runCommand('node guides/guide-features-diagram.mjs');
-
-  const newContent = fs.readFileSync(featureMapPath, 'utf8');
-  if (originalContent !== newContent) {
-    console.error('❌ features-and-use-cases.md is out of sync! Run `node guides/guide-features-diagram.mjs` to update it.');
-    // Restore original content to remain read-only
-    fs.writeFileSync(featureMapPath, originalContent);
-  } else {
-    console.log('✅ features-and-use-cases.md is in sync.');
-  }
-}
-
-function scanTodos() {
-  console.log('\n📝 Scanning for TODOs/TBDs in Canonical & Source Docs...');
-  const mdFiles = globSync(['*.md', 'guides/**/*.md', 'skills-src/**/*.md'], {
-    cwd: REPO_ROOT,
-    ignore: ['**/node_modules/**', '**/dist/**', '**/test-app-results/**', '**/test-app-result/**']
-  });
-
-  const markers = ['TODO', 'TBD', 'FIXME', 'unresolved', 'decision needed'];
-  let foundCount = 0;
-
-  for (const file of mdFiles) {
-    // Skip scratch files if we found them in clutter check
-    const isClutter = !CANONICAL_ROOT_MD.has(file) && !file.includes('/');
-    if (isClutter) continue;
-
-    const filePath = path.join(REPO_ROOT, file);
-    const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('\n');
-
-    lines.forEach((line, index) => {
-      for (const marker of markers) {
-        if (line.includes(marker)) {
-          console.log(`ℹ️  Found ${marker} in \`${file}\` on line ${index + 1}: ${line.trim()}`);
-          foundCount++;
-        }
-      }
-    });
-  }
-
-  if (foundCount === 0) {
-    console.log('✅ No TODOs/TBDs found.');
-  } else {
-    console.log(`ℹ️  Found ${foundCount} items needing attention.`);
-  }
-}
-
-function checkSkillsConfig() {
-  console.log('\n⚙️  Checking Standalone Skills Configuration...');
-  const skillsSrcDir = path.join(REPO_ROOT, 'skills-src');
-  if (!fs.existsSync(skillsSrcDir)) {
-    console.log('✅ No skills-src directory found.');
-    return;
-  }
-
-  const configuredSkills = new Set(config.standaloneSkills.map(s => s.sourcePath));
-  const skillFiles = globSync('**/SKILL.md', { cwd: skillsSrcDir });
-
-  let unconfiguredCount = 0;
-  for (const file of skillFiles) {
-    const relPath = path.join('skills-src', file);
-    if (!configuredSkills.has(relPath)) {
-      console.warn(`⚠️  Skill definition \`${relPath}\` is not configured in \`lib/skills-config.ts\`. It will be treated as INERT.`);
-      unconfiguredCount++;
+// 6. Skills Config
+console.log('\n⚙️  Checking Standalone Skills Configuration...');
+if (fs.existsSync(path.join(REPO_ROOT, 'skills-src'))) {
+  const configured = new Set(config.standaloneSkills.map(s => s.sourcePath));
+  let inert = 0;
+  for (const file of globSync('**/SKILL.md', { cwd: path.join(REPO_ROOT, 'skills-src') })) {
+    const rel = path.join('skills-src', file);
+    if (!configured.has(rel)) {
+      console.warn(`⚠️  Inert skill: \`${rel}\` (not in skills-config.ts)`);
+      inert++;
     }
   }
-
-  if (unconfiguredCount === 0) {
-    console.log('✅ All source skills are configured.');
-  }
+  if (!inert) console.log('✅ All source skills are configured.');
 }
 
-function checkContextSkillCoherence() {
-  console.log('\n🧠 Checking Coherence between CONTEXT.md and Project Skills...');
-  const contextPath = path.join(REPO_ROOT, 'CONTEXT.md');
-  if (!fs.existsSync(contextPath)) {
-    console.warn('⚠️  CONTEXT.md not found. Skipping coherence check.');
-    return;
-  }
-
-  const projectSkills = globSync('.agents/skills/project-*/SKILL.md', { cwd: REPO_ROOT });
-  
-  console.log('ℹ️  Verify semantic alignment between CONTEXT.md and the following skills:');
-  projectSkills.forEach(skill => {
-    console.log(`    - ${skill}`);
-  });
-  console.log('    Ensure that workflow stages, checkpoints, and requirements match between them.');
+// 7. Context Coherence
+console.log('\n🧠 Checking Coherence with CONTEXT.md...');
+if (fs.existsSync(path.join(REPO_ROOT, 'CONTEXT.md'))) {
+  console.log('ℹ️  Verify semantic alignment with project skills:');
+  globSync('.agents/skills/project-*/SKILL.md', { cwd: REPO_ROOT }).forEach(s => console.log(`    - ${s}`));
 }
 
-function checkGuidesIntegrity(): boolean {
-  console.log('\n🛡️  Running Guides Integrity Tests...');
+// 8. Guides Integrity
+console.log('\n🛡️  Running Guides Integrity Tests...');
+try {
+  execSync('node --experimental-strip-types --test guides/guides-integrity.test.ts', { cwd: REPO_ROOT, stdio: 'inherit' });
+  console.log('✅ Guides integrity tests passed.');
+} catch {
+  console.error('❌ Guides integrity tests failed.');
+}
+
+// 9. Optional Preflight
+if (process.argv.includes('--preflight')) {
+  console.log('\n⚡ Running Full Preflight...');
   try {
-    execSync('node --experimental-strip-types --test guides/guides-integrity.test.ts', {
-      cwd: REPO_ROOT,
-      stdio: 'inherit'
-    });
-    console.log('✅ Guides integrity tests passed.');
-    return true;
-  } catch (e) {
-    console.error('❌ Guides integrity tests failed.');
-    return false;
-  }
-}
-
-function runPreflight(): boolean {
-  console.log('\n⚡ Running Full Preflight (Build, Typecheck, Lint, Tests)...');
-  try {
-    execSync('pnpm run preflight', {
-      cwd: REPO_ROOT,
-      stdio: 'inherit'
-    });
+    execSync('pnpm run preflight', { cwd: REPO_ROOT, stdio: 'inherit' });
     console.log('✅ Preflight passed.');
-    return true;
-  } catch (e) {
+  } catch {
     console.error('❌ Preflight failed.');
-    return false;
   }
+} else {
+  console.log('\n💡 Tip: Run with `--preflight` to run full build, typecheck, lint, and tests.');
 }
 
-function main() {
-  console.log('================================================');
-  console.log('🕵️  Starting Coherence & Integrity Audit');
-  console.log('================================================\n');
-
-  const args = process.argv.slice(2);
-  const doPreflight = args.includes('--preflight');
-
-  checkGitState();
-  checkClutter();
-  checkLinkIntegrity();
-  checkFeatureMapSync();
-  scanTodos();
-  checkSkillsConfig();
-  checkContextSkillCoherence();
-  
-  checkGuidesIntegrity();
-
-  if (doPreflight) {
-    runPreflight();
-  } else {
-    console.log('\n💡 Tip: Run with `--preflight` to run full build, typecheck, lint, and tests.');
-  }
-
-  console.log('\n================================================');
-  console.log('🏁 Audit Complete');
-  console.log('================================================');
-}
-
-main();
+console.log('\n================================================\n🏁 Audit Complete\n================================================');
