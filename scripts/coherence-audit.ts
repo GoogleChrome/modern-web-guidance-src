@@ -179,6 +179,23 @@ function checkSkillsConfig() {
   }
 }
 
+function checkContextSkillCoherence() {
+  console.log('\n🧠 Checking Coherence between CONTEXT.md and Project Skills...');
+  const contextPath = path.join(REPO_ROOT, 'CONTEXT.md');
+  if (!fs.existsSync(contextPath)) {
+    console.warn('⚠️  CONTEXT.md not found. Skipping coherence check.');
+    return;
+  }
+
+  const projectSkills = globSync('.agents/skills/project-*/SKILL.md', { cwd: REPO_ROOT });
+  
+  console.log('ℹ️  Verify semantic alignment between CONTEXT.md and the following skills:');
+  projectSkills.forEach(skill => {
+    console.log(`    - ${skill}`);
+  });
+  console.log('    Ensure that workflow stages, checkpoints, and requirements match between them.');
+}
+
 function checkGuidesIntegrity(): boolean {
   console.log('\n🛡️  Running Guides Integrity Tests...');
   try {
@@ -223,6 +240,7 @@ function main() {
   checkFeatureMapSync();
   scanTodos();
   checkSkillsConfig();
+  checkContextSkillCoherence();
   
   const integrityOk = checkGuidesIntegrity();
 
