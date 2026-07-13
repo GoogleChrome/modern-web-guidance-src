@@ -84,23 +84,20 @@ The following steps are REQUIRED for creating a new use case:
   ---
   ```
 
-* **Step 5: Create the `demo.html` file**
+* **Step 5: Create the `expectations.md` stub**
 
-  Create a `demo.html` file in the new subdirectory. This file is **eval infrastructure** — it is used by `grader.ts` to verify that a correct implementation passes all tests. Real-world coding agents never see this file.
+  Create an `expectations.md` file in the new subdirectory outlining the must-pass verification criteria for any application implementing this guidance.
 
-  Because it is not shown to agents, `demo.html` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
+* **Step 6: Generate base-app evaluation capsules**
 
-  **Quality Rules for Demos:**
-  * **Identifiable Test Targets**: Make target elements in HTML demos explicitly identifiable using clear data attributes like `data-testid` and specific class names to aid in grading.
+  Once `guide.md` and `expectations.md` are authored, run `gd dev guides/<category>/<guide>` to automatically generate and calibrate the evaluation capsules across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) under `targets/<base_app>/`.
 
-  See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
+* **Step 7: Validate the use case**
 
-* **Step 6: Validate the use case**
+  Run `pnpm --filter guides test` to validate the use case structure and target integrity.
 
-  Run `pnpm --filter guides test` to validate the use case.
+* **Step 8: Get the use case approved**
 
-* **Step 7: Get the use case approved**
+  Submit the use case for review by creating a Pull Request containing the authored `guide.md` and `expectations.md` along with the generated `targets/` directory.
 
-  Submit the use case for review by creating a Pull Request containing only the files created in steps 1-6. This allows for early feedback on the selection and naming of the use cases.
-
-After the use case is approved, you can proceed to writing the guidance and expectations. Additional guidance for these stages is provided by the `project-guides` and `project-evals` skills.
+After the use case is approved, you can proceed to refining the guidance and expectations as needed. Additional guidance for these stages is provided by the `project-guides` and `project-evals` skills.

@@ -36,10 +36,11 @@ export async function runCommand(command: string, args: string[], cwd?: string):
 }
 
 export async function runGemini(prompt: string, workDir?: string): Promise<string> {
-  const command = config.environment.geminiCliBin;
-  const commandArgs = ['-p', prompt, '--yolo'];
+  const command = config.environment.jetskiCliBin;
+  const model = process.env.JETSKI_MODEL;
+  const commandArgs = ['-p', prompt];
+  if (model) commandArgs.push('--model', model);
   
-  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
   return runCommand(command, commandArgs, workDir);
 }
 
@@ -56,6 +57,15 @@ export function setupIsolatedWorkDir(prefix: string): string {
   for (const file of ['oauth_creds.json', 'google_accounts.json', 'installation_id', 'settings.json']) {
     copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
   }
+
+  // Setup Jetski credentials
+  const jetskiSource = path.join(geminiSource, 'jetski');
+  const jetskiDest = path.join(geminiDest, 'jetski');
+  fs.mkdirSync(jetskiDest, { recursive: true });
+  for (const file of ['installation_id', 'user_settings.pb']) {
+    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
+  }
+  process.env.JETSKI_DIR = jetskiDest;
 
   createTrustedFolders(geminiDest, [workDir]);
   process.env.HOME = tempHome;

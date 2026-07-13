@@ -32,7 +32,15 @@ export function getSuiteConfig(): SuiteConfig {
 export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, options);
-    child.on('close', (code) => resolve(code ?? 1));
+    let resolved = false;
+    const done = (code: number) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(code);
+      }
+    };
+    child.on('exit', (code) => done(code ?? 1));
+    child.on('close', (code) => done(code ?? 1));
     child.on('error', reject);
   });
 }
