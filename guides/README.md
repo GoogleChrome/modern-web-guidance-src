@@ -122,7 +122,7 @@ Agent test results:
   Guide impact:     +56% (vs unguided)
 ```
 
-The agent is selected from the specified [config](../config.ts) if it exists, otherwise uses default in the [harness config](../harness/config.ts).
+The agent is selected from the `config.ts` if it exists (see [config.ts.example](../config.ts.example) for setup), otherwise uses default in the [harness config](../harness/config.ts).
 The base app is selected from the generated `tasks/task.md` file (which defaults to `daily-grind`).
 
 ### Negative Evals
