@@ -57,6 +57,13 @@ Content ATLs are responsible for the overall quality, completeness, and health o
   * Troubleshoot and resolve bug reports or quality feedback reported by the developer community.
 * **Use Case Validation**:
   * Triage and align on proposed new use cases within their category before authoring begins.
+* **Evaluation Readiness & Expectations Sync**:
+  * Ensure all guides within their category are fully "eval-ready". While the engineering team is responsible for implementing/maintaining the evaluation harness and tasks, Content ATLs must verify that the natural-language assertions in `expectations.md` are kept perfectly in sync with the recommendations and code examples in `guide.md`, as the harness uses these expectations to generate the automated Playwright grader.
+* **Baseline & Fallback Alignment**:
+  * Align all guidance and expectations with a **Baseline Widely available** target. If a recommended feature is not yet widely available, the guide **must** specify (and the expectations/grader **must** test for) proper fallback strategies and progressive enhancement.
+* **Discipline Guide Decomposition**:
+  * Ensure discipline-level skills (e.g., CSS, JS) are broken up into modular "subskills" (i.e., smaller, focused guides) rather than structured as a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously.
+  * The primary discipline-level guide (e.g., `guides/css/css/guide.md` or `guides/performance/performance/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subskill guide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
 
 ### Infrastructure Engineers
 Infrastructure engineers focus on the tooling, CLI, test harness reliability, LLM generation pipelines, and dashboard interfaces. They ensure that the evaluation runner is stable, calibration retries function correctly, and maintain the MCP and CLI distribution paths.
