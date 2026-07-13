@@ -2,9 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { rootDir, baseAppsDir } from '../lib/paths.ts';
-import { generateNegative } from './negative-gen.ts';
-import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
 import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
+import { generateTargetGrader } from './grader-gen.ts';
 import {
   createIsolatedHome,
   cleanupIsolatedHome,
@@ -12,7 +11,14 @@ import {
 } from '../harness/lib/agent-shared.ts';
 import { environmentConfig, defaultSuiteConfig, Serving, type SuiteConfig } from '../harness/config.ts';
 import { setupIsolatedWorkDir } from './lib/utils.ts';
+import {
+  buildSolutionPrompt,
+  buildBrokenPrompt,
+  buildTargetTaskPrompt,
+} from './gd-dev-prompts.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
+import { execSync } from 'node:child_process';
+import { capturePatchFromGit } from '../lib/patch-utils.ts';
 import {
   type GuideInventory,
   type GuideStatus,
@@ -22,10 +28,15 @@ import {
   NEGATIVE_DEMO_FILE,
   GRADER_FILE,
   TASK_FILE,
+  TARGETS_DIR,
+  SUPPORTED_BASE_APPS,
+  SOLUTION_PATCH_FILE,
+  BROKEN_PATCH_FILE,
   getTaskMap,
   inventoryGuide,
   classifyGuide,
-  scanAllGuides
+  scanAllGuides,
+  getSupportedBaseApps
 } from '../lib/guide-validation.ts';
 
 export interface DevGuideOptions {
@@ -70,7 +81,16 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 1: Inventory (use provided inventory or scan)
+  // Step 1: Automatic clean-slate excision of legacy root files
+  const legacyFiles = [DEMO_FILE, NEGATIVE_DEMO_FILE, GRADER_FILE, 'tasks'];
+  for (const file of legacyFiles) {
+    const filePath = path.join(targetDir, file);
+    if (fs.existsSync(filePath)) {
+      console.log(cCyan(`Excising legacy single-page artifact: ${file}`));
+      fs.rmSync(filePath, { recursive: true, force: true });
+    }
+  }
+
   const currentInv = inv || inventoryGuide(targetDir);
   printInventory(currentInv);
 
@@ -82,206 +102,146 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     }
     return false;
   }
-  if (!currentInv.hasDemo) {
-    console.error(cRed(`\nError: ${DEMO_FILE} is required but missing in ${targetDir}`));
+  if (!currentInv.hasExpectations) {
+    console.error(cRed(`\nError: ${EXPECTATIONS_FILE} is required for generating target artifacts.`));
     return false;
   }
 
-  const needsGeneration = !currentInv.hasNegativeDemo || !currentInv.hasGrader;
+  // Step 2: Concurrent target generation across SUPPORTED_BASE_APPS
+  await Promise.all(SUPPORTED_BASE_APPS.map(async (baseApp) => {
+    const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, baseApp);
+    fs.mkdirSync(targetCapsuleDir, { recursive: true });
 
-  // Generators require expectations.md — check before attempting generation
-  if (needsGeneration && !currentInv.hasExpectations) {
-    console.error(cRed(`\nError: ${EXPECTATIONS_FILE} is required for generating artifacts but is missing.`));
-    console.error(`Create ${EXPECTATIONS_FILE} in ${targetDir} before running dev.`);
-    return false;
-  }
+    const solutionPatch = path.join(targetCapsuleDir, SOLUTION_PATCH_FILE);
+    if (!fs.existsSync(solutionPatch)) {
+      console.log(cCyan(`\n--- Generating ${SOLUTION_PATCH_FILE} for ${baseApp} ---`));
+      await generateTargetPatch(targetDir, baseApp, 'solution');
+    }
 
-  // Step 2: Generate missing artifacts
-  if (!currentInv.hasNegativeDemo) {
-    await generateArtifact('negative-demo.html', () => generateNegative(targetDirRaw), path.join(targetDir, NEGATIVE_DEMO_FILE));
-  } else {
-    console.log(cDim(`\nSkipping ${NEGATIVE_DEMO_FILE} generation (already exists)`));
-  }
+    const brokenPatch = path.join(targetCapsuleDir, BROKEN_PATCH_FILE);
+    if (!fs.existsSync(brokenPatch)) {
+      console.log(cCyan(`\n--- Generating ${BROKEN_PATCH_FILE} for ${baseApp} ---`));
+      await generateTargetPatch(targetDir, baseApp, 'broken');
+    }
 
-  if (!currentInv.hasGrader) {
-    await generateArtifact('grader.ts', () => generateGrader(targetDirRaw), path.join(targetDir, GRADER_FILE));
-  } else {
-    console.log(cDim(`\nSkipping ${GRADER_FILE} generation (already exists)`));
-  }
+    const graderFile = path.join(targetCapsuleDir, GRADER_FILE);
+    if (!fs.existsSync(graderFile)) {
+      console.log(cCyan(`\n--- Generating ${GRADER_FILE} for ${baseApp} ---`));
+      await generateTargetGrader(targetDir, baseApp);
+    }
 
-  // Step 4: Calibration retry loop (skipped when guidedOnly)
-  let calibrationResult: CalibrationResult | null = null;
-  let calibrationAttempt = 0;
+    const taskFile = path.join(targetCapsuleDir, TASK_FILE);
+    if (!fs.existsSync(taskFile)) {
+      console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
+      await generateTargetTask(targetDir, baseApp);
+    }
+  }));
 
-  if (options.guidedOnly) {
-    console.log(cDim(`\nSkipping calibration (--guided)`));
-    calibrationResult = { success: true, demo: { passed: 0, failed: 0, failingTests: [] }, negative: { passed: 0, failed: 0, passingTests: [] } };
-  } else {
-    console.log(cCyan(`\n--- Calibrating grader ---`));
+  // Step 3: Calibrate targets and retry grader if calibration fails
+  let overallSuccess = true;
+  for (const baseApp of SUPPORTED_BASE_APPS) {
+    console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
+    let success = false;
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      calibrationAttempt = attempt;
-      console.log(cYellow(`\nCalibration attempt ${attempt}...`));
-
-      try {
-        calibrationResult = await testGrader(targetDirRaw);
-      } catch (err) {
-        console.error(cRed(`Calibration error: ${err}`));
-        calibrationResult = {
-          success: false,
-          demo: { passed: 0, failed: 0, failingTests: [] },
-          negative: { passed: 0, failed: 0, passingTests: [] },
-        };
-      }
-
-      if (calibrationResult.success) {
-        console.log(cGreen(`\u2705 Grader calibrated on attempt ${attempt}!`));
+      const res = await testGrader(targetDirRaw, baseApp);
+      if (res.success) {
+        console.log(cGreen(`✅ ${baseApp} calibrated successfully on attempt ${attempt}!`));
+        success = true;
         break;
       }
 
-      if (attempt <= maxRetries) {
-        console.log(cYellow(`Attempt ${attempt} failed. Regenerating grader with failure context...`));
-
-        const graderPath = path.join(targetDir, GRADER_FILE);
-        if (fs.existsSync(graderPath)) {
-          fs.unlinkSync(graderPath);
-        }
-
-        try {
-          await generateGraderWithContext(targetDirRaw, calibrationResult);
-          if (!fs.existsSync(graderPath)) {
-            console.error(cRed(`Failed: ${GRADER_FILE} was not regenerated`));
-            break;
-          }
-        } catch (err) {
-          console.error(cRed(`Failed to regenerate ${GRADER_FILE}: ${err}`));
-          break;
-        }
+      if (res.stage === 'calibration' && attempt <= maxRetries) {
+        console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
+        await generateTargetGrader(targetDir, baseApp, res.errorDetails);
       } else {
-        console.log(cRed(`\u274c Grader failed to calibrate after ${maxRetries + 1} attempts.`));
+        console.error(cRed(`❌ ${baseApp} failed calibration after ${attempt} attempt(s): ${res.errorDetails || 'Unknown error'}`));
+        break;
       }
     }
+    if (!success) overallSuccess = false;
   }
 
-  // Step 5: Test task and prompt generation
-  if (calibrationResult?.success) {
-    console.log(cCyan(`\n--- Setting up test task ---`));
-
-    const taskPath = path.join(targetDir, 'tasks', TASK_FILE);
-    if (!fs.existsSync(taskPath)) {
-      console.log(`${TASK_FILE} not found, generating...`);
-      try {
-        await generateTask(targetDir);
-
-      } catch (err) {
-        console.error(cRed(`Failed to generate ${TASK_FILE}: ${err}`));
-      }
-    }
-  }
-
-  // Step 6: Optional agent test
-  if (options.test !== false && calibrationResult?.success) {
+  // Optional agent test
+  if (options.test !== false && overallSuccess) {
     await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.suiteConfig);
   }
 
-  // Step 7: Summary
-  printSummary(targetDir, currentInv, calibrationResult, calibrationAttempt);
+  // Summary
+  printSummary(targetDir, currentInv, { success: overallSuccess, demo: { passed: 0, failed: 0, failingTests: [] }, negative: { passed: 0, failed: 0, passingTests: [] } }, 1);
 
-  return calibrationResult?.success ?? false;
+  return overallSuccess;
 }
 
-async function generateArtifact(name: string, generator: () => Promise<void>, checkPath: string): Promise<void> {
-  console.log(cCyan(`\n--- Generating ${name} ---`));
+async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: 'solution' | 'broken'): Promise<void> {
+  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-${patchType}`);
   try {
-    await generator();
-    if (!fs.existsSync(checkPath)) {
-      throw new Error(`${name} was not created`);
-    }
-    console.log(cGreen(`\u2705 ${name} generated`));
-  } catch (err) {
-    throw new Error(`Failed to generate ${name}: ${err}`);
-  }
-}
+    fs.cpSync(path.join(baseAppsDir, baseApp), workDir, { recursive: true });
+    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
 
-async function generateTask(targetDir: string): Promise<void> {
-  const baseApp = 'daily-grind';
-  const originalHome = process.env.HOME;
-  
-  const workDir = setupIsolatedWorkDir('ghh-prompt-gen');
-  const tempHome = path.dirname(workDir);
+    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
 
-  try {
-    // Copy guide dir contents into the isolated work directory
-    fs.cpSync(targetDir, workDir, { recursive: true });
+    const prompt = patchType === 'solution'
+      ? buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
+      : buildBrokenPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
 
-    // Copy the base app so Gemini can see what app the prompts target
-    const baseAppHtml = path.join(baseAppsDir, baseApp, 'index.html');
-    if (fs.existsSync(baseAppHtml)) {
-      fs.copyFileSync(baseAppHtml, path.join(workDir, 'base-app.html'));
-    }
+    const model = process.env.JETSKI_MODEL;
+    const commandArgs = ['-p', prompt];
+    if (model) commandArgs.push('--model', model);
 
-    let guideFileName = 'guide.md';
-    if (!fs.existsSync(path.join(targetDir, 'guide.md')) && fs.existsSync(path.join(targetDir, 'SKILL.md'))) {
-      guideFileName = 'SKILL.md';
-    }
-
-    const userPrompt = `Read ${guideFileName} to understand what web development guidance is being provided.
-Read base-app.html to understand the existing web app (the "${baseApp}" app) that the developer is working on.
-
-Generate a ${TASK_FILE} file containing 1–4 realistic test prompts that a web developer would send to an AI coding assistant to accomplish the goal described in this guide.
-
-Rules:
-- The ${TASK_FILE} file MUST start with a valid YAML frontmatter block for \`base_app\`, followed by standard markdown bullets for the prompts. Exactly like this:
-  ---
-  base_app: ${baseApp}
-  ---
-  - <prompt-1>
-  - <prompt-2>
-- Write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.
-- Phrase prompts as ACTION REQUESTS or directives (e.g. "add X", "can you build Y", "implement Z"). NEVER phrase them as advisory questions (e.g. "how can I?", "what's the best way to?", "can you explain?") — the agent must implement, not just explain.
-- The first prompt is the most important: it must be specific enough that an agent implementing it would produce a grader-testable result.
-- Vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
-- Assume the developer is working on the existing app seen in base-app.html. Reference its real assets and content where relevant.
-- Do NOT mention or mandate legacy fallbacks in the prompt. The RAG system handles fallbacks automatically.
-- Do NOT mention the guide itself or indicate that guidance exists.
-- Do NOT name the base app (e.g. "${baseApp}") — a real developer wouldn't refer to it that way.
-- Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS functions (e.g., do not command the agent to 'use the Temporal API' or 'use sibling-index()'). You MUST describe the desired user outcome instead. However, it is completely acceptable (and sometimes necessary) to include specific DOM IDs or class names if the grader requires them to locate elements.
-- Each prompt must be on its own line, prefixed with "- ", containing absolutely no internal line breaks.
-- When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
-
-Only create the ${TASK_FILE} file in the root of your working directory. Do not modify any other files.`;
-
-    console.log(`Generating ${TASK_FILE} via Gemini CLI...`);
-
-    const exitCode = await spawnAsync(environmentConfig.geminiCliBin, ['-p', userPrompt, '--yolo'], {
+    const exitCode = await spawnAsync(environmentConfig.jetskiCliBin, commandArgs, {
       cwd: workDir,
       env: { ...process.env },
       stdio: 'inherit',
     });
 
     if (exitCode !== 0) {
-      throw new Error(`Gemini CLI exited with code ${exitCode}`);
+      throw new Error(`Jetski CLI exited with code ${exitCode}`);
     }
 
-    let generatedFile = path.join(workDir, TASK_FILE);
-    if (!fs.existsSync(generatedFile)) {
-      // Check if the agent created it in tasks/ subdirectory
-      const fallbackFile = path.join(workDir, 'tasks', TASK_FILE);
-      if (fs.existsSync(fallbackFile)) {
-        generatedFile = fallbackFile;
-      }
+    const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchType === 'solution' ? SOLUTION_PATCH_FILE : BROKEN_PATCH_FILE);
+    fs.mkdirSync(path.dirname(destPatch), { recursive: true });
+    capturePatchFromGit(workDir, destPatch);
+  } finally {
+    fs.rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
+async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
+  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-task`);
+  try {
+    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    const baseAppHtml = path.join(baseAppsDir, baseApp, 'index.html');
+    if (fs.existsSync(baseAppHtml)) fs.copyFileSync(baseAppHtml, path.join(workDir, 'base-app.html'));
+
+    const prompt = buildTargetTaskPrompt({
+      guideFile: GUIDE_FILE,
+      taskFile: TASK_FILE,
+      baseApp,
+    });
+
+    const model = process.env.JETSKI_MODEL;
+    const commandArgs = ['-p', prompt];
+    if (model) commandArgs.push('--model', model);
+
+    const exitCode = await spawnAsync(environmentConfig.jetskiCliBin, commandArgs, {
+      cwd: workDir,
+      env: { ...process.env },
+      stdio: 'inherit',
+    });
+
+    if (exitCode !== 0) {
+      throw new Error(`Jetski CLI exited with code ${exitCode}`);
     }
 
-    if (fs.existsSync(generatedFile)) {
-      const targetPath = path.join(targetDir, 'tasks', TASK_FILE);
-      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-      fs.copyFileSync(generatedFile, targetPath);
-      console.log(cGreen(`✅ ${TASK_FILE} generated`));
-    } else {
-      throw new Error(`${TASK_FILE} was not created by Gemini CLI`);
+    const generatedTask = path.join(workDir, TASK_FILE);
+    if (fs.existsSync(generatedTask)) {
+      const destTask = path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE);
+      fs.mkdirSync(path.dirname(destTask), { recursive: true });
+      fs.copyFileSync(generatedTask, destTask);
     }
   } finally {
-    process.env.HOME = originalHome;
-    cleanupIsolatedHome(tempHome);
+    fs.rmSync(workDir, { recursive: true, force: true });
   }
 }
 
@@ -458,7 +418,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
 // Batch mode: process all incomplete guides
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   const incompleteGuides = scanAllGuides().filter(inv =>
-    inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader || !inv.hasTask)
+    inv.hasGuide && inv.hasExpectations && !inv.expectationsEmpty && classifyGuide(inv) !== 'eval-ready'
   );
 
   if (incompleteGuides.length === 0) {
@@ -466,13 +426,10 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
     return;
   }
 
-  console.log(cBold(`Found ${incompleteGuides.length} incomplete guide(s):\n`));
+  console.log(cBold(`Found ${incompleteGuides.length} incomplete/uncalibrated guide(s):\n`));
   for (const inv of incompleteGuides) {
-    const missing = [];
-    if (!inv.hasNegativeDemo) missing.push(NEGATIVE_DEMO_FILE);
-    if (!inv.hasGrader) missing.push(GRADER_FILE);
-    if (!inv.hasTask) missing.push(TASK_FILE);
-    console.log(`  ${inv.name} ${cDim(`(missing: ${missing.join(', ')})`)}`);
+    const status = classifyGuide(inv);
+    console.log(`  ${inv.name} ${cDim(`(status: ${status})`)}`);
   }
   console.log('');
 

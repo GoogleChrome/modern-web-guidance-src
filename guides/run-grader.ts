@@ -5,8 +5,11 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { guidesDir } from '../lib/paths.ts';
+import { guidesDir, baseAppsDir } from '../lib/paths.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
+import { TARGETS_DIR, SOLUTION_PATCH_FILE, BROKEN_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../lib/guide-validation.ts';
+import { applyPatchSync } from '../lib/patch-utils.ts';
+import { setupIsolatedWorkDir } from './lib/utils.ts';
 
 export function findGrader(startDir: string): string | null {
   let currentDir = startDir;
@@ -163,6 +166,8 @@ export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
 
 export interface CalibrationResult {
   success: boolean;
+  stage?: 'patch-apply' | 'server-boot' | 'calibration' | 'unknown';
+  errorDetails?: string;
   demo: { passed: number; failed: number; failingTests: string[] };
   negative: { passed: number; failed: number; passingTests: string[] };
 }
@@ -264,8 +269,142 @@ function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boo
   }
 }
 
-export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
+export async function testTargetGrader(guideDirAbs: string, baseApp: string): Promise<CalibrationResult> {
+  const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
+  const solutionPatch = path.join(targetDir, SOLUTION_PATCH_FILE);
+  const brokenPatch = path.join(targetDir, BROKEN_PATCH_FILE);
+  const graderPath = path.join(targetDir, GRADER_FILE);
+
+  const result: CalibrationResult = {
+    success: false,
+    demo: { passed: 0, failed: 0, failingTests: [] },
+    negative: { passed: 0, failed: 0, passingTests: [] }
+  };
+
+  if (!fs.existsSync(solutionPatch) || !fs.existsSync(brokenPatch) || !fs.existsSync(graderPath)) {
+    result.stage = 'unknown';
+    result.errorDetails = `Missing ${SOLUTION_PATCH_FILE}, ${BROKEN_PATCH_FILE}, or ${GRADER_FILE} in ${targetDir}`;
+    return result;
+  }
+
+  const demoOutDir = path.join(targetDir, 'grade-report', 'solution');
+  const negativeOutDir = path.join(targetDir, 'grade-report', 'broken');
+
+  // Golden calibration
+  const goldenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-sol`);
+  try {
+    fs.cpSync(path.join(baseAppsDir, baseApp), goldenSandbox, { recursive: true });
+    const applyRes = applyPatchSync(goldenSandbox, solutionPatch);
+    if (!applyRes.success) {
+      result.stage = 'patch-apply';
+      result.errorDetails = `Failed to apply ${SOLUTION_PATCH_FILE}: ${applyRes.error}`;
+      return result;
+    }
+
+    console.log(cYellow(`\nRunning against ${baseApp} with ${SOLUTION_PATCH_FILE}... (Expecting 100% pass)`));
+    const demoResults = await runPlaywright(path.join(goldenSandbox, 'index.html'), graderPath, demoOutDir, 'inherit').catch(err => {
+      result.stage = 'server-boot';
+      result.errorDetails = `Dev server crashed or failed to run against ${SOLUTION_PATCH_FILE}: ${err.message}`;
+      return null;
+    });
+
+    if (!demoResults) {
+      return result;
+    }
+
+    const unexpected = demoResults.stats?.unexpected || 0;
+    const expected = demoResults.stats?.expected || 0;
+    result.demo.passed = expected;
+    result.demo.failed = unexpected;
+
+    if (expected === 0 && unexpected === 0) {
+      result.stage = 'calibration';
+      result.errorDetails = `No tests were run for ${SOLUTION_PATCH_FILE}`;
+      return result;
+    } else if (unexpected > 0) {
+      result.demo.failingTests = demoResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
+      result.stage = 'calibration';
+      result.errorDetails = `${SOLUTION_PATCH_FILE} failed ${unexpected} tests`;
+      demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
+      return result;
+    }
+    console.log(cGreen(`✅ ${SOLUTION_PATCH_FILE} passed all ${expected} tests.`));
+  } finally {
+    fs.rmSync(goldenSandbox, { recursive: true, force: true });
+  }
+
+  // Broken calibration
+  const brokenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-brk`);
+  try {
+    fs.cpSync(path.join(baseAppsDir, baseApp), brokenSandbox, { recursive: true });
+    const applyRes = applyPatchSync(brokenSandbox, brokenPatch);
+    if (!applyRes.success) {
+      result.stage = 'patch-apply';
+      result.errorDetails = `Failed to apply ${BROKEN_PATCH_FILE}: ${applyRes.error}`;
+      return result;
+    }
+
+    console.log(cYellow(`Running against ${baseApp} with ${BROKEN_PATCH_FILE}... (Expecting 100% fail)`));
+    const negativeResults = await runPlaywright(path.join(brokenSandbox, 'index.html'), graderPath, negativeOutDir, 'ignore').catch(err => {
+      result.stage = 'server-boot';
+      result.errorDetails = `Dev server crashed or failed to run against ${BROKEN_PATCH_FILE}: ${err.message}`;
+      return null;
+    });
+
+    if (!negativeResults) {
+      return result;
+    }
+
+    const passed = negativeResults.stats?.expected || 0;
+    const failed = negativeResults.stats?.unexpected || 0;
+    result.negative.passed = passed;
+    result.negative.failed = failed;
+
+    if (passed === 0 && failed === 0) {
+      result.stage = 'calibration';
+      result.errorDetails = `No tests were run for ${BROKEN_PATCH_FILE}`;
+      return result;
+    } else if (passed > 0) {
+      result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
+      result.stage = 'calibration';
+      result.errorDetails = `${BROKEN_PATCH_FILE} incorrectly passed ${passed} tests`;
+      negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
+      return result;
+    }
+    console.log(cGreen(`✅ ${BROKEN_PATCH_FILE} failed all ${failed} tests correctly.`));
+  } finally {
+    fs.rmSync(brokenSandbox, { recursive: true, force: true });
+  }
+
+  result.success = true;
+  return result;
+}
+
+export async function testGrader(targetDirRaw: string, baseApp?: string): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
+  if (baseApp) {
+    return testTargetGrader(targetDirAbs, baseApp);
+  }
+
+  const targetsDir = path.join(targetDirAbs, TARGETS_DIR);
+  if (fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory()) {
+    const apps = fs.readdirSync(targetsDir).filter(name => !name.startsWith('.') && getSupportedBaseApps().includes(name));
+    if (apps.length > 0) {
+      let overallSuccess = true;
+      let lastResult: CalibrationResult | null = null;
+      for (const app of apps) {
+        console.log(cCyan(`\n--- Calibrating target base app: ${app} ---`));
+        const res = await testTargetGrader(targetDirAbs, app);
+        lastResult = res;
+        if (!res.success) {
+          overallSuccess = false;
+          break;
+        }
+      }
+      return lastResult || { success: false, stage: 'unknown', demo: { passed: 0, failed: 0, failingTests: [] }, negative: { passed: 0, failed: 0, passingTests: [] } };
+    }
+  }
+
   const { demoPath, negativePath, graderPath } = validateCalibrationPaths(targetDirAbs);
 
   const result: CalibrationResult = {

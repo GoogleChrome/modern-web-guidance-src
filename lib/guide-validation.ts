@@ -274,21 +274,12 @@ export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const TASK_FILE = 'task.md';
 
-export function getSupportedBaseApps(): string[] {
-  try {
-    if (!fs.existsSync(baseAppsDir)) return [];
-    return fs.readdirSync(baseAppsDir).filter((name) => {
-      if (name.startsWith('.')) return false;
-      const fullPath = path.join(baseAppsDir, name);
-      return fs.statSync(fullPath).isDirectory();
-    });
-  } catch (e) {
-    console.warn(`Failed to read base apps directory at ${baseAppsDir}: ${e}`);
-    return [];
-  }
-}
+export const SUPPORTED_BASE_APPS = ['daily-grind', 'devtools-times'] as const;
+export type SupportedBaseApp = (typeof SUPPORTED_BASE_APPS)[number];
 
-export type SupportedBaseApp = string;
+export function getSupportedBaseApps(): string[] {
+  return Array.from(SUPPORTED_BASE_APPS);
+}
 
 export const TARGETS_DIR = 'targets';
 export const SOLUTION_PATCH_FILE = 'solution.patch';

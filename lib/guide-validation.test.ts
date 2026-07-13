@@ -140,14 +140,46 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('classifyGuide returns incomplete, needs-calibration, and needs-test for partial target capsules', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-test-target-partial-'));
+    const guideDir = path.join(tmpDir, 'guides', 'test-category', 'test-guide-partial');
+    const targetsDir = path.join(guideDir, 'targets', 'daily-grind');
+    fs.mkdirSync(targetsDir, { recursive: true });
+
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Test Guide\nContent');
+    fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
+
+    try {
+      // Case 1: only solution.patch exists across targets
+      fs.writeFileSync(path.join(targetsDir, 'solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
+      let inv = inventoryGuide(guideDir);
+      assert.strictEqual(classifyGuide(inv), 'needs-calibration');
+
+      // Case 2: solution and broken exist, but missing grader
+      fs.writeFileSync(path.join(targetsDir, 'broken.patch'), '+++ b/src/app.ts\n+const x = 2;');
+      inv = inventoryGuide(guideDir);
+      assert.strictEqual(classifyGuide(inv), 'needs-calibration');
+
+      // Case 3: solution, broken, and grader exist, but missing task
+      fs.writeFileSync(path.join(targetsDir, 'grader.ts'), 'console.log("test");');
+      inv = inventoryGuide(guideDir);
+      assert.strictEqual(classifyGuide(inv), 'needs-test');
+
+      // Case 4: all present -> eval-ready
+      fs.writeFileSync(path.join(targetsDir, 'task.md'), '- task');
+      inv = inventoryGuide(guideDir);
+      assert.strictEqual(classifyGuide(inv), 'eval-ready');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('getSupportedBaseApps', () => {
-  test('dynamically discovers base application directories from harness/base_apps', () => {
+  test('returns the exact list of supported base applications', () => {
     const apps = getSupportedBaseApps();
-    assert.ok(Array.isArray(apps));
-    assert.ok(apps.includes('daily-grind'));
-    assert.ok(apps.includes('devtools-times'));
+    assert.deepStrictEqual(apps, ['daily-grind', 'devtools-times']);
   });
 });
 
