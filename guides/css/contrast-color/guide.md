@@ -7,9 +7,7 @@ web-feature-ids:
 
 # Ensure text readability with dynamic background colors
 
-When building reusable UI components (like badges or buttons) or supporting dynamic themes, ensuring text is readable against an unpredictable background color can be challenging. The `contrast-color()` CSS function automatically selects either black or white to maximize the contrast ratio against a specified background color.
-
-This guide explains how to use `contrast-color()` to guarantee text legibility.
+When building reusable UI components (like badges or buttons) or supporting dynamic themes, ensuring text is readable against an unpredictable background color can be challenging. The `contrast-color()` CSS function resolves to `black` or `white`, maximizing the contrast ratio against the specified background color.
 
 ## Determine optimal text color
 
@@ -115,7 +113,7 @@ DO: Treat derived colors as a progressive enhancement on top of the guaranteed b
 
 {{ FEATURE_FALLBACKS("contrast-color") }}
 
-Due to its limited availability, `contrast-color()` must be applied using progressive enhancement. If the background color is known and fixed for a specific CSS class (like a `.badge-dark` variant), declaring a variant-specific safe default `color` immediately before the `contrast-color()` rule is sufficient, because browsers ignore CSS values they do not understand.
+For browsers that do not yet support `contrast-color()`, use it as a progressive enhancement. If the background color is known and fixed for a specific CSS class (like a `.badge-dark` variant), declare a variant-specific safe default `color` immediately before the `contrast-color()` rule.
 
 However, if the background color is highly dynamic and unpredictable (such as user-injected themes), a single static fallback will inevitably fail. In these cases, you MUST use an `@supports` feature query to apply a robust fallback strategy, such as a text shadow or translucent background, to guarantee readability.
 
