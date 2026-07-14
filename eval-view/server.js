@@ -330,7 +330,7 @@ const server = http.createServer(async (req, res) => {
     const authHeader = req.headers.authorization || '';
 
     const gdTsPath = path.join(ROOT_DIR, 'bin', 'gd.ts');
-    const p = spawn(process.execPath, ['--experimental-strip-types', gdTsPath, 'compare', absDirA, absDirB], {
+    const p = spawn('npx', ['tsx', gdTsPath, 'compare', absDirA, absDirB], {
       cwd: ROOT_DIR,
       env: { ...process.env, GD_GCS_TOKEN: authHeader }
     });
@@ -476,6 +476,7 @@ const server = http.createServer(async (req, res) => {
               let agentName = 'Codex';
               if (filePath.includes('claude')) agentName = 'Claude Code';
               else if (filePath.includes('gemini')) agentName = 'Gemini CLI';
+              else if (filePath.includes('jetski')) agentName = 'Jetski CLI';
               await generateNormalizedTrajectory(runDir, agentName, 'local');
             } catch (e) {
               console.error('Failed to auto-generate trajectory summary:', e);
@@ -542,6 +543,7 @@ const server = http.createServer(async (req, res) => {
               let agentName = 'Codex';
               if (filePath.includes('claude')) agentName = 'Claude Code';
               else if (filePath.includes('gemini')) agentName = 'Gemini CLI';
+              else if (filePath.includes('jetski')) agentName = 'Jetski CLI';
               await generateNormalizedTrajectory(runDir, agentName, 'local');
               if (fs.existsSync(filePath)) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
