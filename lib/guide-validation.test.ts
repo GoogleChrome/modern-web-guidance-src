@@ -1,6 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { parseExpectations, validateHtmlTags } from './guide-validation.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { parseExpectations, validateHtmlTags, inventoryGuide, classifyGuide, getSupportedBaseApps } from './guide-validation.ts';
 
 describe('parseExpectations', () => {
   test('legacy flat format: all bullets treated as mustPass', () => {
@@ -81,11 +84,12 @@ And an iframe: <iframe src="foo"></iframe>.
 Also unescaped <label>.
 `;
     const errors = validateHtmlTags(body, 'test.md');
-    assert.strictEqual(errors.length, 4);
+    assert.strictEqual(errors.length, 5);
     assert.ok(errors[0].includes('Unescaped HTML tag <select> found on line 1'));
     assert.ok(errors[1].includes('Unescaped HTML tag <button> found on line 1'));
     assert.ok(errors[2].includes('Unescaped HTML tag <iframe> found on line 2'));
-    assert.ok(errors[3].includes('Unescaped HTML tag <label> found on line 3'));
+    assert.ok(errors[3].includes('Unescaped HTML tag <iframe> found on line 2'));
+    assert.ok(errors[4].includes('Unescaped HTML tag <label> found on line 3'));
   });
 
   test('ignores code blocks', () => {
@@ -106,4 +110,47 @@ Also unescaped <label>.
     assert.deepStrictEqual(errors, []);
   });
 });
+
+describe('inventoryGuide and classifyGuide target discovery', () => {
+  test('correctly identifies target inventory and classifies target guide status', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-test-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    const targetsDir = path.join(guideDir, 'targets', 'daily-grind');
+    fs.mkdirSync(targetsDir, { recursive: true });
+    
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Test Guide\nContent');
+    fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
+    fs.writeFileSync(path.join(targetsDir, 'solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
+    fs.writeFileSync(path.join(targetsDir, 'broken.patch'), '+++ b/src/app.ts\n+const x = 2;');
+    fs.writeFileSync(path.join(targetsDir, 'grader.ts'), 'console.log("test");');
+    fs.writeFileSync(path.join(targetsDir, 'task.md'), '- Implement feature');
+
+    try {
+      const inv = inventoryGuide(guideDir);
+      assert.strictEqual(inv.targets?.length, 1);
+      assert.strictEqual(inv.targets?.[0].name, 'daily-grind');
+      assert.strictEqual(inv.targets?.[0].hasSolution, true);
+      assert.strictEqual(inv.targets?.[0].hasBroken, true);
+      assert.strictEqual(inv.targets?.[0].hasGrader, true);
+      assert.strictEqual(inv.targets?.[0].hasTask, true);
+      
+      const status = classifyGuide(inv);
+      assert.strictEqual(status, 'eval-ready');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('getSupportedBaseApps', () => {
+  test('dynamically discovers base application directories from harness/base_apps', () => {
+    const apps = getSupportedBaseApps();
+    assert.ok(Array.isArray(apps));
+    assert.ok(apps.includes('daily-grind'));
+    assert.ok(apps.includes('devtools-times'));
+  });
+});
+
+
+
 

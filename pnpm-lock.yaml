@@ -41,8 +41,8 @@ importers:
         specifier: ^0.4.17
         version: 0.4.17
       web-features:
-        specifier: ^3.27.0
-        version: 3.27.0
+        specifier: ^3.30.0
+        version: 3.30.0
     devDependencies:
       '@types/node':
         specifier: ^25.6.0
