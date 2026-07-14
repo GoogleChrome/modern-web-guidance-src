@@ -56,7 +56,13 @@ DO: Reference shared background variables inside `contrast-color()` to guarantee
 
 .theme-card {
   background-color: var(--theme-surface-color);
-  color: contrast-color(var(--theme-surface-color));
+  color: #333; /* Safe fallback */
+}
+
+@supports (color: contrast-color(red)) {
+  .theme-card {
+    color: contrast-color(var(--theme-surface-color));
+  }
 }
 ```
 
@@ -70,10 +76,14 @@ DO: Adjust the background custom property with [relative color syntax](https://d
 .button {
   --button-bg: #b2aeff;
   background-color: var(--button-bg);
-  color: contrast-color(var(--button-bg));
+  color: #000; /* Safe fallback */
 }
 
 @supports (color: contrast-color(red)) {
+  .button {
+    color: contrast-color(var(--button-bg));
+  }
+
   .button:hover {
     /* Darken the background; the text color re-derives on its own */
     --button-bg: oklch(from var(--button-bg) calc(1 - l) c h);
@@ -93,15 +103,23 @@ MANDATORY: Re-verify contrast whenever you transform the result of `contrast-col
 .callout {
   --callout-bg: #1a1a1a;
   background-color: var(--callout-bg);
-  color: contrast-color(var(--callout-bg));
-
-  /* Derive a dimmed secondary color from the guaranteed contrast color.
-     Verify the resulting ratio—dimming reduces contrast. */
-  --callout-muted: rgb(from contrast-color(var(--callout-bg)) r g b / 0.7);
+  color: #fff; /* Safe fallback */
 }
 
 .callout small {
-  color: var(--callout-muted);
+  color: rgb(255 255 255 / 0.7);
+}
+
+@supports (color: contrast-color(red)) {
+  .callout {
+    color: contrast-color(var(--callout-bg));
+  }
+
+  /* Derive a dimmed secondary color from the guaranteed contrast color.
+     Verify the resulting ratio—dimming reduces contrast. */
+  .callout small {
+    --callout-muted: oklch(from contrast-color(var(--callout-bg)) abs(l - .2) c h);
+  }
 }
 ```
 

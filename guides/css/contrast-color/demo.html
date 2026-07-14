@@ -28,26 +28,64 @@
       gap: 20px;
       flex-wrap: wrap;
       justify-content: center;
+      max-width: 800px;
     }
 
-    .badge {
+    .badge, .button, .callout, .theme-card {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 150px;
-      height: 150px;
       border-radius: 12px;
-      font-size: 1.2rem;
       font-weight: bold;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      
-      /* Apply the dynamic background */
+      box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
+    }
+
+    .badge {
+      width: 120px;
+      height: 120px;
+      font-size: 1.1rem;
       background-color: var(--badge-bg);
-      
       /* Default assumption + Readability safety net for older browsers */
       color: #fff;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
     }
+
+    .button {
+      padding: 12px 24px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-family: inherit;
+      --button-bg: #b2aeff;
+      background-color: var(--button-bg);
+      color: #000;
+    }
+
+    .callout {
+      flex-direction: column;
+      padding: 20px;
+      width: 180px;
+      --callout-bg: #1a1a1a;
+      background-color: var(--callout-bg);
+      color: #fff;
+    }
+
+    .callout small {
+      font-size: 0.85rem;
+      font-weight: normal;
+      margin-top: 8px;
+      color: rgb(255 255 255 / 0.7);
+    }
+
+    .theme-card {
+      padding: 20px;
+      width: 180px;
+      background-color: var(--theme-surface-color);
+      color: #333;
+    }
+
+    .theme-container[data-theme="light"] { --theme-surface-color: #f4f4f4; }
+    .theme-container[data-theme="dark"] { --theme-surface-color: #1a1a1a; }
 
     /* Apply dynamic contrasting color only if supported */
     @supports (color: contrast-color(red)) {
@@ -55,34 +93,35 @@
         color: contrast-color(var(--badge-bg));
         text-shadow: none;
       }
+
+      .button {
+        color: contrast-color(var(--button-bg));
+      }
+
+      .button:hover {
+        /* Darken the background; the text color re-derives on its own */
+        --button-bg: oklch(from var(--button-bg) calc(1 - l) c h);
+      }
+
+      .callout {
+        color: contrast-color(var(--callout-bg));
+        /* MANDATORY: Re-verify contrast whenever you transform the result of contrast-color() */
+        --callout-muted: oklch(from contrast-color(var(--callout-bg)) abs(l - .2) c h);
+      }
+
+      .callout small {
+        color: var(--callout-muted);
+      }
+
+      .theme-card {
+        color: contrast-color(var(--theme-surface-color));
+      }
     }
 
     /* Define different backgrounds for testing */
-    .badge-dark {
-      --badge-bg: #1a1a1a;
-    }
-
-    .badge-light {
-      --badge-bg: #f9f9f9;
-    }
-
-    .badge-color {
-      --badge-bg: #e02424;
-    }
-
-    .button {
-      --button-bg: #b2aeff;
-      background-color: var(--button-bg);
-      color: contrast-color(var(--button-bg));
-    }
-
-    @supports (color: contrast-color(red)) {
-      .button:hover {
-        /* Darken the background; the text color re-derives on its own. 
-           Using var(--button-bg) ensures it works relative to its current state. */
-        --button-bg: oklch(from var(--button-bg) calc(1 - l) c h);
-      }
-    }
+    .badge-dark { --badge-bg: #1a1a1a; }
+    .badge-light { --badge-bg: #f9f9f9; }
+    .badge-color { --badge-bg: #e02424; }
   </style>
 </head>
 <body>
@@ -99,9 +138,22 @@
     <div class="badge badge-color" data-testid="badge-color">
       Color Bg
     </div>
-    <button class="badge button button-hover" data-testid="button-hover">
-      Hover Bg
+    
+    <button class="button" data-testid="button-hover">
+      Hover Me
     </button>
+
+    <div class="callout" data-testid="callout">
+      Main Content
+      <small>Derived Muted Text</small>
+    </div>
+
+    <div class="theme-container" data-theme="light">
+      <div class="theme-card" data-testid="theme-card-light">Light Theme</div>
+    </div>
+    <div class="theme-container" data-theme="dark">
+      <div class="theme-card" data-testid="theme-card-dark">Dark Theme</div>
+    </div>
   </div>
 
 </body>
