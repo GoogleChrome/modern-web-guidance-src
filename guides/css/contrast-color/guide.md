@@ -13,9 +13,7 @@ When building reusable UI components (like badges or buttons) or supporting dyna
 
 When an element has a variable or dynamically injected background color, you can rely on the browser to compute the safest text color.
 
-MANDATORY: You must define a fallback strategy for older browsers, such as using an `@supports` query with a `text-shadow` or variant-specific colors, because a single static fallback color will inevitably fail against some dynamic backgrounds.
-
-MANDATORY: Set the `color` property using the `contrast-color()` function, passing the effective background color (or its custom property) as the argument.
+MANDATORY: Set the `color` property using the `contrast-color()` function, passing the background color (or its custom property) as the argument.
 
 ```css
 .badge {
@@ -37,7 +35,7 @@ MANDATORY: Set the `color` property using the `contrast-color()` function, passi
 }
 ```
 
-DO: Use `contrast-color()` primarily when backgrounds are distinctly light or dark. Because the function currently only selects between black or white, mid-tone backgrounds (such as royal blue) may result in suboptimal contrast even when the mathematical maximum is chosen.
+DO: Use `contrast-color()` primarily when backgrounds are distinctly light or dark. Because the function currently only selects between black or white, medium light backgrounds (such as royal blue) may result in suboptimal contrast even when the mathematical maximum is chosen.
 
 DO NOT: Use `contrast-color()` for `background-color`. It is specifically designed for foreground colors (like text or borders) to contrast against a given background color.
 
@@ -70,7 +68,7 @@ DO: Adjust the background custom property with [relative color syntax](https://d
 
 ```css
 .button {
-  --button-bg: #4f46e5;
+  --button-bg: #b2aeff;
   background-color: var(--button-bg);
   color: contrast-color(var(--button-bg));
 }
@@ -78,7 +76,7 @@ DO: Adjust the background custom property with [relative color syntax](https://d
 @supports (color: contrast-color(red)) {
   .button:hover {
     /* Darken the background; the text color re-derives on its own */
-    --button-bg: oklch(from #4f46e5 calc(l - 0.1) c h);
+    --button-bg: oklch(from var(--button-bg) calc(1 - l) c h);
   }
 }
 ```
@@ -130,3 +128,5 @@ However, if the background color is highly dynamic and unpredictable (such as us
   }
 }
 ```
+
+For use cases that require a custom background color without a text shadow, use a JavaScript library like Color.js to calculate whether white or black has the most contrast with the background, and apply the winner as the element's `color` style.

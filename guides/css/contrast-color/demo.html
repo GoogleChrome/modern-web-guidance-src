@@ -69,6 +69,20 @@
     .badge-color {
       --badge-bg: #e02424;
     }
+
+    .button {
+      --button-bg: #b2aeff;
+      background-color: var(--button-bg);
+      color: contrast-color(var(--button-bg));
+    }
+
+    @supports (color: contrast-color(red)) {
+      .button:hover {
+        /* Darken the background; the text color re-derives on its own. 
+           Using var(--button-bg) ensures it works relative to its current state. */
+        --button-bg: oklch(from var(--button-bg) calc(1 - l) c h);
+      }
+    }
   </style>
 </head>
 <body>
@@ -85,6 +99,9 @@
     <div class="badge badge-color" data-testid="badge-color">
       Color Bg
     </div>
+    <button class="badge button button-hover" data-testid="button-hover">
+      Hover Bg
+    </button>
   </div>
 
 </body>
