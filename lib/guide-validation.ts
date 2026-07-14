@@ -471,7 +471,7 @@ export function inventoryGuide(dir: string): GuideInventory {
   if (guideContent) {
     const parsed = matter(guideContent);
     const hasFrontmatter = Object.keys(parsed.data).length > 0 || guideContent.startsWith('---');
-    const hasContent = parsed.content.trim().length > 0;
+    const hasContent = parsed.content.replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
 
     if (hasFrontmatter) {
       isStub = true;
