@@ -97,7 +97,7 @@ function createLocalSymlink(repoRoot: string, distDir: string): void {
 function buildMegaskill(): void {
   const repoRoot = path.resolve(import.meta.dirname, '../..');
 
-  // Validate we are actually rooted in the guidance project
+  // Validate we are actually rooted in the modern-web-guidance-src project
   if (!fs.existsSync(path.join(repoRoot, 'package.json'))) {
     console.error(`Safety Abort: Script must be run from a directory where the repo root can be found (missing package.json in ${repoRoot}).`);
     process.exit(1);
@@ -106,7 +106,7 @@ function buildMegaskill(): void {
   const guidesDir = path.join(repoRoot, 'guides');
   const distDir = path.join(repoRoot, 'skills', 'modern-web');
   const distRefsDir = path.join(distDir, 'references');
-  const existingSkillPath = path.join(guidesDir, 'modern-web-dev.md');
+  const existingSkillPath = path.join(repoRoot, 'serving/megaskill/megaskill.md');
 
   // Create fresh dist directory
   safeRmSync(distDir, 'skills/modern-web');
@@ -126,6 +126,17 @@ function buildMegaskill(): void {
 
   fs.writeFileSync(path.join(distDir, 'SKILL.md'), finalContent);
   console.log(`Generated megaskill successfully in ${distDir}`);
+
+  // Create a symbolic link for prompt-api pointing to language-model.md
+  const promptApiLink = path.join(distRefsDir, "built-in-ai/prompt-api.md");
+  const categoryDir = path.dirname(promptApiLink);
+  if (fs.existsSync(categoryDir)) {
+    if (fs.existsSync(promptApiLink)) {
+      fs.unlinkSync(promptApiLink);
+    }
+    fs.symlinkSync("language-model.md", promptApiLink);
+    console.log("Created prompt-api.md symlink pointing to language-model.md in megaskill references");
+  }
 
   createLocalSymlink(repoRoot, distDir);
 }

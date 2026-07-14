@@ -40,12 +40,9 @@ name: slugified-use-case-name
 description: <do thing> <with feature> (e.g., "Create dynamic color systems using modern color syntax")
 web-feature-ids:
   - webstatus-feature-id
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/Feature
 ---
 ```
 * **web-features**: Must be a list of accurate IDs found via webstatus.dev. Include ALL features referenced in the guide body, not just the primary one. If an ID is missing, inform the USER.
-* **sources**: Must be a list of ALL reference URLs used to synthesize the document. Add any URL referenced in the guide's research or inline links here.
 
 ### 2. Tone and Formatting
 
@@ -86,14 +83,33 @@ If the primary implementation uses features that are not Baseline Widely Availab
 * **Faithfulness:** Fallbacks MUST be faithful to the use case. If the primary recommendation gracefully degrades but ultimately doesn't accomplish the core use case, suggest a different fallback if one is available. Graceful degradation **IS** acceptable for features that enhance, but are otherwise not core to the use case.
 
 #### Baseline Status Macros
-* **MANDATORY:** Include `{{ BASELINE_STATUS("feature-id") }}` for *every* non-widely available feature used.
-* **Placement:** Use separate subsections with their own macros if multiple features are used. **DO NOT** use macros outside the fallback section.
-* **BCD Keys:** **OPTIONAL:** Use `{{ BASELINE_STATUS("feature-id", "bcd.key") }}` if a sub-feature's status differs.
+* **MANDATORY:** Include `{{ FEATURE_FALLBACKS("feature-id") }}` (preferred) or `{{ BASELINE_STATUS("feature-id") }}` as a standalone line for *every* non-widely available feature used.
+  * Prefer `FEATURE_FALLBACKS` even when no `features/<feature-id>.md` exists yet — it gracefully degrades to just the baseline status, and any shared fallback content added later flows in automatically without a guide-side edit.
+  * Use `BASELINE_STATUS` directly only when you need the BCD-key second argument: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
+* **Placement:** Use separate subsections with their own macros if multiple features are used. **DO NOT** use these macros outside the fallback section.
 
 #### Polyfill Guidelines
 * **Conditional Loading:** **MANDATORY:** ALWAYS conditionally load polyfills only when native support is missing. Prefer build-integrated conditional loading (code splitting) over CDNs.
 * **Performance:** **DO NOT** recommend polyfills with significant performance tradeoffs, or those requiring fetching/parsing CSS. Prefer abstractions/userland solutions instead.
 * **Prohibited CDNs:** **DO NOT** recommend polyfills from polyfill.io.
+
+### 6. Build-time macros
+
+| Macro | What it emits |
+|---|---|
+| `{{ BASELINE_STATUS("feature-id"[, "bcd.key"]) }}` | `"Baseline since YYYY-MM-DD"` or `"limited availability"`. |
+| `{{ INCLUDE("path[#section]") }}` | Whole markdown file (frontmatter + leading `# H1` stripped) or one section (its heading dropped). Bare paths resolve from repo root; `./`/`../` resolve relative to the calling file. |
+| `{{ FEATURE("feature-id", "section") }}` | Sugar for `INCLUDE("features/<feature-id>.md#<section>")`. |
+| `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section. If `#fallbacks` is empty, emits only `BASELINE_STATUS` (no heading). |
+| `{{ FEATURE_ISSUES("feature-id") }}` | `### Issues to be aware of when using <Feature name>` + the `#issues` section. Returns `""` if `#issues` is empty/missing. |
+
+* **Errors**: invalid feature ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* (file or section) → silent `""`, so guides can reference content that doesn't exist yet.
+* **Section IDs**: slugified heading text (`### Fallback strategies` → `fallback-strategies`), or an explicit `{#id}` suffix on the heading.
+* **Recursion**: macros inside transcluded content expand normally. No cycle detection — don't write self-referential includes.
+
+### 7. Reusing per-feature content via `features/`
+
+When the same feature-level content (intro, fallback patterns, a11y, gotchas) applies to multiple guides, extract it into `features/<feature-id>.md` and pull it in with the macros above. Rule of thumb: extract if two or more guides cover the same `web-feature-id` and repeat the same advice. Standard section names: `## Fallbacks` (used by `FEATURE_FALLBACKS`), `## Issues` (used by `FEATURE_ISSUES`); add others as needed and pull them with `FEATURE`. Verify your include resolved by inspecting the build output (`serving/build/guides/<category>/<id>.md`) — silent misses won't fail the build.
 
 ## Authoring `expectations.md` and  `demo.html`
 

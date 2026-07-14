@@ -1,4 +1,4 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, parseResultKey, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -7,6 +7,10 @@ let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentServingFilter = 'all';
 let currentModelFilter = 'all';
+
+// Guides Pivot Table Sort State
+let currentGuideSort = 'alphabetic';
+let currentGuideSortDir = 'asc';
 
 function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
@@ -22,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Initialize UI
         setupTestFilters(); // New filter setup
         setupTableFilters();
+        setupInsightsTimelineFilters();
 
         const params = new URLSearchParams(window.location.search);
         
@@ -168,6 +173,35 @@ function setupTableFilters() {
     });
 }
 
+function setupInsightsTimelineFilters() {
+    const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
+
+    if (limitInput) {
+        limitInput.addEventListener('change', () => {
+            let val = parseInt(limitInput.value);
+            if (isNaN(val) || val < 1) val = 15;
+            limitInput.value = val.toString();
+            renderPivotInsights();
+        });
+        limitInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                limitInput.blur();
+            }
+        });
+    }
+
+    if (showAllCheck) {
+        showAllCheck.addEventListener('change', () => {
+            if (limitInput) {
+                limitInput.disabled = showAllCheck.checked;
+                limitInput.style.opacity = showAllCheck.checked ? '0.5' : '1';
+            }
+            renderPivotInsights();
+        });
+    }
+}
+
 function syncSelectStyles(el) {
     el.classList.toggle('is-filtered', el.value !== 'all');
 }
@@ -304,12 +338,21 @@ async function loadLocalTests() {
 
 async function loadRemoteTests() {
     try {
-        // Fetch from GCS JSON API directly instead of our node proxy
-        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/`);
-        if (!response.ok) throw new Error('Failed to fetch remote suites');
+        const prefixes = [];
+        let pageToken = '';
         
-        const data = await response.json();
-        const prefixes = data.prefixes || [];
+        // Paginate GCS to retrieve all prefixes without truncation limits
+        do {
+            const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+            const response = await authenticatedFetch(url);
+            if (!response.ok) throw new Error('Failed to fetch remote suites');
+            
+            const data = await response.json();
+            if (data.prefixes) {
+                prefixes.push(...data.prefixes);
+            }
+            pageToken = data.nextPageToken || '';
+        } while (pageToken);
         
         if (prefixes.length > 0) {
              document.getElementById('empty-state').style.display = 'none';
@@ -508,25 +551,34 @@ function renderSuites() {
         let maxRuns = 1;
         scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
 
+        const earlyFailureRate = data.summary?.unguidedEarlyFailureRate || 0;
+        const isFaulty = earlyFailureRate === 100;
+
+        const { label, ldap } = formatSuiteLabel(testInfo);
+
         html += `
-            <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
+            <tr class="suite-table-row ${isFaulty ? 'faulty' : ''}">
                 <td style="text-align: left; font-weight: 600;">
-                    <div style="color: var(--text-primary); font-size: 0.95rem;">${testId}</div>
-                    <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span></div>
+                    <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
+                        <div style="color: var(--text-primary); font-size: 0.95rem;" title="${escapeHtml(testId)}">${escapeHtml(label)}</div>
+                        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span>${ldap ? ` • <span>${escapeHtml(ldap)}</span>` : ''}</div>
+                    </a>
                 </td>
-                <td>${testInfo.agent}</td>
+                <td>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
                 <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${escapeHtml(testInfo.model).replaceAll('-', '-&shy;')}</td>
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
-                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 10px 15px; vertical-align: middle;">
-                    <div style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; position: relative; padding: 2px;">
-                        <div style="position: absolute; left: calc(${uRate}% - 3px); width: 6px; height: 6px; border: 1.5px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                        <div style="position: absolute; left: calc(${gRate}% - 4px); width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                        <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px); height: 2px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
-                        <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
-                    </div>
+                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
+                    <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
+                        <div class="suite-dumbbell-track">
+                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px);"></div>
+                            <div class="dot unguided" style="left: calc(${uRate}% - 3px);"></div>
+                            <div class="dot guided" style="left: calc(${gRate}% - 4px);"></div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
+                            <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
+                        </div>
+                    </a>
                 </td>
                 ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
@@ -598,7 +650,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
 
     if (!tooltipChartInstance) {
         tooltipChartInstance = new DumbbellChart('tooltip-chart', {
-            size: 400, height: 300, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
+            size: 270, maxHeight: 250, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
         });
     }
 
@@ -646,6 +698,64 @@ function hideTooltipChart() {
 // HELPERS
 // ==========================================
 
+function formatSuiteLabel(testInfo) {
+    const { testId, agent, serving } = testInfo;
+    if (!testId) return { label: 'evaluation-run', ldap: '' };
+
+    const timeRegex = /[-_]?\b\d{4}-\d{2}-\d{2}(?:[T_]\d{2}-\d{2}-\d{2})?\b[-_]?/;
+    const parts = testId.split(timeRegex);
+    
+    let prefix = parts[0] || '';
+    let suffix = parts[1] || '';
+    
+    prefix = prefix.replace(/^[-_]+|[-_]+$/g, '');
+    suffix = suffix.replace(/^[-_]+|[-_]+$/g, '');
+    
+    const label = prefix || 'evaluation-run';
+    
+    if (!suffix) return { label, ldap: '' };
+    
+    const normalize = s => (s || '').toLowerCase().replace(/[-_]+/g, '');
+    const normAgent = normalize(agent);
+    const normServing = normalize(serving);
+    
+    const suffixParts = suffix.split('-');
+    let ldap = '';
+    const otherTags = [];
+    
+    suffixParts.forEach(part => {
+        const normPart = normalize(part);
+        if (normPart === normAgent || normPart === normServing) return;
+        if (normPart === 'cli' || normPart === 'run' || normPart === 'skills') return;
+        otherTags.push(part);
+    });
+    
+    if (otherTags.length > 0) {
+        ldap = otherTags.pop();
+    }
+    
+    let finalLabel = label;
+    if (otherTags.length > 0) {
+        finalLabel += '-' + otherTags.join('-');
+    }
+    
+    return { label: finalLabel, ldap };
+}
+
+function getAgentBadge(agentName) {
+    const name = (agentName || '').toLowerCase();
+    if (name.includes('gemini') || name.includes('jetski')) {
+        return '<span class="agent-badge gemini">✦</span>';
+    }
+    if (name.includes('codex') || name.includes('openai')) {
+        return '<span class="agent-badge openai">❂</span>';
+    }
+    if (name.includes('claude')) {
+        return '<span class="agent-badge claude">✱</span>';
+    }
+    return '';
+}
+
 function calculateGroupTotalStats(results, groupType) {
     let passed = 0;
     let total = 0;
@@ -676,11 +786,43 @@ function getSortedTestIds() {
 }
 
 function renderPivotInsights() {
-    const testIds = getSortedTestIds(); // Uses selected filters!
+    let testIds = getSortedTestIds(); // Uses selected filters!
+
+    const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
+    const showAll = showAllCheck ? showAllCheck.checked : false;
+    const limit = limitInput ? (parseInt(limitInput.value) || 15) : 15;
+
+    if (!showAll && testIds.length > 0) {
+        // Get all unique dates for these test runs
+        const datesMap = new Map();
+        testIds.forEach(id => {
+            const testInfo = allTestData[id];
+            if (testInfo) {
+                const dateKey = testInfo.timestamp.split('T')[0];
+                datesMap.set(dateKey, true);
+            }
+        });
+        
+        // Sort dates chronologically
+        const sortedDates = Array.from(datesMap.keys()).sort((a, b) => a.localeCompare(b));
+        
+        // Slice the last N dates
+        const activeDates = new Set(sortedDates.slice(-limit));
+        
+        // Filter testIds to only include runs falling on active dates
+        testIds = testIds.filter(id => {
+            const testInfo = allTestData[id];
+            if (!testInfo) return false;
+            const dateKey = testInfo.timestamp.split('T')[0];
+            return activeDates.has(dateKey);
+        });
+    }
     const grouped = {
         agent: {},
         serving: {},
-        model: {}
+        model: {},
+        guide: {}
     };
 
     testIds.forEach(compoundKey => {
@@ -702,6 +844,38 @@ function renderPivotInsights() {
 
         if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
         grouped.model[testInfo.model].push({ uplift, uRate, gRate });
+
+        // Calculate guide-specific statistics for this test run
+        const suiteGuides = {};
+        if (data.results) {
+            Object.keys(data.results).forEach(key => {
+                const parsedKey = parseResultKey(key);
+                if (parsedKey) {
+                    const { guide, runType } = parsedKey;
+                    if (!suiteGuides[guide]) {
+                        suiteGuides[guide] = {
+                            guided: { passed: 0, total: 0 },
+                            unguided: { passed: 0, total: 0 }
+                        };
+                    }
+                    data.results[key].forEach(run => {
+                        const s = getRunStats(run.results);
+                        suiteGuides[guide][runType].passed += s.passed;
+                        suiteGuides[guide][runType].total += s.total;
+                    });
+                }
+            });
+        }
+
+        Object.keys(suiteGuides).forEach(guide => {
+            const gG = suiteGuides[guide].guided;
+            const uG = suiteGuides[guide].unguided;
+            const gG_rate = gG.total > 0 ? Math.round((gG.passed / gG.total) * 100) : 0;
+            const uG_rate = uG.total > 0 ? Math.round((uG.passed / uG.total) * 100) : 0;
+            const uG_uplift = gG_rate - uG_rate;
+            if (!grouped.guide[guide]) grouped.guide[guide] = [];
+            grouped.guide[guide].push({ uplift: uG_uplift, uRate: uG_rate, gRate: gG_rate });
+        });
     });
 
     const getDumbbellMedian = (arr) => {
@@ -711,26 +885,93 @@ function renderPivotInsights() {
         return sorted[mid];
     };
 
+    const calculateSD = (vals) => {
+        if (vals.length <= 1) return 0;
+        const mean = vals.reduce((sum, v) => sum + v, 0) / vals.length;
+        const variance = vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / vals.length;
+        return Math.sqrt(variance);
+    };
+
     const renderPivotTable = (groupObj, filterKey) => {
+        let keys = Object.keys(groupObj);
+
+        if (filterKey === 'guide') {
+            keys.sort((a, b) => {
+                const itemA = getDumbbellMedian(groupObj[a]);
+                const itemB = getDumbbellMedian(groupObj[b]);
+
+                let valA, valB;
+                if (currentGuideSort === 'alphabetic') {
+                    valA = a.toLowerCase();
+                    valB = b.toLowerCase();
+                } else if (currentGuideSort === 'uplift') {
+                    valA = itemA.uplift;
+                    valB = itemB.uplift;
+                } else if (currentGuideSort === 'unguided') {
+                    valA = itemA.uRate;
+                    valB = itemB.uRate;
+                } else if (currentGuideSort === 'guided') {
+                    valA = itemA.gRate;
+                    valB = itemB.gRate;
+                } else if (currentGuideSort === 'variance') {
+                    const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
+                    const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
+                    valA = Math.max(sdUA, sdGA);
+
+                    const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
+                    const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
+                    valB = Math.max(sdUB, sdGB);
+                }
+
+                if (valA < valB) return currentGuideSortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentGuideSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        } else {
+            // Default alphabetical sort for others
+            keys.sort((a, b) => a.localeCompare(b));
+        }
+
+        const showVariance = filterKey === 'guide';
+
         let rowsHtml = '';
-        Object.keys(groupObj).forEach(key => {
+        keys.forEach(key => {
             const items = groupObj[key];
             const medianItem = getDumbbellMedian(items);
             const medUplift = medianItem.uplift;
             const uRate = medianItem.uRate;
             const gRate = medianItem.gRate;
 
+            // Calculate Standard Deviation
+            const uSD = showVariance ? calculateSD(items.map(item => item.uRate)) : 0;
+            const gSD = showVariance ? calculateSD(items.map(item => item.gRate)) : 0;
+
+            const uSD_left = Math.max(0, uRate - uSD);
+            const uSD_width = Math.min(100, uRate + uSD) - uSD_left;
+
+            const gSD_left = Math.max(0, gRate - gSD);
+            const gSD_width = Math.min(100, gRate + gSD) - gSD_left;
+
+            const clickAttr = filterKey === 'guide'
+                ? `onclick="window.location.href='guide.html?guide=${encodeURIComponent(key)}'"`
+                : `onclick="setInsightFilter('${filterKey}', '${key}')"`;
+
+            const uBandHtml = uSD > 0 ? `<div class="variance-band unguided" style="left: ${uSD_left}%; width: ${uSD_width}%;"></div>` : '';
+            const gBandHtml = gSD > 0 ? `<div class="variance-band guided" style="left: ${gSD_left}%; width: ${gSD_width}%;"></div>` : '';
+
             rowsHtml += `
-                <tr onclick="setInsightFilter('${filterKey}', '${key}')" style="cursor: pointer;">
+                <tr ${clickAttr} style="cursor: pointer;">
                     <td>
                         <div style="font-weight: 600;">${filterKey === 'serving' ? (servingDisplayNames[key] || key) : key}</div>
                         <div style="font-size: 0.75rem; color: var(--text-secondary);">${items.length} trials</div>
                     </td>
-                    <td style="width: 120px; vertical-align: middle;">
-                        <div style="height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; position: relative; padding: 1px; width: 100px;">
-                            <div style="position: absolute; left: calc(${uRate}% - 2px); width: 4px; height: 4px; border: 1px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                            <div style="position: absolute; left: calc(${gRate}% - 3px); width: 6px; height: 6px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                            <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px); height: 1.5px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
+                    <td class="insight-dumbbell-cell">
+                        <div class="insight-dumbbell-track">
+                            ${uBandHtml}
+                            ${gBandHtml}
+                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px);"></div>
+                            <div class="dot unguided" style="left: calc(${uRate}% - 2px);"></div>
+                            <div class="dot guided" style="left: calc(${gRate}% - 3px);"></div>
                         </div>
                         <div style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 2px;">${medUplift >= 0 ? '+' : ''}${medUplift}%</div>
                     </td>
@@ -742,20 +983,72 @@ function renderPivotInsights() {
 
     const container = document.getElementById('insights-container');
     if (container) {
+        const sortOptions = [
+            { value: 'alphabetic', label: 'Alphabetic' },
+            { value: 'uplift', label: 'By Uplift' },
+            { value: 'unguided', label: 'Unguided Rate' },
+            { value: 'guided', label: 'Guided Rate' },
+            { value: 'variance', label: 'By Variance' }
+        ];
+
+        const sortOptionsHtml = sortOptions.map(opt => 
+            `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
+
         container.innerHTML = `
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Agent</div>
-                ${renderPivotTable(grouped.agent, 'agent')}
+            <div class="insights-top-row">
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Agent</div>
+                    ${renderPivotTable(grouped.agent, 'agent')}
+                </div>
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Serving</div>
+                    ${renderPivotTable(grouped.serving, 'serving')}
+                </div>
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Model</div>
+                    ${renderPivotTable(grouped.model, 'model')}
+                </div>
             </div>
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Serving</div>
-                ${renderPivotTable(grouped.serving, 'serving')}
-            </div>
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Model</div>
-                ${renderPivotTable(grouped.model, 'model')}
+            <div class="insights-panel insights-panel-full">
+                <div class="insights-panel-header-row">
+                    <div class="insights-panel-title" style="margin-bottom: 0;">By Guide</div>
+                    <div class="guide-sort-controls">
+                        <span class="sort-label">Sort:</span>
+                        <select id="guide-sort-select" class="sort-select">
+                            ${sortOptionsHtml}
+                        </select>
+                        <button id="guide-sort-dir-btn" class="sort-direction-btn" title="Toggle Direction">
+                            <span style="font-size: 1rem; font-weight: bold;">${dirArrow}</span>
+                        </button>
+                    </div>
+                </div>
+                ${renderPivotTable(grouped.guide, 'guide')}
             </div>
         `;
+
+        // Attach Event Listeners
+        const sortSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById('guide-sort-select'));
+        const sortDirBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('guide-sort-dir-btn'));
+
+        if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+                const target = e.target;
+                if (target instanceof HTMLSelectElement) {
+                    currentGuideSort = target.value;
+                    renderPivotInsights();
+                }
+            });
+        }
+
+        if (sortDirBtn) {
+            sortDirBtn.addEventListener('click', () => {
+                currentGuideSortDir = currentGuideSortDir === 'asc' ? 'desc' : 'asc';
+                renderPivotInsights();
+            });
+        }
     }
 }
 

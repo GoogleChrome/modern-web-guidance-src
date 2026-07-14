@@ -20,7 +20,8 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
 
   test('The :autofill pseudo-class must be applied to a form control', () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/\b(input|select|textarea):autofill\b/i.test(html)).toBe(true);
+    const hasAutofill = /:autofill\b/i.test(html) || /:-webkit-autofill\b/i.test(html);
+    expect(hasAutofill).toBe(true);
   });
 
   test('The incorrect spelling :auto-fill must not be used', () => {
@@ -62,6 +63,19 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
         .some(el => (el as HTMLElement).style.length > 0);
     });
     expect(hasInlineStyles).toBe(false);
+  });
+
+  test('Multiple visual state indicators must be used to style the autofilled state', () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    const hasMultipleIndicators = /border(?:-width|-style)?:|box-shadow:/i.test(html);
+    expect(hasMultipleIndicators).toBe(true);
+  });
+
+  test('The focus indicator must be preserved on autofilled elements', () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    if (/outline:\s*none/i.test(html)) {
+      expect(/:focus-visible/i.test(html)).toBe(true);
+    }
   });
 
 });

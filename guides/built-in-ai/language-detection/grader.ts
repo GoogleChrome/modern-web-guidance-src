@@ -104,6 +104,10 @@ test.describe(`Language Detection Expectations: ${demoName}`, () => {
     // Trigger potential interactions (e.g., buttons in negative-demo.html)
     const detectButton = page.locator('button', { hasText: /detect/i });
     if (await detectButton.count() > 0) {
+      const input = page.locator('textarea, input[type="text"]');
+      if (await input.count() > 0) {
+        await input.first().fill('Hallo und herzlich willkommen!');
+      }
       await detectButton.click();
     }
 

@@ -11,22 +11,6 @@ The primary goal of this stage is to translate a technical web platform feature 
 2. Stage 2: Authoring guidance for a use case
 3. Stage 3: Evaluating guidance for a use case
 
-## Research and discovery
-
-Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, use the `project-use-cases-research` skill to perform grounded research. This skill guides you through using your own tools and optional automated deep research to surface authoritative sources and real-world implementations.
-
-### Using `project-use-cases-research`
-
-Refer to the `project-use-cases-research` skill file for detailed instructions on how to:
-1.  **Gather inputs** from GitHub issues or arguments.
-2.  **Conduct standard research** using `search_web` and `read_url_content`.
-3.  **Run optional automated deep research** using the `deep_research.js` script.
-
-The process will result in:
-1.  A research report saved to `guides/.research/<feature-id>.md`.
-2.  Proposed use cases that follow the constraints described in this skill.
-3.  Scaffolded `guide.md` and `demo.html` stubs.
-
 ## Identifying action-oriented tasks
 
 A "use case" in this project is not a description of a feature; it's a task that the user is trying to implement, or a problem they're trying to solve. The feature is only relevant in the sense that it's part of the recommended solution for the use case.
@@ -41,6 +25,9 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
 * **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage. If the implementation across proposed use cases is 90% identical, consolidate them.
 * **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline skill file.
+* **Granular Guide Decomposition (Avoid Monoliths)**: For discipline-level guides, ensure the guidance is broken down into granular "subskills" (i.e., smaller, focused guides) rather than a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously. The primary discipline-level guide (e.g., `guides/css/css/guide.md` or `guides/performance/performance/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for the discipline, explaining when and how to reference each granular subskill guide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+
+
 
 
 ## Minimizing overlap
@@ -64,7 +51,13 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 2: Choose a category**
 
-  Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`performance`](/guides/performance) or [`accessibility`](/guides/accessibility). List the current subdirectories under `guides/` and choose the most appropriate one. If a use case doesn't fit into any of these categories, create a new one.
+  Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`motion`](/guides/motion) or [`performance`](/guides/performance). List the current subdirectories under `guides/` and choose the most appropriate one.
+
+  **Categorize by the use case, not the implementation.** This is the "WHAT not HOW" principle applied to taxonomy: a category should name the user's goal (`motion`, `overlays`, `datetime`, `typography`), not the technology used to achieve it. Quick test: *could someone who understands the use case but can't write the code file it correctly?* If the only way to know where a guide belongs is to know which API it uses, the category is implementation-shaped. Two guides solving the same goal with different tech (e.g. a tab underline that morphs via anchor positioning vs. view transitions) belong in the **same** category.
+
+  Some categories are named after a technology domain (`css`, `html`, `canvas`) because they are anchored by a comprehensive reference guide for that technology (e.g. `html/html/guide.md`). These are valid homes for use cases genuinely about that technology, or that don't yet have enough siblings to form a use-case cluster.
+
+  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. (This is why the catch-all `user-experience` category was removed: UX is a vertical every guide addresses, not a bucket of its own.)
 
 * **Step 3: Create the use case subdirectory**
 
@@ -81,7 +74,6 @@ The following steps are REQUIRED for creating a new use case:
   - **name**: Short, slugified name of the use case.
   - **description**: Action-oriented description of the use case.
   - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
-  - **sources**: List of primary source URLs used to synthesize the document. Do NOT guess these. The user should provide them.
 
   For example:
 
@@ -92,8 +84,6 @@ The following steps are REQUIRED for creating a new use case:
   web-feature-ids:
     - fetch-priority
     - fetch
-  sources:
-    - https://web.dev/articles/fetch-priority
   ---
   ```
 

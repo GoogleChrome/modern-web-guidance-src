@@ -1,36 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Detect Initial Visibility State Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detect Initial Visibility State Demo</title>
 </head>
-
 <body>
-  <h1>Detect Initial Visibility State</h1>
+    <h1>Visibility State Detection</h1>
+    <div id="results">Loading...</div>
 
-  <p>This page reliably determines whether it was initially loaded in the background,
-    even if this script runs after the page has already been foregrounded.</p>
-  <p><a href="demo.html">Cmd/Ctrl+Click to open this page in a background tab</a></p>
-  <button id="check">Check initial visibility state</button>
-  <p id="result"></p>
+    <script>
+        /**
+         * Reliably detects the initial visibility state and timing using the Performance Timeline.
+         */
+        function getInitialVisibilityReport() {
+            const entries = performance.getEntriesByType('visibility-state');
 
-  <script>
-    function getInitialVisibilityState() {
-      const entries = performance.getEntriesByType('visibility-state');
-      if (entries.length > 0) {
-        return entries[0].name;
-      }
-      // Fallback for browsers that don't support VisibilityStateEntry.
-      return document.visibilityState;
-    }
+            if (entries.length > 0) {
+                const initialEntry = entries[0];
+                const wasInitiallyBackgrounded = initialEntry.name === 'hidden';
+                const firstHiddenEntry = entries.find(entry => entry.name === 'hidden');
+                const backgroundedTime = firstHiddenEntry ? firstHiddenEntry.startTime : null;
 
-    document.getElementById('check').addEventListener('click', () => {
-      const initialState = getInitialVisibilityState();
-      document.getElementById('result').textContent =
-          `Initial visibility state: ${initialState}`;
-    });
-  </script>
+                return {
+                    method: 'VisibilityStateEntry',
+                    wasInitiallyBackgrounded,
+                    backgroundedTime,
+                    allTransitions: entries.map(e => ({ state: e.name, time: e.startTime }))
+                };
+            }
+
+            return getVisibilityFallback();
+        }
+
+        /**
+         * Fallback detection using document.visibilityState.
+         */
+        function getVisibilityFallback() {
+            const wasInitiallyBackgrounded = document.visibilityState === 'hidden';
+            const backgroundedTime = wasInitiallyBackgrounded ? 0 : null;
+
+            return {
+                method: 'document.visibilityState',
+                wasInitiallyBackgrounded,
+                backgroundedTime,
+                isReliable: false
+            };
+        }
+
+        const report = getInitialVisibilityReport();
+        document.getElementById('results').innerHTML = `
+            <p>Method: ${report.method}</p>
+            <p>Was initially backgrounded: <strong>${report.wasInitiallyBackgrounded}</strong></p>
+            <p>Backgrounded time: ${report.backgroundedTime}ms</p>
+            ${report.isReliable === false ? '<p style="color: orange">Warning: This result may be unreliable due to lack of API support.</p>' : ''}
+        `;
+        console.log('Visibility Report:', report);
+    </script>
 </body>
-
 </html>

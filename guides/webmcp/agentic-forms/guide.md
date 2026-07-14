@@ -3,8 +3,6 @@ name: agentic-forms
 description: Expose client-side functionality as tools to AI agents by annotating standard HTML forms with WebMCP attributes.
 web-feature-ids:
   - declarative-webmcp
-sources:
-  - https://webmachinelearning.github.io/webmcp/
 ---
 
 The Declarative API transforms standard HTML `<form>` elements into WebMCP tools via attributes. The browser synthesizes a JSON Schema from the form inputs and handles agent interactions.
@@ -107,6 +105,16 @@ The Declarative API is best for self-contained, standard forms. It is a poor cho
 * **Highly Dependent Fields**: Forms where inputs change options or visibility based on other inputs. The synthesized schema cannot express these dependencies well.
 * **Custom UI Components**: Forms relying on non-standard inputs (e.g., canvas, rich text editors) that don't auto-serialize values.
 * **Multi-Step Wizards**: Complex workflows requiring multiple form submissions. The Imperative API or standard DOM interaction is better suited here.
+
+## When to use toolautosubmit
+* **Read-Only Operations & Queries**: Searches, filters, fetching details, or checking status (e.g., a car model search, searching a directory, checking stock availability).
+* **Low-Risk, Reversible Actions**: Form actions that can easily be undone or refined by the user manually (e.g., adding items to a cart, applying a coupon code, saving a draft, or setting temporary layout options).
+
+## When to omit toolautosubmit
+* **Destructive or Irreversible Actions**: Deleting records, resetting system configurations, or clearing databases.
+* **Financial & Transactional Actions**: Submitting a checkout form, transferring funds, authorizing subscription payments, or final order placements.
+* **High-Impact User Communication**: Submitting a final job application, sending emails/messages to other real users, or publishing public-facing content.
+* **Sensitive Account Settings**: Changing passwords, modifying user roles/permissions, or updating billing/profile info.
 
 ## Fallback strategies
 

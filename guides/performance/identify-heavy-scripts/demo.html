@@ -21,7 +21,7 @@
         // local file, instead of from a server.
         for (const script of entry.scripts) {
           // Console log for now, but in a real application would want to beacon
-          // back to an anlytics endpoint
+          // back to an analytics endpoint
           console.log(`Script execution time: ${script.duration} ms`);
           console.log(`Function: ${script.sourceFunctionName || '(anonymous)'}`);
           console.log(`URL: ${script.sourceURL}:${script.sourceCharPosition}`);

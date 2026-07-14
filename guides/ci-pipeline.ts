@@ -1,10 +1,18 @@
-import { runCommand, escapeLeftAngleBracket } from './lib/utils.ts';
-import { lookupFeature, type PassRates } from './guide-gen.ts';
+import { runCommand, escapeLeftAngleBracket, type PassRates } from './lib/utils.ts';
+import { features } from 'web-features';
 
 export interface UseCase {
   slug: string;
   description: string;
   category: string;
+}
+
+export function lookupFeature(featureId: string): { name: string, description: string } {
+  const feat = features[featureId] as any;
+  if (!feat) {
+    return { name: featureId, description: 'No description available' };
+  }
+  return { name: feat.name || featureId, description: feat.description || '' };
 }
 
 export function constructPRBody(featureId: string, useCases: UseCase[], passRates?: Record<string, PassRates>): string {

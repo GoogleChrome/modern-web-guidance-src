@@ -1,0 +1,112 @@
+[
+  {
+    "testId": "nightly-2026-07-06_17-47-00-codex_cli",
+    "timestamp": "2026-07-06T18:13:55.196Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 57,
+    "guidedPassRate": 84
+  },
+  {
+    "testId": "nightly-2026-07-06_17-14-05-claude_code",
+    "timestamp": "2026-07-06T17:45:22.804Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-sonnet-5",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 52,
+    "guidedPassRate": 87
+  },
+  {
+    "testId": "nightly-2026-07-06_17-00-02-agy",
+    "timestamp": "2026-07-06T17:12:19.038Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 54,
+    "guidedPassRate": 87
+  },
+  {
+    "testId": "nightly-2026-07-03_17-40-24-codex_cli",
+    "timestamp": "2026-07-03T18:07:57.167Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 52,
+    "guidedPassRate": 78
+  },
+  {
+    "testId": "nightly-2026-07-03_17-09-43-claude_code",
+    "timestamp": "2026-07-03T17:38:45.936Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-sonnet-5",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 48,
+    "guidedPassRate": 82
+  },
+  {
+    "testId": "nightly-2026-07-01_17-22-16-claude_code",
+    "timestamp": "2026-07-01T17:52:10.504Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-sonnet-5",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 49,
+    "guidedPassRate": 84
+  },
+  {
+    "testId": "nightly-2026-07-01_17-00-02-agy",
+    "timestamp": "2026-07-01T17:20:39.021Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 53,
+    "guidedPassRate": 83
+  },
+  {
+    "testId": "nightly-2026-06-29_17-44-09-codex_cli",
+    "timestamp": "2026-06-29T18:14:07.308Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 51,
+    "guidedPassRate": 78
+  },
+  {
+    "testId": "nightly-2026-06-29_17-14-38-claude_code",
+    "timestamp": "2026-06-29T17:42:45.891Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-4-8",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 53,
+    "guidedPassRate": 88
+  },
+  {
+    "testId": "nightly-2026-06-29_17-00-01-agy",
+    "timestamp": "2026-06-29T17:13:08.922Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 129,
+    "assertionCount": 1071,
+    "unguidedPassRate": 50,
+    "guidedPassRate": 78
+  }
+]

@@ -37,39 +37,51 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
 
   // Functional / Static Tests
 
+  // Read all HTML and JS files in targetDir to support modular JS practices
+  const getSearchContent = () => {
+    const files = [filePath];
+    try {
+      const jsFiles = fs.readdirSync(targetDir).filter(f => f.endsWith('.js'));
+      for (const jsFile of jsFiles) {
+        files.push(path.join(targetDir, jsFile));
+      }
+    } catch (e) {}
+    return files.map(f => fs.readFileSync(f, 'utf-8')).join('\n');
+  };
+
   test('fetchLater API is invoked with a valid DeferredRequestInit (no ReadableStream)', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toMatch(/new\s+ReadableStream/);
+    const content = getSearchContent();
+    expect(content).not.toMatch(/new\s+ReadableStream/);
   });
 
   test('XMLHttpRequest is not used as an alternative beacon API', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toMatch(/\bnew\s+XMLHttpRequest\b/);
+    const content = getSearchContent();
+    expect(content).not.toMatch(/\bnew\s+XMLHttpRequest\b/);
   });
 
   test('Image is not used as an alternative beacon API', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toMatch(/\bnew\s+Image\b/);
+    const content = getSearchContent();
+    expect(content).not.toMatch(/\bnew\s+Image\b/);
   });
 
   test('fetchLater is invoked with the activateAfter option', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/activateAfter\s*:/);
+    const content = getSearchContent();
+    expect(content).toMatch(/activateAfter\s*:/);
   });
 
   test('Batch queue size is limited to prevent quota overflow', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/length\s*[>=]+\s*[A-Z0-9_]+/i);
+    const content = getSearchContent();
+    expect(content).toMatch(/length\s*[>=]+\s*[A-Z0-9_]+/i);
   });
 
   test('fetchLater calls are wrapped in try/catch to handle errors', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/catch\s*\(\s*[a-zA-Z0-9_]+\s*\)/);
+    const content = getSearchContent();
+    expect(content).toMatch(/catch\s*\(\s*[a-zA-Z0-9_]+\s*\)/);
   });
 
   test('fetchLater polyfill is included in the codebase', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/globalThis\.fetchLater\s*\?\?=/);
+    const content = getSearchContent();
+    expect(content).toMatch(/globalThis\.fetchLater\s*\?\?=/);
   });
 
   // Browser / Dynamic Tests
@@ -100,6 +112,11 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
+    // Click multiple times to trigger multiple metric dispatches (INP)
+    await page.click('body');
+    await page.waitForTimeout(50);
+    await page.click('body');
+    await page.waitForTimeout(50);
     await page.click('body');
 
     const abortCount = await page.evaluate(() => window.abortCallCount);

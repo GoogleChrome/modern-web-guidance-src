@@ -5,7 +5,7 @@ import type { APIRoute } from 'astro';
 export const GET: APIRoute = async ({ params, request }) => {
     const articles = await getCollection('articles');
     const formattedArticles = articles.map(article => ({
-        slug: article.slug,
+        slug: article.id,
         title: article.data.title,
         summary: article.data.summary,
         image: article.data.image,

@@ -49,8 +49,8 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
             <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
             <ul className="space-y-2 text-sm">
                 {topStories.map(article => (
-                    <li key={article.slug}>
-                        <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="hover:underline">{article.data.title}</a>
+                    <li key={article.id}>
+                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} className="hover:underline">{article.data.title}</a>
                     </li>
                 ))}
             </ul>

@@ -13,7 +13,7 @@ export interface Props {
 const { article, large = false } = Astro.props;
 const image = await getArticleImage(article);
 const readingList = await Astro.session?.get('readingList') || [];
-const isBookmarked = readingList.includes(article.slug);
+const isBookmarked = readingList.includes(article.id);
 const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
 ---
 {large ? (
@@ -21,7 +21,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-1 flex flex-col">
                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} class="flex-grow">
+                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
                     <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
                         {article.data.title}
                     </h1>
@@ -34,11 +34,11 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
                         <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
                         {article.data.readingTime} Min.
                     </span>
-                    <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
                 </div>
             </div>
             <div class="lg:col-span-2">
-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`}>
+                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
                     <Image 
                         src={image} 
                         alt=""
@@ -53,7 +53,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
     </div>
 ) : (
     <article class="flex flex-col h-full group">
-        <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`}>
+        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
             <Image 
                 src={image} 
                 alt={article.data.title} 
@@ -65,7 +65,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
         </a>
         <div class="flex flex-col flex-grow mt-3">
             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
-            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} class="flex flex-col">
+            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
                 <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
                     {article.data.title}
                 </h3>
@@ -76,7 +76,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
                     {article.data.readingTime} Min.
                 </span>
-                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
             </div>
         </div>
     </article>

@@ -77,6 +77,14 @@
       contain-intrinsic-size: 320px 800px;
     }
 
+    /* Fallback for browsers that do not support content-visibility */
+    @supports not (content-visibility: auto) {
+      .list {
+        /* Manual fallback for containment */
+        contain: layout style paint;
+      }
+    }
+
     .list-header {
       padding: 1rem;
       font-weight: 600;
@@ -108,6 +116,14 @@
          If columns are long, cards far down the list can also defer rendering. */
       content-visibility: auto;
       contain-intrinsic-size: 1px 120px;
+    }
+
+    /* Fallback for browsers that do not support content-visibility */
+    @supports not (content-visibility: auto) {
+      .card {
+        /* Manual fallback for containment */
+        contain: layout style paint;
+      }
     }
 
     .card:active {

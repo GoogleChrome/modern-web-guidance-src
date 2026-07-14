@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guidance Eval Runner</title>
+    <title>Modern Web Guidance Eval Runner</title>
     <link rel="stylesheet" href="eval-ui.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap">
 </head>
@@ -14,7 +14,7 @@
     <div class="dashboard-container">
         <header class="fancy-header">
             <div class="header-text">
-                <div class="logo">Guidance <span>Eval Runner</span></div>
+                <div class="logo">Modern Web Guidance <span>Eval Runner</span></div>
                 <p>Set configurations, interactively select tasks, and run an evaluation.</p>
             </div>
             <button type="submit" class="btn-primary" id="launch-btn-header" form="launch-form">
@@ -63,6 +63,23 @@
                             <input type="hidden" id="serving" value="skills_cli">
                         </div>
                     </div>
+                    
+                    <div class="row" style="margin-top: 1.5rem; align-items: flex-start;">
+                        <div class="input-group" style="flex: 0 0 auto; min-width: 200px;">
+                            <label>Trace</label>
+                            <label class="switch-toggle" style="margin-top: 0.75rem;">
+                                <input type="checkbox" id="includeTrace">
+                                <span class="slider"></span>
+                                <span class="toggle-label">Include on Failure</span>
+                            </label>
+                        </div>
+                        <div class="input-group" style="flex: 1;">
+                            <label>Skills to Enable</label>
+                            <div class="skills-container" id="skills-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;">
+                                <!-- Skill buttons will be injected here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -71,39 +88,6 @@
             </div>
 
             <section class="tasks-section" style="margin-top: 0;">
-                <div class="glass-panel" style="margin-bottom: 30px;">
-                    <div class="panel-header">
-                        <h3 id="discipline-header">Discipline Tasks</h3>
-                        <div class="quick-actions">
-                            <button type="button" class="btn-secondary" id="action-clear-disciplines">Clear All</button>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table id="disciplines-table">
-                            <thead>
-                                <tr id="disciplines-table-headers">
-                                    <th>Discipline</th>
-                                    <th class="checkbox-header">
-                                        <label class="custom-checkbox">
-                                            <input type="checkbox" class="header-check" data-task="task" checked>
-                                            <span class="checkmark"></span>
-                                        </label>
-                                    </th>
-                                    <th class="checkbox-header">
-                                        <label class="custom-checkbox">
-                                            <input type="checkbox" class="header-check" data-task="negative">
-                                            <span class="checkmark"></span>
-                                        </label>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Disciplines go here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
                 <div class="glass-panel">
                     <div class="panel-header">
                         <h3 id="guide-header">Guide Tasks</h3>

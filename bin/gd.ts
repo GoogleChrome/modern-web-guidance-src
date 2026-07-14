@@ -1,4 +1,4 @@
-#!/usr/bin/env node --experimental-strip-types
+#!/usr/bin/env -S node --experimental-strip-types
 
 import { parseArgs } from 'util';
 import path from 'path';
@@ -33,8 +33,6 @@ const ALL_OPTIONS = {
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
-  category: { type: 'string', desc: 'Guide category' },
-  slug: { type: 'string', desc: 'Guide directory name' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
@@ -49,7 +47,7 @@ const COMMAND_METADATA = {
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
-  'gen-guide': { desc: 'Generate guide.md, demo.html, expectations.md from a web-feature-id', flags: ['category', 'slug'] },
+
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -143,8 +141,6 @@ const { positionals, values } = parseArgs({
 
 // --- Helpers ---
 
-
-
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const p = spawn(command, args, { stdio: 'inherit', cwd: rootDir, ...options });
@@ -171,7 +167,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'audit', 'gen-guide'],
+      commands: ['dev', 'audit'],
     },
 
     {
@@ -270,14 +266,6 @@ async function main() {
       process.exit(success ? 0 : 1);
     }
 
-    case 'gen-guide': {
-      const featureId = requireArg(positionals[1], 'gd gen-guide <web-feature-id> [<reviewer-github-username>]');
-      const reviewer = requireArg(positionals[2], 'gd gen-guide <web-feature-id> [<reviewer-github-username>]');
-      const { generateUseCases } = await import('../guides/guide-gen.ts');
-      await generateUseCases(featureId, reviewer);
-      break;
-    }
-
     // not documented because it's UBER-powerful.
     case 'dev-all': {
       const { devAll } = await import('../guides/dev-guide.ts');
@@ -310,13 +298,6 @@ async function main() {
 
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
-      if (values['ui']) {
-        process.env.LAUNCH_UI = 'true';
-        process.chdir(evalViewDir);
-        await import('../eval-view/server.js');
-        break;
-      }
-
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
       let buildCode = 0;
@@ -327,6 +308,13 @@ async function main() {
       }
 
       if (buildCode !== 0) process.exit(buildCode);
+
+      if (values['ui']) {
+        process.env.LAUNCH_UI = 'true';
+        process.chdir(evalViewDir);
+        await import('../eval-view/server.js');
+        break;
+      }
 
       const { runSuite } = await import('../harness/run_suite.ts');
 

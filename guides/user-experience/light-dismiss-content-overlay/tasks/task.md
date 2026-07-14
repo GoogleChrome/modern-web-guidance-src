@@ -1,6 +1,0 @@
----
-base_app: daily-grind
----
-- convert the header nav links into a mobile-friendly side drawer menu. Use a `<button>` with the text 'Menu' as the trigger. The menu should be displayed as an overlay and allow the user to swipe it closed. The background should dim or fade as the user swipes. MANDATORY: The drawer must guarantee it sits above all other page content, and when open, the main page content behind it must be strictly inaccessible to assistive tech and mouse/keyboard interactions.
-- change the top navigation bar into a mobile-friendly drawer menu that you can swipe away. Use a `<button>` with the text 'Menu' as the trigger. MANDATORY: The drawer must confidently sit on the topmost visual layer. Make sure the main content is completely disabled and focus-trapped when the menu is out, and dim the background smoothly as you swipe it closed.
-- implement a slide-out side navigation for the links like 'rewards' and 'locations'. Use a `<button>` with the text 'Menu' as the trigger. MANDATORY: Provide fluid swipe-to-dismiss gestures, and ensure the rest of the page is completely non-interactive so users can't click the 'order now' button by accident or tab into the background while the menu is open.

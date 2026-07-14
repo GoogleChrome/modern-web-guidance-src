@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrollability Affordance Hints</title>
+  <style>
+    .scroller {
+      width: 300px;
+      height: 250px;
+      overflow-y: auto;
+      border: 1px solid #999;
+      background: #fff;
+      font-family: system-ui, sans-serif;
+      position: relative;
+    }
+
+    .shadow-top, .shadow-bottom {
+      position: sticky;
+      left: 0;
+      right: 0;
+      height: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .shadow-top {
+      top: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.2), transparent);
+      margin-bottom: -20px;
+    }
+
+    .shadow-bottom {
+      bottom: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.2), transparent);
+      margin-top: -20px;
+    }
+
+    /* Progressive Enhancement for supported browsers */
+    @supports (container-type: scroll-state) {
+      .scroller {
+        container-type: scroll-state;
+      }
+
+      @container scroll-state(scrollable: top) {
+        .shadow-top {
+          opacity: 1;
+        }
+      }
+
+      @container scroll-state(scrollable: bottom) {
+        .shadow-bottom {
+          opacity: 1;
+        }
+      }
+    }
+
+    /* Fallback using classes toggled by JS */
+    .scroller.scrolled-down .shadow-top {
+      opacity: 1;
+    }
+
+    .scroller.can-scroll-down .shadow-bottom {
+      opacity: 1;
+    }
+
+    /* Sentinel elements styling */
+    .sentinel-top, .sentinel-bottom {
+      height: 1px;
+      width: 0;
+      visibility: hidden;
+    }
+
+    .content {
+      padding: 20px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scroller">
+    <!-- Sentinel at the top -->
+    <div class="sentinel-top"></div>
+    
+    <div class="shadow-top"></div>
+    <div class="content">
+      <p>Scroll down to see the top shadow appear.</p>
+      <p>Lorem ipsum dolor sit amet.</p>
+      <p>Consectetur adipiscing elit.</p>
+      <p>Sed do eiusmod tempor incididunt.</p>
+      <p>Ut labore et dolore magna aliqua.</p>
+      <p>Ut enim ad minim veniam.</p>
+      <p>Quis nostrud exercitation ullamco.</p>
+      <p>Laboris nisi ex ea commodo.</p>
+      <p>At the bottom, the bottom shadow hides.</p>
+    </div>
+    <div class="shadow-bottom"></div>
+    
+    <!-- Sentinel at the bottom -->
+    <div class="sentinel-bottom"></div>
+  </div>
+
+  <script>
+    // Fallback using IntersectionObserver
+    if (!CSS.supports('container-type', 'scroll-state')) {
+      const topSentinel = document.querySelector('.sentinel-top');
+      const bottomSentinel = document.querySelector('.sentinel-bottom');
+      const scroller = document.querySelector('.scroller');
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.target === topSentinel) {
+            scroller.classList.toggle('scrolled-down', !entry.isIntersecting);
+          }
+          if (entry.target === bottomSentinel) {
+            scroller.classList.toggle('can-scroll-down', !entry.isIntersecting);
+          }
+        });
+      }, { root: scroller });
+
+      observer.observe(topSentinel);
+      observer.observe(bottomSentinel);
+    }
+  </script>
+</body>
+</html>

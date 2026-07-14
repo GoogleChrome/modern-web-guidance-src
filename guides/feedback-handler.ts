@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import fs from 'node:fs';
 import { runCommand, runGemini, escapeLeftAngleBracket } from './lib/utils.ts';
-import { parsePassRates, type PassRates } from './guide-gen.ts';
+import { parsePassRates, type PassRates } from './lib/utils.ts';
 
 async function fetchPRContext(prNumber: string): Promise<any> {
   console.log('Fetching PR context via GraphQL...');

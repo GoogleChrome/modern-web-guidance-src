@@ -24,17 +24,27 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         console.log(`\nInstalling Gemini extension locally...`);
         // Use input: 'y\n' to answer the workspace trust prompt cleanly, and stdio: 'inherit' to see it
         execSync(`${geminiBin} extensions install ${distDir} --consent`, { 
-            stdio: 'inherit',
+            stdio: ['pipe', 'inherit', 'inherit'],
             input: 'y\n',
             env: { ...process.env, HOME: homeDir }
         });
 
+        const hasGeminiAuth = process.env.GEMINI_API_KEY;
+        if (!hasGeminiAuth) {
+            console.log(`Skipping Gemini prompt verification because no Gemini API auth environment variables are set.`);
+            return;
+        }
+
         console.log(`\nRunning Gemini prompt using the skill...`);
-        const promptCmd = `${geminiBin} -p "use the modern-web skill and tell me best practices on implementing an address form" -o stream-json --yolo`;
+        const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
+        const env: Record<string, string | undefined> = { ...process.env, HOME: homeDir };
+        if (!env.GEMINI_MODEL) {
+            env.GEMINI_MODEL = 'gemini-3-flash-preview';
+        }
         const output = execSync(promptCmd, { 
             stdio: ['ignore', 'pipe', 'pipe'], 
             timeout: 90000,
-            env: { ...process.env, HOME: homeDir }
+            env
         });
 
         console.log(`\nVerifying Gemini used the skill...`);
@@ -46,7 +56,7 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         console.log(`- Search Called: ${searchCalled}`);
         console.log(`- Retrieve Called: ${retrieveCalled}\n`);
         
-        assert.ok(skillActivated, 'Skill should specify check for modern-web activation');
+        assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
         assert.ok(searchCalled, 'Modern web search should be called');
         assert.ok(retrieveCalled, 'Modern web retrieve should be called');
         

@@ -1,0 +1,5 @@
+- The implementation provides a boolean indicating if the page was initially loaded in the background.
+- The implementation provides the precise time (in milliseconds) that the page was backgrounded.
+- The implementation prefers the `VisibilityStateEntry` API (buffered performance entries) over `document.visibilityState`.
+- The implementation includes a fallback to `document.visibilityState` for unsupported browsers.
+- The implementation correctly identifies that `document.visibilityState` is unreliable for asynchronous scripts.

@@ -58,6 +58,34 @@ test.describe(`Rich Media Picker Expectations: ${demoName}`, () => {
     expect(html).not.toMatch(/addEventListener\(['"]keydown['"]/);
   });
 
+  test('Inline decorative SVG icons inside <option> elements must define aria-hidden="true"', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    const matches = [...html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)];
+    for (const match of matches) {
+      const optInner = match[1];
+      if (/<svg/i.test(optInner)) {
+        expect(/aria-hidden=["']true["']/i.test(optInner)).toBe(true);
+      }
+    }
+  });
+
+  test('Options with complex inner markup must use aria-label', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/<option[^>]*aria-label/i.test(html)).toBe(true);
+  });
+
+  test('The checked state of an option must incorporate multiple visual indicators', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/font-weight:|border/i.test(html)).toBe(true);
+  });
+
+  test('Continuous keyframe animations must be wrapped inside a reduced-motion media query', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    if (/@keyframes/i.test(html)) {
+      expect(/prefers-reduced-motion/i.test(html)).toBe(true);
+    }
+  });
+
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;

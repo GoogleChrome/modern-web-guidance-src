@@ -95,7 +95,7 @@ export async function generateSuitesManifest(outputDir = '.', resultsSourceDir =
  * Generates grouped-tasks.gen.json by scanning guides.
  */
 export async function generateGroupedTasksManifest(outputDir = '.') {
-    const { getTaskMap } = await import('../lib/guide-validation.ts');
+    const { getTaskMap, isDisciplineSkillDir } = await import('../lib/guide-validation.ts');
     const { USE_CASES } = await import('../serving/lib/practices.ts');
     const taskMap = getTaskMap();
     /** @type {Record<string, Record<string, string[]>>} */
@@ -105,10 +105,9 @@ export async function generateGroupedTasksManifest(outputDir = '.') {
     
     for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
-        const parentDir = path.basename(path.dirname(info.guideDir));
-        const isSkill = parentDir === 'guides';
+        const isDisciplineSkill = isDisciplineSkillDir(info.guideDir);
         
-        if (isSkill) {
+        if (isDisciplineSkill) {
             if (!disciplines[guide]) disciplines[guide] = [];
             disciplines[guide].push(task);
         } else {
