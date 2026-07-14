@@ -17,7 +17,8 @@ Last updated: 2026-07-10.
 
 ### People involved
 
-- **~15 subject matter experts**: Google engineers with deep knowledge of specific web features. They write the guides, demo files, and expectations. They contribute via PRs into the `guides/` directory.
+- **Content Area Tech Leads (Content ATLs)**: Domain experts who oversee individual categories (Performance, Forms, Accessibility, etc.), review PRs, triage content quality issues, and manage the category's health.
+- **~15 subject matter experts (SMEs)**: Google engineers with deep knowledge of specific web features. They write the guides, demo files, and expectations. They contribute via PRs into the `guides/` directory.
 - **~3 infrastructure engineers** (Paul, Rick, Micah, and others): Maintain the CLI tooling, eval harness, MCP server, dashboard, and grader generation pipeline.
 
 ### Repository structure
@@ -305,11 +306,15 @@ The architecture is designed so that each group can work independently without n
 
 **Subject Matter Experts (SMEs)** focus exclusively on technical accuracy: understanding edge cases of a web feature, writing clear guidance, building a canonical demo, and defining testable expectations. They are shielded from the underlying Playwright infrastructure and do not need to be functional test engineers. Their deliverables are `guide.md`, `expectations.md`, and `demo.html`.
 
+**Content Area Tech Leads (Content ATLs)** act as domain-level owners for entire categories (Performance, Layout, Forms, etc.). They ensure category health, research gaps, triage content quality/failures, author or review all guidance written in their area, and are responsible for ensuring that all guidance is eval-ready. Their full expectations and responsibilities are detailed in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+
+
 **Infrastructure Engineers** focus on the reliability of the `gd` CLI, the evaluation harness, LLM invocation stability, MCP server correctness, and diagnosing systemic issues (e.g., why guided vs. unguided pass rates show no delta for a particular category of guide).
 
-**The LLM Pipeline (`gd dev`)** bridges the gap between human-authored guidance and the automated evaluation harness. It translates natural-language expectations into executable Playwright test assertions and scaffolds negative test cases, absorbing the friction of maintaining the testing infrastructure. When calibration fails, the retry loop handles most issues automatically — the SME should not need to understand why a Playwright selector was flaky.
+**The LLM Pipeline (`gd dev`)** bridges the gap between human-authored guidance and the automated evaluation harness. It translates natural-language expectations into executable Playwright test assertions and scaffolds negative test cases, absorbing the friction of maintaining the testing infrastructure. When calibration fails, the retry loop handles most issues automatically — the SME/ATL should not need to understand why a Playwright selector was flaky.
 
-The boundary is intentionally drawn so that SMEs never need to write or debug Playwright code, and infra engineers rarely need to understand the specifics of a web feature. The `gd dev` pipeline is the interface between these two worlds.
+The boundary is intentionally drawn so that SMEs/ATLs never need to write or debug Playwright code, and infra engineers rarely need to understand the specifics of a web feature. The `gd dev` pipeline is the interface between these two worlds.
 
 ---
 
