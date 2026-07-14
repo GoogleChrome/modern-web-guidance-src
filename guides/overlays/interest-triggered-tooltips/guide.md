@@ -96,18 +96,11 @@ Interest invokers must be conditionally polyfilled using the `interestfor` polyf
 </script>
 ```
 
-{{ BASELINE_STATUS("popover") }}
+{{ FEATURE_FALLBACKS("popover") }}
+
 {{ BASELINE_STATUS("popover-hint") }}
 
-Popover and popover hint must conditionally be polyfilled with the `@oddbird/popover-polyfill` polyfill. The hint behavior will not be polyfilled in browsers that support `popover` but not `popover="hint"`. For those browsers, a tooltip opened via focus may stay open when a second tooltip opened via hover.
-
-```html
-<script type="module">
-  if(!HTMLElement.prototype.hasOwnProperty("popover")){
-    await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
-  }
-</script>
-```
+The `popover-polyfill` does not polyfill the hint behavior in browsers that support `popover` but not `popover="hint"`. For those browsers, a tooltip opened via focus may stay open when a second tooltip opened via hover.
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
