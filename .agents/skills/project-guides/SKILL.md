@@ -71,34 +71,29 @@ sources:
 
 ### 5. Fallback Strategies
 
-* If the primary implementation relies on features that are not Baseline Widely Available, you **MUST** include a fallback recommendation. This recommendation can be any of the following (in order of preference):
-    * A short bit of code (<50 lines) that reliably reimplements the function of the modern feature (specific to the given use case) using widely available features.
-    * A robust and performant polyfill for the modern feature (if one exists) that is conditionally loaded **IFF** the native feature is not supported in the browser.
-    * A well-tested userland abstraction that implements the use case across browsers.
-    * If the use case **CAN** be achieved in a simple and robust way using Baseline Newly Available features that degrade gracefully when unsupported, this can be presented as an option to consider, as an alternative _or in addition_ to one of the above.
-    * If none of the above are possible, or if the use case cannot be implemented without using non-widely-available features, then clearly state this fact and show how to conditionally load the feature(s) as a progressive enhancement only.
-* The fallback recommendations **MUST** be faithful to the use case. If the primary recommendation gracefully degrades, but ultimately doesn't accomplish the use case, suggest a different fallback if one is available. Graceful degradation **IS** acceptable for features that enhance, but are otherwise not core to the use case.
-* The fallback section **MUST** start with a broad recommendation and assessment of the overall fallback approach, based on its robustness and effectiveness to achieve the given use case.
-    * If the features recommended in the primary implementation offer meaningful user value, and if the fallback is robust and effective, provide a strong recommendation for this approach, despite the use of non-widely available features.
-    * If the fallback is complex and has numerous caveats and gotchas, make that clear and consider suggesting alternatives if they exist (e.g., well-tested userland solutions).
-* The fallback section should frame fallback necessity in terms of Baseline target, e.g. "If your Baseline target does not support X, use the following fallback..."
-* **MANDATORY**: You MUST explicitly describe the fallback experience for unsupported browsers. Explain if the feature is a progressive enhancement (and what the base experience looks like), or show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) and graceful degradation techniques.
-* When recommending feature detection, prefer checking `HTMLElement.prototype` (e.g., `'onbeforematch' in HTMLElement.prototype`) over `window` or `document`, as it is more reliable.
+If the primary implementation uses features that are not Baseline Widely Available, you **MUST** include a fallback recommendation in this section.
 
-#### Baseline status best practices
+* **Framing:** Frame fallback necessity in terms of Baseline target (e.g., "If your Baseline target does not support X, use...").
+* **Assessment:** Start with a broad assessment of the fallback's robustness. Recommend the modern approach if the fallback is robust; highlight complexity/caveats and suggest alternatives (like userland solutions) if it is not.
+* **Experience:** **MANDATORY:** Explicitly describe the fallback experience (progressive enhancement vs. feature detection/graceful degradation).
+* **Feature Detection:** Checks should be tightly scoped to the interface rather than the instance (e.g. use `Object.hasOwn(HTMLElement.prototype, 'onbeforematch')` over `'onbeforematch' in winow`)
+* **Fallback Options (in order of preference):**
+    1.  **Custom Code:** Short, reliable reimplementation (**<50 lines**) using widely available features.
+    2.  **Polyfill:** A robust, performant polyfill (see guidelines below).
+    3.  **Abstraction:** A well-tested userland library.
+    4.  **Graceful Degradation:** Baseline Newly Available features that degrade gracefully.
+    5.  **Progressive Enhancement:** Frame as progressive enhancement only if no robust fallback exists.
+* **Faithfulness:** Fallbacks MUST be faithful to the use case. If the primary recommendation gracefully degrades but ultimately doesn't accomplish the core use case, suggest a different fallback if one is available. Graceful degradation **IS** acceptable for features that enhance, but are otherwise not core to the use case.
 
-* **MANDATORY**: the fallback section must include a `{{ BASELINE_STATUS("feature-id") }}` macro for every non-widely available feature included in the primary implementation section.
-* If multiple non-widely available features are used, create a separate subsection for each feature fallback with its own `{{ BASELINE_STATUS("feature-id") }}` macro.
-* **DO NOT** use the `{{ BASELINE_STATUS("feature-id") }}` outside of the fallback section.
-* **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
+#### Baseline Status Macros
+* **MANDATORY:** Include `{{ BASELINE_STATUS("feature-id") }}` for *every* non-widely available feature used.
+* **Placement:** Use separate subsections with their own macros if multiple features are used. **DO NOT** use macros outside the fallback section.
+* **BCD Keys:** **OPTIONAL:** Use `{{ BASELINE_STATUS("feature-id", "bcd.key") }}` if a sub-feature's status differs.
 
-#### Polyfill considerations and best practices
-
-* When recommending a polyfill, ALWAYS show how to conditionally load it only for browsers that need it. Do not instruct agents to unconditionally load polyfills (even small ones).
-* Prefer including polyfills in your build (so they can be combined into a polyfill chunk) rather than loading them from a CDN, but **ALWAYS** do so in a way that supports code splitting and conditional loading.
-* **DO NOT** recommend polyfills that incur significant performance tradeoffs. Prefer abstraction and userland solutions in these cases, if available.
-* **DO NOT** recommend polyfills that require fetching and parsing CSS in order to function.
-* **DO NOT** recommend loading polyfills from polyfill.io.
+#### Polyfill Guidelines
+* **Conditional Loading:** **MANDATORY:** ALWAYS conditionally load polyfills only when native support is missing. Prefer build-integrated conditional loading (code splitting) over CDNs.
+* **Performance:** **DO NOT** recommend polyfills with significant performance tradeoffs, or those requiring fetching/parsing CSS. Prefer abstractions/userland solutions instead.
+* **Prohibited CDNs:** **DO NOT** recommend polyfills from polyfill.io.
 
 ## Authoring `expectations.md` and  `demo.html`
 
