@@ -10,6 +10,29 @@ import { runAllManifests } from './generate-manifests.js';
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
 
+// Registry of supported agent identifiers mapping path substrings to Agent display names.
+// To add a new agent in the future, simply append an entry here (e.g., { match: 'newagent', name: 'New Agent CLI' }).
+const SUPPORTED_AGENTS = [
+  { match: 'claude', name: 'Claude Code' },
+  { match: 'gemini', name: 'Gemini CLI' },
+  { match: 'jetski', name: 'Jetski CLI' },
+  { match: 'codex', name: 'Codex CLI' }
+];
+
+/**
+ * Detects the agent display name from a file path based on SUPPORTED_AGENTS.
+ * Returns { agentName: string, isKnown: boolean }.
+ */
+function detectAgentFromPath(filePath) {
+  const lowerPath = (filePath || '').toLowerCase();
+  for (const agent of SUPPORTED_AGENTS) {
+    if (lowerPath.includes(agent.match)) {
+      return { agentName: agent.name, isKnown: true };
+    }
+  }
+  return { agentName: 'Unknown Agent', isKnown: false };
+}
+
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
@@ -473,10 +496,10 @@ const server = http.createServer(async (req, res) => {
           if (fs.existsSync(runDir)) {
             try {
               const { generateNormalizedTrajectory } = await import('../harness/lib/trajectory-parser.ts');
-              let agentName = 'Codex';
-              if (filePath.includes('claude')) agentName = 'Claude Code';
-              else if (filePath.includes('gemini')) agentName = 'Gemini CLI';
-              else if (filePath.includes('jetski')) agentName = 'Jetski CLI';
+              const { agentName, isKnown } = detectAgentFromPath(filePath);
+              if (!isKnown) {
+                console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`);
+              }
               await generateNormalizedTrajectory(runDir, agentName, 'local');
             } catch (e) {
               console.error('Failed to auto-generate trajectory summary:', e);
@@ -540,22 +563,29 @@ const server = http.createServer(async (req, res) => {
           const runDir = path.dirname(filePath);
           if (fs.existsSync(runDir)) {
             import('../harness/lib/trajectory-parser.ts').then(async ({ generateNormalizedTrajectory }) => {
-              let agentName = 'Codex';
-              if (filePath.includes('claude')) agentName = 'Claude Code';
-              else if (filePath.includes('gemini')) agentName = 'Gemini CLI';
-              else if (filePath.includes('jetski')) agentName = 'Jetski CLI';
+              const { agentName, isKnown } = detectAgentFromPath(filePath);
+              if (!isKnown) {
+                console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`);
+              }
               await generateNormalizedTrajectory(runDir, agentName, 'local');
               if (fs.existsSync(filePath)) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(fs.readFileSync(filePath), 'utf-8');
                 return;
               }
+              const errMsg = !isKnown
+                ? `404 Not Found: Trajectory summary generation failed because an unknown agent was used for path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add another agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`
+                : `404 Not Found: Trajectory summary generation failed for agent "${agentName}" in path "${filePath}".`;
               res.writeHead(404);
-              res.end('404 Not Found (Trajectory summary generation failed)');
+              res.end(errMsg);
             }).catch(e => {
-              console.error('Failed to auto-generate trajectory summary:', e);
+              const { agentName, isKnown } = detectAgentFromPath(filePath);
+              const errMsg = !isKnown
+                ? `Failed to auto-generate trajectory summary for unknown agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add another agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`
+                : `Failed to auto-generate trajectory summary for agent "${agentName}": ${e.message}`;
+              console.error(errMsg, e);
               res.writeHead(404);
-              res.end('404 Not Found');
+              res.end(`404 Not Found (${errMsg})`);
             });
             return;
           }

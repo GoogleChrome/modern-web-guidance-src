@@ -507,6 +507,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
 
     const sessionFiles = fs.existsSync(targetDir) ? fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
 
+    // To add another agent in the future, check agentName or session files here and invoke the corresponding parser.
     if (agentName.toLowerCase().includes('jetski') || (!sessionFiles[0] && fs.existsSync(targetDir) && fs.readdirSync(targetDir).some(f => f.endsWith('.db')))) {
       summary = await parseJetskiTrajectory(targetDir, serving);
     } else if (sessionFiles[0]) {
@@ -518,7 +519,10 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary = parseClaudeTrajectory(logData, serving);
       } else if (agentName.toLowerCase().includes('gemini')) {
         summary = parseGeminiTrajectory(logData, serving);
+      } else if (agentName.toLowerCase().includes('codex')) {
+        summary = parseCodexTrajectory(logData, serving);
       } else {
+        console.warn(`[TrajectoryParser] Warning: Unknown agent "${agentName}". Attempting generic Codex/standard trajectory parsing. To add another agent, register a parser in generateNormalizedTrajectory.`);
         summary = parseCodexTrajectory(logData, serving);
       }
     } else {
