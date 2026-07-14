@@ -296,6 +296,76 @@ async function handleRunTypeChange() {
   await runDiagnosticAgent();
 }
 
+async function ensureRunDirectories(dirA, dirB) {
+  if (isStatic) return;
+  try {
+    /** @type {Record<string, string>} */
+    const headers = {};
+    const token = typeof getAccessToken === 'function' ? getAccessToken() : null;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const response = await fetch(`/api/ensure-run?dirA=${encodeURIComponent(dirA)}&dirB=${encodeURIComponent(dirB)}`, { headers });
+    if (!response.ok || !response.body) return;
+
+    const diagnosisBox = document.getElementById('diagnosis-box');
+    const diagnosisText = document.getElementById('diagnosis-text');
+    const compareLoading = document.getElementById('compare-loading');
+
+    if (diagnosisBox && diagnosisText) {
+      diagnosisBox.style.display = 'block';
+      diagnosisText.innerHTML = `
+        <div style="font-size:0.9em; font-weight:600; color:#2563eb; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+          <div class="spinner" style="width:16px; height:16px; border-width:2px; margin-bottom:0; border-top-color:#2563eb;"></div>
+          <span>Synchronizing run files from GCS (Downloading if missing)...</span>
+        </div>
+        <pre id="compare-log-stream" style="font-family:monospace; font-size:0.85em; background:#ffffff; border:1px solid #bfdbfe; padding:12px; border-radius:6px; overflow-x:auto; max-height:250px; overflow-y:auto; margin:0; white-space:pre-wrap; color:#334155; line-height:1.4; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);"></pre>
+      `;
+      if (compareLoading) {
+        const loadingMsg = compareLoading.querySelector('div:last-child');
+        if (loadingMsg) loadingMsg.innerText = 'Downloading required run files from GCS... (See progress below)';
+      }
+
+      const logPre = document.getElementById('compare-log-stream');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedText = '';
+      let lastUpdate = 0;
+      let updatePending = false;
+
+      function updateDOM() {
+        if (logPre) {
+          logPre.textContent = accumulatedText;
+          logPre.scrollTop = logPre.scrollHeight;
+        }
+        updatePending = false;
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedText += chunk;
+
+        const now = performance.now();
+        if (now - lastUpdate > 100) {
+          updateDOM();
+          lastUpdate = now;
+        } else if (!updatePending) {
+          updatePending = true;
+          requestAnimationFrame(() => {
+            if (updatePending) updateDOM();
+          });
+        }
+      }
+      updateDOM();
+    }
+  } catch (e) {
+    console.warn('Failed to ensure run directories locally:', e);
+  }
+}
+
 async function loadTrialMetadata() {
   const resultsBase = isStatic ? 'results' : '';
   
@@ -305,6 +375,9 @@ async function loadTrialMetadata() {
     guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'local' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
   }
   
+  // Ensure suite directories exist locally
+  await ensureRunDirectories(trialA, trialB);
+
   // Fetch Trial A suite metadata
   try {
     const responseA = await fetch(`${resultsBase}/${trialA}/evals.json`);
@@ -484,6 +557,9 @@ async function loadActiveTaskDetails() {
   if (document.getElementById('header-assert-b')) {
     document.getElementById('header-assert-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
   }
+
+  // 0. Ensure run directories exist locally before fetching tab data
+  await ensureRunDirectories(pathPartA, pathPartB);
 
   // 1. Load Assertions Comparison
   await loadAssertions(pathPartA, pathPartB);

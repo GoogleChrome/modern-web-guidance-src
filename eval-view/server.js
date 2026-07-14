@@ -314,6 +314,91 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // --- /api/ensure-run : lazily downloads run directories from GCS if missing locally with live log streaming ---
+  if (decodedPath === '/api/ensure-run') {
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
+    const dirA = parsedUrl.searchParams.get('dirA');
+    const dirB = parsedUrl.searchParams.get('dirB');
+
+    if (!dirA && !dirB) {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Missing dirA or dirB parameter');
+      return;
+    }
+
+    const authHeader = req.headers.authorization || '';
+    if (authHeader) {
+      process.env.GD_GCS_TOKEN = authHeader;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    const stripAnsi = (str) => typeof str === 'string' ? str.replace(/\x1B\[\d+m/g, '') : String(str);
+
+    const origLog = console.log;
+    const origWarn = console.warn;
+    const origErr = console.error;
+
+    const streamLog = (...args) => {
+      const msg = args.map(stripAnsi).join(' ') + '\n';
+      res.write(msg);
+      origLog(...args);
+    };
+    const streamWarn = (...args) => {
+      const msg = args.map(stripAnsi).join(' ') + '\n';
+      res.write(msg);
+      origWarn(...args);
+    };
+    const streamErr = (...args) => {
+      const msg = args.map(stripAnsi).join(' ') + '\n';
+      res.write(msg);
+      origErr(...args);
+    };
+
+    console.log = streamLog;
+    console.warn = streamWarn;
+    console.error = streamErr;
+
+    try {
+      res.write(`[Server] Verifying local run files before loading comparison...\n`);
+      const { downloadRunFromGcsIfMissing } = await import('../harness/lib/gcs-downloader.ts');
+      const absoluteResultsDir = path.resolve(RESULTS_DIR);
+
+      if (dirA) {
+        const absA = path.resolve(RESULTS_DIR, dirA);
+        const relA = path.relative(absoluteResultsDir, absA);
+        if (!relA.startsWith('..') && !path.isAbsolute(relA)) {
+          res.write(`[Server] Checking run A: ${dirA}\n`);
+          await downloadRunFromGcsIfMissing(absA);
+        }
+      }
+      if (dirB && dirB !== dirA) {
+        const absB = path.resolve(RESULTS_DIR, dirB);
+        const relB = path.relative(absoluteResultsDir, absB);
+        if (!relB.startsWith('..') && !path.isAbsolute(relB)) {
+          res.write(`[Server] Checking run B: ${dirB}\n`);
+          await downloadRunFromGcsIfMissing(absB);
+        }
+      }
+      res.write(`[Server] Run files ready.\n`);
+    } catch (e) {
+      const errMsg = `[Server Error] /api/ensure-run failed: ${e.message}\n`;
+      res.write(errMsg);
+      origErr(errMsg, e);
+    } finally {
+      console.log = origLog;
+      console.warn = origWarn;
+      console.error = origErr;
+      res.end();
+    }
+    return;
+  }
+
   // --- /api/compare : runs comparison on the fly, streaming output ---
   if (decodedPath === '/api/compare') {
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
