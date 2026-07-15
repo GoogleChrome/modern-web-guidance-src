@@ -432,21 +432,44 @@ function preprocessTrajectory(trajectorySummary: any, chatLog: string): Preproce
 
     let category: TaggedStep['category'] = 'incidental_noise';
 
-    // 1. Skill Search
-    if (actionName.includes('search') || actionParamsStr.includes('search') || actionParamsStr.includes('modern-web-guidance') && actionParamsStr.includes('search')) {
-      category = 'skill_search';
-      // Extract search query
-      const match = actionParamsStr.match(/query["\s:]+([^"\}]+)/i) || actionParamsStr.match(/search\s+([^"\n\}]+)/i);
-      if (match) {
-        searchQueries.push(match[1].trim());
+    // 1. Guide Retrieval
+    if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
+      category = 'guide_retrieval';
+      const paramsObj = rawStep.action?.params || rawStep.action || {};
+      let guideId = paramsObj.id || paramsObj.guideId;
+      if (!guideId && typeof paramsObj.command === 'string' && paramsObj.command.includes('retrieve')) {
+        guideId = paramsObj.query;
+      }
+      if (!guideId && typeof paramsObj.query === 'string' && actionParamsStr.includes('retrieve')) {
+        guideId = paramsObj.query;
+      }
+      if (!guideId && typeof paramsObj.command === 'string') {
+        const match = paramsObj.command.match(/retrieve\s+\\?["']([^"'\\]+)/i) || paramsObj.command.match(/retrieve\s+([^"'\s]+)/i);
+        if (match) guideId = match[1];
+      }
+      if (!guideId) {
+        const match = actionParamsStr.match(/id["\s:]+\\?["']?([^"'\\}]+)/i) || actionParamsStr.match(/retrieve\s+\\?["']([^"'\\]+)/i) || actionParamsStr.match(/retrieve\s+([^"'\s\}]+)/i);
+        if (match) guideId = match[1];
+      }
+      if (guideId) {
+        retrievedGuideIds.push(String(guideId).trim());
       }
     }
-    // 2. Guide Retrieval
-    else if (actionName.includes('retrieve') || actionName.includes('get_best_practices') || actionParamsStr.includes('retrieve') || actionParamsStr.includes('get_best_practices')) {
-      category = 'guide_retrieval';
-      const match = actionParamsStr.match(/id["\s:]+([^"\}]+)/i) || actionParamsStr.match(/retrieve\s+([^"\n\}]+)/i);
-      if (match) {
-        retrievedGuideIds.push(match[1].trim());
+    // 2. Skill Search
+    else if (actionName.includes('search') || actionParamsStr.includes('search')) {
+      category = 'skill_search';
+      const paramsObj = rawStep.action?.params || rawStep.action || {};
+      let query = paramsObj.query;
+      if (!query && typeof paramsObj.command === 'string') {
+        const match = paramsObj.command.match(/search\s+\\?["']([^"'\\]+)/i) || paramsObj.command.match(/search\s+([^"'\s]+)/i);
+        if (match) query = match[1];
+      }
+      if (!query) {
+        const match = actionParamsStr.match(/query["\s:]+\\?["']?([^"'\\}]+)/i) || actionParamsStr.match(/search\s+\\?["']([^"'\\]+)/i);
+        if (match) query = match[1];
+      }
+      if (query) {
+        searchQueries.push(String(query).trim());
       }
     }
     // 3. Code Mutation
