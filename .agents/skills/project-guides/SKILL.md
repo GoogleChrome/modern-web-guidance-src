@@ -73,7 +73,7 @@ If the primary implementation uses features that are not Baseline Widely Availab
 * **Framing:** Frame fallback necessity in terms of Baseline target (e.g., "If your Baseline target does not support X, use...").
 * **Assessment:** Start with a broad assessment of the fallback's robustness. Recommend the modern approach if the fallback is robust; highlight complexity/caveats and suggest alternatives (like userland solutions) if it is not.
 * **Experience:** **MANDATORY:** Explicitly describe the fallback experience (progressive enhancement vs. feature detection/graceful degradation).
-* **Feature Detection:** Checks should be tightly scoped to the interface rather than the instance (e.g. use `Object.hasOwn(HTMLElement.prototype, 'onbeforematch')` over `'onbeforematch' in winow`)
+* **Feature Detection:** Checks should be tightly scoped to the interface rather than the instance (e.g. use `Object.hasOwn(HTMLElement.prototype, 'onbeforematch')` over `'onbeforematch' in window`)
 * **Fallback Options (in order of preference):**
     1.  **Custom Code:** Short, reliable reimplementation (**<50 lines**) using widely available features.
     2.  **Polyfill:** A robust, performant polyfill (see guidelines below).
