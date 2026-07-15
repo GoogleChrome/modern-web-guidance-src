@@ -15,6 +15,7 @@ export interface StandardizedStep {
   outcome?: {
     status: 'success' | 'error';
     message?: string;
+    output?: any;
     exitCode?: number;
   };
 }
@@ -360,38 +361,54 @@ export async function parseJetskiTrajectory(dirPath: string, serving: string): P
     }
   }
 
-  // 2. Process modern-web.log for guide searches/retrievals if not already populated from .db
-  if (steps.length === 0) {
-    const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
-    if (fs.existsSync(logPath)) {
-      try {
-        const logContent = fs.readFileSync(logPath, 'utf8').trim();
-        if (logContent) {
-          const lines = logContent.split('\n');
-          for (const line of lines) {
-            if (line.trim().startsWith('{')) {
-              const call = JSON.parse(line);
-              if (call.tool === 'get_best_practices') {
-                steps.push({
-                  stepNumber: stepCounter++,
-                  thought: 'Searching for relevant web guidance patterns',
-                  action: {
-                    type: 'web_search',
-                    name: 'get_best_practices',
-                    params: { query: call.query }
-                  },
-                  outcome: {
-                    status: 'success',
-                    message: `Retrieved ${call.result?.length || 0} guides`
-                  }
-                });
+  // 2. Process modern-web.log for guide searches/retrievals and attach actual results
+  const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
+  if (fs.existsSync(logPath)) {
+    try {
+      const logContent = fs.readFileSync(logPath, 'utf8').trim();
+      if (logContent) {
+        const lines = logContent.split('\n');
+        const logCalls: any[] = [];
+        for (const line of lines) {
+          if (line.trim().startsWith('{')) {
+            try { logCalls.push(JSON.parse(line)); } catch {}
+          }
+        }
+        if (steps.length === 0) {
+          for (const call of logCalls) {
+            if (call.tool === 'get_best_practices' || call.tool === 'search_use_cases') {
+              steps.push({
+                stepNumber: stepCounter++,
+                thought: call.tool === 'search_use_cases' ? 'Searching for relevant web guidance patterns' : 'Retrieving guidance best practices',
+                action: {
+                  type: 'web_search',
+                  name: call.tool,
+                  params: { query: call.query }
+                },
+                outcome: {
+                  status: 'success',
+                  message: `Retrieved ${call.result?.length || 0} items`,
+                  output: call.result
+                }
+              });
+            }
+          }
+        } else {
+          let logIdx = 0;
+          for (const step of steps) {
+            if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
+              if (logCalls[logIdx]) {
+                if (!step.outcome) step.outcome = { status: 'success' };
+                step.outcome.output = logCalls[logIdx].result;
+                if (!step.outcome.message) step.outcome.message = `Retrieved ${logCalls[logIdx].result?.length || 0} items`;
+                logIdx++;
               }
             }
           }
         }
-      } catch (e) {
-        console.error(`[TrajectoryParser] Error reading modern-web.log:`, e);
       }
+    } catch (e) {
+      console.error(`[TrajectoryParser] Error reading modern-web.log:`, e);
     }
   }
 

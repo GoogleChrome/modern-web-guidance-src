@@ -306,10 +306,13 @@
       background-color: #ffffff;
       border: 1px solid #cbd5e1;
       border-radius: 10px;
-      padding: 16px 18px;
+      padding: 14px 16px;
       position: relative;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      height: auto;
+      height: auto !important;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
     }
     .timeline-step.error {
       border-left: 6px solid #ef4444;
@@ -384,26 +387,28 @@
       padding-bottom: 6px;
     }
     .step-thought {
-      font-size: 0.98rem;
-      line-height: 1.6;
+      font-size: 0.92rem;
+      line-height: 1.45;
       color: #0f172a;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       background-color: #f0f9ff;
       border: 1px solid #bae6fd;
       border-left: 4px solid #0284c7;
-      padding: 12px 16px;
-      border-radius: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
       white-space: pre-wrap;
       word-break: break-word;
-      height: auto;
+      height: auto !important;
+      max-height: none;
+      flex-grow: 0 !important;
     }
     .step-thought-header {
       font-weight: 800;
       color: #0284c7;
-      font-size: 0.88em;
+      font-size: 0.82em;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       display: flex;
       align-items: center;
       gap: 6px;

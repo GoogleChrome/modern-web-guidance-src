@@ -521,8 +521,22 @@ async function switchTask(task) {
     btn.classList.toggle('active', btn.textContent.trim() === activeTask);
   });
 
-  await loadActiveTaskDetails();
 }
+
+function getRunDateString(trialId) {
+  if (!trialId) return 'Unknown Date';
+  const match = trialId.match(/\d{4}-\d{2}-\d{2}/);
+  if (match) return match[0];
+  if (trialId.includes('test-')) return trialId.replace('test-', '').slice(0, 10);
+  return trialId.slice(0, 12);
+}
+
+function getFormattedTrialTitle(label, trialId, runNum, runType, model, traj, suiteData) {
+  const dateStr = getRunDateString(trialId);
+  const resolvedModel = (model && model !== 'unknown' ? model : (traj?.model || suiteData?.model || (model || 'Unknown Model'))).replace(/^models\//, '');
+  return `${label} (Run ${runNum} - ${capitalize(runType || 'guided')}) — ${resolvedModel} (${dateStr})`;
+}
+
 async function loadActiveTaskDetails() {
   document.getElementById('compare-loading').style.display = 'flex';
   document.getElementById('tab-content-assertions').style.display = 'none';
@@ -539,24 +553,15 @@ async function loadActiveTaskDetails() {
   runDirB = `${resultsBase}/${pathPartB}`;
 
   // Update split-pane column titles to display both run number and run type
-  if (document.getElementById('timeline-title-a')) {
-    document.getElementById('timeline-title-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
-  }
-  if (document.getElementById('timeline-title-b')) {
-    document.getElementById('timeline-title-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
-  }
-  if (document.getElementById('code-title-a')) {
-    document.getElementById('code-title-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
-  }
-  if (document.getElementById('code-title-b')) {
-    document.getElementById('code-title-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
-  }
-  if (document.getElementById('header-assert-a')) {
-    document.getElementById('header-assert-a').innerText = `Trial A (Run ${runNumA} - ${capitalize(runTypeA)})`;
-  }
-  if (document.getElementById('header-assert-b')) {
-    document.getElementById('header-assert-b').innerText = `Trial B (Run ${runNumB} - ${capitalize(runTypeB)})`;
-  }
+  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, modelA, null, suiteDataA);
+  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, modelB, null, suiteDataB);
+
+  if (document.getElementById('timeline-title-a')) document.getElementById('timeline-title-a').innerText = titleAStr;
+  if (document.getElementById('timeline-title-b')) document.getElementById('timeline-title-b').innerText = titleBStr;
+  if (document.getElementById('code-title-a')) document.getElementById('code-title-a').innerText = titleAStr;
+  if (document.getElementById('code-title-b')) document.getElementById('code-title-b').innerText = titleBStr;
+  if (document.getElementById('header-assert-a')) document.getElementById('header-assert-a').innerText = titleAStr;
+  if (document.getElementById('header-assert-b')) document.getElementById('header-assert-b').innerText = titleBStr;
 
   // 0. Ensure run directories exist locally before fetching tab data
   await ensureRunDirectories(pathPartA, pathPartB);
@@ -717,14 +722,47 @@ async function loadTrajectories(pathA, pathB) {
   let sessionUrlA = '';
   let sessionUrlB = '';
 
+async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
+  if (!traj || !Array.isArray(traj.steps)) return;
+  try {
+    const logRes = await fetch(`${resultsBase}/${pathStr}/modern-web.log`);
+    if (logRes.ok) {
+      const logText = await logRes.text();
+      const lines = logText.split('\n').filter(Boolean);
+      const logCalls = [];
+      for (const line of lines) {
+        if (line.trim().startsWith('{')) {
+          try { logCalls.push(JSON.parse(line)); } catch {}
+        }
+      }
+      let searchIdx = 0;
+      for (const step of traj.steps) {
+        if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
+          if (logCalls[searchIdx]) {
+            if (!step.outcome) step.outcome = { status: 'success' };
+            step.outcome.output = logCalls[searchIdx].result;
+            searchIdx++;
+          }
+        }
+      }
+    }
+  } catch (e) {}
+}
+
   try {
     const resA = await fetch(`${resultsBase}/${pathA}/trajectory_summary.json`);
-    if (resA.ok) trajA = await resA.json();
+    if (resA.ok) {
+      trajA = await resA.json();
+      await enrichTrajectorySteps(trajA, pathA, resultsBase);
+    }
   } catch (e) {}
 
   try {
     const resB = await fetch(`${resultsBase}/${pathB}/trajectory_summary.json`);
-    if (resB.ok) trajB = await resB.json();
+    if (resB.ok) {
+      trajB = await resB.json();
+      await enrichTrajectorySteps(trajB, pathB, resultsBase);
+    }
   } catch (e) {}
 
   try {
@@ -829,12 +867,22 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
 
   const { primaryStep, divergentSteps } = findDivergenceInfo(trajA, trajB);
 
+  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, modelA, trajA, suiteDataA);
+  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, modelB, trajB, suiteDataB);
+
+  if (document.getElementById('timeline-title-a')) document.getElementById('timeline-title-a').innerText = titleAStr;
+  if (document.getElementById('timeline-title-b')) document.getElementById('timeline-title-b').innerText = titleBStr;
+  if (document.getElementById('code-title-a')) document.getElementById('code-title-a').innerText = titleAStr;
+  if (document.getElementById('code-title-b')) document.getElementById('code-title-b').innerText = titleBStr;
+  if (document.getElementById('header-assert-a')) document.getElementById('header-assert-a').innerText = titleAStr;
+  if (document.getElementById('header-assert-b')) document.getElementById('header-assert-b').innerText = titleBStr;
+
   // Top header row
   const headerRow = document.createElement('div');
   headerRow.className = 'timeline-header-row';
   headerRow.innerHTML = `
-    <div class="timeline-header-col">Trial A (Run ${runNumA} - ${capitalize(runTypeA)})</div>
-    <div class="timeline-header-col">Trial B (Run ${runNumB} - ${capitalize(runTypeB)})</div>
+    <div class="timeline-header-col">${escapeHtml(titleAStr)}</div>
+    <div class="timeline-header-col">${escapeHtml(titleBStr)}</div>
   `;
   container.appendChild(headerRow);
 
@@ -937,11 +985,11 @@ function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
       </div>
   `;
 
-  if (step.thought) {
+  if (step.thought && step.thought.trim()) {
     html += `
       <div class="step-thought">
         <div class="step-thought-header">💡 AGENT THINKING / REASONING</div>
-        <div>${escapeHtml(step.thought)}</div>
+        <div style="white-space: pre-wrap; word-break: break-word;">${escapeHtml(step.thought.trim())}</div>
       </div>
     `;
   }
@@ -963,13 +1011,48 @@ function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
     `;
   }
 
-  if (step.outcome && step.outcome.message) {
+  let outcomeText = '';
+  if (step.outcome) {
+    if (typeof step.outcome === 'string') {
+      outcomeText = step.outcome;
+    } else if (step.outcome.output || step.outcome.result || step.outcome.message || step.outcome.content || step.outcome.text || step.outcome.stdout || step.outcome.stderr) {
+      outcomeText = step.outcome.output || step.outcome.result || step.outcome.message || step.outcome.content || step.outcome.text || step.outcome.stdout || step.outcome.stderr;
+      if (typeof outcomeText === 'object') outcomeText = JSON.stringify(outcomeText, null, 2);
+    } else {
+      const keys = Object.keys(step.outcome);
+      const onlyStatus = keys.every(k => k === 'status' || k === 'exitCode');
+      if (!onlyStatus) {
+        outcomeText = JSON.stringify(step.outcome, null, 2);
+      }
+    }
+  } else if (step.output || step.result) {
+    outcomeText = step.output || step.result;
+    if (typeof outcomeText === 'object') outcomeText = JSON.stringify(outcomeText, null, 2);
+  }
+
+  const cleanText = String(outcomeText || '').trim().replace(/\s+/g, '');
+  const hasOutputData = outcomeText && outcomeText !== '{}' && outcomeText !== 'null' && cleanText !== '{"status":"success"}' && cleanText !== '{"status":"error"}';
+
+  if (hasOutputData || stepAnchorUrl) {
     const outcomeClass = isErr ? 'step-outcome error' : 'step-outcome';
     html += `
-      <details style="margin-top:6px;">
-        <summary style="cursor:pointer; color:#64748b; font-size:0.88em; font-weight:600;">View Step Outcome / Output</summary>
-        <div class="${outcomeClass}" style="margin-top:4px;">${escapeHtml(step.outcome.message)}</div>
-      </details>
+      <div style="margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          ${hasOutputData ? `
+            <details style="flex:1; min-width:200px;">
+              <summary style="cursor:pointer; color:#2563eb; font-size:0.88em; font-weight:700;">📄 View Step Output / Result</summary>
+              <div class="${outcomeClass}" style="margin-top:6px;">${escapeHtml(String(outcomeText).trim())}</div>
+            </details>
+          ` : `
+            <span style="font-size:0.85em; color:#64748b; font-style:italic;">No summary text (view full trajectory)</span>
+          `}
+          ${stepAnchorUrl ? `
+            <a href="${stepAnchorUrl}" target="_blank" title="View complete execution logs and tool output for Step ${step.stepNumber} in Trajectory Visualizer" style="font-size:0.84em; font-weight:600; color:#0f766e; background:#f0fdf4; border:1px solid #bbf7d0; padding:4px 10px; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; transition:all 0.2s;">
+              <span>🔗 Open Full Step Result</span>
+            </a>
+          ` : ''}
+        </div>
+      </div>
     `;
   }
 
