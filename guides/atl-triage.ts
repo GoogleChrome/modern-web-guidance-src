@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { GUIDE_FILE, DEMO_FILE, EXPECTATIONS_FILE, SKILL_FILE } from '../lib/guide-validation.ts';
+
+// Define content file name constants inline to avoid importing from 'lib/guide-validation.ts'
+// which would transitively require external packages (like 'gray-matter' and 'marked')
+// in the GitHub Actions runner, slowing down the triage job.
+export const GUIDE_FILE = 'guide.md';
+export const SKILL_FILE = 'SKILL.md';
+export const DEMO_FILE = 'demo.html';
+export const EXPECTATIONS_FILE = 'expectations.md';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
