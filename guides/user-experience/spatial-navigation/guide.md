@@ -1,6 +1,7 @@
 ---
 name: Spatial navigation
 description: Implement accessible spatial navigation using arrow keys that works correctly in different layout modes (grid etc)
+web-feature-ids: []
 ---
 
 <!--
