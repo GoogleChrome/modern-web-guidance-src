@@ -3,7 +3,7 @@ import path from 'path';
 import config from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
-import { rootDir } from '../../lib/paths.ts';
+import { rootDir, baseAppsDir } from '../../lib/paths.ts';
 
 /**
  * Dynamically fetches all active models from the Gemini API and returns them sorted by version and capability.
@@ -212,6 +212,8 @@ interface GuideContext {
   guideContent: string;
   expectationsContent: string;
   taskPrompt: string;
+  graderContent: string;
+  baseAppContent: string;
 }
 
 interface RunContext {
@@ -227,17 +229,19 @@ interface RunContext {
 }
 
 /**
- * Helper to find guide.md, expectations.md, and task.md for a given guide/task name.
+ * Helper to find guide.md, expectations.md, task.md, grader.ts, and base app content for a given guide/task name.
  */
 function findGuideContext(guideName: string, taskName: string): GuideContext {
   const guidesBaseDir = path.join(rootDir, 'guides');
   let guideContent = '';
   let expectationsContent = '';
   let taskPrompt = '';
+  let graderContent = '';
+  let baseAppContent = '';
+  let guideDir = '';
 
   if (fs.existsSync(guidesBaseDir)) {
     // 1. Search for guide directory
-    let guideDir = '';
     const items = fs.readdirSync(guidesBaseDir, { withFileTypes: true });
     for (const item of items) {
       if (item.isDirectory()) {
@@ -266,16 +270,36 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
         expectationsContent = fs.readFileSync(expPath, 'utf8');
       }
 
+      // Grader
+      const graderPath = path.join(guideDir, 'grader.ts');
+      if (fs.existsSync(graderPath)) {
+        graderContent = fs.readFileSync(graderPath, 'utf8');
+      }
+
       // Task prompt
       const taskPath1 = path.join(guideDir, 'tasks', `${taskName}.md`);
       const taskPath2 = path.join(guideDir, 'tasks', 'task.md');
       const taskPath3 = path.join(guideDir, 'task.md');
+      let foundTaskPath = '';
       if (fs.existsSync(taskPath1)) {
-        taskPrompt = fs.readFileSync(taskPath1, 'utf8');
+        foundTaskPath = taskPath1;
       } else if (fs.existsSync(taskPath2)) {
-        taskPrompt = fs.readFileSync(taskPath2, 'utf8');
+        foundTaskPath = taskPath2;
       } else if (fs.existsSync(taskPath3)) {
-        taskPrompt = fs.readFileSync(taskPath3, 'utf8');
+        foundTaskPath = taskPath3;
+      }
+
+      if (foundTaskPath) {
+        taskPrompt = fs.readFileSync(foundTaskPath, 'utf8');
+        const baseAppMatch = taskPrompt.match(/base_app:\s*([^\s\r\n]+)/i);
+        if (baseAppMatch) {
+          const baseAppName = baseAppMatch[1].trim();
+          const baseAppDir = path.join(baseAppsDir, baseAppName);
+          if (fs.existsSync(baseAppDir)) {
+            const baseCode = findCodeOutput(baseAppDir);
+            baseAppContent = baseCode.content;
+          }
+        }
       }
     }
   }
@@ -285,7 +309,9 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
     taskName,
     guideContent: guideContent || 'No guide.md content found.',
     expectationsContent: expectationsContent || 'No expectations.md content found.',
-    taskPrompt: taskPrompt || 'No task.md prompt found.'
+    taskPrompt: taskPrompt || 'No task.md prompt found.',
+    graderContent: graderContent || 'No grader.ts content found.',
+    baseAppContent: baseAppContent || 'No base app content found.'
   };
 }
 
@@ -317,10 +343,10 @@ function findCodeOutput(dir: string): { path: string; content: string } {
 }
 
 /**
- * Recursively parses Playwright's JSON report and extracts a flat array of assertions.
+ * Recursively parses Playwright's JSON report and extracts assertions with detailed error traces and locations.
  */
-function parsePlaywrightResults(report: any): { message: string; passed: boolean }[] {
-  const assertions: { message: string; passed: boolean }[] = [];
+function parsePlaywrightResults(report: any): { message: string; passed: boolean; errors?: string[]; location?: { file?: string; line?: number; column?: number } }[] {
+  const assertions: { message: string; passed: boolean; errors?: string[]; location?: { file?: string; line?: number; column?: number } }[] = [];
   if (!report || !Array.isArray(report.suites)) {
     return assertions;
   }
@@ -328,9 +354,39 @@ function parsePlaywrightResults(report: any): { message: string; passed: boolean
   function collectSpecs(suite: any) {
     if (Array.isArray(suite.specs)) {
       suite.specs.forEach((spec: any) => {
+        const passed = !!spec.ok;
+        const errors: string[] = [];
+        let location: { file?: string; line?: number; column?: number } | undefined;
+
+        if (!passed && Array.isArray(spec.tests)) {
+          for (const test of spec.tests) {
+            if (Array.isArray(test.results)) {
+              for (const res of test.results) {
+                if (res.error?.message) {
+                  const cleanMsg = res.error.message.replace(/\u001b\[[0-9;]*m/g, '');
+                  if (!errors.includes(cleanMsg)) errors.push(cleanMsg);
+                }
+                if (Array.isArray(res.errors)) {
+                  for (const err of res.errors) {
+                    if (err.message) {
+                      const cleanMsg = err.message.replace(/\u001b\[[0-9;]*m/g, '');
+                      if (!errors.includes(cleanMsg)) errors.push(cleanMsg);
+                    }
+                    if (err.location && !location) {
+                      location = err.location;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
         assertions.push({
           message: spec.title,
-          passed: !!spec.ok
+          passed,
+          errors: errors.length > 0 ? errors : undefined,
+          location
         });
       });
     }
@@ -500,23 +556,113 @@ function loadRunContext(runDir: string): RunContext {
 }
 
 /**
- * Generates a simple line-by-line diff of two strings for LLM context.
+ * Generates an aligned LCS unified diff of two strings for accurate LLM context.
  */
-function simpleTextDiff(a: string, b: string): string {
-  const linesA = a.split('\n');
-  const linesB = b.split('\n');
-  let diff = '';
+function generateUnifiedDiff(oldText: string, newText: string, oldLabel = 'Old', newLabel = 'New', contextLines = 3): string {
+  const oldLines = oldText.split(/\r?\n/);
+  const newLines = newText.split(/\r?\n/);
+
+  const m = oldLines.length;
+  const n = newLines.length;
   
-  const maxLines = Math.max(linesA.length, linesB.length);
-  for (let i = 0; i < maxLines; i++) {
-    const lineA = linesA[i];
-    const lineB = linesB[i];
-    if (lineA !== lineB) {
-      if (lineA !== undefined) diff += `- L${i+1}: ${lineA}\n`;
-      if (lineB !== undefined) diff += `+ L${i+1}: ${lineB}\n`;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (oldLines[i - 1] === newLines[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
     }
   }
-  return diff || 'No differences detected.';
+
+  interface EditOp {
+    type: 'equal' | 'add' | 'remove';
+    oldIndex?: number;
+    newIndex?: number;
+    line: string;
+  }
+  const ops: EditOp[] = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      ops.push({ type: 'equal', oldIndex: i, newIndex: j, line: oldLines[i - 1] });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      ops.push({ type: 'add', newIndex: j, line: newLines[j - 1] });
+      j--;
+    } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+      ops.push({ type: 'remove', oldIndex: i, line: oldLines[i - 1] });
+      i--;
+    }
+  }
+  ops.reverse();
+
+  if (ops.every(op => op.type === 'equal')) {
+    return 'No differences detected.';
+  }
+
+  const hunks: {
+    oldStart: number;
+    oldLinesCount: number;
+    newStart: number;
+    newLinesCount: number;
+    lines: string[];
+  }[] = [];
+
+  let opIndex = 0;
+  while (opIndex < ops.length) {
+    while (opIndex < ops.length && ops[opIndex].type === 'equal') {
+      opIndex++;
+    }
+    if (opIndex >= ops.length) break;
+
+    const hunkStart = Math.max(0, opIndex - contextLines);
+    let hunkEnd = opIndex;
+
+    while (hunkEnd < ops.length) {
+      if (ops[hunkEnd].type !== 'equal') {
+        hunkEnd++;
+      } else {
+        let nextChange = hunkEnd;
+        while (nextChange < ops.length && ops[nextChange].type === 'equal' && (nextChange - hunkEnd) < 2 * contextLines) {
+          nextChange++;
+        }
+        if (nextChange < ops.length && ops[nextChange].type !== 'equal') {
+          hunkEnd = nextChange;
+        } else {
+          break;
+        }
+      }
+    }
+
+    const actualEnd = Math.min(ops.length - 1, hunkEnd + contextLines - 1);
+    const hunkOps = ops.slice(hunkStart, actualEnd + 1);
+    const oldStarts = hunkOps.filter(op => op.oldIndex !== undefined).map(op => op.oldIndex!);
+    const newStarts = hunkOps.filter(op => op.newIndex !== undefined).map(op => op.newIndex!);
+    
+    const oldStart = oldStarts.length > 0 ? oldStarts[0] : (hunkStart > 0 && ops[hunkStart - 1].oldIndex ? ops[hunkStart - 1].oldIndex! + 1 : 1);
+    const newStart = newStarts.length > 0 ? newStarts[0] : (hunkStart > 0 && ops[hunkStart - 1].newIndex ? ops[hunkStart - 1].newIndex! + 1 : 1);
+    const oldLinesCount = hunkOps.filter(op => op.type === 'equal' || op.type === 'remove').length;
+    const newLinesCount = hunkOps.filter(op => op.type === 'equal' || op.type === 'add').length;
+
+    const lines = hunkOps.map(op => {
+      if (op.type === 'equal') return `  ${op.line}`;
+      if (op.type === 'remove') return `- ${op.line}`;
+      return `+ ${op.line}`;
+    });
+
+    hunks.push({ oldStart, oldLinesCount, newStart, newLinesCount, lines });
+    opIndex = actualEnd + 1;
+  }
+
+  let result = `--- ${oldLabel}\n+++ ${newLabel}\n`;
+  for (const hunk of hunks) {
+    result += `@@ -${hunk.oldStart},${hunk.oldLinesCount} +${hunk.newStart},${hunk.newLinesCount} @@\n`;
+    result += hunk.lines.join('\n') + '\n';
+  }
+  return result.trim();
 }
 
 /**
@@ -575,21 +721,42 @@ async function runSubAgent2_CodeAndFriction(
   guideCtx: GuideContext,
   ctxA: RunContext,
   ctxB: RunContext,
-  codeDiff: string,
+  diffBaseVsA: string,
+  diffBaseVsB: string,
+  diffAvsB: string,
   statusA: string,
   statusB: string
 ): Promise<string> {
-  const systemInstruction = `You are a specialized Code-to-Trajectory Backtracking and Context Friction Diagnostic Sub-Agent. Your task is to connect failed Playwright assertions and generated code diffs back to specific trajectory steps and context friction (noise/error loops).
+  const systemInstruction = `You are a Code & Execution Diagnostic Sub-Agent. Your task is to identify the precise technical reason why Run A failed Playwright tests that Run B passed (or vice versa), using factual evidence from grader code, error traces, and exact code diffs.
 
-Specifically analyze:
-1. **Assertion-to-Code Link**: For each failed assertion in poorer run vs passed in better run, identify the exact lines of code missing or incorrectly written.
-2. **Backtracking to Trajectory Step**: Trace backward to identify the exact step number in the trajectory where the faulty or missing code was introduced.
-3. **Context Friction & Noise Impact**: Evaluate if context noise (e.g. ${ctxA.preprocessed.noiseCount} vs ${ctxB.preprocessed.noiseCount} noise steps) or error/retry loops (${ctxA.preprocessed.errorLoopCount} vs ${ctxB.preprocessed.errorLoopCount}) derailed the LLM's context window and caused it to forget or hallucinate requirements.`;
+Mandatory Audit Steps:
+1. **Grader & Error Trace Check**: Inspect \`grader.ts\` and the exact Playwright error logs. Did the test fail due to a strict locator mismatch (e.g. querying \`button\` when the agent created \`<a>\`), timing issues, missing required CSS rules, or missing functionality? State the exact line of \`grader.ts\` and the failure message.
+2. **Base App Diff Audit**: Compare what Run A and Run B modified relative to the Base App. Do NOT attribute missing/extra styles in Run A to "corrupted code" or "botched search/replace" unless Run A actually deleted existing lines that were present in the Base App. Distinguish carefully between code deleted by Run A vs new code added exclusively by Run B.
+3. **Execution vs. Trajectory Status**: Check whether the file modification tool calls (\`write_file\`, \`multi_replace_file_content\`, etc.) succeeded or returned errors in the trajectory. Do not claim the agent hallucinated or botched an edit if the tool reported \`status: success\` and produced valid HTML/CSS/JS.
+4. **Friction Assessment**: Only cite context noise or retries as a contributing factor if trajectory logs explicitly show the model losing track of instructions, entering error recovery loops, or making blind retries. If the agent completed its edits cleanly on the first try but chose an incompatible HTML element (like \`<a>\` instead of \`<button>\`), state clearly that this was a locator alignment/implementation choice rather than context loss.`;
 
-  const prompt = `### Run A (${statusA} - Score: ${ctxA.score}%)
+  const failedTracesA = (ctxA.resultsJson || []).filter((c: any) => !c.passed).map((c: any) => ({
+    assertion: c.message,
+    location: c.location ? `Line ${c.location.line}` : 'Unknown',
+    errors: c.errors || ['Unknown error']
+  }));
+
+  const failedTracesB = (ctxB.resultsJson || []).filter((c: any) => !c.passed).map((c: any) => ({
+    assertion: c.message,
+    location: c.location ? `Line ${c.location.line}` : 'Unknown',
+    errors: c.errors || ['Unknown error']
+  }));
+
+  const prompt = `### Validation Logic (grader.ts)
+"""
+${guideCtx.graderContent.slice(0, 15000)}
+"""
+
+### Run A (${statusA} - Score: ${ctxA.score}%)
 - Dir: ${ctxA.dir}
-- Passed Assertions: ${JSON.stringify(ctxA.resultsJson?.filter((c: any) => c.passed).map((c: any) => c.message) || [])}
-- Failed Assertions: ${JSON.stringify(ctxA.resultsJson?.filter((c: any) => !c.passed).map((c: any) => c.message) || [])}
+- Passed Assertions: ${JSON.stringify((ctxA.resultsJson || []).filter((c: any) => c.passed).map((c: any) => c.message))}
+- Failed Test Traces:
+${JSON.stringify(failedTracesA, null, 2)}
 - Trajectory Tagged Steps Summary:
   - Code Mutations: ${ctxA.preprocessed.codeMutationCount}
   - Context Noise Steps: ${ctxA.preprocessed.noiseCount}
@@ -597,24 +764,37 @@ Specifically analyze:
 
 ### Run B (${statusB} - Score: ${ctxB.score}%)
 - Dir: ${ctxB.dir}
-- Passed Assertions: ${JSON.stringify(ctxB.resultsJson?.filter((c: any) => c.passed).map((c: any) => c.message) || [])}
-- Failed Assertions: ${JSON.stringify(ctxB.resultsJson?.filter((c: any) => !c.passed).map((c: any) => c.message) || [])}
+- Passed Assertions: ${JSON.stringify((ctxB.resultsJson || []).filter((c: any) => c.passed).map((c: any) => c.message))}
+- Failed Test Traces:
+${JSON.stringify(failedTracesB, null, 2)}
 - Trajectory Tagged Steps Summary:
   - Code Mutations: ${ctxB.preprocessed.codeMutationCount}
   - Context Noise Steps: ${ctxB.preprocessed.noiseCount}
   - Error/Retry Loops: ${ctxB.preprocessed.errorLoopCount}
 
-### Generated Code Line-by-line Diff (Run A vs Run B)
+### Code Diffs (Unified Diff Format)
+
+#### Diff 1: Base App vs Run A Output
 """
-${codeDiff.slice(0, 5000)}
+${diffBaseVsA.slice(0, 30000)}
+"""
+
+#### Diff 2: Base App vs Run B Output
+"""
+${diffBaseVsB.slice(0, 30000)}
+"""
+
+#### Diff 3: Run A Output vs Run B Output
+"""
+${diffAvsB.slice(0, 30000)}
 """
 
 ### Tagged Trajectory Steps Overview
 #### Run A:
-${JSON.stringify(ctxA.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, isErr: s.isError, thought: s.thought?.slice(0, 80) })), null, 2)}
+${JSON.stringify(ctxA.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, isErr: s.isError, thought: s.thought?.slice(0, 100) })), null, 2)}
 
 #### Run B:
-${JSON.stringify(ctxB.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, isErr: s.isError, thought: s.thought?.slice(0, 80) })), null, 2)}
+${JSON.stringify(ctxB.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, isErr: s.isError, thought: s.thought?.slice(0, 100) })), null, 2)}
 `;
 
   return callGeminiApiDirectly(systemInstruction, prompt, 'Sub-Agent 2 (Code & Friction)');
@@ -637,9 +817,9 @@ async function synthesizeDiagnosis(
 You MUST structure your report into exactly the following four sections in Markdown format. Do not alter section titles:
 
 ### 1. First Meaningful Divergence
-- **Step Number**: Step X (Specify exact step number where the first MEANINGFUL divergence occurred, e.g. Step 3)
+- **Step Number**: Step X (Specify exact step number where the first MEANINGFUL divergence occurred, e.g. Step 8 where code mutation was executed, or earlier if skill/guide discovery diverged)
 - **Event Type**: [Skill Search | Guide Retrieval | Mandatory Rule Adoption | Code Implementation | Error Recovery]
-- **Divergence Summary**: Concise explanation of why this specific step represents the root divergence point.
+- **Divergence Summary**: Direct, objective explanation of why this specific step represents the root divergence point based on factual tool outputs and code choices.
 
 ### 2. Guide Compliance & Milestone Matrix
 Provide a Markdown table summarizing key milestones:
@@ -651,16 +831,17 @@ Provide a Markdown table summarizing key milestones:
 | **Context Noise / Retries** | ... | ... | ... |
 
 ### 3. Root Cause & Friction Analysis
-Provide a thorough technical breakdown linking:
-- Failed Playwright test assertions to specific missing or faulty code diffs.
-- How trajectory noise / error loops or guide ambiguity derailed the LLM context.
+Provide an objective, strictly fact-grounded technical breakdown:
+- State the exact locator, API, or DOM mismatch that triggered the Playwright failure, referencing specific lines in \`grader.ts\` and error logs.
+- Explicitly distinguish between structural test harness mismatches (e.g. grader expecting a specific element tag like \`<button>\` when the agent used \`<a>\`) versus genuine agent capability failures (e.g. failing to implement the required web platform API or missing required functionality).
+- Do NOT fabricate narrative claims about context loss, memory decay, or botched edits unless trajectory logs show explicit tool failures, blind retries, or error loops.
 
 ### 4. Actionable Fix Recommendation
-Provide a clear, concrete recommendation on whether to update:
+Provide clear, concrete recommendations on whether to update:
 - **Guide (guide.md)**: (e.g. add MANDATORY keyword, clarify code example)
-- **Prompt (tasks/task.md)**: (e.g. add declarative constraint to force guide discovery)
-- **Grader (grader.ts)**: (e.g. relax rigid regular expression locator)
-- **Agent/Model Non-Determinism**: (if guide & prompt are perfect but model had a random reasoning hiccup)`;
+- **Prompt (tasks/task.md)**: (e.g. add declarative constraint, clarify trigger element type)
+- **Grader (grader.ts)**: (e.g. relax rigid locator like \`button:visible\` to \`button:visible, a:visible, [role="button"]:visible\` to avoid false negatives)
+- **Agent/Model Non-Determinism**: (if guide & prompt are clear but the model chose an incompatible element or pattern due to non-determinism)`;
 
   const prompt = `### Guide & Task Context
 - Guide Name: ${guideCtx.guideName}
@@ -707,7 +888,9 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   const guideName = pathSegments.pop() || 'guide';
 
   const guideCtx = findGuideContext(guideName, taskName);
-  const codeDiff = simpleTextDiff(ctxA.codeOutput, ctxB.codeOutput);
+  const diffBaseVsA = generateUnifiedDiff(guideCtx.baseAppContent || '', ctxA.codeOutput || '', 'Base App', 'Run A Output');
+  const diffBaseVsB = generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Run B Output');
+  const diffAvsB = generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
 
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
@@ -727,7 +910,7 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
     console.log(cBold(`[Compare Agent] Phase 2: Dispatching parallel sub-agents (Guide Compliance & Code/Friction)...`));
     const [complianceAnalysis, codeAndFrictionAnalysis] = await Promise.all([
       runSubAgent1_GuideCompliance(guideCtx, ctxA, ctxB, statusA, statusB),
-      runSubAgent2_CodeAndFriction(guideCtx, ctxA, ctxB, codeDiff, statusA, statusB)
+      runSubAgent2_CodeAndFriction(guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB, statusA, statusB)
     ]);
 
     console.log(cBold(`[Compare Agent] Phase 3: Synthesizing final 4-section diagnostic report...`));
