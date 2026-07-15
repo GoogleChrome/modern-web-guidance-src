@@ -9,6 +9,7 @@ import { marked } from 'marked';
 // Import shared utilities
 import { scanAllGuides, processGuideInventory } from '../lib/guide-validation.ts';
 import { MACRO_PATTERN, replaceMacros } from '../serving/lib/macros.ts';
+import { generateAtlBlock } from './generate-codeowners.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -144,5 +145,30 @@ describe('Guides Validation (Single Source of Truth)', () => {
     if (failedFiles.length > 0) {
       assert.fail(`Conflict markers found in the following files:\n${failedFiles.join('\n')}`);
     }
+  });
+
+  it('ensures CODEOWNERS is synchronized with guides/atls.json', () => {
+    const atlsConfigPath = path.join(REPO_ROOT, 'guides', 'atls.json');
+    const codeownersPath = path.join(REPO_ROOT, 'CODEOWNERS');
+
+    // Load config
+    const config = JSON.parse(fs.readFileSync(atlsConfigPath, 'utf8'));
+    const expectedBlock = generateAtlBlock(config);
+
+    // Load CODEOWNERS
+    const codeownersContent = fs.readFileSync(codeownersPath, 'utf8');
+
+    const startMarker = '# @atls-start';
+    const endMarker = '# @atls-end';
+
+    const startIndex = codeownersContent.indexOf(startMarker);
+    const endIndex = codeownersContent.indexOf(endMarker);
+
+    if (startIndex === -1 || endIndex === -1 || startIndex >= endIndex) {
+      assert.fail('Could not find valid @atls-start and @atls-end markers in CODEOWNERS.');
+    }
+
+    const currentBlock = codeownersContent.slice(startIndex, endIndex + endMarker.length);
+    assert.strictEqual(currentBlock, expectedBlock, 'CODEOWNERS ATL rules are out of sync with guides/atls.json. Please run: node guides/generate-codeowners.ts');
   });
 });

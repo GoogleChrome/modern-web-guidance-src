@@ -1,12 +1,53 @@
 # Default owners for implementation and infra
 * @paulirish @micahjo7
 
-# Content reviewers for guide content (anything in category subdirectories)
-# e.g., guides/accessibility/accessible-error-announcement/
-guides/*/*/ @philipwalton @rviscomi @malchata
+# @atls-start
+# Content reviewers for guide content mapped by category (automatically generated from guides/atls.json)
+guides/built-in-ai/*/ @tomac
+guides/built-in-ai/SKILL.md @tomac
 
-# Discipline-level skills
-guides/*/SKILL.md @philipwalton @rviscomi @malchata
+guides/canvas/*/ @ewewraw
+guides/canvas/SKILL.md @ewewraw
+
+guides/css/*/ @LeaVerou
+guides/css/SKILL.md @LeaVerou
+
+guides/css-layout/*/ @LeaVerou
+guides/css-layout/SKILL.md @LeaVerou
+
+guides/forms/*/ @LeaVerou
+guides/forms/SKILL.md @LeaVerou
+
+guides/html/*/ @LeaVerou
+guides/html/SKILL.md @LeaVerou
+
+guides/motion/*/ @bramus
+guides/motion/SKILL.md @bramus
+
+guides/overlays/*/ @LeaVerou
+guides/overlays/SKILL.md @LeaVerou
+
+guides/passkeys/*/ @agektmr
+guides/passkeys/SKILL.md @agektmr
+
+guides/performance/*/ @tunetheweb
+guides/performance/SKILL.md @tunetheweb
+
+guides/privacy/*/ @rowan-m
+guides/privacy/SKILL.md @rowan-m
+
+guides/scroll/*/ @bramus
+guides/scroll/SKILL.md @bramus
+
+guides/security/*/ @rowan-m
+guides/security/SKILL.md @rowan-m
+
+guides/typography/*/ @LeaVerou
+guides/typography/SKILL.md @LeaVerou
+
+guides/webmcp/*/ @beaufortfrancois @Kulikowski
+guides/webmcp/SKILL.md @beaufortfrancois @Kulikowski
+# @atls-end
 
 # Eval files
 **/grader.ts @paulirish @micahjo7

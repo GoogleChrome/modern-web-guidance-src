@@ -1,0 +1,20 @@
+{
+  "built-in-ai": "tomac",
+  "canvas": "ewewraw",
+  "css": "LeaVerou",
+  "css-layout": "LeaVerou",
+  "forms": "LeaVerou",
+  "html": "LeaVerou",
+  "motion": "bramus",
+  "overlays": "LeaVerou",
+  "passkeys": "agektmr",
+  "performance": "tunetheweb",
+  "privacy": "rowan-m",
+  "scroll": "bramus",
+  "security": "rowan-m",
+  "typography": "LeaVerou",
+  "webmcp": [
+    "beaufortfrancois",
+    "Kulikowski"
+  ]
+}
