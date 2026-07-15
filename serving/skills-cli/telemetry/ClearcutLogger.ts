@@ -61,13 +61,14 @@ export class ClearcutLogger {
     });
   }
 
-  async logSearchResult(latencyMs: number, success: boolean, searchItems: SearchItem[]): Promise<void> {
+  async logSearchResult(query: string, latencyMs: number, success: boolean, searchItems: SearchItem[]): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
 
     const payload: ChromeModernWebGuidance = {
       search_result: {
+        query,
         search_items: searchItems,
       },
       os: detectOS(),
