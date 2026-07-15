@@ -37,10 +37,14 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
 
         console.log(`\nRunning Gemini prompt using the skill...`);
         const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
+        const env: Record<string, string | undefined> = { ...process.env, HOME: homeDir };
+        if (!env.GEMINI_MODEL) {
+            env.GEMINI_MODEL = 'gemini-3-flash-preview';
+        }
         const output = execSync(promptCmd, { 
             stdio: ['ignore', 'pipe', 'pipe'], 
             timeout: 90000,
-            env: { ...process.env, HOME: homeDir }
+            env
         });
 
         console.log(`\nVerifying Gemini used the skill...`);

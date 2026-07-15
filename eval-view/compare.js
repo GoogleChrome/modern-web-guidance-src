@@ -323,7 +323,7 @@ async function ensureRunDirectories(dirA, dirB) {
       `;
       if (compareLoading) {
         const loadingMsg = compareLoading.querySelector('div:last-child');
-        if (loadingMsg) loadingMsg.innerText = 'Downloading required run files from GCS... (See progress below)';
+        if (loadingMsg) loadingMsg.textContent = 'Downloading required run files from GCS... (See progress below)';
       }
 
       const logPre = document.getElementById('compare-log-stream');

@@ -17,7 +17,7 @@ import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
  * @returns {string} The path to the temporary work directory.
  */
 function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: string): string {
-  const tempHome = createIsolatedHome('ghh-jetski');
+  const tempHome = createIsolatedHome('ghh-jetski', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   const appSupportSource = path.join(os.homedir(), 'Library/Application Support/Jetski');
