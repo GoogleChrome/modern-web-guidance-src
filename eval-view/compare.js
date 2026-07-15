@@ -531,10 +531,11 @@ function getRunDateString(trialId) {
   return trialId.slice(0, 12);
 }
 
-function getFormattedTrialTitle(label, trialId, runNum, runType, model, traj, suiteData) {
+function getFormattedTrialTitle(label, trialId, runNum, runType, agent, model, traj, suiteData) {
   const dateStr = getRunDateString(trialId);
-  const resolvedModel = (model && model !== 'unknown' ? model : (traj?.model || suiteData?.model || (model || 'Unknown Model'))).replace(/^models\//, '');
-  return `${label} (Run ${runNum} - ${capitalize(runType || 'guided')}) — ${resolvedModel} (${dateStr})`;
+  const resolvedAgent = agent && agent !== 'unknown' ? agent : (traj?.agent || suiteData?.agent || 'Unknown Agent');
+  const resolvedModel = (model && model !== 'unknown' ? model : (traj?.model || suiteData?.model || 'Unknown Model')).replace(/^models\//, '');
+  return `${label} (Run ${runNum} - ${capitalize(runType || 'guided')}) — agent: ${resolvedAgent} model: ${resolvedModel} (${dateStr})`;
 }
 
 async function loadActiveTaskDetails() {
@@ -553,8 +554,8 @@ async function loadActiveTaskDetails() {
   runDirB = `${resultsBase}/${pathPartB}`;
 
   // Update split-pane column titles to display both run number and run type
-  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, modelA, null, suiteDataA);
-  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, modelB, null, suiteDataB);
+  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, null, suiteDataA);
+  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, null, suiteDataB);
 
   if (document.getElementById('timeline-title-a')) document.getElementById('timeline-title-a').innerText = titleAStr;
   if (document.getElementById('timeline-title-b')) document.getElementById('timeline-title-b').innerText = titleBStr;
@@ -867,8 +868,8 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
 
   const { primaryStep, divergentSteps } = findDivergenceInfo(trajA, trajB);
 
-  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, modelA, trajA, suiteDataA);
-  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, modelB, trajB, suiteDataB);
+  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, trajA, suiteDataA);
+  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, trajB, suiteDataB);
 
   if (document.getElementById('timeline-title-a')) document.getElementById('timeline-title-a').innerText = titleAStr;
   if (document.getElementById('timeline-title-b')) document.getElementById('timeline-title-b').innerText = titleBStr;
