@@ -4,6 +4,8 @@ import config from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { rootDir, baseAppsDir } from '../../lib/paths.ts';
+import { parseJsonlFile } from './agent-shared.ts';
+import { extractInitialPromptFromLogs } from './trajectory-parser.ts';
 
 /**
  * Dynamically fetches all active models from the Gemini API and returns them sorted by version and capability.
@@ -226,6 +228,7 @@ interface RunContext {
   codeOutput: string;
   codePath: string;
   preprocessed: PreprocessedTrajectory;
+  initialPrompt: string;
 }
 
 /**
@@ -565,6 +568,16 @@ function loadRunContext(runDir: string): RunContext {
   const code = findCodeOutput(absoluteDir);
   const preprocessed = preprocessTrajectory(trajectorySummary, chatLog);
 
+  const sessionFiles = fs.existsSync(absoluteDir) ? fs.readdirSync(absoluteDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
+  const sessionPath = sessionFiles[0] ? path.join(absoluteDir, sessionFiles[0]) : '';
+  let logData: any[] = [];
+  if (sessionPath && fs.existsSync(sessionPath)) {
+    try {
+      logData = sessionPath.endsWith('.jsonl') ? parseJsonlFile(sessionPath) : JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+    } catch {}
+  }
+  const initialPrompt = trajectorySummary?.initialPrompt || extractInitialPromptFromLogs(logData, chatLog) || 'Initial prompt not found in logs.';
+
   return {
     dir: absoluteDir,
     runNumber,
@@ -574,7 +587,8 @@ function loadRunContext(runDir: string): RunContext {
     chatLog,
     codeOutput: code.content,
     codePath: code.path,
-    preprocessed
+    preprocessed,
+    initialPrompt
   };
 }
 
@@ -701,12 +715,17 @@ async function runSubAgent1_GuideCompliance(
   const systemInstruction = `You are a specialized Web Guidance Compliance Auditor. Your task is to evaluate whether two agent runs (Run A vs Run B) successfully discovered, retrieved, and adhered to the MANDATORY requirements in guide.md and expectations.md.
 
 Specifically analyze:
-1. **Skill Discovery & Search**: Compare search queries used by Run A vs Run B. Did the search query accurately surface the guide, or did it miss due to vague/generic phrasing?
-2. **Guide Retrieval & Reading**: Did the agent actually retrieve guide.md?
-3. **Mandatory Rule Adoption**: Compare agent thinking/reasoning steps against MANDATORY guide requirements. Did an agent explicitly ignore, bypass, or misunderstand a mandatory rule (e.g. opting for JS instead of CSS, omitting fallback, missing required HTML attributes)?
-4. **Compliance Discrepancy**: Explain how guide compliance directly accounts for the difference in score between Run A (${ctxA.score}%) and Run B (${ctxB.score}%).`;
+1. **Starting Point & Eval Prompt Audit**: Compare the initial task/eval prompt given to Run A vs Run B (Initial Eval / Task Prompts). Did both runs start with a valid, actionable prompt (e.g. including ARGUMENTS or specific guidance instructions), or did one run start with a broken, truncated, or malformed prompt that caused the agent to get confused or skip search/retrieval? If the starting prompt differed or was broken right at launch, explicitly state that the eval harness spawned the run with a defective starting prompt before attributing failure to agent non-determinism.
+2. **Skill Discovery & Search**: Compare search queries used by Run A vs Run B. Did the search query accurately surface the guide, or did it miss due to vague/generic phrasing or a broken starting prompt?
+3. **Guide Retrieval & Reading**: Did the agent actually retrieve guide.md?
+4. **Mandatory Rule Adoption**: Compare agent thinking/reasoning steps against MANDATORY guide requirements. Did an agent explicitly ignore, bypass, or misunderstand a mandatory rule (e.g. opting for JS instead of CSS, omitting fallback, missing required HTML attributes)?
+5. **Compliance Discrepancy**: Explain how guide compliance and the initial starting prompts directly account for the difference in score between Run A (${ctxA.score}%) and Run B (${ctxB.score}%).`;
 
-  const prompt = `### Task Prompt
+  const prompt = `### Initial Eval / Task Prompts (Starting Points)
+- Run A Initial Prompt: """${ctxA.initialPrompt}"""
+- Run B Initial Prompt: """${ctxB.initialPrompt}"""
+
+### Task Prompt
 """
 ${guideCtx.taskPrompt}
 """
@@ -750,13 +769,14 @@ async function runSubAgent2_CodeAndFriction(
   statusA: string,
   statusB: string
 ): Promise<string> {
-  const systemInstruction = `You are a Code & Execution Diagnostic Sub-Agent. Your task is to identify the precise technical reason why Run A failed Playwright tests that Run B passed (or vice versa), using factual evidence from grader code, error traces, and exact code diffs.
+  const systemInstruction = `You are a Code & Execution Diagnostic Sub-Agent. Your task is to identify the precise technical reason why Run A failed Playwright tests that Run B passed (or vice versa), using factual evidence from starting prompts, grader code, error traces, and exact code diffs.
 
 Mandatory Audit Steps:
-1. **Grader & Error Trace Check**: Inspect \`grader.ts\` and the exact Playwright error logs. Did the test fail due to a strict locator mismatch (e.g. querying \`button\` when the agent created \`<a>\`), timing issues, missing required CSS rules, or missing functionality? State the exact line of \`grader.ts\` and the failure message.
-2. **Base App Diff Audit**: Compare what Run A and Run B modified relative to the Base App. Do NOT attribute missing/extra styles in Run A to "corrupted code" or "botched search/replace" unless Run A actually deleted existing lines that were present in the Base App. Distinguish carefully between code deleted by Run A vs new code added exclusively by Run B.
-3. **Execution vs. Trajectory Status**: Check whether the file modification tool calls (\`write_file\`, \`multi_replace_file_content\`, etc.) succeeded or returned errors in the trajectory. Do not claim the agent hallucinated or botched an edit if the tool reported \`status: success\` and produced valid HTML/CSS/JS.
-4. **Friction Assessment**: Only cite context noise or retries as a contributing factor if trajectory logs explicitly show the model losing track of instructions, entering error recovery loops, or making blind retries. If the agent completed its edits cleanly on the first try but chose an incompatible HTML element (like \`<a>\` instead of \`<button>\`), state clearly that this was a locator alignment/implementation choice rather than context loss.`;
+1. **Starting Point & Launch Prompt Audit**: Inspect the initial eval prompt (Initial Eval / Task Prompts). If an agent terminated prematurely, wrote no code, or only ran read-only inspection commands (like find or ls), check whether the run started with a broken, truncated, or malformed initial prompt. If the launch prompt itself was defective or missing required arguments right at the start, diagnose that as an eval harness / launch prompt defect rather than inherent model non-determinism or context decay.
+2. **Grader & Error Trace Check**: Inspect \`grader.ts\` and the exact Playwright error logs. Did the test fail due to a strict locator mismatch (e.g. querying \`button\` when the agent created \`<a>\`), timing issues, missing required CSS rules, or missing functionality? State the exact line of \`grader.ts\` and the failure message.
+3. **Base App Diff Audit**: Compare what Run A and Run B modified relative to the Base App. Do NOT attribute missing/extra styles in Run A to "corrupted code" or "botched search/replace" unless Run A actually deleted existing lines that were present in the Base App. Distinguish carefully between code deleted by Run A vs new code added exclusively by Run B.
+4. **Execution vs. Trajectory Status**: Check whether the file modification tool calls (\`write_file\`, \`multi_replace_file_content\`, etc.) succeeded or returned errors in the trajectory. Do not claim the agent hallucinated or botched an edit if the tool reported \`status: success\` and produced valid HTML/CSS/JS.
+5. **Friction Assessment**: Only cite context noise or retries as a contributing factor if trajectory logs explicitly show the model losing track of instructions, entering error recovery loops, or making blind retries. If the agent completed its edits cleanly on the first try but chose an incompatible HTML element (like \`<a>\` instead of \`<button>\`), state clearly that this was a locator alignment/implementation choice rather than context loss.`;
 
   const failedTracesA = (ctxA.resultsJson || []).filter((c: any) => !c.passed).map((c: any) => ({
     assertion: c.message,
@@ -770,7 +790,11 @@ Mandatory Audit Steps:
     errors: c.errors || ['Unknown error']
   }));
 
-  const prompt = `### Validation Logic (grader.ts)
+  const prompt = `### Initial Eval / Task Prompts (Starting Points)
+- Run A Initial Prompt: """${ctxA.initialPrompt}"""
+- Run B Initial Prompt: """${ctxB.initialPrompt}"""
+
+### Validation Logic (grader.ts)
 """
 ${guideCtx.graderContent.slice(0, 15000)}
 """
@@ -840,14 +864,15 @@ async function synthesizeDiagnosis(
 You MUST structure your report into exactly the following four sections in Markdown format. Do not alter section titles:
 
 ### 1. First Meaningful Divergence
-- **Step Number**: Step X (Specify exact step number where the first MEANINGFUL divergence occurred, e.g. Step 8 where code mutation was executed, or earlier if skill/guide discovery diverged)
-- **Event Type**: [Skill Search | Guide Retrieval | Mandatory Rule Adoption | Code Implementation | Error Recovery]
-- **Divergence Summary**: Direct, objective explanation of why this specific step represents the root divergence point based on factual tool outputs and code choices.
+- **Step Number**: Step X (Specify exact step number where the first MEANINGFUL divergence occurred, e.g. Step 0/Launch if the initial eval prompt differed or was broken right at launch, or Step 1/later if skill search or code implementation diverged)
+- **Event Type**: [Starting Prompt / Harness Launch | Skill Search | Guide Retrieval | Mandatory Rule Adoption | Code Implementation | Error Recovery]
+- **Divergence Summary**: Direct, objective explanation of why this specific step represents the root divergence point based on factual starting prompts, tool outputs, and code choices. If one run started with a broken or truncated initial prompt that caused premature termination or skipped discovery, explicitly state that here.
 
 ### 2. Guide Compliance & Milestone Matrix
 Provide a Markdown table summarizing key milestones:
 | Milestone / Metric | Run A (Score: ${ctxA.score}%) | Run B (Score: ${ctxB.score}%) | Status |
 | :--- | :--- | :--- | :---: |
+| **Initial Eval / Starting Prompt** | ... | ... | ... |
 | **Skill Search Query** | ... | ... | ... |
 | **Guide Retrieval** | ... | ... | ... |
 | **Mandatory Rule Adoption** | ... | ... | ... |
@@ -855,23 +880,27 @@ Provide a Markdown table summarizing key milestones:
 
 ### 3. Root Cause & Friction Analysis
 Provide an objective, strictly fact-grounded technical breakdown:
+- If Sub-Agent 1 or Sub-Agent 2 identified that the initial eval prompt/starting point differed, was truncated, or was malformed in one of the runs, explicitly state that the root cause was an eval harness launch defect (starting with a broken prompt) rather than pure model non-determinism or capability failure.
 - State the exact locator, API, or DOM mismatch that triggered the Playwright failure, referencing specific lines in \`grader.ts\` and error logs.
 - Explicitly distinguish between structural test harness mismatches (e.g. grader expecting a specific element tag like \`<button>\` when the agent used \`<a>\`) versus genuine agent capability failures (e.g. failing to implement the required web platform API or missing required functionality).
 - Do NOT fabricate narrative claims about context loss, memory decay, or botched edits unless trajectory logs show explicit tool failures, blind retries, or error loops.
 
 ### 4. Actionable Fix Recommendation
 Provide clear, concrete recommendations on whether to update:
+- **Harness / Launch Prompt**: (if the eval harness spawned the run with a broken or mismatched starting prompt right at launch, recommend verifying and fixing harness spawning logic)
 - **Guide (guide.md)**: (e.g. add MANDATORY keyword, clarify code example)
 - **Prompt (tasks/task.md)**: (e.g. add declarative constraint, clarify trigger element type)
 - **Grader (grader.ts)**: (e.g. relax rigid locator like \`button:visible\` to \`button:visible, a:visible, [role="button"]:visible\` to avoid false negatives)
-- **Agent/Model Non-Determinism**: (if guide & prompt are clear but the model chose an incompatible element or pattern due to non-determinism)`;
+- **Agent/Model Non-Determinism**: (only if the initial prompt, guide, and task instructions were clear and valid, but the model still behaved inconsistently)`;
 
   const prompt = `### Guide & Task Context
 - Guide Name: ${guideCtx.guideName}
 - Task Name: ${guideCtx.taskName}
 
 ### Run A (${statusA} - Score: ${ctxA.score}%, Dir: ${ctxA.dir})
+- Initial Prompt: """${ctxA.initialPrompt}"""
 ### Run B (${statusB} - Score: ${ctxB.score}%, Dir: ${ctxB.dir})
+- Initial Prompt: """${ctxB.initialPrompt}"""
 
 ### Sub-Agent 1: Guide Compliance Analysis
 """

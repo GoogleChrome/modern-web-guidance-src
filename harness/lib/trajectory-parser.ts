@@ -25,6 +25,63 @@ export interface TrajectorySummary {
   serving: string;
   steps: StandardizedStep[];
   tokenUsage?: { total: number; cached: number };
+  initialPrompt?: string;
+}
+
+export function extractInitialPromptFromLogs(logData?: any[], chatLogText?: string): string {
+  if (logData && Array.isArray(logData)) {
+    for (const entry of logData) {
+      let role = entry.role || entry.type || 'unknown';
+      let content = entry.message?.content || entry.content || entry.payload?.message || entry;
+      if (entry.message) role = entry.message.role || role;
+      
+      if (role === 'user' || role === 'USER_INPUT' || (entry.type === 'event_msg' && entry.payload?.type === 'user_message')) {
+        const text = Array.isArray(content)
+          ? content.find((c: any) => c.type === 'text')?.text || content[0]?.text || ''
+          : (typeof content === 'string' ? content : (content?.text || ''));
+        const cleanText = String(text).trim();
+        if (cleanText && !cleanText.includes('Base directory for this skill') && !cleanText.includes('Launching skill')) {
+          if (cleanText.includes('ARGUMENTS:')) {
+            const idx = cleanText.indexOf('ARGUMENTS:');
+            return cleanText.slice(idx).trim();
+          }
+          return cleanText;
+        }
+      }
+    }
+  }
+
+  if (chatLogText) {
+    const lines = chatLogText.split(/\r?\n/);
+    for (const line of lines) {
+      if (line.trim().startsWith('{')) {
+        try {
+          const obj = JSON.parse(line);
+          const role = obj.role || obj.type || obj.message?.role || 'unknown';
+          if (role === 'user' || role === 'USER_INPUT') {
+            const content = obj.message?.content || obj.content;
+            const text = Array.isArray(content)
+              ? content.find((c: any) => c.type === 'text')?.text || content[0]?.text || ''
+              : (typeof content === 'string' ? content : (content?.text || ''));
+            const cleanText = String(text).trim();
+            if (cleanText && !cleanText.includes('Base directory for this skill') && !cleanText.includes('Launching skill')) {
+              if (cleanText.includes('ARGUMENTS:')) {
+                const idx = cleanText.indexOf('ARGUMENTS:');
+                return cleanText.slice(idx).trim();
+              }
+              return cleanText;
+            }
+          }
+        } catch {}
+      }
+    }
+    const firstChunk = chatLogText.slice(0, 2000).trim();
+    if (firstChunk && !firstChunk.startsWith('{')) {
+      return firstChunk.split('\n')[0].trim();
+    }
+  }
+
+  return '';
 }
 
 /**
@@ -546,17 +603,31 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       summary = await parseJetskiTrajectory(targetDir, serving);
     }
 
-    if (summary) {
-      // Inject token usage if available
-      const runtimePath = path.join(targetDir, 'runtime.json');
-      if (fs.existsSync(runtimePath)) {
-        try {
-          const runJson = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
-          if (runJson.tokenUsage) {
-            summary.tokenUsage = runJson.tokenUsage;
+      if (summary) {
+        // Inject token usage if available
+        const runtimePath = path.join(targetDir, 'runtime.json');
+        if (fs.existsSync(runtimePath)) {
+          try {
+            const runJson = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
+            if (runJson.tokenUsage) {
+              summary.tokenUsage = runJson.tokenUsage;
+            }
+          } catch {}
+        }
+
+        if (!summary.initialPrompt) {
+          const chatLogPath = path.join(targetDir, 'chat_log.txt');
+          const chatText = fs.existsSync(chatLogPath) ? fs.readFileSync(chatLogPath, 'utf8') : '';
+          const filePath = sessionFiles[0] ? path.join(targetDir, sessionFiles[0]) : '';
+          let logData: any[] = [];
+          if (filePath && fs.existsSync(filePath)) {
+            try {
+              logData = filePath.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            } catch {}
           }
-        } catch {}
-      }
+          const promptFound = extractInitialPromptFromLogs(Array.isArray(logData) ? logData : [], chatText);
+          if (promptFound) summary.initialPrompt = truncateMessage(promptFound, 1000);
+        }
 
       const outPath = path.join(targetDir, 'trajectory_summary.json');
       fs.writeFileSync(outPath, JSON.stringify(summary, null, 2), 'utf8');

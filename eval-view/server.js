@@ -23,6 +23,9 @@ const SUPPORTED_AGENTS = [
  * Detects the agent display name from a file path based on SUPPORTED_AGENTS.
  * Returns { agentName: string, isKnown: boolean }.
  */
+/**
+ * @param {string} filePath
+ */
 function detectAgentFromPath(filePath) {
   const lowerPath = (filePath || '').toLowerCase();
   for (const agent of SUPPORTED_AGENTS) {
@@ -338,22 +341,26 @@ const server = http.createServer(async (req, res) => {
       'X-Content-Type-Options': 'nosniff'
     });
 
+    /** @param {any} str */
     const stripAnsi = (str) => typeof str === 'string' ? str.replace(/\x1B\[\d+m/g, '') : String(str);
 
     const origLog = console.log;
     const origWarn = console.warn;
     const origErr = console.error;
 
+    /** @param {...any} args */
     const streamLog = (...args) => {
       const msg = args.map(stripAnsi).join(' ') + '\n';
       res.write(msg);
       origLog(...args);
     };
+    /** @param {...any} args */
     const streamWarn = (...args) => {
       const msg = args.map(stripAnsi).join(' ') + '\n';
       res.write(msg);
       origWarn(...args);
     };
+    /** @param {...any} args */
     const streamErr = (...args) => {
       const msg = args.map(stripAnsi).join(' ') + '\n';
       res.write(msg);
@@ -386,7 +393,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
       res.write(`[Server] Run files ready.\n`);
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       const errMsg = `[Server Error] /api/ensure-run failed: ${e.message}\n`;
       res.write(errMsg);
       origErr(errMsg, e);
@@ -720,7 +727,7 @@ const server = http.createServer(async (req, res) => {
                * @param {any} entry
                * @param {number} i
                */
-              logData.forEach((entry, i) => {
+              logData.forEach((/** @type {any} */ entry, /** @type {number} */ i) => {
                 let role = entry.role || entry.type || 'unknown';
                 let contentHtml = '';
                 const timestamp = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '';
