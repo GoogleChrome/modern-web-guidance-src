@@ -166,20 +166,32 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 
   const evalsMd = generateEvalsResultsTable();
 
-  // Update README idempotently from template source
+  // Copy README template to the distribution build folder
   const templateReadmePath = path.join(SERVING_DIR, "skills-cli/template/README.md");
   const destReadmePath = path.join(publishRoot, "README.md");
   if (fs.existsSync(templateReadmePath)) {
-    let readmeContent = fs.readFileSync(templateReadmePath, "utf-8");
-    if (readmeContent.includes('<!-- INJECT_SKILL_COVERAGE -->')) {
-      readmeContent = readmeContent.replace('<!-- INJECT_SKILL_COVERAGE -->', dynamicMd.trimEnd());
-    } else {
-      readmeContent = readmeContent.replace('## Installation', dynamicMd + '## Installation');
-    }
-    if (readmeContent.includes('<!-- INJECT_EVAL_RESULTS -->')) {
-      readmeContent = readmeContent.replace('<!-- INJECT_EVAL_RESULTS -->', evalsMd.trimEnd());
-    }
-    fs.writeFileSync(destReadmePath, readmeContent);
+    fs.copyFileSync(templateReadmePath, destReadmePath);
+  }
+
+  // Update both the distribution and source repo README files inline
+  const readmesToUpdate = [path.join(rootDir, "README.md")];
+  if (fs.existsSync(destReadmePath)) {
+    readmesToUpdate.push(destReadmePath);
+  }
+
+  for (const readmePath of readmesToUpdate) {
+    updateFileBetweenMarkers(
+      readmePath,
+      "<!-- INJECT_SKILL_COVERAGE_START -->",
+      "<!-- INJECT_SKILL_COVERAGE_END -->",
+      dynamicMd
+    );
+    updateFileBetweenMarkers(
+      readmePath,
+      "<!-- INJECT_EVAL_RESULTS_START -->",
+      "<!-- INJECT_EVAL_RESULTS_END -->",
+      evalsMd
+    );
   }
 
   // Copy .github/img assets
@@ -284,4 +296,18 @@ function formatUplift(unguided: number, guided: number): string {
   const upliftStr = uplift >= 0 ? `+${uplift}pp` : `${uplift}pp`;
   return `${unguided}% → ${guided}% (**${upliftStr}**)`;
 }
+
+function updateFileBetweenMarkers(filePath: string, markerStart: string, markerEnd: string, newContent: string) {
+  if (!fs.existsSync(filePath)) return;
+  let content = fs.readFileSync(filePath, 'utf8');
+  const startIndex = content.indexOf(markerStart);
+  const endIndex = content.indexOf(markerEnd);
+  if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
+    const before = content.substring(0, startIndex + markerStart.length);
+    const after = content.substring(endIndex);
+    content = before + '\n' + newContent.trim() + '\n' + after;
+    fs.writeFileSync(filePath, content, 'utf8');
+  }
+}
+
 
