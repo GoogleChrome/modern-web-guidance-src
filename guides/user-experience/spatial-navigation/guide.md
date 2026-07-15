@@ -1,4 +1,8 @@
 ---
 name: Spatial navigation
-description: Implement spatial navigation with arrow keys that adapts to different layout modes
+description: Implement accessible spatial navigation using arrow keys that works correctly in different layout modes (grid etc)
 ---
+
+<!--
+To be referenced by select-picker-layouts once done
+ -->
