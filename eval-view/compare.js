@@ -27,8 +27,8 @@ let currentScoreA = 0;
 let currentScoreB = 0;
 
 // Parsed run data
-let runDirA = '';
-let runDirB = '';
+let _runDirA = '';
+let _runDirB = '';
 let suiteDataA = null;
 let suiteDataB = null;
 
@@ -447,7 +447,7 @@ function populateSidebar() {
 }
 
 function updateExecutiveSummary() {
-  const resultsBase = isStatic ? 'results' : '';
+  const _resultsBase = isStatic ? 'results' : '';
   
   // Trial A
   document.getElementById('title-a').innerText = `${trialA.slice(0, 18)} (Run ${runNumA})`;
@@ -550,8 +550,8 @@ async function loadActiveTaskDetails() {
   const pathPartA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
   const pathPartB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
   
-  runDirA = `${resultsBase}/${pathPartA}`;
-  runDirB = `${resultsBase}/${pathPartB}`;
+  _runDirA = `${resultsBase}/${pathPartA}`;
+  _runDirB = `${resultsBase}/${pathPartB}`;
 
   // Update split-pane column titles to display both run number and run type
   const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, null, suiteDataA);

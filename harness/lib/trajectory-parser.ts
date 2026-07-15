@@ -508,11 +508,9 @@ export function parseCodexTrajectory(logData: any[], serving: string): Trajector
   const callMap = new Map<string, StandardizedStep>();
 
   for (const entry of logData) {
-    if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message') {
+    if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'commentary') {
       const msg = entry.payload;
-      if (msg.phase === 'commentary') {
-        currentThought = currentThought ? `${currentThought}\n${msg.message}` : msg.message;
-      }
+      currentThought = currentThought ? `${currentThought}\n${msg.message}` : msg.message;
     } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call' || entry.payload?.type === 'custom_tool_call')) {
       const fc = entry.payload;
       let cmdName = fc.name;

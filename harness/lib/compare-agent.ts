@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import config from '../config.ts';
+
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { rootDir, baseAppsDir } from '../../lib/paths.ts';
@@ -405,7 +405,7 @@ function parsePlaywrightResults(report: any): { message: string; passed: boolean
 /**
  * Phase 1 Pre-Processor: Categorizes trajectory steps into 5 milestone/noise types and computes metrics.
  */
-function preprocessTrajectory(trajectorySummary: any, chatLog: string): PreprocessedTrajectory {
+function preprocessTrajectory(trajectorySummary: any, _chatLog: string): PreprocessedTrajectory {
   const steps = trajectorySummary?.steps || [];
   const taggedSteps: TaggedStep[] = [];
   const searchQueries: string[] = [];

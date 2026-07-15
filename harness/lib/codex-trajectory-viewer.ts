@@ -1,6 +1,6 @@
 export function generateCodexTrajectoryHtml(logData: any[]): string {
   // Escape '<' in the JSON representation to prevent XSS or broken script tags
-  const safeJsonData = JSON.stringify(logData).replace(/</g, '\\u003c');
+  const _safeJsonData = JSON.stringify(logData).replace(/</g, '\\u003c');
 
   function escapeHtml(str: any): string {
     return (str || '').toString()
