@@ -99,14 +99,12 @@ export function validateGuide(filePath: string): ValidationResult {
     errors.push(`Missing "description" in frontmatter for ${relativePath}.`);
   }
 
+  // web-feature-ids is optional: a use case may be proposed before its features
+  // are known, or may not map to a specific feature. Validate only when present.
   const featureIds = data['web-feature-ids'];
-  if (featureIds === undefined) {
-    errors.push(
-      `Missing "web-feature-ids" in frontmatter for ${relativePath}.`,
-    );
-  } else if (!Array.isArray(featureIds)) {
+  if (featureIds !== undefined && !Array.isArray(featureIds)) {
     errors.push(`"web-feature-ids" must be an array in ${relativePath}.`);
-  } else {
+  } else if (Array.isArray(featureIds)) {
     for (const id of featureIds) {
       const result = validateFeature(id);
       if (!result.isValid) {
@@ -218,8 +216,9 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideBody = validation.body;
 
       if (isDisciplineSkill || isDisciplineGuide) {
-        // Discipline skills/guides don't require the same frontmatter as use cases
-        guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
+        // Discipline skills/guides don't require a description like use cases do.
+        // (web-feature-ids is now optional for everyone, so no longer filtered here.)
+        guideErrors = guideErrors.filter(e => !e.includes('Missing "description"'));
       }
 
       if (guideErrors.length > 0) {

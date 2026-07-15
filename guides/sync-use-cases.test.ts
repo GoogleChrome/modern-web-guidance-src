@@ -70,7 +70,7 @@ Body content.
     assert.ok(result.errors.some((e: string) => /Missing "description"/.test(e)));
   });
 
-  test('returns error for missing web-feature-ids', () => {
+  test('allows missing web-feature-ids (now optional)', () => {
     const filePath = writeTempGuide(`---
 name: my-use-case
 description: A description
@@ -78,7 +78,7 @@ description: A description
 Body content.
 `);
     const result = validateGuide(filePath);
-    assert.ok(result.errors.some((e: string) => /Missing "web-feature-ids"/.test(e)));
+    assert.ok(!result.errors.some((e: string) => /web-feature-ids/.test(e)));
   });
 
   test('returns error when web-feature-ids is not an array', () => {
@@ -155,7 +155,6 @@ web-feature-ids:
     const result = validateGuide(filePath);
     assert.ok(result.errors.some((e: string) => /Missing "name"/.test(e)));
     assert.ok(result.errors.some((e: string) => /Missing "description"/.test(e)));
-    assert.ok(result.errors.some((e: string) => /Missing "web-feature-ids"/.test(e)));
   });
 
   test('returns error for BASELINE_STATUS macro with invalid feature ID', () => {
