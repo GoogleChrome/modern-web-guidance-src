@@ -125,7 +125,7 @@ Use browser-based Playwright E2E checks (grouped under the nested \`test.describ
 - **No Generic Smoke Tests**: Do NOT write generic page-load, title, or header smoke tests. The calibration runner expects 100% of the grader tests to fail against the broken implementation. Since a broken feature does not crash the page, a generic smoke test will pass on the broken app and break calibration. Every test in the grader must assert the specific feature's correct implementation so it fails when the feature is broken.
 
 ## 3. Loose Matching for Dynamic Values
-When asserting dynamic values, classes, state names, or types (either in static regex checks or browser tests), avoid strict exact-string equality checks. Use loose matches, inclusion checks, or regex pattern matching to accommodate naming variations and synonyms that fulfill the requirement.
+When asserting dynamic values, classes, state names, or types (either in static regex checks or browser tests), avoid strict exact-string equality checks. Use loose matches, inclusion checks, or regex pattern matching to accommodate naming variations that fulfill the requirement.
 
 ## 4. Dynamic File Scoping
 NEVER hardcode target file paths. Use the template's helper \`extractTargetFilesFromPatch\` to dynamically locate the modified files and run static assertions strictly against them.
