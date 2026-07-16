@@ -2,15 +2,16 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { rootDir, baseAppsDir } from '../lib/paths.ts';
-import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
+import { testGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import { generateTargetGrader } from './grader-gen.ts';
 import {
   createIsolatedHome,
   cleanupIsolatedHome,
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
-import { environmentConfig, defaultSuiteConfig, Serving, type SuiteConfig } from '../harness/config.ts';
-import { setupIsolatedWorkDir } from './lib/utils.ts';
+import { defaultSuiteConfig, Serving, Agents, type SuiteConfig } from '../harness/config.ts';
+import { collectGuidesUsed } from '../harness/lib/guidance_validation.ts';
+import { setupIsolatedWorkDir, runAgent } from './lib/utils.ts';
 import {
   buildSolutionPrompt,
   buildBrokenPrompt,
@@ -35,8 +36,7 @@ import {
   getTaskMap,
   inventoryGuide,
   classifyGuide,
-  scanAllGuides,
-  getSupportedBaseApps
+  scanAllGuides
 } from '../lib/guide-validation.ts';
 
 export interface DevGuideOptions {
@@ -73,7 +73,7 @@ function printInventory(inv: GuideInventory): void {
 }
 
 export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
-  const maxRetries = options.maxRetries ?? 2;
+  const maxRetries = options.maxRetries ?? 4;
   const targetDir = path.resolve(process.cwd(), targetDirRaw);
 
   if (!fs.existsSync(targetDir)) {
@@ -107,8 +107,8 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 2: Concurrent target generation across SUPPORTED_BASE_APPS
-  await Promise.all(SUPPORTED_BASE_APPS.map(async (baseApp) => {
+  // Step 2: Sequential target generation across SUPPORTED_BASE_APPS
+  for (const baseApp of SUPPORTED_BASE_APPS) {
     const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, baseApp);
     fs.mkdirSync(targetCapsuleDir, { recursive: true });
 
@@ -135,7 +135,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
       console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
       await generateTargetTask(targetDir, baseApp);
     }
-  }));
+  }
 
   // Step 3: Calibrate targets and retry grader if calibration fails
   let overallSuccess = true;
@@ -175,29 +175,22 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: 'solution' | 'broken'): Promise<void> {
   const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-${patchType}`);
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), workDir, { recursive: true });
-    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
+    fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
+      recursive: true,
+      filter: (src) => !src.includes('node_modules')
+    });
 
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+
+    // Git init is required for capturePatchFromGit to extract git diffs
+    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
 
     const prompt = patchType === 'solution'
       ? buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
       : buildBrokenPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
 
-    const model = process.env.JETSKI_MODEL;
-    const commandArgs = ['-p', prompt];
-    if (model) commandArgs.push('--model', model);
-
-    const exitCode = await spawnAsync(environmentConfig.jetskiCliBin, commandArgs, {
-      cwd: workDir,
-      env: { ...process.env },
-      stdio: 'inherit',
-    });
-
-    if (exitCode !== 0) {
-      throw new Error(`Jetski CLI exited with code ${exitCode}`);
-    }
+    await runAgent(prompt, workDir);
 
     const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchType === 'solution' ? SOLUTION_PATCH_FILE : BROKEN_PATCH_FILE);
     fs.mkdirSync(path.dirname(destPatch), { recursive: true });
@@ -211,8 +204,11 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
   const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-task`);
   try {
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
-    const baseAppHtml = path.join(baseAppsDir, baseApp, 'index.html');
-    if (fs.existsSync(baseAppHtml)) fs.copyFileSync(baseAppHtml, path.join(workDir, 'base-app.html'));
+    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    const sourceBaseAppDir = path.join(baseAppsDir, baseApp);
+    if (fs.existsSync(sourceBaseAppDir)) {
+      await fs.promises.cp(sourceBaseAppDir, workDir, { recursive: true });
+    }
 
     const prompt = buildTargetTaskPrompt({
       guideFile: GUIDE_FILE,
@@ -220,19 +216,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       baseApp,
     });
 
-    const model = process.env.JETSKI_MODEL;
-    const commandArgs = ['-p', prompt];
-    if (model) commandArgs.push('--model', model);
-
-    const exitCode = await spawnAsync(environmentConfig.jetskiCliBin, commandArgs, {
-      cwd: workDir,
-      env: { ...process.env },
-      stdio: 'inherit',
-    });
-
-    if (exitCode !== 0) {
-      throw new Error(`Jetski CLI exited with code ${exitCode}`);
-    }
+    await runAgent(prompt, workDir);
 
     const generatedTask = path.join(workDir, TASK_FILE);
     if (fs.existsSync(generatedTask)) {
@@ -246,17 +230,22 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
 }
 
 async function runAgentTest(targetDir: string, guideName: string, guidedOnly = false, suiteConfig?: SuiteConfig): Promise<void> {
-  console.log(cCyan(`\n--- Running agent test ---`));
+  console.log(cCyan(`\n--- Running agent tests ---`));
 
-  const taskMap = getTaskMap();
-  const taskInfo = taskMap.get(`${guideName}/task`);
-  if (!taskInfo) {
-    console.error(cRed(`Task info not found for ${guideName}, cannot run agent test.`));
+  const targetsDir = path.join(targetDir, 'targets');
+  if (!fs.existsSync(targetsDir) || !fs.statSync(targetsDir).isDirectory()) {
+    console.log(cYellow(`No targets directory found in ${targetDir}. Skipping agent tests.`));
     return;
   }
 
-  console.log(`Task: ${guideName} (base_app: ${taskInfo.baseApp})`);
-  console.log(`Prompt: ${cDim(taskInfo.prompt.substring(0, 120))}${taskInfo.prompt.length > 120 ? '...' : ''}`);
+  const baseApps = fs.readdirSync(targetsDir).filter(name => {
+    return !name.startsWith('.') && fs.statSync(path.join(targetsDir, name)).isDirectory() && SUPPORTED_BASE_APPS.includes(name as any);
+  });
+
+  if (baseApps.length === 0) {
+    console.log(cYellow(`No supported base apps found in ${targetsDir}. Skipping agent tests.`));
+    return;
+  }
 
   // Step d: Build workspace dependencies
   let buildCode = 0;
@@ -274,62 +263,89 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
     return;
   }
 
-  // Step e: Grade runs
-  const graderPath = findGrader(targetDir);
-  if (!graderPath) {
-    console.error(cRed(`Could not find ${GRADER_FILE} for grading`));
-    return;
-  }
+  const taskMap = getTaskMap();
 
-  const results: Record<string, { passed: number; total: number }> = {};
-
-  // 1. Grade base app
-  const baseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
-  const baseAppHtml = path.join(baseAppDir, 'index.html');
-  if (fs.existsSync(baseAppHtml)) {
-    const tempHome = createIsolatedHome('gd-pre-grade');
-    try {
-      const stagingDir = path.join(tempHome, taskInfo.baseApp);
-      fs.cpSync(baseAppDir, stagingDir, { recursive: true });
-      const stagedHtml = path.join(stagingDir, 'index.html');
-      const preResults = await gradeOutput(stagedHtml, graderPath, path.join(targetDir, 'test-app-results', 'pre-grade-report'));
-      if (preResults) results['pre'] = preResults;
-    } finally {
-      cleanupIsolatedHome(tempHome);
+  for (const baseApp of baseApps) {
+    console.log(cCyan(`\nRunning agent test for target: ${baseApp}`));
+    const taskKey = `${guideName}/${baseApp}`;
+    const taskInfo = taskMap.get(taskKey);
+    if (!taskInfo) {
+      console.error(cRed(`Task info not found for ${taskKey}, cannot run agent test.`));
+      continue;
     }
+
+    const targetGraderPath = path.join(targetsDir, baseApp, 'grader.ts');
+    if (!fs.existsSync(targetGraderPath)) {
+      console.error(cRed(`Could not find grader.ts for ${baseApp} at ${targetGraderPath}`));
+      continue;
+    }
+
+    const results: Record<string, { passed: number; total: number }> = {};
+
+    // 1. Grade base app
+    const baseAppDir = path.join(baseAppsDir, baseApp);
+    const baseAppHtml = path.join(baseAppDir, 'index.html');
+    if (fs.existsSync(baseAppHtml)) {
+      const tempHome = createIsolatedHome(`gd-pre-grade-${baseApp}`);
+      try {
+        const stagingDir = path.join(tempHome, baseApp);
+        fs.cpSync(baseAppDir, stagingDir, { recursive: true });
+        const stagedHtml = path.join(stagingDir, 'index.html');
+        process.env.PATCH_FILE = path.join(targetsDir, baseApp, 'solution.patch');
+        const preResults = await gradeOutput(stagedHtml, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
+        delete process.env.PATCH_FILE;
+        if (preResults) results['pre'] = preResults;
+      } finally {
+        cleanupIsolatedHome(tempHome);
+      }
+    }
+
+    // 2. Run agent suite
+    const { runSuite } = await import('../harness/run_suite.ts');
+    const testOutputDir = path.join(targetDir, 'test-app-results', baseApp);
+    const agentOverride = process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : undefined;
+    await runSuite({
+      name: `${guideName}-${baseApp}`,
+      outputDir: testOutputDir,
+      tasks: [taskKey],
+      numRuns: 1,
+      skipEval: true,
+      guidedOnly,
+      suiteConfig: agentOverride ? { agent: agentOverride } : undefined,
+    });
+
+    // 3. Grade agent output (unguided + guided)
+    const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
+    for (const runType of runTypes) {
+      const resultDir = path.join(testOutputDir, '1', guideName, baseApp, runType);
+      if (!fs.existsSync(resultDir)) continue;
+
+      const htmlFiles = fs.readdirSync(resultDir).filter(f => f.endsWith('.html'));
+      const outputFile = htmlFiles.find(f => f === 'index.html') || htmlFiles[0];
+      if (!outputFile) continue;
+
+      process.env.PATCH_FILE = path.join(resultDir, 'agent.patch');
+      const gradeResults = await gradeOutput(
+        path.join(resultDir, outputFile),
+        targetGraderPath,
+        path.join(resultDir, 'grade-report')
+      );
+      delete process.env.PATCH_FILE;
+      if (gradeResults) results[runType] = gradeResults;
+    }
+
+    let guidesConsumed: string[] = [];
+    const guidedDir = path.join(testOutputDir, '1', guideName, baseApp, 'guided');
+    if (fs.existsSync(guidedDir)) {
+      const suiteConfig = defaultSuiteConfig;
+      const servingMode = suiteConfig.serving as any;
+      const activeAgent = agentOverride || suiteConfig.agent;
+      const usage = await collectGuidesUsed(guidedDir, servingMode, activeAgent);
+      guidesConsumed = [...new Set([...usage.retrievedGuides, ...usage.fileReadGuides])];
+    }
+
+    printTestComparison(results, guidesConsumed);
   }
-
-  // 2. Run agent suite
-  const { runSuite } = await import('../harness/run_suite.ts');
-  const testOutputDir = path.join(targetDir, 'test-app-results');
-  await runSuite({
-    name: guideName,
-    outputDir: testOutputDir,
-    tasks: [guideName],
-    numRuns: 1,
-    skipEval: true,
-    guidedOnly,
-  });
-
-  // 3. Grade agent output (unguided + guided)
-  const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
-  for (const runType of runTypes) {
-    const resultDir = path.join(testOutputDir, '1', guideName, 'task', runType);
-    if (!fs.existsSync(resultDir)) continue;
-
-    const htmlFiles = fs.readdirSync(resultDir).filter(f => f.endsWith('.html'));
-    const outputFile = htmlFiles.find(f => f === 'index.html') || htmlFiles[0];
-    if (!outputFile) continue;
-
-    const gradeResults = await gradeOutput(
-      path.join(resultDir, outputFile),
-      graderPath,
-      path.join(resultDir, 'grade-report')
-    );
-    if (gradeResults) results[runType] = gradeResults;
-  }
-
-  printTestComparison(results);
 }
 
 async function gradeOutput(htmlPath: string, graderPath: string, outputDir: string): Promise<{ passed: number; total: number } | null> {
@@ -352,7 +368,10 @@ async function gradeOutput(htmlPath: string, graderPath: string, outputDir: stri
   }
 }
 
-export function printTestComparison(results: Record<string, { passed: number; total: number }>): void {
+export function printTestComparison(
+  results: Record<string, { passed: number; total: number }>,
+  guidesConsumed?: string[]
+): void {
   const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;
   if (total === 0) return;
 
@@ -373,6 +392,10 @@ export function printTestComparison(results: Record<string, { passed: number; to
     const impact = guidedPct - unguidedPct;
     console.log(`  ${'Guide impact:'.padEnd(18)} ${impact >= 0 ? '+' : ''}${impact}% (vs unguided)`);
   }
+
+  if (guidesConsumed && guidesConsumed.length > 0) {
+    console.log(`  ${'Guides consumed:'.padEnd(18)} [${guidesConsumed.join(', ')}]`);
+  }
 }
 
 function printSummary(targetDir: string, inv: GuideInventory, result: CalibrationResult | null, attempts: number): void {
@@ -385,28 +408,46 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
     console.log(cBold(cRed(`\u274c Guide: ${inv.name}`)));
   }
 
-  console.log(`   ${GUIDE_FILE.padEnd(21)} \u2705 exists`);
-  console.log(`   ${DEMO_FILE.padEnd(21)} \u2705 exists`);
-
+  console.log(`   ${GUIDE_FILE.padEnd(28)} \u2705 exists`);
+  
   if (!inv.hasExpectations || inv.expectationsEmpty) {
-    console.log(`   ${EXPECTATIONS_FILE.padEnd(21)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding assertions)`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding assertions)`);
   } else {
-    console.log(`   ${EXPECTATIONS_FILE.padEnd(21)} \u2705 exists`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u2705 exists`);
   }
 
-  const negStatus = inv.hasNegativeDemo ? 'exists' : 'generated';
-  console.log(`   ${NEGATIVE_DEMO_FILE.padEnd(21)} \u2705 ${negStatus}`);
+  const targetsDir = path.join(targetDir, TARGETS_DIR);
+  if (fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory()) {
+    const baseApps = fs.readdirSync(targetsDir).filter(name => {
+      return !name.startsWith('.') && fs.statSync(path.join(targetsDir, name)).isDirectory() && SUPPORTED_BASE_APPS.includes(name as any);
+    });
 
-  if (result?.success) {
-    console.log(`   ${GRADER_FILE.padEnd(21)} \u2705 calibrated (attempt ${attempts})`);
-  } else if (result) {
-    console.log(`   ${GRADER_FILE.padEnd(21)} \u274c calibration failed`);
-  } else {
-    console.log(`   ${GRADER_FILE.padEnd(21)} \u274c not generated`);
+    for (const baseApp of baseApps) {
+      console.log(`\n   ${cBold(`Target Base App: ${baseApp}`)}`);
+      const appTargetDir = path.join(targetsDir, baseApp);
+      
+      const solutionPatchPath = path.join(appTargetDir, SOLUTION_PATCH_FILE);
+      const brokenPatchPath = path.join(appTargetDir, BROKEN_PATCH_FILE);
+      const graderPath = path.join(appTargetDir, GRADER_FILE);
+      const taskPath = path.join(appTargetDir, TASK_FILE);
+
+      const printFileStatus = (label: string, filepath: string, existsMsg = 'exists', missingMsg = 'missing') => {
+        const exists = fs.existsSync(filepath);
+        console.log(`     ${label.padEnd(28)} ${exists ? cGreen('✅') : cRed('❌')} ${exists ? existsMsg : missingMsg}`);
+      };
+
+      printFileStatus(SOLUTION_PATCH_FILE, solutionPatchPath, 'generated', 'not generated');
+      printFileStatus(BROKEN_PATCH_FILE, brokenPatchPath, 'generated', 'not generated');
+      
+      if (result?.success) {
+        printFileStatus(GRADER_FILE, graderPath, `calibrated (attempt ${attempts})`, 'calibration failed');
+      } else {
+        printFileStatus(GRADER_FILE, graderPath, 'exists', 'missing');
+      }
+      
+      printFileStatus(TASK_FILE, taskPath, 'generated', 'not generated');
+    }
   }
-
-  const taskStatus = inv.hasTask ? 'exists' : (result?.success ? 'generated' : 'not generated');
-  console.log(`   ${TASK_FILE.padEnd(21)} ${inv.hasTask || result?.success ? '\u2705' : '\u274c'} ${taskStatus}`);
 
   console.log(`\nAll generated files are in ${relDir}/`);
   if (result?.success) {
@@ -645,13 +686,14 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   const args = process.argv.slice(2);
   const dir = args.find(a => !a.startsWith('--'));
   const isTest = !args.includes('--no-test');
+  const guidedOnly = args.includes('--guided-only');
 
   if (!dir) {
-    console.error('Usage: node --experimental-strip-types guides/dev-guide.ts <path/to/guide> [--no-test]');
+    console.error('Usage: node --experimental-strip-types guides/dev-guide.ts <path/to/guide> [--no-test] [--guided-only]');
     process.exit(1);
   }
 
-  devGuide(dir, { test: isTest }).then(success => {
+  devGuide(dir, { test: isTest, guidedOnly }).then(success => {
     process.exit(success ? 0 : 1);
   }).catch(err => {
     console.error(err);

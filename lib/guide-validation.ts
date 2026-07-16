@@ -6,7 +6,7 @@ import { marked } from 'marked';
 // Import shared utilities (using relative paths from guides/)
 import { validateMacros } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
-import { rootDir, guidesDir, baseAppsDir } from './paths.ts';
+import { rootDir, guidesDir } from './paths.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -180,14 +180,16 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
   for (const inv of guides) {
     const subdir = inv.dir;
-    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill } = inv;
+    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill, targets } = inv;
+    const hasTargets = !!targets && targets.length > 0;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
     const isDisciplineGuide = inv.name === inv.category;
     
     // Discipline skills don't need demo.html; a frontmatter-only stub
     // (a proposed use case) doesn't need one either
-    if (!isDisciplineSkill && !isDisciplineGuide && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
+    // Guides with multi-app targets don't need a top-level demo.html
+    if (!isDisciplineSkill && !isDisciplineGuide && !hasTargets && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);

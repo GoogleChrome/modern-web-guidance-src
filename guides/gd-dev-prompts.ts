@@ -13,17 +13,35 @@ export interface PatchPromptOptions {
 }
 
 export function buildSolutionPrompt(opts: PatchPromptOptions): string {
-  return `Read ${opts.guideFile} and ${opts.expectationsFile} to understand the web guidance and verification criteria.
-Modify the web application codebase in this directory (${opts.workDir}) so that it perfectly implements the guidance and satisfies all must-pass expectations in ${opts.expectationsFile}.
-Do NOT modify ${opts.guideFile} or ${opts.expectationsFile}.
+  return `# GOAL
+Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy all must-pass expectations in \`${opts.expectationsFile}\`.
+
+# INPUTS
+1. **Standard Guidance**: \`${opts.guideFile}\`
+2. **Verification Requirements**: \`${opts.expectationsFile}\`
+
+# RULES
+1. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
+2. Ensure your implementation is robust, complete, and type-safe.
+3. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
+
+# INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
 }
 
 export function buildBrokenPrompt(opts: PatchPromptOptions): string {
-  return `Read ${opts.guideFile} and ${opts.expectationsFile} to understand the web guidance and verification criteria.
-Modify the web application codebase in this directory (${opts.workDir}) to introduce subtle, realistic violations of the must-fail criteria in ${opts.expectationsFile}.
-CRITICAL: Do NOT use obvious placeholders, syntax errors, or 'TODO: implement here' comments. The broken state must represent a subtle, realistic incomplete or legacy implementation so AI agents cannot trivially guess the required changes without reading ${opts.guideFile}.
-Do NOT modify ${opts.guideFile} or ${opts.expectationsFile}.
+  return `# GOAL
+Modify the web application codebase in the directory \`${opts.workDir}\` to introduce subtle, realistic violations of the must-fail criteria in \`${opts.expectationsFile}\`.
+
+# INPUTS
+1. **Standard Guidance**: \`${opts.guideFile}\`
+2. **Verification Requirements**: \`${opts.expectationsFile}\`
+
+# RULES
+1. **Realistic Violations Only**: Do NOT use obvious placeholders, syntax errors, or "TODO: implement here" comments. The broken state must represent a subtle, realistic incomplete or legacy implementation so AI agents cannot trivially guess the required changes without reading \`${opts.guideFile}\`.
+2. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
+
+# INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
 }
 
@@ -34,31 +52,100 @@ export interface GraderPromptOptions {
   brokenPatchFile: string;
   graderFile: string;
   baseApp: string;
+  templateFile: string;
+  parserPatternLibraryPath?: string;
+  playwrightPatternLibraryPath?: string;
+  tsMorphDtsPath?: string;
+  linkedomDtsPath?: string;
   failureContext?: string;
 }
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
-  const contextNote = opts.failureContext
-    ? `\nPREVIOUS FAILURE CONTEXT:\nThe previous grader failed calibration with this error:\n${opts.failureContext}\nFix the assertions to avoid this failure.`
+  const contextBlock = opts.failureContext
+    ? `### ⚠️ PREVIOUS FAILURE CONTEXT
+The previous grader failed calibration with this error:
+\`\`\`
+${opts.failureContext}
+\`\`\`
+Analyze this failure and modify the existing grader file to fix these assertions while still adhering to all rules below.
+
+---
+`
     : '';
 
-  // ACTION ITEM FOR FUTURE CSSOMNOM OSPO INTEGRATION (+/35652):
+  const patternsBlock = (opts.parserPatternLibraryPath && opts.playwrightPatternLibraryPath)
+    ? `### 📚 BEST PRACTICE EXAMPLES
+Use your file-viewing tools to read these reference files for examples of how to write various static and browser assertions:
+- **Static Analysis Patterns (Linkedom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
+- **Browser Analysis Patterns (Playwright)**: [playwright-pattern-library.grader.ts](file://${opts.playwrightPatternLibraryPath})
+`
+    : '';
+
+  const definitionsBlock = (opts.tsMorphDtsPath && opts.linkedomDtsPath)
+    ? `### 📝 PARSER API DEFINITIONS
+If you are unfamiliar with the APIs for the static parsers, you can refer to their TypeScript definitions at these paths:
+- **TS Morph Type Definitions**: [ts-morph.d.ts](file://${opts.tsMorphDtsPath})
+- **Linkedom Type Definitions**: [index.d.ts](file://${opts.linkedomDtsPath})
+`
+    : '';
+
+  // ACTION ITEM FOR FUTURE CSSOMNOM OSPO INTEGRATION:
   // When the cssomnom package is published to npm and installed in guides/package.json,
   // update the static check instructions below to mandate importing cssomnom and passing
   // the files from extractTargetFilesFromPatch(...) into cssomnom.parse() for AST verification.
-  return `Read ${opts.guideFile}, ${opts.expectationsFile}, ${opts.solutionPatchFile} (the golden implementation diff), and ${opts.brokenPatchFile} (the negative anti-pattern diff).
-Write a Playwright test script named ${opts.graderFile} directly modeling the expectations.md requirements for this multi-file web application (${opts.baseApp}).
-The test script must assert that when ${opts.solutionPatchFile} is applied, all tests pass (100% success rate), and when ${opts.brokenPatchFile} is applied, all negative/must-fail tests fail (0% success rate on must-fail criteria).${contextNote}
+  // Also update Rule 1's CSS check description to use CSSOMNom and remove Rule 4 (precise regex word matching)
+  // once string/regex-based checks are no longer needed.
+  const patchInstruction = opts.failureContext
+    ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because the golden solution patch (\`${opts.solutionPatchFile}\`) or the broken patch (\`${opts.brokenPatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
+    : '';
 
-VERIFICATION & SCOPING RULES:
-1. Primary Authority (Playwright Browser APIs): Prioritize browser evaluation APIs (e.g., window.getComputedStyle(el), bounding rect measurements, and page.evaluate()) over static string matching whenever possible. Testing actual browser computed styles and layout ensures robustness against formatting or structural variations.
-2. Dynamic File Scoping (Option B): Where static file checks or structural parsing are required, NEVER hardcode target file paths assuming the agent modified the exact same file as ${opts.solutionPatchFile}. Instead, dynamically discover which files were touched using:
-   \`import { extractTargetFilesFromPatch } from '../lib/patch-utils.ts';\`
-   \`const appRoot = path.dirname(process.env.TARGET_FILE || '');\`
-   \`const modifiedFiles = extractTargetFilesFromPatch(process.env.PATCH_FILE || path.join(__dirname, '${opts.solutionPatchFile}')).map(f => path.resolve(appRoot, f));\`
-   Run any static file assertions strictly against the files in \`modifiedFiles\` so agents modifying alternative component files during evaluation runs are evaluated fairly.
-3. Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. catch (e) { /* ignore */ }).
-4. Before finishing, verify that your generated TypeScript code compiles cleanly.
+  return `${contextBlock}# GOAL
+Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application.${patchInstruction}
+
+# INPUTS
+1. **Standard Guidance**: \`${opts.guideFile}\`
+2. **Requirements**: \`${opts.expectationsFile}\`
+3. **Golden Solution Diff**: \`${opts.solutionPatchFile}\` (must pass 100% of tests)
+4. **Anti-Pattern Broken Diff**: \`${opts.brokenPatchFile}\` (must fail 100% of negative/must-fail tests)
+5. **Boilerplate Template**: \`${opts.templateFile}\` (must base your imports, setup, and structure on this template)
+
+# VERIFICATION & SCOPING RULES
+
+## 1. Primary Authority: Static Analysis First
+You MUST prioritize static analysis over browser execution for structural assertions. Keep static assertions as top-level synchronous test blocks.
+- **Dynamic File Targeting**: Statically check all relevant modified files extracted from the patch. Do not assume styles or scripts are inline in HTML; they may be in standalone \`.css\` or \`.js\` files.
+- **HTML/DOM**: Use \`linkedom\` (\`parseHTML\`) to statically verify DOM structures, tags, and attributes.
+- **CSS**: Use regex checks on the contents of all CSS files and HTML style tags in the patch to statically verify CSS styling declarations.
+- **JS/TS**: Use \`ts-morph\` (AST querying) on all JS/TS/Astro files and HTML script tags in the patch to statically verify JavaScript source structure.
+
+## 2. Playwright Browser Checks: Use Only if Absolutely Necessary
+Use browser-based Playwright E2E checks (grouped under the nested \`test.describe('Browser tests', ...)\` block) ONLY if it is absolutely necessary to verify layout computations (like bounding boxes), runtime values (like computed styles), or interactive state changes.
+- **No Redundant Browser Checks**: Do NOT write browser tests for requirements that are already validated statically (e.g., verifying stylesheet definitions or DOM structure).
+- **No Navigation Workarounds**: NEVER perform page-to-page click navigations simply to verify event registration or script execution; verify event listener registration statically instead.
+- **No Generic Smoke Tests**: Do NOT write generic page-load, title, or header smoke tests. The calibration runner expects 100% of the grader tests to fail against the broken implementation. Since a broken feature does not crash the page, a generic smoke test will pass on the broken app and break calibration. Every test in the grader must assert the specific feature's correct implementation so it fails when the feature is broken.
+
+## 3. Loose Matching for Dynamic Values
+When asserting dynamic values, classes, state names, or types (either in static regex checks or browser tests), avoid strict exact-string equality checks. Use loose matches, inclusion checks, or regex pattern matching to accommodate naming variations and synonyms that fulfill the requirement.
+
+## 4. Dynamic File Scoping
+NEVER hardcode target file paths. Use the template's helper \`extractTargetFilesFromPatch\` to dynamically locate the modified files and run static assertions strictly against them.
+
+## 5. Isolated Sandbox Patch Resolution
+Always resolve the paths of patch files relative to the grader module directory using Node's \`import.meta.dirname\`.
+
+## 6. Substring Collisions
+Avoid lazy substring checks (like \`.includes('reduce')\` or \`.includes('color')\`) that match feature names or prefixes instead of actual values. Use precise word boundaries (e.g., \`/\\breduce\\b/\`) to prevent false positives.
+
+## 7. Error Handling
+Do not use generic try/catch blocks that aggressively swallow exceptions.
+
+## 8. Dependencies & Sandbox Constraints
+Do not install any npm packages or execute application dev/build commands (like astro build or vite build) in your workspace. However, you MUST verify that your generated grader code compiles cleanly. Run this command in your workspace to check for TypeScript compilation/syntax errors and fix them before ending your turn:
+\`npx tsc --noEmit --skipLibCheck --target esnext --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --esModuleInterop grader.ts\`
+
+${definitionsBlock}
+${patternsBlock}
+# INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
 }
 
@@ -69,22 +156,24 @@ export interface TaskPromptOptions {
 }
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
-  return `Read ${opts.guideFile} and base-app.html (the existing "${opts.baseApp}" application).
-Generate a ${opts.taskFile} file containing 1–4 realistic test prompts that a web developer would send to an AI coding assistant to accomplish the goal described in ${opts.guideFile}.
+  return `# GOAL
+Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the overall feature.
+Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a developer would send to an AI coding assistant to request the overall feature inside the application.
 
-Rules:
-- CRITICAL: Do NOT include YAML frontmatter, and do NOT place the file inside a tasks/ subdirectory. Create strictly ${opts.taskFile} as plain markdown bullet lines starting with '- '.
-- Write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.
-- Phrase prompts as ACTION REQUESTS or directives (e.g. "add X", "can you build Y", "implement Z"). NEVER phrase them as advisory questions (e.g. "how can I?", "what's the best way to?", "can you explain?") — the agent must implement, not just explain.
-- The first prompt is the most important: it must be specific enough that an agent implementing it would produce a grader-testable result.
-- Vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
-- Assume the developer is working on the existing app seen in base-app.html. Reference its real assets and content where relevant.
-- Do NOT mention or mandate legacy fallbacks in the prompt. The RAG system handles fallbacks automatically.
-- Do NOT mention the guide itself or indicate that guidance exists.
-- Do NOT name the base app (e.g. "${opts.baseApp}") — a real developer wouldn't refer to it that way.
-- Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS functions. Describe the desired user outcome instead. However, including specific DOM IDs or class names is acceptable if the grader requires them to locate elements.
-- Each prompt must be on its own line, prefixed with "- ", containing absolutely no internal line breaks.
+# INPUTS
+1. **Standard Guidance**: \`${opts.guideFile}\`
+2. **Target File Name**: \`${opts.taskFile}\`
+
+# RULES
+1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based specifically on the **description** in the frontmatter of \`${opts.guideFile}\`, keeping the request simple, high-level, and generic.
+2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
+3. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
+4. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
+5. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant.
+6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "add X", "can you build Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
+7. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
+8. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
+
+# INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
 }
-
-

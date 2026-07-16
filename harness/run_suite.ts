@@ -76,7 +76,7 @@ export interface RunSuiteOptions {
   numRuns?: number;
   skipEval?: boolean;
   guidedOnly?: boolean;
-  suiteConfig?: SuiteConfig;
+  suiteConfig?: Partial<SuiteConfig>;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
@@ -159,7 +159,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
-        const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+        let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+        const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
+        if (fs.existsSync(targetGraderPath)) {
+          graderPath = targetGraderPath;
+        }
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
@@ -454,7 +458,8 @@ if (result.status === 0) {
     fs.unlinkSync(failureFile);
   }
   const gradeStart = Date.now();
-  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
+  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status;
 } else {
