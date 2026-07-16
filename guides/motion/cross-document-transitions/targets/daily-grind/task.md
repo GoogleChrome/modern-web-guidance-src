@@ -1,0 +1,1 @@
+- Can you build smooth, seamless transitions between full page navigations in our app, such as cross-fades, custom reveal effects, or morphing of content from one page to the next?

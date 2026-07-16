@@ -36,7 +36,11 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const playwrightConfig = path.join(guidesDir, 'playwright.config.ts');
   const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
 
-  const env: NodeJS.ProcessEnv = { ...process.env, TARGET_FILE: opts.targetFileAbs };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    TARGET_FILE: opts.targetFileAbs,
+    PLAYWRIGHT_HTML_OPEN: 'never',
+  };
 
   if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
@@ -194,13 +198,20 @@ async function runDemoCalibration(demoPath: string, graderPath: string, demoOutD
   console.log(cYellow(`\nRunning against demo.html... (Expecting 100% pass)`));
   let demoFailed = false;
 
+  const solutionPatch = path.join(path.dirname(graderPath), 'solution.patch');
+  process.env.PATCH_FILE = solutionPatch;
   const demoResults = await runPlaywright(demoPath, graderPath, demoOutDir, 'inherit')
     .catch(err => {
       console.error(cRed(`Failed to test demo.html: ${err.message}`));
       return null;
     });
+  delete process.env.PATCH_FILE;
 
   if (!demoResults) {
+    demoFailed = true;
+  } else if (demoResults.errors && demoResults.errors.length > 0) {
+    console.error(cRed(`Playwright global/compilation errors in demo.html calibration:\n` + 
+      demoResults.errors.map((e: any) => e.message).join('\n')));
     demoFailed = true;
   } else {
     const unexpected = demoResults.stats?.unexpected || 0;
@@ -228,14 +239,20 @@ async function runDemoCalibration(demoPath: string, graderPath: string, demoOutD
 async function runNegativeCalibration(negativePath: string, graderPath: string, negativeOutDir: string, result: CalibrationResult): Promise<void> {
   console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
 
+  const brokenPatch = path.join(path.dirname(graderPath), 'broken.patch');
+  process.env.PATCH_FILE = brokenPatch;
   const negativeResults = await runPlaywright(negativePath, graderPath, negativeOutDir, 'ignore')
     .catch(err => {
       console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
       return null;
     });
+  delete process.env.PATCH_FILE;
 
   if (!negativeResults) {
     // Failed to run — result.success stays false
+  } else if (negativeResults.errors && negativeResults.errors.length > 0) {
+    console.error(cRed(`Playwright global/compilation errors in negative-demo.html calibration:\n` + 
+      negativeResults.errors.map((e: any) => e.message).join('\n')));
   } else {
     const passed = negativeResults.stats?.expected || 0;
     const failed = negativeResults.stats?.unexpected || 0;
@@ -292,6 +309,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
 
   // Golden calibration
   const goldenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-sol`);
+  let unexpected = 0;
   try {
     fs.cpSync(path.join(baseAppsDir, baseApp), goldenSandbox, { recursive: true });
     const applyRes = applyPatchSync(goldenSandbox, solutionPatch);
@@ -302,17 +320,26 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
 
     console.log(cYellow(`\nRunning against ${baseApp} with ${SOLUTION_PATCH_FILE}... (Expecting 100% pass)`));
+    process.env.PATCH_FILE = solutionPatch;
     const demoResults = await runPlaywright(path.join(goldenSandbox, 'index.html'), graderPath, demoOutDir, 'inherit').catch(err => {
       result.stage = 'server-boot';
       result.errorDetails = `Dev server crashed or failed to run against ${SOLUTION_PATCH_FILE}: ${err.message}`;
       return null;
     });
+    delete process.env.PATCH_FILE;
 
     if (!demoResults) {
       return result;
     }
 
-    const unexpected = demoResults.stats?.unexpected || 0;
+    if (demoResults.errors && demoResults.errors.length > 0) {
+      result.stage = 'calibration';
+      result.errorDetails = `Playwright compilation/global errors:\n` +
+        demoResults.errors.map((e: any) => e.message).join('\n');
+      return result;
+    }
+
+    unexpected = demoResults.stats?.unexpected || 0;
     const expected = demoResults.stats?.expected || 0;
     result.demo.passed = expected;
     result.demo.failed = unexpected;
@@ -328,13 +355,17 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
       demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
       return result;
     }
-    console.log(cGreen(`✅ ${SOLUTION_PATCH_FILE} passed all ${expected} tests.`));
   } finally {
-    fs.rmSync(goldenSandbox, { recursive: true, force: true });
+    if (unexpected > 0) {
+      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping golden sandbox directory for debugging: ${goldenSandbox}`));
+    } else {
+      fs.rmSync(goldenSandbox, { recursive: true, force: true });
+    }
   }
 
   // Broken calibration
   const brokenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-brk`);
+  let passed = 0;
   try {
     fs.cpSync(path.join(baseAppsDir, baseApp), brokenSandbox, { recursive: true });
     const applyRes = applyPatchSync(brokenSandbox, brokenPatch);
@@ -345,17 +376,26 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
 
     console.log(cYellow(`Running against ${baseApp} with ${BROKEN_PATCH_FILE}... (Expecting 100% fail)`));
+    process.env.PATCH_FILE = brokenPatch;
     const negativeResults = await runPlaywright(path.join(brokenSandbox, 'index.html'), graderPath, negativeOutDir, 'ignore').catch(err => {
       result.stage = 'server-boot';
       result.errorDetails = `Dev server crashed or failed to run against ${BROKEN_PATCH_FILE}: ${err.message}`;
       return null;
     });
+    delete process.env.PATCH_FILE;
 
     if (!negativeResults) {
       return result;
     }
 
-    const passed = negativeResults.stats?.expected || 0;
+    if (negativeResults.errors && negativeResults.errors.length > 0) {
+      result.stage = 'calibration';
+      result.errorDetails = `Playwright compilation/global errors:\n` +
+        negativeResults.errors.map((e: any) => e.message).join('\n');
+      return result;
+    }
+
+    passed = negativeResults.stats?.expected || 0;
     const failed = negativeResults.stats?.unexpected || 0;
     result.negative.passed = passed;
     result.negative.failed = failed;
@@ -371,9 +411,12 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
       negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
       return result;
     }
-    console.log(cGreen(`✅ ${BROKEN_PATCH_FILE} failed all ${failed} tests correctly.`));
   } finally {
-    fs.rmSync(brokenSandbox, { recursive: true, force: true });
+    if (passed > 0) {
+      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping broken sandbox directory for debugging: ${brokenSandbox}`));
+    } else {
+      fs.rmSync(brokenSandbox, { recursive: true, force: true });
+    }
   }
 
   result.success = true;
@@ -390,14 +433,12 @@ export async function testGrader(targetDirRaw: string, baseApp?: string): Promis
   if (fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory()) {
     const apps = fs.readdirSync(targetsDir).filter(name => !name.startsWith('.') && getSupportedBaseApps().includes(name));
     if (apps.length > 0) {
-      let overallSuccess = true;
       let lastResult: CalibrationResult | null = null;
       for (const app of apps) {
         console.log(cCyan(`\n--- Calibrating target base app: ${app} ---`));
         const res = await testTargetGrader(targetDirAbs, app);
         lastResult = res;
         if (!res.success) {
-          overallSuccess = false;
           break;
         }
       }

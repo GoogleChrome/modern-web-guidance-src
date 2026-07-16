@@ -206,7 +206,11 @@ function getTaskRunContext(
   const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
   const targetFile = path.join(dir, targetModifiedFile || 'index.html');
   const targetPkgJson = path.join(dir, 'package.json');
-  const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+  let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+  const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
+  if (fs.existsSync(targetGraderPath)) {
+    graderPath = targetGraderPath;
+  }
   const graderResults = path.join(dir, `${guide}_results.json`);
   const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
 

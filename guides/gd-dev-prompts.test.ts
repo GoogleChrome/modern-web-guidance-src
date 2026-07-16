@@ -16,7 +16,7 @@ test('buildSolutionPrompt includes instructions and paths', () => {
   assert.ok(prompt.includes('guide.md'));
   assert.ok(prompt.includes('expectations.md'));
   assert.ok(prompt.includes('/tmp/test-sandbox'));
-  assert.ok(prompt.includes('perfectly implements the guidance'));
+  assert.ok(prompt.includes('perfectly implement the guidance'));
 });
 
 test('buildBrokenPrompt includes anti-pattern constraints', () => {
@@ -38,11 +38,10 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
     brokenPatchFile: 'broken.patch',
     graderFile: 'grader.ts',
     baseApp: 'daily-grind',
+    templateFile: 'template.grader.ts',
   });
   assert.ok(prompt.includes('extractTargetFilesFromPatch'));
-  assert.ok(prompt.includes('process.env.PATCH_FILE'));
-  assert.ok(prompt.includes('appRoot'));
-  assert.ok(prompt.includes('window.getComputedStyle(el)'));
+  assert.ok(prompt.includes('Primary Authority: Static Analysis First'));
   assert.ok(prompt.includes('daily-grind'));
 });
 
@@ -54,9 +53,10 @@ test('buildTargetGraderPrompt formats failure context correctly when provided', 
     brokenPatchFile: 'broken.patch',
     graderFile: 'grader.ts',
     baseApp: 'devtools-times',
+    templateFile: 'template.grader.ts',
     failureContext: 'Golden test failed on assertion getComputedStyle',
   });
-  assert.ok(prompt.includes('PREVIOUS FAILURE CONTEXT:'));
+  assert.ok(prompt.includes('PREVIOUS FAILURE CONTEXT'));
   assert.ok(prompt.includes('Golden test failed on assertion getComputedStyle'));
 });
 
@@ -67,7 +67,7 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions', () => 
     baseApp: 'daily-grind',
   });
   assert.ok(prompt.includes('task.md'));
-  assert.ok(prompt.includes('base-app.html'));
-  assert.ok(prompt.includes('Do NOT mention the guide itself'));
-  assert.ok(prompt.includes('Do NOT name the base app'));
+  assert.ok(prompt.includes('codebase files'));
+  assert.ok(prompt.includes('Do NOT name the guide itself'));
+  assert.ok(prompt.includes('Write the prompt as a developer talking'));
 });

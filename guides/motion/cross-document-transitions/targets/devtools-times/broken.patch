@@ -1,0 +1,105 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..0dce9eb 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,37 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++
++    <script is:inline>
++      // Helper to determine navigation transition direction
++      function getTransitionDirection(from, to) {
++        if (!from || !to) return 'next';
++        const fromPath = new URL(from.url).pathname;
++        const toPath = new URL(to.url).pathname;
++
++        // Transition from home to details or listing is "next"
++        if (fromPath === '/' && toPath !== '/') {
++          return 'next';
++        }
++        // Transition back to home is "previous"
++        if (fromPath !== '/' && toPath === '/') {
++          return 'previous';
++        }
++        return 'next';
++      }
++
++      window.addEventListener("pagereveal", (e) => {
++        if (e.viewTransition && window.navigation?.activation) {
++          const from = window.navigation.activation.from;
++          const to = window.navigation.activation.entry;
++          const direction = getTransitionDirection(from, to);
++
++          // Legacy: Instead of utilizing e.viewTransition.types.add(),
++          // we modify classes on body to trigger CSS transitions
++          document.body.classList.add(direction);
++        }
++      });
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d4c970e 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,56 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Enable cross-document view transitions for same-origin navigations */
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: enabled;
++  }
++}
++
++/* Page transitions */
++body.next {
++  &::view-transition-old(body) {
++    animation: 0.4s ease-in both slide-out-next;
++  }
++  &::view-transition-new(body) {
++    animation: 0.4s ease-out both slide-in-next;
++  }
++}
++
++body.previous {
++  &::view-transition-old(body) {
++    animation: 0.4s ease-in both slide-out-prev;
++  }
++  &::view-transition-new(body) {
++    animation: 0.4s ease-out both slide-in-prev;
++  }
++}
++
++@keyframes slide-out-next {
++  to {
++    transform: translateX(-100%);
++    opacity: 0;
++  }
++}
++
++@keyframes slide-in-next {
++  from {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-out-prev {
++  to {
++    transform: translateX(100%);
++    opacity: 0;
++  }
++}
++
++@keyframes slide-in-prev {
++  from {
++    transform: translateX(-100%);
++  }
++}

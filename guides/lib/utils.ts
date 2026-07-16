@@ -6,6 +6,7 @@ import {
   createIsolatedHome,
   copyFileIfExists,
   createTrustedFolders,
+  spawnAsync,
 } from '../../harness/lib/agent-shared.ts';
 
 export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
@@ -35,18 +36,42 @@ export async function runCommand(command: string, args: string[], cwd?: string):
   });
 }
 
-export async function runGemini(prompt: string, workDir?: string): Promise<string> {
-  const command = config.environment.jetskiCliBin;
-  const model = process.env.JETSKI_MODEL;
+export async function runAgent(
+  prompt: string,
+  workDir?: string,
+  options: { captureOutput?: boolean } = {}
+): Promise<string> {
+  const useJetski = process.env.GD_USE_JETSKI === '1';
+  const command = useJetski ? config.environment.jetskiCliBin : config.environment.geminiCliBin;
   const commandArgs = ['-p', prompt];
-  if (model) commandArgs.push('--model', model);
   
-  return runCommand(command, commandArgs, workDir);
+  if (useJetski) {
+    const model = process.env.JETSKI_MODEL;
+    if (model) commandArgs.push('--model', model);
+  } else {
+    commandArgs.push('--yolo');
+  }
+
+  if (options.captureOutput) {
+    return runCommand(command, commandArgs, workDir);
+  }
+
+  const exitCode = await spawnAsync(command, commandArgs, {
+    cwd: workDir,
+    env: { ...process.env },
+    stdio: 'inherit',
+  });
+
+  if (exitCode !== 0) {
+    throw new Error(`${useJetski ? 'Jetski' : 'Gemini'} CLI exited with code ${exitCode}`);
+  }
+
+  return '';
 }
 
-export function setupIsolatedWorkDir(prefix: string): string {
+export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string): string {
   const tempHome = createIsolatedHome(prefix);
-  const workDir = path.join(tempHome, 'work');
+  const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
   const originalHome = process.env.HOME || process.cwd();
@@ -67,7 +92,7 @@ export function setupIsolatedWorkDir(prefix: string): string {
   }
   process.env.JETSKI_DIR = jetskiDest;
 
-  createTrustedFolders(geminiDest, [workDir]);
+  createTrustedFolders(geminiDest, [tempHome]);
   process.env.HOME = tempHome;
   
   return workDir;

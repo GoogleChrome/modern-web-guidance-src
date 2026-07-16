@@ -1,0 +1,1 @@
+- Can you add smooth, seamless transitions between full page navigations, such as cross-fades or custom reveal effects, when navigating between pages on the site?
