@@ -17,7 +17,19 @@ const __dirname = path.dirname(__filename);
 const ATL_CONFIG_PATH = path.join(__dirname, 'atls.json');
 
 interface AtlConfig {
-  [category: string]: string | string[];
+  default: Record<string, string | string[]>;
+  web_features: Record<string, string | string[]>;
+  web_features_groups: Record<string, string | string[]>;
+}
+
+const FEATURE_GROUPS_PATH = path.join(__dirname, 'feature-to-groups.json');
+let featureGroups: Record<string, string[]> = {};
+try {
+  if (fs.existsSync(FEATURE_GROUPS_PATH)) {
+    featureGroups = JSON.parse(fs.readFileSync(FEATURE_GROUPS_PATH, 'utf8'));
+  }
+} catch (err) {
+  console.warn(`Could not load feature-to-groups.json:`, err);
 }
 
 function loadAtlConfig(): AtlConfig {
@@ -45,19 +57,88 @@ export function normalizeLabel(label: string): string {
   return clean.trim();
 }
 
+function getFeatureIdsFromGuide(guidePath: string): string[] {
+  try {
+    if (!fs.existsSync(guidePath)) return [];
+    const content = fs.readFileSync(guidePath, 'utf8');
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!match) return [];
+    const fm = match[1];
+    
+    const lines = fm.split('\n');
+    const featureIds: string[] = [];
+    let inWebFeatures = false;
+    for (const line of lines) {
+      if (line.startsWith('web-feature-ids:')) {
+        inWebFeatures = true;
+        continue;
+      }
+      if (inWebFeatures) {
+        if (line.trim().startsWith('-')) {
+          const fid = line.replace(/^\s*-\s*/, '').trim();
+          if (fid) featureIds.push(fid);
+        } else if (line.match(/^[a-zA-Z0-9_-]+:/)) {
+          inWebFeatures = false;
+        }
+      }
+    }
+    return featureIds;
+  } catch (err) {
+    console.error(`Error reading feature IDs from ${guidePath}:`, err);
+    return [];
+  }
+}
+
+export function resolveAtl(category: string, featureIds: string[], atlConfig: AtlConfig): string | string[] {
+  let resolvedValue = atlConfig.default[category];
+
+  if (featureIds && featureIds.length > 0) {
+    let foundOverride = false;
+    // Check specific feature ID overrides
+    for (const fid of featureIds) {
+      if (atlConfig.web_features[fid]) {
+        resolvedValue = atlConfig.web_features[fid];
+        foundOverride = true;
+        break;
+      }
+    }
+    // Check feature group overrides
+    if (!foundOverride) {
+      for (const fid of featureIds) {
+        const groups = featureGroups[fid] || [];
+        for (const group of groups) {
+          if (atlConfig.web_features_groups[group]) {
+            resolvedValue = atlConfig.web_features_groups[group];
+            foundOverride = true;
+            break;
+          }
+        }
+        if (foundOverride) break;
+      }
+    }
+  }
+
+  return resolvedValue;
+}
+
 export function handleIssue(issueNumber: number, labels: string[], atlConfig: AtlConfig) {
   console.log(`Triaging issue #${issueNumber} with labels: ${labels.join(', ')}`);
   
   const assignedAtls = new Set<string>();
   for (const label of labels) {
     const normalized = normalizeLabel(label);
-    const atl = atlConfig[normalized];
-    if (atl) {
-      const atls = Array.isArray(atl) ? atl : [atl];
-      for (const a of atls) {
-        console.log(`Matched label "${label}" (normalized: "${normalized}") to ATL: @${a}`);
-        assignedAtls.add(a);
-      }
+    
+    if (atlConfig.web_features[normalized]) {
+      const atls = Array.isArray(atlConfig.web_features[normalized]) ? atlConfig.web_features[normalized] : [atlConfig.web_features[normalized]];
+      atls.forEach(a => assignedAtls.add(a));
+    }
+    else if (atlConfig.web_features_groups[normalized]) {
+      const atls = Array.isArray(atlConfig.web_features_groups[normalized]) ? atlConfig.web_features_groups[normalized] : [atlConfig.web_features_groups[normalized]];
+      atls.forEach(a => assignedAtls.add(a));
+    }
+    else if (atlConfig.default[normalized]) {
+      const atls = Array.isArray(atlConfig.default[normalized]) ? atlConfig.default[normalized] : [atlConfig.default[normalized]];
+      atls.forEach(a => assignedAtls.add(a));
     }
   }
 
@@ -98,6 +179,8 @@ export function handlePR(prNumber: number, prAuthor: string, atlConfig: AtlConfi
   const contentFilenames = new Set([GUIDE_FILE, DEMO_FILE, EXPECTATIONS_FILE, SKILL_FILE]);
   const matchedAtls = new Set<string>();
 
+  const REPO_ROOT = path.resolve(__dirname, '..');
+
   for (const file of files) {
     const parts = file.split('/');
     if (parts[0] !== 'guides' || parts.length < 2) {
@@ -108,11 +191,15 @@ export function handlePR(prNumber: number, prAuthor: string, atlConfig: AtlConfi
     const filename = parts[parts.length - 1];
 
     if (contentFilenames.has(filename)) {
-      const atl = atlConfig[category];
+      const absolutePath = path.isAbsolute(file) ? file : path.join(REPO_ROOT, file);
+      const dir = path.dirname(absolutePath);
+      const guidePath = path.join(dir, GUIDE_FILE);
+      const featureIds = getFeatureIdsFromGuide(guidePath);
+      const atl = resolveAtl(category, featureIds, atlConfig);
       if (atl) {
         const atls = Array.isArray(atl) ? atl : [atl];
         for (const a of atls) {
-          console.log(`File "${file}" is a content file in category "${category}". ATL: @${a}`);
+          console.log(`File "${file}" is a content file in category "${category}" (feature IDs: ${featureIds.join(', ')}). ATL: @${a}`);
           matchedAtls.add(a);
         }
       }

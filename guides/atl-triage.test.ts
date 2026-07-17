@@ -21,18 +21,33 @@ describe('normalizeLabel', () => {
 
 describe('handleIssue', () => {
   const mockConfig = {
-    performance: ['rviscomi', 'paulirish'],
-    accessibility: 'rviscomi',
-    'css-layout': 'malchata',
-    motion: 'philipwalton'
+    default: {
+      performance: ['rviscomi', 'paulirish'],
+      accessibility: 'rviscomi',
+      'css-layout': 'malchata',
+      motion: 'philipwalton'
+    },
+    web_features: {
+      'canvas-html': 'override-issue-reviewer'
+    },
+    web_features_groups: {
+      'scrolling': 'group-issue-reviewer'
+    }
   };
 
   it('returns matched ATLs for matching labels', () => {
-    // Note: handleIssue normally executes `gh issue edit` which we want to mock or bypass.
-    // In our handleIssue code, it tries to run execSync but catches errors.
-    // We can verify that it returns the correct ATLs.
     const result = handleIssue(123, ['category:performance', 'category:motion', 'other-label'], mockConfig);
     assert.deepStrictEqual(result.sort(), ['philipwalton', 'rviscomi', 'paulirish'].sort());
+  });
+
+  it('returns overridden ATL for feature labels', () => {
+    const result = handleIssue(123, ['canvas-html'], mockConfig);
+    assert.deepStrictEqual(result, ['override-issue-reviewer']);
+  });
+
+  it('returns overridden ATL for group labels', () => {
+    const result = handleIssue(123, ['scrolling'], mockConfig);
+    assert.deepStrictEqual(result, ['group-issue-reviewer']);
   });
 
   it('returns empty array when no labels match', () => {
@@ -43,22 +58,31 @@ describe('handleIssue', () => {
 
 describe('handlePR', () => {
   const mockConfig = {
-    performance: ['rviscomi', 'paulirish'],
-    accessibility: 'rviscomi',
-    'css-layout': 'malchata',
-    motion: 'philipwalton'
+    default: {
+      performance: ['rviscomi', 'paulirish'],
+      accessibility: 'rviscomi',
+      'css-layout': 'malchata',
+      motion: 'philipwalton'
+    },
+    web_features: {
+      'image-set': 'override-pr-reviewer'
+    },
+    web_features_groups: {}
   };
 
   it('requests review from matching ATLs for content files', () => {
     const mockFiles = [
-      'guides/performance/deliver-optimized-decorative-images/guide.md',
+      'guides/performance/deliver-optimized-decorative-images/guide.md', // Has 'image-set' feature, will be overridden!
       'guides/motion/carousel-slide-effects/expectations.md',
       'guides/css-layout/grid-layout/demo.html',
       'guides/css-layout/grid-layout/other-file.json' // shouldn't trigger
     ];
 
     const result = handlePR(456, 'some-contributor', mockConfig, mockFiles);
-    assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton', 'malchata'].sort());
+    // 'deliver-optimized-decorative-images' resolves to 'override-pr-reviewer' (via feature 'image-set' override)
+    // 'carousel-slide-effects' resolves to 'philipwalton' (default motion)
+    // 'grid-layout' resolves to 'malchata' (default css-layout)
+    assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'philipwalton', 'malchata'].sort());
   });
 
   it('does not request review from the PR author', () => {
@@ -67,9 +91,9 @@ describe('handlePR', () => {
       'guides/motion/carousel-slide-effects/expectations.md'
     ];
 
-    // Author is rviscomi, so only paulirish and philipwalton should be requested
-    const result = handlePR(456, 'rviscomi', mockConfig, mockFiles);
-    assert.deepStrictEqual(result.sort(), ['paulirish', 'philipwalton'].sort());
+    // Author is override-pr-reviewer, so only philipwalton should be requested
+    const result = handlePR(456, 'override-pr-reviewer', mockConfig, mockFiles);
+    assert.deepStrictEqual(result.sort(), ['philipwalton'].sort());
   });
 
   it('returns empty array when no content files are touched', () => {

@@ -9,8 +9,13 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const ATL_CONFIG_PATH = path.join(__dirname, 'atls.json');
 const CODEOWNERS_PATH = path.join(REPO_ROOT, 'CODEOWNERS');
 
+import { scanAllGuides } from '../lib/guide-validation.ts';
+import { getFeatureGroups } from '../serving/lib/baseline.ts';
+
 interface AtlConfig {
-  [category: string]: string | string[];
+  default: Record<string, string | string[]>;
+  web_features: Record<string, string | string[]>;
+  web_features_groups: Record<string, string | string[]>;
 }
 
 function loadAtlConfig(): AtlConfig {
@@ -23,35 +28,163 @@ function loadAtlConfig(): AtlConfig {
   }
 }
 
+function getFormattedAtls(value: any): string | null {
+  if (!value || value === 'TBD') return null;
+  const atls = Array.isArray(value) ? value : [value];
+  const filtered = atls.filter(atl => atl && atl !== 'TBD');
+  if (filtered.length === 0) return null;
+  return filtered.map(atl => `@${atl}`).join(' ');
+}
+
 export function generateAtlBlock(config: AtlConfig): string {
-  const categories = Object.keys(config).sort();
   const lines: string[] = [];
 
   lines.push('# @atls-start');
   lines.push('# Content reviewers for guide content mapped by category (automatically generated from guides/atls.json)');
 
+  // 1. Generate category fallback rules
+  const categories = Object.keys(config.default).sort();
   for (const category of categories) {
-    const value = config[category];
-    const atls = Array.isArray(value) ? value : [value];
-    const formattedAtls = atls.map(atl => `@${atl}`).join(' ');
+    const formattedAtls = getFormattedAtls(config.default[category]);
+    if (!formattedAtls) continue;
 
     lines.push(`guides/${category}/*/ ${formattedAtls}`);
-    lines.push(`guides/${category}/SKILL.md ${formattedAtls}`);
-    lines.push(''); // Empty line after each category for spacing
   }
 
-  // Remove the trailing empty line from the last category before ending the block
-  if (lines[lines.length - 1] === '') {
-    lines.pop();
+  lines.push('');
+  lines.push('# Specific guide overrides resolved dynamically');
+
+  interface OverrideRule {
+    category: string;
+    name: string;
+    reason: string;
+    ruleLine: string;
+  }
+
+  const allGuides = scanAllGuides();
+  const overrideRules: OverrideRule[] = [];
+
+  for (const g of allGuides) {
+    let resolvedValue = config.default[g.category];
+    let ownershipReason = '';
+
+    if (g.featureIds && g.featureIds.length > 0) {
+      let foundOverride = false;
+      // Check specific features first
+      for (const fid of g.featureIds) {
+        if (config.web_features[fid]) {
+          resolvedValue = config.web_features[fid];
+          ownershipReason = `feature "${fid}"`;
+          foundOverride = true;
+          break;
+        }
+      }
+      // Check feature groups next
+      if (!foundOverride) {
+        for (const fid of g.featureIds) {
+          const groups = getFeatureGroups(fid);
+          for (const group of groups) {
+            if (config.web_features_groups[group]) {
+              resolvedValue = config.web_features_groups[group];
+              ownershipReason = `group "${group}"`;
+              foundOverride = true;
+              break;
+            }
+          }
+          if (foundOverride) break;
+        }
+      }
+    }
+
+    const defaultFormatted = getFormattedAtls(config.default[g.category]);
+    const formattedAtls = getFormattedAtls(resolvedValue);
+    if (!formattedAtls || formattedAtls === defaultFormatted) continue;
+
+    overrideRules.push({
+      category: g.category,
+      name: g.name,
+      reason: ownershipReason,
+      ruleLine: `guides/${g.category}/${g.name}/ ${formattedAtls}`
+    });
+  }
+
+  // Sort: category first, then reason, then name
+  overrideRules.sort((a, b) => {
+    const catComp = a.category.localeCompare(b.category);
+    if (catComp !== 0) return catComp;
+
+    const reasonComp = a.reason.localeCompare(b.reason);
+    if (reasonComp !== 0) return reasonComp;
+
+    return a.name.localeCompare(b.name);
+  });
+
+  // Print rules with non-repeating comments
+  let lastReason = '';
+  let lastCategory = '';
+  for (const rule of overrideRules) {
+    // Reset comment grouping when transitioning to a new category
+    if (rule.category !== lastCategory) {
+      lastReason = '';
+      lastCategory = rule.category;
+    }
+
+    if (rule.reason && rule.reason !== lastReason) {
+      lines.push(`# Owned via ${rule.reason}`);
+      lastReason = rule.reason;
+    }
+    lines.push(rule.ruleLine);
   }
 
   lines.push('# @atls-end');
   return lines.join('\n');
 }
 
+function getExpectedFeatureToGroups(): Record<string, string[]> {
+  const allGuides = scanAllGuides();
+  const featureToGroups: Record<string, string[]> = {};
+  for (const g of allGuides) {
+    if (g.featureIds) {
+      for (const fid of g.featureIds) {
+        featureToGroups[fid] = getFeatureGroups(fid);
+      }
+    }
+  }
+  // Sort keys and values for deterministic JSON output
+  const sorted: Record<string, string[]> = {};
+  for (const key of Object.keys(featureToGroups).sort()) {
+    sorted[key] = featureToGroups[key].sort();
+  }
+  return sorted;
+}
+
 export function updateCodeowners(checkOnly = false): boolean {
   const config = loadAtlConfig();
   const generatedBlock = generateAtlBlock(config);
+
+  const expectedFeatureToGroups = getExpectedFeatureToGroups();
+  const featureToGroupsPath = path.join(__dirname, 'feature-to-groups.json');
+  let currentFeatureToGroupsContent = '';
+  try {
+    currentFeatureToGroupsContent = fs.readFileSync(featureToGroupsPath, 'utf8');
+  } catch {}
+
+  const expectedFeatureToGroupsContent = JSON.stringify(expectedFeatureToGroups, null, 2);
+
+  if (currentFeatureToGroupsContent !== expectedFeatureToGroupsContent) {
+    if (checkOnly) {
+      console.error('Error: guides/feature-to-groups.json is out of date.');
+      console.error('Please run: node guides/generate-codeowners.ts');
+      return false;
+    }
+    try {
+      fs.writeFileSync(featureToGroupsPath, expectedFeatureToGroupsContent, 'utf8');
+      console.log('Successfully updated guides/feature-to-groups.json.');
+    } catch (err) {
+      console.error('Failed to write feature-to-groups.json:', err);
+      process.exit(1);
+    }
+  }
 
   let codeownersContent = '';
   try {

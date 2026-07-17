@@ -1,20 +1,34 @@
 {
-  "built-in-ai": "tomac",
-  "canvas": "ewewraw",
-  "css": "LeaVerou",
-  "css-layout": "LeaVerou",
-  "forms": "LeaVerou",
-  "html": "LeaVerou",
-  "motion": "bramus",
-  "overlays": "LeaVerou",
-  "passkeys": "agektmr",
-  "performance": "tunetheweb",
-  "privacy": "rowan-m",
-  "scroll": "bramus",
-  "security": "rowan-m",
-  "typography": "LeaVerou",
-  "webmcp": [
-    "beaufortfrancois",
-    "Kulikowski"
-  ]
+  "default": {
+    "built-in-ai": "tomac",
+    "css": "LeaVerou",
+    "html": "LeaVerou",
+    "forms": "LeaVerou",
+    "ui-behaviors": "LeaVerou",
+    "ui-atoms": "LeaVerou",
+    "ui-components": "LeaVerou",
+    "visual-design": "LeaVerou",
+    "performance": [
+      "tunetheweb",
+      "malchata"
+    ],
+    "privacy": "rowan-m",
+    "security": "rowan-m",
+    "webmcp": [
+      "beaufortfrancois",
+      "Kulikowski"
+    ]
+  },
+  "web_features": {
+    "canvas-html": "ewewraw",
+    "container-scroll-state-queries": "bramus",
+    "prefers-reduced-motion": "bramus"
+  },
+  "web_features_groups": {
+    "scrolling": "bramus",
+    "animation": "bramus",
+    "transitions": "bramus",
+    "view-transitions": "bramus",
+    "webauthn": "agektmr"
+  }
 }
