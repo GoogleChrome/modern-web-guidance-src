@@ -1,14 +1,15 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <!--
     Opt this document into OS-level text scaling. With content="scale", the
-    user agent's initial font size becomes 16px x OS scale x UA scale, so any
-    rem/em-based text below follows the user's accessibility preference.
+    initial font size becomes the user's preferred text size (OS and browser
+    settings combined) instead of a fixed 16px, so any rem/em-based text
+    below follows the user's accessibility preference.
   -->
-  <meta name="text-scale" content="scale" />
+  <meta name="text-scale" content="scale">
   <title>Respect OS text scale preference</title>
   <style>
     /*
