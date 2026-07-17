@@ -2,7 +2,7 @@
  * Centralized, typed prompt builder functions for the gd dev evaluation generation process.
  * 
  * Having these prompts in one dedicated module ensures high visibility, easy tuning of AI
- * behavior across target capsules (solution.patch, broken.patch, grader.ts, task.md), and
+ * behavior across target capsules (solution.patch, zero-passrate.patch, grader.ts, task.md), and
  * type-safe parameter interpolation.
  */
 
@@ -29,7 +29,7 @@ Modify the web application codebase in the directory \`${opts.workDir}\` to perf
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
 }
 
-export function buildBrokenPrompt(opts: PatchPromptOptions): string {
+export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
   return `# GOAL
 Modify the web application codebase in the directory \`${opts.workDir}\` to introduce subtle, realistic violations of the must-fail criteria in \`${opts.expectationsFile}\`.
 
@@ -38,7 +38,7 @@ Modify the web application codebase in the directory \`${opts.workDir}\` to intr
 2. **Verification Requirements**: \`${opts.expectationsFile}\`
 
 # RULES
-1. **Realistic Violations Only**: Do NOT use obvious placeholders, syntax errors, or "TODO: implement here" comments. The broken state must represent a subtle, realistic incomplete or legacy implementation so AI agents cannot trivially guess the required changes without reading \`${opts.guideFile}\`.
+1. **Realistic Violations Only**: Do NOT use obvious placeholders, syntax errors, or "TODO: implement here" comments. The zero-passrate state must represent a subtle, realistic incomplete or legacy implementation so AI agents cannot trivially guess the required changes without reading \`${opts.guideFile}\`.
 2. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
 
 # INSTRUCTION
@@ -49,7 +49,7 @@ export interface GraderPromptOptions {
   guideFile: string;
   expectationsFile: string;
   solutionPatchFile: string;
-  brokenPatchFile: string;
+  zeroPassratePatchFile: string;
   graderFile: string;
   baseApp: string;
   templateFile: string;
@@ -96,7 +96,7 @@ If you are unfamiliar with the APIs for the static parsers, you can refer to the
   // Also update Rule 1's CSS check description to use CSSOMNom and remove Rule 4 (precise regex word matching)
   // once string/regex-based checks are no longer needed.
   const patchInstruction = opts.failureContext
-    ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because the golden solution patch (\`${opts.solutionPatchFile}\`) or the broken patch (\`${opts.brokenPatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
+    ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because the golden solution patch (\`${opts.solutionPatchFile}\`) or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
     : '';
 
   return `${contextBlock}# GOAL
@@ -106,7 +106,7 @@ Write a Playwright test script named \`${opts.graderFile}\` that directly valida
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Requirements**: \`${opts.expectationsFile}\`
 3. **Golden Solution Diff**: \`${opts.solutionPatchFile}\` (must pass 100% of tests)
-4. **Anti-Pattern Broken Diff**: \`${opts.brokenPatchFile}\` (must fail 100% of negative/must-fail tests)
+4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of negative/must-fail tests)
 5. **Boilerplate Template**: \`${opts.templateFile}\` (must base your imports, setup, and structure on this template)
 
 # VERIFICATION & SCOPING RULES

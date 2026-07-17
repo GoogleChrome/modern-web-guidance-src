@@ -285,13 +285,13 @@ export function getSupportedBaseApps(): string[] {
 
 export const TARGETS_DIR = 'targets';
 export const SOLUTION_PATCH_FILE = 'solution.patch';
-export const BROKEN_PATCH_FILE = 'broken.patch';
+export const ZERO_PASSRATE_PATCH_FILE = 'zero-passrate.patch';
 
 export interface TargetInventory {
   name: string;
   dir: string;
   hasSolution: boolean;
-  hasBroken: boolean;
+  hasZeroPassrate: boolean;
   hasGrader: boolean;
   hasTask: boolean;
 }
@@ -496,7 +496,7 @@ export function inventoryGuide(dir: string): GuideInventory {
         name: entry.name,
         dir: targetDir,
         hasSolution: fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILE)),
-        hasBroken: fs.existsSync(path.join(targetDir, BROKEN_PATCH_FILE)),
+        hasZeroPassrate: fs.existsSync(path.join(targetDir, ZERO_PASSRATE_PATCH_FILE)),
         hasGrader: fs.existsSync(path.join(targetDir, GRADER_FILE)),
         hasTask: fs.existsSync(path.join(targetDir, TASK_FILE)),
       };
@@ -541,12 +541,12 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
 
   if (inv.targets && inv.targets.length > 0) {
     const allHaveSolutions = inv.targets.every(t => t.hasSolution);
-    const allHaveBroken = inv.targets.every(t => t.hasBroken);
+    const allHaveZeroPassrate = inv.targets.every(t => t.hasZeroPassrate);
     const allHaveGraders = inv.targets.every(t => t.hasGrader);
     const allHaveTasks = inv.targets.every(t => t.hasTask);
 
     if (!allHaveSolutions) return 'incomplete';
-    if (!allHaveBroken || !allHaveGraders) return 'needs-calibration';
+    if (!allHaveZeroPassrate || !allHaveGraders) return 'needs-calibration';
     if (!allHaveTasks) return 'needs-test';
     return 'eval-ready';
   } else {
