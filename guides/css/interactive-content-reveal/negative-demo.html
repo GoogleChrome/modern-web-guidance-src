@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive content reveal</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #111;
+      }
+
+      .product-card {
+        position: relative;
+        width: clamp(200px, 50%, 1000px);
+        height: 500px;
+        background: #222;
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      .hidden-content {
+        display: none;
+        position: absolute;
+        inset: 0;
+        justify-content: center;
+        align-items: center;
+        font-size: 80px;
+        background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+      }
+
+      .product-card:hover .hidden-content {
+        display: flex;
+      }
+
+      .spotlight {
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: auto;
+        transition: top 0.5s ease, left 0.5s ease;
+      }
+
+      .secret-button {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 10px 20px;
+        background: white;
+        color: black;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        opacity: 0;
+      }
+
+      .product-card:hover .secret-button {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="product-card" id="card">
+      <div class="hidden-content" id="content">
+        ✨
+        <button class="secret-button" tabindex="-1">Buy Now</button>
+      </div>
+      <div class="spotlight" id="spotlight"></div>
+    </div>
+
+    <script>
+      const card = document.getElementById("card");
+      const spotlight = document.getElementById("spotlight");
+
+      card.addEventListener("mousemove", (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        spotlight.style.left = x + "px";
+        spotlight.style.top = y + "px";
+      });
+    </script>
+  </body>
+</html>

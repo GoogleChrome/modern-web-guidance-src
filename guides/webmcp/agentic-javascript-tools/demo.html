@@ -25,14 +25,14 @@
   </p>
   <div id="status">Checking WebMCP support...</div>
 
-  <script>
+  <script type="module">
     const status = document.getElementById('status');
 
-    if ('modelContext' in navigator && 'registerTool' in navigator.modelContext) {
+    if ('modelContext' in document && 'registerTool' in document.modelContext) {
       // Mandatory: Use AbortController for lifecycle management
       const controller = new AbortController();
 
-      navigator.modelContext.registerTool({
+      await document.modelContext.registerTool({
         name: "calculate_sum",
         description: "Calculates the sum of two numbers.",
         inputSchema: {

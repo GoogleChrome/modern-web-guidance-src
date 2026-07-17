@@ -3,10 +3,6 @@ name: faster-spa-view-transitions
 description: Enable faster transitions back to previously visited views in a Single-Page Application (SPA) by preserving their structural DOM state instead of destroying and rebuilding them on every navigation.
 web-feature-ids:
   - content-visibility
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/CSS/content-visibility
-  - https://web.dev/articles/content-visibility
-  - https://css-tricks.com/almanac/properties/c/content-visibility/
 ---
 
 # Faster SPA View Transitions via State Caching

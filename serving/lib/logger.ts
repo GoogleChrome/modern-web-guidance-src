@@ -2,7 +2,7 @@ import { appendFileSync } from "fs";
 import path from "path";
 import { MODERN_WEB_LOG_FILE } from "../../constants.ts";
 
-export function logToolResult(toolName: string, result: { id: string; distance?: string | number }[]) {
+export function logToolResult(toolName: string, result: { id?: string; distance?: string | number; similarity?: string | number; count?: number }[]) {
   if (process.env.ENABLE_FILE_LOGGING !== 'true') {
     return;
   }

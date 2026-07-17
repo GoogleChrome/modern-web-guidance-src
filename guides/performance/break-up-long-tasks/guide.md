@@ -3,14 +3,6 @@ name: break-up-long-tasks
 description: Break up heavy synchronous processing (complex computations and/or long loops) or DOM updates, to let the browser handle user input and repaint the screen.
 web-feature-ids:
   - scheduler
-sources:
-  - https://web.dev/articles/optimize-long-tasks
-  - https://developer.mozilla.org/en-US/docs/Web/API/Scheduler/yield
-  - https://developer.mozilla.org/en-US/docs/Web/API/Prioritized_Task_Scheduling_API
-  - https://developer.mozilla.org/en-US/docs/Web/API/Scheduler
-  - https://github.com/WICG/scheduling-apis
-  - https://developer.mozilla.org/en-US/docs/Web/API/Scheduling
-  - https://www.w3.org/TR/task-scheduler/
 ---
 
 Heavy computations or long loops can block the main thread, causing the page to become unresponsive. To prevent this, you should yield control back to the browser periodically. The `scheduler.yield()` API allows you to pause a long task and let the browser handle user input or rendering before continuing.

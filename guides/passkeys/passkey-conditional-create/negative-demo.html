@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Conditional Create Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #fafafa; color: #333; }
+    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 400px; }
+    button { background: #0066cc; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    button:hover { background: #0052a3; }
+    .status { margin-top: 1rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Silent Passkey Creation</h2>
+    <p>This demo automatically triggers passkey creation silently after a password sign-in event.</p>
+    <button id="signin-btn" data-testid="signin-button">Sign In with Password</button>
+    <div id="status" class="status" data-testid="status">Idle</div>
+  </div>
+
+  <script type="module">
+    const statusEl = document.getElementById('status');
+    
+    const loginAbortController = new AbortController();
+
+    async function executeConditionalCreate() {
+      try {
+        const responseOptions = await fetch('/api/register/options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conditional: true })
+        });
+
+        if (!responseOptions.ok) {
+          throw new Error('Options endpoint returned non-OK');
+        }
+        const optionsJSON = await responseOptions.json();
+        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(optionsJSON);
+
+        const credential = await navigator.credentials.create({
+          publicKey
+        });
+
+        if (credential) {
+          const encodedResponse = credential.toJSON();
+          
+          try {
+            const verifyResponse = await fetch('/api/register/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(encodedResponse)
+            });
+
+            if (verifyResponse.ok) {
+              statusEl.textContent = 'Passkey created successfully!';
+              statusEl.style.color = '#228b22';
+            } else {
+              throw new Error('Verification failed');
+            }
+          } catch (verifyErr) {
+            statusEl.textContent = 'Verification failed';
+            statusEl.style.color = '#cc0000';
+          }
+        }
+      } catch (e) {
+        statusEl.textContent = `Error: ${e.name} - ${e.message}`;
+        statusEl.style.color = '#cc0000';
+        alert(`An error occurred: ${e.name}`);
+      }
+    }
+
+    document.getElementById('signin-btn').addEventListener('click', async () => {
+      statusEl.textContent = 'Signing in...';
+      await executeConditionalCreate();
+    });
+  </script>
+</body>
+</html>

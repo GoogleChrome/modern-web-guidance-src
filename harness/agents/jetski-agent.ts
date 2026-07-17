@@ -16,7 +16,7 @@ import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
  * @returns {string} The path to the temporary work directory.
  */
 function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: string): string {
-  const tempHome = createIsolatedHome('ghh-jetski');
+  const tempHome = createIsolatedHome('ghh-jetski', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   const appSupportSource = path.join(os.homedir(), 'Library/Application Support/Jetski');
@@ -460,10 +460,11 @@ async function run(): Promise<void> {
     // Extract trajectory pb from isolated home
     const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
+    exportTrajectories(conversationsDir, '*.db', targetDir);
 
   } catch (err) {
     console.error("Error during execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     stopWatchingMcpLog();
     killProcessOnPort(config.environment.jetskiDebugPort);

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Search Hidden Content Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+    }
+
+    /* Wholesale Tabs Styling */
+    .wholesale-tab {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+    .wholesale-tab summary {
+      padding: 1rem;
+      cursor: pointer;
+      font-weight: bold;
+      background: #f8f9fa;
+    }
+    .wholesale-tab p {
+      padding: 0 1rem 1rem 1rem;
+      margin: 0;
+    }
+
+    /* Coupon Container Styling */
+    .coupon-container {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 2px dashed #eee;
+    }
+    #reveal-btn {
+      padding: 0.5rem 1rem;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #reveal-btn:hover { background: #0056b3; }
+    
+    #coupon-panel {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #e9ecef;
+      border-left: 4px solid #28a745;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Product Page</h1>
+
+  <!-- Mutually Exclusive Disclosures using <details> -->
+  <h2>Wholesale & Catering</h2>
+  <details class="wholesale-tab" name="wholesale-options" open>
+    <summary>Wholesale Pricing</summary>
+    <p>Bulk discounts are available for orders over 50 units. Please contact our sales team.</p>
+  </details>
+
+  <details class="wholesale-tab" name="wholesale-options">
+    <summary>Event Catering</summary>
+    <p>We provide full-service catering for corporate events and weddings. Inquire within.</p>
+  </details>
+
+  <!-- Separated UI using hidden="until-found" -->
+  <div class="coupon-container">
+    <button id="reveal-btn">Reveal Discount Code</button>
+    
+    <div id="coupon-panel" hidden="until-found">
+      <p>Your secret discount code is: <strong>SAVE20</strong></p>
+    </div>
+  </div>
+
+  <script>
+    // 1. Hook up the custom styling/reveal logic for the coupon button
+    const revealBtn = document.getElementById('reveal-btn');
+    const couponPanel = document.getElementById('coupon-panel');
+
+    revealBtn.addEventListener('click', () => {
+      couponPanel.removeAttribute('hidden');
+      revealBtn.textContent = 'Code Revealed!';
+      revealBtn.disabled = true;
+    });
+
+    // 2. Add 'beforematch' listener to sync UI if found via native search
+    couponPanel.addEventListener('beforematch', () => {
+      revealBtn.textContent = 'Code Found via Search!';
+      revealBtn.disabled = true;
+    });
+
+    // 3. Fallback feature detection for older browsers
+    if (!('onbeforematch' in HTMLElement.prototype)) {
+      console.warn("hidden=until-found not supported. Executing fallback: expanding all content.");
+      document.querySelectorAll('[hidden="until-found"]').forEach(el => {
+        el.removeAttribute('hidden');
+      });
+      revealBtn.style.display = 'none'; // Optional: hide the trigger since content is already visible
+    }
+  </script>
+</body>
+</html>

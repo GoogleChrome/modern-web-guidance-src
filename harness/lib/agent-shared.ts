@@ -38,21 +38,45 @@ export function spawnAsync(command: string, args: string[], options: SpawnOption
 }
 
 /**
+ * Sets up shell profile files (.bashrc, .bash_profile, .zshrc, .zprofile, .profile) in the isolated HOME directory
+ * to ensure that targetDir (containing our npx interceptor shim) remains at the front of PATH even if
+ * an external binary or login shell invokes /usr/libexec/path_helper and resets PATH.
+ * @param homeDir Path to the isolated HOME directory
+ * @param targetDir Path to the directory containing our intercepted binaries (like npx)
+ */
+export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): void {
+  try {
+    const profileContent = `export PATH="${targetDir}:$PATH"\n`;
+    const profileFiles = ['.bashrc', '.bash_profile', '.zshrc', '.zprofile', '.profile'];
+    for (const file of profileFiles) {
+      fs.writeFileSync(path.join(homeDir, file), profileContent, 'utf8');
+    }
+  } catch (err) {
+    console.warn('Warning: Failed to create isolated shell profiles in HOME:', err);
+  }
+}
+
+/**
  * Creates a unique isolated HOME directory in /tmp.
  * @param prefix The prefix for the directory name
+ * @param targetDir Optional path to the target directory containing intercepted binaries
  * @returns The path to the created directory.
  */
-export function createIsolatedHome(prefix: string): string {
+export function createIsolatedHome(prefix: string, targetDir?: string): string {
   // Use /tmp/ deliberately because os.tmpdir() on macOS can return paths that are 
   // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
   const tempHome = `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
 
+  if (targetDir) {
+    setupIsolatedShellProfiles(tempHome, targetDir);
+  }
+
   // Provide authentication to the isolated environment so npm tasks work
   const originalHome = process.env.HOME || process.cwd();
   copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
-  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/guidance/pull/479
+  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/modern-web-guidance-src/pull/479
   try {
     const geminiDir = path.join(tempHome, '.gemini');
     fs.mkdirSync(geminiDir, { recursive: true });
@@ -101,6 +125,29 @@ export function copyFileIfExists(src: string, dest: string): void {
 }
 
 /**
+ * Safely reads and parses a JSONL file, filtering out empty or malformed lines.
+ */
+export function parseJsonlFile<T = any>(filePath: string): T[] {
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    const content = fs.readFileSync(filePath, 'utf8');
+    return content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .flatMap(line => {
+        try {
+          return [JSON.parse(line) as T];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Creates a trustedFolders.json file to avoid "untrusted folder" errors.
  * @param contentsDir Directory to write the trustedFolders.json file to (e.g. .gemini or .gemini/jetski)
  * @param folders List of absolute paths to trust
@@ -143,11 +190,11 @@ export function updateMcpConfig(
    const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
   for (const serverName of serversToEnable) {
-    if (serverName === 'modern-web') {
+    if (serverName.startsWith('modern-web')) {
       if (!modernWebServerPath || !fs.existsSync(modernWebServerPath)) {
         throw new Error(`Example MCP server path not found: ${modernWebServerPath}`);
       }
-      mcpConfig.mcpServers['modern-web'] = {
+      mcpConfig.mcpServers[serverName] = {
         command: 'node',
         args: [modernWebServerPath]
       };
@@ -223,7 +270,7 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web']): boolean {
+export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
   const guidesSource = guidesDir;
 
   let destDir = '';
@@ -240,8 +287,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli && skillsToEnable.includes('modern-web')) { // Add modern-web Skill (& resources) from skills-cli dist
-      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web');
+    if (cli && skillsToEnable.some(s => s.startsWith('modern-web'))) { // Add modern-web-guidance Skill (& resources) from skills-cli dist
+      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-guidance');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
         try {
@@ -257,7 +304,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
       }
 
       try {
-        const destSkillDir = path.join(destDir, 'modern-web');
+        const destSkillDir = path.join(destDir, 'modern-web-guidance');
         fs.mkdirSync(destSkillDir, { recursive: true });
 
         if (fs.existsSync(distSource)) {
@@ -288,8 +335,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
         d => d.isDirectory() &&
         !d.name.startsWith('.') &&
         d.name !== 'node_modules' &&
-        d.name !== 'modern-web' && // only needed when using Skills (CLI), already added above
-        skillsToEnable.includes(d.name)
+        !d.name.startsWith('modern-web') && // only needed when using Skills (CLI), already added above
+        skillsToEnable.some(s => s === d.name || (d.name.startsWith('modern-web') && s.startsWith('modern-web')))
       );
 
     for (const dir of topLevelDirs) {
@@ -474,7 +521,7 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
       fs.copyFileSync(srcFile, destFile);
       console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
 
-      const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+      const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);
       const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
       const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
@@ -502,9 +549,10 @@ export async function runCliAgentCommand(
   targetDir: string,
   agentName: string
 ): Promise<void> {
+  const sanitizedEnv = { ...process.env, PWD: workDir };
   const child = spawn(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
     stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
   });
 
@@ -561,6 +609,20 @@ export async function runCliAgentCommand(
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
     
+    // Save generation failure info so results collector registers early failure
+    try {
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      fs.writeFileSync(failureFile, JSON.stringify({
+        agentName,
+        exitCode: -1,
+        stderr: stderrData || err.message || String(err),
+        stdout: stdoutData
+      }, null, 2));
+      console.log(`Saved generation failure info to: ${failureFile}`);
+    } catch (writeErr) {
+      console.error(`Failed to write generation_failed.json:`, writeErr);
+    }
+
     // Fallback: Save whatever we have to agent_stderr.log even if it failed
     const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
     let fallbackContent = `Execution failed: ${err.message || err}\n`;
@@ -583,7 +645,7 @@ export async function runCliAgentCommand(
  * @returns HTML content
  */
 export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, prodBase = DEFAULT_PROD_BASE): string {
-    const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+    const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
     const title = `Trajectory - ${trajectoryId}`;
 
     // Node.js environment: Buffer is faster than manual conversion
@@ -663,7 +725,6 @@ export function getGraderScriptContent(
   guideName: string
 ): string {
   const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-  const targetPkgJson = path.join(targetDir, 'package.json');
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
@@ -674,20 +735,6 @@ import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
-    const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
-    if (fs.existsSync(pkgJsonPath)) {
-      const installResult = spawnSync('pnpm', ['install', '--no-frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
-        cwd: ${JSON.stringify(targetDir)},
-        stdio: 'inherit',
-        shell: true,
-        env: { ...process.env, CI: 'true' }
-      });
-      if (installResult.status !== 0) {
-        console.error("pnpm install failed");
-        process.exit(1);
-      }
-    }
-
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},

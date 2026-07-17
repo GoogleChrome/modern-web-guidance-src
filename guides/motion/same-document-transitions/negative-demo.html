@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shared Element Transitions</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+      }
+      body #list-page,
+      body.detail #detail-page {
+        display: block;
+      }
+      body.detail #list-page,
+      body #detail-page {
+        display: none;
+      }
+
+      .content {
+        padding: 20px;
+        view-transition-name: content-block;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        view-transition-name: grid-container;
+      }
+
+      .thumbnail {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: 8px;
+        cursor: pointer;
+        color: white;
+        display: grid;
+        place-items: center;
+        view-transition-name: hero;
+        animation: spin 3s infinite linear;
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .title {
+        view-transition-name: title;
+        width: 100%;
+      }
+
+      #hero {
+        width: 100vw;
+        height: 50vh;
+        cursor: pointer;
+        view-transition-name: hero;
+      }
+
+      #title {
+        view-transition-name: title;
+        width: 100%;
+      }
+
+      p {
+        view-transition-name: paragraph-text;
+      }
+
+      button {
+        padding: 8px 16px;
+        font-size: 1rem;
+        background: #eee;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 20px;
+        view-transition-name: action-button;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="list-page">
+      <div class="content">
+        <h1>Products</h1>
+        <p>Click a product thumbnail to see details.</p>
+
+        <div class="grid">
+          <button
+            class="thumbnail"
+            data-name="Blue Jay"
+            style="background: #0066cc"
+          >
+            <h2 class="title">Blue Jay</h2>
+          </button>
+          <button
+            class="thumbnail"
+            data-name="Cardinal"
+            style="background: #cc3333"
+          >
+            <h2 class="title">Cardinal</h2>
+          </button>
+          <button
+            class="thumbnail"
+            data-name="Parakeet"
+            style="background: #33cc33"
+          >
+            <h2 class="title">Parakeet</h2>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="detail-page">
+      <div id="hero" onclick="goFromDetailToList()"></div>
+      <div class="content">
+        <h1 id="title">Product Overview</h1>
+        <p>This is the full-bleed hero view.</p>
+        <button onclick="goFromDetailToList()">Back to products</button>
+      </div>
+    </div>
+
+    <script>
+      function goFromListToDetail(e) {
+        const bgColor = getComputedStyle(e.currentTarget).backgroundColor;
+        const name = e.currentTarget.dataset.name;
+
+        const hero = document.getElementById("hero");
+        hero.style.background = bgColor;
+
+        const title = document.getElementById("title");
+        title.innerText = name;
+
+        document.body.classList.add("detail");
+        document.startViewTransition();
+      }
+
+      document.querySelectorAll(".thumbnail").forEach((thumbnail) => {
+        thumbnail.addEventListener("click", goFromListToDetail);
+      });
+
+      function goFromDetailToList() {
+        document.body.classList.remove("detail");
+        document.startViewTransition();
+      }
+    </script>
+  </body>
+</html>
