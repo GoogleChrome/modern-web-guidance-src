@@ -132,7 +132,7 @@ describe('ClearcutLogger', () => {
       assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
       const payload = sentMessages[sentMessages.length - 1].payload;
       assert.deepStrictEqual(payload.search_result, {
-        query: 'address form',
+        // query: 'address form',
         search_items: [{ guide_id: 'guide-1', similarity: 0.9 }]
       });
       assert.strictEqual(payload.success, true);

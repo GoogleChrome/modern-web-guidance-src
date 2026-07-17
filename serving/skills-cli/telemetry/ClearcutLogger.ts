@@ -68,7 +68,7 @@ export class ClearcutLogger {
 
     const payload: ChromeModernWebGuidance = {
       search_result: {
-        query,
+        // query,
         search_items: searchItems,
       },
       os: detectOS(),
