@@ -43,6 +43,8 @@ STATIC=true gd dashboard
 
 The Guide Run Comparison feature (`gd compare` CLI and the `compare.html` UI) enables side-by-side behavioral, assertion, code diff, and diagnostic comparisons between two evaluation runs (e.g., comparing a local development run against a nightly baseline, or comparing guided vs. unguided runs).
 
+**NOTE:** Guide Run comparison works on local runs only. This will get fixed in the future.
+
 ### Backend Pipeline (`gd compare` & `harness/lib/compare-agent.ts`)
 * **Data Extraction & Preprocessing:** Loads run metadata (`score`, `agent`, `model`, `initialPrompt`), Playwright assertion results (`*_results.json`), execution logs (`modern-web.log`, `.db`, `chat_log.txt`), and trajectory steps (`trajectory_summary.json`). Categorizes steps into milestones: Guide Retrieval, Skill Search, Code Mutation, Mandatory Rule Adoption, and Context Noise.
 * **Three-Way Unified LCS Diffing:** Generates aligned unified diffs (`Base App vs Run A`, `Base App vs Run B`, and `Run A vs Run B`) via `generateUnifiedDiff` to prevent diagnostic models from hallucinating deleted or corrupted code relative to the base application.
