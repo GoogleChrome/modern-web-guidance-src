@@ -163,18 +163,23 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
       return el.getBoundingClientRect().top > 0;
     }, { timeout: 5000 });
 
+    // Deliberately conservative: some of these only cause anchoring
+    // oscillation in some layouts, but a binary check cannot cheaply
+    // test actual flicker, so any layout-affecting change counts.
     const LAYOUT_PROPS = [
+      'height', 'minHeight', 'lineHeight',
       'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight',
       'marginTop', 'marginBottom', 'fontSize',
       'borderTopWidth', 'borderBottomWidth',
     ];
 
     const readLayout = () => page.evaluate((props) => {
-      const pick = (el) => {
+      const pick = (el: Element) => {
         const style = getComputedStyle(el);
-        return props.map((prop) => style[prop]).join('|');
+        return props.map((prop) => String(style[prop as keyof CSSStyleDeclaration])).join('|');
       };
       const containerEl = document.querySelector('.sticky-container');
+      if (!containerEl) return '';
       const headerEl = containerEl.querySelector('.sticky-header') || containerEl;
       return pick(containerEl) + '||' + pick(headerEl);
     }, LAYOUT_PROPS);
@@ -186,9 +191,9 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
       return { top: r.top + window.scrollY, height: r.height };
     });
 
-    // Scroll past the container so it sticks
+    // Scroll halfway into the container so it is unambiguously stuck
     await page.evaluate((args) => {
-      window.scrollTo(0, args.top + args.height + 50);
+      window.scrollTo(0, args.top + args.height / 2);
     }, containerRect);
 
     // Give the two-pass scroll-state update a moment to settle
@@ -198,7 +203,7 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
     const layoutChanged = stuck !== unstuck;
 
     const parentOverflowAnchor = await container.evaluate(el =>
-      getComputedStyle(el.parentElement).overflowAnchor
+      getComputedStyle(el.parentElement!).overflowAnchor
     );
 
     if (layoutChanged) {
