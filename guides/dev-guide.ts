@@ -349,7 +349,6 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
     numRuns: 1,
     skipEval: true,
     guidedOnly,
-    suiteConfig,
   });
 
   // 3. Grade agent output (unguided + guided)
@@ -507,12 +506,12 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 }
 
 const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'incomplete': { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
-  'stub': { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
-  'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
-  'needs-test': { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-  'eval-ready': { label: 'Ready for eval', color: cGreen },
+  'incomplete': { label: 'Needs use cases (Stage 1 - incomplete)', color: cRed },
+  'stub': { label: 'Needs guidance (Stage 2 - stub)', color: cYellow },
+  'needs-expectations': { label: 'Needs guidance (Stage 2 - missing expectations)', color: cYellow },
+  'needs-calibration': { label: 'Needs evals (Stage 3 - needs calibration)', color: cYellow },
+  'needs-test': { label: 'Needs evals (Stage 3 - needs agent test)', color: cCyan },
+  'eval-ready': { label: 'Eval-ready (Complete)', color: cGreen },
 };
 
 export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {

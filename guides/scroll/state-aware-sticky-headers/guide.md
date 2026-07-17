@@ -82,7 +82,7 @@ Disable scroll anchoring on the parent of the sticky element to avoid this:
 }
 ```
 
-Apply `overflow-anchor: none` to the direct parent of the `position: sticky` element — not to `:root` or `body`, which would disable scroll anchoring for the entire page. With this in place, you can freely change any property in the stuck state, including box-model properties and transforms.
+Apply `overflow-anchor: none` to the direct parent of the `position: sticky` element, not to `:root` or `body`, which would disable scroll anchoring for the entire page. With this in place, you can freely change any property in the stuck state, including box-model properties and transforms.
 
 DO NOT: Rely on `overflow-anchor: none` for elements stuck to the **bottom**. Scroll anchoring only compensates for layout shifts above the current scroll position, so it has no effect on bottom-stuck elements. Avoid changing box-model properties in the stuck state for bottom-stuck headers.
 

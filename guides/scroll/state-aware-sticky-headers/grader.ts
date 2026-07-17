@@ -152,6 +152,65 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
     }, { timeout: 5000 });
   });
 
+  test('Layout-affecting stuck styles require overflow-anchor: none on the sticky parent', async ({ page }) => {
+    const container = page.locator('.sticky-container').first();
+
+    // Ensure we start unstuck
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => {
+      const el = document.querySelector('.sticky-container');
+      if (!el) return false;
+      return el.getBoundingClientRect().top > 0;
+    }, { timeout: 5000 });
+
+    const LAYOUT_PROPS = [
+      'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight',
+      'marginTop', 'marginBottom', 'fontSize',
+      'borderTopWidth', 'borderBottomWidth',
+    ];
+
+    const readLayout = () => page.evaluate((props) => {
+      const pick = (el) => {
+        const style = getComputedStyle(el);
+        return props.map((prop) => style[prop]).join('|');
+      };
+      const containerEl = document.querySelector('.sticky-container');
+      const headerEl = containerEl.querySelector('.sticky-header') || containerEl;
+      return pick(containerEl) + '||' + pick(headerEl);
+    }, LAYOUT_PROPS);
+
+    const unstuck = await readLayout();
+
+    const containerRect = await container.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top + window.scrollY, height: r.height };
+    });
+
+    // Scroll past the container so it sticks
+    await page.evaluate((args) => {
+      window.scrollTo(0, args.top + args.height + 50);
+    }, containerRect);
+
+    // Give the two-pass scroll-state update a moment to settle
+    await page.waitForTimeout(500);
+
+    const stuck = await readLayout();
+    const layoutChanged = stuck !== unstuck;
+
+    const parentOverflowAnchor = await container.evaluate(el =>
+      getComputedStyle(el.parentElement).overflowAnchor
+    );
+
+    if (layoutChanged) {
+      // The guide requires disabling scroll anchoring on the parent when
+      // stuck styles change layout, otherwise the header oscillates.
+      expect(parentOverflowAnchor).toBe('none');
+    } else {
+      // No layout change means scroll anchoring must stay enabled.
+      expect(parentOverflowAnchor).not.toBe('none');
+    }
+  });
+
   test('Visual style changes should be implemented using @container scroll-state(...)', async ({ page }) => {
     const hasScrollStateQuery = await page.evaluate(() => {
       const sheets = Array.from(document.styleSheets);
