@@ -434,9 +434,12 @@ function preprocessTrajectory(trajectorySummary: any, _chatLog: string): Preproc
     }
 
     let category: TaggedStep['category'] = 'incidental_noise';
+    if (rawStep.action?.canonicalCategory && rawStep.action.canonicalCategory !== 'other') {
+      category = rawStep.action.canonicalCategory as TaggedStep['category'];
+    }
 
     // 1. Guide Retrieval
-    if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
+    if (category === 'guide_retrieval' || actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
       category = 'guide_retrieval';
       const paramsObj = rawStep.action?.params || rawStep.action || {};
       let guideId = paramsObj.id || paramsObj.guideId;
@@ -459,7 +462,7 @@ function preprocessTrajectory(trajectorySummary: any, _chatLog: string): Preproc
       }
     }
     // 2. Skill Search
-    else if (actionName.includes('search') || actionParamsStr.includes('search')) {
+    else if (category === 'skill_search' || actionName.includes('search') || actionParamsStr.includes('search')) {
       category = 'skill_search';
       const paramsObj = rawStep.action?.params || rawStep.action || {};
       let query = paramsObj.query;
@@ -477,6 +480,7 @@ function preprocessTrajectory(trajectorySummary: any, _chatLog: string): Preproc
     }
     // 3. Code Mutation
     else if (
+      category === 'code_mutation' ||
       actionName.includes('write') || actionName.includes('replace') || actionName.includes('touch') ||
       actionParamsStr.includes('write_to_file') || actionParamsStr.includes('replace_file_content') ||
       actionParamsStr.includes('index.html') || actionParamsStr.includes('app.jsx') || actionParamsStr.includes('style.css')
@@ -486,6 +490,7 @@ function preprocessTrajectory(trajectorySummary: any, _chatLog: string): Preproc
     }
     // 4. Mandatory Rule Thought / Adoption
     else if (
+      category === 'mandatory_rule_thought' ||
       thought.toLowerCase().includes('mandatory') || thought.toLowerCase().includes('fallback') ||
       thought.toLowerCase().includes('css') || thought.toLowerCase().includes('baseline') ||
       thought.toLowerCase().includes('guidance')

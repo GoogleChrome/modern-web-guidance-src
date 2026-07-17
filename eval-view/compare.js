@@ -1,10 +1,15 @@
-import { getAccessToken, capitalize } from './utils.js';
+import { getAccessToken, capitalize, normalizeTrajectoryClient } from './utils.js';
 
 // Cross-Run Performance Variance Diagnosis Dashboard JavaScript
 
 let currentTab = 'assertions';
 let activeTask = '';
 let availableTasks = [];
+let timelineViewMode = 'milestone'; // 'milestone' | 'raw'
+let _loadedTrajA = null;
+let _loadedTrajB = null;
+let _loadedChatA = '';
+let _loadedChatB = '';
 
 // Context parameters
 let trialA = '';
@@ -753,7 +758,7 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   try {
     const resA = await fetch(`${resultsBase}/${pathA}/trajectory_summary.json`);
     if (resA.ok) {
-      trajA = await resA.json();
+      trajA = normalizeTrajectoryClient(await resA.json());
       await enrichTrajectorySteps(trajA, pathA, resultsBase);
     }
   } catch (e) {}
@@ -761,7 +766,7 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   try {
     const resB = await fetch(`${resultsBase}/${pathB}/trajectory_summary.json`);
     if (resB.ok) {
-      trajB = await resB.json();
+      trajB = normalizeTrajectoryClient(await resB.json());
       await enrichTrajectorySteps(trajB, pathB, resultsBase);
     }
   } catch (e) {}
@@ -794,23 +799,91 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
     }
   } catch (e) {}
 
+  _loadedTrajA = trajA;
+  _loadedTrajB = trajB;
+  _loadedChatA = chatA;
+  _loadedChatB = chatB;
   renderTimelineRows(container, trajA, trajB, chatA, chatB, sessionUrlA, sessionUrlB);
 }
 
+function alignTrajectorySteps(stepsA, stepsB, mode = 'milestone') {
+  let listA = stepsA || [];
+  let listB = stepsB || [];
+
+  if (mode === 'milestone') {
+    const filterFn = s => s.action?.canonicalCategory && s.action.canonicalCategory !== 'incidental_noise';
+    const filteredA = listA.filter(filterFn);
+    const filteredB = listB.filter(filterFn);
+    if (filteredA.length > 0 || filteredB.length > 0) {
+      listA = filteredA;
+      listB = filteredB;
+    }
+  }
+
+  const m = listA.length;
+  const n = listB.length;
+  if (m === 0 && n === 0) return [];
+
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  const gapPenalty = -2;
+
+  function matchScore(sA, sB) {
+    let score = 0;
+    const catA = sA.action?.canonicalCategory || 'other';
+    const catB = sB.action?.canonicalCategory || 'other';
+    if (catA === catB && catA !== 'other' && catA !== 'incidental_noise') score += 5;
+    else if (catA !== catB && catA !== 'other' && catB !== 'other' && catA !== 'incidental_noise' && catB !== 'incidental_noise') score -= 6;
+
+    const nameA = (sA.action?.name || '').toLowerCase().split(' ')[0];
+    const nameB = (sB.action?.name || '').toLowerCase().split(' ')[0];
+    if (nameA && nameA === nameB) score += 3;
+
+    return score;
+  }
+
+  for (let i = 0; i <= m; i++) dp[i][0] = i * gapPenalty;
+  for (let j = 0; j <= n; j++) dp[0][j] = j * gapPenalty;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const score = matchScore(listA[i - 1], listB[j - 1]);
+      dp[i][j] = Math.max(
+        dp[i - 1][j - 1] + score,
+        dp[i - 1][j] + gapPenalty,
+        dp[i][j - 1] + gapPenalty
+      );
+    }
+  }
+
+  const aligned = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + matchScore(listA[i - 1], listB[j - 1])) {
+      aligned.push({ stepA: listA[i - 1], stepB: listB[j - 1] });
+      i--;
+      j--;
+    } else if (i > 0 && (j === 0 || dp[i][j] === dp[i - 1][j] + gapPenalty)) {
+      aligned.push({ stepA: listA[i - 1], stepB: null });
+      i--;
+    } else {
+      aligned.push({ stepA: null, stepB: listB[j - 1] });
+      j--;
+    }
+  }
+
+  return aligned.reverse();
+}
+
 function findDivergenceInfo(trajA, trajB) {
-  const stepsA = trajA?.steps || [];
-  const stepsB = trajB?.steps || [];
-  const maxSteps = Math.max(stepsA.length, stepsB.length);
+  const aligned = alignTrajectorySteps(trajA?.steps, trajB?.steps, timelineViewMode);
 
   let primaryStep = null;
   const divergentSteps = new Set();
 
-  // Extract diagnosis text if available
   const diagnosisTextElement = document.getElementById('diagnosis-text');
   const diagnosisText = diagnosisTextElement ? diagnosisTextElement.innerText || '' : '';
 
   if (diagnosisText) {
-    // Specifically look for Step Number in Section 1 or general Step X pattern
     const match = diagnosisText.match(/Step\s*Number[^\d]*(\d+)/i) ||
                   diagnosisText.match(/First\s+Meaningful\s+Divergence[^\d]*(\d+)/i) ||
                   diagnosisText.match(/Divergence.*?(?:Step|step)\s*(\d+)/i) ||
@@ -820,14 +893,14 @@ function findDivergenceInfo(trajA, trajB) {
     }
   }
 
-  for (let i = 0; i < maxSteps; i++) {
-    const stepNum = i + 1;
-    const sA = stepsA[i];
-    const sB = stepsB[i];
+  for (let i = 0; i < aligned.length; i++) {
+    const rowNum = i + 1;
+    const sA = aligned[i].stepA;
+    const sB = aligned[i].stepB;
 
     if (!sA || !sB) {
-      divergentSteps.add(stepNum);
-      if (!primaryStep) primaryStep = stepNum;
+      divergentSteps.add(rowNum);
+      if (!primaryStep) primaryStep = rowNum;
       continue;
     }
 
@@ -835,16 +908,18 @@ function findDivergenceInfo(trajA, trajB) {
     const tB = (sB.thought || '').toLowerCase();
     const aA = (sA.action?.name || '').toLowerCase();
     const aB = (sB.action?.name || '').toLowerCase();
+    const catA = sA.action?.canonicalCategory || 'other';
+    const catB = sB.action?.canonicalCategory || 'other';
     const isErrA = sA.outcome?.status === 'error';
     const isErrB = sB.outcome?.status === 'error';
 
     const isThoughtDiff = (tA && tB && tA !== tB && (tA.includes('.card') !== tB.includes('.card') || tA.includes('promo-card') !== tB.includes('promo-card') || tA.includes('allow-discrete') !== tB.includes('allow-discrete')));
-    const isActionDiff = (aA && aB && aA.split(' ')[0] !== aB.split(' ')[0]);
+    const isActionDiff = (aA && aB && aA.split(' ')[0] !== aB.split(' ')[0] && catA !== catB);
     const isStatusDiff = (isErrA !== isErrB);
 
     if (isThoughtDiff || isActionDiff || isStatusDiff) {
-      divergentSteps.add(stepNum);
-      if (!primaryStep) primaryStep = stepNum;
+      divergentSteps.add(rowNum);
+      if (!primaryStep) primaryStep = rowNum;
     }
   }
 
@@ -857,11 +932,9 @@ function findDivergenceInfo(trajA, trajB) {
 function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', sessionUrlA = '', sessionUrlB = '') {
   container.innerHTML = '';
 
-  const stepsA = trajA?.steps || [];
-  const stepsB = trajB?.steps || [];
-  const maxSteps = Math.max(stepsA.length, stepsB.length);
+  const aligned = alignTrajectorySteps(trajA?.steps, trajB?.steps, timelineViewMode);
 
-  if (maxSteps === 0 && !chatA && !chatB) {
+  if (aligned.length === 0 && !chatA && !chatB) {
     container.innerHTML = '<div style="padding:30px; text-align:center; color:#64748b;">No normalized trajectory available. Ensure trajectory_summary.json is generated.</div>';
     return;
   }
@@ -887,11 +960,22 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
   `;
   container.appendChild(headerRow);
 
+  // Add Timeline Mode Toggle bar
+  const toggleBar = document.createElement('div');
+  toggleBar.className = 'timeline-mode-toggle';
+  toggleBar.style.cssText = 'display:flex; justify-content:center; align-items:center; gap:12px; margin:14px 0; padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;';
+  toggleBar.innerHTML = `
+    <span style="font-size:0.88em; font-weight:600; color:#475569;">Alignment Mode:</span>
+    <button class="mode-btn ${timelineViewMode === 'milestone' ? 'active' : ''}" style="padding:6px 14px; border-radius:6px; border:1px solid ${timelineViewMode === 'milestone' ? '#2563eb' : '#cbd5e1'}; background:${timelineViewMode === 'milestone' ? '#2563eb' : '#ffffff'}; color:${timelineViewMode === 'milestone' ? '#ffffff' : '#334155'}; font-weight:600; font-size:0.85em; cursor:pointer; transition:all 0.2s;" onclick="switchTimelineMode('milestone')">🎯 Milestone View (Filtered & Aligned)</button>
+    <button class="mode-btn ${timelineViewMode === 'raw' ? 'active' : ''}" style="padding:6px 14px; border-radius:6px; border:1px solid ${timelineViewMode === 'raw' ? '#2563eb' : '#cbd5e1'}; background:${timelineViewMode === 'raw' ? '#2563eb' : '#ffffff'}; color:${timelineViewMode === 'raw' ? '#ffffff' : '#334155'}; font-weight:600; font-size:0.85em; cursor:pointer; transition:all 0.2s;" onclick="switchTimelineMode('raw')">📋 Raw Chronological View (All Steps)</button>
+  `;
+  container.appendChild(toggleBar);
+
   // Render each step row
-  for (let i = 0; i < maxSteps; i++) {
+  for (let i = 0; i < aligned.length; i++) {
     const stepNum = i + 1;
-    const stepA = stepsA[i];
-    const stepB = stepsB[i];
+    const stepA = aligned[i].stepA;
+    const stepB = aligned[i].stepB;
     const isPrimary = stepNum === primaryStep;
     const isDivergent = isPrimary || divergentSteps.includes(stepNum);
 
@@ -904,14 +988,14 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
     if (isPrimary) {
       rowHtml += `
         <div class="divergence-banner primary">
-          <span class="divergence-badge">🚨 PRIMARY DIVERGENCE POINT (STEP ${stepNum})</span>
-          <span class="divergence-desc">Agent reasoning or tool execution diverged at this step between Trial A and Trial B.</span>
+          <span class="divergence-badge">🚨 PRIMARY DIVERGENCE POINT (ROW ${stepNum})</span>
+          <span class="divergence-desc">Agent reasoning or milestone execution diverged at this step between Trial A and Trial B.</span>
         </div>
       `;
     } else if (isDivergent && stepNum > primaryStep) {
       rowHtml += `
         <div class="divergence-banner">
-          <span class="divergence-badge" style="background:#fef3c7; color:#92400e; border-color:#fcd34d;">⚠️ DIVERGENT STEP (${stepNum})</span>
+          <span class="divergence-badge" style="background:#fef3c7; color:#92400e; border-color:#fcd34d;">⚠️ DIVERGENT STEP (ROW ${stepNum})</span>
           <span class="divergence-desc">Post-divergence trajectory step with differing actions/outcomes.</span>
         </div>
       `;
@@ -1307,3 +1391,156 @@ window.onload = async () => {
 // Expose module functions globally for inline HTML event handlers (since compare.js is loaded as a module)
 /** @type {any} */ (window).switchTab = switchTab;
 /** @type {any} */ (window).switchTask = switchTask;
+
+function switchTimelineMode(mode) {
+  timelineViewMode = mode;
+  const pathPartA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
+  const pathPartB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
+  loadTrajectories(pathPartA, pathPartB);
+}
+/** @type {any} */ (window).switchTimelineMode = switchTimelineMode;
+
+function exportCompareReport() {
+  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, _loadedTrajA, suiteDataA);
+  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, _loadedTrajB, suiteDataB);
+
+  let report = `# Cross-Run Variance Diagnosis & Trajectory Comparison Report\n`;
+  report += `Generated: ${new Date().toISOString()}\n`;
+  report += `Guide: ${guideName}\n`;
+  report += `Active Task: ${activeTask}\n\n`;
+
+  report += `## 1. Executive Summary\n`;
+  report += `- **Trial A**: ${titleAStr} | Score: ${currentScoreA}%\n`;
+  report += `- **Trial B**: ${titleBStr} | Score: ${currentScoreB}%\n`;
+  const delta = currentScoreB - currentScoreA;
+  report += `- **Score Delta**: ${delta === 0 ? 'No change (0%)' : delta > 0 ? `+${delta}% Improvement` : `${delta}% Regression`}\n\n`;
+
+  report += `## 2. AI Variance Diagnosis\n`;
+  const diagElem = document.getElementById('diagnosis-text');
+  const diagText = diagElem ? diagElem.innerText || 'No diagnosis generated.' : 'No diagnosis generated.';
+  report += `${diagText.trim()}\n\n`;
+
+  report += `## 3. Assertions Comparison Table\n`;
+  report += `| Assertion Check | Trial A (${currentScoreA}%) | Trial B (${currentScoreB}%) |\n`;
+  report += `| :--- | :---: | :---: |\n`;
+  const assertRows = document.querySelectorAll('#assert-tbody tr');
+  if (assertRows && assertRows.length > 0) {
+    assertRows.forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length >= 3) {
+        const msg = tds[0].innerText.trim();
+        const statA = tds[1].innerText.trim().replace(/\n/g, ' ');
+        const statB = tds[2].innerText.trim().replace(/\n/g, ' ');
+        report += `| ${msg} | ${statA} | ${statB} |\n`;
+      } else {
+        report += `| ${tr.innerText.trim()} | - | - |\n`;
+      }
+    });
+  } else {
+    report += `| No assertions found | - | - |\n`;
+  }
+  report += `\n`;
+
+  report += `## 4. Trajectory Comparison (${timelineViewMode.toUpperCase()} Mode)\n`;
+  const aligned = alignTrajectorySteps(_loadedTrajA?.steps, _loadedTrajB?.steps, timelineViewMode);
+  if (aligned.length === 0) {
+    report += `No trajectory steps available.\n\n`;
+  } else {
+    const { primaryStep, divergentSteps } = findDivergenceInfo(_loadedTrajA, _loadedTrajB);
+    aligned.forEach((pair, idx) => {
+      const stepNum = idx + 1;
+      const isPrimary = stepNum === primaryStep;
+      const isDivergent = isPrimary || divergentSteps.includes(stepNum);
+      const marker = isPrimary ? ` [🚨 PRIMARY DIVERGENCE POINT]` : isDivergent ? ` [⚠️ DIVERGENT STEP]` : '';
+
+      report += `### Row ${stepNum}${marker}\n\n`;
+
+      // Trial A
+      report += `#### Trial A (Step ${pair.stepA?.stepNumber || 'N/A'})\n`;
+      if (pair.stepA) {
+        report += `- **Status**: ${pair.stepA.outcome?.status?.toUpperCase() || 'UNKNOWN'}\n`;
+        if (pair.stepA.thought) {
+          report += `- **Thinking / Reasoning**:\n\`\`\`\n${pair.stepA.thought.trim()}\n\`\`\`\n`;
+        }
+        if (pair.stepA.action) {
+          const actName = pair.stepA.action.name || 'Unknown Action';
+          const actType = pair.stepA.action.canonicalCategory ? ` [Category: ${pair.stepA.action.canonicalCategory}]` : '';
+          const paramsStr = pair.stepA.action.params ? JSON.stringify(pair.stepA.action.params, null, 2) : '';
+          report += `- **Action**: \`${actName}\`${actType}\n`;
+          if (paramsStr && paramsStr !== '{}') {
+            report += `  - **Parameters**:\n\`\`\`json\n${paramsStr}\n\`\`\`\n`;
+          }
+        }
+        if (pair.stepA.outcome) {
+          const out = pair.stepA.outcome.output || pair.stepA.outcome.result || pair.stepA.outcome.message || pair.stepA.outcome.content || pair.stepA.outcome.text || pair.stepA.outcome.stdout || pair.stepA.outcome.stderr || '';
+          if (out && typeof out !== 'object' || (typeof out === 'object' && Object.keys(out).length > 0)) {
+            const outStr = typeof out === 'object' ? JSON.stringify(out, null, 2) : String(out);
+            if (outStr !== '{}' && outStr !== 'null') {
+              report += `- **Outcome / Output**:\n\`\`\`\n${outStr.trim()}\n\`\`\`\n`;
+            }
+          }
+        }
+      } else {
+        report += `*No step in Trial A at this position.*\n`;
+      }
+      report += `\n`;
+
+      // Trial B
+      report += `#### Trial B (Step ${pair.stepB?.stepNumber || 'N/A'})\n`;
+      if (pair.stepB) {
+        report += `- **Status**: ${pair.stepB.outcome?.status?.toUpperCase() || 'UNKNOWN'}\n`;
+        if (pair.stepB.thought) {
+          report += `- **Thinking / Reasoning**:\n\`\`\`\n${pair.stepB.thought.trim()}\n\`\`\`\n`;
+        }
+        if (pair.stepB.action) {
+          const actName = pair.stepB.action.name || 'Unknown Action';
+          const actType = pair.stepB.action.canonicalCategory ? ` [Category: ${pair.stepB.action.canonicalCategory}]` : '';
+          const paramsStr = pair.stepB.action.params ? JSON.stringify(pair.stepB.action.params, null, 2) : '';
+          report += `- **Action**: \`${actName}\`${actType}\n`;
+          if (paramsStr && paramsStr !== '{}') {
+            report += `  - **Parameters**:\n\`\`\`json\n${paramsStr}\n\`\`\`\n`;
+          }
+        }
+        if (pair.stepB.outcome) {
+          const out = pair.stepB.outcome.output || pair.stepB.outcome.result || pair.stepB.outcome.message || pair.stepB.outcome.content || pair.stepB.outcome.text || pair.stepB.outcome.stdout || pair.stepB.outcome.stderr || '';
+          if (out && typeof out !== 'object' || (typeof out === 'object' && Object.keys(out).length > 0)) {
+            const outStr = typeof out === 'object' ? JSON.stringify(out, null, 2) : String(out);
+            if (outStr !== '{}' && outStr !== 'null') {
+              report += `- **Outcome / Output**:\n\`\`\`\n${outStr.trim()}\n\`\`\`\n`;
+            }
+          }
+        }
+      } else {
+        report += `*No step in Trial B at this position.*\n`;
+      }
+      report += `\n---\n\n`;
+    });
+  }
+
+  if (_loadedChatA || _loadedChatB) {
+    report += `### Final Assistant Output\n\n`;
+    report += `#### Trial A Final Response:\n\`\`\`\n${(_loadedChatA || 'No final response recorded.').trim()}\n\`\`\`\n\n`;
+    report += `#### Trial B Final Response:\n\`\`\`\n${(_loadedChatB || 'No final response recorded.').trim()}\n\`\`\`\n\n`;
+  }
+
+  report += `## 5. Code Output Comparison\n\n`;
+  const codeElemA = document.getElementById('code-a');
+  const codeElemB = document.getElementById('code-b');
+  const codeTextA = codeElemA ? codeElemA.innerText || 'No code found.' : 'No code found.';
+  const codeTextB = codeElemB ? codeElemB.innerText || 'No code found.' : 'No code found.';
+  report += `### Trial A Generated Code:\n\`\`\`html\n${codeTextA.trim()}\n\`\`\`\n\n`;
+  report += `### Trial B Generated Code:\n\`\`\`html\n${codeTextB.trim()}\n\`\`\`\n`;
+
+  const blob = new Blob([report], { type: 'text/markdown;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const filenameSafeTask = activeTask ? activeTask.replace(/[^a-zA-Z0-9_-]/g, '_') : 'task';
+  const filenameSafeGuide = guideName ? guideName.replace(/[^a-zA-Z0-9_-]/g, '_') : 'guide';
+  a.download = `compare_${filenameSafeGuide}_${filenameSafeTask}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+/** @type {any} */ (window).exportCompareReport = exportCompareReport;

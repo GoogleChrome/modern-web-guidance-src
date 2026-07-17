@@ -12,8 +12,19 @@ const BUCKET_NAME = 'guidance-evals';
  */
 async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: string) {
   const summaryPath = path.join(absoluteRunDir, 'trajectory_summary.json');
-  if (!fs.existsSync(summaryPath)) {
-    console.log(cCyan(`[GCS Downloader] trajectory_summary.json is missing in historical run. Generating on the fly...`));
+  let needsGeneration = !fs.existsSync(summaryPath);
+  if (!needsGeneration) {
+    try {
+      const summaryJson = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summaryJson.schemaVersion !== "2.0") {
+        needsGeneration = true;
+      }
+    } catch {
+      needsGeneration = true;
+    }
+  }
+  if (needsGeneration) {
+    console.log(cCyan(`[GCS Downloader] trajectory_summary.json is missing or outdated in historical run. Generating v2.0 on the fly...`));
     let detectedAgent = 'Jetski';
     const suiteId = relativeRunPath.split(/[/\\]/)[0].toLowerCase();
     if (suiteId.includes('claude')) {

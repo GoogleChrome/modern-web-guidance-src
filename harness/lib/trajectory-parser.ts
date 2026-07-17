@@ -9,6 +9,7 @@ export interface StandardizedStep {
   thought?: string;
   action?: {
     type: 'tool_call' | 'api_call' | 'web_search' | 'read_file' | 'write_file' | 'run_command' | 'other';
+    canonicalCategory?: 'guide_retrieval' | 'skill_search' | 'code_mutation' | 'mandatory_rule_thought' | 'incidental_noise' | 'other';
     name: string;
     params?: Record<string, any>;
   };
@@ -21,11 +22,60 @@ export interface StandardizedStep {
 }
 
 export interface TrajectorySummary {
+  schemaVersion?: string;
   agent: string;
   serving: string;
   steps: StandardizedStep[];
   tokenUsage?: { total: number; cached: number };
   initialPrompt?: string;
+}
+
+export function categorizeAction(name: string, params?: Record<string, any>, thought?: string): NonNullable<StandardizedStep['action']>['canonicalCategory'] {
+  const actionName = (name || '').toLowerCase();
+  const actionParamsStr = JSON.stringify(params || {}).toLowerCase();
+  const thoughtStr = (thought || '').toLowerCase();
+
+  if (actionName === 'respond_to_user') {
+    return 'other';
+  }
+
+  if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
+    return 'guide_retrieval';
+  }
+
+  if (actionName.includes('search') || actionName.includes('get_best_practices') || actionName.includes('query_guidance') || actionParamsStr.includes('search')) {
+    return 'skill_search';
+  }
+
+  if (
+    actionName.includes('write') || actionName.includes('replace') || actionName.includes('edit') || actionName.includes('touch') ||
+    actionParamsStr.includes('write_to_file') || actionParamsStr.includes('replace_file_content') ||
+    actionParamsStr.includes('index.html') || actionParamsStr.includes('app.jsx') || actionParamsStr.includes('style.css')
+  ) {
+    return 'code_mutation';
+  }
+
+  if (
+    thoughtStr.includes('mandatory') || thoughtStr.includes('fallback') ||
+    thoughtStr.includes('css') || thoughtStr.includes('baseline') ||
+    thoughtStr.includes('guidance')
+  ) {
+    return 'mandatory_rule_thought';
+  }
+
+  return 'incidental_noise';
+}
+
+export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
+  summary.schemaVersion = "2.0";
+  if (Array.isArray(summary.steps)) {
+    for (const step of summary.steps) {
+      if (step.action && !step.action.canonicalCategory) {
+        step.action.canonicalCategory = categorizeAction(step.action.name, step.action.params, step.thought);
+      }
+    }
+  }
+  return summary;
 }
 
 export function extractInitialPromptFromLogs(logData?: any[], chatLogText?: string): string {
@@ -199,11 +249,11 @@ export function parseClaudeTrajectory(logData: any[], serving: string): Trajecto
     }
   }
 
-  return {
+  return finalizeTrajectorySummary({
     agent: 'Claude Code',
     serving,
     steps
-  };
+  });
 }
 
 /**
@@ -268,11 +318,11 @@ export function parseGeminiTrajectory(session: any, serving: string): Trajectory
     }
   }
 
-  return {
+  return finalizeTrajectorySummary({
     agent: 'Gemini CLI',
     serving,
     steps
-  };
+  });
 }
 
 /**
@@ -491,11 +541,11 @@ export async function parseJetskiTrajectory(dirPath: string, serving: string): P
     }
   }
 
-  return {
+  return finalizeTrajectorySummary({
     agent: 'Jetski',
     serving,
     steps
-  };
+  });
 }
 
 /**
@@ -563,11 +613,11 @@ export function parseCodexTrajectory(logData: any[], serving: string): Trajector
     }
   }
 
-  return {
+  return finalizeTrajectorySummary({
     agent: 'Codex',
     serving,
     steps
-  };
+  });
 }
 
 /**
@@ -602,6 +652,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
     }
 
       if (summary) {
+        finalizeTrajectorySummary(summary);
         // Inject token usage if available
         const runtimePath = path.join(targetDir, 'runtime.json');
         if (fs.existsSync(runtimePath)) {
@@ -639,7 +690,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
     
     // Write a placeholder file so the UI knows it failed but remains robust
     try {
-      const placeholder: TrajectorySummary = {
+      const placeholder: TrajectorySummary = finalizeTrajectorySummary({
         agent: agentName,
         serving,
         steps: [{
@@ -647,7 +698,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
           thought: "Failed to parse trajectory logs during execution.",
           outcome: { status: 'error', message: `Telemetry unparseable: ${err.message}` }
         }]
-      };
+      });
       fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), JSON.stringify(placeholder, null, 2), 'utf8');
     } catch {}
   }

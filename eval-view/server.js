@@ -679,19 +679,30 @@ const server = http.createServer(async (req, res) => {
 
         filePath = path.join(RESULTS_DIR, finalRelativePath);
 
-        // Auto-generate missing trajectory_summary.json on the fly
-        if (path.basename(filePath) === 'trajectory_summary.json' && !fs.existsSync(filePath)) {
-          const runDir = path.dirname(filePath);
-          if (fs.existsSync(runDir)) {
+        // Auto-generate missing or outdated trajectory_summary.json on the fly
+        if (path.basename(filePath) === 'trajectory_summary.json') {
+          let needsGeneration = !fs.existsSync(filePath);
+          if (!needsGeneration) {
             try {
-              const { generateNormalizedTrajectory } = await import('../harness/lib/trajectory-parser.ts');
-              const { agentName, isKnown } = detectAgentFromPath(filePath);
-              if (!isKnown) {
-                console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`);
+              const summaryJson = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+              if (summaryJson.schemaVersion !== "2.0") needsGeneration = true;
+            } catch {
+              needsGeneration = true;
+            }
+          }
+          if (needsGeneration) {
+            const runDir = path.dirname(filePath);
+            if (fs.existsSync(runDir)) {
+              try {
+                const { generateNormalizedTrajectory } = await import('../harness/lib/trajectory-parser.ts');
+                const { agentName, isKnown } = detectAgentFromPath(filePath);
+                if (!isKnown) {
+                  console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`);
+                }
+                await generateNormalizedTrajectory(runDir, agentName, 'local');
+              } catch (e) {
+                console.error('Failed to auto-generate trajectory summary:', e);
               }
-              await generateNormalizedTrajectory(runDir, agentName, 'local');
-            } catch (e) {
-              console.error('Failed to auto-generate trajectory summary:', e);
             }
           }
         }

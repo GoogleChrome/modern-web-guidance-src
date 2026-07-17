@@ -583,7 +583,10 @@
         <a href="#" id="back-btn" class="back-btn">← Back to Guide Timeline</a>
         <h1 class="page-title" id="compare-title">Cross-Run Variance Diagnosis</h1>
       </div>
-      <div id="loader-status" class="trial-meta"></div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button id="export-btn" class="back-btn" style="background-color:#2563eb; color:#ffffff; border-color:#1d4ed8; cursor:pointer;" onclick="exportCompareReport()">📥 Export LLM Report</button>
+        <div id="loader-status" class="trial-meta"></div>
+      </div>
     </div>
 
     <!-- Executive Summary Panel -->
