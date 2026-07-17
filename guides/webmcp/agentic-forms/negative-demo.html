@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Account Portal</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+        .wizard-container {
+            background: white;
+            padding: 30px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group span {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        #signature-canvas {
+            border: 2px solid #000;
+            background: #fff;
+            cursor: crosshair;
+        }
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="wizard-container">
+        <h1>Enterprise Account Settings</h1>
+        <form id="wizard-form" action="/submit-transaction" method="POST">
+            <div id="step-1" class="step active">
+                <h2>Step 1: Transaction Details</h2>
+                <div class="form-group">
+                    <span>Account Type</span>
+                    <select id="account-type-select">
+                        <option value="">Select account...</option>
+                        <option value="savings">Savings</option>
+                        <option value="checking">Checking</option>
+                    </select>
+                </div>
+                <div id="savings-fields" class="form-group" style="display: none;">
+                    <span>Savings Routing Number</span>
+                    <input type="text" name="savings-routing">
+                </div>
+                <div id="checking-fields" class="form-group" style="display: none;">
+                    <span>Checking Routing Number</span>
+                    <input type="text" name="checking-routing">
+                </div>
+            </div>
+
+            <div id="step-2" class="step">
+                <h2>Step 2: Security Credentials</h2>
+                <div class="form-group">
+                    <span>Delete Code Confirmation</span>
+                    <input type="text" name="confirm-code">
+                </div>
+            </div>
+
+            <div id="step-3" class="step">
+                <h2>Step 3: Authorized Signature</h2>
+                <div class="form-group">
+                    <span>Sign in the box below</span>
+                    <canvas id="signature-canvas" width="400" height="150"></canvas>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button type="button" id="prev-btn" disabled>Previous</button>
+                <button type="button" id="next-btn">Next</button>
+                <button type="submit" id="submit-btn" style="display: none;">Execute Destructive Reset</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('wizard-form');
+        const steps = Array.from(document.querySelectorAll('.step'));
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const accountSelect = document.getElementById('account-type-select');
+        const savingsFields = document.getElementById('savings-fields');
+        const checkingFields = document.getElementById('checking-fields');
+        const canvas = document.getElementById('signature-canvas');
+        const ctx = canvas.getContext('2d');
+        let currentStep = 0;
+        let drawing = false;
+
+        accountSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'savings') {
+                savingsFields.style.display = 'block';
+                checkingFields.style.display = 'none';
+            } else if (e.target.value === 'checking') {
+                savingsFields.style.display = 'none';
+                checkingFields.style.display = 'block';
+            } else {
+                savingsFields.style.display = 'none';
+                checkingFields.style.display = 'none';
+            }
+        });
+
+        canvas.addEventListener('mousedown', () => {
+            drawing = true;
+        });
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) {
+                return;
+            }
+            const rect = canvas.getBoundingClientRect();
+            ctx.fillStyle = '#000';
+            ctx.fillRect(e.clientX - rect.left, e.clientY - rect.top, 3, 3);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStep < steps.length - 1) {
+                steps[currentStep].classList.remove('active');
+                currentStep++;
+                steps[currentStep].classList.add('active');
+                prevBtn.disabled = false;
+                if (currentStep === steps.length - 1) {
+                    nextBtn.style.display = 'none';
+                    submitBtn.style.display = 'block';
+                }
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStep > 0) {
+                steps[currentStep].classList.remove('active');
+                currentStep--;
+                steps[currentStep].classList.add('active');
+                nextBtn.style.display = 'block';
+                submitBtn.style.display = 'none';
+                if (currentStep === 0) {
+                    prevBtn.disabled = true;
+                }
+            }
+        });
+
+        form.addEventListener('submit', (e) => {
+            alert('Action Executed');
+        });
+    </script>
+</body>
+</html>

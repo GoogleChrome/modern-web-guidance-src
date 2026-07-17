@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
+import { marked } from 'marked';
 
 // Import shared utilities (using relative paths from guides/)
 import { validateMacros } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
-import { rootDir, guidesDir } from './paths.ts';
+import { rootDir, guidesDir, baseAppsDir } from './paths.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -115,6 +116,7 @@ export function validateGuide(filePath: string): ValidationResult {
   }
 
   errors.push(...validateMacros(body, relativePath));
+  errors.push(...validateHtmlTags(body, relativePath));
 
   return { errors, data, body, filePath };
 }
@@ -181,9 +183,11 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
+    const isDisciplineGuide = inv.name === inv.category;
     
-    // Discipline skills don't need demo.html
-    if (!isDisciplineSkill && guideExists !== hasDemo) {
+    // Discipline skills don't need demo.html; a frontmatter-only stub
+    // (a proposed use case) doesn't need one either
+    if (!isDisciplineSkill && !isDisciplineGuide && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
@@ -213,8 +217,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill) {
-        // Discipline skills (SKILL.md) don't require the same frontmatter as use cases
+      if (isDisciplineSkill || isDisciplineGuide) {
+        // Discipline skills/guides don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
 
@@ -228,7 +232,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       }
     }
 
-    const isIncomplete = (!hasGuide && !inv.isStub) || !hasDemo;
+    const isIncomplete = (!hasGuide && !inv.isStub) || (hasGuide && !hasDemo);
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
     const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask) : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
@@ -270,6 +274,35 @@ export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const TASK_FILE = 'task.md';
 
+export function getSupportedBaseApps(): string[] {
+  try {
+    if (!fs.existsSync(baseAppsDir)) return [];
+    return fs.readdirSync(baseAppsDir).filter((name) => {
+      if (name.startsWith('.')) return false;
+      const fullPath = path.join(baseAppsDir, name);
+      return fs.statSync(fullPath).isDirectory();
+    });
+  } catch (e) {
+    console.warn(`Failed to read base apps directory at ${baseAppsDir}: ${e}`);
+    return [];
+  }
+}
+
+export type SupportedBaseApp = string;
+
+export const TARGETS_DIR = 'targets';
+export const SOLUTION_PATCH_FILE = 'solution.patch';
+export const BROKEN_PATCH_FILE = 'broken.patch';
+
+export interface TargetInventory {
+  name: string;
+  dir: string;
+  hasSolution: boolean;
+  hasBroken: boolean;
+  hasGrader: boolean;
+  hasTask: boolean;
+}
+
 export interface GuideInventory {
   dir: string;
   name: string;
@@ -284,6 +317,7 @@ export interface GuideInventory {
   hasTask: boolean;
   featureIds: string[];
   isDisciplineSkill: boolean;
+  targets?: TargetInventory[];
 }
 
 /**
@@ -354,6 +388,40 @@ export function getTaskMap(): Map<string, TaskInfo> {
     }
   }
 
+  function processBaseAppTasks(guideName: string, targetsDir: string, guideDir: string) {
+    let firstBaseAppInfo: TaskInfo | null = null;
+    const supportedBaseApps = getSupportedBaseApps();
+
+    for (const entry of fs.readdirSync(targetsDir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith('.') || !supportedBaseApps.includes(entry.name)) continue;
+      const baseAppName = entry.name;
+      const taskPath = path.join(targetsDir, baseAppName, TASK_FILE);
+
+      const rawContent = readFileSafe(taskPath);
+      if (!rawContent) continue;
+
+      const { content } = matter(rawContent);
+      const firstLine = content.split('\n').find((l: string) => l.trim().startsWith('- '));
+      const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : content.trim();
+
+      const info: TaskInfo = {
+        baseApp: baseAppName,
+        prompt: prompt,
+        guideDir: guideDir,
+      };
+
+      if (!firstBaseAppInfo) {
+        firstBaseAppInfo = info;
+      }
+
+      taskMap.set(`${guideName}/${baseAppName}`, info);
+    }
+
+    if (firstBaseAppInfo) {
+      taskMap.set(`${guideName}/task`, firstBaseAppInfo);
+    }
+  }
+
   const disciplines = fs.readdirSync(guidesDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
     .map(d => d.name);
@@ -363,8 +431,11 @@ export function getTaskMap(): Map<string, TaskInfo> {
     if (!fs.existsSync(disciplineDir)) continue;
 
     // Check if the discipline itself is a skill with tasks
+    const disciplineTargetsDir = path.join(disciplineDir, TARGETS_DIR);
     const disciplineTasksDir = path.join(disciplineDir, 'tasks');
-    if (fs.existsSync(disciplineTasksDir)) {
+    if (fs.existsSync(disciplineTargetsDir)) {
+      processBaseAppTasks(discipline, disciplineTargetsDir, disciplineDir);
+    } else if (fs.existsSync(disciplineTasksDir)) {
       processTasks(discipline, disciplineTasksDir, disciplineDir);
     }
 
@@ -372,10 +443,13 @@ export function getTaskMap(): Map<string, TaskInfo> {
     for (const entry of fs.readdirSync(disciplineDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const guideName = entry.name;
+      const targetsDir = path.join(disciplineDir, guideName, TARGETS_DIR);
       const tasksDir = path.join(disciplineDir, guideName, 'tasks');
-      if (!fs.existsSync(tasksDir)) continue;
-
-      processTasks(guideName, tasksDir, path.join(disciplineDir, guideName));
+      if (fs.existsSync(targetsDir)) {
+        processBaseAppTasks(guideName, targetsDir, path.join(disciplineDir, guideName));
+      } else if (fs.existsSync(tasksDir)) {
+        processTasks(guideName, tasksDir, path.join(disciplineDir, guideName));
+      }
     }
   }
   return taskMap;
@@ -397,7 +471,7 @@ export function inventoryGuide(dir: string): GuideInventory {
   if (guideContent) {
     const parsed = matter(guideContent);
     const hasFrontmatter = Object.keys(parsed.data).length > 0 || guideContent.startsWith('---');
-    const hasContent = parsed.content.trim().length > 0;
+    const hasContent = parsed.content.replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
 
     if (hasFrontmatter) {
       isStub = true;
@@ -411,20 +485,57 @@ export function inventoryGuide(dir: string): GuideInventory {
 
   const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
 
+  const targetsDir = path.join(dir, TARGETS_DIR);
+  const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
+  const targets: TargetInventory[] = [];
+
+  let hasDemo = false;
+  let hasNegativeDemo = false;
+  let hasGrader = false;
+  let hasTask = false;
+
+  if (hasTargets) {
+    const supportedBaseApps = getSupportedBaseApps();
+    for (const entry of fs.readdirSync(targetsDir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith('.') || !supportedBaseApps.includes(entry.name)) continue;
+      const targetDir = path.join(targetsDir, entry.name);
+      const appInv: TargetInventory = {
+        name: entry.name,
+        dir: targetDir,
+        hasSolution: fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILE)),
+        hasBroken: fs.existsSync(path.join(targetDir, BROKEN_PATCH_FILE)),
+        hasGrader: fs.existsSync(path.join(targetDir, GRADER_FILE)),
+        hasTask: fs.existsSync(path.join(targetDir, TASK_FILE)),
+      };
+      targets.push(appInv);
+    }
+
+    if (targets.length > 0) {
+      hasGrader = targets.every((a) => a.hasGrader);
+      hasTask = targets.every((a) => a.hasTask);
+    }
+  } else {
+    hasDemo = readFileSafe(path.join(dir, DEMO_FILE)).length > 0;
+    hasNegativeDemo = fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE));
+    hasGrader = fs.existsSync(path.join(dir, GRADER_FILE));
+    hasTask = fs.existsSync(path.join(dir, 'tasks', TASK_FILE));
+  }
+
   return {
     dir,
     name,
     category,
     hasGuide,
     isStub,
-    hasDemo: readFileSafe(path.join(dir, DEMO_FILE)).length > 0,
+    hasDemo,
     hasExpectations,
     expectationsEmpty: hasExpectations && expectationsContent.length === 0,
-    hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
-    hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
-    hasTask: fs.existsSync(path.join(dir, 'tasks', TASK_FILE)),
+    hasNegativeDemo,
+    hasGrader,
+    hasTask,
     featureIds,
     isDisciplineSkill,
+    targets,
   };
 }
 
@@ -433,11 +544,24 @@ export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'n
 export function classifyGuide(inv: GuideInventory): GuideStatus {
   if (!inv.hasGuide && !inv.isStub) return 'incomplete';
   if (inv.isStub && !inv.hasGuide) return 'stub';
-  if (!inv.hasDemo) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
-  if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
-  if (!inv.hasTask) return 'needs-test';
-  return 'eval-ready';
+
+  if (inv.targets && inv.targets.length > 0) {
+    const allHaveSolutions = inv.targets.every(t => t.hasSolution);
+    const allHaveBroken = inv.targets.every(t => t.hasBroken);
+    const allHaveGraders = inv.targets.every(t => t.hasGrader);
+    const allHaveTasks = inv.targets.every(t => t.hasTask);
+
+    if (!allHaveSolutions) return 'incomplete';
+    if (!allHaveBroken || !allHaveGraders) return 'needs-calibration';
+    if (!allHaveTasks) return 'needs-test';
+    return 'eval-ready';
+  } else {
+    if (!inv.hasDemo) return 'incomplete';
+    if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
+    if (!inv.hasTask) return 'needs-test';
+    return 'eval-ready';
+  }
 }
 
 export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
@@ -453,14 +577,9 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
     const categoryDir = path.join(scanDir, category);
     if (!fs.existsSync(categoryDir)) continue;
 
-    // Check if category itself is a discipline skill
-    if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
-      guides.push(inventoryGuide(categoryDir));
-    }
-
     // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
+      if (!entry.isDirectory() || entry.name.startsWith('.') || ['node_modules', 'test-app-results', 'grade-report', 'test-results'].includes(entry.name)) continue;
       guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
     }
   }
@@ -468,9 +587,26 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
 }
 
 export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
-  return scanAllGuides(scanDir).filter(g => g.isDisciplineSkill);
-}
+  const skills: GuideInventory[] = [];
 
+  if (!fs.existsSync(scanDir)) return skills;
+
+  // Read top-level directories in guides/
+  const categories = fs.readdirSync(scanDir, { withFileTypes: true })
+     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+     .map(d => d.name);
+
+  for (const category of categories) {
+    const categoryDir = path.join(scanDir, category);
+    
+    // If the category directory itself contains a SKILL.md, it's a discipline skill
+    if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
+      skills.push(inventoryGuide(categoryDir));
+    }
+  }
+
+  return skills;
+}
 
 let cachedGuidesMap: Map<string, GuideInventory> | null = null;
 
@@ -485,3 +621,63 @@ export function getGuidesMap(): Map<string, GuideInventory> {
 export function resetGuidesMap() {
   cachedGuidesMap = null;
 }
+
+// Safe typographic inline tags that don't represent interactive elements or cause layout breakage.
+const ALLOWED_HTML_TAGS = new Set(['kbd', 'br', 'wbr']);
+
+export function validateHtmlTags(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+
+  try {
+    const tokens = marked.lexer(body);
+    findInvalidHtmlTokens(tokens, errors, relativePath, body);
+  } catch (e) {
+    errors.push(`Failed to parse markdown with marked lexer for HTML validation in ${relativePath}: ${e}`);
+  }
+
+  return errors;
+}
+
+function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: string, content: string) {
+  for (const token of tokens) {
+    if (token.type === 'html') {
+      const raw = token.raw.trim();
+
+      // Allow HTML comments
+      if (raw.startsWith('<!--') && raw.endsWith('-->')) {
+        continue;
+      }
+
+      // Parse tag name
+      const match = raw.match(/^<\/?([a-zA-Z0-9:-]+)(?:\s+[^>]*)?\/?>$/);
+      if (match) {
+        const tagName = match[1].toLowerCase();
+        if (!ALLOWED_HTML_TAGS.has(tagName)) {
+          // Find line number in content
+          const offset = content.indexOf(token.raw);
+          const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
+          const lineSuffix = line !== -1 ? ` on line ${line}` : '';
+          errors.push(`Unescaped HTML tag <${tagName}> found${lineSuffix} in ${relativePath}. Use backticks or escape angle brackets if it is a tag name reference.`);
+        }
+      } else {
+        // If it does not match a standard tag, but is still parsed as HTML token, warn/fail
+        const offset = content.indexOf(token.raw);
+        const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
+        const lineSuffix = line !== -1 ? ` on line ${line}` : '';
+        errors.push(`Potentially invalid or unescaped HTML block/tag "${raw}" found${lineSuffix} in ${relativePath}.`);
+      }
+    }
+
+    if (token.tokens) {
+      findInvalidHtmlTokens(token.tokens, errors, relativePath, content);
+    }
+    if (token.items) {
+      for (const item of token.items) {
+        if (item.tokens) {
+          findInvalidHtmlTokens(item.tokens, errors, relativePath, content);
+        }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll Snap Realtime Feedback Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+    }
+
+    .thumbnails {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .thumbnail {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, opacity 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+      font-size: 0.8rem;
+      opacity: 0.5;
+      padding: 0;
+      font-family: inherit;
+      appearance: none;
+    }
+
+    .thumbnail.pending {
+      border-color: rgba(0, 0, 0, 0.3);
+      opacity: 0.8;
+    }
+
+    .thumbnail.active {
+      border-color: #333;
+      opacity: 1;
+    }
+
+    .thumbnail:nth-child(1) { background: #e74c3c; }
+    .thumbnail:nth-child(2) { background: #3498db; }
+    .thumbnail:nth-child(3) { background: #2ecc71; }
+    .thumbnail:nth-child(4) { background: #f39c12; }
+    .thumbnail:nth-child(5) { background: #9b59b6; }
+
+    .gallery {
+      position: relative;
+      display: flex;
+      width: 100%;
+      max-width: 400px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .gallery-item {
+      flex: 0 0 100%;
+      height: 300px;
+      scroll-snap-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .gallery-item:nth-child(1) { background: #e74c3c; }
+    .gallery-item:nth-child(2) { background: #3498db; }
+    .gallery-item:nth-child(3) { background: #2ecc71; }
+    .gallery-item:nth-child(4) { background: #f39c12; }
+    .gallery-item:nth-child(5) { background: #9b59b6; }
+  </style>
+</head>
+
+<body>
+  <h1>Gallery with Real-time Thumbnail Feedback</h1>
+
+  <div class="thumbnails">
+    <button type="button" class="thumbnail active" aria-current="true" aria-label="Photo 1">1</button>
+    <button type="button" class="thumbnail" aria-label="Photo 2">2</button>
+    <button type="button" class="thumbnail" aria-label="Photo 3">3</button>
+    <button type="button" class="thumbnail" aria-label="Photo 4">4</button>
+    <button type="button" class="thumbnail" aria-label="Photo 5">5</button>
+  </div>
+
+  <div class="gallery" id="gallery">
+    <div class="gallery-item">Photo 1</div>
+    <div class="gallery-item">Photo 2</div>
+    <div class="gallery-item">Photo 3</div>
+    <div class="gallery-item">Photo 4</div>
+    <div class="gallery-item">Photo 5</div>
+  </div>
+
+  <script>
+    const gallery = document.getElementById('gallery');
+    const thumbnails = document.querySelectorAll('.thumbnail');
+    const items = document.querySelectorAll('.gallery-item');
+
+    const findClosestItemIndex = () => {
+      // Center-distance assumes scroll-snap-align: center on items.
+      // For start-aligned snap, compare scrollLeft to item.offsetLeft directly.
+      const galleryCenter = gallery.scrollLeft + gallery.clientWidth / 2;
+      let closestIndex = 0;
+      let minDistance = Infinity;
+      items.forEach((item, index) => {
+        const itemCenter = item.offsetLeft + item.offsetWidth / 2;
+        const distance = Math.abs(galleryCenter - itemCenter);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = index;
+        }
+      });
+      return closestIndex;
+    };
+
+    if ('onscrollsnapchanging' in Element.prototype) {
+      // Eagerly highlight the thumbnail for the pending snap target
+      // while the user is still mid-scroll. This gives immediate feedback
+      // before the gesture completes.
+      gallery.addEventListener('scrollsnapchanging', (event) => {
+        const pendingTarget = event.snapTargetInline;
+        const index = [...items].indexOf(pendingTarget);
+
+        if (index === -1 || !thumbnails[index]) return;
+
+        // Use a lightweight class toggle — avoid expensive DOM operations
+        // since this event fires frequently during a scroll gesture.
+        // Note: aria-current is NOT toggled here. It tracks the settled "current"
+        // item, which is updated in the scrollsnapchange handler below.
+        thumbnails.forEach((thumb) => thumb.classList.remove('pending'));
+        thumbnails[index].classList.add('pending');
+      });
+
+      // When scrolling completes, promote the pending state to active.
+      gallery.addEventListener('scrollsnapchange', (event) => {
+        const snappedTarget = event.snapTargetInline;
+        const index = [...items].indexOf(snappedTarget);
+
+        if (index === -1 || !thumbnails[index]) return;
+
+        thumbnails.forEach((thumb) => {
+          thumb.classList.remove('pending', 'active');
+          thumb.removeAttribute('aria-current');
+        });
+        thumbnails[index].classList.add('active');
+        thumbnails[index].setAttribute('aria-current', 'true');
+      });
+    } else {
+      // Fallback: use scroll + requestAnimationFrame for eager feedback
+      let scrollTimeout;
+      let rafId = null;
+
+      const promotePendingToActive = () => {
+        const closestIndex = findClosestItemIndex();
+        if (!thumbnails[closestIndex]) return;
+        thumbnails.forEach((thumb) => {
+          thumb.classList.remove('pending', 'active');
+          thumb.removeAttribute('aria-current');
+        });
+        thumbnails[closestIndex].classList.add('active');
+        thumbnails[closestIndex].setAttribute('aria-current', 'true');
+      };
+
+      gallery.addEventListener('scroll', () => {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          const closestIndex = findClosestItemIndex();
+          if (!thumbnails[closestIndex]) return;
+          thumbnails.forEach((thumb) => thumb.classList.remove('pending'));
+          thumbnails[closestIndex].classList.add('pending');
+        });
+
+        // Debounce fallback for browsers that don't support scrollend
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(promotePendingToActive, 100);
+      }, { passive: true });
+
+      // Fallback: use scrollend to promote pending to active cleanly where supported
+      gallery.addEventListener('scrollend', () => {
+        clearTimeout(scrollTimeout);
+        promotePendingToActive();
+      });
+    }
+
+    // Allow clicking thumbnails to scroll to the corresponding item.
+    thumbnails.forEach((thumb, i) => {
+      thumb.addEventListener('click', () => {
+        items[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      });
+    });
+
+    // Sync initial state on load in case of browser-restored scroll
+    const initActiveItem = () => {
+      const closestIndex = findClosestItemIndex();
+      if (!thumbnails[closestIndex]) return;
+
+      thumbnails.forEach((thumb) => {
+        thumb.classList.remove('pending', 'active');
+        thumb.removeAttribute('aria-current');
+      });
+      thumbnails[closestIndex].classList.add('active');
+      thumbnails[closestIndex].setAttribute('aria-current', 'true');
+    };
+    
+    if (document.readyState === 'complete') {
+      initActiveItem();
+    } else {
+      window.addEventListener('load', initActiveItem, { once: true });
+    }
+  </script>
+</body>
+
+</html>

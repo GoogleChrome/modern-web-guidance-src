@@ -1,0 +1,5 @@
+- Integrate interactive HTML controls and text panels directly into the 3D canvas scene. The underlying DOM elements must remain synchronized with the 3D rendering so click events and text selection map perfectly to the rendered objects.
+- The 3D product configurator needs to display dynamic information tags on top of 3D meshes. Render this HTML content into the 3D scene while ensuring the elements remain fully interactive.
+- A configuration form must be rendered inside a 3D canvas. The form needs to be fully interactive, allowing users to input text and click submit buttons natively.
+- The 3D data visualization currently uses separate 2D DOM overlays for tooltips and controls. Embed the HTML controls directly into the 3D canvas rendering context so they scale correctly with device pixels and support native browser interaction.
+- A menu UI is displayed within a 3D canvas environment. The UI must support native text selection, copy-paste, and form autofill. Modify the canvas rendering to project the UI directly into the 3D context while preserving full DOM interactivity.

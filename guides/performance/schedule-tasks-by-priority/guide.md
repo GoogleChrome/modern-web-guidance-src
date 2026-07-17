@@ -3,13 +3,6 @@ name: schedule-tasks-by-priority
 description: Schedule tasks with different priorities to ensure critical work runs first while background work is deferred.
 web-feature-ids:
   - scheduler
-sources:
-  - https://developer.mozilla.org/en-US/docs/Web/API/Scheduler
-  - https://developer.mozilla.org/en-US/docs/Web/API/Prioritized_Task_Scheduling_API
-  - https://github.com/WICG/scheduling-apis
-  - https://developer.mozilla.org/en-US/docs/Web/API/Scheduling
-  - https://www.w3.org/TR/task-scheduler/
-  - https://github.com/GoogleChromeLabs/scheduler-polyfill
 ---
 
 When building complex web applications, tasks have different levels of urgency. Completing tasks for the current view is more important than sending analytics or prefetching assets. The Prioritized Task Scheduling API allows you to schedule work with specific priorities, ensuring the browser remains responsive to user input.

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browser UI Color Theme: Interactive Demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --accent-color: #ff00ff;
+      --background-color: #ffffff;
+      --text-color: #000000;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+
+    body {
+      padding: 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      accent-color: var(--accent-color);
+    }
+
+    body.light-mode {
+      --background-color: #ffffff;
+      --text-color: #000000;
+    }
+
+    body.dark-mode {
+      --background-color: #000000;
+      --text-color: #ffffff;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--background-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--accent-color);
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+      margin-block-start: 2rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+    }
+
+    .scroll-container {
+      height: 100px;
+      overflow: visible;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+
+    .scroll-content {
+      height: 250px;
+      background: linear-gradient(to bottom, var(--background-color), var(--accent-color));
+    }
+
+    input[type="text"], select, button {
+      padding: 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      font-size: 1rem;
+    }
+
+    select {
+      cursor: pointer;
+    }
+
+    .forced-dark-section {
+      background-color: #121212;
+      color: #ffffff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .opt-out-section {
+      background-color: #ffffff;
+      color: #000000;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    progress {
+      width: 100%;
+    }
+
+    .theme-switcher-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .checkbox-group {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Browser UI Theme Demo</h1>
+    <p>This demo shows how color-scheme affects native UI like scrollbars and dropdowns. Use the switcher below to manually override the system preference.</p>
+  </header>
+
+  <main class="demo-grid">
+    <section class="control-group">
+      <h2>Global Theme Controls</h2>
+      
+      <div class="theme-switcher-container">
+        <label for="theme-switcher">Manual Theme Toggle:</label>
+        <select id="theme-switcher">
+          <option value="system">System Default (Respects OS)</option>
+          <option value="light">Forced Light Mode</option>
+          <option value="dark">Forced Dark Mode</option>
+        </select>
+      </div>
+
+      <div class="scroll-container">
+        <div class="scroll-content">
+          <p>Global scrollbars adapt to the root scheme.</p>
+        </div>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="check" checked>
+        <label for="check">Brand Checkbox</label>
+      </div>
+      
+      <progress value="40" max="100"></progress>
+    </section>
+
+    <section class="forced-dark-section">
+      <h2>Nested Theme (Always Dark)</h2>
+      <p>The dropdown and scrollbars in this section will always be dark.</p>
+      
+      <select>
+        <option>Dark Dropdown 1</option>
+        <option>Dark Dropdown 2</option>
+      </select>
+
+      <div class="scroll-container">
+        <div class="scroll-content">
+          <p>Nested scrollbars stay dark.</p>
+        </div>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="dark-check" checked>
+        <label for="dark-check">Dark Checkbox</label>
+      </div>
+
+      <progress value="85" max="100"></progress>
+    </section>
+
+    <section class="control-group">
+      <h2>Opt-out Example</h2>
+      <div class="opt-out-section">
+        <p>This section uses color-scheme: only light to prevent automatic browser overrides even if the rest of the page is dark.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const switcher = document.getElementById('theme-switcher');
+    switcher.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      if (mode === 'light') {
+        document.body.className = 'light-mode';
+      } else if (mode === 'dark') {
+        document.body.className = 'dark-mode';
+      } else {
+        document.body.className = '';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -57,12 +57,18 @@
 
       /* Fallback for older browsers without accent-color */
       @supports not (accent-color: var(--brand-color)) {
+        /* Visually hide the native input using the canonical accessible recipe */
         .demo-container input[type="checkbox"],
         .demo-container input[type="radio"] {
-          position: absolute;
-          opacity: 0;
-          width: 0;
-          height: 0;
+          position: absolute !important;
+          clip-path: inset(50%) !important;
+          overflow: hidden !important;
+          width: 1px !important;
+          height: 1px !important;
+          margin: -1px !important;
+          padding: 0 !important;
+          border: 0 !important;
+          white-space: nowrap !important;
         }
 
         .demo-container label {
@@ -230,24 +236,24 @@
     <form class="demo-container" onsubmit="event.preventDefault()">
       <!-- Checkboxes -->
       <div class="control-group">
-        <label>
-          <input type="checkbox" name="subscribe" checked />
+        <label for="subscribe">
+          <input type="checkbox" id="subscribe" name="subscribe" checked />
           <span>Subscribe to newsletter</span>
         </label>
-        <label>
-          <input type="checkbox" name="terms" />
+        <label for="terms">
+          <input type="checkbox" id="terms" name="terms" />
           <span>Accept terms and conditions</span>
         </label>
       </div>
 
       <!-- Radio Buttons -->
       <div class="control-group">
-        <label>
-          <input type="radio" name="plan" value="monthly" />
+        <label for="plan-monthly">
+          <input type="radio" id="plan-monthly" name="plan" value="monthly" />
           <span>Monthly Plan</span>
         </label>
-        <label>
-          <input type="radio" name="plan" value="yearly" checked />
+        <label for="plan-yearly">
+          <input type="radio" id="plan-yearly" name="plan" value="yearly" checked />
           <span>Yearly Plan</span>
         </label>
       </div>

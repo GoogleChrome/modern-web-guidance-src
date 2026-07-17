@@ -33,12 +33,3 @@ body:
     attributes:
       label: Coding agent assessment
       description: To help us prioritize this feature, describe how poorly a coding agent performs when asked to implement this feature.
-
-  - type: textarea
-    id: sources
-    attributes:
-      label: Reference sources
-      description: Add links to MDN, spec, Chrome blog posts, or other authoritative sources that inform the guidance.
-      placeholder: |
-        - https://developer.mozilla.org/docs/Web/CSS/animation-timeline
-        - https://developer.chrome.com/docs/css-ui/scroll-driven-animations
