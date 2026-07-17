@@ -167,7 +167,10 @@
       // Call startViewTransition on the SCOPE (the .card), not on
       // document. Document-level would freeze the whole page's rendering
       // and capture the toolbar into the snapshot.
-      scopeEl.startViewTransition(() => render(listEl, next));
+      const transition = scopeEl.startViewTransition(() => render(listEl, next));
+      // Re-triggering while a transition is in flight skips the old one,
+      // which rejects its ready promise; that is expected, not an error.
+      transition.ready.catch(() => {});
       return next;
     }
 
