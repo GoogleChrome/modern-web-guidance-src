@@ -72,7 +72,6 @@ Unlike popovers, modal dialogs typically use separate buttons for opening and cl
 ## Fallback strategies
 
 {{ BASELINE_STATUS("invoker-commands") }}
-{{ BASELINE_STATUS("popover") }}
 
 Because Invoker Commands and Popovers are not yet universally supported, you MUST use polyfills as fallbacks for older browsers.
 
@@ -110,44 +109,4 @@ MANDATORY: This polyfill does not handle the ARIA states (e.g., `aria-expanded`)
 
 {{ INCLUDE("../custom-button-actions/guide.md#fallback-strategies") }}
 
-### Polyfilling the Popover Attribute
-
-To support the `popover` attribute in older browsers, use the `@oddbird/popover-polyfill`.
-
-MANDATORY: Feature detect popover support by checking for the `popover` property on the `HTMLElement` prototype. Conditionally initialize the polyfill only if native support is missing.
-
-**Option 1: Using a bundler**
-Install the package via npm (`npm install @oddbird/popover-polyfill`). This method requires a bundler or import maps to resolve the module path.
-
-```javascript
-// MANDATORY: Feature detect 'popover' on HTMLElement.prototype.
-if (!('popover' in HTMLElement.prototype)) {
-  import('@oddbird/popover-polyfill/fn').then(({ apply }) => {
-    apply();
-  });
-}
-```
-
-**Option 2: Using a CDN**
-For projects without a bundler, dynamically import the polyfill directly from a CDN inside a `<script type="module">`.
-
-```html
-<script type="module">
-  // MANDATORY: Feature detect 'popover' on HTMLElement.prototype.
-  // Conditionally load the popover-polyfill from a CDN only in browsers lacking native support.
-  if (!('popover' in HTMLElement.prototype)) {
-    import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js').then(({ apply }) => {
-      apply();
-    });
-  }
-</script>
-```
-
-**Popover Polyfill Limitations & Styling Caveats**
-MANDATORY: Use `:is()` or `:where()` to combine `:popover-open` with the corresponding polyfill class, otherwise browsers that do not support `:popover-open` will throw away the entire rule.
-
-```css
-[popover]:is(:popover-open, .\:popover-open) {
-  display: block;
-}
-```
+{{ FEATURE_FALLBACKS("popover") }}

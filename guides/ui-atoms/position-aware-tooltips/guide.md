@@ -121,39 +121,6 @@ Positioning the arrow based on the applied fallback is a progressive enhancement
 }
 ```
 
-### Polyfilling the Popover Attribute
-
-{{ BASELINE_STATUS("popover") }}
-
-To support the `popover` attribute in older browsers, use the `@oddbird/popover-polyfill`.
-
-MANDATORY: Feature detect popover support by checking for the `popover` property on the `HTMLElement` prototype. Conditionally initialize the polyfill only if native support is missing.
-
-**Option 1: Using a package manager**
-Install the package (`npm install @oddbird/popover-polyfill`).
-
-```javascript
-// MANDATORY: Feature detect 'popover' on HTMLElement.prototype.
-if (!('popover' in HTMLElement.prototype)) {
-  import('@oddbird/popover-polyfill/fn').then(({ apply }) => {
-    apply();
-  });
-}
-```
-
-**Option 2: Manual installation without npm**
-If you are not using a package manager, dynamically import the polyfill directly from a CDN (such as unpkg) inside a `<script type="module">`.
-
-```html
-<script type="module">
-  // MANDATORY: Feature detect 'popover' on HTMLElement.prototype.
-  // Conditionally load the popover-polyfill from a CDN only in browsers lacking native support.
-  if (!('popover' in HTMLElement.prototype)) {
-    import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js').then(({ apply }) => {
-      apply();
-    });
-  }
-</script>
-```
+{{ FEATURE_FALLBACKS("popover") }}
 
 Browsers without support for the Popover API also do not support anchor positioning, so the tooltip will appear in the center of the screen.
