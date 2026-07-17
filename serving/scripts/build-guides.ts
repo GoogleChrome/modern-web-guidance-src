@@ -271,7 +271,7 @@ async function processSingleGuideFile(
     throw new Error(`Missing frontmatter or description in ${filePath}`);
   }
 
-  if (markdownBody.trim().length === 0) {
+  if (markdownBody.replace(/<!--[\s\S]*?-->/g, '').trim().length === 0) {
     // Just a stub guide. No content to index.
     return;
   }

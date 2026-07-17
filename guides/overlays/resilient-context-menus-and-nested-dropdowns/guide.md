@@ -70,16 +70,6 @@ To prevent the panel from being cut off at the edge of the screen, define "try t
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-Popover must conditionally be polyfilled with the `@oddbird/popover-polyfill` polyfill.
-
-```html
-<script type="module">
-  if(!HTMLElement.prototype.hasOwnProperty("popover")){
-    await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
-  }
-</script>
-```
-
 {{ BASELINE_STATUS("anchor-positioning") }}
 
 To support browsers without anchor positioning, you must set a reasonable position. By default popovers are centered in the middle of the screen, which may work for your use case.

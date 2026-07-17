@@ -64,18 +64,6 @@ tourStep.querySelector('button').focus();
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-If the browser does not support Popover, use the `@oddbird/popover-polyfill`:
-
-```html
-<script type="module">
-  if (!HTMLElement.prototype.hasOwnProperty('popover')) {
-    await import('https://unpkg.com/@oddbird/popover-polyfill');
-  }
-</script>
-```
-
-Alternatively, for legacy support without a polyfill, use `position: fixed` and manually calculate coordinates via JavaScript `getBoundingClientRect()`.
-
 #### anchor-positioning
 
 {{ BASELINE_STATUS("anchor-positioning") }}
