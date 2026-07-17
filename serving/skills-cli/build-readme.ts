@@ -73,13 +73,7 @@ function listToMarkdownTable(items: string[], colCount = 3): string {
 }
 
 export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
-  const guidesDir = path.join(publishRoot, 'skills/modern-web-guidance/guides');
-  const readyGuides = scanAllGuides().filter(inv => {
-    if (!inv.hasGuide || inv.featureIds.length === 0) return false;
-
-    const guideBuildPath = path.join(guidesDir, inv.category, `${inv.name}.md`);
-    return fs.existsSync(guideBuildPath);
-  });
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide && inv.featureIds.length > 0);
 
   const allFeatureIds = new Set<string>();
   const categoryMap = new Map<string, { id: string; category: string; description: string }[]>();
@@ -174,10 +168,10 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
 
   // Update both the distribution and source repo README files inline
-  const readmesToUpdate = [path.join(rootDir, "README.md")];
-  if (fs.existsSync(destReadmePath)) {
-    readmesToUpdate.push(destReadmePath);
-  }
+  const readmesToUpdate = Array.from(new Set([
+    path.join(rootDir, "README.md"),
+    destReadmePath,
+  ]));
 
   for (const readmePath of readmesToUpdate) {
     updateFileBetweenMarkers(
