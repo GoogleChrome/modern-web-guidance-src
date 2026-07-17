@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { guidesDir, baseAppsDir } from '../lib/paths.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
-import { TARGETS_DIR, SOLUTION_PATCH_FILE, BROKEN_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../lib/guide-validation.ts';
+import { TARGETS_DIR, SOLUTION_PATCH_FILE, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../lib/guide-validation.ts';
 import { applyPatchSync } from '../lib/patch-utils.ts';
 import { setupIsolatedWorkDir } from './lib/utils.ts';
 
@@ -239,8 +239,8 @@ async function runDemoCalibration(demoPath: string, graderPath: string, demoOutD
 async function runNegativeCalibration(negativePath: string, graderPath: string, negativeOutDir: string, result: CalibrationResult): Promise<void> {
   console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
 
-  const brokenPatch = path.join(path.dirname(graderPath), 'broken.patch');
-  process.env.PATCH_FILE = brokenPatch;
+  const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
+  process.env.PATCH_FILE = zeroPassratePatch;
   const negativeResults = await runPlaywright(negativePath, graderPath, negativeOutDir, 'ignore')
     .catch(err => {
       console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
@@ -289,7 +289,7 @@ function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boo
 export async function testTargetGrader(guideDirAbs: string, baseApp: string): Promise<CalibrationResult> {
   const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
   const solutionPatch = path.join(targetDir, SOLUTION_PATCH_FILE);
-  const brokenPatch = path.join(targetDir, BROKEN_PATCH_FILE);
+  const zeroPassratePatch = path.join(targetDir, ZERO_PASSRATE_PATCH_FILE);
   const graderPath = path.join(targetDir, GRADER_FILE);
 
   const result: CalibrationResult = {
@@ -298,14 +298,14 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     negative: { passed: 0, failed: 0, passingTests: [] }
   };
 
-  if (!fs.existsSync(solutionPatch) || !fs.existsSync(brokenPatch) || !fs.existsSync(graderPath)) {
+  if (!fs.existsSync(solutionPatch) || !fs.existsSync(zeroPassratePatch) || !fs.existsSync(graderPath)) {
     result.stage = 'unknown';
-    result.errorDetails = `Missing ${SOLUTION_PATCH_FILE}, ${BROKEN_PATCH_FILE}, or ${GRADER_FILE} in ${targetDir}`;
+    result.errorDetails = `Missing ${SOLUTION_PATCH_FILE}, ${ZERO_PASSRATE_PATCH_FILE}, or ${GRADER_FILE} in ${targetDir}`;
     return result;
   }
 
   const demoOutDir = path.join(targetDir, 'grade-report', 'solution');
-  const negativeOutDir = path.join(targetDir, 'grade-report', 'broken');
+  const negativeOutDir = path.join(targetDir, 'grade-report', 'zero-passrate');
 
   // Golden calibration
   const goldenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-sol`);
@@ -363,23 +363,23 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
   }
 
-  // Broken calibration
-  const brokenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-brk`);
+  // Zero-passrate calibration
+  const zeroPassrateSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-zp`);
   let passed = 0;
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), brokenSandbox, { recursive: true });
-    const applyRes = applyPatchSync(brokenSandbox, brokenPatch);
+    fs.cpSync(path.join(baseAppsDir, baseApp), zeroPassrateSandbox, { recursive: true });
+    const applyRes = applyPatchSync(zeroPassrateSandbox, zeroPassratePatch);
     if (!applyRes.success) {
       result.stage = 'patch-apply';
-      result.errorDetails = `Failed to apply ${BROKEN_PATCH_FILE}: ${applyRes.error}`;
+      result.errorDetails = `Failed to apply ${ZERO_PASSRATE_PATCH_FILE}: ${applyRes.error}`;
       return result;
     }
 
-    console.log(cYellow(`Running against ${baseApp} with ${BROKEN_PATCH_FILE}... (Expecting 100% fail)`));
-    process.env.PATCH_FILE = brokenPatch;
-    const negativeResults = await runPlaywright(path.join(brokenSandbox, 'index.html'), graderPath, negativeOutDir, 'ignore').catch(err => {
+    console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
+    process.env.PATCH_FILE = zeroPassratePatch;
+    const negativeResults = await runPlaywright(path.join(zeroPassrateSandbox, 'index.html'), graderPath, negativeOutDir, 'ignore').catch(err => {
       result.stage = 'server-boot';
-      result.errorDetails = `Dev server crashed or failed to run against ${BROKEN_PATCH_FILE}: ${err.message}`;
+      result.errorDetails = `Dev server crashed or failed to run against ${ZERO_PASSRATE_PATCH_FILE}: ${err.message}`;
       return null;
     });
     delete process.env.PATCH_FILE;
@@ -402,20 +402,20 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
 
     if (passed === 0 && failed === 0) {
       result.stage = 'calibration';
-      result.errorDetails = `No tests were run for ${BROKEN_PATCH_FILE}`;
+      result.errorDetails = `No tests were run for ${ZERO_PASSRATE_PATCH_FILE}`;
       return result;
     } else if (passed > 0) {
       result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
       result.stage = 'calibration';
-      result.errorDetails = `${BROKEN_PATCH_FILE} incorrectly passed ${passed} tests`;
+      result.errorDetails = `${ZERO_PASSRATE_PATCH_FILE} incorrectly passed ${passed} tests`;
       negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
       return result;
     }
   } finally {
     if (passed > 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping broken sandbox directory for debugging: ${brokenSandbox}`));
+      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping zero-passrate sandbox directory for debugging: ${zeroPassrateSandbox}`));
     } else {
-      fs.rmSync(brokenSandbox, { recursive: true, force: true });
+      fs.rmSync(zeroPassrateSandbox, { recursive: true, force: true });
     }
   }
 

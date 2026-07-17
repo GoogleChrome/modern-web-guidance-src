@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildSolutionPrompt,
-  buildBrokenPrompt,
+  buildZeroPassratePrompt,
   buildTargetGraderPrompt,
   buildTargetTaskPrompt,
 } from './gd-dev-prompts.ts';
@@ -19,8 +19,8 @@ test('buildSolutionPrompt includes instructions and paths', () => {
   assert.ok(prompt.includes('perfectly implement the guidance'));
 });
 
-test('buildBrokenPrompt includes anti-pattern constraints', () => {
-  const prompt = buildBrokenPrompt({
+test('buildZeroPassratePrompt includes anti-pattern constraints', () => {
+  const prompt = buildZeroPassratePrompt({
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
     workDir: '/tmp/test-sandbox',
@@ -35,7 +35,7 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
     solutionPatchFile: 'solution.patch',
-    brokenPatchFile: 'broken.patch',
+    zeroPassratePatchFile: 'zero-passrate.patch',
     graderFile: 'grader.ts',
     baseApp: 'daily-grind',
     templateFile: 'template.grader.ts',
@@ -50,7 +50,7 @@ test('buildTargetGraderPrompt formats failure context correctly when provided', 
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
     solutionPatchFile: 'solution.patch',
-    brokenPatchFile: 'broken.patch',
+    zeroPassratePatchFile: 'zero-passrate.patch',
     graderFile: 'grader.ts',
     baseApp: 'devtools-times',
     templateFile: 'template.grader.ts',

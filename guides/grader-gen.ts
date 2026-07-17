@@ -9,7 +9,7 @@ import {
   GUIDE_FILE,
   EXPECTATIONS_FILE,
   SOLUTION_PATCH_FILE,
-  BROKEN_PATCH_FILE,
+  ZERO_PASSRATE_PATCH_FILE,
   GRADER_FILE,
   TARGETS_DIR,
   SUPPORTED_BASE_APPS
@@ -61,9 +61,9 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     );
 
     const solutionPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, SOLUTION_PATCH_FILE);
-    const brokenPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, BROKEN_PATCH_FILE);
+    const zeroPassratePatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
     if (fs.existsSync(solutionPatch)) fs.copyFileSync(solutionPatch, path.join(workDir, SOLUTION_PATCH_FILE));
-    if (fs.existsSync(brokenPatch)) fs.copyFileSync(brokenPatch, path.join(workDir, BROKEN_PATCH_FILE));
+    if (fs.existsSync(zeroPassratePatch)) fs.copyFileSync(zeroPassratePatch, path.join(workDir, ZERO_PASSRATE_PATCH_FILE));
 
     // Symlink host guides/node_modules to workDir/node_modules for local typechecking inside the sandbox
     const hostGuidesNodeModules = path.join(repoRoot, 'guides', 'node_modules');
@@ -81,7 +81,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       guideFile: GUIDE_FILE,
       expectationsFile: EXPECTATIONS_FILE,
       solutionPatchFile: SOLUTION_PATCH_FILE,
-      brokenPatchFile: BROKEN_PATCH_FILE,
+      zeroPassratePatchFile: ZERO_PASSRATE_PATCH_FILE,
       graderFile: GRADER_FILE,
       baseApp,
       templateFile: 'template.grader.ts',
@@ -107,10 +107,10 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.copyFileSync(generatedSolution, destSolution);
     }
 
-    const generatedBroken = path.join(workDir, BROKEN_PATCH_FILE);
-    if (fs.existsSync(generatedBroken)) {
-      const destBroken = path.join(guideDirAbs, TARGETS_DIR, baseApp, BROKEN_PATCH_FILE);
-      fs.copyFileSync(generatedBroken, destBroken);
+    const generatedZeroPassrate = path.join(workDir, ZERO_PASSRATE_PATCH_FILE);
+    if (fs.existsSync(generatedZeroPassrate)) {
+      const destZeroPassrate = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
+      fs.copyFileSync(generatedZeroPassrate, destZeroPassrate);
     }
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });

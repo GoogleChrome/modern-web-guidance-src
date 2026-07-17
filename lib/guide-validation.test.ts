@@ -121,7 +121,7 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Test Guide\nContent');
     fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
     fs.writeFileSync(path.join(targetsDir, 'solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
-    fs.writeFileSync(path.join(targetsDir, 'broken.patch'), '+++ b/src/app.ts\n+const x = 2;');
+    fs.writeFileSync(path.join(targetsDir, 'zero-passrate.patch'), '+++ b/src/app.ts\n+const x = 2;');
     fs.writeFileSync(path.join(targetsDir, 'grader.ts'), 'console.log("test");');
     fs.writeFileSync(path.join(targetsDir, 'task.md'), '- Implement feature');
 
@@ -130,7 +130,7 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       assert.strictEqual(inv.targets?.length, 1);
       assert.strictEqual(inv.targets?.[0].name, 'daily-grind');
       assert.strictEqual(inv.targets?.[0].hasSolution, true);
-      assert.strictEqual(inv.targets?.[0].hasBroken, true);
+      assert.strictEqual(inv.targets?.[0].hasZeroPassrate, true);
       assert.strictEqual(inv.targets?.[0].hasGrader, true);
       assert.strictEqual(inv.targets?.[0].hasTask, true);
       
@@ -156,8 +156,8 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       let inv = inventoryGuide(guideDir);
       assert.strictEqual(classifyGuide(inv), 'needs-calibration');
 
-      // Case 2: solution and broken exist, but missing grader
-      fs.writeFileSync(path.join(targetsDir, 'broken.patch'), '+++ b/src/app.ts\n+const x = 2;');
+      // Case 2: solution and zero-passrate exist, but missing grader
+      fs.writeFileSync(path.join(targetsDir, 'zero-passrate.patch'), '+++ b/src/app.ts\n+const x = 2;');
       inv = inventoryGuide(guideDir);
       assert.strictEqual(classifyGuide(inv), 'needs-calibration');
 

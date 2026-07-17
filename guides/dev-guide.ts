@@ -14,7 +14,7 @@ import { collectGuidesUsed } from '../harness/lib/guidance_validation.ts';
 import { setupIsolatedWorkDir, runAgent } from './lib/utils.ts';
 import {
   buildSolutionPrompt,
-  buildBrokenPrompt,
+  buildZeroPassratePrompt,
   buildTargetTaskPrompt,
 } from './gd-dev-prompts.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
@@ -32,7 +32,7 @@ import {
   TARGETS_DIR,
   SUPPORTED_BASE_APPS,
   SOLUTION_PATCH_FILE,
-  BROKEN_PATCH_FILE,
+  ZERO_PASSRATE_PATCH_FILE,
   getTaskMap,
   inventoryGuide,
   classifyGuide,
@@ -118,10 +118,10 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
       await generateTargetPatch(targetDir, baseApp, 'solution');
     }
 
-    const brokenPatch = path.join(targetCapsuleDir, BROKEN_PATCH_FILE);
-    if (!fs.existsSync(brokenPatch)) {
-      console.log(cCyan(`\n--- Generating ${BROKEN_PATCH_FILE} for ${baseApp} ---`));
-      await generateTargetPatch(targetDir, baseApp, 'broken');
+    const zeroPassratePatch = path.join(targetCapsuleDir, ZERO_PASSRATE_PATCH_FILE);
+    if (!fs.existsSync(zeroPassratePatch)) {
+      console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
+      await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
     }
 
     const graderFile = path.join(targetCapsuleDir, GRADER_FILE);
@@ -172,7 +172,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   return overallSuccess;
 }
 
-async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: 'solution' | 'broken'): Promise<void> {
+async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: 'solution' | 'zero-passrate'): Promise<void> {
   const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-${patchType}`);
   try {
     fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
@@ -188,11 +188,11 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
 
     const prompt = patchType === 'solution'
       ? buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
-      : buildBrokenPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
+      : buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
 
     await runAgent(prompt, workDir);
 
-    const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchType === 'solution' ? SOLUTION_PATCH_FILE : BROKEN_PATCH_FILE);
+    const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchType === 'solution' ? SOLUTION_PATCH_FILE : ZERO_PASSRATE_PATCH_FILE);
     fs.mkdirSync(path.dirname(destPatch), { recursive: true });
     capturePatchFromGit(workDir, destPatch);
   } finally {
@@ -427,7 +427,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
       const appTargetDir = path.join(targetsDir, baseApp);
       
       const solutionPatchPath = path.join(appTargetDir, SOLUTION_PATCH_FILE);
-      const brokenPatchPath = path.join(appTargetDir, BROKEN_PATCH_FILE);
+      const zeroPassratePatchPath = path.join(appTargetDir, ZERO_PASSRATE_PATCH_FILE);
       const graderPath = path.join(appTargetDir, GRADER_FILE);
       const taskPath = path.join(appTargetDir, TASK_FILE);
 
@@ -437,7 +437,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
       };
 
       printFileStatus(SOLUTION_PATCH_FILE, solutionPatchPath, 'generated', 'not generated');
-      printFileStatus(BROKEN_PATCH_FILE, brokenPatchPath, 'generated', 'not generated');
+      printFileStatus(ZERO_PASSRATE_PATCH_FILE, zeroPassratePatchPath, 'generated', 'not generated');
       
       if (result?.success) {
         printFileStatus(GRADER_FILE, graderPath, `calibrated (attempt ${attempts})`, 'calibration failed');
