@@ -15,77 +15,6 @@ window.__featuresMapping = {
   "translator": [
     "translator"
   ],
-  "apply-webgl-shaders": [
-    "canvas-html"
-  ],
-  "export-html-media-from-canvas": [
-    "canvas-html"
-  ],
-  "expose-canvas-content-to-browser-features": [
-    "canvas-html"
-  ],
-  "interactive-content-in-3d-scenes": [
-    "canvas-html"
-  ],
-  "adapt-scrollbar-to-contrast-preferences": [
-    "scrollbar-color",
-    "prefers-contrast"
-  ],
-  "child-state-based-styling": [
-    "has",
-    "not"
-  ],
-  "complex-shapes": [
-    "masks",
-    "svg"
-  ],
-  "component-specific-light-dark-theme": [
-    "color-scheme",
-    "light-dark"
-  ],
-  "content-based-styling": [
-    "has",
-    "not"
-  ],
-  "contrast-color": [
-    "contrast-color"
-  ],
-  "customize-scrollbar-color-and-thickness": [
-    "scrollbar-color",
-    "scrollbar-width"
-  ],
-  "dark-mode": [
-    "color-scheme",
-    "prefers-color-scheme",
-    "light-dark",
-    "accent-color"
-  ],
-  "dynamic-sibling-styling": [
-    "sibling-count",
-    "trig-functions"
-  ],
-  "highlight-text-ranges": [
-    "highlight"
-  ],
-  "interactive-content-reveal": [
-    "masks",
-    "registered-custom-properties"
-  ],
-  "reduce-style-repetition": [
-    "function"
-  ],
-  "shaped-cutouts": [
-    "masks"
-  ],
-  "soft-edge-content-fade": [
-    "masks"
-  ],
-  "style-parent-with-has": [
-    "user-pseudos"
-  ],
-  "visually-texture-content": [
-    "masks"
-  ],
   "animate-to-intrinsic-sizes": [
     "calc-size",
     "interpolate-size"
@@ -94,46 +23,42 @@ window.__featuresMapping = {
     "calc-size",
     "interpolate-size"
   ],
+  "child-state-based-styling": [
+    "has",
+    "not"
+  ],
+  "content-based-styling": [
+    "has",
+    "not"
+  ],
   "design-token-reactivity": [
     "container-style-queries"
   ],
+  "dynamic-sibling-styling": [
+    "sibling-count",
+    "trig-functions"
+  ],
   "fluid-scaling": [
     "container-queries"
+  ],
+  "individual-transform-properties": [
+    "individual-transforms"
   ],
   "overflow-clipping-control": [
     "overflow-clip",
     "overflow-clip-margin"
   ],
+  "reduce-style-repetition": [
+    "function"
+  ],
   "size-aware-styling": [
     "container-queries"
   ],
+  "style-parent-with-has": [
+    "user-pseudos"
+  ],
   "usage-aware-component-variations": [
     "container-style-queries"
-  ],
-  "calculate-event-differentials": [
-    "temporal"
-  ],
-  "capture-location-agnostic-data": [
-    "temporal"
-  ],
-  "coordinate-global-events": [
-    "temporal"
-  ],
-  "format-human-readable-durations": [
-    "temporal",
-    "intl-duration-format"
-  ],
-  "manage-recurring-intervals": [
-    "temporal"
-  ],
-  "model-partial-time-concepts": [
-    "temporal"
-  ],
-  "stabilize-reactive-state": [
-    "temporal"
-  ],
-  "support-global-calendar-systems": [
-    "temporal"
   ],
   "animated-select-picker": [
     "customizable-select"
@@ -181,131 +106,30 @@ window.__featuresMapping = {
   "validate-input-after-interaction": [
     "user-pseudos"
   ],
-  "custom-button-actions": [
-    "invoker-commands"
+  "calculate-event-differentials": [
+    "temporal"
   ],
-  "move-dom-element-without-losing-state": [
-    "move-before"
+  "capture-location-agnostic-data": [
+    "temporal"
   ],
-  "persistent-top-layer-ui": [
-    "move-before"
+  "coordinate-global-events": [
+    "temporal"
   ],
-  "search-hidden-content": [
-    "details",
-    "details-name",
-    "hidden-until-found"
+  "format-human-readable-durations": [
+    "temporal",
+    "intl-duration-format"
   ],
-  "anchor-positioning-tab-underline": [
-    "anchor-positioning",
-    "prefers-reduced-motion"
+  "manage-recurring-intervals": [
+    "temporal"
   ],
-  "animate-element-entry-exit": [
-    "starting-style",
-    "transition-behavior"
+  "model-partial-time-concepts": [
+    "temporal"
   ],
-  "consistent-cross-document-transitions": [
-    "blocking-render",
-    "link-rel-expect",
-    "cross-document-view-transitions"
+  "stabilize-reactive-state": [
+    "temporal"
   ],
-  "cross-document-transitions": [
-    "view-transitions",
-    "cross-document-view-transitions",
-    "navigation"
-  ],
-  "directional-navigation-transitions": [
-    "view-transitions",
-    "active-view-transition"
-  ],
-  "dynamic-sibling-animations": [
-    "sibling-count"
-  ],
-  "group-element-transitions": [
-    "view-transitions",
-    "view-transition-class"
-  ],
-  "individual-transform-properties": [
-    "individual-transforms"
-  ],
-  "physics-based-easing": [
-    "linear-easing"
-  ],
-  "same-document-transitions": [
-    "view-transitions"
-  ],
-  "animate-to-from-top-layer": [
-    "backdrop",
-    "dialog",
-    "overlay",
-    "popover",
-    "starting-style",
-    "transition-behavior"
-  ],
-  "declarative-dialog-popover-control": [
-    "invoker-commands",
-    "popover",
-    "dialog"
-  ],
-  "interest-triggered-action-previews": [
-    "interest-invokers"
-  ],
-  "interest-triggered-tooltips": [
-    "interest-invokers",
-    "popover",
-    "popover-hint",
-    "anchor-positioning"
-  ],
-  "light-dismiss-a-dialog": [
-    "dialog-closedby"
-  ],
-  "navigation-drawer": [
-    "inert",
-    "intersection-observer",
-    "popover",
-    "registered-custom-properties",
-    "scroll-driven-animations",
-    "scroll-initial-target",
-    "scroll-snap"
-  ],
-  "persistent-app-tours": [
-    "popover",
-    "anchor-positioning"
-  ],
-  "persistent-toast-notifications": [
-    "popover",
-    "anchor-positioning",
-    "sibling-count",
-    "transition-behavior"
-  ],
-  "platform-controls-dismiss-dialog": [
-    "dialog-closedby"
-  ],
-  "position-aware-tooltips": [
-    "container-anchor-position-queries",
-    "popover"
-  ],
-  "resilient-context-menus-and-nested-dropdowns": [
-    "anchor-positioning",
-    "popover"
-  ],
-  "passkey-authentication": [
-    "webauthn",
-    "webauthn-signals"
-  ],
-  "passkey-conditional-create": [
-    "webauthn",
-    "webauthn-signals"
-  ],
-  "passkey-management": [
-    "webauthn",
-    "webauthn-signals"
-  ],
-  "passkey-reauthentication": [
-    "webauthn"
-  ],
-  "passkey-registration": [
-    "webauthn",
-    "webauthn-signals"
+  "support-global-calendar-systems": [
+    "temporal"
   ],
   "batch-analytics-events": [
     "fetchlater",
@@ -394,30 +218,149 @@ window.__featuresMapping = {
     "fedcm",
     "ua-client-hints"
   ],
+  "passkey-authentication": [
+    "webauthn",
+    "webauthn-signals"
+  ],
+  "passkey-conditional-create": [
+    "webauthn",
+    "webauthn-signals"
+  ],
+  "passkey-management": [
+    "webauthn",
+    "webauthn-signals"
+  ],
+  "passkey-reauthentication": [
+    "webauthn"
+  ],
+  "passkey-registration": [
+    "webauthn",
+    "webauthn-signals"
+  ],
+  "passkeys": [
+    "webauthn"
+  ],
   "carousel-slide-effects": [
     "scroll-driven-animations",
     "scroll-snap"
   ],
-  "carousel-snap-highlights": [
-    "container-scroll-state-queries"
+  "component-specific-light-dark-theme": [
+    "color-scheme",
+    "light-dark"
   ],
   "context-sensitive-sticky-headers": [
     "container-scroll-state-queries"
   ],
-  "parallax-scroll-effects": [
-    "scroll-driven-animations"
+  "position-aware-tooltips": [
+    "container-anchor-position-queries",
+    "popover"
   ],
   "pull-to-reveal": [
     "scroll-initial-target",
     "scroll-snap"
   ],
-  "scroll-entry-exit-effects": [
-    "scroll-driven-animations"
+  "resilient-context-menus-and-nested-dropdowns": [
+    "anchor-positioning",
+    "popover"
   ],
   "scroll-position-aware-elements": [
     "container-scroll-state-queries"
   ],
   "scroll-progress-indicator": [
+    "scroll-driven-animations"
+  ],
+  "scrollability-affordance-hints": [
+    "container-scroll-state-queries"
+  ],
+  "shrinking-header-on-scroll": [
+    "scroll-driven-animations"
+  ],
+  "anchor-positioning-tab-underline": [
+    "anchor-positioning",
+    "prefers-reduced-motion"
+  ],
+  "animate-element-entry-exit": [
+    "starting-style",
+    "transition-behavior"
+  ],
+  "animate-to-from-top-layer": [
+    "backdrop",
+    "dialog",
+    "overlay",
+    "popover",
+    "starting-style",
+    "transition-behavior"
+  ],
+  "carousel-snap-highlights": [
+    "container-scroll-state-queries"
+  ],
+  "consistent-cross-document-transitions": [
+    "blocking-render",
+    "link-rel-expect",
+    "cross-document-view-transitions"
+  ],
+  "cross-document-transitions": [
+    "view-transitions",
+    "cross-document-view-transitions",
+    "navigation"
+  ],
+  "custom-button-actions": [
+    "invoker-commands"
+  ],
+  "declarative-dialog-popover-control": [
+    "invoker-commands",
+    "popover",
+    "dialog"
+  ],
+  "directional-navigation-transitions": [
+    "view-transitions",
+    "active-view-transition"
+  ],
+  "dynamic-sibling-animations": [
+    "sibling-count"
+  ],
+  "group-element-transitions": [
+    "view-transitions",
+    "view-transition-class"
+  ],
+  "highlight-text-ranges": [
+    "highlight"
+  ],
+  "interactive-content-reveal": [
+    "masks",
+    "registered-custom-properties"
+  ],
+  "interest-triggered-action-previews": [
+    "interest-invokers"
+  ],
+  "interest-triggered-tooltips": [
+    "interest-invokers",
+    "popover",
+    "popover-hint",
+    "anchor-positioning"
+  ],
+  "light-dismiss-a-dialog": [
+    "dialog-closedby"
+  ],
+  "move-dom-element-without-losing-state": [
+    "move-before"
+  ],
+  "parallax-scroll-effects": [
+    "scroll-driven-animations"
+  ],
+  "persistent-top-layer-ui": [
+    "move-before"
+  ],
+  "physics-based-easing": [
+    "linear-easing"
+  ],
+  "platform-controls-dismiss-dialog": [
+    "dialog-closedby"
+  ],
+  "same-document-transitions": [
+    "view-transitions"
+  ],
+  "scroll-entry-exit-effects": [
     "scroll-driven-animations"
   ],
   "scroll-snap-realtime-feedback": [
@@ -432,21 +375,13 @@ window.__featuresMapping = {
     "scroll-initial-target",
     "scroll-into-view"
   ],
-  "scrollability-affordance-hints": [
-    "container-scroll-state-queries"
-  ],
   "scrollytelling": [
     "scroll-driven-animations"
   ],
-  "shrinking-header-on-scroll": [
-    "scroll-driven-animations"
-  ],
-  "stack-drill-down": [
-    "inert",
-    "intersection-observer",
-    "scroll-driven-animations",
-    "scroll-snap",
-    "scroll-snap-events"
+  "search-hidden-content": [
+    "details",
+    "details-name",
+    "hidden-until-found"
   ],
   "swipe-to-remove": [
     "scroll-snap",
@@ -458,9 +393,68 @@ window.__featuresMapping = {
     "resize-observer",
     "web-animations"
   ],
+  "navigation-drawer": [
+    "inert",
+    "intersection-observer",
+    "popover",
+    "registered-custom-properties",
+    "scroll-driven-animations",
+    "scroll-initial-target",
+    "scroll-snap"
+  ],
+  "persistent-app-tours": [
+    "popover",
+    "anchor-positioning"
+  ],
+  "persistent-toast-notifications": [
+    "popover",
+    "anchor-positioning",
+    "sibling-count",
+    "transition-behavior"
+  ],
+  "stack-drill-down": [
+    "inert",
+    "intersection-observer",
+    "scroll-driven-animations",
+    "scroll-snap",
+    "scroll-snap-events"
+  ],
+  "adapt-scrollbar-to-contrast-preferences": [
+    "scrollbar-color",
+    "prefers-contrast"
+  ],
+  "apply-webgl-shaders": [
+    "canvas-html"
+  ],
+  "complex-shapes": [
+    "masks",
+    "svg"
+  ],
+  "contrast-color": [
+    "contrast-color"
+  ],
+  "customize-scrollbar-color-and-thickness": [
+    "scrollbar-color",
+    "scrollbar-width"
+  ],
+  "dark-mode": [
+    "color-scheme",
+    "prefers-color-scheme",
+    "light-dark",
+    "accent-color"
+  ],
+  "export-html-media-from-canvas": [
+    "canvas-html"
+  ],
+  "expose-canvas-content-to-browser-features": [
+    "canvas-html"
+  ],
   "improve-text-layout-and-legibility": [
     "text-wrap-balance",
     "text-wrap-pretty"
+  ],
+  "interactive-content-in-3d-scenes": [
+    "canvas-html"
   ],
   "precise-text-alignment": [
     "text-box"
@@ -468,11 +462,20 @@ window.__featuresMapping = {
   "prevent-text-wrapping": [
     "text-wrap"
   ],
+  "shaped-cutouts": [
+    "masks"
+  ],
+  "soft-edge-content-fade": [
+    "masks"
+  ],
   "visually-stable-font-fallbacks": [
     "font-size-adjust"
   ],
   "visually-stable-mixed-fonts": [
     "font-size-adjust"
+  ],
+  "visually-texture-content": [
+    "masks"
   ],
   "agentic-forms": [
     "declarative-webmcp"
