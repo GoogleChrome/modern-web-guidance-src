@@ -1,5 +1,6 @@
-import { describe, it } from 'node:test';
+import { describe, it, mock } from 'node:test';
 import assert from 'node:assert';
+import child_process from 'node:child_process';
 import { normalizeLabel, handleIssue, handlePR } from './atl-triage.ts';
 
 describe('normalizeLabel', () => {
@@ -106,4 +107,45 @@ describe('handlePR', () => {
     const result = handlePR(456, 'some-contributor', mockConfig, mockFiles);
     assert.deepStrictEqual(result, []);
   });
+
+  it('filters out already requested and reviewed ATLs case-insensitively', () => {
+    // Stub execSync to return mock values
+    const execMock = mock.method(child_process, 'execSync', (command: string) => {
+      if (command.includes('--json files')) {
+        // Return files lists
+        return 'guides/performance/deliver-optimized-decorative-images/guide.md\nguides/motion/carousel-slide-effects/expectations.md\n';
+      }
+      if (command.includes('--json reviews,reviewRequests')) {
+        // Return active requested / reviewed ATLs with mixed case to test case-insensitivity
+        return JSON.stringify({
+          reviewRequests: [
+            { login: 'Override-Pr-Reviewer' }
+          ],
+          reviews: [
+            { author: { login: 'PhilipWalton' }, state: 'APPROVED' }
+          ]
+        });
+      }
+      if (command.includes('--add-reviewer')) {
+        return '';
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    try {
+      // both 'override-pr-reviewer' (via feature 'image-set' override) and 'philipwalton' (default motion)
+      // are resolved, but they are excluded because they are in reviewRequests/reviews.
+      // So no additional review request is made.
+      const result = handlePR(456, 'some-contributor', mockConfig);
+      assert.deepStrictEqual(result, []);
+      
+      // Ensure the add-reviewer command was not run since matchedAtls is empty after exclusions
+      const calls = execMock.mock.calls;
+      const addReviewerCalled = calls.some(call => String(call.arguments[0]).includes('--add-reviewer'));
+      assert.strictEqual(addReviewerCalled, false);
+    } finally {
+      execMock.mock.restore();
+    }
+  });
 });
+

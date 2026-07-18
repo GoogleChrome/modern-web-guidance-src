@@ -163,7 +163,7 @@ export function updateCodeowners(checkOnly = false): boolean {
   const generatedBlock = generateAtlBlock(config);
 
   const expectedFeatureToGroups = getExpectedFeatureToGroups();
-  const featureToGroupsPath = path.join(__dirname, 'feature-to-groups.json');
+  const featureToGroupsPath = path.join(__dirname, 'feature-to-groups.generated.json');
   let currentFeatureToGroupsContent = '';
   try {
     currentFeatureToGroupsContent = fs.readFileSync(featureToGroupsPath, 'utf8');
@@ -173,15 +173,15 @@ export function updateCodeowners(checkOnly = false): boolean {
 
   if (currentFeatureToGroupsContent !== expectedFeatureToGroupsContent) {
     if (checkOnly) {
-      console.error('Error: guides/feature-to-groups.json is out of date.');
+      console.error('Error: guides/feature-to-groups.generated.json is out of date.');
       console.error('Please run: node guides/generate-codeowners.ts');
       return false;
     }
     try {
       fs.writeFileSync(featureToGroupsPath, expectedFeatureToGroupsContent, 'utf8');
-      console.log('Successfully updated guides/feature-to-groups.json.');
+      console.log('Successfully updated guides/feature-to-groups.generated.json.');
     } catch (err) {
-      console.error('Failed to write feature-to-groups.json:', err);
+      console.error('Failed to write feature-to-groups.generated.json:', err);
       process.exit(1);
     }
   }

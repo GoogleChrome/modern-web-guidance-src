@@ -147,8 +147,8 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
   });
 
-  it('ensures CODEOWNERS and feature-to-groups.json are synchronized with guides/atls.json', () => {
+  it('ensures CODEOWNERS and feature-to-groups.generated.json are synchronized with guides/atls.json', () => {
     const success = updateCodeowners(true);
-    assert.ok(success, 'CODEOWNERS or guides/feature-to-groups.json are out of sync. Please run: node guides/generate-codeowners.ts');
+    assert.ok(success, 'CODEOWNERS or guides/feature-to-groups.generated.json are out of sync. Please run: node guides/generate-codeowners.ts');
   });
 });

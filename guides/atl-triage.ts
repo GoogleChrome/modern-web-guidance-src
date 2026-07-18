@@ -22,14 +22,14 @@ interface AtlConfig {
   web_features_groups: Record<string, string | string[]>;
 }
 
-const FEATURE_GROUPS_PATH = path.join(__dirname, 'feature-to-groups.json');
+const FEATURE_GROUPS_PATH = path.join(__dirname, 'feature-to-groups.generated.json');
 let featureGroups: Record<string, string[]> = {};
 try {
   if (fs.existsSync(FEATURE_GROUPS_PATH)) {
     featureGroups = JSON.parse(fs.readFileSync(FEATURE_GROUPS_PATH, 'utf8'));
   }
 } catch (err) {
-  console.warn(`Could not load feature-to-groups.json:`, err);
+  console.warn(`Could not load feature-to-groups.generated.json:`, err);
 }
 
 function loadAtlConfig(): AtlConfig {
@@ -206,8 +206,31 @@ export function handlePR(prNumber: number, prAuthor: string, atlConfig: AtlConfi
     }
   }
 
-  // Remove the PR author from the review requests to avoid requesting review from themselves
-  matchedAtls.delete(prAuthor);
+  // Remove the PR author and any already requested/reviewed users to avoid redundant requests
+  const excludeLogins = [prAuthor];
+
+  if (!mockFiles) {
+    try {
+      const output = execSync(`gh pr view ${prNumber} --json reviews,reviewRequests`, { encoding: 'utf8' });
+      const prData = JSON.parse(output);
+      
+      const existingRequested = (prData.reviewRequests || []).map((r: any) => r.login).filter(Boolean);
+      const existingReviewed = (prData.reviews || []).map((r: any) => r.author?.login).filter(Boolean);
+      
+      excludeLogins.push(...existingRequested, ...existingReviewed);
+    } catch (err) {
+      console.error(`Failed to fetch existing review state for PR #${prNumber}:`, err);
+    }
+  }
+
+  for (const login of excludeLogins) {
+    const lowerLogin = login.toLowerCase();
+    for (const match of matchedAtls) {
+      if (match.toLowerCase() === lowerLogin) {
+        matchedAtls.delete(match);
+      }
+    }
+  }
 
   if (matchedAtls.size === 0) {
     console.log('No ATL review requests needed for this PR.');
