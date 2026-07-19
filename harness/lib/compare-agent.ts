@@ -873,14 +873,35 @@ async function synthesizeDiagnosis(
 ): Promise<string> {
   const systemInstruction = `You are an expert Lead Diagnostic Engineer synthesizing a variance diagnosis between two AI agent evaluation runs.
 
-You MUST structure your report into exactly the following four sections in Markdown format. Do not alter section titles:
+You MUST structure your report into exactly the following four sections in Markdown format. Do not alter section titles or their order:
 
 ### 1. First Meaningful Divergence
-- **Step Number**: Step X (Specify exact step number where the first MEANINGFUL divergence occurred, e.g. Step 0/Launch if the initial eval prompt differed or was broken right at launch, or Step 1/later if skill search or code implementation diverged)
+- **Step Number**: Specify exact step number for Trial A and Trial B if they differ (e.g., Trial A Step 4, Trial B Step 7, or Step 0/Launch if initial eval prompt differed right at initialization)
 - **Event Type**: [Starting Prompt / Harness Launch | Skill Search | Guide Retrieval | Mandatory Rule Adoption | Code Implementation | Error Recovery]
 - **Divergence Summary**: Direct, objective explanation of why this specific step represents the root divergence point based on factual starting prompts, tool outputs, and code choices. If one run started with a broken or truncated initial prompt that caused premature termination or skipped discovery, explicitly state that here.
 
-### 2. Guide Compliance & Milestone Matrix
+### 2. Root Cause & Friction Analysis
+- **Problem Classification**: List ALL that apply from: [Guide not retrieved | Guide not followed | Grader too strict | System error]
+  - **Classification Definitions**:
+    - **Guide not retrieved**: The agent failed to search for or retrieve the mandatory guide.
+    - **Guide not followed**: The outcome or implementation code produced by the agent does not meet the requirements or intentions of the guide.
+    - **Grader too strict**: The outcome meets the intentions of the guide, but the test harness or Playwright grader still fails it (e.g. rigid element tag requirement like \`<button>\` vs \`<a>\`, or checking computed style directly on an element when the agent used a valid pseudo-element).
+    - **System error**: Anything else, such as the eval failing to complete, unparseable logs, harness runtime crash, or API failure.
+  *(Note: If more than one category applies, list all applicable categories separated by commas, e.g. "Classification: [Grader too strict], [Guide not followed]").*
+- **Technical Breakdown**:
+  - Provide an objective, strictly fact-grounded breakdown detailing why each classified category applies.
+  - State the exact locator, API, or DOM mismatch that triggered any Playwright failures, referencing specific lines in \`grader.ts\` and error logs.
+  - Do NOT fabricate narrative claims about context loss or botched edits unless trajectory logs show explicit tool errors or loops.
+
+### 3. Actionable Fix Recommendation
+Provide clear, concrete recommendations on whether to update:
+- **Harness / Launch Prompt**: (if the eval harness spawned the run with a broken or mismatched starting prompt right at launch, recommend verifying and fixing harness spawning logic)
+- **Guide (guide.md)**: (e.g. add MANDATORY keyword, clarify code example)
+- **Prompt (tasks/task.md)**: (e.g. add declarative constraint, clarify trigger element type)
+- **Grader (grader.ts)**: (e.g. relax rigid locator like \`button:visible\` to \`button:visible, a:visible, [role="button"]:visible\`, or inspect pseudo-elements)
+- **Agent/Model Non-Determinism**: (only if initial prompt, guide, and task instructions were clear and valid, but model still behaved inconsistently)
+
+### 4. Guide Compliance & Milestone Matrix
 Provide a Markdown table summarizing key milestones:
 | Milestone / Metric | Run A (Score: ${ctxA.score}%) | Run B (Score: ${ctxB.score}%) | Status |
 | :--- | :--- | :--- | :---: |
@@ -888,22 +909,7 @@ Provide a Markdown table summarizing key milestones:
 | **Skill Search Query** | ... | ... | ... |
 | **Guide Retrieval** | ... | ... | ... |
 | **Mandatory Rule Adoption** | ... | ... | ... |
-| **Context Noise / Retries** | ... | ... | ... |
-
-### 3. Root Cause & Friction Analysis
-Provide an objective, strictly fact-grounded technical breakdown:
-- If Sub-Agent 1 or Sub-Agent 2 identified that the initial eval prompt/starting point differed, was truncated, or was malformed in one of the runs, explicitly state that the root cause was an eval harness launch defect (starting with a broken prompt) rather than pure model non-determinism or capability failure.
-- State the exact locator, API, or DOM mismatch that triggered the Playwright failure, referencing specific lines in \`grader.ts\` and error logs.
-- Explicitly distinguish between structural test harness mismatches (e.g. grader expecting a specific element tag like \`<button>\` when the agent used \`<a>\`) versus genuine agent capability failures (e.g. failing to implement the required web platform API or missing required functionality).
-- Do NOT fabricate narrative claims about context loss, memory decay, or botched edits unless trajectory logs show explicit tool failures, blind retries, or error loops.
-
-### 4. Actionable Fix Recommendation
-Provide clear, concrete recommendations on whether to update:
-- **Harness / Launch Prompt**: (if the eval harness spawned the run with a broken or mismatched starting prompt right at launch, recommend verifying and fixing harness spawning logic)
-- **Guide (guide.md)**: (e.g. add MANDATORY keyword, clarify code example)
-- **Prompt (tasks/task.md)**: (e.g. add declarative constraint, clarify trigger element type)
-- **Grader (grader.ts)**: (e.g. relax rigid locator like \`button:visible\` to \`button:visible, a:visible, [role="button"]:visible\` to avoid false negatives)
-- **Agent/Model Non-Determinism**: (only if the initial prompt, guide, and task instructions were clear and valid, but the model still behaved inconsistently)`;
+| **Context Noise / Retries** | ... | ... | ... |`;
 
   const prompt = `### Guide & Task Context
 - Guide Name: ${guideCtx.guideName}

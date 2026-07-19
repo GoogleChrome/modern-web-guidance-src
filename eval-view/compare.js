@@ -903,32 +903,48 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
 function findDivergenceInfo(trajA, trajB) {
   const aligned = alignTrajectorySteps(trajA, trajB, timelineViewMode);
 
-  let primaryStep = null;
+  let primaryStepA = null;
+  let primaryStepB = null;
 
   const diagnosisTextElement = document.getElementById('diagnosis-text');
   const diagnosisText = diagnosisTextElement ? diagnosisTextElement.innerText || '' : '';
 
   if (diagnosisText) {
     if (/Step 0/i.test(diagnosisText) || /Starting Prompt/i.test(diagnosisText) || /Harness Launch/i.test(diagnosisText) || /Initialization/i.test(diagnosisText)) {
-      primaryStep = 0;
+      primaryStepA = 0;
+      primaryStepB = 0;
     } else {
-      const match = diagnosisText.match(/Step\s*(?:Number)?[^\d]*(\d+)/i) ||
-                    diagnosisText.match(/First\s+Meaningful\s+Divergence[^\d]*(\d+)/i) ||
-                    diagnosisText.match(/Divergence.*?(?:Step|step)\s*(\d+)/i) ||
-                    diagnosisText.match(/(?:Step|step)\s*(\d+)/i);
-      if (match) {
-        primaryStep = parseInt(match[1], 10);
+      const matchA = diagnosisText.match(/(?:Run|Trial)\s*A[^\d]*(?:Step|step)\s*(\d+)/i);
+      const matchB = diagnosisText.match(/(?:Run|Trial)\s*B[^\d]*(?:Step|step)\s*(\d+)/i);
+      if (matchA) primaryStepA = parseInt(matchA[1], 10);
+      if (matchB) primaryStepB = parseInt(matchB[1], 10);
+
+      if (primaryStepA === null && primaryStepB === null) {
+        const match = diagnosisText.match(/Step\s*(?:Number)?[^\d]*(\d+)/i) ||
+                      diagnosisText.match(/First\s+Meaningful\s+Divergence[^\d]*(\d+)/i) ||
+                      diagnosisText.match(/Divergence.*?(?:Step|step)\s*(\d+)/i) ||
+                      diagnosisText.match(/(?:Step|step)\s*(\d+)/i);
+        if (match) {
+          const stepVal = parseInt(match[1], 10);
+          primaryStepA = stepVal;
+          primaryStepB = stepVal;
+        }
       }
     }
   }
 
-  if (primaryStep === null) {
+  if (primaryStepA === null || primaryStepB === null) {
     for (let i = 0; i < aligned.length; i++) {
       const sA = aligned[i].stepA;
       const sB = aligned[i].stepB;
 
       if (!sA || !sB) {
-        primaryStep = (sA?.stepNumber === 0 || sB?.stepNumber === 0) ? 0 : (i + 1);
+        if (primaryStepA === null && sA) primaryStepA = sA.stepNumber;
+        if (primaryStepB === null && sB) primaryStepB = sB.stepNumber;
+        if (primaryStepA === null && primaryStepB === null) {
+          primaryStepA = i + 1;
+          primaryStepB = i + 1;
+        }
         break;
       }
 
@@ -936,7 +952,8 @@ function findDivergenceInfo(trajA, trajB) {
         const pA = (sA.outcome?.output || '').trim();
         const pB = (sB.outcome?.output || '').trim();
         if (pA && pB && pA !== pB) {
-          primaryStep = 0;
+          primaryStepA = 0;
+          primaryStepB = 0;
           break;
         }
         continue;
@@ -950,13 +967,14 @@ function findDivergenceInfo(trajA, trajB) {
       const isErrB = sB.outcome?.status === 'error';
 
       if (aA !== aB || catA !== catB || isErrA !== isErrB) {
-        primaryStep = (sA.stepNumber === 0 || sB.stepNumber === 0) ? 0 : (i + 1);
+        if (primaryStepA === null) primaryStepA = sA.stepNumber;
+        if (primaryStepB === null) primaryStepB = sB.stepNumber;
         break;
       }
     }
   }
 
-  return { primaryStep };
+  return { primaryStepA, primaryStepB };
 }
 
 function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', sessionUrlA = '', sessionUrlB = '') {
@@ -969,7 +987,7 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
     return;
   }
 
-  const { primaryStep } = findDivergenceInfo(trajA, trajB);
+  const { primaryStepA, primaryStepB } = findDivergenceInfo(trajA, trajB);
 
   const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, trajA, suiteDataA);
   const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, trajB, suiteDataB);
@@ -1006,36 +1024,53 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
     const stepNum = i + 1;
     const stepA = aligned[i].stepA;
     const stepB = aligned[i].stepB;
-    const isStep0Row = (stepA?.stepNumber === 0 || stepB?.stepNumber === 0);
-    const isPrimary = stepNum === primaryStep || (primaryStep === 0 && isStep0Row) || (stepA?.stepNumber === primaryStep && primaryStep !== 0) || (stepB?.stepNumber === primaryStep && primaryStep !== 0);
+
+    const isStep0A = stepA?.stepNumber === 0;
+    const isStep0B = stepB?.stepNumber === 0;
+
+    const isPrimaryA = Boolean(stepA && ((primaryStepA === 0 && isStep0A) || (primaryStepA !== 0 && (stepA.stepNumber === primaryStepA || stepNum === primaryStepA))));
+    const isPrimaryB = Boolean(stepB && ((primaryStepB === 0 && isStep0B) || (primaryStepB !== 0 && (stepB.stepNumber === primaryStepB || stepNum === primaryStepB))));
 
     const row = document.createElement('div');
-    row.className = `timeline-step-row ${isPrimary ? 'divergence-row' : ''}`;
+    row.className = `timeline-step-row ${(isPrimaryA || isPrimaryB) ? 'divergence-row' : ''}`;
     row.id = `step-row-${stepNum}`;
 
-    let rowHtml = '';
-
-    if (isPrimary) {
-      rowHtml += `
-        <div class="divergence-banner primary">
-          <span class="divergence-badge">🚨 PRIMARY DIVERGENCE POINT (${isStep0Row ? 'STARTING PROMPT / LAUNCH' : `ROW ${stepNum}`})</span>
-          <span class="divergence-desc">${isStep0Row ? 'Agent starting prompts or harness launch parameters diverged right at initialization between Trial A and Trial B.' : 'Agent reasoning or milestone execution diverged at this step between Trial A and Trial B.'}</span>
-        </div>
-      `;
+    let colAHtml = '';
+    if (stepA) {
+      if (isPrimaryA) {
+        colAHtml += `
+          <div class="divergence-banner primary track-banner" style="margin-bottom:8px;">
+            <span class="divergence-badge">🚨 PRIMARY DIVERGENCE (TRIAL A)</span>
+            <span class="divergence-desc">${isStep0A ? 'Starting prompt / launch parameters diverged' : `Divergent step in Trial A (Step ${stepA.stepNumber})`}</span>
+          </div>
+        `;
+      }
+      colAHtml += renderStepCardHtml(stepA, isPrimaryA, sessionUrlA);
+    } else {
+      colAHtml = '<div class="timeline-empty-card">No step in Trial A</div>';
     }
 
-    rowHtml += `
+    let colBHtml = '';
+    if (stepB) {
+      if (isPrimaryB) {
+        colBHtml += `
+          <div class="divergence-banner primary track-banner" style="margin-bottom:8px;">
+            <span class="divergence-badge">🚨 PRIMARY DIVERGENCE (TRIAL B)</span>
+            <span class="divergence-desc">${isStep0B ? 'Starting prompt / launch parameters diverged' : `Divergent step in Trial B (Step ${stepB.stepNumber})`}</span>
+          </div>
+        `;
+      }
+      colBHtml += renderStepCardHtml(stepB, isPrimaryB, sessionUrlB);
+    } else {
+      colBHtml = '<div class="timeline-empty-card">No step in Trial B</div>';
+    }
+
+    row.innerHTML = `
       <div class="timeline-cols-grid">
-        <div class="timeline-col col-a">
-          ${stepA ? renderStepCardHtml(stepA, isPrimary, sessionUrlA) : '<div class="timeline-empty-card">No step in Trial A</div>'}
-        </div>
-        <div class="timeline-col col-b">
-          ${stepB ? renderStepCardHtml(stepB, isPrimary, sessionUrlB) : '<div class="timeline-empty-card">No step in Trial B</div>'}
-        </div>
+        <div class="timeline-col col-a">${colAHtml}</div>
+        <div class="timeline-col col-b">${colBHtml}</div>
       </div>
     `;
-
-    row.innerHTML = rowHtml;
     container.appendChild(row);
   }
 
@@ -1469,17 +1504,22 @@ function exportCompareReport() {
   if (aligned.length === 0) {
     report += `No trajectory steps available.\n\n`;
   } else {
-    const { primaryStep } = findDivergenceInfo(_loadedTrajA, _loadedTrajB);
+    const { primaryStepA, primaryStepB } = findDivergenceInfo(_loadedTrajA, _loadedTrajB);
     aligned.forEach((pair, idx) => {
       const stepNum = idx + 1;
-      const isStep0Row = (pair.stepA?.stepNumber === 0 || pair.stepB?.stepNumber === 0);
-      const isPrimary = stepNum === primaryStep || (primaryStep === 0 && isStep0Row) || (pair.stepA?.stepNumber === primaryStep && primaryStep !== 0) || (pair.stepB?.stepNumber === primaryStep && primaryStep !== 0);
-      const marker = isPrimary ? ` [🚨 PRIMARY DIVERGENCE POINT]` : '';
+      const isStep0A = (pair.stepA?.stepNumber === 0);
+      const isStep0B = (pair.stepB?.stepNumber === 0);
 
-      report += `### Row ${stepNum}${marker}\n\n`;
+      const isPrimaryA = Boolean(pair.stepA && ((primaryStepA === 0 && isStep0A) || (primaryStepA !== 0 && (pair.stepA.stepNumber === primaryStepA || stepNum === primaryStepA))));
+      const isPrimaryB = Boolean(pair.stepB && ((primaryStepB === 0 && isStep0B) || (primaryStepB !== 0 && (pair.stepB.stepNumber === primaryStepB || stepNum === primaryStepB))));
+
+      const markerA = isPrimaryA ? ' [🚨 TRIAL A PRIMARY DIVERGENCE]' : '';
+      const markerB = isPrimaryB ? ' [🚨 TRIAL B PRIMARY DIVERGENCE]' : '';
+
+      report += `### Row ${stepNum}\n\n`;
 
       // Trial A
-      report += `#### Trial A (Step ${pair.stepA?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepA?.stepNumber || 'N/A'})\n`;
+      report += `#### Trial A (Step ${pair.stepA?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepA?.stepNumber || 'N/A'})${markerA}\n`;
       if (pair.stepA) {
         report += `- **Status**: ${pair.stepA.outcome?.status?.toUpperCase() || 'UNKNOWN'}\n`;
         if (pair.stepA.thought) {
@@ -1509,7 +1549,7 @@ function exportCompareReport() {
       report += `\n`;
 
       // Trial B
-      report += `#### Trial B (Step ${pair.stepB?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepB?.stepNumber || 'N/A'})\n`;
+      report += `#### Trial B (Step ${pair.stepB?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepB?.stepNumber || 'N/A'})${markerB}\n`;
       if (pair.stepB) {
         report += `- **Status**: ${pair.stepB.outcome?.status?.toUpperCase() || 'UNKNOWN'}\n`;
         if (pair.stepB.thought) {
