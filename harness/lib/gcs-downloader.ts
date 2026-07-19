@@ -31,6 +31,8 @@ async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: s
       detectedAgent = 'Claude Code';
     } else if (suiteId.includes('gemini')) {
       detectedAgent = 'Gemini CLI';
+    } else if (suiteId.includes('codex')) {
+      detectedAgent = 'Codex';
     }
     
     try {

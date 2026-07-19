@@ -573,7 +573,14 @@ function loadRunContext(runDir: string): RunContext {
   const code = findCodeOutput(absoluteDir);
   const preprocessed = preprocessTrajectory(trajectorySummary, chatLog);
 
-  const sessionFiles = fs.existsSync(absoluteDir) ? fs.readdirSync(absoluteDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
+  const allSessionFiles = fs.existsSync(absoluteDir) ? fs.readdirSync(absoluteDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
+  const sessionFiles = allSessionFiles.sort((a, b) => {
+    const aSub = a.includes('-subagents-');
+    const bSub = b.includes('-subagents-');
+    if (aSub && !bSub) return 1;
+    if (!aSub && bSub) return -1;
+    return a.localeCompare(b);
+  });
   const sessionPath = sessionFiles[0] ? path.join(absoluteDir, sessionFiles[0]) : '';
   let logData: any[] = [];
   if (sessionPath && fs.existsSync(sessionPath)) {

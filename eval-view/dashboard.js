@@ -900,7 +900,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
                  if (files.length === 0) files = run.files || [];
 
-                 const sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                 const sessionFile = files.find(f => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || files.find(f => f.startsWith('session-') && f.endsWith('.html'));
                  const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
                  const jsonFile = files.find(f => f.endsWith('_results.json'));
                  const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;

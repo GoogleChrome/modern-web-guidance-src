@@ -785,7 +785,7 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
     const filesResA = await fetch(`/api/run-files?dir=${encodeURIComponent(pathA)}&source=local`);
     if (filesResA.ok) {
       const filesA = (await filesResA.json()).files || [];
-      const sessionFileA = filesA.find(f => f.startsWith('session-') && f.endsWith('.html'));
+      const sessionFileA = filesA.find(f => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || filesA.find(f => f.startsWith('session-') && f.endsWith('.html'));
       if (sessionFileA) sessionUrlA = `${resultsBase}/${pathA}/${sessionFileA}`;
     }
   } catch (e) {}
@@ -794,7 +794,7 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
     const filesResB = await fetch(`/api/run-files?dir=${encodeURIComponent(pathB)}&source=local`);
     if (filesResB.ok) {
       const filesB = (await filesResB.json()).files || [];
-      const sessionFileB = filesB.find(f => f.startsWith('session-') && f.endsWith('.html'));
+      const sessionFileB = filesB.find(f => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || filesB.find(f => f.startsWith('session-') && f.endsWith('.html'));
       if (sessionFileB) sessionUrlB = `${resultsBase}/${pathB}/${sessionFileB}`;
     }
   } catch (e) {}
@@ -806,12 +806,15 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   renderTimelineRows(container, trajA, trajB, chatA, chatB, sessionUrlA, sessionUrlB);
 }
 
-function alignTrajectorySteps(stepsA, stepsB, mode = 'milestone') {
-  let listA = stepsA || [];
-  let listB = stepsB || [];
+function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
+  const trajAObj = (trajOrStepsA && !Array.isArray(trajOrStepsA)) ? trajOrStepsA : { steps: Array.isArray(trajOrStepsA) ? trajOrStepsA : [] };
+  const trajBObj = (trajOrStepsB && !Array.isArray(trajOrStepsB)) ? trajOrStepsB : { steps: Array.isArray(trajOrStepsB) ? trajOrStepsB : [] };
+
+  let listA = trajAObj.steps || [];
+  let listB = trajBObj.steps || [];
 
   if (mode === 'milestone') {
-    const filterFn = s => s.action?.canonicalCategory && s.action.canonicalCategory !== 'incidental_noise';
+    const filterFn = s => s.action?.canonicalCategory && s.action.canonicalCategory !== 'incidental_noise' && s.action.canonicalCategory !== 'launch';
     const filteredA = listA.filter(filterFn);
     const filteredB = listB.filter(filterFn);
     if (filteredA.length > 0 || filteredB.length > 0) {
@@ -822,7 +825,7 @@ function alignTrajectorySteps(stepsA, stepsB, mode = 'milestone') {
 
   const m = listA.length;
   const n = listB.length;
-  if (m === 0 && n === 0) return [];
+  if (m === 0 && n === 0 && !trajAObj.initialPrompt && !trajBObj.initialPrompt) return [];
 
   const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
   const gapPenalty = -2;
@@ -871,11 +874,34 @@ function alignTrajectorySteps(stepsA, stepsB, mode = 'milestone') {
     }
   }
 
-  return aligned.reverse();
+  const alignedResult = aligned.reverse();
+
+  // Prepend Step 0 (Starting Prompt / Harness Launch) when initialPrompt exists
+  if (trajAObj.initialPrompt || trajBObj.initialPrompt || (!Array.isArray(trajOrStepsA) && !Array.isArray(trajOrStepsB))) {
+    const promptA = trajAObj.initialPrompt || '';
+    const promptB = trajBObj.initialPrompt || '';
+    if (promptA || promptB) {
+      const step0A = promptA ? {
+        stepNumber: 0,
+        thought: 'Harness launched agent with initial prompt',
+        action: { type: 'launch', name: 'Starting Prompt / Launch', params: { prompt: promptA }, canonicalCategory: 'launch' },
+        outcome: { status: 'success', output: promptA }
+      } : null;
+      const step0B = promptB ? {
+        stepNumber: 0,
+        thought: 'Harness launched agent with initial prompt',
+        action: { type: 'launch', name: 'Starting Prompt / Launch', params: { prompt: promptB }, canonicalCategory: 'launch' },
+        outcome: { status: 'success', output: promptB }
+      } : null;
+      alignedResult.unshift({ stepA: step0A, stepB: step0B });
+    }
+  }
+
+  return alignedResult;
 }
 
 function findDivergenceInfo(trajA, trajB) {
-  const aligned = alignTrajectorySteps(trajA?.steps, trajB?.steps, timelineViewMode);
+  const aligned = alignTrajectorySteps(trajA, trajB, timelineViewMode);
 
   let primaryStep = null;
   const divergentSteps = new Set();
@@ -900,7 +926,17 @@ function findDivergenceInfo(trajA, trajB) {
 
     if (!sA || !sB) {
       divergentSteps.add(rowNum);
-      if (!primaryStep) primaryStep = rowNum;
+      if (primaryStep === null) primaryStep = rowNum;
+      continue;
+    }
+
+    if (sA.stepNumber === 0 && sB.stepNumber === 0) {
+      const pA = (sA.outcome?.output || '').trim();
+      const pB = (sB.outcome?.output || '').trim();
+      if (pA && pB && pA !== pB) {
+        divergentSteps.add(rowNum);
+        if (primaryStep === null) primaryStep = 0;
+      }
       continue;
     }
 
@@ -919,12 +955,12 @@ function findDivergenceInfo(trajA, trajB) {
 
     if (isThoughtDiff || isActionDiff || isStatusDiff) {
       divergentSteps.add(rowNum);
-      if (!primaryStep) primaryStep = rowNum;
+      if (primaryStep === null) primaryStep = rowNum;
     }
   }
 
   return {
-    primaryStep: primaryStep || (divergentSteps.size > 0 ? Array.from(divergentSteps)[0] : null),
+    primaryStep: primaryStep !== null ? primaryStep : (divergentSteps.size > 0 ? Array.from(divergentSteps)[0] : null),
     divergentSteps: Array.from(divergentSteps)
   };
 }
@@ -932,7 +968,7 @@ function findDivergenceInfo(trajA, trajB) {
 function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', sessionUrlA = '', sessionUrlB = '') {
   container.innerHTML = '';
 
-  const aligned = alignTrajectorySteps(trajA?.steps, trajB?.steps, timelineViewMode);
+  const aligned = alignTrajectorySteps(trajA, trajB, timelineViewMode);
 
   if (aligned.length === 0 && !chatA && !chatB) {
     container.innerHTML = '<div style="padding:30px; text-align:center; color:#64748b;">No normalized trajectory available. Ensure trajectory_summary.json is generated.</div>';
@@ -976,7 +1012,8 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
     const stepNum = i + 1;
     const stepA = aligned[i].stepA;
     const stepB = aligned[i].stepB;
-    const isPrimary = stepNum === primaryStep;
+    const isStep0Row = (stepA?.stepNumber === 0 || stepB?.stepNumber === 0);
+    const isPrimary = stepNum === primaryStep || (primaryStep === 0 && isStep0Row) || (stepA?.stepNumber === primaryStep && primaryStep !== 0) || (stepB?.stepNumber === primaryStep && primaryStep !== 0);
     const isDivergent = isPrimary || divergentSteps.includes(stepNum);
 
     const row = document.createElement('div');
@@ -988,11 +1025,11 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
     if (isPrimary) {
       rowHtml += `
         <div class="divergence-banner primary">
-          <span class="divergence-badge">🚨 PRIMARY DIVERGENCE POINT (ROW ${stepNum})</span>
-          <span class="divergence-desc">Agent reasoning or milestone execution diverged at this step between Trial A and Trial B.</span>
+          <span class="divergence-badge">🚨 PRIMARY DIVERGENCE POINT (${isStep0Row ? 'STARTING PROMPT / LAUNCH' : `ROW ${stepNum}`})</span>
+          <span class="divergence-desc">${isStep0Row ? 'Agent starting prompts or harness launch parameters diverged right at initialization between Trial A and Trial B.' : 'Agent reasoning or milestone execution diverged at this step between Trial A and Trial B.'}</span>
         </div>
       `;
-    } else if (isDivergent && stepNum > primaryStep) {
+    } else if (isDivergent && !isStep0Row && stepNum > (primaryStep === 0 ? 1 : primaryStep || 0)) {
       rowHtml += `
         <div class="divergence-banner">
           <span class="divergence-badge" style="background:#fef3c7; color:#92400e; border-color:#fcd34d;">⚠️ DIVERGENT STEP (ROW ${stepNum})</span>
@@ -1442,21 +1479,22 @@ function exportCompareReport() {
   report += `\n`;
 
   report += `## 4. Trajectory Comparison (${timelineViewMode.toUpperCase()} Mode)\n`;
-  const aligned = alignTrajectorySteps(_loadedTrajA?.steps, _loadedTrajB?.steps, timelineViewMode);
+  const aligned = alignTrajectorySteps(_loadedTrajA, _loadedTrajB, timelineViewMode);
   if (aligned.length === 0) {
     report += `No trajectory steps available.\n\n`;
   } else {
     const { primaryStep, divergentSteps } = findDivergenceInfo(_loadedTrajA, _loadedTrajB);
     aligned.forEach((pair, idx) => {
       const stepNum = idx + 1;
-      const isPrimary = stepNum === primaryStep;
+      const isStep0Row = (pair.stepA?.stepNumber === 0 || pair.stepB?.stepNumber === 0);
+      const isPrimary = stepNum === primaryStep || (primaryStep === 0 && isStep0Row) || (pair.stepA?.stepNumber === primaryStep && primaryStep !== 0) || (pair.stepB?.stepNumber === primaryStep && primaryStep !== 0);
       const isDivergent = isPrimary || divergentSteps.includes(stepNum);
       const marker = isPrimary ? ` [🚨 PRIMARY DIVERGENCE POINT]` : isDivergent ? ` [⚠️ DIVERGENT STEP]` : '';
 
       report += `### Row ${stepNum}${marker}\n\n`;
 
       // Trial A
-      report += `#### Trial A (Step ${pair.stepA?.stepNumber || 'N/A'})\n`;
+      report += `#### Trial A (Step ${pair.stepA?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepA?.stepNumber || 'N/A'})\n`;
       if (pair.stepA) {
         report += `- **Status**: ${pair.stepA.outcome?.status?.toUpperCase() || 'UNKNOWN'}\n`;
         if (pair.stepA.thought) {
@@ -1486,7 +1524,7 @@ function exportCompareReport() {
       report += `\n`;
 
       // Trial B
-      report += `#### Trial B (Step ${pair.stepB?.stepNumber || 'N/A'})\n`;
+      report += `#### Trial B (Step ${pair.stepB?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepB?.stepNumber || 'N/A'})\n`;
       if (pair.stepB) {
         report += `- **Status**: ${pair.stepB.outcome?.status?.toUpperCase() || 'UNKNOWN'}\n`;
         if (pair.stepB.thought) {

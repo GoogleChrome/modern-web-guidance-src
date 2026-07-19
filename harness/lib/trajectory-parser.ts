@@ -75,6 +75,9 @@ export function finalizeTrajectorySummary(summary: TrajectorySummary): Trajector
       }
     }
   }
+  if (!summary.initialPrompt && summary.steps) {
+    summary.initialPrompt = extractInitialPromptFromLogs(summary.steps);
+  }
   return summary;
 }
 
@@ -252,7 +255,8 @@ export function parseClaudeTrajectory(logData: any[], serving: string): Trajecto
   return finalizeTrajectorySummary({
     agent: 'Claude Code',
     serving,
-    steps
+    steps,
+    initialPrompt: extractInitialPromptFromLogs(logData)
   });
 }
 
@@ -321,7 +325,8 @@ export function parseGeminiTrajectory(session: any, serving: string): Trajectory
   return finalizeTrajectorySummary({
     agent: 'Gemini CLI',
     serving,
-    steps
+    steps,
+    initialPrompt: extractInitialPromptFromLogs(logData)
   });
 }
 
@@ -544,7 +549,8 @@ export async function parseJetskiTrajectory(dirPath: string, serving: string): P
   return finalizeTrajectorySummary({
     agent: 'Jetski',
     serving,
-    steps
+    steps,
+    initialPrompt: extractInitialPromptFromLogs(steps, chatText)
   });
 }
 
@@ -616,7 +622,8 @@ export function parseCodexTrajectory(logData: any[], serving: string): Trajector
   return finalizeTrajectorySummary({
     agent: 'Codex',
     serving,
-    steps
+    steps,
+    initialPrompt: extractInitialPromptFromLogs(logData)
   });
 }
 
@@ -627,7 +634,14 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
   try {
     let summary: TrajectorySummary | null = null;
 
-    const sessionFiles = fs.existsSync(targetDir) ? fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
+    const allSessionFiles = fs.existsSync(targetDir) ? fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
+    const sessionFiles = allSessionFiles.sort((a, b) => {
+      const aSub = a.includes('-subagents-');
+      const bSub = b.includes('-subagents-');
+      if (aSub && !bSub) return 1;
+      if (!aSub && bSub) return -1;
+      return a.localeCompare(b);
+    });
 
     // To add another agent in the future, check agentName or session files here and invoke the corresponding parser.
     if (agentName.toLowerCase().includes('jetski') || (!sessionFiles[0] && fs.existsSync(targetDir) && fs.readdirSync(targetDir).some(f => f.endsWith('.db')))) {
