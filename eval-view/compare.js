@@ -1028,8 +1028,8 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
     const isStep0A = stepA?.stepNumber === 0;
     const isStep0B = stepB?.stepNumber === 0;
 
-    const isPrimaryA = Boolean(stepA && ((primaryStepA === 0 && isStep0A) || (primaryStepA !== 0 && (stepA.stepNumber === primaryStepA || stepNum === primaryStepA))));
-    const isPrimaryB = Boolean(stepB && ((primaryStepB === 0 && isStep0B) || (primaryStepB !== 0 && (stepB.stepNumber === primaryStepB || stepNum === primaryStepB))));
+    const isPrimaryA = Boolean(stepA && (typeof stepA.stepNumber === 'number' ? stepA.stepNumber === primaryStepA : stepNum === primaryStepA));
+    const isPrimaryB = Boolean(stepB && (typeof stepB.stepNumber === 'number' ? stepB.stepNumber === primaryStepB : stepNum === primaryStepB));
 
     const row = document.createElement('div');
     row.className = `timeline-step-row ${(isPrimaryA || isPrimaryB) ? 'divergence-row' : ''}`;
@@ -1507,11 +1507,8 @@ function exportCompareReport() {
     const { primaryStepA, primaryStepB } = findDivergenceInfo(_loadedTrajA, _loadedTrajB);
     aligned.forEach((pair, idx) => {
       const stepNum = idx + 1;
-      const isStep0A = (pair.stepA?.stepNumber === 0);
-      const isStep0B = (pair.stepB?.stepNumber === 0);
-
-      const isPrimaryA = Boolean(pair.stepA && ((primaryStepA === 0 && isStep0A) || (primaryStepA !== 0 && (pair.stepA.stepNumber === primaryStepA || stepNum === primaryStepA))));
-      const isPrimaryB = Boolean(pair.stepB && ((primaryStepB === 0 && isStep0B) || (primaryStepB !== 0 && (pair.stepB.stepNumber === primaryStepB || stepNum === primaryStepB))));
+      const isPrimaryA = Boolean(pair.stepA && (typeof pair.stepA.stepNumber === 'number' ? pair.stepA.stepNumber === primaryStepA : stepNum === primaryStepA));
+      const isPrimaryB = Boolean(pair.stepB && (typeof pair.stepB.stepNumber === 'number' ? pair.stepB.stepNumber === primaryStepB : stepNum === primaryStepB));
 
       const markerA = isPrimaryA ? ' [🚨 TRIAL A PRIMARY DIVERGENCE]' : '';
       const markerB = isPrimaryB ? ' [🚨 TRIAL B PRIMARY DIVERGENCE]' : '';
