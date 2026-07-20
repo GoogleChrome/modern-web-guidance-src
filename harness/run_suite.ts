@@ -308,28 +308,24 @@ async function runCommand(command: string, args: string[] = [], envOverrides?: R
 
 
 function resolveTaskName(task: string): string {
-  let resolvedTask = task;
-  if (task.startsWith('guides/')) {
-    const segments = task.split('/');
-    if (segments.length === 4 && segments[2] === 'tasks') {
-      // Support discipline skill tasks (e.g., guides/forms/tasks/task.md)
-      const guideName = segments[1];
-      const taskName = segments[3].replace('.md', '');
-      resolvedTask = `${guideName}/${taskName}`;
-    } else if (segments.length >= 3) {
-      // Standard guide path: guides/category/guideName/...
-      const guideName = segments[2];
-      let taskName = 'task';
-      const lastSegment = segments[segments.length - 1];
-      if (lastSegment.endsWith('.md')) {
-        taskName = lastSegment.replace('.md', '');
-      }
-      resolvedTask = `${guideName}/${taskName}`;
-    }
-  } else if (!task.includes('/')) {
-    resolvedTask = `${task}/task`;
+  let cleanTask = task.replace(/^guides\//, '');
+  const segments = cleanTask.split('/');
+  if (segments.length === 3 && segments[1] === 'tasks') {
+    // forms/tasks/task.md -> forms/task
+    return `${segments[0]}/${segments[2].replace(/\.md$/, '')}`;
   }
-  return resolvedTask;
+  if (segments.length === 3) {
+    // category/guideName/taskName -> guideName/taskName
+    return `${segments[1]}/${segments[2].replace(/\.md$/, '')}`;
+  }
+  if (segments.length === 2) {
+    // guideName/taskName
+    return `${segments[0]}/${segments[1].replace(/\.md$/, '')}`;
+  }
+  if (segments.length === 1) {
+    return `${segments[0]}/task`;
+  }
+  return cleanTask;
 }
 
 export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
