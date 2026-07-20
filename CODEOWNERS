@@ -59,10 +59,16 @@ guides/ui-behaviors/cross-document-transitions/ @bramus
 guides/ui-behaviors/directional-navigation-transitions/ @bramus
 guides/ui-behaviors/group-element-transitions/ @bramus
 guides/ui-behaviors/same-document-transitions/ @bramus
+# Owned via feature "prefers-reduced-motion"
+guides/ui-components/skeleton/ @bramus
+guides/ui-components/spinner/ @bramus
 # Owned via group "scrolling"
 guides/ui-components/navigation-drawer/ @bramus
+guides/ui-components/scrollspy/ @bramus
 guides/ui-components/stack-drill-down/ @bramus
+guides/ui-components/tabs/ @bramus
 # Owned via group "transitions"
+guides/ui-components/accordion/ @bramus
 guides/ui-components/persistent-toast-notifications/ @bramus
 # Owned via feature "canvas-html"
 guides/visual-design/apply-webgl-shaders/ @ewewraw
