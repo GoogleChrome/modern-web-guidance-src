@@ -192,7 +192,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 
     console.log(`Generating content for guide.md for ${uc.slug}...`);
     const guidePrompt = buildGuidePrompt(feature, uc);
-    const guideContent = await runAgent(guidePrompt, sandbox.workDir, { captureOutput: true });
+    const guideContent = await runAgent(guidePrompt, sandbox.workDir, { captureOutput: true, env: sandbox.env });
 
     const cleanGuideContent = extractCodeBlock(guideContent, 'markdown');
 
@@ -202,7 +202,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     // 2. Generate expectations.md
     console.log(`Generating expectations.md for ${uc.slug}...`);
     const expectationsPrompt = buildExpectationsPrompt(feature, uc);
-    const expectationsMd = await runAgent(expectationsPrompt, sandbox.workDir, { captureOutput: true });
+    const expectationsMd = await runAgent(expectationsPrompt, sandbox.workDir, { captureOutput: true, env: sandbox.env });
 
     const cleanExpectations = extractCodeBlock(expectationsMd, 'markdown');
     fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
@@ -267,7 +267,7 @@ export async function generateUseCases(featureId: string, reviewer?: string): Pr
   try {
     const prompt = buildUseCasesPrompt(feature);
     console.log(`Asking Gemini to identify use cases...`);
-    const response = await runAgent(prompt, sandbox.workDir, { captureOutput: true });
+    const response = await runAgent(prompt, sandbox.workDir, { captureOutput: true, env: sandbox.env });
     useCases = parseUseCasesResponse(response).map(uc => ({
       ...uc,
       category: uc.category.toLowerCase() === 'javascript' ? 'js' : uc.category

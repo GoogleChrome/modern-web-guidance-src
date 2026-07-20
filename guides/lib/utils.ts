@@ -40,7 +40,7 @@ export async function runCommand(command: string, args: string[], cwd?: string):
 export async function runAgent(
   prompt: string,
   workDir?: string,
-  options: { captureOutput?: boolean } = {}
+  options: { captureOutput?: boolean; env?: Record<string, string> } = {}
 ): Promise<string> {
   const useJetski = process.env.GD_USE_JETSKI === '1';
   const command = useJetski ? config.environment.jetskiCliBin : config.environment.geminiCliBin;
@@ -59,7 +59,7 @@ export async function runAgent(
 
   const exitCode = await spawnAsync(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env },
+    env: { ...process.env, ...options.env },
     stdio: 'inherit',
   });
 
@@ -73,6 +73,7 @@ export async function runAgent(
 export interface Sandbox {
   workDir: string;
   tempHome: string;
+  env: Record<string, string>;
   cleanup: () => void;
 }
 
@@ -99,7 +100,6 @@ export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string
   for (const file of ['installation_id', 'user_settings.pb']) {
     copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
   }
-  process.env.JETSKI_DIR = jetskiDest;
 
   // Setup gcloud credentials for Google SDK calls inside the sandbox
   const gcloudSource = path.join(originalHome, '.config', 'gcloud');
@@ -114,7 +114,11 @@ export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string
   }
 
   createTrustedFolders(geminiDest, [tempHome]);
-  process.env.HOME = tempHome;
+
+  const env = {
+    HOME: tempHome,
+    JETSKI_DIR: jetskiDest,
+  };
 
   activeSandboxes.add(tempHome);
 
@@ -125,7 +129,7 @@ export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string
     }
   };
 
-  return { workDir, tempHome, cleanup };
+  return { workDir, tempHome, env, cleanup };
 }
 
 // Global cleanup handlers for exit and termination signals

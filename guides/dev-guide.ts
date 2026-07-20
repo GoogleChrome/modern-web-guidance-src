@@ -117,27 +117,35 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     fs.mkdirSync(targetCapsuleDir, { recursive: true });
 
     const solutionPatch = path.join(targetCapsuleDir, SOLUTION_PATCH_FILE);
-    if (!fs.existsSync(solutionPatch)) {
-      console.log(cCyan(`\n--- Generating ${SOLUTION_PATCH_FILE} for ${baseApp} ---`));
-      await generateTargetPatch(targetDir, baseApp, 'solution');
-    }
+    const solutionPromise = !fs.existsSync(solutionPatch)
+      ? (async () => {
+          console.log(cCyan(`\n--- Generating ${SOLUTION_PATCH_FILE} for ${baseApp} ---`));
+          await generateTargetPatch(targetDir, baseApp, 'solution');
+        })()
+      : Promise.resolve();
 
     const zeroPassratePatch = path.join(targetCapsuleDir, ZERO_PASSRATE_PATCH_FILE);
-    if (!fs.existsSync(zeroPassratePatch)) {
-      console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
-      await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
-    }
+    const zeroPassratePromise = !fs.existsSync(zeroPassratePatch)
+      ? (async () => {
+          console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
+          await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
+        })()
+      : Promise.resolve();
+
+    const taskFile = path.join(targetCapsuleDir, TASK_FILE);
+    const taskPromise = !fs.existsSync(taskFile)
+      ? (async () => {
+          console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
+          await generateTargetTask(targetDir, baseApp);
+        })()
+      : Promise.resolve();
+
+    await Promise.all([solutionPromise, zeroPassratePromise, taskPromise]);
 
     const graderFile = path.join(targetCapsuleDir, GRADER_FILE);
     if (!fs.existsSync(graderFile)) {
       console.log(cCyan(`\n--- Generating ${GRADER_FILE} for ${baseApp} ---`));
       await generateTargetGrader(targetDir, baseApp);
-    }
-
-    const taskFile = path.join(targetCapsuleDir, TASK_FILE);
-    if (!fs.existsSync(taskFile)) {
-      console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
-      await generateTargetTask(targetDir, baseApp);
     }
   }
 
@@ -194,7 +202,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
       ? buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir: sandbox.workDir })
       : buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir: sandbox.workDir });
 
-    await runAgent(prompt, sandbox.workDir);
+    await runAgent(prompt, sandbox.workDir, { env: sandbox.env });
 
     const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchType === 'solution' ? SOLUTION_PATCH_FILE : ZERO_PASSRATE_PATCH_FILE);
     fs.mkdirSync(path.dirname(destPatch), { recursive: true });
@@ -220,7 +228,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       baseApp,
     });
 
-    await runAgent(prompt, sandbox.workDir);
+    await runAgent(prompt, sandbox.workDir, { env: sandbox.env });
 
     const generatedTask = path.join(sandbox.workDir, TASK_FILE);
     if (fs.existsSync(generatedTask)) {

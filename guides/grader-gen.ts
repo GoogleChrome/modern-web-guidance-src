@@ -92,7 +92,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       failureContext,
     });
 
-    await runAgent(prompt, sandbox.workDir);
+    await runAgent(prompt, sandbox.workDir, { env: sandbox.env });
 
     const generatedGrader = path.join(sandbox.workDir, GRADER_FILE);
     if (fs.existsSync(generatedGrader)) {
