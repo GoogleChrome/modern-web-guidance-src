@@ -30,11 +30,12 @@ export function constructPRBody(featureId: string, useCases: UseCase[], passRate
 `;
 
   for (const uc of useCases) {
-    const previewUrl = `https://github-preview-proxy-847799827363.us-central1.run.app/${repo}/${branch}/guides/${uc.category}/${uc.slug}/demo.html`;
+    const guideUrl = `https://github.com/${repo}/blob/${branch}/guides/${uc.category}/${uc.slug}/guide.md`;
+    const expectationsUrl = `https://github.com/${repo}/blob/${branch}/guides/${uc.category}/${uc.slug}/expectations.md`;
 
     const escapedDescription = escapeLeftAngleBracket(uc.description);
     body += `- \`${uc.slug}\` - ${escapedDescription}\n`;
-    body += `   - [demo](${previewUrl})\n`;
+    body += `   - [guide](${guideUrl}) | [expectations](${expectationsUrl})\n`;
   }
 
   if (passRates && Object.keys(passRates).length > 0) {

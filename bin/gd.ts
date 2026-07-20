@@ -33,6 +33,8 @@ const ALL_OPTIONS = {
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
+  category: { type: 'string', desc: 'Guide category' },
+  slug: { type: 'string', desc: 'Guide directory name' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
@@ -47,7 +49,7 @@ const COMMAND_METADATA = {
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
-
+  'gen-guide': { desc: 'Generate guide.md and expectations.md from a web-feature-id', flags: ['category', 'slug'] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -167,7 +169,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'audit'],
+      commands: ['dev', 'audit', 'gen-guide'],
     },
 
     {
@@ -276,6 +278,14 @@ async function main() {
     case 'audit': {
       const { auditGuides } = await import('../guides/dev-guide.ts');
       auditGuides({ groupByUsecases: !!values.usecases });
+      break;
+    }
+
+    case 'gen-guide': {
+      const featureId = requireArg(positionals[1], 'gd gen-guide <web-feature-id> [<reviewer-github-username>]');
+      const reviewer = positionals[2];
+      const { generateUseCases } = await import('../guides/guide-gen.ts');
+      await generateUseCases(featureId, reviewer);
       break;
     }
 
