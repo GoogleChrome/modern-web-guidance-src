@@ -57,7 +57,6 @@ function printInventory(inv: GuideInventory): void {
 
   console.log(`\n\ud83d\udccb Guide: ${cBold(inv.name)}`);
   console.log(`   ${GUIDE_FILE.padEnd(18)} ${icon(inv.hasGuide)}`);
-  console.log(`   ${DEMO_FILE.padEnd(18)} ${icon(inv.hasDemo)}`);
 
   if (!inv.hasExpectations) {
     console.log(`   ${EXPECTATIONS_FILE.padEnd(18)} ${icon(false)} ${cDim('missing')}`);
@@ -67,9 +66,14 @@ function printInventory(inv: GuideInventory): void {
     console.log(`   ${EXPECTATIONS_FILE.padEnd(18)} ${icon(true)}`);
   }
 
-  console.log(`   ${NEGATIVE_DEMO_FILE.padEnd(18)} ${inv.hasNegativeDemo ? icon(true) : icon(false, true) + ' will generate'}`);
-  console.log(`   ${GRADER_FILE.padEnd(18)} ${inv.hasGrader ? icon(true) : icon(false, true) + ' will generate'}`);
-  console.log(`   ${TASK_FILE.padEnd(18)} ${inv.hasTask ? icon(true) : icon(false, true) + ' will generate'}`);
+  for (const baseApp of SUPPORTED_BASE_APPS) {
+    const target = inv.targets?.find(t => t.name === baseApp);
+    console.log(`\n   ${cBold(`Target Base App: ${baseApp}`)}`);
+    console.log(`     ${SOLUTION_PATCH_FILE.padEnd(28)} ${icon(!!target?.hasSolution, !target?.hasSolution)}`);
+    console.log(`     ${ZERO_PASSRATE_PATCH_FILE.padEnd(28)} ${icon(!!target?.hasZeroPassrate, !target?.hasZeroPassrate)}`);
+    console.log(`     ${GRADER_FILE.padEnd(28)} ${icon(!!target?.hasGrader, !target?.hasGrader)}`);
+    console.log(`     ${TASK_FILE.padEnd(28)} ${icon(!!target?.hasTask, !target?.hasTask)}`);
+  }
 }
 
 export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
