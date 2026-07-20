@@ -19,7 +19,7 @@ import {
 } from './gd-dev-prompts.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { execSync } from 'node:child_process';
-import { capturePatchFromGit } from '../lib/patch-utils.ts';
+import { capturePatchFromGit, applyPatchSync } from '../lib/patch-utils.ts';
 import {
   type GuideInventory,
   type GuideStatus,
@@ -286,7 +286,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
 
     const results: Record<string, { passed: number; total: number }> = {};
 
-    // 1. Grade base app
+    // 1. Grade base app (with zero-passrate baseline applied)
     const baseAppDir = path.join(baseAppsDir, baseApp);
     const baseAppHtml = path.join(baseAppDir, 'index.html');
     if (fs.existsSync(baseAppHtml)) {
@@ -294,8 +294,14 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       try {
         const stagingDir = path.join(tempHome, baseApp);
         fs.cpSync(baseAppDir, stagingDir, { recursive: true });
+        const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
+        if (fs.existsSync(zeroPassratePatch)) {
+          applyPatchSync(stagingDir, zeroPassratePatch);
+          process.env.PATCH_FILE = zeroPassratePatch;
+        } else {
+          process.env.PATCH_FILE = path.join(targetsDir, baseApp, SOLUTION_PATCH_FILE);
+        }
         const stagedHtml = path.join(stagingDir, 'index.html');
-        process.env.PATCH_FILE = path.join(targetsDir, baseApp, 'solution.patch');
         const preResults = await gradeOutput(stagedHtml, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
         delete process.env.PATCH_FILE;
         if (preResults) results['pre'] = preResults;

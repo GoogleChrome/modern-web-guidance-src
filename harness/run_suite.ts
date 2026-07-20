@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
-import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
+import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
+import { applyPatchSync } from '../lib/patch-utils.ts';
 import { getGraderScriptContent } from './lib/agent-shared.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
@@ -331,7 +332,7 @@ function resolveTaskName(task: string): string {
   return resolvedTask;
 }
 
-async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
+export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
   // Copy the base app to the run directory (for tracking purposes)
   const guideFolder = path.join(runDir, guideName);
   const taskFolder = path.join(guideFolder, taskName);
@@ -359,6 +360,13 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
         }
       });
 
+      // Initialize git so git apply resolves paths at the staged base app root
+      try {
+        execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workspaceBaseAppDir, stdio: 'ignore' });
+      } catch (err) {
+        console.warn(`Failed to initialize git in ${workspaceBaseAppDir}: ${err}`);
+      }
+
       const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
       if (fs.existsSync(pkgJsonPath)) {
         const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
@@ -368,6 +376,22 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
 
         // pnpm install is intentionally deferred until after agent execution
         // to avoid copying massive node_modules directories.
+      }
+
+      // If this is a target-based task and zero-passrate.patch exists, apply it before agent execution
+      const targetZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskName, ZERO_PASSRATE_PATCH_FILE);
+      const baseAppZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskInfo.baseApp, ZERO_PASSRATE_PATCH_FILE);
+      const zeroPassratePath = fs.existsSync(targetZeroPassrate)
+        ? targetZeroPassrate
+        : (fs.existsSync(baseAppZeroPassrate) ? baseAppZeroPassrate : null);
+
+      if (zeroPassratePath) {
+        const applyRes = applyPatchSync(workspaceBaseAppDir, zeroPassratePath);
+        if (!applyRes.success) {
+          console.warn(`Failed to apply zero-passrate.patch to ${workspaceBaseAppDir}: ${applyRes.error}`);
+        } else {
+          console.log(`Applied zero-passrate.patch to ${workspaceBaseAppDir}`);
+        }
       }
     }
   }
