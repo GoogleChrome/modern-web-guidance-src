@@ -293,7 +293,7 @@ export async function generateUseCases(featureId: string, reviewer?: string): Pr
 
   const useCasePassRates: Record<string, PassRates> = {};
 
-  const promises = useCases.map(async (uc) => {
+  for (const uc of useCases) {
     const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
     const logFile = path.join(outputDir, 'dev.log');
     console.log(`[Usecase: ${uc.slug}] Running calibration and evaluation. Logs in ${logFile}`);
@@ -325,9 +325,7 @@ export async function generateUseCases(featureId: string, reviewer?: string): Pr
     } else {
       console.warn(`⚠️ Could not parse pass rates for ${uc.slug}`);
     }
-  });
-
-  await Promise.all(promises);
+  }
 
   console.log(`\n🎉 All use cases scaffolded and processed!`);
 

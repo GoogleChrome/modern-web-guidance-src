@@ -13,7 +13,7 @@ export async function runCommand(command: string, args: string[], cwd?: string):
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
-      env: { ...process.env },
+      env: { ...process.env, GEMINI_CLI_TRUST_WORKSPACE: 'true' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -91,6 +91,18 @@ export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string
     copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
   }
   process.env.JETSKI_DIR = jetskiDest;
+
+  // Setup gcloud credentials for Google SDK calls inside the sandbox
+  const gcloudSource = path.join(originalHome, '.config', 'gcloud');
+  const gcloudDest = path.join(tempHome, '.config', 'gcloud');
+  if (fs.existsSync(gcloudSource)) {
+    fs.mkdirSync(path.dirname(gcloudDest), { recursive: true });
+    try {
+      fs.cpSync(gcloudSource, gcloudDest, { recursive: true, errorOnExist: false });
+    } catch (err) {
+      console.warn(`Warning: Could not copy gcloud credentials: ${err}`);
+    }
+  }
 
   createTrustedFolders(geminiDest, [tempHome]);
   process.env.HOME = tempHome;
