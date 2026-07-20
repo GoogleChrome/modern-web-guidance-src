@@ -282,7 +282,10 @@ export async function generateUseCases(featureId: string, reviewer?: string): Pr
   console.log(`Asking Gemini to identify use cases...`);
   const response = await runAgent(prompt, workDir, { captureOutput: true });
 
-  const useCases = parseUseCasesResponse(response);
+  const useCases = parseUseCasesResponse(response).map(uc => ({
+    ...uc,
+    category: uc.category.toLowerCase() === 'javascript' ? 'js' : uc.category
+  }));
 
   console.log(`\nIdentified ${useCases.length} use cases:`);
   for (const uc of useCases) {
