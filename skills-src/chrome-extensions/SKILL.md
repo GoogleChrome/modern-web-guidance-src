@@ -81,14 +81,8 @@ See `references/extensions/csp-sandbox.md` for full details.
 
 #### 4. `tab.url` requires the `tabs` permission
 
-Without it, `tab.url` silently returns `undefined` — no error thrown.
-
-```js
-// manifest.json — REQUIRED if you read tab.url or tab.title anywhere:
-{ "permissions": ["tabs"] }
-```
-
-See `references/extensions/tab-management.md`.
+Without it, `tab.url` silently returns `undefined` — no error thrown. See
+`references/extensions/permissions.md`.
 
 #### 5. Always use async/await — never `.then()` chains
 
@@ -196,27 +190,10 @@ await chrome.action.setBadgeText({ text: '5' });
 
 #### 12. `activeTab` only works on direct user gestures — not from side panels
 
-`activeTab` grants temporary access to the current tab ONLY when triggered by:
-- Clicking the extension action icon
-- A context menu item (including the `"tab"` context)
-- A keyboard shortcut from the `commands` API
-- Accepting an omnibox suggestion
-
-It does **NOT** grant access when clicking a button in a side panel, popup button that opens later,
-or any programmatic trigger.
-
-```js
-// ❌ BROKEN — activeTab does NOT work from a side panel button click
-document.getElementById('summarize').addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => document.body.innerText });
-});
-
-// ✅ FIX — use "tabs" permission + specific host_permissions instead
-// manifest.json: { "permissions": ["tabs", "scripting"], "host_permissions": ["<all_urls>"] }
-```
-
-See `references/extensions/side-panel.md`.
+`activeTab` grants temporary access to the current tab ONLY on a direct user gesture (action
+icon click, context menu item, keyboard shortcut, omnibox suggestion) — NOT from a button click
+inside a side panel or popup. Use `tabs` + `host_permissions` instead. See
+`references/extensions/permissions.md` and `references/extensions/side-panel.md`.
 
 #### 13. DevTools panel URLs are relative to the extension root
 
@@ -379,6 +356,14 @@ const all     = await chrome.windows.getAll({ populate: true });
 
 **`chrome.windows` methods:** `getAll`, `getLastFocused`, `getCurrent`, `get(windowId)`, `create`, `update`, `remove`. See `references/extensions/tab-management.md`.
 
+#### 20. `chrome.permissions.request()` requires a user gesture — call it directly in the click handler, not via message passing
+
+`chrome.permissions.request()` only works when called synchronously within a user gesture. If a
+UI context (side panel, popup) sends a message to the service worker and the service worker
+calls it in response, the gesture context is lost crossing the message-passing boundary and the
+call fails silently. Call it directly in the click handler of the UI context instead — see
+`references/extensions/permissions.md`.
+
 ### Always Manifest V3
 
 Never generate Manifest V2 code.
@@ -485,6 +470,7 @@ For detailed API patterns and publishing guidance, read the relevant file BEFORE
 
 | Topic | Reference |
 |-------|-----------|
+| Permissions | `references/extensions/permissions.md` |
 | Side panels | `references/extensions/side-panel.md` |
 | Content scripts & DOM | `references/extensions/content-scripts.md` |
 | Popups | `references/extensions/popup-ui.md` |
@@ -530,6 +516,7 @@ Verify EVERY item before delivering:
 - [ ] Tab/desktop capture uses state locking to prevent double-start errors
 - [ ] `chrome.desktopCapture.chooseDesktopMedia` passes `targetTab` with `tabs` permission
 - [ ] `chrome.windows` calls use `getAll`/`getLastFocused`/`getCurrent` — NOT `.query()` (it doesn't exist)
+- [ ] `chrome.permissions.request()` is called directly in a UI click handler — never forwarded through the service worker via `sendMessage`
 - [ ] `chrome.userScripts` availability checked before use (API throws if user hasn't enabled it)
 - [ ] User script configs persisted in `chrome.storage` and restored on `runtime.onInstalled` `"update"` reason
 - [ ] `configureWorld({ messaging: true })` called before user scripts send messages; listening on `onUserScriptMessage` not `onMessage`
