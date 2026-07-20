@@ -311,8 +311,8 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const goldenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-sol`);
   let unexpected = 0;
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), goldenSandbox, { recursive: true });
-    const applyRes = applyPatchSync(goldenSandbox, solutionPatch);
+    fs.cpSync(path.join(baseAppsDir, baseApp), goldenSandbox.workDir, { recursive: true });
+    const applyRes = applyPatchSync(goldenSandbox.workDir, solutionPatch);
     if (!applyRes.success) {
       result.stage = 'patch-apply';
       result.errorDetails = `Failed to apply ${SOLUTION_PATCH_FILE}: ${applyRes.error}`;
@@ -321,7 +321,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
 
     console.log(cYellow(`\nRunning against ${baseApp} with ${SOLUTION_PATCH_FILE}... (Expecting 100% pass)`));
     process.env.PATCH_FILE = solutionPatch;
-    const demoResults = await runPlaywright(path.join(goldenSandbox, 'index.html'), graderPath, demoOutDir, 'inherit').catch(err => {
+    const demoResults = await runPlaywright(path.join(goldenSandbox.workDir, 'index.html'), graderPath, demoOutDir, 'inherit').catch(err => {
       result.stage = 'server-boot';
       result.errorDetails = `Dev server crashed or failed to run against ${SOLUTION_PATCH_FILE}: ${err.message}`;
       return null;
@@ -357,9 +357,13 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
   } finally {
     if (unexpected > 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping golden sandbox directory for debugging: ${goldenSandbox}`));
+      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping golden sandbox directory for debugging: ${goldenSandbox.workDir}`));
+      try {
+        fs.rmSync(path.join(goldenSandbox.tempHome, '.gemini'), { recursive: true, force: true });
+        fs.rmSync(path.join(goldenSandbox.tempHome, '.config'), { recursive: true, force: true });
+      } catch {}
     } else {
-      fs.rmSync(goldenSandbox, { recursive: true, force: true });
+      goldenSandbox.cleanup();
     }
   }
 
@@ -367,8 +371,8 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const zeroPassrateSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-zp`);
   let passed = 0;
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), zeroPassrateSandbox, { recursive: true });
-    const applyRes = applyPatchSync(zeroPassrateSandbox, zeroPassratePatch);
+    fs.cpSync(path.join(baseAppsDir, baseApp), zeroPassrateSandbox.workDir, { recursive: true });
+    const applyRes = applyPatchSync(zeroPassrateSandbox.workDir, zeroPassratePatch);
     if (!applyRes.success) {
       result.stage = 'patch-apply';
       result.errorDetails = `Failed to apply ${ZERO_PASSRATE_PATCH_FILE}: ${applyRes.error}`;
@@ -377,7 +381,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
 
     console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
     process.env.PATCH_FILE = zeroPassratePatch;
-    const negativeResults = await runPlaywright(path.join(zeroPassrateSandbox, 'index.html'), graderPath, negativeOutDir, 'ignore').catch(err => {
+    const negativeResults = await runPlaywright(path.join(zeroPassrateSandbox.workDir, 'index.html'), graderPath, negativeOutDir, 'ignore').catch(err => {
       result.stage = 'server-boot';
       result.errorDetails = `Dev server crashed or failed to run against ${ZERO_PASSRATE_PATCH_FILE}: ${err.message}`;
       return null;
@@ -413,9 +417,13 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
   } finally {
     if (passed > 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping zero-passrate sandbox directory for debugging: ${zeroPassrateSandbox}`));
+      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping zero-passrate sandbox directory for debugging: ${zeroPassrateSandbox.workDir}`));
+      try {
+        fs.rmSync(path.join(zeroPassrateSandbox.tempHome, '.gemini'), { recursive: true, force: true });
+        fs.rmSync(path.join(zeroPassrateSandbox.tempHome, '.config'), { recursive: true, force: true });
+      } catch {}
     } else {
-      fs.rmSync(zeroPassrateSandbox, { recursive: true, force: true });
+      zeroPassrateSandbox.cleanup();
     }
   }
 

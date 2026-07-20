@@ -7,6 +7,7 @@ import {
   copyFileIfExists,
   createTrustedFolders,
   spawnAsync,
+  cleanupIsolatedHome,
 } from '../../harness/lib/agent-shared.ts';
 
 export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
@@ -69,7 +70,15 @@ export async function runAgent(
   return '';
 }
 
-export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string): string {
+export interface Sandbox {
+  workDir: string;
+  tempHome: string;
+  cleanup: () => void;
+}
+
+const activeSandboxes = new Set<string>();
+
+export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string): Sandbox {
   const tempHome = createIsolatedHome(prefix);
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
@@ -106,9 +115,32 @@ export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string
 
   createTrustedFolders(geminiDest, [tempHome]);
   process.env.HOME = tempHome;
-  
-  return workDir;
+
+  activeSandboxes.add(tempHome);
+
+  const cleanup = () => {
+    if (activeSandboxes.has(tempHome)) {
+      cleanupIsolatedHome(tempHome);
+      activeSandboxes.delete(tempHome);
+    }
+  };
+
+  return { workDir, tempHome, cleanup };
 }
+
+// Global cleanup handlers for exit and termination signals
+function globalCleanup() {
+  for (const homeDir of activeSandboxes) {
+    try {
+      cleanupIsolatedHome(homeDir);
+    } catch {}
+  }
+  activeSandboxes.clear();
+}
+
+process.on('exit', globalCleanup);
+process.on('SIGINT', () => { globalCleanup(); process.exit(130); });
+process.on('SIGTERM', () => { globalCleanup(); process.exit(143); });
 
 export function escapeLeftAngleBracket(text: string): string {
   return text.replaceAll('<', '&lt;');

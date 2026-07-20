@@ -20,8 +20,7 @@ import type { Identifier } from '@mdn/browser-compat-data';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
-import { runCommand, runAgent, setupIsolatedWorkDir } from './lib/utils.ts';
-import {cleanupIsolatedHome} from '../harness/lib/agent-shared.ts';
+import { runCommand, runAgent, setupIsolatedWorkDir, type PassRates, parsePassRates } from './lib/utils.ts';
 import type { UseCase } from './ci-pipeline.ts';
 import { handleGitAndPR } from './ci-pipeline.ts';
 
@@ -172,7 +171,7 @@ Output ONLY the raw markdown content, with no outer code blocks or other text. D
 
 /** usecase ==> guide + expectations + demo */
 async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureDataPlusMDN, guidesDir: string): Promise<string> {
-  const workDir = setupIsolatedWorkDir('ghh-guide-gen');
+  const sandbox = setupIsolatedWorkDir('ghh-guide-gen');
   const outputDir = path.join(guidesDir, uc.category, uc.slug);
   console.log(`\nScaffolding ${uc.slug} in ${outputDir}...`);
 
@@ -193,7 +192,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 
     console.log(`Generating content for guide.md for ${uc.slug}...`);
     const guidePrompt = buildGuidePrompt(feature, uc);
-    const guideContent = await runAgent(guidePrompt, workDir, { captureOutput: true });
+    const guideContent = await runAgent(guidePrompt, sandbox.workDir, { captureOutput: true });
 
     const cleanGuideContent = extractCodeBlock(guideContent, 'markdown');
 
@@ -203,14 +202,14 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     // 2. Generate expectations.md
     console.log(`Generating expectations.md for ${uc.slug}...`);
     const expectationsPrompt = buildExpectationsPrompt(feature, uc);
-    const expectationsMd = await runAgent(expectationsPrompt, workDir, { captureOutput: true });
+    const expectationsMd = await runAgent(expectationsPrompt, sandbox.workDir, { captureOutput: true });
 
     const cleanExpectations = extractCodeBlock(expectationsMd, 'markdown');
     fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
     console.log(`✅ Generated expectations.md`);
 
   } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
+    sandbox.cleanup();
   }
 
   return outputDir;
@@ -245,20 +244,7 @@ export function parseUseCasesResponse(response: string): UseCase[] {
   }
 }
 
-export interface PassRates {
-  unguided: string;
-  guided: string;
-}
 
-export function parsePassRates(output: string): PassRates | null {
-  const unguidedMatch = output.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
-  const guidedMatch = output.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
-
-  if (unguidedMatch && guidedMatch) {
-    return { unguided: unguidedMatch[1], guided: guidedMatch[1] };
-  }
-  return null;
-}
 
 export async function generateUseCases(featureId: string, reviewer?: string): Promise<void> {
 
@@ -276,23 +262,24 @@ export async function generateUseCases(featureId: string, reviewer?: string): Pr
     console.log(`Found existing research file at ${researchPath}. Skipping deep research.`);
   }
 
-  const workDir = setupIsolatedWorkDir('ghh-guide-gen');
-  const prompt = buildUseCasesPrompt(feature);
-
-  console.log(`Asking Gemini to identify use cases...`);
-  const response = await runAgent(prompt, workDir, { captureOutput: true });
-
-  const useCases = parseUseCasesResponse(response).map(uc => ({
-    ...uc,
-    category: uc.category.toLowerCase() === 'javascript' ? 'js' : uc.category
-  }));
+  const sandbox = setupIsolatedWorkDir('ghh-guide-gen');
+  let useCases: UseCase[];
+  try {
+    const prompt = buildUseCasesPrompt(feature);
+    console.log(`Asking Gemini to identify use cases...`);
+    const response = await runAgent(prompt, sandbox.workDir, { captureOutput: true });
+    useCases = parseUseCasesResponse(response).map(uc => ({
+      ...uc,
+      category: uc.category.toLowerCase() === 'javascript' ? 'js' : uc.category
+    }));
+  } finally {
+    sandbox.cleanup();
+  }
 
   console.log(`\nIdentified ${useCases.length} use cases:`);
   for (const uc of useCases) {
     console.log(`- [${uc.category}] ${uc.slug}: ${uc.description}`);
   }
-
-  cleanupIsolatedHome(path.dirname(workDir));
 
   const useCasePassRates: Record<string, PassRates> = {};
 

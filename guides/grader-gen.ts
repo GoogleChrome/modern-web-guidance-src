@@ -22,16 +22,16 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
 
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-grader`, relativeWorkSubdir);
+  const sandbox = setupIsolatedWorkDir(`gd-gen-${baseApp}-grader`, relativeWorkSubdir);
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
+    fs.cpSync(path.join(baseAppsDir, baseApp), sandbox.workDir, {
       recursive: true,
       filter: (src) => !src.includes('node_modules')
     });
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
-    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(sandbox.workDir, GUIDE_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(sandbox.workDir, EXPECTATIONS_FILE));
 
-    const tempHome = path.resolve(workDir, '../../../../..'); // workDir is tempHome/guides/cat/guide/targets/app
+    const tempHome = sandbox.tempHome;
     
     // Copy patch-utils.ts to tempHome/lib/patch-utils.ts
     const srcLibDir = path.resolve(repoRoot, 'lib');
@@ -45,7 +45,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     fs.mkdirSync(path.join(tempHome, 'guides'), { recursive: true });
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'template.grader.ts'),
-      path.join(workDir, 'template.grader.ts')
+      path.join(sandbox.workDir, 'template.grader.ts')
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'test-fixture.ts'),
@@ -53,26 +53,26 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'parser-pattern-library.test.ts'),
-      path.join(workDir, 'parser-pattern-library.test.ts')
+      path.join(sandbox.workDir, 'parser-pattern-library.test.ts')
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'playwright-pattern-library.grader.ts'),
-      path.join(workDir, 'playwright-pattern-library.grader.ts')
+      path.join(sandbox.workDir, 'playwright-pattern-library.grader.ts')
     );
 
     const solutionPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, SOLUTION_PATCH_FILE);
     const zeroPassratePatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
-    if (fs.existsSync(solutionPatch)) fs.copyFileSync(solutionPatch, path.join(workDir, SOLUTION_PATCH_FILE));
-    if (fs.existsSync(zeroPassratePatch)) fs.copyFileSync(zeroPassratePatch, path.join(workDir, ZERO_PASSRATE_PATCH_FILE));
+    if (fs.existsSync(solutionPatch)) fs.copyFileSync(solutionPatch, path.join(sandbox.workDir, SOLUTION_PATCH_FILE));
+    if (fs.existsSync(zeroPassratePatch)) fs.copyFileSync(zeroPassratePatch, path.join(sandbox.workDir, ZERO_PASSRATE_PATCH_FILE));
 
     // Symlink host guides/node_modules to workDir/node_modules for local typechecking inside the sandbox
     const hostGuidesNodeModules = path.join(repoRoot, 'guides', 'node_modules');
     if (fs.existsSync(hostGuidesNodeModules)) {
-      fs.symlinkSync(hostGuidesNodeModules, path.join(workDir, 'node_modules'));
+      fs.symlinkSync(hostGuidesNodeModules, path.join(sandbox.workDir, 'node_modules'));
     }
 
-    const parserPatternsPath = path.join(workDir, 'parser-pattern-library.test.ts');
-    const playwrightPatternsPath = path.join(workDir, 'playwright-pattern-library.grader.ts');
+    const parserPatternsPath = path.join(sandbox.workDir, 'parser-pattern-library.test.ts');
+    const playwrightPatternsPath = path.join(sandbox.workDir, 'playwright-pattern-library.grader.ts');
 
     const tsMorphDts = path.join(repoRoot, 'guides', 'node_modules/ts-morph/lib/ts-morph.d.ts');
     const linkedomDts = path.join(repoRoot, 'guides', 'node_modules/linkedom/types/index.d.ts');
@@ -92,28 +92,28 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       failureContext,
     });
 
-    await runAgent(prompt, workDir);
+    await runAgent(prompt, sandbox.workDir);
 
-    const generatedGrader = path.join(workDir, GRADER_FILE);
+    const generatedGrader = path.join(sandbox.workDir, GRADER_FILE);
     if (fs.existsSync(generatedGrader)) {
       const destGrader = path.join(guideDirAbs, TARGETS_DIR, baseApp, GRADER_FILE);
       fs.mkdirSync(path.dirname(destGrader), { recursive: true });
       fs.copyFileSync(generatedGrader, destGrader);
     }
 
-    const generatedSolution = path.join(workDir, SOLUTION_PATCH_FILE);
+    const generatedSolution = path.join(sandbox.workDir, SOLUTION_PATCH_FILE);
     if (fs.existsSync(generatedSolution)) {
       const destSolution = path.join(guideDirAbs, TARGETS_DIR, baseApp, SOLUTION_PATCH_FILE);
       fs.copyFileSync(generatedSolution, destSolution);
     }
 
-    const generatedZeroPassrate = path.join(workDir, ZERO_PASSRATE_PATCH_FILE);
+    const generatedZeroPassrate = path.join(sandbox.workDir, ZERO_PASSRATE_PATCH_FILE);
     if (fs.existsSync(generatedZeroPassrate)) {
       const destZeroPassrate = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
       fs.copyFileSync(generatedZeroPassrate, destZeroPassrate);
     }
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    sandbox.cleanup();
   }
 }
 

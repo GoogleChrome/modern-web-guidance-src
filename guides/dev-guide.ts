@@ -177,41 +177,41 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 }
 
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: 'solution' | 'zero-passrate'): Promise<void> {
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-${patchType}`);
+  const sandbox = setupIsolatedWorkDir(`gd-gen-${baseApp}-${patchType}`);
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
+    fs.cpSync(path.join(baseAppsDir, baseApp), sandbox.workDir, {
       recursive: true,
       filter: (src) => !src.includes('node_modules')
     });
 
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
-    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(sandbox.workDir, GUIDE_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(sandbox.workDir, EXPECTATIONS_FILE));
 
     // Git init is required for capturePatchFromGit to extract git diffs
-    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
+    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: sandbox.workDir, stdio: 'ignore' });
 
     const prompt = patchType === 'solution'
-      ? buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
-      : buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
+      ? buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir: sandbox.workDir })
+      : buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir: sandbox.workDir });
 
-    await runAgent(prompt, workDir);
+    await runAgent(prompt, sandbox.workDir);
 
     const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchType === 'solution' ? SOLUTION_PATCH_FILE : ZERO_PASSRATE_PATCH_FILE);
     fs.mkdirSync(path.dirname(destPatch), { recursive: true });
-    capturePatchFromGit(workDir, destPatch);
+    capturePatchFromGit(sandbox.workDir, destPatch);
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    sandbox.cleanup();
   }
 }
 
 async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-task`);
+  const sandbox = setupIsolatedWorkDir(`gd-gen-${baseApp}-task`);
   try {
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
-    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(sandbox.workDir, GUIDE_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(sandbox.workDir, EXPECTATIONS_FILE));
     const sourceBaseAppDir = path.join(baseAppsDir, baseApp);
     if (fs.existsSync(sourceBaseAppDir)) {
-      await fs.promises.cp(sourceBaseAppDir, workDir, { recursive: true });
+      await fs.promises.cp(sourceBaseAppDir, sandbox.workDir, { recursive: true });
     }
 
     const prompt = buildTargetTaskPrompt({
@@ -220,16 +220,16 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       baseApp,
     });
 
-    await runAgent(prompt, workDir);
+    await runAgent(prompt, sandbox.workDir);
 
-    const generatedTask = path.join(workDir, TASK_FILE);
+    const generatedTask = path.join(sandbox.workDir, TASK_FILE);
     if (fs.existsSync(generatedTask)) {
       const destTask = path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE);
       fs.mkdirSync(path.dirname(destTask), { recursive: true });
       fs.copyFileSync(generatedTask, destTask);
     }
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    sandbox.cleanup();
   }
 }
 
