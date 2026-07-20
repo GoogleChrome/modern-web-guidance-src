@@ -1,0 +1,1 @@
+- Can you refactor the coffee cards on the homepage so that their layout adapts based on the width of each individual card rather than the screen width?

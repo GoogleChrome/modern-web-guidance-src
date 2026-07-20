@@ -28,7 +28,7 @@ echo "mock-cli ran with args: $@"
     // Backup original configs
     originalGeminiCli = config.environment.geminiCliBin;
     originalJetskiCli = config.environment.jetskiCliBin;
-    originalGdUseJetski = process.env.GD_USE_JETSKI;
+    originalGdUseJetski = process.env.GD_DEV_USE_JETSKI;
     originalJetskiModel = process.env.JETSKI_MODEL;
 
     // Override config paths to point to the mock CLI
@@ -42,9 +42,9 @@ echo "mock-cli ran with args: $@"
     config.environment.jetskiCliBin = originalJetskiCli;
     
     if (originalGdUseJetski === undefined) {
-      delete process.env.GD_USE_JETSKI;
+      delete process.env.GD_DEV_USE_JETSKI;
     } else {
-      process.env.GD_USE_JETSKI = originalGdUseJetski;
+      process.env.GD_DEV_USE_JETSKI = originalGdUseJetski;
     }
 
     if (originalJetskiModel === undefined) {
@@ -58,14 +58,14 @@ echo "mock-cli ran with args: $@"
   });
 
   test('should invoke Gemini CLI by default with --yolo', async () => {
-    delete process.env.GD_USE_JETSKI;
+    delete process.env.GD_DEV_USE_JETSKI;
     
     const output = await runAgent('hello world', tempDir, { captureOutput: true });
     assert.ok(output.includes('mock-cli ran with args: -p hello world --yolo'));
   });
 
-  test('should invoke Jetski CLI when GD_USE_JETSKI=1', async () => {
-    process.env.GD_USE_JETSKI = '1';
+  test('should invoke Jetski CLI when GD_DEV_USE_JETSKI=1', async () => {
+    process.env.GD_DEV_USE_JETSKI = '1';
     delete process.env.JETSKI_MODEL;
 
     const output = await runAgent('hello world', tempDir, { captureOutput: true });
@@ -73,8 +73,8 @@ echo "mock-cli ran with args: $@"
     assert.ok(!output.includes('--yolo'));
   });
 
-  test('should pass --model to Jetski CLI when GD_USE_JETSKI=1 and JETSKI_MODEL is defined', async () => {
-    process.env.GD_USE_JETSKI = '1';
+  test('should pass --model to Jetski CLI when GD_DEV_USE_JETSKI=1 and JETSKI_MODEL is defined', async () => {
+    process.env.GD_DEV_USE_JETSKI = '1';
     process.env.JETSKI_MODEL = 'gemini-2.0-flash';
 
     const output = await runAgent('hello world', tempDir, { captureOutput: true });

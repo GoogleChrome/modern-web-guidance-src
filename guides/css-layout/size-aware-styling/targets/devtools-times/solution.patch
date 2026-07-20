@@ -1,0 +1,143 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..7ce65d8 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -52,32 +52,109 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++    <div class="teaser-container">
++        <article class="teaser-card group">
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-image-wrapper">
++                <Image 
++                    src={image} 
++                    alt={article.data.title} 
++                    width={400}
++                    height={225}
++                    format="webp"
++                    class="teaser-image object-cover rounded-md aspect-[16/9]"
++                />
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++            <div class="teaser-content">
++                <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col flex-grow">
++                    <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                        {article.data.title}
++                    </h3>
++                    <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                </a>
++                <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100 mt-auto">
++                    <span class="text-sm font-medium flex items-center">
++                        <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                        {article.data.readingTime} Min.
++                    </span>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+-        </div>
+-    </article>
+-)}
+\ No newline at end of file
++        </article>
++    </div>
++)}
++
++<style>
++  .teaser-container {
++    container-type: inline-size;
++    height: 100%;
++  }
++
++  .teaser-card {
++    display: flex;
++    flex-direction: column;
++    height: 100%;
++  }
++
++  .teaser-image-wrapper {
++    width: 100%;
++    display: block;
++  }
++
++  .teaser-image {
++    width: 100%;
++    height: auto;
++  }
++
++  .teaser-content {
++    display: flex;
++    flex-direction: column;
++    flex-grow: 1;
++    margin-top: 0.75rem;
++  }
++
++  /* Fallback Strategy (No Container Queries) */
++  @media (min-width: 500px) and (max-width: 767px) {
++    .teaser-card {
++      flex-direction: row;
++      gap: 1rem;
++    }
++    .teaser-image-wrapper {
++      width: 40%;
++      flex-shrink: 0;
++    }
++    .teaser-content {
++      margin-top: 0;
++    }
++  }
++
++  /* Progressive Enhancement (Container Queries) */
++  @supports (container-type: inline-size) {
++    @media (min-width: 500px) and (max-width: 767px) {
++      .teaser-card {
++        flex-direction: column;
++      }
++      .teaser-image-wrapper {
++        width: 100%;
++      }
++      .teaser-content {
++        margin-top: 0.75rem;
++      }
++    }
++
++    @container (min-width: 400px) {
++      .teaser-card {
++        flex-direction: row;
++        gap: 1rem;
++        align-items: flex-start;
++      }
++      .teaser-image-wrapper {
++        width: 40%;
++        flex-shrink: 0;
++      }
++      .teaser-content {
++        margin-top: 0;
++      }
++    }
++  }
++</style>
+\ No newline at end of file

@@ -21,7 +21,7 @@ if (!patchFile) {
 }
 
 const targetFiles = extractTargetFilesFromPatch(patchFile);
-const absoluteTargetFiles = targetFiles.map(f => path.join(targetDir, f));
+const absoluteTargetFiles = targetFiles.map((f: string) => path.join(targetDir, f));
 
 // Grader tests
 test.describe('<guide-name> Target Grader', () => {

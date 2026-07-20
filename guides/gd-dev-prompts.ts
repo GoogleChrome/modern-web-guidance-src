@@ -125,11 +125,12 @@ You MUST prioritize static analysis over browser execution for structural assert
 - **CSS**: Use regex checks on the contents of all CSS files and HTML style tags in the patch to statically verify CSS styling declarations.
 - **JS/TS**: Use \`ts-morph\` (AST querying) on all JS/TS/Astro files and HTML script tags in the patch to statically verify JavaScript source structure.
 
-## 2. Playwright Browser Checks: Use Only if Absolutely Necessary
-Use browser-based Playwright E2E checks (grouped under the nested \`test.describe('Browser tests', ...)\` block) ONLY if it is absolutely necessary to verify layout computations (like bounding boxes), runtime values (like computed styles), or interactive state changes.
-- **No Redundant Browser Checks**: Do NOT write browser tests for requirements that are already validated statically (e.g., verifying stylesheet definitions or DOM structure).
+## 2. Playwright Browser Checks: Last Resort Only
+Only write browser-based Playwright E2E tests if it is impossible to verify the requirement statically (e.g. verifying runtime user interactivity, client-side event execution, or dynamic UI state changes).
+- **Omit Browser Tests Entirely**: If the expectations can be fully validated statically, you MUST NOT include any Playwright \`test.describe('Browser tests', ...)\` block in the grader file. Keep the tests purely static.
+- **Test Behavior, Not Styling/Layout**: Do NOT use Playwright to assert visual styling properties (like colors, fonts, margins) or exact layout alignments (like bounding box positions). These checks must focus strictly on functional behavior, state transitions, and accessibility. Visual and styling rules must be verified statically in the CSS.
+- **No Redundant Browser Checks**: Do NOT write browser tests for requirements that are already validated statically (e.g. verifying stylesheet definitions or DOM structure).
 - **No Navigation Workarounds**: NEVER perform page-to-page click navigations simply to verify event registration or script execution; verify event listener registration statically instead.
-- **No Generic Smoke Tests**: Do NOT write generic page-load, title, or header smoke tests. The calibration runner expects 100% of the grader tests to fail against the broken implementation. Since a broken feature does not crash the page, a generic smoke test will pass on the broken app and break calibration. Every test in the grader must assert the specific feature's correct implementation so it fails when the feature is broken.
 
 ## 3. Loose Matching for Dynamic Values
 When asserting dynamic values, classes, state names, or types (either in static regex checks or browser tests), avoid strict exact-string equality checks. Use loose matches, inclusion checks, or regex pattern matching to accommodate naming variations that fulfill the requirement.
@@ -180,6 +181,7 @@ Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-leve
 6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "add X", "can you build Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
 7. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
 8. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
+9. **Encourage Existing Code Integration**: If the feature modifies or enhances an existing layout, card, component, or behavior already visible in the base app, the prompt MUST ask the agent to "upgrade", "refactor", or "modify" the existing components/pages rather than building a new isolated component/page from scratch.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
