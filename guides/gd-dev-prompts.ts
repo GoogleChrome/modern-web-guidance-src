@@ -31,15 +31,22 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 
 export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
   return `# GOAL
-Modify the web application codebase in the directory \`${opts.workDir}\` to introduce subtle, realistic violations of the must-fail criteria in \`${opts.expectationsFile}\`.
+Inspect the clean codebase in the directory \`${opts.workDir}\`. Your goal is to ensure the codebase does NOT implement any part of the feature described in \`${opts.guideFile}\` and does NOT satisfy any criteria in \`${opts.expectationsFile}\`.
+
+If the codebase is already clean of this feature (meaning the feature is not present and assertions verifying the feature would naturally fail), do NOT modify any files (leave the workspace unchanged).
+
+If the codebase already contains partial, complete, or conflicting implementations of the feature, disable, unset, revert, or remove those implementations.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
-2. **Verification Requirements**: \`${opts.expectationsFile}\`
+2. **Requirements**: \`${opts.expectationsFile}\`
 
 # RULES
-1. **Realistic Violations Only**: Do NOT use obvious placeholders, syntax errors, or "TODO: implement here" comments. The zero-passrate state must represent a subtle, realistic incomplete or legacy implementation so AI agents cannot trivially guess the required changes without reading \`${opts.guideFile}\`.
-2. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
+1. **No-Op by Default**: If the clean codebase does not have the feature implemented, do NOT modify any files.
+2. **Realistic Baseline**: If you make modifications, make sure they resemble a realistic baseline state of the application where the feature is absent. Do NOT write buggy or obviously broken code, and do NOT add any comments, messages, or placeholders indicating that this is a simulated, test, or baseline state.
+3. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
+4. Ensure your modifications are robust, complete, and type-safe.
+5. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;

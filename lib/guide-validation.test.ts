@@ -174,6 +174,45 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('prioritizes single-page root files (Option A) over target tasks (Option B) if both are present', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-both-test-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    const targetsDir = path.join(guideDir, 'targets', 'daily-grind');
+    const tasksDir = path.join(guideDir, 'tasks');
+    fs.mkdirSync(targetsDir, { recursive: true });
+    fs.mkdirSync(tasksDir, { recursive: true });
+    
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Test Guide\nContent');
+    fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
+    
+    // Write Option B files
+    fs.writeFileSync(path.join(targetsDir, 'solution.patch'), 'patch');
+    fs.writeFileSync(path.join(targetsDir, 'zero-passrate.patch'), 'patch');
+    fs.writeFileSync(path.join(targetsDir, 'grader.ts'), 'grader');
+    fs.writeFileSync(path.join(targetsDir, 'task.md'), '- task');
+    
+    // Write Option A files
+    fs.writeFileSync(path.join(guideDir, 'demo.html'), '<html></html>');
+    fs.writeFileSync(path.join(guideDir, 'negative-demo.html'), '<html></html>');
+    fs.writeFileSync(path.join(guideDir, 'grader.ts'), 'grader');
+    fs.writeFileSync(path.join(tasksDir, 'task.md'), '- root task');
+
+    try {
+      const inv = inventoryGuide(guideDir);
+      // Since tasks/ exists, Option A is prioritized, meaning inv.targets should be undefined
+      assert.strictEqual(inv.targets, undefined);
+      assert.strictEqual(inv.hasDemo, true);
+      assert.strictEqual(inv.hasNegativeDemo, true);
+      assert.strictEqual(inv.hasGrader, true);
+      assert.strictEqual(inv.hasTask, true);
+      
+      const status = classifyGuide(inv);
+      assert.strictEqual(status, 'eval-ready');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('getSupportedBaseApps', () => {

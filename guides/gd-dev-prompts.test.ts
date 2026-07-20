@@ -25,9 +25,9 @@ test('buildZeroPassratePrompt includes anti-pattern constraints', () => {
     expectationsFile: 'expectations.md',
     workDir: '/tmp/test-sandbox',
   });
-  assert.ok(prompt.includes('must-fail criteria'));
-  assert.ok(prompt.includes('subtle, realistic violations'));
-  assert.ok(prompt.includes('Do NOT use obvious placeholders'));
+  assert.ok(prompt.includes('No-Op by Default'));
+  assert.ok(prompt.includes('Realistic Baseline'));
+  assert.ok(prompt.includes('Inspect the clean codebase'));
 });
 
 test('buildTargetGraderPrompt includes Option B scoping rules', () => {

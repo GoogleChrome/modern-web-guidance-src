@@ -65,11 +65,6 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     if (fs.existsSync(solutionPatch)) fs.copyFileSync(solutionPatch, path.join(workDir, SOLUTION_PATCH_FILE));
     if (fs.existsSync(zeroPassratePatch)) fs.copyFileSync(zeroPassratePatch, path.join(workDir, ZERO_PASSRATE_PATCH_FILE));
 
-    // Symlink host guides/node_modules to workDir/node_modules for local typechecking inside the sandbox
-    const hostGuidesNodeModules = path.join(repoRoot, 'guides', 'node_modules');
-    if (fs.existsSync(hostGuidesNodeModules)) {
-      fs.symlinkSync(hostGuidesNodeModules, path.join(workDir, 'node_modules'));
-    }
 
     const parserPatternsPath = path.join(workDir, 'parser-pattern-library.test.ts');
     const playwrightPatternsPath = path.join(workDir, 'playwright-pattern-library.grader.ts');

@@ -57,8 +57,6 @@ function printInventory(inv: GuideInventory): void {
 
   console.log(`\n\ud83d\udccb Guide: ${cBold(inv.name)}`);
   console.log(`   ${GUIDE_FILE.padEnd(18)} ${icon(inv.hasGuide)}`);
-  console.log(`   ${DEMO_FILE.padEnd(18)} ${icon(inv.hasDemo)}`);
-
   if (!inv.hasExpectations) {
     console.log(`   ${EXPECTATIONS_FILE.padEnd(18)} ${icon(false)} ${cDim('missing')}`);
   } else if (inv.expectationsEmpty) {
@@ -67,9 +65,21 @@ function printInventory(inv: GuideInventory): void {
     console.log(`   ${EXPECTATIONS_FILE.padEnd(18)} ${icon(true)}`);
   }
 
-  console.log(`   ${NEGATIVE_DEMO_FILE.padEnd(18)} ${inv.hasNegativeDemo ? icon(true) : icon(false, true) + ' will generate'}`);
-  console.log(`   ${GRADER_FILE.padEnd(18)} ${inv.hasGrader ? icon(true) : icon(false, true) + ' will generate'}`);
-  console.log(`   ${TASK_FILE.padEnd(18)} ${inv.hasTask ? icon(true) : icon(false, true) + ' will generate'}`);
+  if (inv.targets) {
+    console.log(`\n   ${cDim('Targets:')}`);
+    for (const target of inv.targets) {
+      console.log(`     ${cBold(target.name)}`);
+      console.log(`       ${'solution.patch'.padEnd(18)} ${target.hasSolution ? icon(true) : icon(false, true) + ' will generate'}`);
+      console.log(`       ${'zero-passrate.patch'.padEnd(18)} ${target.hasZeroPassrate ? icon(true) : icon(false, true) + ' will generate'}`);
+      console.log(`       ${'grader.ts'.padEnd(18)} ${target.hasGrader ? icon(true) : icon(false, true) + ' will generate'}`);
+      console.log(`       ${'task.md'.padEnd(18)} ${target.hasTask ? icon(true) : icon(false, true) + ' will generate'}`);
+    }
+  } else {
+    console.log(`   ${DEMO_FILE.padEnd(18)} ${icon(inv.hasDemo)}`);
+    console.log(`   ${NEGATIVE_DEMO_FILE.padEnd(18)} ${inv.hasNegativeDemo ? icon(true) : icon(false, true) + ' will generate'}`);
+    console.log(`   ${GRADER_FILE.padEnd(18)} ${inv.hasGrader ? icon(true) : icon(false, true) + ' will generate'}`);
+    console.log(`   ${TASK_FILE.padEnd(18)} ${inv.hasTask ? icon(true) : icon(false, true) + ' will generate'}`);
+  }
 }
 
 export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
@@ -81,17 +91,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 1: Automatic clean-slate excision of legacy root files
-  const legacyFiles = [DEMO_FILE, NEGATIVE_DEMO_FILE, GRADER_FILE, 'tasks'];
-  for (const file of legacyFiles) {
-    const filePath = path.join(targetDir, file);
-    if (fs.existsSync(filePath)) {
-      console.log(cCyan(`Excising legacy single-page artifact: ${file}`));
-      fs.rmSync(filePath, { recursive: true, force: true });
-    }
-  }
 
-  const currentInv = inv || inventoryGuide(targetDir);
+
+  const currentInv = inv || inventoryGuide(targetDir, { useTargetEvals: true });
   printInventory(currentInv);
 
   if (!currentInv.hasGuide) {
@@ -195,6 +197,9 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
     const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchType === 'solution' ? SOLUTION_PATCH_FILE : ZERO_PASSRATE_PATCH_FILE);
     fs.mkdirSync(path.dirname(destPatch), { recursive: true });
     capturePatchFromGit(workDir, destPatch);
+    if (!fs.existsSync(destPatch)) {
+      fs.writeFileSync(destPatch, '');
+    }
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });
   }

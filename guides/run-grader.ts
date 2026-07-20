@@ -123,6 +123,36 @@ export async function runPlaywright(
   return JSON.parse(content);
 }
 
+async function runPlaywrightCalibration(
+  targetHtmlPath: string,
+  graderPath: string,
+  outDir: string,
+  patchFile: string,
+  result: CalibrationResult
+): Promise<any> {
+  process.env.PATCH_FILE = patchFile;
+  const results = await runPlaywright(targetHtmlPath, graderPath, outDir, 'ignore')
+    .catch(err => {
+      result.stage = 'server-boot';
+      result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
+      return null;
+    });
+  delete process.env.PATCH_FILE;
+
+  if (!results) {
+    return null;
+  }
+
+  if (results.errors && results.errors.length > 0) {
+    result.stage = 'calibration';
+    result.errorDetails = `Playwright global/compilation errors:\n` +
+      results.errors.map((e: any) => e.message).join('\n');
+    return null;
+  }
+
+  return results;
+}
+
 export interface PlaywrightSuite {
   title: string;
   specs?: Array<{ title: string; ok: boolean }>;
@@ -168,6 +198,48 @@ export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   }
 }
 
+function collectPlaywrightErrors(resultsJson: any): string {
+  const errors: string[] = [];
+  
+  function traverseSuites(suite: any, prefix = '') {
+    const title = prefix ? `${prefix} > ${suite.title}` : suite.title;
+    if (suite.specs) {
+      for (const spec of suite.specs) {
+        if (!spec.ok && spec.tests) {
+          for (const test of spec.tests) {
+            if (test.results) {
+              for (const res of test.results) {
+                if (res.error?.message) {
+                  errors.push(`Test: ${title} > ${spec.title}\nError: ${res.error.message}\nStack: ${res.error.stack || ''}`);
+                }
+                if (res.errors) {
+                  for (const err of res.errors) {
+                    if (err.message) {
+                      errors.push(`Test: ${title} > ${spec.title}\nError: ${err.message}\nStack: ${err.stack || ''}`);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    if (suite.suites) {
+      for (const child of suite.suites) {
+        traverseSuites(child, title);
+      }
+    }
+  }
+
+  if (resultsJson.suites) {
+    for (const suite of resultsJson.suites) {
+      traverseSuites(suite);
+    }
+  }
+  return errors.join('\n\n');
+}
+
 export interface CalibrationResult {
   success: boolean;
   stage?: 'patch-apply' | 'server-boot' | 'calibration' | 'unknown';
@@ -199,19 +271,9 @@ async function runDemoCalibration(demoPath: string, graderPath: string, demoOutD
   let demoFailed = false;
 
   const solutionPatch = path.join(path.dirname(graderPath), 'solution.patch');
-  process.env.PATCH_FILE = solutionPatch;
-  const demoResults = await runPlaywright(demoPath, graderPath, demoOutDir, 'inherit')
-    .catch(err => {
-      console.error(cRed(`Failed to test demo.html: ${err.message}`));
-      return null;
-    });
-  delete process.env.PATCH_FILE;
+  const demoResults = await runPlaywrightCalibration(demoPath, graderPath, demoOutDir, solutionPatch, result);
 
   if (!demoResults) {
-    demoFailed = true;
-  } else if (demoResults.errors && demoResults.errors.length > 0) {
-    console.error(cRed(`Playwright global/compilation errors in demo.html calibration:\n` + 
-      demoResults.errors.map((e: any) => e.message).join('\n')));
     demoFailed = true;
   } else {
     const unexpected = demoResults.stats?.unexpected || 0;
@@ -240,19 +302,10 @@ async function runNegativeCalibration(negativePath: string, graderPath: string, 
   console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
 
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
-  process.env.PATCH_FILE = zeroPassratePatch;
-  const negativeResults = await runPlaywright(negativePath, graderPath, negativeOutDir, 'ignore')
-    .catch(err => {
-      console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
-      return null;
-    });
-  delete process.env.PATCH_FILE;
+  const negativeResults = await runPlaywrightCalibration(negativePath, graderPath, negativeOutDir, zeroPassratePatch, result);
 
   if (!negativeResults) {
     // Failed to run — result.success stays false
-  } else if (negativeResults.errors && negativeResults.errors.length > 0) {
-    console.error(cRed(`Playwright global/compilation errors in negative-demo.html calibration:\n` + 
-      negativeResults.errors.map((e: any) => e.message).join('\n')));
   } else {
     const passed = negativeResults.stats?.expected || 0;
     const failed = negativeResults.stats?.unexpected || 0;
@@ -320,22 +373,9 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
 
     console.log(cYellow(`\nRunning against ${baseApp} with ${SOLUTION_PATCH_FILE}... (Expecting 100% pass)`));
-    process.env.PATCH_FILE = solutionPatch;
-    const demoResults = await runPlaywright(path.join(goldenSandbox, 'index.html'), graderPath, demoOutDir, 'inherit').catch(err => {
-      result.stage = 'server-boot';
-      result.errorDetails = `Dev server crashed or failed to run against ${SOLUTION_PATCH_FILE}: ${err.message}`;
-      return null;
-    });
-    delete process.env.PATCH_FILE;
+    const demoResults = await runPlaywrightCalibration(path.join(goldenSandbox, 'index.html'), graderPath, demoOutDir, solutionPatch, result);
 
     if (!demoResults) {
-      return result;
-    }
-
-    if (demoResults.errors && demoResults.errors.length > 0) {
-      result.stage = 'calibration';
-      result.errorDetails = `Playwright compilation/global errors:\n` +
-        demoResults.errors.map((e: any) => e.message).join('\n');
       return result;
     }
 
@@ -351,7 +391,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     } else if (unexpected > 0) {
       result.demo.failingTests = demoResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
       result.stage = 'calibration';
-      result.errorDetails = `${SOLUTION_PATCH_FILE} failed ${unexpected} tests`;
+      result.errorDetails = `${SOLUTION_PATCH_FILE} failed ${unexpected} tests:\n\n${collectPlaywrightErrors(demoResults)}`;
       demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
       return result;
     }
@@ -376,22 +416,9 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
 
     console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
-    process.env.PATCH_FILE = zeroPassratePatch;
-    const negativeResults = await runPlaywright(path.join(zeroPassrateSandbox, 'index.html'), graderPath, negativeOutDir, 'ignore').catch(err => {
-      result.stage = 'server-boot';
-      result.errorDetails = `Dev server crashed or failed to run against ${ZERO_PASSRATE_PATCH_FILE}: ${err.message}`;
-      return null;
-    });
-    delete process.env.PATCH_FILE;
+    const negativeResults = await runPlaywrightCalibration(path.join(zeroPassrateSandbox, 'index.html'), graderPath, negativeOutDir, zeroPassratePatch, result);
 
     if (!negativeResults) {
-      return result;
-    }
-
-    if (negativeResults.errors && negativeResults.errors.length > 0) {
-      result.stage = 'calibration';
-      result.errorDetails = `Playwright compilation/global errors:\n` +
-        negativeResults.errors.map((e: any) => e.message).join('\n');
       return result;
     }
 
@@ -407,7 +434,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     } else if (passed > 0) {
       result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
       result.stage = 'calibration';
-      result.errorDetails = `${ZERO_PASSRATE_PATCH_FILE} incorrectly passed ${passed} tests`;
+      result.errorDetails = `${ZERO_PASSRATE_PATCH_FILE} incorrectly passed ${passed} tests:\n\n${collectPlaywrightErrors(negativeResults)}`;
       negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
       return result;
     }

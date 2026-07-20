@@ -64,7 +64,11 @@ harness/node_modules/.bin/codex
 
 ### Jetski CLI
 
-Set your preferred model in your environment:
+To use the Jetski CLI agent, configure the preferred model and toggle it on for the desired workflows:
 ```bash
+# Model selection for Jetski agent runs
 JETSKI_MODEL='Gemini 3.5 Flash'
+
+# Toggle Jetski for the entire 'gd dev' guide development workflow (1 = enable, 0 = Gemini CLI)
+GD_DEV_USE_JETSKI=1
 ```

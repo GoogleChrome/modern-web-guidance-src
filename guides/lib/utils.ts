@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import config from '../../harness/config.ts';
+import { rootDir } from '../../lib/paths.ts';
 import {
   createIsolatedHome,
   copyFileIfExists,
@@ -41,13 +42,14 @@ export async function runAgent(
   workDir?: string,
   options: { captureOutput?: boolean } = {}
 ): Promise<string> {
-  const useJetski = process.env.GD_USE_JETSKI === '1';
+  const useJetski = process.env.GD_DEV_USE_JETSKI === '1';
   const command = useJetski ? config.environment.jetskiCliBin : config.environment.geminiCliBin;
   const commandArgs = ['-p', prompt];
-  
+
   if (useJetski) {
     const model = process.env.JETSKI_MODEL;
     if (model) commandArgs.push('--model', model);
+    commandArgs.push('--dangerously-skip-permissions');
   } else {
     commandArgs.push('--yolo');
   }
@@ -94,6 +96,23 @@ export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string
 
   createTrustedFolders(geminiDest, [tempHome]);
   process.env.HOME = tempHome;
+
+  // Symlink host node_modules to tempHome/node_modules and tempHome/guides/node_modules for local typechecking inside the sandbox
+  const hostNodeModules = path.join(rootDir, 'node_modules');
+  if (fs.existsSync(hostNodeModules)) {
+    fs.symlinkSync(hostNodeModules, path.join(tempHome, 'node_modules'));
+  }
+  const hostGuidesNodeModules = path.join(rootDir, 'guides', 'node_modules');
+  if (fs.existsSync(hostGuidesNodeModules)) {
+    fs.mkdirSync(path.join(tempHome, 'guides'), { recursive: true });
+    fs.symlinkSync(hostGuidesNodeModules, path.join(tempHome, 'guides', 'node_modules'));
+  }
+
+  // Write a dummy package.json at tempHome with type: module so tsc compiles test-fixture.ts as ESM
+  fs.writeFileSync(
+    path.join(tempHome, 'package.json'),
+    JSON.stringify({ type: 'module' }, null, 2)
+  );
   
   return workDir;
 }

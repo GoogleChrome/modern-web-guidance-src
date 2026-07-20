@@ -428,7 +428,8 @@ export function getTaskMap(): Map<string, TaskInfo> {
     const disciplineTasksDir = path.join(disciplineDir, 'tasks');
     if (fs.existsSync(disciplineTargetsDir)) {
       processBaseAppTasks(discipline, disciplineTargetsDir, disciplineDir);
-    } else if (fs.existsSync(disciplineTasksDir)) {
+    }
+    if (fs.existsSync(disciplineTasksDir)) {
       processTasks(discipline, disciplineTasksDir, disciplineDir);
     }
 
@@ -440,7 +441,8 @@ export function getTaskMap(): Map<string, TaskInfo> {
       const tasksDir = path.join(disciplineDir, guideName, 'tasks');
       if (fs.existsSync(targetsDir)) {
         processBaseAppTasks(guideName, targetsDir, path.join(disciplineDir, guideName));
-      } else if (fs.existsSync(tasksDir)) {
+      }
+      if (fs.existsSync(tasksDir)) {
         processTasks(guideName, tasksDir, path.join(disciplineDir, guideName));
       }
     }
@@ -448,7 +450,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
   return taskMap;
 }
 
-export function inventoryGuide(dir: string): GuideInventory {
+export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean }): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
   const isDisciplineSkill = isDisciplineSkillDir(dir);
@@ -480,25 +482,36 @@ export function inventoryGuide(dir: string): GuideInventory {
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
+  const tasksDir = path.join(dir, 'tasks');
+  const hasTasksDir = fs.existsSync(tasksDir) && fs.statSync(tasksDir).isDirectory();
+  const useTargets = !!(options?.useTargetEvals || (hasTargets && !hasTasksDir));
   const targets: TargetInventory[] = [];
 
-  let hasDemo = false;
+  const hasDemo = readFileSafe(path.join(dir, DEMO_FILE)).length > 0;
   let hasNegativeDemo = false;
   let hasGrader = false;
   let hasTask = false;
 
-  if (hasTargets) {
+  if (useTargets) {
     const supportedBaseApps = getSupportedBaseApps();
-    for (const entry of fs.readdirSync(targetsDir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name.startsWith('.') || !supportedBaseApps.includes(entry.name)) continue;
-      const targetDir = path.join(targetsDir, entry.name);
+    const appsToInventory = options?.useTargetEvals
+      ? supportedBaseApps
+      : (fs.existsSync(targetsDir)
+          ? fs.readdirSync(targetsDir, { withFileTypes: true })
+              .filter(e => e.isDirectory() && !e.name.startsWith('.') && supportedBaseApps.includes(e.name))
+              .map(e => e.name)
+          : []);
+
+    for (const baseApp of appsToInventory) {
+      const targetDir = path.join(targetsDir, baseApp);
+      const exists = fs.existsSync(targetDir) && fs.statSync(targetDir).isDirectory();
       const appInv: TargetInventory = {
-        name: entry.name,
+        name: baseApp,
         dir: targetDir,
-        hasSolution: fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILE)),
-        hasZeroPassrate: fs.existsSync(path.join(targetDir, ZERO_PASSRATE_PATCH_FILE)),
-        hasGrader: fs.existsSync(path.join(targetDir, GRADER_FILE)),
-        hasTask: fs.existsSync(path.join(targetDir, TASK_FILE)),
+        hasSolution: exists && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILE)),
+        hasZeroPassrate: exists && fs.existsSync(path.join(targetDir, ZERO_PASSRATE_PATCH_FILE)),
+        hasGrader: exists && fs.existsSync(path.join(targetDir, GRADER_FILE)),
+        hasTask: exists && fs.existsSync(path.join(targetDir, TASK_FILE)),
       };
       targets.push(appInv);
     }
@@ -508,7 +521,6 @@ export function inventoryGuide(dir: string): GuideInventory {
       hasTask = targets.every((a) => a.hasTask);
     }
   } else {
-    hasDemo = readFileSafe(path.join(dir, DEMO_FILE)).length > 0;
     hasNegativeDemo = fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE));
     hasGrader = fs.existsSync(path.join(dir, GRADER_FILE));
     hasTask = fs.existsSync(path.join(dir, 'tasks', TASK_FILE));
@@ -528,7 +540,7 @@ export function inventoryGuide(dir: string): GuideInventory {
     hasTask,
     featureIds,
     isDisciplineSkill,
-    targets,
+    targets: useTargets ? targets : undefined,
   };
 }
 
