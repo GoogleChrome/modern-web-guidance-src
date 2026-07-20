@@ -31,16 +31,16 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 
 export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
   return `# GOAL
-Modify the web application codebase in the directory \`${opts.workDir}\` to ensure it is in a "zero-passrate" state where it fails all expectations (both must-pass and must-fail criteria) in \`${opts.expectationsFile}\`.
+Ensure the web application codebase in the directory \`${opts.workDir}\` is in a "zero-passrate" state where it fails all expectations (both must-pass and must-fail criteria) in \`${opts.expectationsFile}\`.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Verification Requirements**: \`${opts.expectationsFile}\`
 
 # RULES
-1. **Minimal Changes / Empty Patch Preference**: 
-   - First, inspect the codebase. If the base application does NOT yet implement the feature at all, and it already naturally fails the expectations, do NOT write any code or force a botched/half-implemented version of the feature into the codebase. Keep the codebase unchanged (producing an empty patch).
-   - Only make changes if the base application already implements the feature in a way that passes some expectations, in which case you should modify it to introduce subtle, realistic violations of the must-fail criteria (e.g. downgrading it to a legacy/anti-pattern implementation).
+1. **Empty Patch Preference (No Modification if Already Failing)**: 
+   - First, inspect the codebase. If the base application does NOT yet implement the feature at all (making it already naturally fail the expectations), do NOT make any changes. Keep the codebase completely unmodified (yielding an empty patch).
+   - If the codebase already implements the feature in a way that passes some of the expectations, then modify the codebase to introduce subtle, realistic violations of the must-fail criteria (e.g. downgrading it to a legacy/anti-pattern implementation).
 2. **Realistic Violations Only**: If you must modify the codebase, do NOT introduce syntax errors, obvious placeholders, or "TODO" comments. The modifications must represent a realistic legacy or alternative pattern.
 3. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
 
