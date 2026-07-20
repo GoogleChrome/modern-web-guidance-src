@@ -45,7 +45,7 @@ export function getSkillContent(skillName: string): string {
 
     if (skillName === 'project-use-cases') {
       content = content.replace(
-        /## Research and discovery[\s\S]*?## Identifying action-oriented tasks/,
+        /## Identifying action-oriented tasks/,
         `## Research and discovery
 In this automated pipeline, the research has already been conducted by a specialized model and saved to a file (e.g., \`features/<feature-id>/research.md\`). You must read that research report primarily to identify use cases, rather than attempting to run research tools yourself.
 

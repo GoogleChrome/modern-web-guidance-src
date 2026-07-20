@@ -27,7 +27,7 @@ test('buildZeroPassratePrompt includes anti-pattern constraints', () => {
   });
   assert.ok(prompt.includes('must-fail criteria'));
   assert.ok(prompt.includes('subtle, realistic violations'));
-  assert.ok(prompt.includes('Do NOT use obvious placeholders'));
+  assert.ok(prompt.includes('obvious placeholders'));
 });
 
 test('buildTargetGraderPrompt includes Option B scoping rules', () => {

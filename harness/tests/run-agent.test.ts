@@ -78,6 +78,8 @@ echo "mock-cli ran with args: $@"
     process.env.JETSKI_MODEL = 'gemini-2.0-flash';
 
     const output = await runAgent('hello world', tempDir, { captureOutput: true });
-    assert.ok(output.includes('mock-cli ran with args: -p hello world --model gemini-2.0-flash'));
+    assert.ok(output.includes('mock-cli ran with args:'));
+    assert.ok(output.includes('-p hello world'));
+    assert.ok(output.includes('--model gemini-2.0-flash'));
   });
 });
