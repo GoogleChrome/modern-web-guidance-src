@@ -26,6 +26,7 @@
     "**/eval-view/**/*",
     "harness/base_apps/devtools-times/",
     "**/grade-report/**",
-    "guides/template.grader.ts"
+    "guides/template.grader.ts",
+    "guides/**/targets/**"
   ]
 }

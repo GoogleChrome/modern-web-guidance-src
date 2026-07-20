@@ -36,6 +36,11 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
   }
 
   try {
+    const content = fs.readFileSync(patchPath, 'utf8');
+    if (!content.trim()) {
+      return { success: true };
+    }
+
     execSync(`git apply --whitespace=nowarn "${patchPath}"`, { cwd: targetDir, stdio: 'pipe' });
     return { success: true };
   } catch (gitErr: any) {
@@ -67,7 +72,9 @@ export function capturePatchFromGit(
     const diff = execSync(`git diff${relFlag} ${targetPath}`, { cwd: workDir, encoding: 'utf8' });
 
     if (!diff.trim()) {
-      return { success: false, diff: '' };
+      fs.mkdirSync(path.dirname(destPatchPath), { recursive: true });
+      fs.writeFileSync(destPatchPath, '');
+      return { success: true, diff: '' };
     }
 
     fs.mkdirSync(path.dirname(destPatchPath), { recursive: true });
