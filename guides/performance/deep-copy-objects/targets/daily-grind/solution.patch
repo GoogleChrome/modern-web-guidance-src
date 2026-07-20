@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+index 66c9173..389d68e 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,109 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Deep clones an object using structuredClone.
++     * This handles Map, Set, Date, and circular references.
++     */
++    function deepClone(obj) {
++      return structuredClone(obj);
++    }
++
++    /**
++     * Legacy deep clone using JSON.stringify.
++     * This WILL FAIL for Map, Set, Date, and circular references.
++     */
++    function legacyDeepClone(obj) {
++      return JSON.parse(JSON.stringify(obj));
++    }
++
++    // --- Verification Logic ---
++
++    function runVerification() {
++      console.log("Starting Deep Clone Verification...");
++
++      const original = {
++        name: "Artisanal Coffee Box",
++        timestamp: new Date("2026-07-19T10:00:00Z"),
++        labels: new Set(["Organic", "Fair Trade"]),
++        stock: new Map([["Ethiopia", 10], ["Colombia", 15]]),
++        nested: {
++          reviews: 4.8
++        }
++      };
++
++      // Add a circular reference
++      original.circular = original;
++
++      try {
++        console.log("Testing structuredClone implementation...");
++        const clone = deepClone(original);
++
++        // 1. Check Date
++        if (!(clone.timestamp instanceof Date) || clone.timestamp.getTime() !== original.timestamp.getTime()) {
++          console.error("FAIL: Date not cloned correctly");
++        } else {
++          console.log("PASS: Date cloned correctly");
++        }
++
++        // 2. Check Set
++        if (!(clone.labels instanceof Set) || clone.labels.size !== 2 || !clone.labels.has("Organic")) {
++          console.error("FAIL: Set not cloned correctly");
++        } else {
++          console.log("PASS: Set cloned correctly");
++        }
++
++        // 3. Check Map
++        if (!(clone.stock instanceof Map) || clone.stock.get("Ethiopia") !== 10) {
++          console.error("FAIL: Map not cloned correctly");
++        } else {
++          console.log("PASS: Map cloned correctly");
++        }
++
++        // 4. Check Circular Reference
++        if (clone.circular !== clone) {
++          console.error("FAIL: Circular reference not maintained in clone");
++        } else if (clone.circular === original) {
++          console.error("FAIL: Circular reference points to original object");
++        } else {
++          console.log("PASS: Circular reference handled correctly");
++        }
++
++        // 5. Check Independence (Mutation Test)
++        clone.labels.add("Premium");
++        clone.stock.set("Colombia", 20);
++        clone.nested.reviews = 5.0;
++
++        if (original.labels.has("Premium")) {
++          console.error("FAIL: Mutating cloned Set affected original");
++        } else if (original.stock.get("Colombia") === 20) {
++          console.error("FAIL: Mutating cloned Map affected original");
++        } else if (original.nested.reviews === 5.0) {
++          console.error("FAIL: Mutating nested property affected original");
++        } else {
++          console.log("PASS: Independence verified (no shared references)");
++        }
++
++      } catch (err) {
++        console.error("Unexpected error during structuredClone test:", err);
++      }
++
++      // 6. Demonstrate Legacy Failure
++      console.log("Testing legacy JSON implementation (Expected to fail/throw)...");
++      try {
++        legacyDeepClone(original);
++        console.error("FAIL: legacyDeepClone should have thrown on circular reference");
++      } catch (err) {
++        console.log("PASS: legacyDeepClone failed as expected on circular reference:", err.message);
++      }
++    }
++
++    // Run verification on load
++    window.addEventListener('load', runVerification);
++  </script>
++
+ </body>
+ 
++
+ </html>

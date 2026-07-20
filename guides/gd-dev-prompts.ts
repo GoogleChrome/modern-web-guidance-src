@@ -146,6 +146,10 @@ Do not use generic try/catch blocks that aggressively swallow exceptions.
 Do not install any npm packages or execute application dev/build commands (like astro build or vite build) in your workspace. However, you MUST verify that your generated grader code compiles cleanly. Run this command in your workspace to check for TypeScript compilation/syntax errors and fix them before ending your turn:
 \`npx tsc --noEmit --skipLibCheck --target esnext --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --esModuleInterop grader.ts\`
 
+## 9. Modular Utility Resolution in Browser Tests
+If the implementation exposes the target function via exports in a standalone module rather than attaching it to \`window\` directly, your browser tests must dynamically import the modified script files (derived from \`extractTargetFilesFromPatch\`) in the page context (e.g. using \`await import(file)\`) to locate and test the correct exported function.
+NEVER fall back to calling native browser APIs like \`window.structuredClone\` or \`window.fetch\` directly in your browser test code if the target function is missing — if no custom wrapper function or module export is found, the test must fail.
+
 ${definitionsBlock}
 ${patternsBlock}
 # INSTRUCTION

@@ -1,0 +1,1 @@
+- Can you add a utility to create a complete, independent deep copy of an object, including support for native types like Map, Set, and Date, and handling circular references?
