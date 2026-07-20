@@ -44,9 +44,10 @@ export async function runAgent(
 ): Promise<string> {
   const useJetski = process.env.GD_USE_JETSKI === '1';
   const command = useJetski ? config.environment.jetskiCliBin : config.environment.geminiCliBin;
-  const commandArgs = ['-p', prompt];
   
+  const commandArgs = ['-p', prompt];
   if (useJetski) {
+    commandArgs.push('--mode', 'accept-edits', '--dangerously-skip-permissions');
     const model = process.env.JETSKI_MODEL;
     if (model) commandArgs.push('--model', model);
   } else {
