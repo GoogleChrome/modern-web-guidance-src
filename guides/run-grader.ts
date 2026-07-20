@@ -198,45 +198,41 @@ export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   }
 }
 
-function collectPlaywrightErrors(resultsJson: any): string {
+export function collectPlaywrightErrors(resultsJson: any): string {
   const errors: string[] = [];
-  
-  function traverseSuites(suite: any, prefix = '') {
-    const title = prefix ? `${prefix} > ${suite.title}` : suite.title;
-    if (suite.specs) {
-      for (const spec of suite.specs) {
-        if (!spec.ok && spec.tests) {
-          for (const test of spec.tests) {
-            if (test.results) {
-              for (const res of test.results) {
-                if (res.error?.message) {
-                  errors.push(`Test: ${title} > ${spec.title}\nError: ${res.error.message}\nStack: ${res.error.stack || ''}`);
-                }
-                if (res.errors) {
-                  for (const err of res.errors) {
-                    if (err.message) {
-                      errors.push(`Test: ${title} > ${spec.title}\nError: ${err.message}\nStack: ${err.stack || ''}`);
-                    }
-                  }
-                }
-              }
+  const seen = new Set<string>();
+
+  function traverseSuite(suite: any, prefix = '') {
+    const title = prefix ? `${prefix} > ${suite.title}` : suite?.title || '';
+
+    for (const spec of suite?.specs || []) {
+      if (spec.ok) continue;
+
+      for (const test of spec?.tests || []) {
+        for (const res of test?.results || []) {
+          const errorList = res?.errors?.length ? res.errors : (res?.error ? [res.error] : []);
+          for (const err of errorList) {
+            if (!err?.message) continue;
+            const fullTitle = title ? `${title} > ${spec.title}` : spec.title;
+            const errorStr = `Test: ${fullTitle}\nError: ${err.message}\nStack: ${err.stack || ''}`;
+            if (!seen.has(errorStr)) {
+              seen.add(errorStr);
+              errors.push(errorStr);
             }
           }
         }
       }
     }
-    if (suite.suites) {
-      for (const child of suite.suites) {
-        traverseSuites(child, title);
-      }
+
+    for (const child of suite?.suites || []) {
+      traverseSuite(child, title);
     }
   }
 
-  if (resultsJson.suites) {
-    for (const suite of resultsJson.suites) {
-      traverseSuites(suite);
-    }
+  for (const suite of resultsJson?.suites || []) {
+    traverseSuite(suite);
   }
+
   return errors.join('\n\n');
 }
 

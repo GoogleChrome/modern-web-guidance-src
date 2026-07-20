@@ -96,7 +96,7 @@ If you are unfamiliar with the APIs for the static parsers, you can refer to the
 `
     : '';
 
-  // ACTION ITEM FOR FUTURE CSSOMNOM OSPO INTEGRATION:
+  // TODO: Future CSSOMNom OSPO integration
   // When the cssomnom package is published to npm and installed in guides/package.json,
   // update the static check instructions below to mandate importing cssomnom and passing
   // the files from extractTargetFilesFromPatch(...) into cssomnom.parse() for AST verification.

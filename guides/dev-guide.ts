@@ -91,8 +91,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-
-
+  // Step 1: Validate guide inventory
   const currentInv = inv || inventoryGuide(targetDir, { useTargetEvals: true });
   printInventory(currentInv);
 
@@ -163,7 +162,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     if (!success) overallSuccess = false;
   }
 
-  // Optional agent test
+  // Step 4: Run agent evaluation test (runs by default unless --no-test is passed or calibration failed)
   if (options.test !== false && overallSuccess) {
     await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.suiteConfig);
   }

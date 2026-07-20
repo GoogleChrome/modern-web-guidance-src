@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents, Serving } from '../config.ts';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, setupJetskiCliCredentials, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
@@ -21,11 +21,9 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
 
   const appSupportSource = path.join(os.homedir(), 'Library/Application Support/Jetski');
   const appSupportDest = path.join(tempHome, 'Library/Application Support/Jetski');
-  const jetskiSource = path.join(os.homedir(), '.gemini/jetski');
   const jetskiDest = path.join(tempHome, '.gemini/jetski');
 
   fs.mkdirSync(appSupportDest, { recursive: true });
-  fs.mkdirSync(jetskiDest, { recursive: true });
 
   // To bypass trusted folder checks
   createTrustedFolders(path.dirname(jetskiDest), [tempHome]);
@@ -65,17 +63,10 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
   }
 
   // Copy essential .gemini state
-  const geminiFiles = ['installation_id', 'user_settings.pb'];
-  for (const file of geminiFiles) {
-    const src = path.join(jetskiSource, file);
-    if (fs.existsSync(src)) {
-      fs.copyFileSync(src, path.join(jetskiDest, file));
-    }
-  }
+  setupJetskiCliCredentials(tempHome);
 
   // Set environment variables
   process.env.HOME = tempHome;
-  process.env.JETSKI_DIR = jetskiDest;
   process.env.MODERN_WEB_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs

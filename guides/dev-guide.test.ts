@@ -75,3 +75,114 @@ Agent test results:
     }
   });
 });
+
+test('setupIsolatedWorkDir conditionally copies credentials based on GD_DEV_USE_JETSKI', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { setupIsolatedWorkDir } = await import('./lib/utils.ts');
+  const { cleanupIsolatedHome } = await import('../harness/lib/agent-shared.ts');
+
+  const originalHome = process.env.HOME;
+  const originalGdUseJetski = process.env.GD_DEV_USE_JETSKI;
+  const originalJetskiDir = process.env.JETSKI_DIR;
+
+  const mockHome = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-home-'));
+  const mockGemini = path.join(mockHome, '.gemini');
+  const mockJetski = path.join(mockGemini, 'jetski');
+  fs.mkdirSync(mockJetski, { recursive: true });
+
+  fs.writeFileSync(path.join(mockGemini, 'oauth_creds.json'), '{"mock": "gemini"}');
+  fs.writeFileSync(path.join(mockJetski, 'installation_id'), 'mock-jetski-id');
+
+  process.env.HOME = mockHome;
+
+  t.after(() => {
+    process.env.HOME = originalHome;
+    if (originalGdUseJetski === undefined) {
+      delete process.env.GD_DEV_USE_JETSKI;
+    } else {
+      process.env.GD_DEV_USE_JETSKI = originalGdUseJetski;
+    }
+    if (originalJetskiDir === undefined) {
+      delete process.env.JETSKI_DIR;
+    } else {
+      process.env.JETSKI_DIR = originalJetskiDir;
+    }
+    fs.rmSync(mockHome, { recursive: true, force: true });
+  });
+
+  // 1. Without GD_DEV_USE_JETSKI (Gemini CLI mode)
+  delete process.env.GD_DEV_USE_JETSKI;
+  delete process.env.JETSKI_DIR;
+  setupIsolatedWorkDir('test-dev-gemini');
+  const geminiTempHome = process.env.HOME!;
+  
+  assert.ok(fs.existsSync(path.join(geminiTempHome, '.gemini', 'oauth_creds.json')), 'Gemini credentials should be copied');
+  assert.strictEqual(fs.existsSync(path.join(geminiTempHome, '.gemini', 'jetski', 'installation_id')), false, 'Jetski credentials should not be copied');
+  assert.strictEqual(process.env.JETSKI_DIR, undefined, 'JETSKI_DIR should not be set');
+
+  cleanupIsolatedHome(geminiTempHome);
+
+  // Restore HOME to mockHome before second run
+  process.env.HOME = mockHome;
+
+  // 2. With GD_DEV_USE_JETSKI=1 (Jetski CLI mode)
+  process.env.GD_DEV_USE_JETSKI = '1';
+  setupIsolatedWorkDir('test-dev-jetski');
+  const jetskiTempHome = process.env.HOME!;
+
+  assert.strictEqual(fs.existsSync(path.join(jetskiTempHome, '.gemini', 'oauth_creds.json')), false, 'Gemini credentials should not be copied');
+  assert.ok(fs.existsSync(path.join(jetskiTempHome, '.gemini', 'jetski', 'installation_id')), 'Jetski credentials should be copied');
+  assert.strictEqual(process.env.JETSKI_DIR, path.join(jetskiTempHome, '.gemini', 'jetski'), 'JETSKI_DIR should be set');
+
+  cleanupIsolatedHome(jetskiTempHome);
+});
+
+test('collectPlaywrightErrors correctly parses nested suites, deduplicates errors, and ignores passing tests', async () => {
+  const { collectPlaywrightErrors } = await import('./run-grader.ts');
+
+  const mockReport = {
+    suites: [
+      {
+        title: 'Root Suite',
+        suites: [
+          {
+            title: 'Nested Suite',
+            specs: [
+              {
+                title: 'Passing Spec',
+                ok: true,
+                tests: [{ results: [{ status: 'passed' }] }]
+              },
+              {
+                title: 'Failing Spec 1',
+                ok: false,
+                tests: [
+                  {
+                    results: [
+                      {
+                        status: 'failed',
+                        error: { message: 'Expected foo but received bar', stack: 'at line 10' },
+                        errors: [{ message: 'Expected foo but received bar', stack: 'at line 10' }]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  const parsed = collectPlaywrightErrors(mockReport);
+  assert.strictEqual(parsed, 'Test: Root Suite > Nested Suite > Failing Spec 1\nError: Expected foo but received bar\nStack: at line 10');
+
+  // Verify graceful handling of null/empty results
+  assert.strictEqual(collectPlaywrightErrors(null), '');
+  assert.strictEqual(collectPlaywrightErrors({}), '');
+});
+
+

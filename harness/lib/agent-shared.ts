@@ -134,6 +134,58 @@ export function copyFileIfExists(src: string, dest: string): void {
 }
 
 /**
+ * Copies Gemini CLI authentication and identification files from ~/.gemini to the isolated HOME.
+ * @param tempHome Path to the isolated HOME directory
+ * @returns Path to the destination .gemini directory
+ */
+export function setupGeminiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const geminiSource = path.join(originalHome, '.gemini');
+  const geminiDest = path.join(tempHome, '.gemini');
+
+  fs.mkdirSync(geminiDest, { recursive: true });
+
+  const filesToCopy = [
+    'oauth_creds.json',
+    'google_accounts.json',
+    'installation_id',
+    'settings.json',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
+  }
+
+  return geminiDest;
+}
+
+/**
+ * Copies Jetski CLI authentication and configuration files from ~/.gemini/jetski to the isolated HOME,
+ * and sets process.env.JETSKI_DIR.
+ * @param tempHome Path to the isolated HOME directory
+ * @returns Path to the destination .gemini/jetski directory
+ */
+export function setupJetskiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const jetskiSource = path.join(originalHome, '.gemini', 'jetski');
+  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
+
+  fs.mkdirSync(jetskiDest, { recursive: true });
+
+  const filesToCopy = [
+    'installation_id',
+    'user_settings.pb',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
+  }
+
+  process.env.JETSKI_DIR = jetskiDest;
+  return jetskiDest;
+}
+
+/**
  * Safely reads and parses a JSONL file, filtering out empty or malformed lines.
  */
 export function parseJsonlFile<T = any>(filePath: string): T[] {

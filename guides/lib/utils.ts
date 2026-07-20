@@ -5,8 +5,9 @@ import config from '../../harness/config.ts';
 import { rootDir } from '../../lib/paths.ts';
 import {
   createIsolatedHome,
-  copyFileIfExists,
   createTrustedFolders,
+  setupGeminiCliCredentials,
+  setupJetskiCliCredentials,
   spawnAsync,
 } from '../../harness/lib/agent-shared.ts';
 
@@ -76,23 +77,12 @@ export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
-  const originalHome = process.env.HOME || process.cwd();
-  const geminiSource = path.join(originalHome, '.gemini');
   const geminiDest = path.join(tempHome, '.gemini');
-  fs.mkdirSync(geminiDest, { recursive: true });
-
-  for (const file of ['oauth_creds.json', 'google_accounts.json', 'installation_id', 'settings.json']) {
-    copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
+  if (process.env.GD_DEV_USE_JETSKI === '1') {
+    setupJetskiCliCredentials(tempHome);
+  } else {
+    setupGeminiCliCredentials(tempHome);
   }
-
-  // Setup Jetski credentials
-  const jetskiSource = path.join(geminiSource, 'jetski');
-  const jetskiDest = path.join(geminiDest, 'jetski');
-  fs.mkdirSync(jetskiDest, { recursive: true });
-  for (const file of ['installation_id', 'user_settings.pb']) {
-    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
-  }
-  process.env.JETSKI_DIR = jetskiDest;
 
   createTrustedFolders(geminiDest, [tempHome]);
   process.env.HOME = tempHome;

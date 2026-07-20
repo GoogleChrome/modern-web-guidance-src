@@ -1,10 +1,9 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, setupJetskiCliCredentials, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
@@ -17,25 +16,10 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
   const tempHome = createIsolatedHome('ghh-jetski-cli', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
-  const jetskiSource = path.join(os.homedir(), '.gemini', 'jetski');
-  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
-
-  fs.mkdirSync(jetskiDest, { recursive: true });
-
-  // Copy necessary auth and identification files
-  const filesToCopy = [
-    'installation_id',
-    'user_settings.pb'
-  ];
-
-  for (const file of filesToCopy) {
-    const src = path.join(jetskiSource, file);
-    copyFileIfExists(src, path.join(jetskiDest, file));
-  }
+  const jetskiDest = setupJetskiCliCredentials(tempHome);
 
   // Set environment variables
   process.env.HOME = tempHome;
-  process.env.JETSKI_DIR = jetskiDest;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {

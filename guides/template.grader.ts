@@ -68,6 +68,7 @@ test.describe('<guide-name> Target Grader', () => {
   // --- BROWSER ASSERTIONS (E2E) ---
   // Use browser assertions ONLY when you need to compute real CSS styles, evaluate dynamic pages,
   // interact with elements (clicks/input), or verify rendered layout/visibility.
+  // If browser assertions are not needed, this entire `test.describe('Browser tests', ...)` section should be omitted.
   
   test.describe('Browser tests', () => {
     
