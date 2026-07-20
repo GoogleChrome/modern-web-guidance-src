@@ -151,9 +151,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         if (!workspaceBaseAppDir) {
           continue;
         }
-
-        let promptContent = taskInfo.prompt;
-        promptContent += COMMON_APPEND_PROMPT;
+        const taskPrompt = taskInfo.prompt;
         const agentScript = getAgentScript(agent);
 
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
@@ -167,7 +165,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath);
+          generateTransientPackage(targetDir, agentScript, taskPrompt, runType, workspaceBaseAppDir, taskName, guideName, graderPath);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -378,7 +376,7 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
 export function generateTransientPackage(
   targetDir: string,
   agentScript: string,
-  promptContent: string,
+  taskPrompt: string,
   runType: string,
   workspaceBaseAppDir: string,
   taskName: string,
@@ -408,6 +406,12 @@ export function generateTransientPackage(
   } else {
     console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
   }
+
+  let promptContent = taskPrompt;
+  if (runType === 'guided') {
+    promptContent += '\n\nBefore implementing, you MUST search the modern web guidelines database (e.g., using the modern-web-guidance search tool) to check if there are preferred native web APIs or modern standards for this task.';
+  }
+  promptContent += COMMON_APPEND_PROMPT;
 
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
