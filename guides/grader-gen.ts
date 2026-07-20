@@ -100,18 +100,6 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.mkdirSync(path.dirname(destGrader), { recursive: true });
       fs.copyFileSync(generatedGrader, destGrader);
     }
-
-    const generatedSolution = path.join(sandbox.workDir, SOLUTION_PATCH_FILE);
-    if (fs.existsSync(generatedSolution)) {
-      const destSolution = path.join(guideDirAbs, TARGETS_DIR, baseApp, SOLUTION_PATCH_FILE);
-      fs.copyFileSync(generatedSolution, destSolution);
-    }
-
-    const generatedZeroPassrate = path.join(sandbox.workDir, ZERO_PASSRATE_PATCH_FILE);
-    if (fs.existsSync(generatedZeroPassrate)) {
-      const destZeroPassrate = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
-      fs.copyFileSync(generatedZeroPassrate, destZeroPassrate);
-    }
   } finally {
     sandbox.cleanup();
   }
