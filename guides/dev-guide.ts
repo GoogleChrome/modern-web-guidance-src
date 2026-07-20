@@ -387,15 +387,15 @@ export function printTestComparison(
   };
 
   console.log(cBold(`\nAgent test results:`));
-  console.log(fmt('Base app (pre):', results.pre, 18));
-  console.log(fmt('Unguided:', results.unguided, 18));
-  console.log(fmt('Guided:', results.guided, 18));
+  console.log(fmt('Base app (zero-passrate):', results.pre, 25));
+  console.log(fmt('Unguided:', results.unguided, 25));
+  console.log(fmt('Guided:', results.guided, 25));
 
   if (results.guided && results.unguided && results.guided.total > 0 && results.unguided.total > 0) {
     const guidedPct = Math.round(results.guided.passed / results.guided.total * 100);
     const unguidedPct = Math.round(results.unguided.passed / results.unguided.total * 100);
     const impact = guidedPct - unguidedPct;
-    console.log(`  ${'Guide impact:'.padEnd(18)} ${impact >= 0 ? '+' : ''}${impact}% (vs unguided)`);
+    console.log(`  ${'Guide impact:'.padEnd(25)} ${impact >= 0 ? '+' : ''}${impact}% (vs unguided)`);
   }
 
   if (guidesConsumed && guidesConsumed.length > 0) {

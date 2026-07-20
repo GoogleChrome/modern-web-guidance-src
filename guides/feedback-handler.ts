@@ -239,18 +239,22 @@ async function postAllPassRatesToPR(prNumber: string, allPassRates: Record<strin
   console.log('Posting all pass rates to PR:', JSON.stringify(allPassRates, null, 2));
 
   let body = `### 📊 Updated Pass Rates\n\n`;
-  body += `| Use Case | Unguided | Guided | Uplift |\n`;
-  body += `| :--- | :---: | :---: | :---: |\n`;
+  body += `| Use Case | Base App | Unguided | Guided | Uplift | Guides Consumed |\n`;
+  body += `| :--- | :--- | :---: | :---: | :---: | :--- |\n`;
 
-  for (const [guideDir, rates] of Object.entries(allPassRates)) {
-    const unguided = parseInt(rates.unguided, 10);
-    const guided = parseInt(rates.guided, 10);
-    const uplift = guided - unguided;
-    const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
-
+  for (const [guideDir, appRates] of Object.entries(allPassRates)) {
     const label = path.basename(guideDir);
+    for (const [baseApp, rates] of Object.entries(appRates)) {
+      const unguided = parseInt(rates.unguided, 10);
+      const guided = parseInt(rates.guided, 10);
+      const uplift = guided - unguided;
+      const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
+      const consumed = rates.guidesConsumed && rates.guidesConsumed.length > 0
+        ? rates.guidesConsumed.map(g => `\`${g}\``).join(', ')
+        : '—';
 
-    body += `| \`${label}\` | ${rates.unguided}% | ${rates.guided}% | ${upliftStr} |\n`;
+      body += `| \`${label}\` | \`${baseApp}\` | ${rates.unguided}% | ${rates.guided}% | ${upliftStr} | ${consumed} |\n`;
+    }
   }
 
   await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
