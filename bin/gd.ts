@@ -35,6 +35,7 @@ const ALL_OPTIONS = {
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
   category: { type: 'string', desc: 'Guide category' },
   slug: { type: 'string', desc: 'Guide directory name' },
+  agent: { type: 'string', desc: 'Agent harness to use (gemini, jetski)' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
@@ -49,7 +50,7 @@ const COMMAND_METADATA = {
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
-  'gen-guide': { desc: 'Generate guide.md and expectations.md from a web-feature-id', flags: ['category', 'slug'] },
+  'gen-guide': { desc: 'Generate guide.md and expectations.md from a web-feature-id', flags: ['category', 'slug', 'agent'] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -284,6 +285,18 @@ async function main() {
     case 'gen-guide': {
       const featureId = requireArg(positionals[1], 'gd gen-guide <web-feature-id> [<reviewer-github-username>]');
       const reviewer = positionals[2];
+
+      const agent = values.agent;
+      if (agent === 'jetski' || agent === 'jetski-cli') {
+        console.log('Using Jetski agent harness for generation and testing...');
+        process.env.USE_JETSKI = 'true';
+        process.env.GD_DEV_USE_JETSKI = '1';
+      } else if (agent === 'gemini') {
+        console.log('Using Gemini agent harness for generation and testing...');
+        process.env.USE_JETSKI = 'false';
+        process.env.GD_DEV_USE_JETSKI = '0';
+      }
+
       const { generateUseCases } = await import('../guides/guide-gen.ts');
       await generateUseCases(featureId, reviewer);
       break;
