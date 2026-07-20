@@ -31,15 +31,18 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 
 export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
   return `# GOAL
-Modify the web application codebase in the directory \`${opts.workDir}\` to introduce subtle, realistic violations of the must-fail criteria in \`${opts.expectationsFile}\`.
+Modify the web application codebase in the directory \`${opts.workDir}\` to ensure it is in a "zero-passrate" state where it fails all expectations (both must-pass and must-fail criteria) in \`${opts.expectationsFile}\`.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Verification Requirements**: \`${opts.expectationsFile}\`
 
 # RULES
-1. **Realistic Violations Only**: Do NOT use obvious placeholders, syntax errors, or "TODO: implement here" comments. The zero-passrate state must represent a subtle, realistic incomplete or legacy implementation so AI agents cannot trivially guess the required changes without reading \`${opts.guideFile}\`.
-2. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
+1. **Minimal Changes / Empty Patch Preference**: 
+   - First, inspect the codebase. If the base application does NOT yet implement the feature at all, and it already naturally fails the expectations, do NOT write any code or force a botched/half-implemented version of the feature into the codebase. Keep the codebase unchanged (producing an empty patch).
+   - Only make changes if the base application already implements the feature in a way that passes some expectations, in which case you should modify it to introduce subtle, realistic violations of the must-fail criteria (e.g. downgrading it to a legacy/anti-pattern implementation).
+2. **Realistic Violations Only**: If you must modify the codebase, do NOT introduce syntax errors, obvious placeholders, or "TODO" comments. The modifications must represent a realistic legacy or alternative pattern.
+3. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
