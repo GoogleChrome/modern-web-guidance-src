@@ -54,6 +54,13 @@ jobs:
         run: |
           node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}"
 
+      - name: Debug Git Status
+        run: |
+          echo "=== Git Status ==="
+          git status
+          echo "=== Guides Directory ==="
+          find guides -maxdepth 3
+
       - name: Upload Logs
         uses: actions/upload-artifact@v4
         with:
