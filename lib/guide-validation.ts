@@ -276,7 +276,7 @@ export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const TASK_FILE = 'task.md';
 
-export const SUPPORTED_BASE_APPS = ['daily-grind', 'devtools-times'] as const;
+export const SUPPORTED_BASE_APPS = ['daily-grind'] as const;
 export type SupportedBaseApp = (typeof SUPPORTED_BASE_APPS)[number];
 
 export function getSupportedBaseApps(): string[] {

@@ -131,5 +131,9 @@ export async function handleGitAndPR(featureId: string, useCases: UseCase[], rev
     }
   } else {
     console.log('\nSkipping Git commit/push and PR creation (not running in GitHub Actions).');
+    console.log('\nGenerated PR Body Description:');
+    console.log('====================================');
+    console.log(constructPRBody(featureId, useCases, passRates));
+    console.log('====================================');
   }
 }
