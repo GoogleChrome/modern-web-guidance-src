@@ -121,16 +121,14 @@ export function escapeLeftAngleBracket(text: string): string {
   return text.replaceAll('<', '&lt;');
 }
 
-export interface AppPassRates {
+export interface PassRates {
   unguided: string;
   guided: string;
-  guidesConsumed: string[];
+  guidesConsumed?: string[];
 }
 
-export type PassRates = Record<string, AppPassRates>;
-
-export function parsePassRates(output: string): PassRates | null {
-  const rates: PassRates = {};
+export function parsePassRates(output: string): Record<string, PassRates> | null {
+  const rates: Record<string, PassRates> = {};
   const lines = output.split('\n');
   let currentBaseApp = '';
 

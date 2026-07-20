@@ -153,7 +153,7 @@ Use your file editing tools to make the changes.
   }
 }
 
-async function maybeRunGdDev(guideDir: string): Promise<PassRates | null> {
+async function maybeRunGdDev(guideDir: string): Promise<Record<string, PassRates> | null> {
   const modifiedFiles = await runCommand('git', ['diff', '--name-only', guideDir]);
   const modifiedFilesList = modifiedFiles.split('\n').filter(Boolean);
 
@@ -235,7 +235,7 @@ ${escapedReport}
   console.log('✅ Fixes report posted');
 }
 
-async function postAllPassRatesToPR(prNumber: string, allPassRates: Record<string, PassRates>): Promise<void> {
+async function postAllPassRatesToPR(prNumber: string, allPassRates: Record<string, Record<string, PassRates>>): Promise<void> {
   console.log('Posting all pass rates to PR:', JSON.stringify(allPassRates, null, 2));
 
   let body = `### 📊 Updated Pass Rates\n\n`;
@@ -283,7 +283,7 @@ export async function handleFeedback(prNumber: string): Promise<void> {
       await postFixesReportToPR(prNumber, fixesReport);
     }
 
-    const allPassRates: Record<string, PassRates> = {};
+    const allPassRates: Record<string, Record<string, PassRates>> = {};
 
     for (const guideDir of guideDirs) {
       const passRates = await maybeRunGdDev(guideDir);
