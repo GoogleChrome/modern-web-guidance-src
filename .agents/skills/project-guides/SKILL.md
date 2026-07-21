@@ -44,6 +44,7 @@ web-feature-ids:
 ```
 * **web-features**: Must be a list of accurate IDs found via webstatus.dev. Include ALL features referenced in the guide body, not just the primary one. If an ID is missing, inform the USER.
   * **Pending Features (`tmp-` prefix)**: If a feature ID is pending upstream in `@web-platform-dx/web-features` (e.g. an open issue), use `tmp-<candidate-slug>` (e.g. `tmp-streaming-api`) AND register it in `lib/pending-web-features.json` along with its upstream issue link. This connects the guide to its GitHub issue and project board cards while pending, while ensuring centralized approval and no speculative ID sprawl. When the feature ID is officially released upstream in `web-features`, validator checks will automatically fail in CI to prompt updating the frontmatter to the official ID.
+* **draft** (optional): Set `draft: true` (or any truthy value, e.g. `draft: future`) to withhold the guide from all distribution (search index, README, megaskill) without deleting it. Omit for normal publishing.
 
 ### 2. Tone and Formatting
 
