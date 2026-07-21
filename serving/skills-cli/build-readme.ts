@@ -73,7 +73,7 @@ function listToMarkdownTable(items: string[], colCount = 3): string {
 }
 
 export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
-  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide && inv.featureIds.length > 0);
+  const readyGuides = scanAllGuides().filter(inv => inv.isPublished && inv.featureIds.length > 0);
 
   const allFeatureIds = new Set<string>();
   const categoryMap = new Map<string, { id: string; category: string; description: string }[]>();

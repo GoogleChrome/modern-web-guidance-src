@@ -142,6 +142,37 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
   });
 });
 
+describe('guide draft flag (publish control)', () => {
+  // Inventory a guide.md with the given body in a throwaway dir.
+  const inventory = (md: string) => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-draft-'));
+    const guideDir = path.join(tmpDir, 'g');
+    fs.mkdirSync(guideDir, { recursive: true });
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), md);
+    try {
+      return inventoryGuide(guideDir);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  };
+
+  test('published when it has content and no draft flag', () => {
+    const inv = inventory('---\nname: g\n---\n# G\nBody');
+    assert.strictEqual(inv.draft, false);
+    assert.strictEqual(inv.isPublished, true);
+  });
+
+  test('any truthy draft withholds it', () => {
+    assert.strictEqual(inventory('---\ndraft: true\n---\n# G\nBody').isPublished, false);
+    assert.strictEqual(inventory('---\ndraft: future\n---\n# G\nBody').draft, 'future');
+    assert.strictEqual(inventory('---\ndraft: future\n---\n# G\nBody').isPublished, false);
+  });
+
+  test('a stub (frontmatter, no body) is never published', () => {
+    assert.strictEqual(inventory('---\nname: g\n---\n').isPublished, false);
+  });
+});
+
 describe('getSupportedBaseApps', () => {
   test('dynamically discovers base application directories from harness/base_apps', () => {
     const apps = getSupportedBaseApps();
