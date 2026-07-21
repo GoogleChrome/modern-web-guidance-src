@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, inventoryGuide, classifyGuide, getSupportedBaseApps } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, inventoryGuide, classifyGuide, getSupportedBaseApps, isPublished, validateGuide, type GuideInventory } from './guide-validation.ts';
 
 describe('parseExpectations', () => {
   test('legacy flat format: all bullets treated as mustPass', () => {
@@ -136,6 +136,47 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       
       const status = classifyGuide(inv);
       assert.strictEqual(status, 'eval-ready');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('guide status (publish control)', () => {
+  const inv = (over: Partial<GuideInventory>): GuideInventory => ({ hasGuide: true, ...over } as GuideInventory);
+
+  test('isPublished excludes stubs and withheld statuses', () => {
+    assert.strictEqual(isPublished(inv({})), true, 'content, no status');
+    assert.strictEqual(isPublished(inv({ hasGuide: false })), false, 'empty stub');
+    assert.strictEqual(isPublished(inv({ hasGuide: false, status: 'draft' })), false, 'stub + status');
+    for (const status of ['draft', 'retracted', 'future'] as const) {
+      assert.strictEqual(isPublished(inv({ status })), false, status);
+    }
+  });
+
+  test('inventoryGuide reads the frontmatter status', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-status-'));
+    const guideDir = path.join(tmpDir, 'draft-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), '---\nstatus: draft\n---\n# Draft\nBody');
+    try {
+      assert.strictEqual(inventoryGuide(guideDir).status, 'draft');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('validateGuide errors on an unknown status value', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-status-'));
+    const guideDir = path.join(tmpDir, 'bad-status');
+    fs.mkdirSync(guideDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(guideDir, 'guide.md'),
+      '---\nname: bad-status\ndescription: d\nweb-feature-ids:\n  - has\nstatus: draftt\n---\n# X\nBody',
+    );
+    try {
+      const errors = validateGuide(path.join(guideDir, 'guide.md')).errors;
+      assert.ok(errors.some(e => e.includes('Invalid "status" value "draftt"')), errors.join('\n'));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { features, groups } from "web-features";
-import { scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides, isPublished } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 
@@ -73,7 +73,7 @@ function listToMarkdownTable(items: string[], colCount = 3): string {
 }
 
 export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
-  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide && inv.featureIds.length > 0);
+  const readyGuides = scanAllGuides().filter(inv => isPublished(inv) && inv.featureIds.length > 0);
 
   const allFeatureIds = new Set<string>();
   const categoryMap = new Map<string, { id: string; category: string; description: string }[]>();

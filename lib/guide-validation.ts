@@ -36,10 +36,25 @@ export interface GuideInventoryResult {
   incompleteSubdirs: string[];
 }
 
+/**
+ * Frontmatter `status` values that withhold a guide from distribution
+ * (search index, README, megaskill) without deleting it. Absent = published.
+ */
+export const UNPUBLISH_STATUSES = ['draft', 'retracted', 'future'] as const;
+export type GuideLifecycle = (typeof UNPUBLISH_STATUSES)[number];
+
+/**
+ * True when a guide should be published to dist
+ */
+export function isPublished(inv: GuideInventory): boolean {
+  return inv.hasGuide && !(inv.status !== undefined && UNPUBLISH_STATUSES.includes(inv.status));
+}
+
 interface GuideData {
   name?: string;
   description?: string;
   'web-feature-ids'?: string[];
+  status?: GuideLifecycle;
   [key: string]: any;
 }
 
@@ -115,6 +130,10 @@ export function validateGuide(filePath: string): ValidationResult {
     }
   }
 
+  if (data.status !== undefined && !UNPUBLISH_STATUSES.includes(data.status)) {
+    errors.push(`Invalid "status" value "${data.status}" in ${relativePath}. Must be one of: ${UNPUBLISH_STATUSES.join(', ')}.`);
+  }
+
   errors.push(...validateMacros(body, relativePath));
   errors.push(...validateHtmlTags(body, relativePath));
 
@@ -184,7 +203,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
     const isDisciplineGuide = inv.name === inv.category || ['css-layout', 'passkeys'].includes(inv.name);
-    
+
     // Discipline skills don't need demo.html; a frontmatter-only stub
     // (a proposed use case) doesn't need one either
     if (!isDisciplineSkill && !isDisciplineGuide && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
@@ -316,6 +335,7 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
+  status?: GuideLifecycle;
   isDisciplineSkill: boolean;
   targets?: TargetInventory[];
 }
@@ -483,7 +503,9 @@ export function inventoryGuide(dir: string): GuideInventory {
     }
   }
 
-  const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
+  const frontmatter = guideContent ? matter(guideContent).data : {};
+  const featureIds = frontmatter['web-feature-ids'] || [];
+  const status = frontmatter.status as GuideLifecycle | undefined;
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
@@ -534,6 +556,7 @@ export function inventoryGuide(dir: string): GuideInventory {
     hasGrader,
     hasTask,
     featureIds,
+    status,
     isDisciplineSkill,
     targets,
   };
@@ -598,7 +621,7 @@ export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
 
   for (const category of categories) {
     const categoryDir = path.join(scanDir, category);
-    
+
     // If the category directory itself contains a SKILL.md, it's a discipline skill
     if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
       skills.push(inventoryGuide(categoryDir));

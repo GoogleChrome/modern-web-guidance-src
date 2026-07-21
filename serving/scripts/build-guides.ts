@@ -17,7 +17,7 @@ export interface StoreUseCase {
 }
 import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
+import { scanAllGuides, isPublished, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
@@ -157,7 +157,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   // 2. Scan & Hash
   let readyGuides = scanAllGuides().filter(inv => {
     const excluded = config.monoskill.excludeFromBundling || [];
-    return inv.hasGuide && !excluded.includes(inv.category) && !excluded.includes(inv.name);
+    return isPublished(inv) && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
 
