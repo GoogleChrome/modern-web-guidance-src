@@ -1,4 +1,4 @@
-import { features } from 'web-features';
+import { features, groups } from 'web-features';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import type { Browsers, BrowserName } from '@mdn/browser-compat-data';
 
@@ -187,15 +187,28 @@ export function getFeatureName(featureId: string): string {
   return feature.name;
 }
 
+/** A group plus its ancestors, most-specific first (`scroll-markers` → `["scroll-markers", "scrolling"]`). */
+export function getAncestorGroups(group: string): string[] {
+  const chain: string[] = [];
+  // Walk up the parent chain; the seen-check guards cycles.
+  for (let g: string | undefined = group; g && !chain.includes(g); g = (groups as any)[g]?.parent) {
+    chain.push(g);
+  }
+  return chain;
+}
+
 /**
- * Gets the group tags associated with a feature ID.
+ * A feature's group tags, flattened to include ancestors so owning a parent
+ * group covers its subtree (a `scroll-markers` feature also counts as `scrolling`).
+ * TEMP: child-vs-parent precedence unresolved (first-match, not most-specific).
  */
 export function getFeatureGroups(featureId: string): string[] {
   const feature = features[featureId] as any;
-  if (feature && feature.group) {
-    return Array.isArray(feature.group) ? feature.group : [feature.group];
+  if (!feature || !feature.group) {
+    return [];
   }
-  return [];
+  const immediate: string[] = Array.isArray(feature.group) ? feature.group : [feature.group];
+  return [...new Set(immediate.flatMap(getAncestorGroups))];
 }
 
 /**

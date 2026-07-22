@@ -44,10 +44,19 @@
   "scroll-into-view-container": [
     "scrolling"
   ],
+  "scroll-marker-targets": [
+    "scrolling"
+  ],
+  "scroll-markers": [
+    "scrolling"
+  ],
   "scroll-snap": [
     "scrolling"
   ],
   "scroll-snap-events": [
+    "scrolling"
+  ],
+  "scroll-target-group": [
     "scrolling"
   ],
   "scroll-to-text-fragment": [
