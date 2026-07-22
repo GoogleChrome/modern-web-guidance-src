@@ -2,17 +2,9 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
-
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, type GuidedUsage } from '../lib/agent-shared.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
-
-export interface GuidedUsage {
-  retrievedGuides: string[];
-  fileReadGuides: string[];
-}
-
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
