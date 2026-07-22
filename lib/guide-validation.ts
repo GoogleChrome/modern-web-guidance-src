@@ -39,6 +39,7 @@ export const DISCIPLINE_GUIDES = new Set([
   'css-conditionals',
   'css-layout',
   'passkeys',
+  'selector-atrule-combinations',
 ]);
 
 /**
