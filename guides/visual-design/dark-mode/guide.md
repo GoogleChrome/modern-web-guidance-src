@@ -119,60 +119,22 @@ Most browser UI exposes pseudo-elements to fully customize its appearance, such 
 
 You can use `light-dark()` colors on any of these to apply colors that adapt to the used color scheme.
 
+## JS-based theme detection
+
+Most color scheme branching should be done in CSS, which automatically adapts to changes.
+
+Any JS reading `matchMedia("(prefers-color-scheme: dark)").matches` MUST also handle its `change` event as the system preference can change at any time.
+
 ## OPTIONAL: Implementing a color-scheme toggle
 
-**DO NOT** set `color-scheme: light` or `color-scheme: dark` on the root element by default.
-The default color-scheme MUST be the user's system preference, which happens automatically when setting `color-scheme` to `light dark`.
+If you want to allow users to manually override their system default for this site, you can implement a dark mode toggle.
+See {{ GUIDE_REF("dark-mode-toggle") }} for best practices around implementing this.
 
-For website-specific customization, a manual toggle could be provided to allow users to choose between light, dark, or system-default modes.
-
-If a user-facing toggle to override it is desired, it should:
-- Update the `<meta name="color-scheme">` element to reflect the chosen theme (`light dark` for system default, `light` for light, and `dark` for dark).
-- If branching is desired for non-color values, set a class on `<html>` to match the theme preference and use descendant selectors. While `:root:has(> head > meta[name="color-scheme"][content="dark"])` would technically work, it is slower and confers no benefit, since we are already using JS to update the `<meta>` element.
-- Persist user choice in `localStorage`.
-- **IMPORTANT**: The CSS should be written to default to the system preference, with overrides for user-specified color-schemes. That way, if JS fails to execute, the site still defaults to the system color-scheme.
-- The system-level OS theme can change at any time. If you are using JS to read `matchMedia("(prefers-color-scheme: dark)").matches`, you MUST also use `addEventListener("change", fn)` to react to changes. CSS automatically adapts to changes.
-- **IMPORTANT**: To avoid a Flash of Unstyled Content (FOUC) for users who have pinned a different color scheme than their system default, use an inline script (NOT `type=module`, NOT `defer`) to set it when the page loads:
-
-```html
-<meta name="color-scheme" content="light dark">
-<script>
-{
-  const colorScheme = localStorage.getItem("color-scheme");
-  if (colorScheme) {
-    document.querySelector('meta[name="color-scheme"]').content = colorScheme;
-  }
-}
-</script>
-```
-
-### UX considerations
-
-Use a two-state control:
-1. System setting.
-2. The opposite (e.g. light when the system setting is dark, and dark when the system setting is light). Selecting this setting must pin that exact color scheme, not a dynamically computed "opposite of system setting" value. Example scenario:
-    1. The OS is set to light mode.
-    2. The user selects the opposite setting for this website (dark).
-    3. The user changes their system setting to dark.
-    4. The website should remain dark.
-
-**DON'T** expose all three states (system, light, dark). While the rationale is plausible — "Follow system (currently dark)" is a distinct user intent from "Always dark" — it provides suboptimal UX:
-- Users cannot meaningfully express intent for problems they don't currently have. A manual toggle is a temporary comfort adjustment ("it's too bright right now"), not a long-term preference ("make sure this never changes").
-- Two of the three options always produce the same visual result, violating the principle of feedback.
-
-## Component-specific overrides
+## OPTIONAL: Component-specific overrides
 
 You can override the global theme for specific elements by setting `color-scheme` on them.
-This is useful for "dark mode" sections within a light-themed site, such as code blocks or media players.
 
-```css
-pre, code {
-  /* Forces element and its children to use dark themed UI */
-  color-scheme: dark;
-}
-```
-
-For more information about component-specific overrides and their gotchas, see {{ GUIDE_REF("component-specific-light-dark-theme") }}.
+For more information and gotchas, see {{ GUIDE_REF("component-specific-light-dark-theme") }}.
 
 ## Known issues to be aware of
 

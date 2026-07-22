@@ -149,6 +149,9 @@ button:disabled {
 
 This works regardless of reordering, as the first rule does not overmatch.
 
+If you _must_ use an override (e.g. you are using an experimental container query and the `not` case is also the fallback), in some cases you may be able to use the `revert-layer` keyword to remove the value without coupling the override to specific values.
+Note that this can only work if the value to fall back to is also layered.
+
 #### Prefer `@scope` over `:not()` for excluding (potentially deeply nested) subtrees
 
 While `:not()` + descendant selectors can exclude subtrees, this works poorly for deeply nested structures.
