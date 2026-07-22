@@ -1,209 +1,47 @@
 {
-  "aborting": [],
-  "accent-color": [
-    "css"
-  ],
   "active-view-transition": [
-    "selectors",
     "view-transitions"
   ],
-  "anchor-positioning": [],
-  "autofill": [
-    "forms"
+  "animation-composition": [
+    "animation"
   ],
-  "backdrop": [
-    "selectors"
+  "animations-css": [
+    "animation"
   ],
-  "blocking-render": [
-    "html"
-  ],
-  "calc-size": [
-    "css"
-  ],
-  "canvas-html": [
-    "canvas",
-    "html-elements",
-    "webgl",
-    "webgpu"
-  ],
-  "color-scheme": [
-    "css"
-  ],
-  "contain-intrinsic-size": [
-    "containment"
-  ],
-  "container-anchor-position-queries": [],
-  "container-queries": [
-    "container-queries"
-  ],
-  "container-scroll-state-queries": [
-    "container-queries"
-  ],
-  "container-style-queries": [
-    "container-queries"
-  ],
-  "content-visibility": [
-    "css"
-  ],
-  "contrast-color": [
-    "color-types"
+  "column-pseudo": [
+    "scrolling"
   ],
   "cross-document-view-transitions": [
     "view-transitions"
   ],
-  "customizable-select": [
-    "forms",
-    "html-elements"
-  ],
-  "declarative-webmcp": [
-    "webmcp"
-  ],
-  "details": [
-    "html-elements"
-  ],
-  "details-name": [
-    "html-elements"
-  ],
-  "dialog": [
-    "html-elements"
-  ],
-  "dialog-closedby": [
-    "html-elements"
-  ],
-  "document-modelcontext": [
-    "webmcp"
-  ],
-  "enterkeyhint": [],
-  "event-timing": [
-    "performance"
-  ],
-  "fedcm": [
-    "credential-management"
-  ],
-  "fetch": [
-    "fetch"
-  ],
-  "fetch-priority": [
-    "fetch",
-    "resource-hints"
-  ],
-  "fetchlater": [
-    "fetch"
-  ],
-  "field-sizing": [
-    "css"
-  ],
-  "font-size-adjust": [
-    "fonts"
-  ],
-  "function": [
-    "css"
-  ],
-  "has": [
-    "selectors"
-  ],
-  "hidden-until-found": [
-    "html"
-  ],
-  "highlight": [],
-  "image-set": [
-    "css"
-  ],
-  "individual-transforms": [
-    "transforms"
-  ],
-  "inert": [
-    "html"
-  ],
-  "input-email-tel-url": [
-    "forms",
-    "html-elements"
-  ],
-  "inputmode": [],
-  "interest-invokers": [
-    "html"
+  "cubic-bezier-easing": [
+    "animation",
+    "transitions"
   ],
   "interpolate-size": [
     "animation",
     "transitions"
   ],
-  "intersection-observer": [],
-  "intl-duration-format": [
-    "intl"
-  ],
-  "invoker-commands": [],
-  "languagedetector": [],
-  "languagemodel": [],
-  "light-dark": [
-    "css"
-  ],
-  "linear-easing": [
-    "css"
-  ],
-  "link-rel-expect": [],
-  "link-rel-preload": [
-    "resource-hints"
-  ],
-  "long-animation-frames": [
-    "performance"
-  ],
-  "masks": [
-    "clipping-shapes-masking"
-  ],
-  "move-before": [
-    "dom"
-  ],
-  "mutationobserver": [
-    "dom"
-  ],
-  "navigation": [],
-  "not": [
-    "selectors"
-  ],
-  "overflow-clip": [
-    "css"
-  ],
-  "overflow-clip-margin": [
-    "css"
-  ],
-  "overlay": [
-    "css"
+  "overflow-anchor": [
+    "scrolling"
   ],
   "overscroll-behavior": [
     "scrolling"
   ],
-  "page-visibility": [],
-  "page-visibility-state": [
-    "performance"
+  "scroll-behavior": [
+    "scrolling"
   ],
-  "partitioned-cookies": [
-    "cookies"
+  "scroll-buttons": [
+    "scrolling"
   ],
-  "permissions-policy": [],
-  "popover": [
-    "html"
-  ],
-  "popover-hint": [
-    "html"
-  ],
-  "prefers-color-scheme": [
-    "media-queries"
-  ],
-  "prefers-contrast": [
-    "media-queries"
-  ],
-  "prefers-reduced-motion": [
-    "media-queries"
-  ],
-  "registered-custom-properties": [],
-  "resize-observer": [],
-  "scheduler": [],
   "scroll-driven-animations": [
     "animation",
     "scrolling"
   ],
-  "scroll-initial-target": [],
   "scroll-into-view": [
+    "scrolling"
+  ],
+  "scroll-into-view-container": [
     "scrolling"
   ],
   "scroll-snap": [
@@ -212,7 +50,13 @@
   "scroll-snap-events": [
     "scrolling"
   ],
+  "scroll-to-text-fragment": [
+    "scrolling"
+  ],
   "scrollbar-color": [
+    "scrolling"
+  ],
+  "scrollbar-gutter": [
     "scrolling"
   ],
   "scrollbar-width": [
@@ -221,46 +65,21 @@
   "scrollend": [
     "scrolling"
   ],
-  "sibling-count": [
-    "css"
+  "smil-svg-animations": [
+    "animation"
   ],
-  "speculation-rules": [],
-  "starting-style": [
-    "css"
+  "steps-easing": [
+    "animation",
+    "transitions"
   ],
-  "summarizer": [],
-  "svg": [
-    "image-formats",
-    "svg"
-  ],
-  "temporal": [
-    "javascript"
-  ],
-  "text-box": [
-    "text"
-  ],
-  "text-wrap": [
-    "text-wrap"
-  ],
-  "text-wrap-balance": [
-    "text-wrap"
-  ],
-  "text-wrap-pretty": [
-    "text-wrap"
-  ],
-  "top-level-await": [
-    "javascript"
+  "text-decoration-line-blink": [
+    "animation"
   ],
   "transition-behavior": [
     "transitions"
   ],
-  "translator": [],
-  "trig-functions": [
-    "css"
-  ],
-  "ua-client-hints": [],
-  "user-pseudos": [
-    "selectors"
+  "transitions": [
+    "transitions"
   ],
   "view-transition-class": [
     "view-transitions"
@@ -268,10 +87,16 @@
   "view-transitions": [
     "view-transitions"
   ],
+  "view-transitions-element-scoped": [
+    "view-transitions"
+  ],
   "web-animations": [
     "animation"
   ],
   "webauthn": [
+    "webauthn"
+  ],
+  "webauthn-public-key-easy": [
     "webauthn"
   ],
   "webauthn-signals": [

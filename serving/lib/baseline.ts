@@ -199,6 +199,19 @@ export function getFeatureGroups(featureId: string): string[] {
 }
 
 /**
+ * Maps each feature belonging to one of `ownedGroups` to the subset of those
+ * groups it belongs to (sorted). Features in none of the groups are omitted.
+ * @param ownedGroups - The group tags to index features by
+ */
+export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.keys(features).sort()
+      .map(fid => [fid, getFeatureGroups(fid).filter(group => ownedGroups.has(group)).sort()])
+      .filter(([, featureGroups]) => featureGroups.length > 0)
+  ) as Record<string, string[]>;
+}
+
+/**
  * Validates a feature ID.
  */
 export function validateFeature(id: string): FeatureValidationResult {
