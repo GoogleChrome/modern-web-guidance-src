@@ -79,9 +79,10 @@ We cover the past several years of the web platform's new features, all the way 
   </tr>
 </table>
 
-_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/navigation-drawer.md).
+_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/overlays/navigation-drawer.md).
 
-<!-- INJECT_SKILL_COVERAGE -->
+<!-- INJECT_SKILL_COVERAGE_START -->
+<!-- INJECT_SKILL_COVERAGE_END -->
 
 ### Safe Adoption of Modern Features
 
@@ -185,7 +186,8 @@ We developed a robust eval harness to ensure that the content is **empirically p
 
 ### Recent eval results snapshot
 
-<!-- INJECT_EVAL_RESULTS -->
+<!-- INJECT_EVAL_RESULTS_START -->
+<!-- INJECT_EVAL_RESULTS_END -->
 
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs

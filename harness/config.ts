@@ -67,6 +67,7 @@ export const defaultSuiteConfig: SuiteConfig = {
   serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
   workerCount: undefined,
+  includeTrace: false,
 };
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
@@ -121,6 +122,7 @@ export interface SuiteConfig {
   serving: Serving;
   agent: string;
   workerCount?: number;
+  includeTrace?: boolean;
 }
 
 export const config = {

@@ -71,7 +71,7 @@ export function timeAgo(date) {
 
 export function parseResultKey(key) {
     const parts = key.split(' - ');
-    if (parts.length !== 3) return null;
+    if (parts.length < 2 || parts.length > 3) return null;
     let [task, guide, runType] = parts;
 
     const featuresMap = window.__featuresMapping;
@@ -83,10 +83,10 @@ export function parseResultKey(key) {
         if (isTaskValidGuide && !isGuideValid) {
             isFlipped = true;
         } else if (!isGuideValid && !isTaskValidGuide) {
-            isFlipped = guide === 'task' || guide.endsWith('-task');
+            isFlipped = guide === 'task' || (guide && guide.endsWith('-task'));
         }
     } else {
-        isFlipped = guide === 'task' || guide.endsWith('-task');
+        isFlipped = guide === 'task' || (guide && guide.endsWith('-task'));
     }
 
     if (isFlipped) {

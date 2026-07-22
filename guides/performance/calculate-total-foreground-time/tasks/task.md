@@ -1,5 +1,5 @@
 ---
-base_app: analytics-dashboard
+base_app: daily-grind
 ---
 - i want to track how long users are actually looking at the page. can you add a function to calculate the total foreground time?
 - add a metric to my dashboard that shows total time spent in the visible state, excluding background time.
