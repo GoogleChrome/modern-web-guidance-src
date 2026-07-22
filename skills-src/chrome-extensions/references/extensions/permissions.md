@@ -51,44 +51,50 @@ document.getElementById('summarize').addEventListener('click', async () => {
 
 See `references/extensions/side-panel.md` for the side-panel-specific writeup.
 
-## `chrome.permissions.request()` requires a user gesture — call it directly in the click handler
+## `chrome.permissions.request()` needs a user gesture — the gesture survives one `sendMessage` hop, but not an `await` after that
 
-`chrome.permissions.request()` (for optional/dynamic permissions) only works when called
-synchronously within a user gesture (a click, keypress, etc.). If a UI context (side panel,
-popup) sends a message to the service worker and the service worker calls
-`chrome.permissions.request()` in response, Chrome no longer sees a user gesture — the call
-fails silently or rejects, because the gesture context is lost crossing the message-passing
-boundary.
+`chrome.permissions.request()` (for optional/dynamic permissions) only works within a user
+gesture (a click, keypress, etc.). A gesture from a UI context (side panel, popup) **does**
+propagate across `chrome.runtime.sendMessage` to the service worker's `onMessage` listener — but
+it's only good for that one synchronous turn. If the listener `await`s anything (a timer, a
+storage read, another message round-trip) before calling `chrome.permissions.request()`, the
+gesture is gone and the call throws `"This function must be called during a user gesture, such
+as an onclick handler"`.
 
 ```js
-// ❌ BROKEN — side panel forwards the request through the service worker,
-// losing the user-gesture context
 // side-panel.js
 button.addEventListener('click', () => {
-  chrome.runtime.sendMessage({ type: 'REQUEST_PERMISSION' });
+  chrome.runtime.sendMessage({ type: 'REQUEST_PERMISSION' }, (granted) => { ... });
 });
+
 // service-worker.js
-chrome.runtime.onMessage.addListener((msg) => {
+
+// ❌ BROKEN — an await before chrome.permissions.request() burns the gesture window
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'REQUEST_PERMISSION') {
-    chrome.permissions.request({ permissions: ['downloads'] }); // no user-gesture context here
+    (async () => {
+      await chrome.storage.local.get('someSetting'); // gesture is gone after this
+      const granted = await chrome.permissions.request({ permissions: ['downloads'] });
+      sendResponse(granted);
+    })();
+    return true;
   }
 });
 
-// ✅ CORRECT — call chrome.permissions.request() directly inside the click handler
-// side-panel.js
-button.addEventListener('click', async () => {
-  const granted = await chrome.permissions.request({ permissions: ['downloads'] });
-  if (granted) {
-    chrome.runtime.sendMessage({ type: 'PERMISSION_GRANTED' });
+// ✅ CORRECT — call chrome.permissions.request() as the first thing in the listener,
+// nothing awaited before it
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'REQUEST_PERMISSION') {
+    chrome.permissions.request({ permissions: ['downloads'] }).then(sendResponse);
+    return true; // fine to await the *result* — the call itself already happened synchronously
   }
 });
 ```
 
-**Rule of thumb:** any API that requires a user gesture (`chrome.permissions.request`,
-`activeTab`) must be called directly in the event handler of the UI context that received the
-click. Do not route it through the service worker first. If the service worker needs to know
-the outcome, have the UI context call the API itself and then message the result (not the
-request) to the service worker.
+**Rule of thumb:** call `chrome.permissions.request()` (or anything else gated on a user
+gesture, like `activeTab`) as the very first statement of the message listener that receives the
+click-triggered message — before any other `await`. Awaiting the *returned* promise afterward is
+fine; awaiting anything *before* the call is what breaks it.
 
 ## Checking and removing permissions
 

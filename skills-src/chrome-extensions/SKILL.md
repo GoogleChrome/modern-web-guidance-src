@@ -356,12 +356,13 @@ const all     = await chrome.windows.getAll({ populate: true });
 
 **`chrome.windows` methods:** `getAll`, `getLastFocused`, `getCurrent`, `get(windowId)`, `create`, `update`, `remove`. See `references/extensions/tab-management.md`.
 
-#### 20. `chrome.permissions.request()` requires a user gesture — call it directly in the click handler, not via message passing
+#### 20. `chrome.permissions.request()` in the service worker must be called with no `await` before it in the message listener
 
-`chrome.permissions.request()` only works when called synchronously within a user gesture. If a
-UI context (side panel, popup) sends a message to the service worker and the service worker
-calls it in response, the gesture context is lost crossing the message-passing boundary and the
-call fails silently. Call it directly in the click handler of the UI context instead — see
+A user gesture from a UI context (side panel, popup) does propagate across `chrome.runtime.sendMessage`
+to the service worker's `onMessage` listener — but only for that one synchronous turn. If the
+listener does an `await` (even a short delay) before calling `chrome.permissions.request()`, the
+gesture is gone and the call throws `"This function must be called during a user gesture"`. Call
+it as the first thing in the listener, with nothing awaited before it — see
 `references/extensions/permissions.md`.
 
 ### Always Manifest V3
@@ -516,7 +517,7 @@ Verify EVERY item before delivering:
 - [ ] Tab/desktop capture uses state locking to prevent double-start errors
 - [ ] `chrome.desktopCapture.chooseDesktopMedia` passes `targetTab` with `tabs` permission
 - [ ] `chrome.windows` calls use `getAll`/`getLastFocused`/`getCurrent` — NOT `.query()` (it doesn't exist)
-- [ ] `chrome.permissions.request()` is called directly in a UI click handler — never forwarded through the service worker via `sendMessage`
+- [ ] `chrome.permissions.request()` in a service worker `onMessage` listener is called with no `await` before it (gesture is lost after the first async gap)
 - [ ] `chrome.userScripts` availability checked before use (API throws if user hasn't enabled it)
 - [ ] User script configs persisted in `chrome.storage` and restored on `runtime.onInstalled` `"update"` reason
 - [ ] `configureWorld({ messaging: true })` called before user scripts send messages; listening on `onUserScriptMessage` not `onMessage`
