@@ -7,7 +7,7 @@ import { rootDir, guidesDir } from '../../lib/paths.ts';
 
 import { type SuiteConfig } from '../config.ts';
 
-export interface GuidedUsage {
+export interface GuideUsage {
   retrievedGuides: string[];
   fileReadGuides: string[];
 }

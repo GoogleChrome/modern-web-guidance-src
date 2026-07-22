@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, type GuidedUsage } from '../lib/agent-shared.ts';
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, type GuideUsage } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
@@ -252,7 +252,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           const proto = parseProtobuf(Buffer.from(row.step_payload));
           const strings = getProtoStrings(proto);
 
-          // 1. Shell commands (step_type = 21: RUN_COMMAND)
+          // Shell commands (step_type = 21: RUN_COMMAND)
           if (row.step_type === 21) {
             for (const text of strings) {
               if (text.includes('retrieve')) {
@@ -265,7 +265,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
             }
           }
 
-          // 2. File reads (step_type = 8: VIEW_FILE)
+          // File reads (step_type = 8: VIEW_FILE)
           if (row.step_type === 8) {
             for (const filePath of strings) {
               if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
@@ -340,7 +340,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   };
 }
 
-export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuidedUsage> {
+export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
   const summary = readTrajectorySummary(dirPath);
   return {
     retrievedGuides: summary?.retrievedGuides || [],

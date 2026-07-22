@@ -2,13 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { Agents, Serving } from '../config.ts';
-import type { GuidedUsage } from './agent-shared.ts';
+import type { GuideUsage } from './agent-shared.ts';
 import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory } from '../agents/gemini-cli-agent.ts';
 import { collectJetskiCliGuidesFromTrajectory, collectJetskiCliToolsFromTrajectory } from '../agents/jetski-cli-agent.ts';
 import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory } from '../agents/claude-code-agent.ts';
 import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } from '../agents/codex-cli-agent.ts';
 
-export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<GuidedUsage> {
+export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<GuideUsage> {
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
     const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
     if (!fs.existsSync(logPath)) {
