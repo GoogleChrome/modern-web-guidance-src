@@ -99,6 +99,7 @@ async function run() {
     const model = process.env.JETSKI_MODEL;
     const commandArgs = [
       '-p', userPrompt,
+      '--dangerously-skip-permissions',
       ...(model ? ['--model', model] : [])
     ];
 
