@@ -10,7 +10,7 @@ const ATL_CONFIG_PATH = path.join(__dirname, 'atls.json');
 const CODEOWNERS_PATH = path.join(REPO_ROOT, 'CODEOWNERS');
 
 import { scanAllGuides } from '../lib/guide-validation.ts';
-import { getFeatureGroups } from '../serving/lib/baseline.ts';
+import { getFeatureGroups, getOwnedFeatureToGroups } from '../serving/lib/baseline.ts';
 
 interface AtlConfig {
   default: Record<string, string | string[]>;
@@ -140,29 +140,12 @@ export function generateAtlBlock(config: AtlConfig): string {
   return lines.join('\n');
 }
 
-function getExpectedFeatureToGroups(): Record<string, string[]> {
-  const allGuides = scanAllGuides();
-  const featureToGroups: Record<string, string[]> = {};
-  for (const g of allGuides) {
-    if (g.featureIds) {
-      for (const fid of g.featureIds) {
-        featureToGroups[fid] = getFeatureGroups(fid);
-      }
-    }
-  }
-  // Sort keys and values for deterministic JSON output
-  const sorted: Record<string, string[]> = {};
-  for (const key of Object.keys(featureToGroups).sort()) {
-    sorted[key] = featureToGroups[key].sort();
-  }
-  return sorted;
-}
-
 export function updateCodeowners(checkOnly = false): boolean {
   const config = loadAtlConfig();
   const generatedBlock = generateAtlBlock(config);
 
-  const expectedFeatureToGroups = getExpectedFeatureToGroups();
+  const ownedGroups = new Set(Object.keys(config.web_features_groups));
+  const expectedFeatureToGroups = getOwnedFeatureToGroups(ownedGroups);
   const featureToGroupsPath = path.join(__dirname, 'feature-to-groups.generated.json');
   let currentFeatureToGroupsContent = '';
   try {
