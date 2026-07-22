@@ -18,8 +18,8 @@ function getSessionFiles(dir: string, recursive = false): string[] {
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(templateDir: string, runType: string): string {
-  const tempHome = createIsolatedHome('ghh-codex');
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
+  const tempHome = createIsolatedHome('ghh-codex', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   // Copy Codex auth file
@@ -94,7 +94,7 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType);
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -104,10 +104,12 @@ async function run() {
     console.log(`Starting Codex agent in: ${workDir}`);
 
     const command = config.environment.codexCliBin;
+    const model = process.env.CODEX_MODEL;
     const commandArgs = [
       'exec', 
       userPrompt,
-      '--yolo'
+      '--yolo',
+      ...(model ? ['--model', model] : [])
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
@@ -134,7 +136,7 @@ async function run() {
     console.log("Codex agent finished successfully.");
   } catch (err) {
     console.error("Error during Codex execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }

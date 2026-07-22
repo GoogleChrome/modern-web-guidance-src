@@ -22,8 +22,8 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     
     fs.mkdirSync(path.join(mockGuidesDir, 'performance'), { recursive: true });
 
-    fs.mkdirSync(path.join(mockGuidesDir, 'user-experience'), { recursive: true });
-    fs.writeFileSync(path.join(mockGuidesDir, 'user-experience/move-dom-element-without-losing-state.md'), 'content');
+    fs.mkdirSync(path.join(mockGuidesDir, 'ui-behaviors'), { recursive: true });
+    fs.writeFileSync(path.join(mockGuidesDir, 'ui-behaviors/move-dom-element-without-losing-state.md'), 'content');
   });
 
   after(() => {
@@ -42,6 +42,6 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     assert.match(content, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'Should contain explorer feature links');
     assert.match(content, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'Should link use cases to GitHub blob files');
 
-    assert.ok(content.includes('&lt;iframe&gt; loading state'), 'Should escape angle brackets in descriptions');
+    assert.ok(content.includes('`&lt;iframe&gt;` loading state'), 'Should escape angle brackets in descriptions');
   });
 });

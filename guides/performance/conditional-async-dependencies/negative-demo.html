@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Legacy Async Dependencies</title>
+</head>
+<body>
+  <h1>Legacy Async Dependencies</h1>
+
+  <button id="toggle-btn">Toggle Content</button>
+  <div id="content-box">
+    <p>This is standard content.</p>
+  </div>
+
+  <div id="status">Initializing...</div>
+
+  <script type="module">
+    import 'data:text/javascript,await import("data:text/javascript,await new Promise(r=>setTimeout(r,50));");';
+    import 'data:text/javascript,await import("data:text/javascript,await new Promise(r=>setTimeout(r,50));");';
+
+    if (!('popover' in document)) {
+      document.getElementById('status').textContent = 'Loading...';
+      import('data:text/javascript,document.popover=true;').then(() => {
+        document.getElementById('status').textContent = 'Ready';
+      });
+    }
+
+    const btn = document.getElementById('toggle-btn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const box = document.getElementById('content-box');
+        if (box) {
+          if (box.style.display === 'none') {
+            box.style.display = 'block';
+          } else {
+            box.style.display = 'none';
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Standard Page Navigation</title>
+    <style>
+      body {
+        font-family: monospace;
+        max-width: 500px;
+        margin: 50px auto;
+        padding: 0 20px;
+        text-align: center;
+      }
+
+      a {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: #cc0000;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Standard Page Navigation</h1>
+    <p>This is a standard page navigation without modern transitions.</p>
+
+    <a href="?page=0" id="previous">← Go to Page 0</a>
+    <a href="?page=2" id="next">Go to Page 2 →</a>
+  </body>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const page = params.get("page");
+
+    if (page) {
+      document.title = `Page ${page}`;
+      document.querySelector("h1").textContent = `Page ${page}`;
+
+      const nextPage = Number(page) + 1;
+      const next = document.getElementById("next");
+      next.href = `?page=${nextPage}`;
+      next.textContent = `Go to Page ${nextPage} →`;
+
+      const previousPage = Number(page) - 1;
+      const previous = document.getElementById("previous");
+      previous.href = `?page=${previousPage}`;
+      previous.textContent = `← Go to Page ${previousPage}`;
+    }
+  </script>
+</html>

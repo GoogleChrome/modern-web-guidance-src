@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Direction-Aware Transitions</title>
+    <style>
+      body {
+        font-family: monospace;
+        max-width: 500px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
+
+      .slider-window {
+        position: relative;
+        width: 100%;
+        height: 250px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 20px 0;
+      }
+
+      .slide-track {
+        position: absolute;
+        display: flex;
+        width: 500%;
+        height: 100%;
+        left: 0;
+        transition: left 3s linear;
+      }
+
+      .slide {
+        width: 20%;
+        height: 100%;
+        box-sizing: border-box;
+        padding: 40px;
+        text-align: center;
+      }
+
+      .emoji {
+        font-size: 60px;
+        margin: 20px 0;
+      }
+
+      .controls {
+        text-align: center;
+        margin: 20px 0;
+      }
+
+      button {
+        padding: 8px 16px;
+        margin: 0 5px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Direction-Aware Transitions</h1>
+
+    <div class="slider-window">
+      <div class="slide-track" id="track">
+        <div class="slide">
+          <div class="emoji">→</div>
+          <h2>Navigate Forward → Backward</h2>
+          <p>Each direction has its own animation</p>
+        </div>
+        <div class="slide">
+          <div class="emoji">↗</div>
+          <h2>Navigate Forward → Backward</h2>
+          <p>Each direction has its own animation</p>
+        </div>
+        <div class="slide">
+          <div class="emoji">↓</div>
+          <h2>Navigate Forward → Backward</h2>
+          <p>Each direction has its own animation</p>
+        </div>
+        <div class="slide">
+          <div class="emoji">↙</div>
+          <h2>Navigate Forward → Backward</h2>
+          <p>Each direction has its own animation</p>
+        </div>
+        <div class="slide">
+          <div class="emoji">←</div>
+          <h2>Navigate Forward → Backward</h2>
+          <p>Each direction has its own animation</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="prev" onclick="prev()" disabled>← Previous</button>
+      <span id="counter">Slide 1</span>
+      <button id="next" onclick="next()">Next →</button>
+    </div>
+
+    <script>
+      let currentIdx = 0;
+      const totalSlides = 5;
+
+      function next() {
+        if (currentIdx >= totalSlides - 1) return;
+        currentIdx++;
+        updateSlider();
+      }
+
+      function prev() {
+        if (currentIdx <= 0) return;
+        currentIdx--;
+        updateSlider();
+      }
+
+      function updateSlider() {
+        document.getElementById("track").style.left = (-100 * currentIdx) + "%";
+        document.getElementById("counter").textContent = "Slide " + (currentIdx + 1);
+        document.getElementById("prev").disabled = currentIdx === 0;
+        document.getElementById("next").disabled = currentIdx === totalSlides - 1;
+      }
+    </script>
+  </body>
+</html>

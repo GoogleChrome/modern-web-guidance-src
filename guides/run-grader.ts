@@ -108,6 +108,9 @@ export async function runPlaywright(
 
   await once(child, 'close');
 
+  const testResultsDir = path.join(path.dirname(targetFileAbs), 'test-results');
+  await fs.promises.rm(testResultsDir, { recursive: true, force: true }).catch(() => {});
+
   const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
   if (!content) {
     throw new Error(`Playwright did not produce a JSON report at ${tmpJson}`);
