@@ -106,6 +106,34 @@ window.__featuresMapping = {
   "validate-input-after-interaction": [
     "user-pseudos"
   ],
+  "accessible-web-components": [
+    "aria-attribute-reflection",
+    "shadow-dom"
+  ],
+  "custom-elements": [
+    "autonomous-custom-elements"
+  ],
+  "form-associated-custom-elements": [
+    "form-associated-custom-elements"
+  ],
+  "prerendering-custom-elements": [
+    "declarative-shadow-dom"
+  ],
+  "shadow-dom": [
+    "shadow-dom",
+    "slot"
+  ],
+  "styling-web-components": [
+    "shadow-parts",
+    "host-context",
+    "cascade-layers",
+    "container-queries"
+  ],
+  "web-components": [
+    "autonomous-custom-elements",
+    "shadow-dom",
+    "declarative-shadow-dom"
+  ],
   "calculate-event-differentials": [
     "temporal"
   ],
