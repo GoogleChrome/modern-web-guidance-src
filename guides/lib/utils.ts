@@ -6,10 +6,10 @@ import { rootDir } from '../../lib/paths.ts';
 import {
   createIsolatedHome,
   createTrustedFolders,
-  setupGeminiCliCredentials,
-  setupJetskiCliCredentials,
   spawnAsync,
 } from '../../harness/lib/agent-shared.ts';
+import { setupJetskiCliCredentials } from '../../harness/agents/jetski-cli-agent.ts';
+import { setupGeminiCliCredentials } from '../../harness/agents/gemini-cli-agent.ts';
 
 export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
   return new Promise((resolve, reject) => {

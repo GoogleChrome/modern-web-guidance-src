@@ -20,11 +20,11 @@ When a developer asks an AI coding assistant to implement something, the assista
 | `guide.md` | Guidance for implementing the use case | ✅ Yes — this is the only file |
 | `expectations.md` | Verification criteria used to generate target evaluation suites | ❌ No |
 | `targets/<base_app>/solution.patch` | Golden diff against clean base app used to calibrate the grader | ❌ No |
-| `targets/<base_app>/broken.patch` | Negative anti-pattern diff used to verify the grader catches failures | ❌ No |
+| `targets/<base_app>/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
 | `targets/<base_app>/grader.ts` | Playwright test suite run against the eval agent's output | ❌ No |
 | `targets/<base_app>/task.md` | Simulated developer prompts fed to the eval agent by the harness | ❌ No |
 
-**Implication for authoring (`guide.md` & `expectations.md`):** Authors and SMEs strictly author `guide.md` and `expectations.md`. You do not hand-author `solution.patch`, `broken.patch`, `grader.ts`, or `task.md`. Once `guide.md` and `expectations.md` are authored, running `gd dev <guide>` automatically loops across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) inside safe temporary `/tmp/` sandboxes to generate and calibrate the evaluation capsules under `targets/<base_app>/`.
+**Implication for authoring (`guide.md` & `expectations.md`):** Authors and SMEs strictly author `guide.md` and `expectations.md`. You do not hand-author `solution.patch`, `zero-passrate.patch`, `grader.ts`, or `task.md`. Once `guide.md` and `expectations.md` are authored, running `gd dev <guide>` automatically loops across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) inside safe temporary `/tmp/` sandboxes to generate and calibrate the evaluation capsules under `targets/<base_app>/`.
 
 **Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `expectations.md`, any target patch, or any external link to understand how to implement the use case.
 

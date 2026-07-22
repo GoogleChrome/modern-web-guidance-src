@@ -161,7 +161,7 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       inv = inventoryGuide(guideDir);
       assert.strictEqual(classifyGuide(inv), 'needs-calibration');
 
-      // Case 3: solution, broken, and grader exist, but missing task
+      // Case 3: solution, zero-passrate, and grader exist, but missing task
       fs.writeFileSync(path.join(targetsDir, 'grader.ts'), 'console.log("test");');
       inv = inventoryGuide(guideDir);
       assert.strictEqual(classifyGuide(inv), 'needs-test');

@@ -93,7 +93,7 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 6: Generate base-app evaluation capsules**
 
-  Once `guide.md` and `expectations.md` are authored, run `gd dev guides/<category>/<guide>` to automatically generate and calibrate the evaluation capsules across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) under `targets/<base_app>/`.
+  Once `guide.md` and `expectations.md` are authored, run `gd dev guides/<category>/<guide>` to automatically generate and calibrate the evaluation capsules across `SUPPORTED_BASE_APPS` under `targets/<base_app>/`.
 
 * **Step 7: Validate the use case**
 

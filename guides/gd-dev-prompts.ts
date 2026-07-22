@@ -118,36 +118,24 @@ Write a Playwright test script named \`${opts.graderFile}\` that directly valida
 
 # VERIFICATION & SCOPING RULES
 
-## 1. Primary Authority: Static Analysis First
-You MUST prioritize static analysis over browser execution for structural assertions. Keep static assertions as top-level synchronous test blocks.
-- **Dynamic File Targeting**: Statically check all relevant modified files extracted from the patch. Do not assume styles or scripts are inline in HTML; they may be in standalone \`.css\` or \`.js\` files.
-- **HTML/DOM**: Use \`linkedom\` (\`parseHTML\`) to statically verify DOM structures, tags, and attributes.
-- **CSS**: Use regex checks on the contents of all CSS files and HTML style tags in the patch to statically verify CSS styling declarations.
-- **JS/TS**: Use \`ts-morph\` (AST querying) on all JS/TS/Astro files and HTML script tags in the patch to statically verify JavaScript source structure.
+## 1. Strictly Follow the Boilerplate Template
+Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`extractTargetFilesFromPatch\`, \`extractAllCss\`, \`populateJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
-## 2. Playwright Browser Checks: Last Resort Only
-Only write browser-based Playwright E2E tests if it is impossible to verify the requirement statically (e.g. verifying runtime user interactivity, client-side event execution, or dynamic UI state changes).
-- **Omit Browser Tests Entirely**: If the expectations can be fully validated statically, you MUST NOT include any Playwright \`test.describe('Browser tests', ...)\` block in the grader file. Keep the tests purely static.
-- **Test Behavior, Not Styling/Layout**: Do NOT use Playwright to assert visual styling properties (like colors, fonts, margins) or exact layout alignments (like bounding box positions). These checks must focus strictly on functional behavior, state transitions, and accessibility. Visual and styling rules must be verified statically in the CSS.
-- **No Redundant Browser Checks**: Do NOT write browser tests for requirements that are already validated statically (e.g. verifying stylesheet definitions or DOM structure).
-- **No Navigation Workarounds**: NEVER perform page-to-page click navigations simply to verify event registration or script execution; verify event listener registration statically instead.
+## 2. Primary Authority: Static Analysis First
+You MUST prioritize static analysis over browser execution for structural assertions. Keep static assertions as top-level synchronous test blocks using the static parser helpers (\`linkedom\`, \`ts-morph\`, regex) from \`${opts.templateFile}\`.
 
-## 3. Loose Matching for Dynamic Values
-When asserting dynamic values, classes, state names, or types (either in static regex checks or browser tests), avoid strict exact-string equality checks. Use loose matches, inclusion checks, or regex pattern matching to accommodate naming variations that fulfill the requirement.
+## 3. Playwright Browser Checks: Last Resort Only
+Only write browser-based Playwright E2E tests if a requirement cannot be verified statically (such as runtime click events or dynamic state updates). Omit the browser test block entirely if static checks are sufficient, and do not use Playwright to assert visual styling or redundant DOM structures.
 
-## 4. Dynamic File Scoping
-NEVER hardcode target file paths. Use the template's helper \`extractTargetFilesFromPatch\` to dynamically locate the modified files and run static assertions strictly against them.
+## 4. Granular Assertions: Single Assertion per Test
+Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
 
-## 5. Isolated Sandbox Patch Resolution
-Always resolve the paths of patch files relative to the grader module directory using Node's \`import.meta.dirname\`.
+## 5. Precision & Matching Rules
+- **Loose Matching**: Avoid strict exact-string equality checks for dynamic values, classes, state names, or types. Use loose matches, inclusion checks, or regex pattern matching to accommodate naming variations.
+- **Avoid Substring Collisions**: Use word boundaries (e.g., \`/\\breduce\\b/\`) to prevent false positive substring matches.
+- **Error Handling**: Do not use generic try/catch blocks that aggressively swallow exceptions.
 
-## 6. Substring Collisions
-Avoid lazy substring checks (like \`.includes('reduce')\` or \`.includes('color')\`) that match feature names or prefixes instead of actual values. Use precise word boundaries (e.g., \`/\\breduce\\b/\`) to prevent false positives.
-
-## 7. Error Handling
-Do not use generic try/catch blocks that aggressively swallow exceptions.
-
-## 8. Dependencies & Sandbox Constraints
+## 6. Dependencies & Sandbox Constraints
 Do not install any npm packages or execute application dev/build commands (like astro build or vite build) in your workspace. However, you MUST verify that your generated grader code compiles cleanly. Run this command in your workspace to check for TypeScript compilation/syntax errors and fix them before ending your turn:
 \`npx tsc --noEmit --skipLibCheck --target esnext --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --esModuleInterop grader.ts\`
 

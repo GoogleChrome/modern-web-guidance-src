@@ -3,9 +3,35 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, setupJetskiCliCredentials, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, copyFileIfExists } from '../lib/agent-shared.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+
+/**
+ * Copies Jetski CLI authentication and configuration files from ~/.gemini/jetski to the isolated HOME,
+ * and sets process.env.JETSKI_DIR.
+ * @param tempHome Path to the isolated HOME directory
+ * @returns Path to the destination .gemini/jetski directory
+ */
+export function setupJetskiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const jetskiSource = path.join(originalHome, '.gemini', 'jetski');
+  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
+
+  fs.mkdirSync(jetskiDest, { recursive: true });
+
+  const filesToCopy = [
+    'installation_id',
+    'user_settings.pb',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
+  }
+
+  process.env.JETSKI_DIR = jetskiDest;
+  return jetskiDest;
+}
 
 // Usage: node jetski-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
