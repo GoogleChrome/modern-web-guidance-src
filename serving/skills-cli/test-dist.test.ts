@@ -100,7 +100,7 @@ test('README dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
   
   // Verify it contains the new headers and format
-  assert.match(readmeRaw, /#### Full Skill Coverage \(v\d+\.\d+\.\d+\)/, 'README should contain the Skill Coverage header with the version');
+  assert.ok(readmeRaw.includes('#### The full list'), 'README should contain the Skill Coverage header');
   assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
   assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
   assert.ok(readmeRaw.includes('<h3>'), 'README should contain category h3 headings');

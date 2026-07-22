@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Physics-based Easing Demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 2rem;
+      }
+      .box {
+        width: 80px;
+        height: 80px;
+        background: #007bff;
+        border-radius: 8px;
+        transition: width 0.4s ease;
+      }
+      .bounce:hover {
+        width: 120px;
+      }
+      .spring:hover {
+        width: 120px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Physics-based Easing</h1>
+    <p>
+      This demo illustrates how to create a custom bounce or spring animation
+      using the <code>linear()</code> easing function in CSS. Hover a blue box
+      below to trigger the animation.
+    </p>
+    <h2>Spring</h2>
+
+    <div class="box spring"></div>
+
+    <h2>Bounce</h2>
+
+    <div class="bounce box"></div>
+  </body>
+</html>

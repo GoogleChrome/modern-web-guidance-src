@@ -138,6 +138,17 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     target: 'skills-cli',
   });
 
+  // Create a symbolic link for prompt-api pointing to language-model.md
+  const promptApiLink = path.join(DIST_DIR, "guides/built-in-ai/prompt-api.md");
+  const categoryDir = path.dirname(promptApiLink);
+  if (fs.existsSync(categoryDir)) {
+    if (fs.existsSync(promptApiLink)) {
+      fs.unlinkSync(promptApiLink);
+    }
+    fs.symlinkSync("language-model.md", promptApiLink);
+    console.log("Created prompt-api.md symlink pointing to language-model.md in distribution guides");
+  }
+
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
@@ -146,6 +157,8 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   try {
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
     fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
+
+
 
     if (version) {
       updateVersionsInDir(publishRoot, version);
@@ -163,7 +176,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
           return basename === "model.json" || basename.startsWith("group1-shard");
         }
       });
-      console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
     }
 
     try {
@@ -206,7 +218,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         }],
       });
       fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
-      console.log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
 
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
@@ -242,7 +253,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       const modernWebContent = fs.readFileSync(modernWebMjsPath, "utf8");
       const updatedModernWebContent = modernWebContent.replace(/^#!.*node.*--experimental-strip-types.*\n/, "#!/usr/bin/env node\n");
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
-      console.log("Fixed shebang in modern-web.mjs");
 
       generateThirdPartyNotices(
         [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],

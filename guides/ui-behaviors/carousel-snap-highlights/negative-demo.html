@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carousel Snap Highlights</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: #f9f9f9;
+      }
+
+      .carousel {
+        display: flex;
+        gap: 20px;
+        width: 100%;
+        max-width: 600px;
+        overflow-x: scroll;
+        padding: 40px calc(50% - 100px);
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      }
+
+      .carousel-item {
+        flex: 0 0 200px;
+        height: 250px;
+      }
+
+      .card {
+        height: 100%;
+        background: #e0e0e0;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: bold;
+        color: #666;
+        width: 100%;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .card:hover {
+        background: #ffc107;
+        color: #333;
+      }
+
+      .card:active {
+        background: #dc3545;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="carousel">
+      <div class="carousel-item"><button class="card">1</button></div>
+      <div class="carousel-item"><button class="card">2</button></div>
+      <div class="carousel-item"><button class="card">3</button></div>
+      <div class="carousel-item"><button class="card">4</button></div>
+      <div class="carousel-item"><button class="card">5</button></div>
+    </div>
+    <script>
+      const cards = document.querySelectorAll(".card");
+      cards.forEach((card) => {
+        card.addEventListener("click", () => {
+          cards.forEach((c) => (c.style.transform = ""));
+          card.style.transform = "rotate(360deg)";
+        });
+      });
+    </script>
+  </body>
+</html>

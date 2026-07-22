@@ -11,6 +11,7 @@ export interface SearchItem {
 }
 
 export interface SearchResult {
+  query?: string;
   search_items?: SearchItem[];
 }
 
@@ -24,6 +25,7 @@ export const CommandType = {
   INSTALL_CHOOSE: 2,
   UPDATE: 3,
   UNINSTALL: 4,
+  LIST: 5,
 } as const;
 
 export type CommandType = typeof CommandType[keyof typeof CommandType];

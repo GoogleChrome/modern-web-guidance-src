@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSS Custom Highlights – Search Demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.6;
+        color: #222;
+        background: #fafafa;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+        border: 2px solid #ccc;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        box-sizing: border-box;
+      }
+
+      article {
+        background: #fff;
+        padding: 1.25rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Search Highlight Demo</h1>
+
+    <label for="search-input">Search within text</label>
+    <input id="search-input" type="text" placeholder="Type to highlight…" />
+
+    <article id="content">
+      <p>
+        The CSS Custom Highlight API provides a mechanism for styling arbitrary
+        text ranges in a document by using JavaScript to create the ranges and
+        CSS to style them. This avoids the need to modify the DOM structure,
+        which can break event listeners or interfere with accessibility.
+      </p>
+      <p>
+        Common use cases include highlighting search results, marking spelling
+        or grammar errors in text editors, and showing collaborative editing
+        cursors. Because the API works at the rendering level rather than the
+        DOM level, highlights are lightweight and can be updated frequently
+        without triggering layout recalculations.
+      </p>
+      <p>
+        The API introduces three key primitives: Range objects that define
+        character spans, Highlight objects that group ranges together, and the
+        HighlightRegistry that maps names to highlights so CSS can target them
+        with the ::highlight() pseudo-element.
+      </p>
+    </article>
+
+    <script>
+      const searchInput = document.getElementById("search-input");
+      const article = document.getElementById("content");
+      const originalHTML = article.innerHTML;
+
+      searchInput.addEventListener("input", () => {
+        const searchTerm = searchInput.value;
+
+        if (!searchTerm) {
+          article.innerHTML = originalHTML;
+          return;
+        }
+
+        const regex = new RegExp(searchTerm, "gi");
+        article.innerHTML = originalHTML.replace(regex, (match) => {
+          return '<span style="color: inherit; background: transparent; text-decoration: none; border: none; padding: 0; margin: 0; font-size: inherit; font-family: inherit;">' + match + '</span>';
+        });
+      });
+    </script>
+  </body>
+</html>

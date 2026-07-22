@@ -7,9 +7,9 @@ import { execSync } from 'node:child_process';
 test('devtools-times base app builds successfully', () => {
   const appDir = path.resolve(import.meta.dirname, '../base_apps/devtools-times');
   
-  // If node_modules doesn't exist, run pnpm install first to ensure dependencies are present.
-  if (!fs.existsSync(path.join(appDir, 'node_modules'))) {
-    console.log(`node_modules missing in ${appDir}. Running pnpm install...`);
+  // If node_modules doesn't exist or astro is missing (e.g. dangling symlink), run pnpm install first.
+  if (!fs.existsSync(path.join(appDir, 'node_modules')) || !fs.existsSync(path.join(appDir, 'node_modules/astro'))) {
+    console.log(`node_modules or astro missing in ${appDir}. Running pnpm install...`);
     try {
       execSync('pnpm install --ignore-workspace', {
         cwd: appDir,

@@ -28,6 +28,18 @@ are optional but improve listing quality and approval odds.
      Paragraph 3: How to use it (step-by-step)
      Paragraph 4: Privacy/permissions note (builds trust)
      Paragraph 5: Support/feedback info
+
+     WRITE FROM A USER'S PERSPECTIVE — what the extension does FOR them, not HOW it works.
+     Never mention implementation details: APIs used, libraries, frameworks, code patterns.
+
+     ❌ "Uses a MutationObserver and custom elements to track page changes"
+     ✅ "Automatically detects new content as you scroll"
+
+     ❌ "Powered by a service worker for background processing"
+     ✅ "Runs quietly in the background without slowing your browser"
+
+     ❌ "Implements declarativeNetRequest for network filtering"
+     ✅ "Blocks ads and trackers without reading your page content"
 -->
 
 
@@ -112,8 +124,7 @@ are optional but improve listing quality and approval odds.
 
 ## Privacy Policy
 
-**Privacy Policy URL** [REQUIRED if collecting data, RECOMMENDED otherwise]
-
+**Privacy Policy URL** [REQUIRED]
 
 <!-- Host this at a publicly accessible URL. GitHub Pages, your website, or a
      Notion page all work. See references/webstore/privacy-policy.md for a template. -->
@@ -123,10 +134,6 @@ are optional but improve listing quality and approval odds.
 
 **Visibility**: Public / Unlisted / Private
 **Regions**: All regions / [List specific regions]
-**Pricing**: Free / Paid
-
-<!-- Note: Paid extensions require a Google Payments merchant account and physical address. -->
-
 
 ## Developer Info
 

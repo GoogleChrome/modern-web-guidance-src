@@ -30,8 +30,26 @@ function incrementVersion(version: string): string {
 }
 
 const getLatestGitTag = (target = 'HEAD') => {
-  return execSync(`git describe --tags --match "v*.*.*" --abbrev=0 ${target}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const output = execSync(`git tag --merged ${target} -l "v*.*.*" --sort=-v:refname`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  if (!output) {
+    throw new Error(`No tag matching v*.*.* found reachable from ${target}`);
+  }
+  return output.split('\n')[0].trim();
 };
+
+function gitTagExists(version: string, targetRepo = 'origin'): boolean {
+  const localCheck = execSync(`git tag -l "v${version}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  if (localCheck) return true;
+
+  try {
+    const remoteCheck = execSync(`git ls-remote --tags ${targetRepo} "refs/tags/v${version}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (remoteCheck) return true;
+  } catch (err) {
+    console.log(`Warning: Failed to check remote tags on ${targetRepo}:`, err instanceof Error ? err.message : err);
+  }
+
+  return false;
+}
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
@@ -107,7 +125,13 @@ async function validate(newVersion: string) {
 }
 
 async function main() {
-  const newVersion = await getNextVersion();
+  let newVersion = await getNextVersion();
+
+  // Self-healing loop: ensure the version tag doesn't exist locally or on remote origin
+  while (gitTagExists(newVersion)) {
+    console.log(`⚠️ Version v${newVersion} has already been tagged! Bumping version to next patch...`);
+    newVersion = incrementVersion(newVersion);
+  }
 
   const result = await validate(newVersion);
   const publishCliDir = path.join(DIST_DIR, "skills-cli");

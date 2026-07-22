@@ -188,6 +188,17 @@ export function getFeatureName(featureId: string): string {
 }
 
 /**
+ * Gets the group tags associated with a feature ID.
+ */
+export function getFeatureGroups(featureId: string): string[] {
+  const feature = features[featureId] as any;
+  if (feature && feature.group) {
+    return Array.isArray(feature.group) ? feature.group : [feature.group];
+  }
+  return [];
+}
+
+/**
  * Validates a feature ID.
  */
 export function validateFeature(id: string): FeatureValidationResult {

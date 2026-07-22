@@ -1,0 +1,6 @@
+---
+base_app: daily-grind
+---
+- please add a new showcase section below the hero in our coffee app. first, i need a card wrapper with class nested-curve-parent that has custom padding and rounded corners; any inner child elements or footers inside it should be cleanly clipped exactly at the parent's inner content box boundary, matching the concentric inner border curves without manual math. second, add a promos block with class safety-zone-parent that contains a button with a large, glowing box-shadow. i want the promos container to clip its normal overflowing text but allow the button's glowing shadow to bleed outside the container by an extra 15px safety zone so it doesn't get clipped.
+- let's improve our layout's overflow behavior. build a new featured card called nested-curve-parent that automatically handles rounding of child elements at its padding edge, and a separate promo container called safety-zone-parent where a glowing call-to-action button has its shadow render cleanly without being cut off by the container.
+- adjust the clipping boundary to align with the padding edge of nested-curve-parent so we don't have ugly gaps, and please also fix the glowing promo buttons in safety-zone-parent so the container doesn't cut their box-shadows off.

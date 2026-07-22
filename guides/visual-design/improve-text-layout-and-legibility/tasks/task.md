@@ -1,0 +1,6 @@
+---
+base_app: daily-grind
+---
+- can you tweak the typography styles? the h1 and h2 headings need to wrap gracefully and look balanced and symmetrical when they span multiple lines. also, for standard paragraph elements and blockquotes, make sure their text wrapping looks clean and avoids leaving awkward single words or orphans on a new line. make sure to apply these specifically to those elements directly (h1, h2, p, blockquote) rather than globally on body or * so it stays performant.
+- improve the text layout across the site. make the main titles and section headings wrap nicely so they are balanced and even across multiple lines. for the descriptive paragraphs and blockquotes, let's use the browser's smart wrapping to prevent single-word orphans at the end of paragraphs. please avoid applying this globally using a universal selector or body selector to ensure we don't hit performance issues.
+- can you fix the awkward text wrapping on the site? the h1 and h2 headings look messy when they wrap, and paragraphs sometimes end with just a single word on the last line. use specific element selectors for headings, paragraphs, and blockquotes to balance the headers and clean up those paragraph orphans cleanly without using global/body rules.
