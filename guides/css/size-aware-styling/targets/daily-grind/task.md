@@ -1,1 +1,1 @@
-- Can you refactor the coffee cards on the homepage so that their layout adapts based on the width of each individual card rather than the screen width?
+- Modify the existing card components in the application so their layout and styles conditionally adapt based on their own width or height rather than the viewport size.

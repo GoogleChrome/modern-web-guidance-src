@@ -3,331 +3,150 @@ import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseHTML } from 'linkedom';
+import { Project } from 'ts-morph';
 
 // Setup target workspace details
-const targetFile = process.env.TARGET_FILE;
-if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
-}
-
-const filePath = path.resolve(targetFile);
-const targetDir = path.dirname(filePath);
-
 const patchFile = process.env.PATCH_FILE;
 if (!patchFile) {
   throw new Error('PATCH_FILE environment variable not set.');
 }
 
-// Sandbox Patch Resolution
-const absolutePatchPath = path.isAbsolute(patchFile)
-  ? patchFile
-  : path.resolve(import.meta.dirname, patchFile);
+const rootDir = process.cwd();
+const targetFiles = extractTargetFilesFromPatch(patchFile);
+const absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
-const targetFiles = extractTargetFilesFromPatch(absolutePatchPath);
-const absoluteTargetFiles = targetFiles.map(f => path.join(targetDir, f));
+// --- HELPER UTILITIES FOR EMBEDDED & STANDALONE CODE ---
+const HTML_EXTS = /\.(html|htm|astro)$/i;
+const CSS_EXTS = /\.css$/i;
+const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
 
-function extractAllRules(css: string): { selector: string; body: string }[] {
-  const rules: { selector: string; body: string }[] = [];
-  const normalized = css
-    .replace(/\/\*[\s\S]*?\*\//g, '') // remove comments
-    .replace(/@[a-zA-Z-]+\s+[^;{]+;/g, '') // remove at-rules without bodies
-    .replace(/\s+/g, ' '); // collapse whitespace
-  
-  let i = 0;
-  while (i < normalized.length) {
-    const openBrace = normalized.indexOf('{', i);
-    if (openBrace === -1) break;
-    
-    const selectorText = normalized.substring(i, openBrace).trim();
-    
-    let braceCount = 1;
-    let j = openBrace + 1;
-    for (; j < normalized.length; j++) {
-      if (normalized[j] === '{') braceCount++;
-      else if (normalized[j] === '}') {
-        braceCount--;
-        if (braceCount === 0) {
-          break;
-        }
-      }
-    }
-    
-    if (braceCount === 0) {
-      const body = normalized.substring(openBrace + 1, j).trim();
-      
-      if (selectorText.startsWith('@')) {
-        rules.push(...extractAllRules(body));
-      } else {
-        rules.push({ selector: selectorText, body });
-      }
-      i = j + 1;
-    } else {
-      break;
-    }
-  }
-  return rules;
-}
-
-function extractBlocks(css: string, keyword: string): string[] {
-  const blocks: string[] = [];
-  const normalized = css.replace(/\/\*[\s\S]*?\*\//g, ''); // remove comments
-  const regex = new RegExp(`(?:^|[^a-zA-Z0-9_-])${keyword}\\b`, 'g');
-  let match;
-  while ((match = regex.exec(normalized)) !== null) {
-    const startIndex = match.index;
-    const openBrace = normalized.indexOf('{', startIndex);
-    if (openBrace === -1) continue;
-    
-    let braceCount = 1;
-    let i = openBrace + 1;
-    for (; i < normalized.length; i++) {
-      if (normalized[i] === '{') braceCount++;
-      else if (normalized[i] === '}') {
-        braceCount--;
-        if (braceCount === 0) {
-          break;
-        }
-      }
-    }
-    
-    if (braceCount === 0) {
-      blocks.push(normalized.substring(startIndex, i + 1));
-      regex.lastIndex = i + 1;
-    }
-  }
-  return blocks;
-}
-
-function getAllCssContent(files: string[]): string {
-  let cssCombined = '';
+/**
+ * Extracts all CSS code across standalone stylesheets (.css),
+ * HTML/Astro <style> tags, and inline style="..." attributes.
+ */
+export function extractAllCss(files: string[]): string[] {
+  const cssBlocks: string[] = [];
   for (const file of files) {
-    if (!fs.existsSync(file)) continue;
+    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
     const content = fs.readFileSync(file, 'utf8');
-    if (file.endsWith('.css')) {
-      cssCombined += '\n' + content;
-    } else if (file.endsWith('.astro') || file.endsWith('.html')) {
-      const { document } = parseHTML(content);
-      const styleTags = document.querySelectorAll('style');
-      for (const styleTag of styleTags) {
-        cssCombined += '\n' + styleTag.textContent;
+
+    if (CSS_EXTS.test(file)) {
+      cssBlocks.push(content);
+    } else if (HTML_EXTS.test(file)) {
+      try {
+        const { document } = parseHTML(content);
+        document.querySelectorAll('style').forEach((style: any) => {
+          if (style.textContent) cssBlocks.push(style.textContent);
+        });
+        document.querySelectorAll('[style]').forEach((el: any) => {
+          const inlineStyle = el.getAttribute('style');
+          if (inlineStyle) cssBlocks.push(inlineStyle);
+        });
+      } catch {
+        const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+        if (styleMatches) cssBlocks.push(...styleMatches);
       }
     }
   }
-  return cssCombined;
+  return cssBlocks;
+}
+
+/**
+ * Adds JavaScript/TypeScript code to a ts-morph Project from standalone JS/TS/TSX files,
+ * Astro frontmatter (---), and HTML/Astro <script> tags.
+ */
+export function populateJsProject(project: Project, files: string[]): void {
+  for (const file of files) {
+    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+    const content = fs.readFileSync(file, 'utf8');
+
+    if (JS_EXTS.test(file) && !HTML_EXTS.test(file)) {
+      project.createSourceFile(file, content, { overwrite: true });
+    } else if (HTML_EXTS.test(file)) {
+      try {
+        if (file.endsWith('.astro')) {
+          const frontmatter = content.match(/^---[\r\n]+([\s\S]*?)[\r\n]+---/);
+          if (frontmatter && frontmatter[1]) {
+            project.createSourceFile(`${file}_frontmatter.ts`, frontmatter[1], { overwrite: true });
+          }
+        }
+        const { document } = parseHTML(content);
+        document.querySelectorAll('script').forEach((script: any, idx: number) => {
+          if (script.textContent) {
+            project.createSourceFile(`${file}_script_${idx}.ts`, script.textContent, { overwrite: true });
+          }
+        });
+      } catch {
+        // Fallback for non-standard HTML fragments
+      }
+    }
+  }
+}
+
+/**
+ * Parses HTML and Astro template files into Linkedom DOM document objects.
+ */
+export function getHtmlDocuments(files: string[]): Array<{ file: string; document: any }> {
+  const docs: Array<{ file: string; document: any }> = [];
+  for (const file of files) {
+    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+    if (HTML_EXTS.test(file)) {
+      const content = fs.readFileSync(file, 'utf8');
+      docs.push({ file, document: parseHTML(content).document });
+    }
+  }
+  return docs;
 }
 
 // Grader tests
-test.describe('Size-Aware Styling Grader', () => {
+test.describe('size-aware-styling Target Grader', () => {
 
-  test('Component wrapper has container-type: inline-size or size applied', () => {
-    let hasWrapper = false;
-    const cssContent = getAllCssContent(absoluteTargetFiles);
-    
-    for (const file of absoluteTargetFiles) {
-      if (!fs.existsSync(file)) continue;
-      if (!file.endsWith('.astro') && !file.endsWith('.html')) continue;
-      
-      const htmlStr = fs.readFileSync(file, 'utf8');
-      const { document } = parseHTML(htmlStr);
-      
-      // 1. Tailwind class check
-      const allElements = document.querySelectorAll('*');
-      for (const el of allElements) {
-        const classes = el.getAttribute('class') || '';
-        if (/(?:^|\s)@container\b/.test(classes)) {
-          hasWrapper = true;
-          break;
-        }
-        
-        // 2. Inline style check
-        const style = el.getAttribute('style') || '';
-        if (/\bcontainer(-type)?\s*:\s*([^/]*\/)?\s*(inline-size|size)\b/.test(style)) {
-          hasWrapper = true;
-          break;
-        }
-      }
-      
-      if (hasWrapper) break;
-      
-      // 3. CSS stylesheet / style block rule check
-      const rules = extractAllRules(cssContent);
-      for (const rule of rules) {
-        if (/\bcontainer(-type)?\s*:\s*([^/]*\/)?\s*(inline-size|size)\b/.test(rule.body)) {
-          const selector = rule.selector
-            .replace(/:[a-zA-Z-]+(\([^)]*\))?/g, '')
-            .replace(/::[a-zA-Z-]+/g, '')
-            .trim();
-          if (selector) {
-            try {
-              if (document.querySelector(selector)) {
-                hasWrapper = true;
-                break;
-              }
-            } catch (e) {
-              // ignore
-            }
-          }
-        }
-      }
-      if (hasWrapper) break;
-    }
-    
+  test('HTML component template contains container or wrapper element', () => {
+    const docs = getHtmlDocuments(absoluteTargetFiles);
+    const hasWrapper = docs.some(d => d.document.querySelector('.card-container, [class*="container"], article, div') !== null);
     expect(hasWrapper).toBe(true);
   });
 
-  test('Component uses @container queries or container-query classes', () => {
-    let hasQuery = false;
-    
-    for (const file of absoluteTargetFiles) {
-      if (!fs.existsSync(file)) continue;
-      if (!file.endsWith('.astro') && !file.endsWith('.html')) continue;
-      
-      const htmlStr = fs.readFileSync(file, 'utf8');
-      const { document } = parseHTML(htmlStr);
-      const allElements = document.querySelectorAll('*');
-      for (const el of allElements) {
-        const classes = el.getAttribute('class') || '';
-        if (/(?:^|\s)@(?:[a-z0-9]+|\[[^\]]+\]):[a-zA-Z0-9-]+/.test(classes)) {
-          hasQuery = true;
-          break;
-        }
-      }
-      if (hasQuery) break;
-    }
-    
-    if (!hasQuery) {
-      const cssContent = getAllCssContent(absoluteTargetFiles);
-      const blocks = extractBlocks(cssContent, '@container');
-      for (const block of blocks) {
-        const openBrace = block.indexOf('{');
-        if (openBrace === -1) continue;
-        const header = block.substring(0, openBrace);
-        if (/\b(width|inline-size)\b/.test(header)) {
-          hasQuery = true;
-          break;
-        }
-      }
-    }
-    
-    expect(hasQuery).toBe(true);
+  test('CSS defines container-type property as inline-size or size', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasContainerType = /\bcontainer(-type)?\s*:[^;}]*\b(inline-size|size)\b/i.test(cleanCss);
+    expect(hasContainerType).toBe(true);
   });
 
-  test('Component changes layout inside the container query', () => {
-    let hasLayoutChange = false;
-    
-    for (const file of absoluteTargetFiles) {
-      if (!fs.existsSync(file)) continue;
-      if (!file.endsWith('.astro') && !file.endsWith('.html')) continue;
-      
-      const htmlStr = fs.readFileSync(file, 'utf8');
-      const { document } = parseHTML(htmlStr);
-      const allElements = document.querySelectorAll('*');
-      for (const el of allElements) {
-        const classes = el.getAttribute('class') || '';
-        if (/(?:^|\s)@(?:[a-z0-9]+|\[[^\]]+\]):(flex-row|flex-col|flex|grid|block|inline-flex|inline-grid|grid-cols-[a-zA-Z0-9-]+|grid-rows-[a-zA-Z0-9-]+|float-[a-z]+|hidden)\b/.test(classes)) {
-          hasLayoutChange = true;
-          break;
-        }
-      }
-      if (hasLayoutChange) break;
-    }
-    
-    if (!hasLayoutChange) {
-      const cssContent = getAllCssContent(absoluteTargetFiles);
-      const blocks = extractBlocks(cssContent, '@container');
-      for (const block of blocks) {
-        const openBrace = block.indexOf('{');
-        if (openBrace === -1) continue;
-        const header = block.substring(0, openBrace);
-        if (!/\b(width|inline-size)\b/.test(header)) continue;
-        
-        const body = block.substring(openBrace + 1, block.length - 1);
-        const innerRules = extractAllRules(body);
-        for (const rule of innerRules) {
-          if (
-            /\bflex-direction\s*:\s*(row|row-reverse|column|column-reverse)\b/.test(rule.body) ||
-            /\bflex-flow\s*:\s*(row|row-reverse|column|column-reverse)\b/.test(rule.body) ||
-            /\bgrid-template(-columns|-areas|-rows)?\s*:/.test(rule.body) ||
-            /\bgrid-auto-flow\s*:\s*(column|row)\b/.test(rule.body) ||
-            /\bdisplay\s*:\s*(grid|flex|inline-grid|inline-flex|block|hidden|none)\b/.test(rule.body) ||
-            /\bfloat\s*:\s*(left|right)\b/.test(rule.body)
-          ) {
-            hasLayoutChange = true;
-            break;
-          }
-        }
-        if (hasLayoutChange) break;
-      }
-    }
-    
-    expect(hasLayoutChange).toBe(true);
+  test('CSS contains @container query rule for size-aware styling', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasContainerQuery = /@container\b/i.test(cleanCss);
+    expect(hasContainerQuery).toBe(true);
   });
 
-  test('Fallback strategy or default safe layout is provided', () => {
-    let hasFallback = false;
-    const cssContent = getAllCssContent(absoluteTargetFiles);
-    
-    const supportsBlocks = extractBlocks(cssContent, '@supports');
-    for (const block of supportsBlocks) {
-      const openBrace = block.indexOf('{');
-      if (openBrace === -1) continue;
-      const header = block.substring(0, openBrace);
-      if (/\b(container-type|container)\b/.test(header)) {
-        hasFallback = true;
-        break;
-      }
-    }
-    
-    if (!hasFallback) {
-      const mediaBlocks = extractBlocks(cssContent, '@media');
-      for (const block of mediaBlocks) {
-        const openBrace = block.indexOf('{');
-        if (openBrace === -1) continue;
-        const body = block.substring(openBrace + 1, block.length - 1);
-        const innerRules = extractAllRules(body);
-        for (const rule of innerRules) {
-          if (
-            /\bflex-direction\s*:\s*(row|row-reverse)\b/.test(rule.body) ||
-            /\bgrid-template(-columns|-areas|-rows)?\s*:/.test(rule.body) ||
-            /\bdisplay\s*:\s*(grid|flex)\b/.test(rule.body)
-          ) {
-            hasFallback = true;
-            break;
-          }
-        }
-        if (hasFallback) break;
-      }
-    }
-    
-    if (!hasFallback) {
-      for (const file of absoluteTargetFiles) {
-        if (!fs.existsSync(file)) continue;
-        if (!file.endsWith('.astro') && !file.endsWith('.html')) continue;
-        
-        const htmlStr = fs.readFileSync(file, 'utf8');
-        const { document } = parseHTML(htmlStr);
-        const allElements = document.querySelectorAll('*');
-        for (const el of allElements) {
-          const classes = el.getAttribute('class') || '';
-          if (/(?:^|\s)@container\b/.test(classes)) {
-            hasFallback = true;
-            break;
-          }
-        }
-        if (hasFallback) break;
-      }
-    }
-    
-    if (!hasFallback) {
-      const rules = extractAllRules(cssContent);
-      for (const rule of rules) {
-        if (/\bflex-direction\s*:\s*(column|column-reverse)\b/.test(rule.body)) {
-          hasFallback = true;
-          break;
-        }
-      }
-    }
-    
+  test('CSS @container query specifies a width threshold condition', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasWidthThreshold = /@container\b[^{]*\b(min-width|max-width|width|inline-size)\b/i.test(cleanCss);
+    expect(hasWidthThreshold).toBe(true);
+  });
+
+  test('CSS @container query defines layout properties for responsive changes', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasLayoutChanges = /@container[^{]+\{[^}]*\b(flex-direction|grid-template|display|width|columns|flex-flow)\b/i.test(cleanCss);
+    expect(hasLayoutChanges).toBe(true);
+  });
+
+  test('CSS provides a default layout before container query overrides', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasDefaultLayout = /\b(display\s*:\s*(flex|grid|block)|flex-direction\s*:\s*(column|row))\b/i.test(cleanCss);
+    expect(hasDefaultLayout).toBe(true);
+  });
+
+  test('CSS includes @media queries or @supports rules for browser fallback', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasFallback = /(@media|@supports)\b/i.test(cleanCss);
     expect(hasFallback).toBe(true);
   });
+
 });

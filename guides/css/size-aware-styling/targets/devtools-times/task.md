@@ -1,1 +1,1 @@
-- Can you modify the article card component so that its styling and layout automatically adapt based on the width of the card itself rather than using viewport-based rules or props?
+- Refactor the existing article card components so that their layout and styling adapt dynamically based on their own width rather than the width of the viewport.

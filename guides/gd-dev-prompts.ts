@@ -67,6 +67,9 @@ export interface GraderPromptOptions {
   failureContext?: string;
 }
 
+// TODO: Future CSSOMNom OSPO integration
+// When the cssomnom package is published to npm and installed in guides/package.json,
+// update Rule 2 (Assertion Hierarchy) in buildTargetGraderPrompt and the CSS test example in template.grader.ts to use CSSOMNom AST verification instead of regex.
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
   const contextBlock = opts.failureContext
     ? `### ⚠️ PREVIOUS FAILURE CONTEXT
@@ -80,28 +83,6 @@ Analyze this failure and modify the existing grader file to fix these assertions
 `
     : '';
 
-  const patternsBlock = (opts.parserPatternLibraryPath && opts.playwrightPatternLibraryPath)
-    ? `### 📚 BEST PRACTICE EXAMPLES
-Use your file-viewing tools to read these reference files for examples of how to write various static and browser assertions:
-- **Static Analysis Patterns (Linkedom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
-- **Browser Analysis Patterns (Playwright)**: [playwright-pattern-library.grader.ts](file://${opts.playwrightPatternLibraryPath})
-`
-    : '';
-
-  const definitionsBlock = (opts.tsMorphDtsPath && opts.linkedomDtsPath)
-    ? `### 📝 PARSER API DEFINITIONS
-If you are unfamiliar with the APIs for the static parsers, you can refer to their TypeScript definitions at these paths:
-- **TS Morph Type Definitions**: [ts-morph.d.ts](file://${opts.tsMorphDtsPath})
-- **Linkedom Type Definitions**: [index.d.ts](file://${opts.linkedomDtsPath})
-`
-    : '';
-
-  // TODO: Future CSSOMNom OSPO integration
-  // When the cssomnom package is published to npm and installed in guides/package.json,
-  // update the static check instructions below to mandate importing cssomnom and passing
-  // the files from extractTargetFilesFromPatch(...) into cssomnom.parse() for AST verification.
-  // Also update Rule 1's CSS check description to use CSSOMNom and remove Rule 4 (precise regex word matching)
-  // once string/regex-based checks are no longer needed.
   const patchInstruction = opts.failureContext
     ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because the golden solution patch (\`${opts.solutionPatchFile}\`) or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
     : '';
@@ -114,33 +95,34 @@ Write a Playwright test script named \`${opts.graderFile}\` that directly valida
 2. **Requirements**: \`${opts.expectationsFile}\`
 3. **Golden Solution Diff**: \`${opts.solutionPatchFile}\` (must pass 100% of tests)
 4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of negative/must-fail tests)
-5. **Boilerplate Template**: \`${opts.templateFile}\` (must base your imports, setup, and structure on this template)
+5. **Boilerplate Template**: \`${opts.templateFile}\`
 
 # VERIFICATION & SCOPING RULES
 
 ## 1. Strictly Follow the Boilerplate Template
 Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`extractTargetFilesFromPatch\`, \`extractAllCss\`, \`populateJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
-## 2. Primary Authority: Static Analysis First
-You MUST prioritize static analysis over browser execution for structural assertions. Keep static assertions as top-level synchronous test blocks using the static parser helpers (\`linkedom\`, \`ts-morph\`, regex) from \`${opts.templateFile}\`.
+## 2. Assertion Hierarchy
+- **Static Analysis First**: Prioritize static analysis over browser execution for structural assertions.
+- **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary (for requirements that cannot be verified statically, such as runtime click events or dynamic state updates). Omit browser test blocks entirely if static checks are sufficient.
+- **Reference Examples & API Definitions**: Before writing tests, use your file-viewing tools to inspect these reference pattern libraries and API type definitions for implementation patterns:
+  - **Static Analysis Patterns (Linkedom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
+  - **Browser Analysis Patterns (Playwright)**: [playwright-pattern-library.grader.ts](file://${opts.playwrightPatternLibraryPath})
+  - **TS Morph Type Definitions**: [ts-morph.d.ts](file://${opts.tsMorphDtsPath})
+  - **Linkedom Type Definitions**: [index.d.ts](file://${opts.linkedomDtsPath})
 
-## 3. Playwright Browser Checks: Last Resort Only
-Only write browser-based Playwright E2E tests if a requirement cannot be verified statically (such as runtime click events or dynamic state updates). Omit the browser test block entirely if static checks are sufficient, and do not use Playwright to assert visual styling or redundant DOM structures.
-
-## 4. Granular Assertions: Single Assertion per Test
+## 3. Granular Assertions: Single Assertion per Test
 Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
 
-## 5. Precision & Matching Rules
-- **Loose Matching**: Avoid strict exact-string equality checks for dynamic values, classes, state names, or types. Use loose matches, inclusion checks, or regex pattern matching to accommodate naming variations.
-- **Avoid Substring Collisions**: Use word boundaries (e.g., \`/\\breduce\\b/\`) to prevent false positive substring matches.
-- **Error Handling**: Do not use generic try/catch blocks that aggressively swallow exceptions.
+## 4. Precision & Matching Rules
+- **Outcome-Based Assertions**: Verify structural and functional requirements in static checks rather than forcing a single narrow implementation when valid alternatives exist.
+- **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
+- **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
 
-## 6. Dependencies & Sandbox Constraints
+## 5. Dependencies & Sandbox Constraints
 Do not install any npm packages or execute application dev/build commands (like astro build or vite build) in your workspace. However, you MUST verify that your generated grader code compiles cleanly. Run this command in your workspace to check for TypeScript compilation/syntax errors and fix them before ending your turn:
 \`npx tsc --noEmit --skipLibCheck --target esnext --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --esModuleInterop grader.ts\`
 
-${definitionsBlock}
-${patternsBlock}
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
 }

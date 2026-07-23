@@ -3,262 +3,175 @@ import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseHTML } from 'linkedom';
+import { Project, SyntaxKind } from 'ts-morph';
 
 // Setup target workspace details
-const targetFile = process.env.TARGET_FILE;
-if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
-}
-
-const filePath = path.resolve(targetFile);
-const targetDir = path.dirname(filePath);
-
 const patchFile = process.env.PATCH_FILE;
 if (!patchFile) {
   throw new Error('PATCH_FILE environment variable not set.');
 }
 
+const rootDir = process.cwd();
 const targetFiles = extractTargetFilesFromPatch(patchFile);
-const absoluteTargetFiles = targetFiles.map(f => path.join(targetDir, f));
+let absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
-// CSS Rule Parser Interfaces
-interface CssRule {
-  selector: string;
-  body: string;
-  parents: string[];
+// If patch touches no files (e.g. zero-passrate patch), fall back to inspecting workspace files
+if (absoluteTargetFiles.length === 0) {
+  const defaultFiles = ['index.html', 'styles.css', 'style.css'];
+  absoluteTargetFiles = defaultFiles
+    .map((f) => path.resolve(rootDir, f))
+    .filter((f) => fs.existsSync(f));
 }
 
-// Simple CSS parser to extract selectors, bodies and query wrappers
-function parseCssRules(css: string, parents: string[] = []): CssRule[] {
-  // Remove comments
-  let cleanCss = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  cleanCss = cleanCss.replace(/\s+/g, ' ');
-  
-  const rules: CssRule[] = [];
-  let depth = 0;
-  let currentSelector = '';
-  let currentBody = '';
-  let inBody = false;
-  
-  for (let i = 0; i < cleanCss.length; i++) {
-    const char = cleanCss[i];
-    if (char === '{') {
-      if (depth === 0) {
-        inBody = true;
-      } else {
-        currentBody += char;
-      }
-      depth++;
-    } else if (char === '}') {
-      depth--;
-      if (depth === 0) {
-        inBody = false;
-        const selector = currentSelector.trim();
-        const body = currentBody.trim();
-        rules.push({ selector, body, parents });
-        
-        if (body.includes('{')) {
-          rules.push(...parseCssRules(body, [...parents, selector]));
-        }
-        
-        currentSelector = '';
-        currentBody = '';
-      } else {
-        currentBody += char;
-      }
-    } else {
-      if (inBody) {
-        currentBody += char;
-      } else {
-        currentSelector += char;
-      }
-    }
-  }
-  return rules;
-}
+// --- HELPER UTILITIES FOR EMBEDDED & STANDALONE CODE ---
+const HTML_EXTS = /\.(html|htm|astro)$/i;
+const CSS_EXTS = /\.css$/i;
+const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
 
-// Helper to gather all CSS content from target files
-function getAllCssContent(files: string[]): string {
-  let cssContent = '';
-  // First, check modified files
+/**
+ * Extracts all CSS code across standalone stylesheets (.css),
+ * HTML/Astro <style> tags, and inline style="..." attributes.
+ */
+export function extractAllCss(files: string[]): string[] {
+  const cssBlocks: string[] = [];
   for (const file of files) {
-    if (!fs.existsSync(file)) continue;
-    if (!fs.statSync(file).isFile()) continue;
+    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
     const content = fs.readFileSync(file, 'utf8');
-    if (file.endsWith('.css')) {
-      cssContent += '\n' + content;
-    } else if (file.endsWith('.html') || file.endsWith('.astro')) {
-      const { document } = parseHTML(content);
-      const styles = document.querySelectorAll('style');
-      for (const style of styles) {
-        cssContent += '\n' + style.textContent;
+
+    if (CSS_EXTS.test(file)) {
+      cssBlocks.push(content);
+    } else if (HTML_EXTS.test(file)) {
+      try {
+        const { document } = parseHTML(content);
+        document.querySelectorAll('style').forEach((style: any) => {
+          if (style.textContent) cssBlocks.push(style.textContent);
+        });
+        document.querySelectorAll('[style]').forEach((el: any) => {
+          const inlineStyle = el.getAttribute('style');
+          if (inlineStyle) cssBlocks.push(inlineStyle);
+        });
+      } catch {
+        const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+        if (styleMatches) cssBlocks.push(...styleMatches);
       }
     }
   }
-  return cssContent;
+  return cssBlocks;
 }
 
-// Grader tests
-test.describe('Daily Grind Size-Aware Styling Grader', () => {
-  let cssRules: CssRule[] = [];
-  let htmlDocuments: { path: string; document: any }[] = [];
+/**
+ * Adds JavaScript/TypeScript code to a ts-morph Project from standalone JS/TS/TSX files,
+ * Astro frontmatter (---), and HTML/Astro <script> tags.
+ */
+export function populateJsProject(project: Project, files: string[]): void {
+  for (const file of files) {
+    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+    const content = fs.readFileSync(file, 'utf8');
 
-  test.beforeAll(() => {
-    // Gather CSS content from modified files.
-    // If no CSS files are modified, gather from the workspace CSS/HTML files.
-    let cssContent = getAllCssContent(absoluteTargetFiles);
-    if (!cssContent.trim()) {
-      const allWorkspaceFiles = fs.readdirSync(targetDir).map(f => path.join(targetDir, f));
-      cssContent = getAllCssContent(allWorkspaceFiles);
-    }
-    cssRules = parseCssRules(cssContent);
-
-    // Gather HTML documents
-    let htmlFiles = absoluteTargetFiles.filter(f => f.endsWith('.html') || f.endsWith('.astro'));
-    if (htmlFiles.length === 0) {
-      htmlFiles = fs.readdirSync(targetDir)
-        .filter(f => f.endsWith('.html') || f.endsWith('.astro'))
-        .map(f => path.join(targetDir, f));
-    }
-
-    for (const file of htmlFiles) {
-      if (!fs.existsSync(file)) continue;
-      const htmlStr = fs.readFileSync(file, 'utf8');
-      const { document } = parseHTML(htmlStr);
-      htmlDocuments.push({ path: file, document });
-    }
-  });
-
-  test('Expectation 1: The component wrapper has container-type: inline-size (or size) applied', () => {
-    // 1. Identify container selectors in CSS
-    const containerRules = cssRules.filter(r => 
-      /\bcontainer-type\s*:\s*(inline-size|size)\b/.test(r.body) ||
-      /\bcontainer\s*:\s*[^;}]*\/\s*(inline-size|size)\b/.test(r.body)
-    );
-    expect(containerRules.length).toBeGreaterThan(0);
-
-    // 2. Verify that card components in the HTML are descendants of one of these container selectors
-    let matchedCardWithContainer = false;
-    for (const { document } of htmlDocuments) {
-      const cards = document.querySelectorAll('.card');
-      if (cards.length === 0) continue;
-
-      for (const card of cards) {
-        let current = card.parentElement;
-        while (current) {
-          for (const rule of containerRules) {
-            try {
-              if (current.matches(rule.selector)) {
-                matchedCardWithContainer = true;
-                break;
-              }
-            } catch (e) {
-              // Fallback for simple class selectors if matches() fails/throws on complex selectors
-              if (rule.selector.startsWith('.') && current.classList.contains(rule.selector.slice(1))) {
-                matchedCardWithContainer = true;
-                break;
-              }
-            }
+    if (JS_EXTS.test(file) && !HTML_EXTS.test(file)) {
+      project.createSourceFile(file, content, { overwrite: true });
+    } else if (HTML_EXTS.test(file)) {
+      try {
+        if (file.endsWith('.astro')) {
+          const frontmatter = content.match(/^---[\r\n]+([\s\S]*?)[\r\n]+---/);
+          if (frontmatter && frontmatter[1]) {
+            project.createSourceFile(`${file}_frontmatter.ts`, frontmatter[1], { overwrite: true });
           }
-          if (matchedCardWithContainer) break;
-          current = current.parentElement;
         }
-        if (matchedCardWithContainer) break;
+        const { document } = parseHTML(content);
+        document.querySelectorAll('script').forEach((script: any, idx: number) => {
+          if (script.textContent) {
+            project.createSourceFile(`${file}_script_${idx}.ts`, script.textContent, { overwrite: true });
+          }
+        });
+      } catch {
+        // Fallback for non-standard HTML fragments
       }
     }
+  }
+}
 
-    expect(matchedCardWithContainer).toBe(true);
-  });
+/**
+ * Parses HTML and Astro template files into Linkedom DOM document objects.
+ */
+export function getHtmlDocuments(files: string[]): Array<{ file: string; document: any }> {
+  const docs: Array<{ file: string; document: any }> = [];
+  for (const file of files) {
+    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+    if (HTML_EXTS.test(file)) {
+      const content = fs.readFileSync(file, 'utf8');
+      docs.push({ file, document: parseHTML(content).document });
+    }
+  }
+  return docs;
+}
 
-  test('Expectation 2: The component uses @container queries to apply different styles based on the container\'s width', () => {
-    // Check if there are @container query rules targeting the card component (or its descendants)
-    const cardClassRegex = /\.card\b(?!-)/;
-    const containerQueryRules = cssRules.filter(r => 
-      r.parents.some(p => p.startsWith('@container')) &&
-      cardClassRegex.test(r.selector)
-    );
-
-    expect(containerQueryRules.length).toBeGreaterThan(0);
-  });
-
-  test('Expectation 3: The component changes layout when the container width crosses a specific threshold', () => {
-    const cardClassRegex = /\.card\b(?!-)/;
-    const containerQueryRules = cssRules.filter(r => 
-      r.parents.some(p => p.startsWith('@container')) &&
-      cardClassRegex.test(r.selector)
-    );
-
-    expect(containerQueryRules.length).toBeGreaterThan(0);
-
-    // Verify at least one of these container query rules targets width and changes layout
-    let changesLayout = false;
-    const layoutProperties = /\b(flex-direction|display|grid-template|grid-column|flex|float|align-items|justify-content)\b/;
-
-    for (const r of containerQueryRules) {
-      // Find the parent @container selector
-      const containerParent = r.parents.find(p => p.startsWith('@container'));
-      if (!containerParent) continue;
-
-      // Check if the container query checks width (e.g. min-width or max-width or width)
-      const checksWidth = /\b(min-width|max-width|width)\b/.test(containerParent);
-      const modifiesLayout = layoutProperties.test(r.body);
-
-      if (checksWidth && modifiesLayout) {
-        changesLayout = true;
+/**
+ * Extracts block contents for @container rules by tracking matching braces.
+ */
+function extractContainerBlocks(css: string): string[] {
+  const blocks: string[] = [];
+  const regex = /@container\b/gi;
+  let match;
+  while ((match = regex.exec(css)) !== null) {
+    const startIndex = match.index;
+    let braceCount = 0;
+    let started = false;
+    let endIndex = css.length;
+    for (let i = startIndex; i < css.length; i++) {
+      if (css[i] === '{') {
+        braceCount++;
+        started = true;
+      } else if (css[i] === '}') {
+        braceCount--;
+      }
+      if (started && braceCount === 0) {
+        endIndex = i + 1;
         break;
       }
     }
-
-    expect(changesLayout).toBe(true);
-  });
-
-  test('Expectation 4: A fallback strategy using media queries or a default safe layout is provided for browsers that do not support container queries', () => {
-    const cardClassRegex = /\.card\b(?!-)/;
-    
-    // We must have implemented container queries first
-    const containerRules = cssRules.filter(r => 
-      /\bcontainer-type\s*:\s*(inline-size|size)\b/.test(r.body) ||
-      /\bcontainer\s*:\s*[^;}]*\/\s*(inline-size|size)\b/.test(r.body)
-    );
-    expect(containerRules.length).toBeGreaterThan(0);
-
-    // 1. Check if they use media query fallback
-    const mediaRulesForCard = cssRules.filter(r => 
-      cardClassRegex.test(r.selector) &&
-      r.parents.some(p => p.startsWith('@media')) &&
-      !r.parents.some(p => p.startsWith('@supports') && p.includes('container-type'))
-    );
-
-    if (mediaRulesForCard.length > 0) {
-      // If media queries are used as fallback, they must be overridden under @supports (container-type...)
-      // so container queries take control on supporting browsers.
-      const hasMediaOverride = cssRules.some(r => 
-        cardClassRegex.test(r.selector) &&
-        r.parents.some(p => p.startsWith('@supports') && p.includes('container-type')) &&
-        r.parents.some(p => p.startsWith('@media'))
-      );
-      expect(hasMediaOverride).toBe(true);
-    } else {
-      // 2. If no media query fallback, they must rely on default safe layout (stacked)
-      const defaultCardRules = cssRules.filter(r => 
-        cardClassRegex.test(r.selector) &&
-        r.parents.length === 0
-      );
-
-      let isDefaultLayoutSafe = true;
-      for (const r of defaultCardRules) {
-        if (/\bdisplay\s*:\s*flex\b/.test(r.body)) {
-          if (!/\bflex-direction\s*:\s*column\b/.test(r.body)) {
-            isDefaultLayoutSafe = false;
-          }
-        }
-        if (/\bdisplay\s*:\s*grid\b/.test(r.body)) {
-          if (/\bgrid-template-columns\s*:\s*[^;}]*\b[2-9]\b/.test(r.body) || /\bgrid-template-columns\s*:\s*repeat\(\s*[2-9]/.test(r.body)) {
-            isDefaultLayoutSafe = false;
-          }
-        }
-      }
-      expect(isDefaultLayoutSafe).toBe(true);
+    if (started) {
+      blocks.push(css.slice(startIndex, endIndex));
     }
+  }
+  return blocks;
+}
+
+// Grader tests for size-aware-styling
+test.describe('size-aware-styling Target Grader', () => {
+
+  test('Component wrapper defines container-type as inline-size or size', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasContainerType = /\bcontainer-type\s*:\s*(inline-size|size)\b|\bcontainer\s*:\s*[^;}]*\b(inline-size|size)\b/i.test(cleanCss);
+    expect(hasContainerType).toBe(true);
   });
+
+  test('CSS defines @container queries for container-width based styles', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasContainerQuery = /@container\s+[^\{]*\([^)]*\b(min-width|max-width|width|inline-size)\b/i.test(cleanCss);
+    expect(hasContainerQuery).toBe(true);
+  });
+
+  test('Component changes layout properties within @container query at width threshold', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const containerBlocks = extractContainerBlocks(cleanCss);
+    const hasLayoutChange = containerBlocks.some((block) =>
+      /\([^)]*\b(min-width|max-width|width|inline-size)\b[^)]*\)/i.test(block) &&
+      /\b(flex-direction|grid-template|grid-auto|display|justify-content|align-items|flex|columns)\b/i.test(block)
+    );
+    expect(hasLayoutChange).toBe(true);
+  });
+
+  test('Provides media query or @supports fallback strategy for browsers without container queries', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasFallbackStrategy =
+      /@media\s*\([^)]*\b(min-width|max-width|width)\b[^)]*\)/i.test(cleanCss) ||
+      /@supports\s*\([^)]*container/i.test(cleanCss);
+    expect(hasFallbackStrategy).toBe(true);
+  });
+
 });

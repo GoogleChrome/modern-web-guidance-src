@@ -6,22 +6,14 @@ import { parseHTML } from 'linkedom';
 import { Project, SyntaxKind } from 'ts-morph';
 
 // Setup target workspace details
-const targetFile = process.env.TARGET_FILE;
-if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
-}
-
-const filePath = path.resolve(targetFile);
-const targetDir = path.dirname(filePath);
-const demoName = path.basename(filePath);
-
 const patchFile = process.env.PATCH_FILE;
 if (!patchFile) {
   throw new Error('PATCH_FILE environment variable not set.');
 }
 
+const rootDir = process.cwd();
 const targetFiles = extractTargetFilesFromPatch(patchFile);
-const absoluteTargetFiles = targetFiles.map((f: string) => path.join(targetDir, f));
+const absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
 // --- HELPER UTILITIES FOR EMBEDDED & STANDALONE CODE ---
 // Focused on formats present in daily-grind (HTML/CSS/JS) and devtools-times (Astro/TSX/TS/CSS/HTML)
@@ -117,28 +109,27 @@ test.describe('<guide-name> Target Grader', () => {
   test('HTML structure satisfies guide requirements (Linkedom)', () => {
     // EXAMPLE: DOM parsing using Linkedom across HTML & component templates:
     // const docs = getHtmlDocuments(absoluteTargetFiles);
-    // for (const { document } of docs) {
-    //   const input = document.querySelector('input');
-    //   expect(input).not.toBeNull();
-    // }
+    // const targetEl = docs.map(d => d.document.querySelector('.target-element')).find(Boolean);
+    // expect(targetEl).not.toBeUndefined();
   });
 
+  // TODO: Future CSSOMNom OSPO integration - update this CSS test example to use CSSOMNom AST parsing when cssomnom is enabled.
   test('CSS styles satisfy guide requirements (Regex)', () => {
-    // EXAMPLE: Static CSS regex checks across stylesheets, <style> tags, and inline style attributes:
+    // EXAMPLE: Static CSS checks across stylesheets, <style> tags, and inline styles:
     // const cssBlocks = extractAllCss(absoluteTargetFiles);
-    // const fullCss = cssBlocks.join('\n');
-    // expect(fullCss).toMatch(/your-regex-pattern/);
+    // const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    // expect(cleanCss).toMatch(/your-css-pattern/i);
   });
 
   test('JavaScript source satisfies guide requirements (ts-morph)', () => {
     // EXAMPLE: JavaScript AST parsing using ts-morph across JS/TS files and <script> tags:
     // const project = new Project({ useInMemoryFileSystem: true });
     // populateJsProject(project, absoluteTargetFiles);
-    // const functions = project.getSourceFiles().flatMap(sf => [
-    //   ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
-    //   ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
-    // ]);
-    // expect(functions.length).toBeGreaterThan(0);
+    // const functionDecls = project.getSourceFiles().flatMap(sf =>
+    //   sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
+    // );
+    // const hasTargetFunction = functionDecls.some(fn => fn.getName() === 'yourFunctionName');
+    // expect(hasTargetFunction).toBe(true);
   });
 
   // --- BROWSER ASSERTIONS (E2E) ---
@@ -153,7 +144,7 @@ test.describe('<guide-name> Target Grader', () => {
       if (TARGET_URL.startsWith('http://localhost/')) {
         await page.route('http://localhost/*', async (route: any) => {
           const requestPath = new URL(route.request().url()).pathname;
-          const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+          const localFilePath = path.join(rootDir, requestPath === '/' ? 'index.html' : requestPath);
 
           if (fs.existsSync(localFilePath)) {
             await route.fulfill({ path: localFilePath });
@@ -167,9 +158,17 @@ test.describe('<guide-name> Target Grader', () => {
     });
 
     // test('browser behavior matches guide requirements', async ({ page }) => {
-    //   // EXAMPLE: Checking computed styles or interacting with elements:
+    //   // EXAMPLE 1: Checking computed styles:
     //   // const color = await page.$eval('.target', el => window.getComputedStyle(el).color);
     //   // expect(color).toBe('rgb(255, 0, 0)');
+    //
+    //   // EXAMPLE 2: Layout / Position checks:
+    //   // const pos = await page.evaluate(() => {
+    //   //   const a = document.getElementById('a')!.getBoundingClientRect();
+    //   //   const b = document.getElementById('b')!.getBoundingClientRect();
+    //   //   return { aBottom: a.bottom, bTop: b.top };
+    //   // });
+    //   // expect(pos.bTop).toBeGreaterThanOrEqual(pos.aBottom);
     // });
   });
 });

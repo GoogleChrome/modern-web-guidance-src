@@ -34,6 +34,7 @@ import {
   SOLUTION_PATCH_FILE,
   ZERO_PASSRATE_PATCH_FILE,
   getTaskMap,
+  resetGuidesMap,
   inventoryGuide,
   classifyGuide,
   scanAllGuides
@@ -251,7 +252,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
     return;
   }
 
-  // Step d: Build workspace dependencies
+  // Build workspace dependencies
   let buildCode = 0;
   const serving = suiteConfig ? suiteConfig.serving : defaultSuiteConfig.serving;
   if (serving === Serving.MCP) {
@@ -267,6 +268,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
     return;
   }
 
+  resetGuidesMap();
   const taskMap = getTaskMap();
 
   for (const baseApp of baseApps) {
@@ -288,8 +290,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
 
     // 1. Grade base app (with zero-passrate baseline applied)
     const baseAppDir = path.join(baseAppsDir, baseApp);
-    const baseAppHtml = path.join(baseAppDir, 'index.html');
-    if (fs.existsSync(baseAppHtml)) {
+    if (fs.existsSync(baseAppDir)) {
       const tempHome = createIsolatedHome(`gd-pre-grade-${baseApp}`);
       try {
         const stagingDir = path.join(tempHome, baseApp);
@@ -301,8 +302,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
         } else {
           process.env.PATCH_FILE = path.join(targetsDir, baseApp, SOLUTION_PATCH_FILE);
         }
-        const stagedHtml = path.join(stagingDir, 'index.html');
-        const preResults = await gradeOutput(stagedHtml, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
+        const preResults = await gradeOutput(stagingDir, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
         delete process.env.PATCH_FILE;
         if (preResults) results['pre'] = preResults;
       } finally {
@@ -330,13 +330,9 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       const resultDir = path.join(testOutputDir, '1', guideName, baseApp, runType);
       if (!fs.existsSync(resultDir)) continue;
 
-      const htmlFiles = fs.readdirSync(resultDir).filter(f => f.endsWith('.html'));
-      const outputFile = htmlFiles.find(f => f === 'index.html') || htmlFiles[0];
-      if (!outputFile) continue;
-
       process.env.PATCH_FILE = path.join(resultDir, 'agent.patch');
       const gradeResults = await gradeOutput(
-        path.join(resultDir, outputFile),
+        resultDir,
         targetGraderPath,
         path.join(resultDir, 'grade-report')
       );
@@ -358,12 +354,12 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   }
 }
 
-async function gradeOutput(htmlPath: string, graderPath: string, outputDir: string): Promise<{ passed: number; total: number } | null> {
+async function gradeOutput(appDir: string, graderPath: string, outputDir: string): Promise<{ passed: number; total: number } | null> {
   const label = path.basename(path.dirname(outputDir));
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {
-    const gradeResults = await runPlaywright(htmlPath, graderPath, outputDir, 'pipe');
+    const gradeResults = await runPlaywright(appDir, graderPath, outputDir, 'pipe');
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;

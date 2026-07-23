@@ -24,7 +24,7 @@ export function findGrader(startDir: string): string | null {
 }
 
 export interface PlaywrightOptions {
-  targetFileAbs: string;
+  targetPathAbs: string;
   graderPath: string;
   reporters: string[];
   htmlOutputDir?: string;
@@ -36,16 +36,19 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const playwrightConfig = path.join(guidesDir, 'playwright.config.ts');
   const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
 
+  const isDir = fs.existsSync(opts.targetPathAbs) && fs.statSync(opts.targetPathAbs).isDirectory();
+  const appDir = isDir ? opts.targetPathAbs : path.dirname(opts.targetPathAbs);
+  const targetFile = isDir ? path.join(opts.targetPathAbs, 'index.html') : opts.targetPathAbs;
+
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    TARGET_FILE: opts.targetFileAbs,
+    TARGET_FILE: targetFile,
     PLAYWRIGHT_HTML_OPEN: 'never',
   };
 
   if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
-    // Set output dir to be relative to the target file!
-    env.PLAYWRIGHT_OUTPUT_DIR = path.join(path.dirname(opts.targetFileAbs), 'test-results');
+    env.PLAYWRIGHT_OUTPUT_DIR = path.join(appDir, 'test-results');
   }
 
   if (opts.jsonOutputName) {
@@ -55,25 +58,27 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const playwrightBin = path.join(guidesDir, 'node_modules', '.bin', 'playwright');
 
   return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
+    cwd: appDir,
     stdio: opts.stdio || 'inherit',
     env
   });
 }
 
-export async function gradeFile(targetFileAbs: string): Promise<void> {
-  const graderPath = findGrader(path.dirname(targetFileAbs));
+export async function gradeFile(targetPathAbs: string): Promise<void> {
+  const appDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory() ? targetPathAbs : path.dirname(targetPathAbs);
+  const graderPath = findGrader(appDir);
   if (!graderPath) {
     console.error('Error: Could not find grader.ts in any parent directory.');
     process.exit(1);
   }
 
-  console.log(`Target File: ${targetFileAbs}`);
+  console.log(`Target Path: ${targetPathAbs}`);
   console.log(`Grader: ${graderPath}`);
 
-  const outputDirPath = path.join(path.dirname(targetFileAbs), 'grade-report');
+  const outputDirPath = path.join(appDir, 'grade-report');
 
   const child = executePlaywright({
-    targetFileAbs,
+    targetPathAbs,
     graderPath,
     reporters: ['html'],
     htmlOutputDir: outputDirPath,
@@ -93,7 +98,7 @@ export async function gradeFile(targetFileAbs: string): Promise<void> {
 }
 
 export async function runPlaywright(
-  targetFileAbs: string,
+  targetPathAbs: string,
   graderPath: string,
   htmlOutputDir: string,
   stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit'
@@ -101,7 +106,7 @@ export async function runPlaywright(
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
   const child = executePlaywright({
-    targetFileAbs,
+    targetPathAbs,
     graderPath,
     reporters: ['json', 'html'],
     htmlOutputDir,
@@ -111,7 +116,8 @@ export async function runPlaywright(
 
   await once(child, 'close');
 
-  const testResultsDir = path.join(path.dirname(targetFileAbs), 'test-results');
+  const appDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory() ? targetPathAbs : path.dirname(targetPathAbs);
+  const testResultsDir = path.join(appDir, 'test-results');
   await fs.promises.rm(testResultsDir, { recursive: true, force: true }).catch(() => {});
 
   const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
@@ -124,14 +130,14 @@ export async function runPlaywright(
 }
 
 async function runPlaywrightCalibration(
-  targetHtmlPath: string,
+  targetPathAbs: string,
   graderPath: string,
   outDir: string,
   patchFile: string,
   result: CalibrationResult
 ): Promise<any> {
   process.env.PATCH_FILE = patchFile;
-  const results = await runPlaywright(targetHtmlPath, graderPath, outDir, 'ignore')
+  const results = await runPlaywright(targetPathAbs, graderPath, outDir, 'ignore')
     .catch(err => {
       result.stage = 'server-boot';
       result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
@@ -369,7 +375,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
 
     console.log(cYellow(`\nRunning against ${baseApp} with ${SOLUTION_PATCH_FILE}... (Expecting 100% pass)`));
-    const demoResults = await runPlaywrightCalibration(path.join(goldenSandbox, 'index.html'), graderPath, demoOutDir, solutionPatch, result);
+    const demoResults = await runPlaywrightCalibration(goldenSandbox, graderPath, demoOutDir, solutionPatch, result);
 
     if (!demoResults) {
       return result;
@@ -412,7 +418,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
 
     console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
-    const negativeResults = await runPlaywrightCalibration(path.join(zeroPassrateSandbox, 'index.html'), graderPath, negativeOutDir, zeroPassratePatch, result);
+    const negativeResults = await runPlaywrightCalibration(zeroPassrateSandbox, graderPath, negativeOutDir, zeroPassratePatch, result);
 
     if (!negativeResults) {
       return result;
