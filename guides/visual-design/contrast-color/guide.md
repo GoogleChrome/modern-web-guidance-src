@@ -138,6 +138,7 @@ For browsers that do not yet support `contrast-color()`, use it as a progressive
 
 However, if the background color is highly dynamic and unpredictable (such as user-injected themes), a single static fallback will inevitably fail. In these cases, you MUST use an `@supports` feature query to apply a robust fallback strategy, such as a text shadow or translucent background, to guarantee readability.
 
+{{ BASELINE_STATUS('relative-color') }}
 For browsers without `contrast-color` that support relative color syntax, calculate a white or black contrasting color using your color's lightness channel.
 
 ```css
