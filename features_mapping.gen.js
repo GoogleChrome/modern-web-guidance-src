@@ -268,6 +268,9 @@ window.__featuresMapping = {
   "passkeys": [
     "webauthn"
   ],
+  "sanitize-untrusted-html": [
+    "sanitizer"
+  ],
   "carousel-slide-effects": [
     "scroll-driven-animations",
     "scroll-snap"
