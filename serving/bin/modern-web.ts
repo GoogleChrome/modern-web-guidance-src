@@ -63,7 +63,7 @@ async function main() {
 
   if (command === "search") {
     if (!arg) {
-      await getLogger().logSearchResult(0, false, []);
+      await getLogger().logSearchResult("", 0, false, []);
       console.error("No search query provided.");
       process.exit(1);
     }
@@ -78,7 +78,7 @@ async function main() {
         guide_id: r.id,
         similarity: Number(r.similarity),
       }));
-      await getLogger().logSearchResult(latencyMs, true, searchItems);
+      await getLogger().logSearchResult(arg, latencyMs, true, searchItems);
 
       if (results.length === 0) {
         console.log("[]");
@@ -90,7 +90,7 @@ async function main() {
       }
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      await getLogger().logSearchResult(latencyMs, false, []);
+      await getLogger().logSearchResult(arg, latencyMs, false, []);
       console.error("Search failed:", error);
       process.exit(1);
     }

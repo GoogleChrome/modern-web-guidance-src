@@ -11,6 +11,7 @@ export interface SearchItem {
 }
 
 export interface SearchResult {
+  query?: string;
   search_items?: SearchItem[];
 }
 

@@ -1,6 +1,8 @@
 ---
 name: passkeys
 description: Comprehensive orientation and cross-cutting principles for implementing WebAuthn and Passkeys in web applications. Use this guide when handling passkey registration, authentication, management, or reauthentication.
+web-feature-ids:
+  - webauthn
 ---
 
 # Passkeys Orientation Guide

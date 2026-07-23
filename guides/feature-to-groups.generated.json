@@ -1,0 +1,114 @@
+{
+  "active-view-transition": [
+    "view-transitions"
+  ],
+  "animation-composition": [
+    "animation"
+  ],
+  "animations-css": [
+    "animation"
+  ],
+  "column-pseudo": [
+    "scrolling"
+  ],
+  "cross-document-view-transitions": [
+    "view-transitions"
+  ],
+  "cubic-bezier-easing": [
+    "animation",
+    "transitions"
+  ],
+  "interpolate-size": [
+    "animation",
+    "transitions"
+  ],
+  "overflow-anchor": [
+    "scrolling"
+  ],
+  "overscroll-behavior": [
+    "scrolling"
+  ],
+  "scroll-behavior": [
+    "scrolling"
+  ],
+  "scroll-buttons": [
+    "scrolling"
+  ],
+  "scroll-driven-animations": [
+    "animation",
+    "scrolling"
+  ],
+  "scroll-into-view": [
+    "scrolling"
+  ],
+  "scroll-into-view-container": [
+    "scrolling"
+  ],
+  "scroll-marker-targets": [
+    "scrolling"
+  ],
+  "scroll-markers": [
+    "scrolling"
+  ],
+  "scroll-snap": [
+    "scrolling"
+  ],
+  "scroll-snap-events": [
+    "scrolling"
+  ],
+  "scroll-target-group": [
+    "scrolling"
+  ],
+  "scroll-to-text-fragment": [
+    "scrolling"
+  ],
+  "scrollbar-color": [
+    "scrolling"
+  ],
+  "scrollbar-gutter": [
+    "scrolling"
+  ],
+  "scrollbar-width": [
+    "scrolling"
+  ],
+  "scrollend": [
+    "scrolling"
+  ],
+  "smil-svg-animations": [
+    "animation"
+  ],
+  "steps-easing": [
+    "animation",
+    "transitions"
+  ],
+  "text-decoration-line-blink": [
+    "animation"
+  ],
+  "transition-behavior": [
+    "transitions"
+  ],
+  "transitions": [
+    "transitions"
+  ],
+  "view-transition-class": [
+    "view-transitions"
+  ],
+  "view-transitions": [
+    "view-transitions"
+  ],
+  "view-transitions-element-scoped": [
+    "view-transitions"
+  ],
+  "web-animations": [
+    "animation"
+  ],
+  "webauthn": [
+    "webauthn"
+  ],
+  "webauthn-public-key-easy": [
+    "webauthn"
+  ],
+  "webauthn-signals": [
+    "webauthn"
+  ]
+}

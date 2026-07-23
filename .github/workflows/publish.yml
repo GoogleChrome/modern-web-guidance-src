@@ -75,6 +75,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
 
+      - name: Commit and push README.md to source repo
+        run: |
+          if ! git diff --quiet README.md; then
+            git add README.md
+            git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"
+            git push origin HEAD:${{ github.ref }}
+          else
+            echo "No changes in README.md to commit."
+          fi
+
       - name: Publish to npm via OIDC Provenance
         run: |
           cd dist/skills-cli
