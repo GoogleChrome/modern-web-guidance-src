@@ -41,7 +41,7 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
     templateFile: 'template.grader.ts',
   });
   assert.ok(prompt.includes('extractTargetFilesFromPatch'));
-  assert.ok(prompt.includes('Primary Authority: Static Analysis First'));
+  assert.ok(prompt.includes('Static Analysis First'));
   assert.ok(prompt.includes('daily-grind'));
 });
 

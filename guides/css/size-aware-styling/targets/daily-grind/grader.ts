@@ -3,7 +3,7 @@ import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseHTML } from 'linkedom';
-import { Project, SyntaxKind } from 'ts-morph';
+import { Project } from 'ts-morph';
 
 // Setup target workspace details
 const patchFile = process.env.PATCH_FILE;
@@ -150,7 +150,7 @@ test.describe('size-aware-styling Target Grader', () => {
   test('CSS defines @container queries for container-width based styles', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasContainerQuery = /@container\s+[^\{]*\([^)]*\b(min-width|max-width|width|inline-size)\b/i.test(cleanCss);
+    const hasContainerQuery = /@container\s+[^{]*\([^)]*\b(min-width|max-width|width|inline-size)\b/i.test(cleanCss);
     expect(hasContainerQuery).toBe(true);
   });
 
