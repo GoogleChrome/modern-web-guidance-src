@@ -78,15 +78,19 @@ DO: Adjust the background custom property with [relative color syntax](https://d
   background-color: var(--button-bg);
   color: #000; /* Safe fallback */
 }
-
+ 
 @supports (color: contrast-color(red)) {
   .button {
     color: contrast-color(var(--button-bg));
   }
 
   .button:hover {
-    /* Darken the background; the text color re-derives on its own */
-    --button-bg: oklch(from var(--button-bg) calc(1 - l) c h);
+    /* Darken or lighten the background; the text color re-derives on its own */
+    --button-bg: color-mix(
+      in oklab,
+      var(--button-bg) 80%,
+      contrast-color(var(--button-bg)) 20%
+    );
   }
 }
 ```
@@ -115,8 +119,9 @@ MANDATORY: Re-verify contrast whenever you transform the result of `contrast-col
     color: contrast-color(var(--callout-bg));
   }
 
-  /* Derive a dimmed secondary color from the guaranteed contrast color.
-     Verify the resulting ratio—dimming reduces contrast. */
+   /* Derive a dimmed secondary color from the guaranteed contrast color.
+  MANDATORY: Limit chroma to prevent out of gamut shifts, and re-verify
+  contrast whenever you transform the result of contrast-color() */
   .callout small {
     --callout-muted: oklch(from contrast-color(var(--callout-bg)) abs(l - .2) c h);
   }
@@ -133,14 +138,27 @@ For browsers that do not yet support `contrast-color()`, use it as a progressive
 
 However, if the background color is highly dynamic and unpredictable (such as user-injected themes), a single static fallback will inevitably fail. In these cases, you MUST use an `@supports` feature query to apply a robust fallback strategy, such as a text shadow or translucent background, to guarantee readability.
 
+For browsers without `contrast-color` that support relative color syntax, calculate a white or black contrasting color using your color's lightness channel.
+
 ```css
-.dynamic-badge {
+.badge {
   color: #fff; /* Default assumption */
   text-shadow: 0 1px 3px rgb(0 0 0 / 0.8); /* Readability safety net */
 }
 
+/* Fallback using relative color syntax  */
+@supports (color: oklch(from red l c h)) {
+  .badge {
+    /* Highest threshold that passes WCAG. Higher values may be more legible. */
+    --threshold: 0.623;
+    --l: clamp(0, (l / var(--threshold) - 1) * -infinity, 1);
+    color: oklch(from var(--badge-bg) var(--l) 0 h);
+    text-shadow: none;
+  }
+}
+
 @supports (color: contrast-color(red)) {
-  .dynamic-badge {
+  .badge {
     color: contrast-color(var(--badge-bg));
     text-shadow: none; /* Safe to remove if contrast-color is supported */
   }

@@ -87,6 +87,17 @@
     .theme-container[data-theme="light"] { --theme-surface-color: #f4f4f4; }
     .theme-container[data-theme="dark"] { --theme-surface-color: #1a1a1a; }
 
+    /* Fallback using relative color syntax  */
+    @supports (color: oklch(from red l c h)) {
+      .badge {
+        /* Highest threshold that passes WCAG. Higher values may be more legible. */
+        --threshold: 0.623;
+        --l: clamp(0, (l / var(--threshold) - 1) * -infinity, 1);
+        color: oklch(from var(--badge-bg) var(--l) 0 h);
+        text-shadow: none;
+      }
+    }
+
     /* Apply dynamic contrasting color only if supported */
     @supports (color: contrast-color(red)) {
       .badge {
@@ -99,17 +110,23 @@
       }
 
       .button:hover {
-        /* Darken the background; the text color re-derives on its own */
-        --button-bg: oklch(from var(--button-bg) calc(1 - l) c h);
+        /* Darken or lighten the background; the text color re-derives on its own */
+        background: color-mix(
+          in oklab,
+          var(--button-bg) 80%,
+          contrast-color(var(--button-bg)) 20%
+        );
       }
 
       .callout {
         color: contrast-color(var(--callout-bg));
-        /* MANDATORY: Re-verify contrast whenever you transform the result of contrast-color() */
-        --callout-muted: oklch(from contrast-color(var(--callout-bg)) abs(l - .2) c h);
       }
-
+      
       .callout small {
+        /* Derive a dimmed secondary color from the guaranteed contrast color.
+        MANDATORY: Limit chroma to prevent out of gamut shifts, and re-verify
+        contrast whenever you transform the result of contrast-color() */
+        --callout-muted: oklch(from contrast-color(var(--callout-bg)) abs(l - .2) min(c, 0.4) h);
         color: var(--callout-muted);
       }
 
