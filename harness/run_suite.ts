@@ -371,7 +371,7 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
   return workspaceBaseAppDir;
 }
 
-function generateTransientPackage(
+export function generateTransientPackage(
   targetDir: string,
   agentScript: string,
   promptContent: string,
@@ -430,17 +430,43 @@ const env = { ...process.env };
 env.PATH = \`${targetDir}:\${env.PATH}\`;
 
 const start = Date.now();
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
+let result;
+let attempts = 0;
+const maxAttempts = 3; // 1 initial attempt + 2 retries
+
+while (attempts < maxAttempts) {
+  attempts++;
+  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
+  if (result.status === 0) break;
+  if (attempts < maxAttempts) {
+    console.warn('⚠️ Attempt ' + attempts + ' failed with status ' + result.status + '. Waiting 20 seconds before retrying...');
+    spawnSync(process.execPath, ['-e', 'setTimeout(()=>{}, 20000)']);
+  }
+}
 const runtime = Date.now() - start;
 
 let graderRuntime = null;
 let graderStatus = null;
 
 if (result.status === 0) {
+  const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+  if (fs.existsSync(failureFile)) {
+    fs.unlinkSync(failureFile);
+  }
   const gradeStart = Date.now();
   const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status;
+} else {
+  const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+  if (!fs.existsSync(failureFile)) {
+    fs.writeFileSync(failureFile, JSON.stringify({
+      agentName: path.basename(${JSON.stringify(agentScript)}),
+      exitCode: result.status,
+      stderr: 'Agent execution failed unexpectedly during setup or wrapper invocation',
+      stdout: ''
+    }, null, 2));
+  }
 }
 
 fs.writeFileSync(path.join(${JSON.stringify(targetDir)}, 'runtime.json'), JSON.stringify({

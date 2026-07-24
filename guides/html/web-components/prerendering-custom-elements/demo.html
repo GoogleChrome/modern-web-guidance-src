@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Declarative Shadow DOM: server-rendered, hydrated in place</title>
+</head>
+<body>
+  <!-- This markup represents server output: the shadow root and its styles ship
+       as HTML, so the component is correct on first paint, before any JS runs. -->
+  <my-card>
+    <template shadowrootmode="open">
+      <style>
+        :host { display: block; max-inline-size: 24rem; }
+        .card { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; }
+        button { cursor: pointer; }
+      </style>
+      <div class="card">
+        <slot name="header"></slot>
+        <div class="body"><slot></slot></div>
+        <button type="button" id="toggle">Toggle details</button>
+      </div>
+    </template>
+
+    <h2 slot="header">Server-rendered title</h2>
+    <p>Visible and styled before JS loads.</p>
+  </my-card>
+
+  <script>
+    class MyCard extends HTMLElement {
+      constructor() {
+        super();
+        // Reuse the server-rendered shadow root; only create one if it is absent.
+        if (!this.shadowRoot) {
+          this.attachShadow({ mode: 'open' });
+          // (Client-only path would clone a template here.)
+        }
+      }
+
+      connectedCallback() {
+        // Hydrate in place: wire behavior to existing markup. Do NOT re-render;
+        // that would discard the server's DOM and cause a flash.
+        this.shadowRoot.getElementById('toggle')
+          ?.addEventListener('click', () => {
+            this.toggleAttribute('open');
+          });
+      }
+    }
+
+    customElements.define('my-card', MyCard);
+  </script>
+</body>
+</html>
