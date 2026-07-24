@@ -219,7 +219,8 @@ window.__featuresMapping = {
     "content-visibility"
   ],
   "optimize-image-priority": [
-    "fetch-priority"
+    "fetch-priority",
+    "loading-lazy"
   ],
   "optimize-preload-priority": [
     "fetch-priority",
