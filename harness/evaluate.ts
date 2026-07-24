@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import 'colors';
 import { collectResults, extractModelFromResults } from './lib/collection.ts';
@@ -8,6 +9,29 @@ import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/r
 import { resultsDir } from '../lib/paths.ts';
 
 import { Serving, type SuiteConfig } from './config.ts';
+
+function getCliVersion(): string | undefined {
+  try {
+    const output = execSync('git tag --merged HEAD -l "v*.*.*" --sort=-v:refname', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (output) {
+      const firstTag = output.split('\n')[0].trim();
+      return firstTag.startsWith('v') ? firstTag.slice(1) : firstTag;
+    }
+  } catch {
+    // Ignore git error if tags are not reachable
+  }
+  return undefined;
+}
+
+function getSkillVersion(): string | undefined {
+  try {
+    const output = execSync('git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" guides/modern-web-guidance/SKILL.md', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    return output || undefined;
+  } catch {
+    // Ignore git error if log is unavailable
+  }
+  return undefined;
+}
 
 function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
   let agent = 'gemini-cli';
@@ -78,9 +102,12 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
       }
     }
 
+    const skillVersion = getSkillVersion();
+    const cliVersion = getCliVersion();
+
     const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
     const totalRuntime = suiteStartTime ? Date.now() - suiteStartTime : fallbackRuntime;
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model, totalRuntime);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model, totalRuntime, skillVersion, cliVersion);
 
     if (totalRuntime) {
       console.log(`Total runtime: ${totalRuntime}ms`);
