@@ -4,4 +4,5 @@ description: Build a breadcrumb trail that shows the user's location within a si
 web-feature-ids:
   - border-shape
   - corner-shape
+  - popover
 ---

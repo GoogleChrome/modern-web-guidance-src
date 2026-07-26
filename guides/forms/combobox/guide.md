@@ -5,3 +5,5 @@ web-feature-ids:
   - customizable-select
   - datalist
 ---
+
+<!-- Link to filterable-select if only filtering is needed -->
