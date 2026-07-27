@@ -272,6 +272,9 @@ window.__featuresMapping = {
   "sanitize-untrusted-html": [
     "sanitizer"
   ],
+  "trusted-types": [
+    "trusted-types"
+  ],
   "carousel-slide-effects": [
     "scroll-driven-animations",
     "scroll-snap"
