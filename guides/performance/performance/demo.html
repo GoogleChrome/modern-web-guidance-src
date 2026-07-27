@@ -184,8 +184,10 @@
     const progressBarFill = document.getElementById('progressBarFill');
 
     async function yieldToMain() {
-      if ('scheduler' in window && 'yield' in scheduler) {
-        return await scheduler.yield();
+      const globalScheduler = (window as any).scheduler;
+
+      if (globalScheduler && 'yield' in globalScheduler) {
+        return await globalScheduler.yield();
       }
       return new Promise(resolve => setTimeout(resolve, 0));
     }
