@@ -1,177 +1,151 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>contrast-color() Demo</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background-color: #f0f0f0;
-      color: #333;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-    }
-
-    h1 {
-      margin-bottom: 2rem;
-      text-align: center;
-    }
-
-    .container {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      justify-content: center;
-      max-width: 800px;
-    }
-
-    .badge, .button, .callout, .theme-card {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 12px;
-      font-weight: bold;
-      box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
-    }
-
-    .badge {
-      width: 120px;
-      height: 120px;
-      font-size: 1.1rem;
-      background-color: var(--badge-bg);
-      /* Default assumption + Readability safety net for older browsers */
-      color: #fff;
-      text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
-    }
-
-    .button {
-      padding: 12px 24px;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      font-family: inherit;
-      --button-bg: #b2aeff;
-      background-color: var(--button-bg);
-      color: #000;
-    }
-
-    .callout {
-      flex-direction: column;
-      padding: 20px;
-      width: 180px;
-      --callout-bg: #1a1a1a;
-      background-color: var(--callout-bg);
-      color: #fff;
-    }
-
-    .callout small {
-      font-size: 0.85rem;
-      font-weight: normal;
-      margin-top: 8px;
-      color: rgb(255 255 255 / 0.7);
-    }
-
-    .theme-card {
-      padding: 20px;
-      width: 180px;
-      background-color: var(--theme-surface-color);
-      color: #333;
-    }
-
-    .theme-container[data-theme="light"] { --theme-surface-color: #f4f4f4; }
-    .theme-container[data-theme="dark"] { --theme-surface-color: #1a1a1a; }
-
-    /* Fallback using relative color syntax  */
-    @supports (color: oklch(from red l c h)) {
-      .badge {
-        /* Highest threshold that passes WCAG. Higher values may be more legible. */
-        --threshold: 0.623;
-        --l: clamp(0, (l / var(--threshold) - 1) * -infinity, 1);
-        color: oklch(from var(--badge-bg) var(--l) 0 h);
-        text-shadow: none;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>contrast-color() Demo</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background-color: #f0f0f0;
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
       }
-    }
 
-    /* Apply dynamic contrasting color only if supported */
-    @supports (color: contrast-color(red)) {
+      h1 {
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+
+      .container {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 800px;
+      }
+
+      .badge,
+      .button,
+      .theme-card {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
+      }
+
       .badge {
-        color: contrast-color(var(--badge-bg));
-        text-shadow: none;
+        width: 120px;
+        height: 120px;
+        font-size: 1.1rem;
+        background-color: var(--badge-bg);
+        /* Default assumption + Readability safety net for older browsers */
+        color: #fff;
+        text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
       }
 
       .button {
-        color: contrast-color(var(--button-bg));
+        padding: 12px 24px;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        font-family: inherit;
+        --button-bg: #b2aeff;
+        background-color: var(--button-bg);
+        --button-color: #000;
+        color: var(--button-color);
       }
-
-      .button:hover {
-        /* Darken or lighten the background; the text color re-derives on its own */
-        background: color-mix(
-          in oklab,
-          var(--button-bg) 80%,
-          contrast-color(var(--button-bg)) 20%
-        );
-      }
-
-      .callout {
-        color: contrast-color(var(--callout-bg));
-      }
-      
-      .callout small {
-        /* Derive a dimmed secondary color from the guaranteed contrast color.
-        MANDATORY: Limit chroma to prevent out of gamut shifts, and re-verify
-        contrast whenever you transform the result of contrast-color() */
-        --callout-muted: oklch(from contrast-color(var(--callout-bg)) abs(l - .2) min(c, 0.4) h);
-        color: var(--callout-muted);
+      .button:is(:hover, :focus) {
+        --button-bg: #3e3a87;
+        --button-color: #fff; /* Safe fallback */
       }
 
       .theme-card {
-        color: contrast-color(var(--theme-surface-color));
+        padding: 20px;
+        width: 180px;
+        background-color: var(--theme-surface-color);
+        color: var(--theme-on-surface-color);
       }
-    }
 
-    /* Define different backgrounds for testing */
-    .badge-dark { --badge-bg: #1a1a1a; }
-    .badge-light { --badge-bg: #f9f9f9; }
-    .badge-color { --badge-bg: #e02424; }
-  </style>
-</head>
-<body>
+      .theme-container[data-theme="light"] {
+        --theme-surface-color: #f4f4f4;
+        --theme-on-surface-color: #000;
+      }
+      .theme-container[data-theme="dark"] {
+        --theme-surface-color: #1a1a1a;
+        --theme-on-surface-color: #fff;
+      }
 
-  <h1>Dynamic Contrast using <code>contrast-color()</code></h1>
+      /* Fallback using relative color syntax  */
+      @supports (color: oklch(from red l c h)) {
+        .badge {
+          /* Highest threshold that passes WCAG. Higher values may be more legible. */
+          --threshold: 0.623;
+          --l: clamp(0, (l / var(--threshold) - 1) * -infinity, 1);
+          color: oklch(from var(--badge-bg) var(--l) 0 h);
+          text-shadow: none;
+        }
+      }
 
-  <div class="container">
-    <div class="badge badge-dark" data-testid="badge-dark">
-      Dark Bg
-    </div>
-    <div class="badge badge-light" data-testid="badge-light">
-      Light Bg
-    </div>
-    <div class="badge badge-color" data-testid="badge-color">
-      Color Bg
-    </div>
-    
-    <button class="button" data-testid="button-hover">
-      Hover Me
-    </button>
+      /* Apply dynamic contrasting color only if supported */
+      @supports (color: contrast-color(red)) {
+        .badge {
+          color: contrast-color(var(--badge-bg));
+          text-shadow: none;
+        }
 
-    <div class="callout" data-testid="callout">
-      Main Content
-      <small>Derived Muted Text</small>
-    </div>
+        .button {
+          color: contrast-color(var(--button-bg));
+        }
 
-    <div class="theme-container" data-theme="light">
-      <div class="theme-card" data-testid="theme-card-light">Light Theme</div>
-    </div>
-    <div class="theme-container" data-theme="dark">
-      <div class="theme-card" data-testid="theme-card-dark">Dark Theme</div>
-    </div>
-  </div>
+        .button:is(:hover, :focus) {
+          --button-bg: #3e3a87;
+        }
 
-</body>
+        .theme-card {
+          color: contrast-color(var(--theme-surface-color));
+        }
+      }
+
+      /* Define different backgrounds for testing */
+      .badge-dark {
+        --badge-bg: #1a1a1a;
+      }
+      .badge-light {
+        --badge-bg: #f9f9f9;
+      }
+      .badge-color {
+        --badge-bg: #e02424;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Dynamic Contrast using <code>contrast-color()</code></h1>
+
+    <div class="container">
+      <div class="badge badge-dark" data-testid="badge-dark">Dark Bg</div>
+      <div class="badge badge-light" data-testid="badge-light">Light Bg</div>
+      <div class="badge badge-color" data-testid="badge-color">Color Bg</div>
+
+      <button class="button" data-testid="button-hover">Hover Me</button>
+
+      <div class="theme-container" data-theme="light">
+        <div class="theme-card" data-testid="theme-card-light">Light Theme</div>
+      </div>
+      <div class="theme-container" data-theme="dark">
+        <div class="theme-card" data-testid="theme-card-dark">Dark Theme</div>
+      </div>
+    </div>
+  </body>
 </html>

@@ -35,8 +35,6 @@ MANDATORY: Set the `color` property using the `contrast-color()` function, passi
 }
 ```
 
-DO: Use `contrast-color()` primarily when backgrounds are distinctly light or dark. Because the function currently only selects between black or white, medium light backgrounds (such as royal blue) may result in suboptimal contrast even when the mathematical maximum is chosen.
-
 DO NOT: Use `contrast-color()` for `background-color`. It is specifically designed for foreground colors (like text or borders) to contrast against a given background color.
 
 ## Integrate with custom property theming
@@ -46,17 +44,18 @@ Because `contrast-color()` accepts any valid `<color>` value, including CSS cust
 DO: Reference shared background variables inside `contrast-color()` to guarantee synchronization across your application.
 
 ```css
-:root {
-  --theme-surface-color: #f4f4f4;
-}
-
-[data-theme="dark"] {
-  --theme-surface-color: #1a1a1a;
-}
-
 .theme-card {
   background-color: var(--theme-surface-color);
-  color: #333; /* Safe fallback */
+  color: var(--theme-on-surface-color);
+}
+
+.theme-container[data-theme="light"] {
+  --theme-surface-color: #f4f4f4;
+  --theme-on-surface-color: #000; /* Safe fallback */
+}
+.theme-container[data-theme="dark"] {
+  --theme-surface-color: #1a1a1a;
+  --theme-on-surface-color: #fff; /* Safe fallback */
 }
 
 @supports (color: contrast-color(red)) {
@@ -66,11 +65,11 @@ DO: Reference shared background variables inside `contrast-color()` to guarantee
 }
 ```
 
-## Derive readable hover and interaction states
+## Ensure contrast on hover and interaction states
 
 When an interactive element's background is driven by a custom property, you can change only that property for hover, focus, or active states and let `contrast-color()` recompute the foreground automatically. Because the text color is expressed once in terms of the background, you never have to hand-pick a matching text color for each state.
 
-DO: Adjust the background custom property with [relative color syntax](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_colors/Relative_colors) and keep a single `color: contrast-color(var(--bg))` declaration so the text stays legible as the background shifts. This "algorithmic hover state" technique is described in [Dave Rupert's write-up](https://daverupert.com/2026/01/algorithmic-hover-states-with-contrast-color/).
+DO: Keep a single `color: contrast-color(var(--bg))` declaration so the text stays legible as the background shifts.
 
 ```css
 .button {
@@ -78,57 +77,24 @@ DO: Adjust the background custom property with [relative color syntax](https://d
   background-color: var(--button-bg);
   color: #000; /* Safe fallback */
 }
+.button:is(:hover, :focus){
+  --button-bg: #3e3a87;
+  color: #fff; /* Safe fallback */
+}
  
 @supports (color: contrast-color(red)) {
   .button {
     color: contrast-color(var(--button-bg));
   }
 
-  .button:hover {
-    /* Darken or lighten the background; the text color re-derives on its own */
-    --button-bg: color-mix(
-      in oklab,
-      var(--button-bg) 80%,
-      contrast-color(var(--button-bg)) 20%
-    );
+  .button:is(:hover, :focus) {
+    /* Change the variable used for the background. `contrast-color(--button-bg)` will update the text color. */
+    --button-bg: #3e3a87;
   }
 }
 ```
 
 DO NOT: Hard-code a separate text color for each interaction state when the background is dynamic. Doing so reintroduces the very mismatch `contrast-color()` exists to prevent.
-
-## Build colors beyond black and white
-
-The value returned by `contrast-color()` is always black or white, but you can feed that result into relative color syntax to derive related colors that still react to the background—for example a translucent scrim, a muted caption color, or a subtle border.
-
-MANDATORY: Re-verify contrast whenever you transform the result of `contrast-color()`. As soon as you move away from pure black or white, the browser's contrast guarantee no longer holds, so you must confirm the derived color still meets your target ratio (for example WCAG AA) against the background.
-
-```css
-.callout {
-  --callout-bg: #1a1a1a;
-  background-color: var(--callout-bg);
-  color: #fff; /* Safe fallback */
-}
-
-.callout small {
-  color: rgb(255 255 255 / 0.7);
-}
-
-@supports (color: contrast-color(red)) {
-  .callout {
-    color: contrast-color(var(--callout-bg));
-  }
-
-   /* Derive a dimmed secondary color from the guaranteed contrast color.
-  MANDATORY: Limit chroma to prevent out of gamut shifts, and re-verify
-  contrast whenever you transform the result of contrast-color() */
-  .callout small {
-    --callout-muted: oklch(from contrast-color(var(--callout-bg)) abs(l - .2) c h);
-  }
-}
-```
-
-DO: Treat derived colors as a progressive enhancement on top of the guaranteed black/white value, reserving the unmodified `contrast-color()` output for text that must remain readable.
 
 ## Fallback strategies
 
@@ -139,6 +105,7 @@ For browsers that do not yet support `contrast-color()`, use it as a progressive
 However, if the background color is highly dynamic and unpredictable (such as user-injected themes), a single static fallback will inevitably fail. In these cases, you MUST use an `@supports` feature query to apply a robust fallback strategy, such as a text shadow or translucent background, to guarantee readability.
 
 {{ BASELINE_STATUS('relative-color') }}
+
 For browsers without `contrast-color` that support relative color syntax, calculate a white or black contrasting color using your color's lightness channel.
 
 ```css
