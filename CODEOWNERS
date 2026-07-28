@@ -20,6 +20,8 @@ guides/webmcp/*/ @beaufortfrancois @Kulikowski
 # Owned via group "transitions"
 guides/css/animate-to-intrinsic-sizes/ @bramus
 guides/css/calculate-with-intrinsic-sizes/ @bramus
+# Owned via group "view-transitions"
+guides/forms/filterable-select/ @bramus
 # Owned via group "scrolling"
 guides/performance/defer-work-until-scroll-ends/ @bramus
 # Owned via group "webauthn"
@@ -40,6 +42,7 @@ guides/ui-atoms/scroll-progress-indicator/ @bramus
 guides/ui-atoms/shrinking-header-on-scroll/ @bramus
 # Owned via feature "container-scroll-state-queries"
 guides/ui-behaviors/carousel-snap-highlights/ @bramus
+guides/ui-behaviors/overflow-popup/ @bramus
 # Owned via feature "prefers-reduced-motion"
 guides/ui-behaviors/anchor-positioning-tab-underline/ @bramus
 # Owned via group "scrolling"
@@ -59,6 +62,7 @@ guides/ui-behaviors/cross-document-transitions/ @bramus
 guides/ui-behaviors/directional-navigation-transitions/ @bramus
 guides/ui-behaviors/group-element-transitions/ @bramus
 guides/ui-behaviors/same-document-transitions/ @bramus
+guides/ui-behaviors/sortable-table/ @bramus
 # Owned via feature "prefers-reduced-motion"
 guides/ui-components/skeleton/ @bramus
 guides/ui-components/spinner/ @bramus
@@ -70,6 +74,8 @@ guides/ui-components/tabs/ @bramus
 # Owned via group "transitions"
 guides/ui-components/accordion/ @bramus
 guides/ui-components/persistent-toast-notifications/ @bramus
+# Owned via group "view-transitions"
+guides/ui-components/hovercard/ @bramus
 # Owned via feature "canvas-html"
 guides/visual-design/apply-webgl-shaders/ @ewewraw
 guides/visual-design/export-html-media-from-canvas/ @ewewraw
