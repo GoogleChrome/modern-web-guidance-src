@@ -10,4 +10,5 @@ guides:
   - anchor-positioning-tab-underline
   - search-hidden-content
   - scrollability-affordance-hints
+  - overflow-popup
 ---
