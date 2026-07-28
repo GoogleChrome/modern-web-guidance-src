@@ -5,4 +5,6 @@ web-feature-ids:
   - anchor-positioning
 #  - control-value
   - progress
+guides:
+  - position-aware-tooltips
 ---

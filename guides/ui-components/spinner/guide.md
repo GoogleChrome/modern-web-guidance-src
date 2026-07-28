@@ -6,3 +6,5 @@ web-feature-ids:
   - conic-gradients
   - progress
 ---
+
+<!-- Link to progress-ring for determinate state -->

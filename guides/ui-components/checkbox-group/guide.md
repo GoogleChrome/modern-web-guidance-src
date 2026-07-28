@@ -5,4 +5,6 @@ web-feature-ids:
   - subgrid
   - indeterminate
   - customizable-select # pending a11y SME
+guides:
+  - checkbox
 ---

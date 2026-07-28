@@ -5,4 +5,8 @@ web-feature-ids:
   - has
   - container-queries
   - container-style-queries
+guides:
+  - size-aware-styling
+  - content-based-styling
+  - style-parent-with-has
 ---
