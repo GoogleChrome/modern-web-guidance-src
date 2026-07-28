@@ -126,7 +126,7 @@ accordion.addEventListener('beforematch', (e) => {
 
 The `<details>` element is Baseline Widely available, so a fallback strategy is not required.
 
-The `hidden="until-found"` attribute is not yet Baseline Widely available, but it can be safely used with a fallback in unsupporting browsers. **DO NOT** avoid `hidden="until-found"` because of missing browser support, as its accessiblity benefits far outweigh the cost of implementing a fallback.
+The `hidden="until-found"` attribute is not yet Baseline Widely available, but it can be safely used with a fallback in unsupporting browsers. **DO NOT** avoid `hidden="until-found"` because of missing browser support, as its accessibility benefits far outweigh the cost of implementing a fallback.
 
 #### `hidden="until-found"` fallback
 
