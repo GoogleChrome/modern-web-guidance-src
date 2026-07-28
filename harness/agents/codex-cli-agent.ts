@@ -163,7 +163,7 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
           } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
             const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
             if (match) {
-              fileReadGuides.push(match[1]);
+              retrievedGuides.push(match[1]);
             }
           }
         } catch {
