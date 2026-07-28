@@ -63,7 +63,7 @@ trustedTypes.createPolicy("default", {
 ```
 
 Common sinks that support Trusted Types include:
-- **HTML:** `element.innerHTML`, `element.outerHTML`, `document.write()`, `element.setHTML()`, `document.parseHTML()`
+- **HTML:** `element.innerHTML`, `element.outerHTML`, `document.write()`, `element.setHTMLUnsafe()`, `document.parseHTMLUnsafe()`
 - **Script:** `<script src>`, `eval()`
 - **ScriptURL:** `Worker()`, `SharedWorker()`
 
@@ -71,6 +71,8 @@ Common sinks that support Trusted Types include:
 // Assign the TrustedHTML object.
 element.innerHTML = cleanHTML;
 ```
+
+Note that the "safe" HTML sanitization methods (`element.setHTML()` and `document.parseHTML()`, for instance), do not support Trusted Types, as they always sanitize potential XSS attacks.
 
 ### 4. Enforcing Trusted Types with CSP
 
