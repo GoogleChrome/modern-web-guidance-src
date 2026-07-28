@@ -11,18 +11,6 @@ import { TARGETS_DIR, SOLUTION_PATCH_FILE, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE
 import { applyPatchSync } from '../lib/patch-utils.ts';
 import { setupIsolatedWorkDir } from './lib/utils.ts';
 
-export function findGrader(startDir: string): string | null {
-  let currentDir = startDir;
-  while (currentDir !== path.dirname(currentDir)) {
-    const graderPath = path.join(currentDir, 'grader.ts');
-    if (fs.existsSync(graderPath)) {
-      return graderPath;
-    }
-    currentDir = path.dirname(currentDir);
-  }
-  return null;
-}
-
 export interface PlaywrightOptions {
   targetPathAbs: string;
   graderPath: string;
@@ -38,11 +26,10 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 
   const isDir = fs.existsSync(opts.targetPathAbs) && fs.statSync(opts.targetPathAbs).isDirectory();
   const appDir = isDir ? opts.targetPathAbs : path.dirname(opts.targetPathAbs);
-  const targetFile = isDir ? path.join(opts.targetPathAbs, 'index.html') : opts.targetPathAbs;
 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    TARGET_FILE: targetFile,
+    TARGET_FILE: opts.targetPathAbs,
     PLAYWRIGHT_HTML_OPEN: 'never',
   };
 
@@ -62,39 +49,6 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     stdio: opts.stdio || 'inherit',
     env
   });
-}
-
-export async function gradeFile(targetPathAbs: string): Promise<void> {
-  const appDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory() ? targetPathAbs : path.dirname(targetPathAbs);
-  const graderPath = findGrader(appDir);
-  if (!graderPath) {
-    console.error('Error: Could not find grader.ts in any parent directory.');
-    process.exit(1);
-  }
-
-  console.log(`Target Path: ${targetPathAbs}`);
-  console.log(`Grader: ${graderPath}`);
-
-  const outputDirPath = path.join(appDir, 'grade-report');
-
-  const child = executePlaywright({
-    targetPathAbs,
-    graderPath,
-    reporters: ['html'],
-    htmlOutputDir: outputDirPath,
-    stdio: 'inherit'
-  });
-
-  const [code] = await once(child, 'close');
-
-  console.log(`\nTests finished with code ${code}. Opening HTML report...`);
-  const playwrightBin = path.join(guidesDir, 'node_modules', '.bin', 'playwright');
-  const showReportChild = spawn(playwrightBin, ['show-report', outputDirPath], {
-    stdio: 'inherit'
-  });
-
-  await once(showReportChild, 'close');
-  process.exit((code as number) || 0);
 }
 
 export async function runPlaywright(
@@ -139,7 +93,6 @@ async function runPlaywrightCalibration(
   process.env.PATCH_FILE = patchFile;
   const results = await runPlaywright(targetPathAbs, graderPath, outDir, 'ignore')
     .catch(err => {
-      result.stage = 'server-boot';
       result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
       return null;
     });
@@ -150,7 +103,6 @@ async function runPlaywrightCalibration(
   }
 
   if (results.errors && results.errors.length > 0) {
-    result.stage = 'calibration';
     result.errorDetails = `Playwright global/compilation errors:\n` +
       results.errors.map((e: any) => e.message).join('\n');
     return null;
@@ -244,101 +196,9 @@ export function collectPlaywrightErrors(resultsJson: any): string {
 
 export interface CalibrationResult {
   success: boolean;
-  stage?: 'patch-apply' | 'server-boot' | 'calibration' | 'unknown';
   errorDetails?: string;
-  demo: { passed: number; failed: number; failingTests: string[] };
-  negative: { passed: number; failed: number; passingTests: string[] };
-}
-
-function validateCalibrationPaths(targetDirAbs: string): { demoPath: string; negativePath: string; graderPath: string; } {
-  const demoPath = path.join(targetDirAbs, 'demo.html');
-  const negativePath = path.join(targetDirAbs, 'negative-demo.html');
-  const graderPath = findGrader(targetDirAbs);
-
-  if (!graderPath) {
-    throw new Error('Could not find grader.ts in the directory or any parents.');
-  }
-  if (!fs.existsSync(demoPath)) {
-    throw new Error(`Missing demo.html in ${targetDirAbs}`);
-  }
-  if (!fs.existsSync(negativePath)) {
-    throw new Error(`Missing negative-demo.html in ${targetDirAbs}`);
-  }
-
-  return { demoPath, negativePath, graderPath };
-}
-
-async function runDemoCalibration(demoPath: string, graderPath: string, demoOutDir: string, result: CalibrationResult): Promise<boolean> {
-  console.log(cYellow(`\nRunning against demo.html... (Expecting 100% pass)`));
-  let demoFailed = false;
-
-  const solutionPatch = path.join(path.dirname(graderPath), 'solution.patch');
-  const demoResults = await runPlaywrightCalibration(demoPath, graderPath, demoOutDir, solutionPatch, result);
-
-  if (!demoResults) {
-    demoFailed = true;
-  } else {
-    const unexpected = demoResults.stats?.unexpected || 0;
-    const expected = demoResults.stats?.expected || 0;
-    result.demo.passed = expected;
-    result.demo.failed = unexpected;
-
-    if (expected === 0 && unexpected === 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run for demo.html`));
-      demoFailed = true;
-    } else if (unexpected > 0) {
-      result.demo.failingTests = demoResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
-      console.log(cRed(`\u274c demo.html failed ${unexpected} tests!`));
-      demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
-      demoFailed = true;
-    } else {
-      console.log(cGreen(`\u2705 demo.html passed all ${expected} tests.`));
-    }
-  }
-
-  console.log('');
-  return demoFailed;
-}
-
-async function runNegativeCalibration(negativePath: string, graderPath: string, negativeOutDir: string, result: CalibrationResult): Promise<void> {
-  console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
-
-  const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
-  const negativeResults = await runPlaywrightCalibration(negativePath, graderPath, negativeOutDir, zeroPassratePatch, result);
-
-  if (!negativeResults) {
-    // Failed to run — result.success stays false
-  } else {
-    const passed = negativeResults.stats?.expected || 0;
-    const failed = negativeResults.stats?.unexpected || 0;
-    result.negative.passed = passed;
-    result.negative.failed = failed;
-
-    if (passed === 0 && failed === 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run for negative-demo.html`));
-    } else if (passed > 0) {
-      result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
-      console.log(cRed(`\u274c negative-demo.html incorrectly passed ${passed} tests!`));
-      negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
-    } else {
-      console.log(cGreen(`\u2705 negative-demo.html failed all ${failed} tests correctly.`));
-      result.success = true;
-    }
-  }
-
-  console.log('');
-}
-
-function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boolean, demoOutDir: string, negativeOutDir: string): void {
-  if (result.success) {
-    console.log(cBold(cGreen(`Success! The grader is perfectly calibrated.`)));
-  } else {
-    console.log(cBold(cRed(`Failed! The grader needs calibration.`)));
-    if (demoFailed) {
-      console.log(`\nView demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), demoOutDir)}`);
-    }
-    console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), negativeOutDir)}`);
-  }
+  solution: { passed: number; failed: number; failingTests: string[] };
+  zeroPassrate: { passed: number; failed: number; passingTests: string[] };
 }
 
 export async function testTargetGrader(guideDirAbs: string, baseApp: string): Promise<CalibrationResult> {
@@ -349,18 +209,17 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
 
   const result: CalibrationResult = {
     success: false,
-    demo: { passed: 0, failed: 0, failingTests: [] },
-    negative: { passed: 0, failed: 0, passingTests: [] }
+    solution: { passed: 0, failed: 0, failingTests: [] },
+    zeroPassrate: { passed: 0, failed: 0, passingTests: [] }
   };
 
   if (!fs.existsSync(solutionPatch) || !fs.existsSync(zeroPassratePatch) || !fs.existsSync(graderPath)) {
-    result.stage = 'unknown';
     result.errorDetails = `Missing ${SOLUTION_PATCH_FILE}, ${ZERO_PASSRATE_PATCH_FILE}, or ${GRADER_FILE} in ${targetDir}`;
     return result;
   }
 
-  const demoOutDir = path.join(targetDir, 'grade-report', 'solution');
-  const negativeOutDir = path.join(targetDir, 'grade-report', 'zero-passrate');
+  const solutionOutDir = path.join(targetDir, 'grade-report', 'solution');
+  const zeroPassrateOutDir = path.join(targetDir, 'grade-report', 'zero-passrate');
 
   // Golden calibration
   const goldenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-sol`);
@@ -369,37 +228,34 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     fs.cpSync(path.join(baseAppsDir, baseApp), goldenSandbox, { recursive: true });
     const applyRes = applyPatchSync(goldenSandbox, solutionPatch);
     if (!applyRes.success) {
-      result.stage = 'patch-apply';
       result.errorDetails = `Failed to apply ${SOLUTION_PATCH_FILE}: ${applyRes.error}`;
       return result;
     }
 
     console.log(cYellow(`\nRunning against ${baseApp} with ${SOLUTION_PATCH_FILE}... (Expecting 100% pass)`));
-    const demoResults = await runPlaywrightCalibration(goldenSandbox, graderPath, demoOutDir, solutionPatch, result);
+    const solutionResults = await runPlaywrightCalibration(goldenSandbox, graderPath, solutionOutDir, solutionPatch, result);
 
-    if (!demoResults) {
+    if (!solutionResults) {
       return result;
     }
 
-    unexpected = demoResults.stats?.unexpected || 0;
-    const expected = demoResults.stats?.expected || 0;
-    result.demo.passed = expected;
-    result.demo.failed = unexpected;
+    unexpected = solutionResults.stats?.unexpected || 0;
+    const expected = solutionResults.stats?.expected || 0;
+    result.solution.passed = expected;
+    result.solution.failed = unexpected;
 
     if (expected === 0 && unexpected === 0) {
-      result.stage = 'calibration';
       result.errorDetails = `No tests were run for ${SOLUTION_PATCH_FILE}`;
       return result;
     } else if (unexpected > 0) {
-      result.demo.failingTests = demoResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
-      result.stage = 'calibration';
-      result.errorDetails = `${SOLUTION_PATCH_FILE} failed ${unexpected} tests:\n\n${collectPlaywrightErrors(demoResults)}`;
-      demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
+      result.solution.failingTests = solutionResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
+      result.errorDetails = `${SOLUTION_PATCH_FILE} failed ${unexpected} tests:\n\n${collectPlaywrightErrors(solutionResults)}`;
+      solutionResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
       return result;
     }
   } finally {
     if (unexpected > 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping golden sandbox directory for debugging: ${goldenSandbox}`));
+      console.log(cYellow(`⚠️  Calibration failed. Keeping golden sandbox directory for debugging: ${goldenSandbox}`));
     } else {
       fs.rmSync(goldenSandbox, { recursive: true, force: true });
     }
@@ -412,37 +268,34 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     fs.cpSync(path.join(baseAppsDir, baseApp), zeroPassrateSandbox, { recursive: true });
     const applyRes = applyPatchSync(zeroPassrateSandbox, zeroPassratePatch);
     if (!applyRes.success) {
-      result.stage = 'patch-apply';
       result.errorDetails = `Failed to apply ${ZERO_PASSRATE_PATCH_FILE}: ${applyRes.error}`;
       return result;
     }
 
     console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
-    const negativeResults = await runPlaywrightCalibration(zeroPassrateSandbox, graderPath, negativeOutDir, zeroPassratePatch, result);
+    const zeroPassrateResults = await runPlaywrightCalibration(zeroPassrateSandbox, graderPath, zeroPassrateOutDir, zeroPassratePatch, result);
 
-    if (!negativeResults) {
+    if (!zeroPassrateResults) {
       return result;
     }
 
-    passed = negativeResults.stats?.expected || 0;
-    const failed = negativeResults.stats?.unexpected || 0;
-    result.negative.passed = passed;
-    result.negative.failed = failed;
+    passed = zeroPassrateResults.stats?.expected || 0;
+    const failed = zeroPassrateResults.stats?.unexpected || 0;
+    result.zeroPassrate.passed = passed;
+    result.zeroPassrate.failed = failed;
 
     if (passed === 0 && failed === 0) {
-      result.stage = 'calibration';
       result.errorDetails = `No tests were run for ${ZERO_PASSRATE_PATCH_FILE}`;
       return result;
     } else if (passed > 0) {
-      result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
-      result.stage = 'calibration';
-      result.errorDetails = `${ZERO_PASSRATE_PATCH_FILE} incorrectly passed ${passed} tests:\n\n${collectPlaywrightErrors(negativeResults)}`;
-      negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
+      result.zeroPassrate.passingTests = zeroPassrateResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
+      result.errorDetails = `${ZERO_PASSRATE_PATCH_FILE} incorrectly passed ${passed} tests:\n\n${collectPlaywrightErrors(zeroPassrateResults)}`;
+      zeroPassrateResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
       return result;
     }
   } finally {
     if (passed > 0) {
-      console.log(cYellow(`\u26a0\ufe0f  Calibration failed. Keeping zero-passrate sandbox directory for debugging: ${zeroPassrateSandbox}`));
+      console.log(cYellow(`⚠️  Calibration failed. Keeping zero-passrate sandbox directory for debugging: ${zeroPassrateSandbox}`));
     } else {
       fs.rmSync(zeroPassrateSandbox, { recursive: true, force: true });
     }
@@ -452,10 +305,14 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   return result;
 }
 
-export async function testGrader(targetDirRaw: string, baseApp?: string): Promise<CalibrationResult> {
+export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
-  if (baseApp) {
-    return testTargetGrader(targetDirAbs, baseApp);
+
+  // Direct target base app path (e.g. guides/css/size-aware-styling/targets/daily-grind)
+  if (path.basename(path.dirname(targetDirAbs)) === TARGETS_DIR) {
+    const guideDir = path.dirname(path.dirname(targetDirAbs));
+    const appName = path.basename(targetDirAbs);
+    return testTargetGrader(guideDir, appName);
   }
 
   const targetsDir = path.join(targetDirAbs, TARGETS_DIR);
@@ -471,39 +328,17 @@ export async function testGrader(targetDirRaw: string, baseApp?: string): Promis
           break;
         }
       }
-      return lastResult || { success: false, stage: 'unknown', demo: { passed: 0, failed: 0, failingTests: [] }, negative: { passed: 0, failed: 0, passingTests: [] } };
+      return lastResult || { success: false, solution: { passed: 0, failed: 0, failingTests: [] }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } };
     }
   }
 
-  const { demoPath, negativePath, graderPath } = validateCalibrationPaths(targetDirAbs);
-
-  const result: CalibrationResult = {
-    success: false,
-    demo: { passed: 0, failed: 0, failingTests: [] },
-    negative: { passed: 0, failed: 0, passingTests: [] },
-  };
-
-  const demoOutDir = path.join(targetDirAbs, 'grade-report', 'demo');
-  const negativeOutDir = path.join(targetDirAbs, 'grade-report', 'negative');
-
-  const demoFailed = await runDemoCalibration(demoPath, graderPath, demoOutDir, result);
-
-  if (demoFailed) {
-    console.log(cYellow(`Skipping negative-demo.html run due to failures in demo.html`));
-    return result;
-  }
-
-  await runNegativeCalibration(negativePath, graderPath, negativeOutDir, result);
-
-  printFinalCalibrationSummary(result, demoFailed, demoOutDir, negativeOutDir);
-
-  return result;
+  throw new Error(`No target base apps found in ${targetsDir}. Calibration requires target base apps in targets/.`);
 }
 
 async function run(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.length === 0) {
-    console.error('Usage: pnpm grade <path-to-html-file-or-guide-directory>');
+    console.error('Usage: pnpm grade <path-to-target-directory>');
     process.exit(1);
   }
 
@@ -515,18 +350,8 @@ async function run(): Promise<void> {
     process.exit(1);
   }
 
-  const stat = fs.statSync(targetPathAbs);
-  if (stat.isDirectory()) {
-    console.log(cCyan(`\ud83e\uddea Directory detected. Running calibration suite on the grader (demo.html & negative-demo.html)...`));
-    const result = await testGrader(targetPathAbs);
-    process.exit(result.success ? 0 : 1);
-  } else if (targetPathAbs.endsWith('.html')) {
-    console.log(cCyan(`\ud83d\udcc4 HTML file detected. Grading artifact and opening visual report...`));
-    await gradeFile(targetPathAbs);
-  } else {
-    console.error(`Error: Expected a directory or an .html file.`);
-    process.exit(1);
-  }
+  const res = await testGrader(targetPathAbs);
+  process.exit(res.success ? 0 : 1);
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {

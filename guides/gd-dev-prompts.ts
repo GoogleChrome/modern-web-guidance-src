@@ -94,7 +94,7 @@ Write a Playwright test script named \`${opts.graderFile}\` that directly valida
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Requirements**: \`${opts.expectationsFile}\`
 3. **Golden Solution Diff**: \`${opts.solutionPatchFile}\` (must pass 100% of tests)
-4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of negative/must-fail tests)
+4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of tests)
 5. **Boilerplate Template**: \`${opts.templateFile}\`
 
 # VERIFICATION & SCOPING RULES

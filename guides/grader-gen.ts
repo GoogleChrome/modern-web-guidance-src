@@ -138,8 +138,8 @@ export async function generateGraderWithContext(targetDirRaw: string, failureCon
   } else {
     const lines: string[] = [];
     if (failureContextStrOrRes.errorDetails) lines.push(failureContextStrOrRes.errorDetails);
-    if (failureContextStrOrRes.demo.failingTests.length > 0) lines.push(`Golden tests failed: ${failureContextStrOrRes.demo.failingTests.join(', ')}`);
-    if (failureContextStrOrRes.negative.passingTests.length > 0) lines.push(`Negative tests passed: ${failureContextStrOrRes.negative.passingTests.join(', ')}`);
+    if (failureContextStrOrRes.solution.failingTests.length > 0) lines.push(`Solution patch tests failed: ${failureContextStrOrRes.solution.failingTests.join(', ')}`);
+    if (failureContextStrOrRes.zeroPassrate.passingTests.length > 0) lines.push(`Zero-passrate patch tests incorrectly passed: ${failureContextStrOrRes.zeroPassrate.passingTests.join(', ')}`);
     failureContextStr = lines.join('\n');
   }
 

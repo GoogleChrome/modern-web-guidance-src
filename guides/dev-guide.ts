@@ -145,14 +145,14 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
     let success = false;
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      const res = await testGrader(targetDirRaw, baseApp);
+      const res = await testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp));
       if (res.success) {
         console.log(cGreen(`✅ ${baseApp} calibrated successfully on attempt ${attempt}!`));
         success = true;
         break;
       }
 
-      if (res.stage === 'calibration' && attempt <= maxRetries) {
+      if (attempt <= maxRetries) {
         console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
         await generateTargetGrader(targetDir, baseApp, res.errorDetails);
       } else {
@@ -169,7 +169,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Summary
-  printSummary(targetDir, currentInv, { success: overallSuccess, demo: { passed: 0, failed: 0, failingTests: [] }, negative: { passed: 0, failed: 0, passingTests: [] } }, 1);
+  printSummary(targetDir, currentInv, { success: overallSuccess, solution: { passed: 0, failed: 0, failingTests: [] }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
 
   return overallSuccess;
 }
