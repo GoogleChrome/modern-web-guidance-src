@@ -4,4 +4,6 @@ description: Highlight the currently visible section of a page in a navigation m
 web-feature-ids:
   - scroll-marker-targets
   - scroll-target-group
+guides:
+  - scroll-progress-indicator
 ---

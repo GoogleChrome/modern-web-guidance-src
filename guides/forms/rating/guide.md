@@ -5,4 +5,6 @@ web-feature-ids:
   - meter
   - input-range
   - customizable-select
+guides:
+  - icons
 ---

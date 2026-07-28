@@ -4,4 +4,6 @@ description: Build a menu component that displays a list of options or actions, 
 web-feature-ids:
   - popover
   - menu
+guides:
+  - resilient-context-menus-and-nested-dropdowns
 ---

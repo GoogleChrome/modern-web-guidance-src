@@ -5,4 +5,6 @@ web-feature-ids:
   - popover
   - anchor-positioning
   - menu
+guides:
+  - menu
 ---

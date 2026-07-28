@@ -7,4 +7,6 @@ web-feature-ids:
   - customizable-select
 guides:
   - checkbox-group
+  - hierarchical-navigation
+  - accordion
 ---

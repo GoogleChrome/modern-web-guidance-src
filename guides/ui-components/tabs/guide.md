@@ -6,4 +6,8 @@ web-feature-ids:
   - hidden-until-found
   - scroll-snap
   - popover
+guides:
+  - anchor-positioning-tab-underline
+  - search-hidden-content
+  - scrollability-affordance-hints
 ---

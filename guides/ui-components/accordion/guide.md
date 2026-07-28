@@ -4,6 +4,12 @@ description: "Build an accordion component with animation and optional exclusive
 web-feature-ids:
   - hidden-until-found
   - interpolate-size
+  - transition-behavior
+  - starting-style
   - details-name
   - details
+guides:
+  - search-hidden-content
+  - animate-to-intrinsic-sizes
+  - interactive-content-reveal
 ---

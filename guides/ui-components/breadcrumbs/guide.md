@@ -5,4 +5,6 @@ web-feature-ids:
   - border-shape
   - corner-shape
   - popover
+guides:
+  - menu
 ---
