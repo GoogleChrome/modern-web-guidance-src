@@ -49,6 +49,8 @@ const mySanitizer = new Sanitizer(config);
 container.setHTML(untrustedHTML, { sanitizer: mySanitizer });
 ```
 
+If you need a more permissive `Sanitizer` that allows some XSS-unsafe elements or attributes, you can use a custom Sanitizer with `Element.setHTMLUnsafe()` and `Document.parseHTMLUnsafe()`.
+
 ## 3. Parsing User Input with `Document.parseHTML()`
 
 If you need to parse untrusted HTML without immediately inserting it into the live DOM, use `Document.parseHTML()`. This method returns a `Document` that has been sanitized according to default or custom rules. 
