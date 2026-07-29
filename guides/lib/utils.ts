@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import config from '../../harness/config.ts';
-import { rootDir, baseAppsDir, guidesDir } from '../../lib/paths.ts';
+import { rootDir, baseAppsDir } from '../../lib/paths.ts';
 import { applyPatchSync } from '../../lib/patch-utils.ts';
 import {
   createIsolatedHome,
@@ -24,17 +24,7 @@ export function stageBaseAppWorkspace(
 
   const refBaseAppDir = path.join(baseAppsDir, baseApp);
   if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workDir, {
-      recursive: true,
-      filter: (src) => !src.includes('node_modules'),
-    });
-  }
-
-  const sourceNodeModules = path.join(refBaseAppDir, 'node_modules');
-  if (fs.existsSync(sourceNodeModules)) {
-    try {
-      fs.symlinkSync(sourceNodeModules, path.join(workDir, 'node_modules'));
-    } catch (e) {}
+    fs.cpSync(refBaseAppDir, workDir, { recursive: true });
   }
 
   if (patchFile && fs.existsSync(patchFile)) {
