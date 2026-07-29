@@ -236,6 +236,9 @@ async function main() {
       if (values.grade || values['test-grader']) {
         const { testGrader } = await import('../guides/run-grader.ts');
         const res = await testGrader(dir);
+        if (!res.success && res.errorDetails) {
+          console.error(cRed(`\nCalibration Error:\n${res.errorDetails}`));
+        }
         process.exit(res.success ? 0 : 1);
       }
       if (values['gen-grader']) {
