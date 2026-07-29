@@ -349,31 +349,13 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
     fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
   }
 
-  // Ensure suite-level base app exists at <runDir>/base_apps/<baseApp>/
-  const runBaseAppDir = path.join(runDir, 'base_apps', taskInfo.baseApp);
-  if (!fs.existsSync(runBaseAppDir)) {
-    const sourceBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
-    if (fs.existsSync(sourceBaseAppDir)) {
-      fs.mkdirSync(path.dirname(runBaseAppDir), { recursive: true });
-      await fs.promises.cp(sourceBaseAppDir, runBaseAppDir, {
-        recursive: true,
-        filter: (src) => {
-          const basename = path.basename(src);
-          return !['node_modules', '.git', 'dist', '.astro'].includes(basename);
-        }
-      });
-      initGitRepo(runBaseAppDir);
-    } else {
-      console.warn(`Source base app not found at ${sourceBaseAppDir}`);
-      return null;
-    }
+  const refBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
+  if (fs.existsSync(refBaseAppDir)) {
+    fs.cpSync(refBaseAppDir, workspaceBaseAppDir, { recursive: true });
+  } else {
+    console.warn(`Source base app not found at ${refBaseAppDir}`);
+    return null;
   }
-
-  // Copy from <runDir>/base_apps/<baseApp>/ to workspaceBaseAppDir
-  await fs.promises.cp(runBaseAppDir, workspaceBaseAppDir, {
-    recursive: true,
-  });
-
   if (!fs.existsSync(path.join(workspaceBaseAppDir, '.git'))) {
     initGitRepo(workspaceBaseAppDir);
   }

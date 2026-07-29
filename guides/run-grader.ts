@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { guidesDir, rootDir } from '../lib/paths.ts';
+import { guidesDir } from '../lib/paths.ts';
 import { cRed, cYellow, cCyan } from '../lib/colors.ts';
 import { TARGETS_DIR, SOLUTION_PATCH_FILE, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../lib/guide-validation.ts';
 import { stageBaseAppWorkspace } from './lib/utils.ts';
@@ -46,7 +46,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PLAYWRIGHT_JSON_OUTPUT_NAME = opts.jsonOutputName;
   }
 
-  const playwrightBin = path.join(rootDir, 'node_modules', '.bin', 'playwright');
+  const playwrightBin = path.join(guidesDir, 'node_modules', '.bin', 'playwright');
 
   return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
     cwd: appDir,

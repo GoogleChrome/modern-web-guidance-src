@@ -93,4 +93,3 @@ export function initGitRepo(workDir: string): void {
     console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
   }
 }
-
