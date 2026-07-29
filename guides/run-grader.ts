@@ -89,7 +89,7 @@ export async function runPlaywright(
       reporters: ['json', 'html'],
       htmlOutputDir,
       jsonOutputName: tmpJson,
-      patchFile: hasPatch ? agentPatch : undefined,
+      patchFile: hasPatch ? agentPatch : process.env.PATCH_FILE,
       stdio: stdio === 'ignore' ? 'pipe' : stdio
     });
 

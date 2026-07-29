@@ -16,20 +16,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # zizmor: ignore[unpinned-uses]
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           # Needed for tag history
           fetch-depth: 0
       - run: git fetch --tags
 
       - name: Setup pnpm
-        # zizmor: ignore[unpinned-uses]
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@fe8c92019f6285b7e11d04499d14660ebfe12403 # v4.0.0
 
       - name: Setup Node
-        # zizmor: ignore[unpinned-uses]
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@39370e3970a6d050c38000417b35111b15e47854 # v4.2.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -72,17 +69,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # zizmor: ignore[unpinned-uses]
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - run: git fetch --tags
 
       - name: Setup pnpm
-        # zizmor: ignore[unpinned-uses]
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@fe8c92019f6285b7e11d04499d14660ebfe12403 # v4.0.0
 
       - name: Setup Node
-        # zizmor: ignore[unpinned-uses]
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@39370e3970a6d050c38000417b35111b15e47854 # v4.2.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -95,8 +89,7 @@ jobs:
         run: echo "version=$(pnpm list --filter eval-view --depth 0 playwright --json | jq -r '.[0].devDependencies.playwright.version')" >> $GITHUB_OUTPUT
 
       - name: Cache Playwright Browsers
-        # zizmor: ignore[unpinned-uses]
-        uses: actions/cache@v4
+        uses: actions/cache@d4323d45544a70650ed686153723337a7b8e19e0 # v4.2.0
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
