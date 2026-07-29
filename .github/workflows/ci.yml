@@ -108,4 +108,4 @@ jobs:
 
       - name: Test Grader Calibration
         # Ensuring playwright is happy
-        run: node bin/gd.ts dev guides/visual-design/adapt-scrollbar-to-contrast-preferences/ --test-grader
+        run: node bin/gd.ts dev guides/css/size-aware-styling/ --test-grader
