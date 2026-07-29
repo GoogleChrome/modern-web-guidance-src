@@ -366,6 +366,9 @@ async function run(): Promise<void> {
   }
 
   const res = await testGrader(targetPathAbs);
+  if (!res.success && res.errorDetails) {
+    console.error(cRed(`\nCalibration Error:\n${res.errorDetails}`));
+  }
   process.exit(res.success ? 0 : 1);
 }
 
