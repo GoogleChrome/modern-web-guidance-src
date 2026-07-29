@@ -8,4 +8,6 @@ web-feature-ids:
   - container-style-queries
   - registered-custom-properties
 # - linked-parameters
+guides:
+  - precise-text-alignment
 ---
