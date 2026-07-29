@@ -60,6 +60,7 @@ guides/ui-behaviors/animate-to-from-top-layer/ @bramus
 guides/ui-behaviors/consistent-cross-document-transitions/ @bramus
 guides/ui-behaviors/cross-document-transitions/ @bramus
 guides/ui-behaviors/directional-navigation-transitions/ @bramus
+guides/ui-behaviors/dynamic-sort/ @bramus
 guides/ui-behaviors/group-element-transitions/ @bramus
 guides/ui-behaviors/same-document-transitions/ @bramus
 guides/ui-behaviors/sortable-table/ @bramus

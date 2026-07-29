@@ -8,7 +8,3 @@ guides:
   - responsive-table
   - sortable-table
 ---
-
-<!--
-
--->
