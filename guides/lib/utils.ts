@@ -30,10 +30,10 @@ export function stageBaseAppWorkspace(
     });
   }
 
-  const hostGuidesNodeModules = path.join(guidesDir, 'node_modules');
-  if (fs.existsSync(hostGuidesNodeModules)) {
+  const sourceNodeModules = path.join(refBaseAppDir, 'node_modules');
+  if (fs.existsSync(sourceNodeModules)) {
     try {
-      fs.symlinkSync(hostGuidesNodeModules, path.join(workDir, 'node_modules'));
+      fs.symlinkSync(sourceNodeModules, path.join(workDir, 'node_modules'));
     } catch (e) {}
   }
 
