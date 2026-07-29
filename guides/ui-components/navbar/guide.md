@@ -5,4 +5,5 @@ web-feature-ids:
   - popover
 guides:
   - menu
+  - overflow-popup
 ---
