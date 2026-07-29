@@ -5,3 +5,7 @@ web-feature-ids:
   - switch-control
   - accent-color
 ---
+
+<!--
+Feature detect <input type=checkbox switch> and fall back to checkbox styling or polyfill if not supported.
+-->
