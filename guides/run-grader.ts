@@ -82,6 +82,7 @@ export async function runPlaywright(
   }
 
   try {
+    let stderrData = '';
     const child = executePlaywright({
       targetPathAbs: effectiveTargetPath,
       graderPath,
@@ -89,8 +90,14 @@ export async function runPlaywright(
       htmlOutputDir,
       jsonOutputName: tmpJson,
       patchFile: hasPatch ? agentPatch : undefined,
-      stdio
+      stdio: stdio === 'ignore' ? 'pipe' : stdio
     });
+
+    if (child.stderr) {
+      child.stderr.on('data', (data) => {
+        stderrData += data.toString();
+      });
+    }
 
     await once(child, 'close');
 
@@ -100,7 +107,7 @@ export async function runPlaywright(
 
     const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
     if (!content) {
-      throw new Error(`Playwright did not produce a JSON report at ${tmpJson}`);
+      throw new Error(`Playwright did not produce a JSON report at ${tmpJson}.\nStderr: ${stderrData}`);
     }
 
     await fs.promises.unlink(tmpJson).catch(() => {});
