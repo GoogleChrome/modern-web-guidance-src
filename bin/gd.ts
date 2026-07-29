@@ -23,9 +23,8 @@ const ALL_OPTIONS = {
   help: { type: 'boolean', short: 'h', desc: 'Show this help' },
   version: { type: 'boolean', short: 'v', desc: 'Show version' },
   grade: { type: 'boolean', desc: 'Run/calibrate grader' },
-  'test-grader': { type: 'boolean', desc: 'Check grader calibration (demo + negative-demo)' },
+  'test-grader': { type: 'boolean', desc: 'Check grader calibration (solution + zero-passrate)' },
   'gen-grader': { type: 'boolean', desc: 'Generate a new grader script' },
-  'gen-negative': { type: 'boolean', desc: 'Generate negative examples' },
   guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
   verbose: { type: 'boolean', desc: 'Show additional output' },
   usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
@@ -39,7 +38,7 @@ type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
-  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'no-test', 'cross-app'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
@@ -249,11 +248,7 @@ async function main() {
         await generateGrader(dir);
         break;
       }
-      if (values['gen-negative']) {
-        const { generateNegative } = await import('../guides/negative-gen.ts');
-        await generateNegative(dir);
-        break;
-      }
+
       // Default dev-guide pipeline
       const { devGuide } = await import('../guides/dev-guide.ts');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);

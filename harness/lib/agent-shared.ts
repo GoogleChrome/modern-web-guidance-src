@@ -4,6 +4,7 @@ import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
+import { capturePatchFromGit } from '../../lib/patch-utils.ts';
 
 import { type SuiteConfig } from '../config.ts';
 
@@ -37,7 +38,15 @@ export function getSuiteConfig(): SuiteConfig {
 export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, options);
-    child.on('close', (code) => resolve(code ?? 1));
+    let resolved = false;
+    const done = (code: number) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(code);
+      }
+    };
+    child.on('exit', (code) => done(code ?? 1));
+    child.on('close', (code) => done(code ?? 1));
     child.on('error', reject);
   });
 }
@@ -462,7 +471,13 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
   // For the suite run, copy the template directory to the isolated home directory, following symlinks
   execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
   console.log(`Copied ${templateDir} to ${homeDir}...`);
-  return path.join(homeDir, path.basename(templateDir));
+  const workDir = path.join(homeDir, path.basename(templateDir));
+  try {
+    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
+  } catch (err) {
+    console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
+  }
+  return workDir;
 }
 
 /**
@@ -473,6 +488,12 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
  */
 export function copyResultsToTarget(workDir: string, targetDir: string, subPath: string = '.'): void {
   const sourceDir = path.join(workDir, subPath);
+  try {
+    const agentPatchPath = path.join(targetDir, 'agent.patch');
+    capturePatchFromGit(workDir, agentPatchPath);
+  } catch (err) {
+    console.warn(`Failed to capture agent patch: ${err}`);
+  }
   execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
   console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
 }

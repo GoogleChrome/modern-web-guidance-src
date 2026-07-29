@@ -1,5 +1,4 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
@@ -31,6 +30,32 @@ export function readTrajectorySummary(dir: string): TrajectorySummary | null {
   return null;
 }
 
+/**
+ * Copies Jetski CLI authentication and configuration files from ~/.gemini/jetski to the isolated HOME,
+ * and sets process.env.JETSKI_DIR.
+ * @param tempHome Path to the isolated HOME directory
+ * @returns Path to the destination .gemini/jetski directory
+ */
+export function setupJetskiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const jetskiSource = path.join(originalHome, '.gemini', 'jetski');
+  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
+
+  fs.mkdirSync(jetskiDest, { recursive: true });
+
+  const filesToCopy = [
+    'installation_id',
+    'user_settings.pb',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
+  }
+
+  process.env.JETSKI_DIR = jetskiDest;
+  return jetskiDest;
+}
+
 // Usage: node jetski-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
@@ -40,25 +65,10 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
   const tempHome = createIsolatedHome('ghh-jetski-cli', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
-  const jetskiSource = path.join(os.homedir(), '.gemini', 'jetski');
-  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
-
-  fs.mkdirSync(jetskiDest, { recursive: true });
-
-  // Copy necessary auth and identification files
-  const filesToCopy = [
-    'installation_id',
-    'user_settings.pb'
-  ];
-
-  for (const file of filesToCopy) {
-    const src = path.join(jetskiSource, file);
-    copyFileIfExists(src, path.join(jetskiDest, file));
-  }
+  const jetskiDest = setupJetskiCliCredentials(tempHome);
 
   // Set environment variables
   process.env.HOME = tempHome;
-  process.env.JETSKI_DIR = jetskiDest;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
