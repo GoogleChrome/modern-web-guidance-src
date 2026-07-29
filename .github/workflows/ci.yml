@@ -23,10 +23,10 @@ jobs:
       - run: git fetch --tags
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@fe8c92019f6285b7e11d04499d14660ebfe12403 # v4.0.0
+        uses: pnpm/action-setup@0c17529a66aca453f9227af23103ed11469b1e47 # v4.0.0
 
       - name: Setup Node
-        uses: actions/setup-node@39370e3970a6d050c38000417b35111b15e47854 # v4.2.0
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -73,10 +73,10 @@ jobs:
       - run: git fetch --tags
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@fe8c92019f6285b7e11d04499d14660ebfe12403 # v4.0.0
+        uses: pnpm/action-setup@0c17529a66aca453f9227af23103ed11469b1e47 # v4.0.0
 
       - name: Setup Node
-        uses: actions/setup-node@39370e3970a6d050c38000417b35111b15e47854 # v4.2.0
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -89,7 +89,7 @@ jobs:
         run: echo "version=$(pnpm list --filter eval-view --depth 0 playwright --json | jq -r '.[0].devDependencies.playwright.version')" >> $GITHUB_OUTPUT
 
       - name: Cache Playwright Browsers
-        uses: actions/cache@d4323d45544a70650ed686153723337a7b8e19e0 # v4.2.0
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
