@@ -8,6 +8,7 @@ import { extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gem
 import { extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
 import { extractJetskiCliModel, extractJetskiCliTokenUsage } from '../agents/jetski-cli-agent.ts';
+import { extractPiModel, extractPiTokenUsage } from '../agents/pi-agent.ts';
 import { getGraderScriptContent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
@@ -23,6 +24,8 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
     return extractClaudeCodeModel(resultsDir);
   } else if (agent === Agents.CODEX_CLI) {
     return extractCodexCliModel(resultsDir);
+  } else if (agent === Agents.PI) {
+    return extractPiModel(resultsDir);
   }
   return 'unknown';
 }
@@ -32,6 +35,7 @@ export function extractTokenUsageFromResults(resultsDir: string, agent: string):
   if (agent === Agents.JETSKI_CLI) return extractJetskiCliTokenUsage(resultsDir) ?? null;
   if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;
   if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir) ?? null;
+  if (agent === Agents.PI) return extractPiTokenUsage(resultsDir) ?? null;
   return null;
 }
 
