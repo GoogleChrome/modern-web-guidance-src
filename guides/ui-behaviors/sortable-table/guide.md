@@ -5,6 +5,8 @@ web-feature-ids:
   - invoker-commands
   - view-transitions
 guides:
+  - dynamic-sort
   - responsive-table
   - icons # for the sort icon
+  - move-dom-element-without-losing-state
 ---
