@@ -64,11 +64,13 @@ guides/ui-behaviors/group-element-transitions/ @bramus
 guides/ui-behaviors/same-document-transitions/ @bramus
 guides/ui-behaviors/sortable-table/ @bramus
 # Owned via feature "container-scroll-state-queries"
+guides/ui-components/content-table/ @bramus
 guides/ui-components/menu/ @bramus
 # Owned via feature "prefers-reduced-motion"
 guides/ui-components/skeleton/ @bramus
 guides/ui-components/spinner/ @bramus
 # Owned via group "scrolling"
+guides/ui-components/carousel/ @bramus
 guides/ui-components/navigation-drawer/ @bramus
 guides/ui-components/scrollspy/ @bramus
 guides/ui-components/stack-drill-down/ @bramus
