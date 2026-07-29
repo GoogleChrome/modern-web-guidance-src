@@ -79,3 +79,18 @@ export function capturePatchFromGit(
   }
 }
 
+/**
+ * Initializes a clean git repository in the target directory with an initial commit.
+ * Required so git diff / capturePatchFromGit can track modified and new files.
+ */
+export function initGitRepo(workDir: string): void {
+  try {
+    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit --allow-empty -m "init"', {
+      cwd: workDir,
+      stdio: 'ignore'
+    });
+  } catch (err) {
+    console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
+  }
+}
+

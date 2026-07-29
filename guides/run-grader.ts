@@ -5,11 +5,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { guidesDir, baseAppsDir } from '../lib/paths.ts';
-import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
+import { guidesDir, rootDir } from '../lib/paths.ts';
+import { cRed, cYellow, cCyan } from '../lib/colors.ts';
 import { TARGETS_DIR, SOLUTION_PATCH_FILE, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../lib/guide-validation.ts';
-import { applyPatchSync } from '../lib/patch-utils.ts';
-import { setupIsolatedWorkDir } from './lib/utils.ts';
+import { stageBaseAppWorkspace } from './lib/utils.ts';
 
 export interface PlaywrightOptions {
   targetPathAbs: string;
@@ -17,6 +16,7 @@ export interface PlaywrightOptions {
   reporters: string[];
   htmlOutputDir?: string;
   jsonOutputName?: string;
+  patchFile?: string;
   stdio?: 'inherit' | 'ignore' | 'pipe';
 }
 
@@ -33,6 +33,10 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     PLAYWRIGHT_HTML_OPEN: 'never',
   };
 
+  if (opts.patchFile) {
+    env.PATCH_FILE = path.resolve(opts.patchFile);
+  }
+
   if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
     env.PLAYWRIGHT_OUTPUT_DIR = path.join(appDir, 'test-results');
@@ -42,7 +46,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PLAYWRIGHT_JSON_OUTPUT_NAME = opts.jsonOutputName;
   }
 
-  const playwrightBin = path.join(guidesDir, 'node_modules', '.bin', 'playwright');
+  const playwrightBin = path.join(rootDir, 'node_modules', '.bin', 'playwright');
 
   return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
     cwd: appDir,
@@ -59,28 +63,53 @@ export async function runPlaywright(
 ): Promise<any> {
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
-  const child = executePlaywright({
-    targetPathAbs,
-    graderPath,
-    reporters: ['json', 'html'],
-    htmlOutputDir,
-    jsonOutputName: tmpJson,
-    stdio
-  });
+  const isDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory();
+  const appDir = isDir ? targetPathAbs : path.dirname(targetPathAbs);
+  const agentPatch = path.join(appDir, 'agent.patch');
+  let effectiveTargetPath = targetPathAbs;
+  let cleanupGradingDir: (() => void) | null = null;
 
-  await once(child, 'close');
-
-  const appDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory() ? targetPathAbs : path.dirname(targetPathAbs);
-  const testResultsDir = path.join(appDir, 'test-results');
-  await fs.promises.rm(testResultsDir, { recursive: true, force: true }).catch(() => {});
-
-  const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
-  if (!content) {
-    throw new Error(`Playwright did not produce a JSON report at ${tmpJson}`);
+  const hasPatch = fs.existsSync(agentPatch);
+  if (hasPatch) {
+    const targetsMatch = graderPath.match(/targets[/\\]([^/\\]+)/);
+    if (!targetsMatch) {
+      throw new Error(`Could not determine target baseApp from grader path: ${graderPath}`);
+    }
+    const baseApp = targetsMatch[1];
+    const { workDir: tempGradingDir, cleanup } = stageBaseAppWorkspace(baseApp, agentPatch);
+    cleanupGradingDir = cleanup;
+    effectiveTargetPath = isDir ? tempGradingDir : path.join(tempGradingDir, path.basename(targetPathAbs));
   }
 
-  await fs.promises.unlink(tmpJson).catch(() => {});
-  return JSON.parse(content);
+  try {
+    const child = executePlaywright({
+      targetPathAbs: effectiveTargetPath,
+      graderPath,
+      reporters: ['json', 'html'],
+      htmlOutputDir,
+      jsonOutputName: tmpJson,
+      patchFile: hasPatch ? agentPatch : undefined,
+      stdio
+    });
+
+    await once(child, 'close');
+
+    const effectiveAppDir = fs.existsSync(effectiveTargetPath) && fs.statSync(effectiveTargetPath).isDirectory() ? effectiveTargetPath : path.dirname(effectiveTargetPath);
+    const testResultsDir = path.join(effectiveAppDir, 'test-results');
+    await fs.promises.rm(testResultsDir, { recursive: true, force: true }).catch(() => {});
+
+    const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
+    if (!content) {
+      throw new Error(`Playwright did not produce a JSON report at ${tmpJson}`);
+    }
+
+    await fs.promises.unlink(tmpJson).catch(() => {});
+    return JSON.parse(content);
+  } finally {
+    if (cleanupGradingDir) {
+      cleanupGradingDir();
+    }
+  }
 }
 
 async function runPlaywrightCalibration(
@@ -222,16 +251,9 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const zeroPassrateOutDir = path.join(targetDir, 'grade-report', 'zero-passrate');
 
   // Golden calibration
-  const goldenSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-sol`);
+  const { workDir: goldenSandbox, cleanup: cleanupGolden } = stageBaseAppWorkspace(baseApp, solutionPatch, `gd-cal-${baseApp}-sol`);
   let unexpected = 0;
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), goldenSandbox, { recursive: true });
-    const applyRes = applyPatchSync(goldenSandbox, solutionPatch);
-    if (!applyRes.success) {
-      result.errorDetails = `Failed to apply ${SOLUTION_PATCH_FILE}: ${applyRes.error}`;
-      return result;
-    }
-
     console.log(cYellow(`\nRunning against ${baseApp} with ${SOLUTION_PATCH_FILE}... (Expecting 100% pass)`));
     const solutionResults = await runPlaywrightCalibration(goldenSandbox, graderPath, solutionOutDir, solutionPatch, result);
 
@@ -257,21 +279,14 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     if (unexpected > 0) {
       console.log(cYellow(`⚠️  Calibration failed. Keeping golden sandbox directory for debugging: ${goldenSandbox}`));
     } else {
-      fs.rmSync(goldenSandbox, { recursive: true, force: true });
+      cleanupGolden();
     }
   }
 
   // Zero-passrate calibration
-  const zeroPassrateSandbox = setupIsolatedWorkDir(`gd-cal-${baseApp}-zp`);
+  const { workDir: zeroPassrateSandbox, cleanup: cleanupZeroPassrate } = stageBaseAppWorkspace(baseApp, zeroPassratePatch, `gd-cal-${baseApp}-zp`);
   let passed = 0;
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), zeroPassrateSandbox, { recursive: true });
-    const applyRes = applyPatchSync(zeroPassrateSandbox, zeroPassratePatch);
-    if (!applyRes.success) {
-      result.errorDetails = `Failed to apply ${ZERO_PASSRATE_PATCH_FILE}: ${applyRes.error}`;
-      return result;
-    }
-
     console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
     const zeroPassrateResults = await runPlaywrightCalibration(zeroPassrateSandbox, graderPath, zeroPassrateOutDir, zeroPassratePatch, result);
 
@@ -297,7 +312,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     if (passed > 0) {
       console.log(cYellow(`⚠️  Calibration failed. Keeping zero-passrate sandbox directory for debugging: ${zeroPassrateSandbox}`));
     } else {
-      fs.rmSync(zeroPassrateSandbox, { recursive: true, force: true });
+      cleanupZeroPassrate();
     }
   }
 
