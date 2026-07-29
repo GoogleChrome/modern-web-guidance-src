@@ -8,6 +8,11 @@ import { capturePatchFromGit } from '../../lib/patch-utils.ts';
 
 import { type SuiteConfig } from '../config.ts';
 
+export interface GuideUsage {
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+}
+
 /**
  * Gets the suite configuration from environment variables or returns default.
  */

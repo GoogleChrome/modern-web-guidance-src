@@ -20,8 +20,6 @@ export interface RunResult {
   tokenUsage?: { total: number; cached: number };
 }
 
-
-
 export interface Metrics {
   summary: {
     unguidedMedian: number;
@@ -153,8 +151,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         }
       });
     }
-
-
 
     let totalTokensForConfig = 0;
     let cachedTokensForConfig = 0;

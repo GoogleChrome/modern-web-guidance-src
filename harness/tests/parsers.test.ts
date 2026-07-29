@@ -8,6 +8,7 @@ import { extractTokenUsageFromResults, extractModelFromResults } from '../lib/co
 import { collectGeminiToolsFromTrajectory, collectGeminiGuidesFromTrajectory } from '../agents/gemini-cli-agent.ts';
 import { collectClaudeToolsFromTrajectory, collectClaudeGuidesFromTrajectory } from '../agents/claude-code-agent.ts';
 import { collectCodexToolsFromTrajectory, collectCodexGuidesFromTrajectory } from '../agents/codex-cli-agent.ts';
+import { collectJetskiCliToolsFromTrajectory, collectJetskiCliGuidesFromTrajectory } from '../agents/jetski-cli-agent.ts';
 
 function getMostRecentFiles(baseDir: string, pattern: string, count = 5): string[] {
   if (!fs.existsSync(baseDir)) return [];
@@ -49,6 +50,34 @@ function cleanupTempDir(dir: string) {
     // Ignore
   }
 }
+
+test('Jetski CLI real trajectory parsing sanity check', async (t) => {
+  const baseDir = path.join(os.homedir(), '.gemini', 'jetski', 'conversations');
+  const recentFiles = getMostRecentFiles(baseDir, '*.db');
+
+  if (recentFiles.length === 0) {
+    t.skip('No recent Jetski CLI trajectories found in ~/.gemini/jetski/conversations');
+    return;
+  }
+
+  const tempDir = setupTempSessionDir(recentFiles);
+  try {
+    const usage = extractTokenUsageFromResults(tempDir, Agents.JETSKI_CLI);
+    if (usage) {
+      assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
+      assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
+      assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
+    }
+
+    const model = extractModelFromResults(tempDir, Agents.JETSKI_CLI);
+    assert.ok(typeof model === 'string', 'Model extracted as string');
+
+    assert.doesNotThrow(() => collectJetskiCliToolsFromTrajectory(tempDir));
+    await assert.doesNotReject(async () => collectJetskiCliGuidesFromTrajectory(tempDir, 'skills_cli'));
+  } finally {
+    cleanupTempDir(tempDir);
+  }
+});
 
 test('Gemini CLI real trajectory parsing sanity check', async (t) => {
   const baseDir = path.join(os.homedir(), '.gemini', 'tmp');
