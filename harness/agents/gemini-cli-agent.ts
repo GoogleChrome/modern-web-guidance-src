@@ -1,19 +1,36 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
-
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
-
-export interface GuidedUsage {
-  retrievedGuides: string[];
-  fileReadGuides: string[];
-}
-
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+
+/**
+ * Copies Gemini CLI authentication and identification files from ~/.gemini to the isolated HOME.
+ * @param tempHome Path to the isolated HOME directory
+ * @returns Path to the destination .gemini directory
+ */
+export function setupGeminiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const geminiSource = path.join(originalHome, '.gemini');
+  const geminiDest = path.join(tempHome, '.gemini');
+
+  fs.mkdirSync(geminiDest, { recursive: true });
+
+  const filesToCopy = [
+    'oauth_creds.json',
+    'google_accounts.json',
+    'installation_id',
+    'settings.json',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
+  }
+
+  return geminiDest;
+}
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
 
@@ -30,22 +47,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
   const tempHome = createIsolatedHome('ghh-gemini', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
-  const geminiSource = path.join(os.homedir(), '.gemini');
-  const geminiDest = path.join(tempHome, '.gemini');
-
-  fs.mkdirSync(geminiDest, { recursive: true });
-
-  // Copy necessary auth and identification files
-  const filesToCopy = [
-    'oauth_creds.json',
-    'google_accounts.json',
-    'installation_id'
-  ];
-
-  for (const file of filesToCopy) {
-    const src = path.join(geminiSource, file);
-    copyFileIfExists(src, path.join(geminiDest, file));
-  }
+  const geminiDest = setupGeminiCliCredentials(tempHome);
 
   // Set environment variables
   process.env.HOME = tempHome;
@@ -135,7 +137,7 @@ function readTrajectory(filePath: string): ConversationRecord {
   return JSON.parse(content) as ConversationRecord;
 }
 
-export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuidedUsage> {
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {

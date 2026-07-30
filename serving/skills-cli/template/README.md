@@ -147,6 +147,14 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 ```
 </details>
 
+<details>
+<summary><b>Grok Build CLI</b></summary>
+
+```shell
+grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
+```
+</details>
+
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.

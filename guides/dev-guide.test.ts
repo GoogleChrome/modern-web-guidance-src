@@ -1,37 +1,188 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { printTestComparison } from './dev-guide.ts';
 import { parsePassRates } from './lib/utils.ts';
 
-// CRITICAL: This test ensures that if the output format of dev-guide.ts changes,
-// we will be alerted, because feedback-handler.ts and guide-gen.ts depend on
-// parsing this specific format!
-test('printTestComparison outputs expected format and parsePassRates parses it', () => {
-  const results = {
-    pre: { passed: 0, total: 4 },
-    unguided: { passed: 1, total: 4 },
-    guided: { passed: 3, total: 4 }
-  };
+test('parsePassRates parses multi-dimensional base-app scores correctly', () => {
+  const output = `
+Some generation logs...
+Running agent test for target: daily-grind
+=== Test Suite Starting with ID: size-aware-styling-daily-grind ===
+...
+Grading unguided...
+  unguided: 1/4 checks passed (25%)
+Grading guided...
+  guided: 3/4 checks passed (75%)
+Agent test results:
+  Base app (zero-passrate): 0/4 checks passed (0%)
+  Unguided:                 1/4 checks passed (25%)
+  Guided:                   3/4 checks passed (75%)
+  Guide impact:             +50% (vs unguided)
+  Guides consumed:          [size-aware-styling, container-queries]
 
-  // Capture console.log
-  const originalLog = console.log;
-  let output = '';
-  console.log = (...args) => {
-    output += args.join(' ') + '\n';
-  };
+Running agent test for target: devtools-times
+=== Test Suite Starting with ID: size-aware-styling-devtools-times ===
+...
+Grading unguided...
+  unguided: 2/4 checks passed (50%)
+Grading guided...
+  guided: 4/4 checks passed (100%)
+Agent test results:
+  Base app (zero-passrate): 0/4 checks passed (0%)
+  Unguided:                 2/4 checks passed (50%)
+  Guided:                   4/4 checks passed (100%)
+  Guide impact:             +50% (vs unguided)
+  Guides consumed:          [size-aware-styling]
+`;
 
-  try {
-    printTestComparison(results);
-  } finally {
-    console.log = originalLog;
-  }
-
-  // Assert output format
-  assert.ok(output.includes('Agent test results:'));
-  assert.ok(output.includes('Unguided:          1/4 checks passed (25%)'));
-  assert.ok(output.includes('Guided:            3/4 checks passed (75%)'));
-
-  // Assert parsing
-  const passRates = parsePassRates(output);
-  assert.deepStrictEqual(passRates, { unguided: '25', guided: '75' });
+  const parsed = parsePassRates(output);
+  assert.deepStrictEqual(parsed, {
+    'daily-grind': {
+      unguided: '25',
+      guided: '75',
+      guidesConsumed: ['size-aware-styling', 'container-queries']
+    },
+    'devtools-times': {
+      unguided: '50',
+      guided: '100',
+      guidesConsumed: ['size-aware-styling']
+    }
+  });
 });
+
+test('parsePassRates parses legacy single-page outputs correctly (fallback to demo)', () => {
+  const output = `
+Some generation logs...
+=== Test Suite Starting with ID: legacy-same-document-transitions ===
+...
+Grading unguided...
+  unguided: 0/4 checks passed (0%)
+Grading guided...
+  guided: 2/4 checks passed (50%)
+Agent test results:
+  Base app (zero-passrate): 0/4 checks passed (0%)
+  Unguided:                 0/4 checks passed (0%)
+  Guided:                   2/4 checks passed (50%)
+  Guide impact:             +50% (vs unguided)
+  Guides consumed:          [same-document-transitions]
+`;
+
+  const parsed = parsePassRates(output);
+  assert.deepStrictEqual(parsed, {
+    'demo': {
+      unguided: '0',
+      guided: '50',
+      guidesConsumed: ['same-document-transitions']
+    }
+  });
+});
+
+test('setupIsolatedWorkDir conditionally copies credentials based on GD_DEV_USE_JETSKI', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { setupIsolatedWorkDir } = await import('./lib/utils.ts');
+  const { cleanupIsolatedHome } = await import('../harness/lib/agent-shared.ts');
+
+  const originalHome = process.env.HOME;
+  const originalGdUseJetski = process.env.GD_DEV_USE_JETSKI;
+  const originalJetskiDir = process.env.JETSKI_DIR;
+
+  const mockHome = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-home-'));
+  const mockGemini = path.join(mockHome, '.gemini');
+  const mockJetski = path.join(mockGemini, 'jetski');
+  fs.mkdirSync(mockJetski, { recursive: true });
+
+  fs.writeFileSync(path.join(mockGemini, 'oauth_creds.json'), '{"mock": "gemini"}');
+  fs.writeFileSync(path.join(mockJetski, 'installation_id'), 'mock-jetski-id');
+
+  process.env.HOME = mockHome;
+
+  t.after(() => {
+    process.env.HOME = originalHome;
+    if (originalGdUseJetski === undefined) {
+      delete process.env.GD_DEV_USE_JETSKI;
+    } else {
+      process.env.GD_DEV_USE_JETSKI = originalGdUseJetski;
+    }
+    if (originalJetskiDir === undefined) {
+      delete process.env.JETSKI_DIR;
+    } else {
+      process.env.JETSKI_DIR = originalJetskiDir;
+    }
+    fs.rmSync(mockHome, { recursive: true, force: true });
+  });
+
+  // 1. Without GD_DEV_USE_JETSKI (Gemini CLI mode)
+  delete process.env.GD_DEV_USE_JETSKI;
+  delete process.env.JETSKI_DIR;
+  setupIsolatedWorkDir('test-dev-gemini');
+  const geminiTempHome = process.env.HOME!;
+  
+  assert.ok(fs.existsSync(path.join(geminiTempHome, '.gemini', 'oauth_creds.json')), 'Gemini credentials should be copied');
+  assert.strictEqual(fs.existsSync(path.join(geminiTempHome, '.gemini', 'jetski', 'installation_id')), false, 'Jetski credentials should not be copied');
+  assert.strictEqual(process.env.JETSKI_DIR, undefined, 'JETSKI_DIR should not be set');
+
+  cleanupIsolatedHome(geminiTempHome);
+
+  // Restore HOME to mockHome before second run
+  process.env.HOME = mockHome;
+
+  // 2. With GD_DEV_USE_JETSKI=1 (Jetski CLI mode)
+  process.env.GD_DEV_USE_JETSKI = '1';
+  setupIsolatedWorkDir('test-dev-jetski');
+  const jetskiTempHome = process.env.HOME!;
+
+  assert.strictEqual(fs.existsSync(path.join(jetskiTempHome, '.gemini', 'oauth_creds.json')), false, 'Gemini credentials should not be copied');
+  assert.ok(fs.existsSync(path.join(jetskiTempHome, '.gemini', 'jetski', 'installation_id')), 'Jetski credentials should be copied');
+  assert.strictEqual(process.env.JETSKI_DIR, path.join(jetskiTempHome, '.gemini', 'jetski'), 'JETSKI_DIR should be set');
+
+  cleanupIsolatedHome(jetskiTempHome);
+});
+
+test('collectPlaywrightErrors correctly parses nested suites, deduplicates errors, and ignores passing tests', async () => {
+  const { collectPlaywrightErrors } = await import('./run-grader.ts');
+
+  const mockReport = {
+    suites: [
+      {
+        title: 'Root Suite',
+        suites: [
+          {
+            title: 'Nested Suite',
+            specs: [
+              {
+                title: 'Passing Spec',
+                ok: true,
+                tests: [{ results: [{ status: 'passed' }] }]
+              },
+              {
+                title: 'Failing Spec 1',
+                ok: false,
+                tests: [
+                  {
+                    results: [
+                      {
+                        status: 'failed',
+                        error: { message: 'Expected foo but received bar', stack: 'at line 10' },
+                        errors: [{ message: 'Expected foo but received bar', stack: 'at line 10' }]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  const parsed = collectPlaywrightErrors(mockReport);
+  assert.strictEqual(parsed, 'Test: Root Suite > Nested Suite > Failing Spec 1\nError: Expected foo but received bar\nStack: at line 10');
+
+  // Verify graceful handling of null/empty results
+  assert.strictEqual(collectPlaywrightErrors(null), '');
+  assert.strictEqual(collectPlaywrightErrors({}), '');
+});
+
+

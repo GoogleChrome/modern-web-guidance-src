@@ -3,7 +3,7 @@ import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseHTML } from 'linkedom';
-import { Project, SyntaxKind } from 'ts-morph';
+import { Project } from 'ts-morph';
 
 // Setup target workspace details
 const patchFile = process.env.PATCH_FILE;
@@ -16,7 +16,6 @@ const targetFiles = extractTargetFilesFromPatch(patchFile);
 const absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
 // --- HELPER UTILITIES FOR EMBEDDED & STANDALONE CODE ---
-// Focused on formats present in daily-grind (HTML/CSS/JS) and devtools-times (Astro/TSX/TS/CSS/HTML)
 const HTML_EXTS = /\.(html|htm|astro)$/i;
 const CSS_EXTS = /\.css$/i;
 const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
@@ -100,75 +99,54 @@ export function getHtmlDocuments(files: string[]): Array<{ file: string; documen
 }
 
 // Grader tests
-test.describe('<guide-name> Target Grader', () => {
+test.describe('size-aware-styling Target Grader', () => {
 
-  // --- STATIC ASSERTIONS (FAST) ---
-  // Use static assertions to query DOM structure, attributes, and JavaScript syntax on the host.
-  // These run instantly and are far more robust for structural verification than starting a browser.
-  
-  test('HTML structure satisfies guide requirements (Linkedom)', () => {
-    // EXAMPLE: DOM parsing using Linkedom across HTML & component templates:
-    // const docs = getHtmlDocuments(absoluteTargetFiles);
-    // const targetEl = docs.map(d => d.document.querySelector('.target-element')).find(Boolean);
-    // expect(targetEl).not.toBeUndefined();
+  test('HTML component template contains container or wrapper element', () => {
+    const docs = getHtmlDocuments(absoluteTargetFiles);
+    const hasWrapper = docs.some(d => d.document.querySelector('.card-container, [class*="container"], article, div') !== null);
+    expect(hasWrapper).toBe(true);
   });
 
-  // TODO: Future CSSOMNom OSPO integration - update this CSS test example to use CSSOMNom AST parsing when cssomnom is enabled.
-  test('CSS styles satisfy guide requirements (Regex)', () => {
-    // EXAMPLE: Static CSS checks across stylesheets, <style> tags, and inline styles:
-    // const cssBlocks = extractAllCss(absoluteTargetFiles);
-    // const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    // expect(cleanCss).toMatch(/your-css-pattern/i);
+  test('CSS defines container-type property as inline-size or size', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasContainerType = /\bcontainer(-type)?\s*:[^;}]*\b(inline-size|size)\b/i.test(cleanCss);
+    expect(hasContainerType).toBe(true);
   });
 
-  test('JavaScript source satisfies guide requirements (ts-morph)', () => {
-    // EXAMPLE: JavaScript AST parsing using ts-morph across JS/TS files and <script> tags:
-    // const project = new Project({ useInMemoryFileSystem: true });
-    // populateJsProject(project, absoluteTargetFiles);
-    // const functionDecls = project.getSourceFiles().flatMap(sf =>
-    //   sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
-    // );
-    // const hasTargetFunction = functionDecls.some(fn => fn.getName() === 'yourFunctionName');
-    // expect(hasTargetFunction).toBe(true);
+  test('CSS contains @container query rule for size-aware styling', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasContainerQuery = /@container\b/i.test(cleanCss);
+    expect(hasContainerQuery).toBe(true);
   });
 
-  // --- BROWSER ASSERTIONS (E2E) ---
-  // Use browser assertions ONLY when you need to compute real CSS styles, evaluate dynamic pages,
-  // interact with elements (clicks/input), or verify rendered layout/visibility.
-  // If browser assertions are not needed, this entire `test.describe('Browser tests', ...)` section should be omitted.
-  
-  test.describe('Browser tests', () => {
-    
-    test.beforeEach(async ({ page, TARGET_URL }) => {
-      // Only mock local routes if it's a file-based demo, else let the dev server handle it
-      if (TARGET_URL.startsWith('http://localhost/')) {
-        await page.route('http://localhost/*', async (route: any) => {
-          const requestPath = new URL(route.request().url()).pathname;
-          const localFilePath = path.join(rootDir, requestPath === '/' ? 'index.html' : requestPath);
-
-          if (fs.existsSync(localFilePath)) {
-            await route.fulfill({ path: localFilePath });
-          } else {
-            await route.continue();
-          }
-        });
-      }
-      
-      await page.goto(TARGET_URL);
-    });
-
-    // test('browser behavior matches guide requirements', async ({ page }) => {
-    //   // EXAMPLE 1: Checking computed styles:
-    //   // const color = await page.$eval('.target', el => window.getComputedStyle(el).color);
-    //   // expect(color).toBe('rgb(255, 0, 0)');
-    //
-    //   // EXAMPLE 2: Layout / Position checks:
-    //   // const pos = await page.evaluate(() => {
-    //   //   const a = document.getElementById('a')!.getBoundingClientRect();
-    //   //   const b = document.getElementById('b')!.getBoundingClientRect();
-    //   //   return { aBottom: a.bottom, bTop: b.top };
-    //   // });
-    //   // expect(pos.bTop).toBeGreaterThanOrEqual(pos.aBottom);
-    // });
+  test('CSS @container query specifies a width threshold condition', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasWidthThreshold = /@container\b[^{]*\b(min-width|max-width|width|inline-size)\b/i.test(cleanCss);
+    expect(hasWidthThreshold).toBe(true);
   });
+
+  test('CSS @container query defines layout properties for responsive changes', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasLayoutChanges = /@container[^{]+\{[^}]*\b(flex-direction|grid-template|display|width|columns|flex-flow)\b/i.test(cleanCss);
+    expect(hasLayoutChanges).toBe(true);
+  });
+
+  test('CSS provides a default layout before container query overrides', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasDefaultLayout = /\b(display\s*:\s*(flex|grid|block)|flex-direction\s*:\s*(column|row))\b/i.test(cleanCss);
+    expect(hasDefaultLayout).toBe(true);
+  });
+
+  test('CSS includes @media queries or @supports rules for browser fallback', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    const hasFallback = /(@media|@supports)\b/i.test(cleanCss);
+    expect(hasFallback).toBe(true);
+  });
+
 });
