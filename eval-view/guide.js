@@ -1,4 +1,5 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, parseResultKey, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 
 let allTestData = {}; // Cache all test data by testId
 
@@ -33,69 +34,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function registerTestData(testId, source, parsed, forcedTimestamp) {
-    let serving = 'unknown';
-    if (parsed.serving !== undefined) {
-        serving = parsed.serving;
-    } else if (parsed.enableSkills !== undefined) {
-        serving = parsed.enableSkills ? 'skills' : 'mcp';
-    }
-
-    const compoundKey = `${testId}|||${source}`;
-
-    const guides = {};
-    if (parsed.results) {
-        Object.keys(parsed.results).forEach(key => {
-            const parsedKey = parseResultKey(key);
-            if (parsedKey) {
-                const { guide, runType } = parsedKey;
-                if (!guides[guide]) {
-                    guides[guide] = {
-                        guidedPassed: 0, guidedTotal: 0,
-                        unguidedPassed: 0, unguidedTotal: 0
-                    };
-                }
-                parsed.results[key].forEach(run => {
-                    const s = getRunStats(run.results);
-                    if (runType === 'guided') {
-                        guides[guide].guidedPassed += s.passed;
-                        guides[guide].guidedTotal += s.total;
-                    } else if (runType === 'unguided') {
-                        guides[guide].unguidedPassed += s.passed;
-                        guides[guide].unguidedTotal += s.total;
-                    }
-                });
-            }
-        });
-    }
-
-    // Convert guide raw totals into rates
-    const guidesWithRates = {};
-    Object.keys(guides).forEach(guide => {
-        const g = guides[guide];
-        const guidedRate = g.guidedTotal > 0 ? Math.round((g.guidedPassed / g.guidedTotal) * 100) : 0;
-        const unguidedRate = g.unguidedTotal > 0 ? Math.round((g.unguidedPassed / g.unguidedTotal) * 100) : 0;
-        guidesWithRates[guide] = {
-            guidedPassed: g.guidedPassed,
-            guidedTotal: g.guidedTotal,
-            guidedRate,
-            unguidedPassed: g.unguidedPassed,
-            unguidedTotal: g.unguidedTotal,
-            unguidedRate,
-            uplift: guidedRate - unguidedRate
-        };
-    });
+function registerSuiteSummary(summary, source) {
+    const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
-        testId: testId,
-        timestamp: parsed.timestamp || forcedTimestamp || new Date().toISOString(),
-        data: parsed,
+        testId: summary.testId,
+        timestamp: summary.timestamp,
         source: source,
-        agent: parsed.agent || 'unknown',
-        serving: serving,
-        model: parsed.model || 'unknown',
-        guides: guidesWithRates
+        agent: summary.agent || 'unknown',
+        serving: summary.serving || 'unknown',
+        model: summary.model || 'unknown',
+        guides: summary.guides || {}
     };
+}
+
+function registerTestData(testId, source, parsed, forcedTimestamp) {
+    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
+    if (summary) {
+        registerSuiteSummary(summary, source);
+    }
 }
 
 async function loadLocalTests() {
@@ -111,27 +68,34 @@ async function loadLocalTests() {
         if (!response.ok) {
             const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
             if (!staticRes.ok) return;
-            const suites = await staticRes.json();
-            manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+            const suitesData = await staticRes.json();
+            if (Array.isArray(suitesData)) {
+                manifest = { suites: suitesData };
+            } else {
+                manifest = suitesData;
+            }
             useResultsPrefix = true;
         } else {
             manifest = await response.json();
         }
 
         for (const suite of manifest.suites) {
-            if (suite.source !== 'local') continue;
-            
-            const testId = suite.id;
-            const suiteTimestamp = suite.timestamp;
-            try {
-                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
-                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+            if (typeof suite === 'object' && suite.testId && suite.guides) {
+                registerSuiteSummary(suite, useResultsPrefix ? 'static' : 'local');
+            } else {
+                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
+                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
+                if (!testId) continue;
+                try {
+                    const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                    const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
+                    if (response.ok) {
+                        const parsed = await response.json();
+                        registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load local test ${testId}:`, e);
                 }
-            } catch (e) {
-                console.warn(`Failed to load local test ${testId}:`, e);
             }
         }
     } catch {
@@ -141,34 +105,18 @@ async function loadLocalTests() {
 
 async function loadRemoteTests() {
     try {
-        const prefixes = [];
-        let pageToken = '';
-        
-        do {
-            const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}${pageToken ? `&pageToken=${pageToken}` : ''}`;
-            const response = await authenticatedFetch(url);
-            if (!response.ok) throw new Error('Failed to fetch remote suites');
-            
-            const data = await response.json();
-            if (data.prefixes) {
-                prefixes.push(...data.prefixes);
-            }
-            pageToken = data.nextPageToken || '';
-        } while (pageToken);
+        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
+        const response = await authenticatedFetch(fileUrl);
+        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
 
-        await Promise.all(prefixes.map(async (prefix) => {
-            const testId = prefix.slice(0, -1);
-            try {
-                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                const response = await authenticatedFetch(fileUrl);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed, null);
+        const manifest = await response.json();
+        if (Array.isArray(manifest) && manifest.length > 0) {
+            for (const item of manifest) {
+                if (item && item.testId) {
+                    registerSuiteSummary(item, 'remote');
                 }
-            } catch (e) {
-                console.warn(`Failed to load remote test ${testId}:`, e);
             }
-        }));
+        }
     } catch (error) {
         console.error('Error loading remote suites:', error);
     }

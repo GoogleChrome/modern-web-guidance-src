@@ -7,6 +7,7 @@ import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
 import { runAllManifests } from './generate-manifests.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
@@ -243,6 +244,12 @@ const server = http.createServer(async (req, res) => {
           try {
             if (fs.existsSync(evalsJsonPath)) {
               timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
+              const rawData = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
+              const summary = extractSuiteSummary(d, rawData, timestamp);
+              if (summary) {
+                suitesList.push({ ...summary, id: d, source: 'local' });
+                return;
+              }
             } else {
               timestamp = fs.statSync(suiteDir).mtime.toISOString();
             }
