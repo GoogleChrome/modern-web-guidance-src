@@ -76,7 +76,8 @@ async function loadLocalTests() {
             }
             useResultsPrefix = true;
         } else {
-            manifest = await response.json();
+            const data = await response.json();
+            manifest = Array.isArray(data) ? { suites: data } : data;
         }
 
         for (const suite of manifest.suites) {
@@ -272,7 +273,9 @@ function renderGraphs(guideName) {
         const run = allTestData[key];
         if (!run.guides || !run.guides[guideName]) return false;
         const g = run.guides[guideName];
-        return g.guidedTotal > 0 || g.unguidedTotal > 0;
+        const gTotal = g.guidedTotal !== undefined ? g.guidedTotal : (g.guided?.total || 0);
+        const uTotal = g.unguidedTotal !== undefined ? g.unguidedTotal : (g.unguided?.total || 0);
+        return gTotal > 0 || uTotal > 0;
     });
 
     if (filteredKeys.length === 0) {
@@ -514,16 +517,21 @@ function renderGraphs(guideName) {
                     </div>
                 `;
 
+                const gPassed = stats.guidedPassed !== undefined ? stats.guidedPassed : (stats.guided?.passed || 0);
+                const gTotal = stats.guidedTotal !== undefined ? stats.guidedTotal : (stats.guided?.total || 0);
+                const uPassed = stats.unguidedPassed !== undefined ? stats.unguidedPassed : (stats.unguided?.passed || 0);
+                const uTotal = stats.unguidedTotal !== undefined ? stats.unguidedTotal : (stats.unguided?.total || 0);
+
                 content.innerHTML = `
                     <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.75rem;">${formattedDate}</div>
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <div style="display: flex; justify-content: space-between;">
                             <span>Guided Pass Rate:</span>
-                            <span style="font-weight: 600; color: var(--color-primary);">${stats.guidedRate}% (${stats.guidedPassed}/${stats.guidedTotal})</span>
+                            <span style="font-weight: 600; color: var(--color-primary);">${stats.guidedRate}% (${gPassed}/${gTotal})</span>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>Unguided Pass Rate:</span>
-                            <span style="font-weight: 600; color: var(--text-secondary);">${stats.unguidedRate}% (${stats.unguidedPassed}/${stats.unguidedTotal})</span>
+                            <span style="font-weight: 600; color: var(--text-secondary);">${stats.unguidedRate}% (${uPassed}/${uTotal})</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 4px; margin-top: 4px;">
                             <span style="font-weight: bold;">Uplift:</span>

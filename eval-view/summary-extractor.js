@@ -73,11 +73,15 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         const guidedRate = g.guided.total > 0 ? Math.round((g.guided.passed / g.guided.total) * 100) : 0;
         const unguidedRate = g.unguided.total > 0 ? Math.round((g.unguided.passed / g.unguided.total) * 100) : 0;
         guidesFormatted[guide] = {
-            guided: g.guided,
-            unguided: g.unguided,
+            guidedPassed: g.guided.passed,
+            guidedTotal: g.guided.total,
             guidedRate,
+            unguidedPassed: g.unguided.passed,
+            unguidedTotal: g.unguided.total,
             unguidedRate,
-            uplift: guidedRate - unguidedRate
+            uplift: guidedRate - unguidedRate,
+            guided: g.guided,
+            unguided: g.unguided
         };
     });
 
