@@ -100,21 +100,29 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
   }
 
   // Backfill missing summaries for any active GCS suites that lack detailed summary
-  for (const suiteId of activeSuiteIds) {
-    const existing = manifestMap.get(suiteId);
-    if (!existing || !existing.guidedStats) {
-      try {
-        console.log(`Extracting summary for missing GCS suite: ${suiteId}...`);
-        const evalsFile = bucket.file(`${suiteId}/evals.json`);
-        const [fileContent] = await evalsFile.download();
-        const parsed = JSON.parse(fileContent.toString('utf8'));
-        const summary = extractSuiteSummary(suiteId, parsed);
-        if (summary) {
-          manifestMap.set(suiteId, summary);
+  const missingSuiteIds = Array.from(activeSuiteIds).filter(id => {
+    const existing = manifestMap.get(id);
+    return !existing || !existing.guidedStats;
+  });
+
+  if (missingSuiteIds.length > 0) {
+    const concurrency = 10;
+    for (let i = 0; i < missingSuiteIds.length; i += concurrency) {
+      const chunk = missingSuiteIds.slice(i, i + concurrency);
+      await Promise.all(chunk.map(async (suiteId) => {
+        try {
+          console.log(`Extracting summary for missing GCS suite: ${suiteId}...`);
+          const evalsFile = bucket.file(`${suiteId}/evals.json`);
+          const [fileContent] = await evalsFile.download();
+          const parsed = JSON.parse(fileContent.toString('utf8'));
+          const summary = extractSuiteSummary(suiteId, parsed);
+          if (summary) {
+            manifestMap.set(suiteId, summary);
+          }
+        } catch (e: any) {
+          console.warn(`Could not fetch evals.json for ${suiteId}: ${e.message}`);
         }
-      } catch (e: any) {
-        console.warn(`Could not fetch evals.json for ${suiteId}: ${e.message}`);
-      }
+      }));
     }
   }
 
