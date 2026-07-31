@@ -90,7 +90,10 @@ const MIME_TYPES = {
  * @typedef {Object} SuiteInfo
  * @property {string} id
  * @property {string} source
- * @property {string | null} timestamp
+ * @property {string} [timestamp]
+ * @property {string} [testId]
+ * @property {Record<string, any>} [guidedStats]
+ * @property {Record<string, any>} [unguidedStats]
  */
 
 /** @type {string | null} */

@@ -73,7 +73,9 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
   const gcsPrefixes: string[] = [];
   let pageToken: string | undefined = undefined;
   do {
-    const [, nextQuery, apiResponse] = await bucket.getFiles({ delimiter: '/', pageToken });
+    const res: [any, any, any] = await bucket.getFiles({ delimiter: '/', autoPaginate: false, pageToken });
+    const nextQuery = res[1];
+    const apiResponse = res[2];
     if (apiResponse && apiResponse.prefixes) {
       gcsPrefixes.push(...apiResponse.prefixes);
     }

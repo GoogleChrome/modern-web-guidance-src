@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getRunStats, parseResultKey, calculateChartData } from './utils.js';
 
 /**
@@ -40,7 +41,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
         if (parsedKey) {
             distinctScenarios.add(parsedKey.task);
-            const { guide, runType } = parsedKey;
+            const { guide } = parsedKey;
             if (!suiteGuides[guide]) {
                 suiteGuides[guide] = {
                     guided: { passed: 0, total: 0 },

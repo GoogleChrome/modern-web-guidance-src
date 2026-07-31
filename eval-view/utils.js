@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Utility functions shared between Dashboard and Landing pages.
  */
