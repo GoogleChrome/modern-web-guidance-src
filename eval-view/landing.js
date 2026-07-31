@@ -321,7 +321,7 @@ async function loadLocalTests() {
         // Load local test data
         for (const suite of manifest.suites) {
             if (typeof suite === 'object' && suite.testId && suite.guidedStats) {
-                registerSuiteSummary(suite, useResultsPrefix ? 'static' : 'local');
+                registerSuiteSummary(suite, 'local');
             } else {
                 const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
                 const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
@@ -331,7 +331,7 @@ async function loadLocalTests() {
                     const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
                     if (response.ok) {
                         const parsed = await response.json();
-                        registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+                        registerTestData(testId, 'local', parsed, suiteTimestamp);
                     }
                 } catch (e) {
                     console.warn(`Failed to load local test ${testId}:`, e);
@@ -388,8 +388,6 @@ function registerSuiteSummary(summary, source) {
         guidedStats: summary.guidedStats || { passed: 0, total: 0 },
         unguidedStats: summary.unguidedStats || { passed: 0, total: 0 },
         earlyFailureRate: summary.earlyFailureRate || 0,
-        toolActivationRate: summary.toolActivationRate || 0,
-        guideUsageRate: summary.guideUsageRate || 0,
         guides: summary.guides || {},
         chartData: summary.chartData || { labels: [], guided: [], unguided: [] },
         data: summary.data || null
@@ -816,8 +814,8 @@ function renderPivotInsights() {
 
         const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
-            const gG = suiteGuides[guide].guided || { passed: suiteGuides[guide].guidedPassed || 0, total: suiteGuides[guide].guidedTotal || 0 };
-            const uG = suiteGuides[guide].unguided || { passed: suiteGuides[guide].unguidedPassed || 0, total: suiteGuides[guide].unguidedTotal || 0 };
+            const gG = suiteGuides[guide].guided || { passed: 0, total: 0 };
+            const uG = suiteGuides[guide].unguided || { passed: 0, total: 0 };
             const gG_rate = gG.total > 0 ? Math.round((gG.passed / gG.total) * 100) : 0;
             const uG_rate = uG.total > 0 ? Math.round((uG.passed / uG.total) * 100) : 0;
             const uG_uplift = gG_rate - uG_rate;

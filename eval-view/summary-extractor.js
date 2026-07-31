@@ -72,15 +72,11 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         const guidedRate = g.guided.total > 0 ? Math.round((g.guided.passed / g.guided.total) * 100) : 0;
         const unguidedRate = g.unguided.total > 0 ? Math.round((g.unguided.passed / g.unguided.total) * 100) : 0;
         guidesFormatted[guide] = {
-            guidedPassed: g.guided.passed,
-            guidedTotal: g.guided.total,
-            guidedRate,
-            unguidedPassed: g.unguided.passed,
-            unguidedTotal: g.unguided.total,
-            unguidedRate,
-            uplift: guidedRate - unguidedRate,
             guided: g.guided,
-            unguided: g.unguided
+            unguided: g.unguided,
+            guidedRate,
+            unguidedRate,
+            uplift: guidedRate - unguidedRate
         };
     });
 
@@ -100,8 +96,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         guidedStats: { passed: guidedPassed, total: guidedTotal },
         unguidedStats: { passed: unguidedPassed, total: unguidedTotal },
         earlyFailureRate: earlyFailureRate,
-        toolActivationRate: evalsData.summary?.toolActivationRate || 0,
-        guideUsageRate: evalsData.summary?.guideUsageRate || 0,
         guides: guidesFormatted,
         chartData: chartData
     };
