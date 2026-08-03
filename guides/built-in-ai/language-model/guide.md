@@ -327,7 +327,6 @@ ensures that different versions are still readily available.
 
 **Don't:** Overwrite the user's previous draft, or an AI result they might have
 liked without a way to go back, revert, or compare versions.
-![Stepper UI element showing navigation history.](https://developer.chrome.com/static/docs/ai/built-in-ai-dos-donts/images/image1.png) UI pattern: Reject / Accept suggestion (Google docs) ![Undo all agent edits button in a Google Antigravity UI.](https://developer.chrome.com/static/docs/ai/built-in-ai-dos-donts/images/image2.png) UI pattern: Undo all agent edits (Google Antigravity) ![Reject or Accept suggestion buttons in Google Docs.](https://developer.chrome.com/static/docs/ai/built-in-ai-dos-donts/images/image3.png) UI pattern: Stepper [(Alt text demo)](https://exploractical.com/demos/alt-text/)
 
 #### Empower user control and overrides
 
