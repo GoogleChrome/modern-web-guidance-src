@@ -1,0 +1,13 @@
+{
+  "name": "modern-web-guidance",
+  "description": "Keep your coding agent up to date with the latest web best practices",
+  "version": "0.0.26",
+  "author": {
+    "name": "Google Chrome"
+  },
+  "license": "Apache-2.0",
+  "skills": [
+    "./skills/modern-web-guidance/",
+    "./skills/chrome-extensions/"
+  ]
+}
