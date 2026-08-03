@@ -63,7 +63,7 @@ async function main() {
 
   if (command === "search") {
     if (!arg) {
-      await getLogger().logSearchResult(0, false, []);
+      await getLogger().logSearchResult("", 0, false, []);
       console.error("No search query provided.");
       process.exit(1);
     }
@@ -78,7 +78,7 @@ async function main() {
         guide_id: r.id,
         similarity: Number(r.similarity),
       }));
-      await getLogger().logSearchResult(latencyMs, true, searchItems);
+      await getLogger().logSearchResult(arg, latencyMs, true, searchItems);
 
       if (results.length === 0) {
         console.log("[]");
@@ -90,17 +90,25 @@ async function main() {
       }
     } catch (error) {
       const latencyMs = Date.now() - startTime;
-      await getLogger().logSearchResult(latencyMs, false, []);
+      await getLogger().logSearchResult(arg, latencyMs, false, []);
       console.error("Search failed:", error);
       process.exit(1);
     }
   } else if (command === "list") {
-    const catalog = USE_CASES.map(u => ({
-      id: u.id,
-      category: u.category,
-      description: u.description,
-    }));
-    console.log(JSON.stringify(catalog, null, 2));
+    const startTime = Date.now();
+    try {
+      const catalog = USE_CASES.map(u => ({
+        id: u.id,
+        category: u.category,
+        description: u.description,
+      }));
+      console.log(JSON.stringify(catalog, null, 2));
+      await getLogger().logToolCommand(Date.now() - startTime, true, CommandType.LIST);
+    } catch (error) {
+      await getLogger().logToolCommand(Date.now() - startTime, false, CommandType.LIST);
+      console.error("List failed:", error);
+      process.exit(1);
+    }
   } else if (command === "retrieve") {
     const ids = arg ? arg.split(",").map(id => id.trim()).filter(Boolean) : [];
     if (ids.length === 0) {

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
@@ -18,8 +18,8 @@ function getSessionFiles(dir: string, recursive = false): string[] {
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(templateDir: string, runType: string): string {
-  const tempHome = createIsolatedHome('ghh-codex');
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
+  const tempHome = createIsolatedHome('ghh-codex', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   // Copy Codex auth file
@@ -94,7 +94,7 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType);
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -104,10 +104,12 @@ async function run() {
     console.log(`Starting Codex agent in: ${workDir}`);
 
     const command = config.environment.codexCliBin;
+    const model = process.env.CODEX_MODEL;
     const commandArgs = [
       'exec', 
       userPrompt,
-      '--yolo'
+      '--yolo',
+      ...(model ? ['--model', model] : [])
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
@@ -134,14 +136,15 @@ async function run() {
     console.log("Codex agent finished successfully.");
   } catch (err) {
     console.error("Error during Codex execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
-export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
-  const guidesFromSkills: string[] = [];
+export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<GuideUsage> {
+  const retrievedGuides: string[] = [];
+  const fileReadGuides: string[] = [];
 
   for (const file of getSessionFiles(dirPath)) {
     const items = parseJsonlFile(path.join(dirPath, file));
@@ -155,12 +158,12 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
           if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
             const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
             if (match) {
-              guidesFromSkills.push(...match[1].split(',').map((s: string) => s.trim()));
+              retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
             }
           } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
             const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
             if (match) {
-              guidesFromSkills.push(match[1]);
+              retrievedGuides.push(match[1]);
             }
           }
         } catch {
@@ -169,7 +172,10 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
       }
     }
   }
-  return [...new Set(guidesFromSkills)];
+  return {
+    retrievedGuides: [...new Set(retrievedGuides)],
+    fileReadGuides: [...new Set(fileReadGuides)]
+  };
 }
 
 export function extractCodexCliModel(resultsDir: string): string {

@@ -23,6 +23,13 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Translate "%s"',   // %s = selected text
     contexts: ['selection']
   });
+
+  // M150+: Context menu for the tab strip (right-clicking a tab)
+  chrome.contextMenus.create({
+    id: 'duplicate-tab',
+    title: 'Custom Duplicate Tab',
+    contexts: ['tab']
+  });
 });
 ```
 
@@ -37,13 +44,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     case 'translate-selection':
       translateText(info.selectionText, tab.id);
       break;
+    case 'duplicate-tab':
+      chrome.tabs.duplicate(tab.id); // 'tab' parameter is the clicked tab
+      break;
   }
 });
 ```
 
 ## Context Types
 
-`all`, `page`, `frame`, `selection`, `link`, `editable`, `image`, `video`, `audio`, `launcher`, `browser_action`, `action`
+`all`, `page`, `frame`, `selection`, `link`, `editable`, `image`, `video`, `audio`, `launcher`, `browser_action`, `action`, `tab` (M150+)
 
 ## Submenus
 

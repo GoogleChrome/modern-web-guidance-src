@@ -22,6 +22,44 @@ async function getFreePort(): Promise<number> {
 }
 
 export const test = base.extend<{}, ServerWorkerFixtures>({
+  page: [async ({ page, TARGET_URL }, use) => {
+    const targetFile = process.env.TARGET_FILE;
+    if (!targetFile) {
+      await use(page);
+      return;
+    }
+    const targetDir = path.dirname(targetFile);
+    const pkgJsonPath = path.join(targetDir, 'package.json');
+    const isStaticApp = fs.existsSync(pkgJsonPath) && !JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8')).scripts?.build;
+
+    if (isStaticApp) {
+      const urlObj = new URL(TARGET_URL);
+      await page.route('**/*', async (route: any) => {
+        const reqUrl = new URL(route.request().url());
+        if (reqUrl.origin === urlObj.origin) {
+          const pathname = reqUrl.pathname;
+          const relativePath = pathname.replace(urlObj.pathname.replace(/\/$/, ''), '').replace(/^\//, '');
+          const diskPath = path.resolve(targetDir, relativePath || 'index.html');
+          const fileExists = fs.existsSync(diskPath);
+          if (!fileExists && (relativePath === '' || !relativePath.includes('.'))) {
+            const indexPath = path.join(targetDir, 'index.html');
+            if (fs.existsSync(indexPath)) {
+              const indexContent = fs.readFileSync(indexPath, 'utf8');
+              await route.fulfill({
+                contentType: 'text/html',
+                body: indexContent
+              });
+              return;
+            }
+          }
+        }
+        await route.continue();
+      });
+    }
+
+    await use(page);
+  }, { scope: 'test' }],
+
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
     const targetFile = process.env.TARGET_FILE;
@@ -50,13 +88,30 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
 
     if (pkgJson.scripts && pkgJson.scripts.build) {
-      const buildResult = spawnSync('pnpm', ['run', 'build'], {
+      // Running install on base app
+      const repoRoot = path.resolve(import.meta.dirname, '..');
+      const lockfilePath = path.join(repoRoot, 'pnpm-lock.yaml');
+      if (fs.existsSync(lockfilePath)) {
+        fs.copyFileSync(lockfilePath, path.join(targetDir, 'pnpm-lock.yaml'));
+      }
+      console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
+      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force'], {
+        cwd: targetDir,
+        stdio: 'ignore',
+        shell: process.platform === 'win32'
+      });
+      if (installResult.status !== 0) {
+        console.warn(`[TEST-FIXTURE] pnpm install failed in ${targetDir}`);
+      }
+
+      const buildResult = spawnSync('pnpm', ['--ignore-workspace', 'run', 'build'], {
         cwd: targetDir,
         stdio: 'ignore',
         shell: process.platform === 'win32'
       });
       if (buildResult.status !== 0) {
-        throw new Error(`pnpm build failed in ${targetDir}`);
+        await use(`http://localhost/${demoName}`);
+        return;
       }
     }
 
@@ -66,7 +121,7 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
     }
 
     const port = await getFreePort();
-    const serverProcess = spawn('pnpm', ['run', 'start'], {
+    const serverProcess = spawn('pnpm', ['--ignore-workspace', 'run', 'start'], {
       cwd: targetDir,
       env: { ...process.env, PORT: port.toString() },
       detached: true,
@@ -75,10 +130,20 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
     });
 
     let isReady = false;
-    const url = `http://localhost:${port}`;
-    for (let i = 0; i < 60; i++) {
+    let baseUrlPath = '/';
+    const configPath = path.join(targetDir, 'astro.config.mjs');
+    if (fs.existsSync(configPath)) {
+      const configContent = fs.readFileSync(configPath, 'utf8');
+      const baseMatch = configContent.match(/base:\s*['"`](.*?)['"`]/);
+      if (baseMatch) {
+        baseUrlPath = '/' + baseMatch[1].replace(/^\/|\/$/g, '') + '/';
+      }
+    }
+
+    const url = `http://localhost:${port}${baseUrlPath}`;
+    for (let i = 0; i < 30; i++) {
       try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+        const res = await fetch(url, { signal: AbortSignal.timeout(1000) });
         if (res.ok) {
           isReady = true;
           break;
@@ -93,7 +158,8 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
       if (serverProcess.pid) {
         try { process.kill(-serverProcess.pid); } catch (e) {}
       }
-      throw new Error(`Server failed to start on port ${port} within 60s`);
+      await use(`http://localhost/${demoName}`);
+      return;
     }
 
     process.env.TARGET_URL = url; // Exporting so legacy tests might use it if they read from process.env

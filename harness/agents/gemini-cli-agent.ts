@@ -1,19 +1,36 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
-
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
-
-export interface GuidedUsage {
-  retrievedGuides: string[];
-  fileReadGuides: string[];
-}
-
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+
+/**
+ * Copies Gemini CLI authentication and identification files from ~/.gemini to the isolated HOME.
+ * @param tempHome Path to the isolated HOME directory
+ * @returns Path to the destination .gemini directory
+ */
+export function setupGeminiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const geminiSource = path.join(originalHome, '.gemini');
+  const geminiDest = path.join(tempHome, '.gemini');
+
+  fs.mkdirSync(geminiDest, { recursive: true });
+
+  const filesToCopy = [
+    'oauth_creds.json',
+    'google_accounts.json',
+    'installation_id',
+    'settings.json',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
+  }
+
+  return geminiDest;
+}
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
 
@@ -26,26 +43,11 @@ function getSessionFiles(dir: string, recursive = false): string[] {
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(templateDir: string, runType: string): string {
-  const tempHome = createIsolatedHome('ghh-gemini');
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
+  const tempHome = createIsolatedHome('ghh-gemini', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
-  const geminiSource = path.join(os.homedir(), '.gemini');
-  const geminiDest = path.join(tempHome, '.gemini');
-
-  fs.mkdirSync(geminiDest, { recursive: true });
-
-  // Copy necessary auth and identification files
-  const filesToCopy = [
-    'oauth_creds.json',
-    'google_accounts.json',
-    'installation_id'
-  ];
-
-  for (const file of filesToCopy) {
-    const src = path.join(geminiSource, file);
-    copyFileIfExists(src, path.join(geminiDest, file));
-  }
+  const geminiDest = setupGeminiCliCredentials(tempHome);
 
   // Set environment variables
   process.env.HOME = tempHome;
@@ -77,7 +79,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType);
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -120,7 +122,7 @@ async function run() {
 
   } catch (err) {
     console.error("Error during Gemini CLI execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }
@@ -135,7 +137,7 @@ function readTrajectory(filePath: string): ConversationRecord {
   return JSON.parse(content) as ConversationRecord;
 }
 
-export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuidedUsage> {
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {

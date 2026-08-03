@@ -57,8 +57,6 @@ function auditBuild() {
 
     if (relPath.startsWith('.agents/skills/')) {
       type = 'INTERNAL_AGENT';
-    } else if (folderName.startsWith('megaskill-')) {
-      type = 'INERT';
     } else if (standaloneSet.has(folderName) || standaloneSet.has(name)) {
       type = 'EXPOSED_DIST';
     } else if (rootNamespace === 'guides') {

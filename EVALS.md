@@ -55,3 +55,20 @@ harness/node_modules/.bin/codex
 
 1. This request should file a bug similar to [`b/492300931`](https://b.corp.google.com/issues/492300931).
 2. After approval, restart the CLI locally and log in to your account.
+3. Set your preferred model in your environment:
+   ```bash
+   CODEX_MODEL='gpt-5.5'
+   ```
+
+---
+
+### Jetski CLI
+
+To use the Jetski CLI agent, configure the preferred model and toggle it on for the desired workflows:
+```bash
+# Model selection for Jetski agent runs
+JETSKI_MODEL='Gemini 3.6 Flash'
+
+# Toggle Jetski for the entire 'gd dev' guide development workflow (1 = enable, 0 = Gemini CLI)
+GD_DEV_USE_JETSKI=1
+```

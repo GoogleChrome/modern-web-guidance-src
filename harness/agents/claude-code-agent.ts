@@ -1,9 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
-
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 
@@ -22,8 +21,8 @@ function getSessionFiles(dir: string, recursive = false): string[] {
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(templateDir: string, runType: string): string {
-  const tempHome = createIsolatedHome('ghh-claude');
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
+  const tempHome = createIsolatedHome('ghh-claude', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   // Copy GCP credentials (for Vertex auth)
@@ -102,7 +101,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType);
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -144,13 +143,13 @@ async function run() {
 
   } catch (err) {
     console.error("Error during Claude Code execution:", err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
-export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
+export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
 

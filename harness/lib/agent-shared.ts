@@ -4,8 +4,14 @@ import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
+import { capturePatchFromGit } from '../../lib/patch-utils.ts';
 
 import { type SuiteConfig } from '../config.ts';
+
+export interface GuideUsage {
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+}
 
 /**
  * Gets the suite configuration from environment variables or returns default.
@@ -32,21 +38,53 @@ export function getSuiteConfig(): SuiteConfig {
 export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, options);
-    child.on('close', (code) => resolve(code ?? 1));
+    let resolved = false;
+    const done = (code: number) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(code);
+      }
+    };
+    child.on('exit', (code) => done(code ?? 1));
+    child.on('close', (code) => done(code ?? 1));
     child.on('error', reject);
   });
 }
 
 /**
+ * Sets up shell profile files (.bashrc, .bash_profile, .zshrc, .zprofile, .profile) in the isolated HOME directory
+ * to ensure that targetDir (containing our npx interceptor shim) remains at the front of PATH even if
+ * an external binary or login shell invokes /usr/libexec/path_helper and resets PATH.
+ * @param homeDir Path to the isolated HOME directory
+ * @param targetDir Path to the directory containing our intercepted binaries (like npx)
+ */
+export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): void {
+  try {
+    const profileContent = `export PATH="${targetDir}:$PATH"\n`;
+    const profileFiles = ['.bashrc', '.bash_profile', '.zshrc', '.zprofile', '.profile'];
+    for (const file of profileFiles) {
+      fs.writeFileSync(path.join(homeDir, file), profileContent, 'utf8');
+    }
+  } catch (err) {
+    console.warn('Warning: Failed to create isolated shell profiles in HOME:', err);
+  }
+}
+
+/**
  * Creates a unique isolated HOME directory in /tmp.
  * @param prefix The prefix for the directory name
+ * @param targetDir Optional path to the target directory containing intercepted binaries
  * @returns The path to the created directory.
  */
-export function createIsolatedHome(prefix: string): string {
+export function createIsolatedHome(prefix: string, targetDir?: string): string {
   // Use /tmp/ deliberately because os.tmpdir() on macOS can return paths that are 
   // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
   const tempHome = `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
+
+  if (targetDir) {
+    setupIsolatedShellProfiles(tempHome, targetDir);
+  }
 
   // Provide authentication to the isolated environment so npm tasks work
   const originalHome = process.env.HOME || process.cwd();
@@ -433,7 +471,13 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
   // For the suite run, copy the template directory to the isolated home directory, following symlinks
   execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
   console.log(`Copied ${templateDir} to ${homeDir}...`);
-  return path.join(homeDir, path.basename(templateDir));
+  const workDir = path.join(homeDir, path.basename(templateDir));
+  try {
+    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
+  } catch (err) {
+    console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
+  }
+  return workDir;
 }
 
 /**
@@ -444,6 +488,12 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
  */
 export function copyResultsToTarget(workDir: string, targetDir: string, subPath: string = '.'): void {
   const sourceDir = path.join(workDir, subPath);
+  try {
+    const agentPatchPath = path.join(targetDir, 'agent.patch');
+    capturePatchFromGit(workDir, agentPatchPath);
+  } catch (err) {
+    console.warn(`Failed to capture agent patch: ${err}`);
+  }
   execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
   console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
 }
@@ -525,9 +575,10 @@ export async function runCliAgentCommand(
   targetDir: string,
   agentName: string
 ): Promise<void> {
+  const sanitizedEnv = { ...process.env, PWD: workDir };
   const child = spawn(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
     stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
   });
 
@@ -584,6 +635,20 @@ export async function runCliAgentCommand(
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
     
+    // Save generation failure info so results collector registers early failure
+    try {
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      fs.writeFileSync(failureFile, JSON.stringify({
+        agentName,
+        exitCode: -1,
+        stderr: stderrData || err.message || String(err),
+        stdout: stdoutData
+      }, null, 2));
+      console.log(`Saved generation failure info to: ${failureFile}`);
+    } catch (writeErr) {
+      console.error(`Failed to write generation_failed.json:`, writeErr);
+    }
+
     // Fallback: Save whatever we have to agent_stderr.log even if it failed
     const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
     let fallbackContent = `Execution failed: ${err.message || err}\n`;

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flat Content Layout Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      flex-wrap: wrap;
+      min-height: 100vh;
+      margin: 20px;
+      background-color: #f0f0f0;
+      box-sizing: border-box;
+    }
+
+    .flat-container {
+      position: relative;
+      width: 300px;
+      height: 200px;
+      color: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .green-card {
+      background-color: #2ecc71;
+    }
+
+    .red-card {
+      background-color: #e74c3c;
+    }
+
+    .solid-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    .green-solid {
+      background-color: #27ae60;
+    }
+
+    .red-solid {
+      background-color: #c0392b;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="flat-container green-card">
+    <div class="solid-bg green-solid"></div>
+    <div class="content">
+      <h2>Geometric Pattern</h2>
+      <p>This demo uses standard solid green color layers without any masking properties.</p>
+    </div>
+  </div>
+
+  <div class="flat-container red-card">
+    <div class="solid-bg red-solid"></div>
+    <div class="content">
+      <h2>Grunge Texture</h2>
+      <p>This demo uses standard solid red color layers without any masking properties.</p>
+    </div>
+  </div>
+</body>
+</html>

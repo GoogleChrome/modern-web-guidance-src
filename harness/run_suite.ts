@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
-import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
+import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
+import { applyPatchSync } from '../lib/patch-utils.ts';
 import { getGraderScriptContent } from './lib/agent-shared.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
@@ -76,7 +77,7 @@ export interface RunSuiteOptions {
   numRuns?: number;
   skipEval?: boolean;
   guidedOnly?: boolean;
-  suiteConfig?: SuiteConfig;
+  suiteConfig?: Partial<SuiteConfig>;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
@@ -159,7 +160,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
-        const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+        let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+        const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
+        if (fs.existsSync(targetGraderPath)) {
+          graderPath = targetGraderPath;
+        }
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
@@ -303,31 +308,27 @@ async function runCommand(command: string, args: string[] = [], envOverrides?: R
 
 
 function resolveTaskName(task: string): string {
-  let resolvedTask = task;
-  if (task.startsWith('guides/')) {
-    const segments = task.split('/');
-    if (segments.length === 4 && segments[2] === 'tasks') {
-      // Support discipline skill tasks (e.g., guides/forms/tasks/task.md)
-      const guideName = segments[1];
-      const taskName = segments[3].replace('.md', '');
-      resolvedTask = `${guideName}/${taskName}`;
-    } else if (segments.length >= 3) {
-      // Standard guide path: guides/category/guideName/...
-      const guideName = segments[2];
-      let taskName = 'task';
-      const lastSegment = segments[segments.length - 1];
-      if (lastSegment.endsWith('.md')) {
-        taskName = lastSegment.replace('.md', '');
-      }
-      resolvedTask = `${guideName}/${taskName}`;
-    }
-  } else if (!task.includes('/')) {
-    resolvedTask = `${task}/task`;
+  let cleanTask = task.replace(/^guides\//, '');
+  const segments = cleanTask.split('/');
+  if (segments.length === 3 && segments[1] === 'tasks') {
+    // forms/tasks/task.md -> forms/task
+    return `${segments[0]}/${segments[2].replace(/\.md$/, '')}`;
   }
-  return resolvedTask;
+  if (segments.length === 3) {
+    // category/guideName/taskName -> guideName/taskName
+    return `${segments[1]}/${segments[2].replace(/\.md$/, '')}`;
+  }
+  if (segments.length === 2) {
+    // guideName/taskName
+    return `${segments[0]}/${segments[1].replace(/\.md$/, '')}`;
+  }
+  if (segments.length === 1) {
+    return `${segments[0]}/task`;
+  }
+  return cleanTask;
 }
 
-async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
+export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
   // Copy the base app to the run directory (for tracking purposes)
   const guideFolder = path.join(runDir, guideName);
   const taskFolder = path.join(guideFolder, taskName);
@@ -355,6 +356,13 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
         }
       });
 
+      // Initialize git so git apply resolves paths at the staged base app root
+      try {
+        execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workspaceBaseAppDir, stdio: 'ignore' });
+      } catch (err) {
+        console.warn(`Failed to initialize git in ${workspaceBaseAppDir}: ${err}`);
+      }
+
       const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
       if (fs.existsSync(pkgJsonPath)) {
         const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
@@ -365,13 +373,29 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
         // pnpm install is intentionally deferred until after agent execution
         // to avoid copying massive node_modules directories.
       }
+
+      // If this is a target-based task and zero-passrate.patch exists, apply it before agent execution
+      const targetZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskName, ZERO_PASSRATE_PATCH_FILE);
+      const baseAppZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskInfo.baseApp, ZERO_PASSRATE_PATCH_FILE);
+      const zeroPassratePath = fs.existsSync(targetZeroPassrate)
+        ? targetZeroPassrate
+        : (fs.existsSync(baseAppZeroPassrate) ? baseAppZeroPassrate : null);
+
+      if (zeroPassratePath) {
+        const applyRes = applyPatchSync(workspaceBaseAppDir, zeroPassratePath);
+        if (!applyRes.success) {
+          console.warn(`Failed to apply zero-passrate.patch to ${workspaceBaseAppDir}: ${applyRes.error}`);
+        } else {
+          console.log(`Applied zero-passrate.patch to ${workspaceBaseAppDir}`);
+        }
+      }
     }
   }
 
   return workspaceBaseAppDir;
 }
 
-function generateTransientPackage(
+export function generateTransientPackage(
   targetDir: string,
   agentScript: string,
   promptContent: string,
@@ -430,17 +454,44 @@ const env = { ...process.env };
 env.PATH = \`${targetDir}:\${env.PATH}\`;
 
 const start = Date.now();
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
+let result;
+let attempts = 0;
+const maxAttempts = 3; // 1 initial attempt + 2 retries
+
+while (attempts < maxAttempts) {
+  attempts++;
+  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
+  if (result.status === 0) break;
+  if (attempts < maxAttempts) {
+    console.warn('⚠️ Attempt ' + attempts + ' failed with status ' + result.status + '. Waiting 20 seconds before retrying...');
+    spawnSync(process.execPath, ['-e', 'setTimeout(()=>{}, 20000)']);
+  }
+}
 const runtime = Date.now() - start;
 
 let graderRuntime = null;
 let graderStatus = null;
 
 if (result.status === 0) {
+  const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+  if (fs.existsSync(failureFile)) {
+    fs.unlinkSync(failureFile);
+  }
   const gradeStart = Date.now();
-  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
+  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status;
+} else {
+  const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
+  if (!fs.existsSync(failureFile)) {
+    fs.writeFileSync(failureFile, JSON.stringify({
+      agentName: path.basename(${JSON.stringify(agentScript)}),
+      exitCode: result.status,
+      stderr: 'Agent execution failed unexpectedly during setup or wrapper invocation',
+      stdout: ''
+    }, null, 2));
+  }
 }
 
 fs.writeFileSync(path.join(${JSON.stringify(targetDir)}, 'runtime.json'), JSON.stringify({
