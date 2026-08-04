@@ -46,6 +46,7 @@ const COMMAND_METADATA = {
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
+  compare: { desc: 'Compare two evaluation runs to diagnose performance variance', flags: [] },
 
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
@@ -171,7 +172,7 @@ function showHelp() {
 
     {
       title: 'Evaluation & Dashboard',
-      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill'],
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill', 'compare'],
     },
     {
       title: 'Utilities & Setup',
@@ -225,6 +226,19 @@ async function main() {
   }
 
   switch (command) {
+    case 'compare': {
+      const runDirA = requireArg(positionals[1], 'gd compare <runDirA> <runDirB>');
+      const runDirB = requireArg(positionals[2], 'gd compare <runDirA> <runDirB>');
+      const { runComparison } = await import('../harness/lib/compare-evals.ts');
+      try {
+        await runComparison(runDirA, runDirB);
+      } catch (err: any) {
+        console.error(`Comparison failed: ${err.message}`);
+        process.exit(1);
+      }
+      break;
+    }
+
     case 'setup-completion': {
       completion.setupShellInitFile();
       console.log('Auto-completion installed. Restart your terminal to apply.');
