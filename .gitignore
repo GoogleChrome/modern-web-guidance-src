@@ -64,3 +64,7 @@ guides/**/.last-run.json
 skills/modern-web/
 **/.cache/
 .agents/skills/nightly-eval-investigation/artifacts/
+
+# AI Variance Diagnosis outputs
+harness/results/
+variance_diagnosis.md
