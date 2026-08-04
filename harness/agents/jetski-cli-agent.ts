@@ -257,38 +257,32 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
       const db = new DatabaseSync(fullPath, { readOnly: true });
       const rows = db.prepare('SELECT step_type, metadata, step_payload FROM steps').all() as Array<{ step_type?: number; metadata?: Uint8Array; step_payload?: Uint8Array }>;
       for (const row of rows) {
-        // Decode Protobuf step_payload for specific tool execution step types
+        // Decode Protobuf step_payload for tool executions
         if (row.step_payload) {
           const proto = parseProtobuf(Buffer.from(row.step_payload));
           const strings = getProtoStrings(proto);
 
-          // Shell commands (step_type = 21: RUN_COMMAND)
-          if (row.step_type === 21) {
-            for (const text of strings) {
-              if (text.includes('retrieve')) {
-                const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
-                if (match && match[1]) {
-                  const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
-                  retrievedGuides.push(...parts);
-                }
+          for (const text of strings) {
+            // Shell commands & guide retrieval
+            if (text.includes('retrieve')) {
+              const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
+              if (match && match[1]) {
+                const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
+                retrievedGuides.push(...parts);
               }
             }
-          }
 
-          // File reads (step_type = 8: VIEW_FILE)
-          if (row.step_type === 8) {
-            for (const filePath of strings) {
-              if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                if (match) {
-                  fileReadGuides.push(match[1]);
-                }
+            // File reads for guides and skills
+            if (text.includes('/skills/') && text.endsWith('/guide.md')) {
+              const match = text.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+              if (match) {
+                fileReadGuides.push(match[1]);
               }
-              if (filePath.includes('/skills/') && filePath.endsWith('/SKILL.md')) {
-                const match = filePath.match(/\/skills\/([^/]+)\/SKILL\.md$/);
-                if (match) {
-                  toolsUsed.push(match[1]);
-                }
+            }
+            if (text.includes('/skills/') && text.endsWith('/SKILL.md')) {
+              const match = text.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+              if (match) {
+                toolsUsed.push(match[1]);
               }
             }
           }
@@ -315,21 +309,19 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
         }
       }
 
-      // Extract model name from gen_metadata (Protobuf Tag 1 -> Tag 21)
+      // Extract model name from gen_metadata by scanning string values
       try {
         const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
         for (const row of genRows) {
           if (!row.data) continue;
           const proto = parseProtobuf(Buffer.from(row.data));
-          if (proto[1]) {
-            for (const item of proto[1]) {
-              if (typeof item === 'object' && item !== null && item[21] && typeof item[21][0] === 'string') {
-                modelName = item[21][0];
-                break;
-              }
-            }
+          const strings = getProtoStrings(proto);
+          // Look for standard Gemini model name patterns across string fields in the Protobuf message
+          const modelCandidate = strings.find(s => /^gemini-/i.test(s));
+          if (modelCandidate) {
+            modelName = modelCandidate;
+            break;
           }
-          if (modelName !== 'unknown') break;
         }
       } catch {}
 
