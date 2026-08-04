@@ -388,6 +388,13 @@ async function loadRemoteTests() {
 }
 
 function registerTestData(testId, source, parsed, forcedTimestamp) {
+    if (source === 'remote' && (allTestData[`${testId}|||local`] || allTestData[`${testId}|||static`])) {
+        return;
+    }
+    if ((source === 'local' || source === 'static') && allTestData[`${testId}|||remote`]) {
+        delete allTestData[`${testId}|||remote`];
+    }
+
     let serving = 'unknown';
     if (parsed.serving !== undefined) {
         serving = parsed.serving;

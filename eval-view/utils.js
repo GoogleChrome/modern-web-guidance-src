@@ -281,3 +281,42 @@ export function $(query, context) {
   return /** @type {ParseSelector<T>} */ (result);
 }
 
+export function categorizeActionClient(name, params, thought) {
+  const actionName = (name || '').toLowerCase();
+  const actionParamsStr = JSON.stringify(params || {}).toLowerCase();
+  const thoughtStr = (thought || '').toLowerCase();
+
+  if (actionName === 'respond_to_user') return 'other';
+
+  if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
+    return 'guide_retrieval';
+  }
+  if (actionName.includes('search') || actionName.includes('get_best_practices') || actionName.includes('query_guidance') || actionParamsStr.includes('search')) {
+    return 'skill_search';
+  }
+  if (
+    actionName.includes('write') || actionName.includes('replace') || actionName.includes('edit') || actionName.includes('touch') ||
+    actionParamsStr.includes('write_to_file') || actionParamsStr.includes('replace_file_content') ||
+    actionParamsStr.includes('index.html') || actionParamsStr.includes('app.jsx') || actionParamsStr.includes('style.css')
+  ) {
+    return 'code_mutation';
+  }
+  if (thoughtStr.includes('mandatory') || thoughtStr.includes('fallback') || thoughtStr.includes('css') || thoughtStr.includes('baseline') || thoughtStr.includes('guidance')) {
+    return 'mandatory_rule_thought';
+  }
+  return 'incidental_noise';
+}
+
+export function normalizeTrajectoryClient(summary) {
+  if (!summary) return summary;
+  summary.schemaVersion = "2.0";
+  if (Array.isArray(summary.steps)) {
+    for (const step of summary.steps) {
+      if (step.action && !step.action.canonicalCategory) {
+        step.action.canonicalCategory = categorizeActionClient(step.action.name, step.action.params, step.thought);
+      }
+    }
+  }
+  return summary;
+}
+
