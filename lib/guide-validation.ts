@@ -343,8 +343,6 @@ export function getTaskMap(): Map<string, TaskInfo> {
   if (!fs.existsSync(guidesDir)) return taskMap;
 
   function processTasks(guideName: string, tasksDir: string, guideDir: string) {
-    let defaultPrompt: string | null = null;
-
     for (const taskEntry of fs.readdirSync(tasksDir, { withFileTypes: true })) {
       if (taskEntry.isDirectory() || !taskEntry.name.endsWith('.md')) continue;
       const taskFileName = taskEntry.name;
@@ -365,19 +363,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         guideDir: guideDir,
       };
 
-      if (taskName === 'task') {
-        defaultPrompt = prompt;
-      }
-
       taskMap.set(`${guideName}/${taskName}`, info);
-    }
-
-    if (defaultPrompt) {
-      taskMap.set(`${guideName}/negative`, {
-        baseApp: NEGATIVE_DEMO_FILE,
-        prompt: defaultPrompt,
-        guideDir: guideDir,
-      });
     }
   }
 

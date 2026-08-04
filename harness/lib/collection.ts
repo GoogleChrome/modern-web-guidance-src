@@ -10,8 +10,8 @@ import { extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex
 import { extractJetskiCliModel, extractJetskiCliTokenUsage } from '../agents/jetski-cli-agent.ts';
 import { getGraderScriptContent } from './agent-shared.ts';
 
-function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
-  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
+function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
+  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
 }
 
 export function extractModelFromResults(resultsDir: string, agent: string): string {
@@ -102,9 +102,15 @@ function getAppFiles(currentDir: string, base = ''): string[] {
 }
 
 export function extractTargetModifiedFile(dir: string, prompt?: string): string | undefined {
+  if (fs.existsSync(path.join(dir, 'agent.patch'))) {
+    return 'agent.patch';
+  }
   try {
     const appFiles = getAppFiles(dir).filter(f => {
       if (
+        f === 'npx' ||
+        f === 'node_modules' ||
+        f.startsWith('.') ||
         f.endsWith('.log') ||
         f.endsWith('.txt') ||
         f.endsWith('.mjs') ||
@@ -209,13 +215,14 @@ function getTaskRunContext(
   const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
   const targetFile = path.join(dir, targetModifiedFile || 'index.html');
   const targetPkgJson = path.join(dir, 'package.json');
+  const targetPatchFile = path.join(dir, 'agent.patch');
   let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
   const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
   if (fs.existsSync(targetGraderPath)) {
     graderPath = targetGraderPath;
   }
   const graderResults = path.join(dir, `${guide}_results.json`);
-  const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
+  const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson, targetPatchFile);
 
   return {
     guide,

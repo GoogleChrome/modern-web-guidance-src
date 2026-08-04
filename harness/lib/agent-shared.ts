@@ -4,7 +4,7 @@ import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
-import { capturePatchFromGit } from '../../lib/patch-utils.ts';
+import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
 
 import { type SuiteConfig } from '../config.ts';
 
@@ -468,15 +468,10 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     fs.mkdirSync(workDir, { recursive: true });
     return workDir;
   }
-  // For the suite run, copy the template directory to the isolated home directory, following symlinks
-  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
-  console.log(`Copied ${templateDir} to ${homeDir}...`);
+  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
+  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   const workDir = path.join(homeDir, path.basename(templateDir));
-  try {
-    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
-  } catch (err) {
-    console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
-  }
+  initGitRepo(workDir);
   return workDir;
 }
 
@@ -487,15 +482,27 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
  * @param subPath Optional sub-path within workDir to copy from (e.g. if you only want specific files)
  */
 export function copyResultsToTarget(workDir: string, targetDir: string, subPath: string = '.'): void {
-  const sourceDir = path.join(workDir, subPath);
-  try {
-    const agentPatchPath = path.join(targetDir, 'agent.patch');
-    capturePatchFromGit(workDir, agentPatchPath);
-  } catch (err) {
-    console.warn(`Failed to capture agent patch: ${err}`);
+  const isLegacyTask = path.basename(path.dirname(targetDir)) === 'task';
+
+  if (isLegacyTask) {
+    // For legacy single-page guides, copy workspace files directly using cp -R
+    const sourceDir = path.join(workDir, subPath);
+    try {
+      execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
+      console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
+    } catch (e) {
+      console.warn(`Failed to copy results from ${sourceDir} to ${targetDir}: ${e}`);
+    }
+  } else {
+    // For target-based guides, capture agent.patch for patch-only storage
+    try {
+      const agentPatchPath = path.join(targetDir, 'agent.patch');
+      capturePatchFromGit(workDir, agentPatchPath);
+    } catch (err) {
+      console.warn(`Failed to capture agent patch: ${err}`);
+    }
+    console.log(`Saved agent patch in: ${targetDir}`);
   }
-  execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
-  console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
 }
 
 /**
@@ -756,7 +763,6 @@ export function getGraderScriptContent(
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
 
   return `import fs from 'fs';
-import { spawnSync } from 'child_process';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {

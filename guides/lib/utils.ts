@@ -2,14 +2,45 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import config from '../../harness/config.ts';
-import { rootDir } from '../../lib/paths.ts';
+import { rootDir, baseAppsDir } from '../../lib/paths.ts';
+import { applyPatchSync } from '../../lib/patch-utils.ts';
 import {
   createIsolatedHome,
+  cleanupIsolatedHome,
   createTrustedFolders,
   spawnAsync,
 } from '../../harness/lib/agent-shared.ts';
 import { setupJetskiCliCredentials } from '../../harness/agents/jetski-cli-agent.ts';
 import { setupGeminiCliCredentials } from '../../harness/agents/gemini-cli-agent.ts';
+
+export function stageBaseAppWorkspace(
+  baseApp: string,
+  patchFile?: string,
+  prefix: string = 'grade-run'
+): { workDir: string; cleanup: () => void } {
+  const tempHome = createIsolatedHome(prefix);
+  const workDir = path.join(tempHome, baseApp);
+  fs.mkdirSync(workDir, { recursive: true });
+
+  const refBaseAppDir = path.join(baseAppsDir, baseApp);
+  if (fs.existsSync(refBaseAppDir)) {
+    fs.cpSync(refBaseAppDir, workDir, { recursive: true });
+  }
+
+  if (patchFile && fs.existsSync(patchFile)) {
+    if (fs.readFileSync(patchFile, 'utf8').trim().length > 0) {
+      applyPatchSync(workDir, patchFile);
+    }
+  }
+
+  const cleanup = () => {
+    try {
+      cleanupIsolatedHome(tempHome);
+    } catch (e) {}
+  };
+
+  return { workDir, cleanup };
+}
 
 export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
   return new Promise((resolve, reject) => {

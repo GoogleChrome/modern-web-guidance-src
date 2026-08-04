@@ -94,7 +94,7 @@ Write a Playwright test script named \`${opts.graderFile}\` that directly valida
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Requirements**: \`${opts.expectationsFile}\`
 3. **Golden Solution Diff**: \`${opts.solutionPatchFile}\` (must pass 100% of tests)
-4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of negative/must-fail tests)
+4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of tests)
 5. **Boilerplate Template**: \`${opts.templateFile}\`
 
 # VERIFICATION & SCOPING RULES
@@ -151,7 +151,6 @@ Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-leve
 6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "add X", "can you build Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
 7. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
 8. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
-9. **Encourage Existing Code Integration**: If the feature modifies or enhances an existing layout, card, component, or behavior already visible in the base app, the prompt MUST ask the agent to "upgrade", "refactor", or "modify" the existing components/pages rather than building a new isolated component/page from scratch.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;

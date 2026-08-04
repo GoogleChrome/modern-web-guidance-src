@@ -15,7 +15,6 @@ import {
   SUPPORTED_BASE_APPS
 } from '../lib/guide-validation.ts';
 import { cCyan, cGreen } from '../lib/colors.ts';
-import type { CalibrationResult } from './run-grader.ts';
 
 export async function generateTargetGrader(guideDirAbs: string, baseApp: string, failureContext?: string): Promise<void> {
   const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -123,30 +122,6 @@ export async function generateGrader(targetDirRaw: string, baseApp?: string): Pr
     console.log(cCyan(`\n--- Generating ${GRADER_FILE} for target base app: ${app} ---`));
     await generateTargetGrader(targetDirAbs, app);
     console.log(cGreen(`✅ ${GRADER_FILE} generated for ${app}`));
-  }
-}
-
-export async function generateGraderWithContext(targetDirRaw: string, failureContextStrOrRes: string | CalibrationResult, baseApp?: string): Promise<void> {
-  const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
-  if (!fs.existsSync(targetDirAbs)) {
-    throw new Error(`Directory not found: ${targetDirAbs}`);
-  }
-
-  let failureContextStr: string;
-  if (typeof failureContextStrOrRes === 'string') {
-    failureContextStr = failureContextStrOrRes;
-  } else {
-    const lines: string[] = [];
-    if (failureContextStrOrRes.errorDetails) lines.push(failureContextStrOrRes.errorDetails);
-    if (failureContextStrOrRes.demo.failingTests.length > 0) lines.push(`Golden tests failed: ${failureContextStrOrRes.demo.failingTests.join(', ')}`);
-    if (failureContextStrOrRes.negative.passingTests.length > 0) lines.push(`Negative tests passed: ${failureContextStrOrRes.negative.passingTests.join(', ')}`);
-    failureContextStr = lines.join('\n');
-  }
-
-  const apps = baseApp ? [baseApp] : SUPPORTED_BASE_APPS;
-  for (const app of apps) {
-    console.log(cCyan(`\n--- Regenerating ${GRADER_FILE} with context for target: ${app} ---`));
-    await generateTargetGrader(targetDirAbs, app, failureContextStr);
   }
 }
 

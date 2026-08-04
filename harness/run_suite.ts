@@ -1,12 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn, execSync } from 'child_process';
+import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
-import { applyPatchSync } from '../lib/patch-utils.ts';
+import { applyPatchSync, initGitRepo } from '../lib/patch-utils.ts';
 import { getGraderScriptContent } from './lib/agent-shared.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
@@ -168,7 +168,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath);
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -202,6 +202,19 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         } finally {
           if (fs.existsSync(pnpmWorkspacePath)) {
             fs.unlinkSync(pnpmWorkspacePath);
+          }
+          // Clean up task workspace base_apps after all workers in run finish
+          for (const task of tasksToRun) {
+            const resolvedTask = resolveTaskName(task);
+            const [guideName, taskName] = resolvedTask.split('/');
+            const taskBaseAppDir = path.join(runDir, guideName, taskName, 'base_app');
+            if (fs.existsSync(taskBaseAppDir)) {
+              try {
+                fs.rmSync(taskBaseAppDir, { recursive: true, force: true });
+              } catch (err) {
+                console.warn(`Failed to clean up ${taskBaseAppDir}: ${err}`);
+              }
+            }
           }
         }
       }
@@ -329,7 +342,6 @@ function resolveTaskName(task: string): string {
 }
 
 export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
-  // Copy the base app to the run directory (for tracking purposes)
   const guideFolder = path.join(runDir, guideName);
   const taskFolder = path.join(guideFolder, taskName);
   const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
@@ -337,58 +349,38 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
     fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
   }
 
-  if (taskName === 'negative') {
-    const negativeDemoPath = path.join(taskInfo.guideDir, 'negative-demo.html');
-    if (fs.existsSync(negativeDemoPath)) {
-      fs.copyFileSync(negativeDemoPath, path.join(workspaceBaseAppDir, 'index.html'));
-    } else {
-      console.warn(`Skipping negative run for ${guideName}/${taskName}: Missing negative-demo.html`);
-      return null;
-    }
+  const refBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
+  if (fs.existsSync(refBaseAppDir)) {
+    fs.cpSync(refBaseAppDir, workspaceBaseAppDir, { recursive: true });
   } else {
-    const sourceBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
-    if (fs.existsSync(sourceBaseAppDir)) {
-      await fs.promises.cp(sourceBaseAppDir, workspaceBaseAppDir, {
-        recursive: true,
-        filter: (src) => {
-          const basename = path.basename(src);
-          return !['node_modules', '.git', 'dist', '.astro'].includes(basename);
-        }
-      });
+    console.warn(`Source base app not found at ${refBaseAppDir}`);
+    return null;
+  }
+  if (!fs.existsSync(path.join(workspaceBaseAppDir, '.git'))) {
+    initGitRepo(workspaceBaseAppDir);
+  }
 
-      // Initialize git so git apply resolves paths at the staged base app root
-      try {
-        execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workspaceBaseAppDir, stdio: 'ignore' });
-      } catch (err) {
-        console.warn(`Failed to initialize git in ${workspaceBaseAppDir}: ${err}`);
-      }
+  const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
+  if (fs.existsSync(pkgJsonPath)) {
+    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+    if (!pkgJson.pnpm || !pkgJson.pnpm.onlyBuiltDependencies) {
+      throw new Error(`Assertion failed: pnpm.onlyBuiltDependencies is missing in ${pkgJsonPath}`);
+    }
+  }
 
-      const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
-      if (fs.existsSync(pkgJsonPath)) {
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-        if (!pkgJson.pnpm || !pkgJson.pnpm.onlyBuiltDependencies) {
-          throw new Error(`Assertion failed: pnpm.onlyBuiltDependencies is missing in ${pkgJsonPath}`);
-        }
+  // If this is a target-based task and zero-passrate.patch exists, apply it before agent execution
+  const targetZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskName, ZERO_PASSRATE_PATCH_FILE);
+  const baseAppZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskInfo.baseApp, ZERO_PASSRATE_PATCH_FILE);
+  const zeroPassratePath = fs.existsSync(targetZeroPassrate)
+    ? targetZeroPassrate
+    : (fs.existsSync(baseAppZeroPassrate) ? baseAppZeroPassrate : null);
 
-        // pnpm install is intentionally deferred until after agent execution
-        // to avoid copying massive node_modules directories.
-      }
-
-      // If this is a target-based task and zero-passrate.patch exists, apply it before agent execution
-      const targetZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskName, ZERO_PASSRATE_PATCH_FILE);
-      const baseAppZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskInfo.baseApp, ZERO_PASSRATE_PATCH_FILE);
-      const zeroPassratePath = fs.existsSync(targetZeroPassrate)
-        ? targetZeroPassrate
-        : (fs.existsSync(baseAppZeroPassrate) ? baseAppZeroPassrate : null);
-
-      if (zeroPassratePath) {
-        const applyRes = applyPatchSync(workspaceBaseAppDir, zeroPassratePath);
-        if (!applyRes.success) {
-          console.warn(`Failed to apply zero-passrate.patch to ${workspaceBaseAppDir}: ${applyRes.error}`);
-        } else {
-          console.log(`Applied zero-passrate.patch to ${workspaceBaseAppDir}`);
-        }
-      }
+  if (zeroPassratePath) {
+    const applyRes = applyPatchSync(workspaceBaseAppDir, zeroPassratePath);
+    if (!applyRes.success) {
+      console.warn(`Failed to apply zero-passrate.patch to ${workspaceBaseAppDir}: ${applyRes.error}`);
+    } else {
+      console.log(`Applied zero-passrate.patch to ${workspaceBaseAppDir}`);
     }
   }
 
@@ -403,7 +395,8 @@ export function generateTransientPackage(
   workspaceBaseAppDir: string,
   taskName: string,
   guideName: string,
-  graderPath: string
+  graderPath: string,
+  _baseApp: string = 'daily-grind'
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
@@ -523,7 +516,7 @@ process.exit(graderStatus !== null ? graderStatus : result.status ?? 0);
 
   // Generate transient package.json
   // This tells pnpm that this directory is a "package" that can be run
-  // via \`pnpm run-agent\`.
+  // via `pnpm run-agent`.
   fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
     name: `${taskName.substring(0, 30)}-${runType}`,
     type: "module",
