@@ -288,7 +288,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           }
         }
 
-        // Protobuf token extraction from metadata
+        // Protobuf token extraction from metadata (schema-agnostic across tags)
         if (row.metadata) {
           const proto = parseProtobuf(Buffer.from(row.metadata));
           const visited = new Set<any>();
@@ -302,9 +302,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
             const input = (node[2] && typeof node[2][0] === 'number') ? node[2][0] : 0;
             const output = (node[3] && typeof node[3][0] === 'number') ? node[3][0] : 0;
             const cached = (node[5] && typeof node[5][0] === 'number') ? node[5][0] : 0;
-            // Token usage records contain a session/task reference in tag 7 or tag 8
-            const hasSessionRef = Boolean(node[7] || node[8]);
-            if (hasSessionRef && (input > 0 || output > 0 || cached > 0)) {
+            if (input > 0 || output > 0 || cached > 0) {
               totalInput += input;
               totalOutput += output;
               totalCached += cached;
