@@ -374,6 +374,12 @@ async function loadRemoteTests() {
 }
 
 function registerSuiteSummary(summary, source) {
+    if (source === 'remote' && (allTestData[`${summary.testId}|||local`] || allTestData[`${summary.testId}|||static`])) {
+        return;
+    }
+    if ((source === 'local' || source === 'static') && allTestData[`${summary.testId}|||remote`]) {
+        delete allTestData[`${summary.testId}|||remote`];
+    }
     const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
