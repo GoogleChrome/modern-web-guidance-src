@@ -20,77 +20,33 @@ MANDATORY: Set the `color` property using the `contrast-color()` function, passi
   /* Define the background color as a custom property */
   --badge-bg: #e02424;
   background-color: var(--badge-bg);
-
-  /* Readability safety net for older browsers */
-  color: #fff;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
-}
-
-@supports (color: contrast-color(red)) {
-  .badge {
-    /* MANDATORY: Dynamic contrasting color */
-    color: contrast-color(var(--badge-bg));
-    text-shadow: none;
-  }
+  /* MANDATORY: Dynamic contrasting color */
+  color: contrast-color(var(--badge-bg));
 }
 ```
 
 DO NOT: Use `contrast-color()` for `background-color`. It is specifically designed for foreground colors (like text or borders) to contrast against a given background color.
 
-## Integrate with custom property theming
+## Integrate with theming
 
-Because `contrast-color()` accepts any valid `<color>` value, including CSS custom properties, it is especially powerful within design systems. By centralizing your background themes as variables, you ensure that foreground content automatically updates its contrast whenever the theme shifts.
+Because `contrast-color()` accepts any valid `<color>` value, including CSS custom properties, it is especially powerful within design systems. By centralizing your background themes as variables, you ensure that foreground content automatically updates its contrast whenever the theme shifts, even to user-specified colors.
 
 DO: Reference shared background variables inside `contrast-color()` to guarantee synchronization across your application.
 
 ```css
 .theme-card {
   background-color: var(--theme-surface-color);
-  color: var(--theme-on-surface-color);
+  color: contrast-color(var(--theme-surface-color));
 }
 
 .theme-container[data-theme="light"] {
   --theme-surface-color: #f4f4f4;
-  --theme-on-surface-color: #000; /* Safe fallback */
 }
 .theme-container[data-theme="dark"] {
   --theme-surface-color: #1a1a1a;
-  --theme-on-surface-color: #fff; /* Safe fallback */
 }
-
-@supports (color: contrast-color(red)) {
-  .theme-card {
-    color: contrast-color(var(--theme-surface-color));
-  }
-}
-```
-
-## Ensure contrast on hover and interaction states
-
-When an interactive element's background is driven by a custom property, you can change only that property for hover, focus, or active states and let `contrast-color()` recompute the foreground automatically. Because the text color is expressed once in terms of the background, you never have to hand-pick a matching text color for each state.
-
-DO: Keep a single `color: contrast-color(var(--bg))` declaration so the text stays legible as the background shifts.
-
-```css
-.button {
-  --button-bg: #b2aeff;
-  background-color: var(--button-bg);
-  color: #000; /* Safe fallback */
-}
-.button:is(:hover, :focus){
-  --button-bg: #3e3a87;
-  color: #fff; /* Safe fallback */
-}
- 
-@supports (color: contrast-color(red)) {
-  .button {
-    color: contrast-color(var(--button-bg));
-  }
-
-  .button:is(:hover, :focus) {
-    /* Change the variable used for the background. `contrast-color(--button-bg)` will update the text color. */
-    --button-bg: #3e3a87;
-  }
+.theme-container[data-theme="custom"] {
+  --theme-surface-color: var(--user-custom-theme);
 }
 ```
 
@@ -100,37 +56,134 @@ DO NOT: Hard-code a separate text color for each interaction state when the back
 
 {{ FEATURE_FALLBACKS("contrast-color") }}
 
-For browsers that do not yet support `contrast-color()`, use it as a progressive enhancement. If the background color is known and fixed for a specific CSS class (like a `.badge-dark` variant), declare a variant-specific safe default `color` immediately before the `contrast-color()` rule.
+To support browsers without `contrast-color()`, you must provide a fallback. If the background color is known and fixed, use a hard-coded contrasting color. For dynamic backgrounds where the color is unknown, choose a strategy from the table below based on your UI requirements and browser support targets.
 
-However, if the background color is highly dynamic and unpredictable (such as user-injected themes), a single static fallback will inevitably fail. In these cases, you MUST use an `@supports` feature query to apply a robust fallback strategy, such as a text shadow or translucent background, to guarantee readability.
+| Strategy | Best For... | Considerations |
+| :--- | :--- | :--- |
+| **Relative Color Syntax** | Automated, high-quality CSS-only contrast calculation. | Highest quality CSS-only fallback. |
+| **Text Shadow** | Quick readability boost on any background. | Can look "dirty" or "glowy"; may not fit all designs. |
+| **Text Stroke** | Preserving font weight while ensuring edge contrast. | Use `paint-order` to avoid thinning letterforms, if available. |
+| **Translucent Overlay** | `Ensuring a minimum contrast area behind the text. | Changes the look of the background color under the text, requires a separate text element. |
+| **SVG Filters** | Reactive contrast that updates as the background changes. | Requires a separate text element; hacky implementation. |
 
-{{ BASELINE_STATUS('relative-color') }}
+### Recommended: Relative Color Syntax (RCS)
 
-For browsers without `contrast-color` that support relative color syntax, calculate a white or black contrasting color using your color's lightness channel.
+For browsers that support it, RCS provides the most robust automated fallback for dynamic colors.
+
+{{ BASELINE_STATUS("relative-color") }}
 
 ```css
-.badge {
-  color: #fff; /* Default assumption */
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8); /* Readability safety net */
-}
-
-/* Fallback using relative color syntax  */
 @supports (color: oklch(from red l c h)) {
   .badge {
     /* Highest threshold that passes WCAG. Higher values may be more legible. */
     --threshold: 0.623;
     --l: clamp(0, (l / var(--threshold) - 1) * -infinity, 1);
     color: oklch(from var(--badge-bg) var(--l) 0 h);
-    text-shadow: none;
   }
 }
 
 @supports (color: contrast-color(red)) {
   .badge {
     color: contrast-color(var(--badge-bg));
-    text-shadow: none; /* Safe to remove if contrast-color is supported */
   }
 }
 ```
 
-For use cases that require a custom background color without a text shadow, use a JavaScript library like Color.js to calculate whether white or black has the most contrast with the background, and apply the winner as the element's `color` style.
+### Alternative CSS Fallbacks
+
+DO: Select the fallback that best matches your design constraints if RCS is not sufficient or supported.
+
+#### Option 1: Text Stroke (with paint-order to preserve letterforms)
+
+{{ BASELINE_STATUS("text-stroke-fill") }}
+
+```css
+.badge--stroke {
+  -webkit-text-stroke: 4px black;
+}
+```
+  
+#### Option 2: Text Stroke with `paint-order` to preserve letterforms
+
+{{ BASELINE_STATUS("paint-order") }}
+
+```css
+.badge--stroke {
+  -webkit-text-stroke: 4px black;
+  paint-order: stroke fill;
+}
+```
+
+#### Option 3: Translucent background overlay
+
+```css
+.badge--overlay {
+  position: relative;
+  color: #fff;
+  overflow: hidden;
+}
+.badge--overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: rgb(0 0 0 / 0.4);
+  z-index: 0;
+}
+.badge--overlay span {
+  position: relative;
+  z-index: 1;
+}
+```
+
+#### Option 4: Text Shadow
+
+```css
+.badge--shadow {
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+}
+```
+
+#### Option 5: SVG Filters
+
+{{ BASELINE_STATUS("svg-filters") }}
+
+1. Add this SVG filter definition to the HTML document.
+
+```html
+<!-- Technique from https://miunau.com/posts/dynamic-text-contrast-in-css/ -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="0" style="display: none;">
+  <defs>
+    <filter id="contrast-filter" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix"
+        values="0.2126 0.7152 0.0722 0 0
+          0.2126 0.7152 0.0722 0 0
+          0.2126 0.7152 0.0722 0 0
+          0 0 0 1 0"/>
+      <feMorphology operator="dilate" radius="2"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="-255" intercept="128"/>
+        <feFuncG type="linear" slope="-255" intercept="128"/>
+        <feFuncB type="linear" slope="-255" intercept="128"/>
+      </feComponentTransfer>
+      <feComposite operator="in" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+</svg>
+```
+
+2. Wrap the text in a `<span>`.
+
+```html
+<div class="badge--svg">
+  <span>Badge content</span>
+</div>
+```
+
+3. Apply the filter to the `<span>`.
+
+```css
+.badge--svg span{
+  color: var(--badge-bg);
+  filter: url(#contrast-filter);
+}
+

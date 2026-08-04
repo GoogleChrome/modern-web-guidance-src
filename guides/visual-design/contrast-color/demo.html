@@ -3,8 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>contrast-color() Demo</title>
+    <title>contrast-color() Fallbacks Matrix</title>
     <style>
+      :root {
+        --badge-dark: #1a1a1a;
+        --badge-light: #f9f9f9;
+        --badge-color: #e02424;
+      }
+
       body {
         font-family:
           system-ui,
@@ -12,140 +18,211 @@
           sans-serif;
         background-color: #f0f0f0;
         color: #333;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
         margin: 0;
-        padding: 20px;
+        padding: 40px;
       }
 
       h1 {
-        margin-bottom: 2rem;
         text-align: center;
+        margin-bottom: 2rem;
       }
 
-      .container {
-        display: flex;
+      .matrix {
+        display: grid;
+        grid-template-columns: auto 1fr 1fr 1fr;
         gap: 20px;
-        flex-wrap: wrap;
-        justify-content: center;
-        max-width: 800px;
+        align-items: center;
+        max-width: 1000px;
+        margin: 0 auto;
       }
 
-      .badge,
-      .button,
-      .theme-card {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
+      .header {
         font-weight: bold;
-        box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
+        text-align: center;
+        padding: 10px;
+      }
+
+      .row-label {
+        font-weight: bold;
+        padding-right: 20px;
+        text-align: right;
       }
 
       .badge {
-        width: 120px;
-        height: 120px;
-        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: 12px;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
         background-color: var(--badge-bg);
-        /* Default assumption + Readability safety net for older browsers */
-        color: #fff;
-        text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+        text-align: center;
+        padding: 10px;
+        box-sizing: border-box;
       }
 
-      .button {
-        padding: 12px 24px;
-        border: none;
-        cursor: pointer;
-        font-size: 1rem;
-        font-family: inherit;
-        --button-bg: #b2aeff;
-        background-color: var(--button-bg);
-        --button-color: #000;
-        color: var(--button-color);
+      /* Base Backgrounds */
+      .bg-dark {
+        --badge-bg: var(--badge-dark);
       }
-      .button:is(:hover, :focus) {
-        --button-bg: #3e3a87;
-        --button-color: #fff; /* Safe fallback */
+      .bg-light {
+        --badge-bg: var(--badge-light);
+      }
+      .bg-color {
+        --badge-bg: var(--badge-color);
       }
 
-      .theme-card {
-        padding: 20px;
-        width: 180px;
-        background-color: var(--theme-surface-color);
-        color: var(--theme-on-surface-color);
+      /* Fallback 1: Native contrast-color() */
+      .fallback-native {
+        color: #fff; /* Static fallback for browsers with neither contrast-color nor RCS */
       }
-
-      .theme-container[data-theme="light"] {
-        --theme-surface-color: #f4f4f4;
-        --theme-on-surface-color: #000;
-      }
-      .theme-container[data-theme="dark"] {
-        --theme-surface-color: #1a1a1a;
-        --theme-on-surface-color: #fff;
-      }
-
-      /* Fallback using relative color syntax  */
-      @supports (color: oklch(from red l c h)) {
-        .badge {
-          /* Highest threshold that passes WCAG. Higher values may be more legible. */
-          --threshold: 0.623;
-          --l: clamp(0, (l / var(--threshold) - 1) * -infinity, 1);
-          color: oklch(from var(--badge-bg) var(--l) 0 h);
-          text-shadow: none;
+      @supports (color: contrast-color(red)) {
+        .fallback-native {
+          color: contrast-color(var(--badge-bg));
         }
       }
 
-      /* Apply dynamic contrasting color only if supported */
+      /* Fallback 2: Relative Color Syntax */
+      @supports not (color: contrast-color(red)) {
+        .fallback-rcs {
+          color: #fff;
+        }
+        @supports (color: oklch(from red l c h)) {
+          .fallback-rcs {
+            --threshold: 0.623;
+            --l: clamp(0, (l / var(--threshold) - 1) * -infinity, 1);
+            color: oklch(from var(--badge-bg) var(--l) 0 h);
+          }
+        }
+      }
+
+      /* Fallback 3: Text Shadow */
+      @supports not (color: contrast-color(red)) {
+        .fallback-shadow {
+          color: #fff;
+          text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+        }
+      }
+
+      /* Fallback 4: Text Stroke */
+      @supports not (color: contrast-color(red)) {
+        .fallback-stroke {
+          color: #fff;
+          -webkit-text-stroke: 4px black;
+          paint-order: stroke fill;
+        }
+      }
+
+      /* Fallback 5: Translucent Overlay */
+      @supports not (color: contrast-color(red)) {
+        .fallback-overlay {
+          position: relative;
+          color: #fff;
+          overflow: hidden;
+        }
+        .fallback-overlay::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background-color: rgb(0 0 0 / 0.4);
+          z-index: 0;
+        }
+        .fallback-overlay span {
+          position: relative;
+          z-index: 1;
+        }
+      }
+
+      /* Fallback 6: SVG Filter */
+      @supports not (color: contrast-color(red)) {
+        .fallback-svg span {
+          color: var(--badge-bg);
+          filter: url(#contrast-filter);
+        }
+      }
+
+      /* Global behavior: If contrast-color is supported, ALL badges should use it by default */
       @supports (color: contrast-color(red)) {
         .badge {
           color: contrast-color(var(--badge-bg));
-          text-shadow: none;
         }
-
-        .button {
-          color: contrast-color(var(--button-bg));
-        }
-
-        .button:is(:hover, :focus) {
-          --button-bg: #3e3a87;
-        }
-
-        .theme-card {
-          color: contrast-color(var(--theme-surface-color));
-        }
-      }
-
-      /* Define different backgrounds for testing */
-      .badge-dark {
-        --badge-bg: #1a1a1a;
-      }
-      .badge-light {
-        --badge-bg: #f9f9f9;
-      }
-      .badge-color {
-        --badge-bg: #e02424;
       }
     </style>
   </head>
   <body>
-    <h1>Dynamic Contrast using <code>contrast-color()</code></h1>
+    <h1><code>contrast-color()</code> Fallbacks Matrix</h1>
 
-    <div class="container">
-      <div class="badge badge-dark" data-testid="badge-dark">Dark Bg</div>
-      <div class="badge badge-light" data-testid="badge-light">Light Bg</div>
-      <div class="badge badge-color" data-testid="badge-color">Color Bg</div>
+    <div class="matrix">
+      <!-- Headers -->
+      <div></div>
+      <div class="header">Dark Bg</div>
+      <div class="header">Light Bg</div>
+      <div class="header">Color Bg</div>
 
-      <button class="button" data-testid="button-hover">Hover Me</button>
+      <!-- Row: Native / Best Case -->
+      <div class="row-label">Native / static</div>
+      <div class="badge bg-dark fallback-native">Native</div>
+      <div class="badge bg-light fallback-native">Native</div>
+      <div class="badge bg-color fallback-native">Native</div>
 
-      <div class="theme-container" data-theme="light">
-        <div class="theme-card" data-testid="theme-card-light">Light Theme</div>
-      </div>
-      <div class="theme-container" data-theme="dark">
-        <div class="theme-card" data-testid="theme-card-dark">Dark Theme</div>
-      </div>
+      <!-- Row: RCS -->
+      <div class="row-label">RCS Fallback</div>
+      <div class="badge bg-dark fallback-rcs">RCS</div>
+      <div class="badge bg-light fallback-rcs">RCS</div>
+      <div class="badge bg-color fallback-rcs">RCS</div>
+
+      <!-- Row: Shadow -->
+      <div class="row-label">Text Shadow Fallback</div>
+      <div class="badge bg-dark fallback-shadow">Shadow</div>
+      <div class="badge bg-light fallback-shadow">Shadow</div>
+      <div class="badge bg-color fallback-shadow">Shadow</div>
+
+      <!-- Row: Stroke -->
+      <div class="row-label">Text Stroke Fallback</div>
+      <div class="badge bg-dark fallback-stroke">Stroke</div>
+      <div class="badge bg-light fallback-stroke">Stroke</div>
+      <div class="badge bg-color fallback-stroke">Stroke</div>
+
+      <!-- Row: Overlay -->
+      <div class="row-label">Overlay Fallback</div>
+      <div class="badge bg-dark fallback-overlay"><span>Overlay</span></div>
+      <div class="badge bg-light fallback-overlay"><span>Overlay</span></div>
+      <div class="badge bg-color fallback-overlay"><span>Overlay</span></div>
+
+      <!-- Row: SVG Filter -->
+      <div class="row-label">SVG Filter Fallback</div>
+      <div class="badge bg-dark fallback-svg"><span>SVG Filter</span></div>
+      <div class="badge bg-light fallback-svg"><span>SVG Filter</span></div>
+      <div class="badge bg-color fallback-svg"><span>SVG Filter</span></div>
     </div>
+
+    <!-- SVG Filter Definition -->
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      version="1.1"
+      height="0"
+      style="display: none"
+    >
+      <defs>
+        <filter id="contrast-filter" color-interpolation-filters="sRGB">
+          <feColorMatrix
+            type="matrix"
+            values="0.2126 0.7152 0.0722 0 0
+              0.2126 0.7152 0.0722 0 0
+              0.2126 0.7152 0.0722 0 0
+              0 0 0 1 0"
+          />
+          <feMorphology operator="dilate" radius="2" />
+          <feComponentTransfer>
+            <feFuncR type="linear" slope="-255" intercept="128" />
+            <feFuncG type="linear" slope="-255" intercept="128" />
+            <feFuncB type="linear" slope="-255" intercept="128" />
+          </feComponentTransfer>
+          <feComposite operator="in" in2="SourceGraphic" />
+        </filter>
+      </defs>
+    </svg>
   </body>
 </html>
