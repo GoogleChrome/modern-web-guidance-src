@@ -510,7 +510,7 @@ function renderSummary(data) {
     });
 
     const rawRate = totalAllRunsCount > 0 ? (totalEarlyFailures / totalAllRunsCount) * 100 : 0;
-    const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? rawRate.toFixed(1) : Math.round(rawRate);
+    const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? Number(rawRate.toFixed(1)) : Math.round(rawRate);
 
     container.innerHTML = `
         <div class="header-meta-item dog-ear-card">
