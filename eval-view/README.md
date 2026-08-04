@@ -39,6 +39,27 @@ To ensure your changes will work on the static deployment host, you can run the 
 STATIC=true gd dashboard
 ```
 
+## Guide Run Comparison Architecture
+
+The Guide Run Comparison feature (`gd compare` CLI and the `compare.html` UI) enables side-by-side behavioral, assertion, code diff, and diagnostic comparisons between two evaluation runs (e.g., comparing a local development run against a nightly baseline, or comparing guided vs. unguided runs).
+
+**NOTE:** Guide Run comparison works on local runs only. This will get fixed in the future.
+
+### Backend Pipeline (`gd compare` & `harness/lib/compare-evals.ts`)
+* **Data Extraction & Preprocessing:** Loads run metadata (`score`, `agent`, `model`, `initialPrompt`), Playwright assertion results (`*_results.json`), execution logs (`modern-web.log`, `.db`, `chat_log.txt`), and trajectory steps (`trajectory_summary.json`). Categorizes steps into milestones: Guide Retrieval, Skill Search, Code Mutation, Mandatory Rule Adoption, and Context Noise.
+* **Three-Way Unified LCS Diffing:** Generates aligned unified diffs (`Base App vs Run A`, `Base App vs Run B`, and `Run A vs Run B`) via `generateUnifiedDiff` to prevent diagnostic models from hallucinating deleted or corrupted code relative to the base application.
+* **Three-Phase Modular Diagnostic (`runComparison`):**
+  - **Guide Compliance Auditor (Sub-Agent 1):** Evaluates skill discovery specificity, guide retrieval confirmation, launch prompt validity, and mandatory rule adoption against `guide.md` and `expectations.md`.
+  - **Code & Friction Diagnostic (Sub-Agent 2):** Audits initial launch prompts (`initialPrompt` / `ARGUMENTS:`), inspects exact `grader.ts` failure traces, verifies tool execution status (`status: success`), and separates structural test harness mismatches (e.g., `button:visible` vs `<a>`) from genuine capability loss.
+  - **Synthesizer:** Merges fact-grounded outputs into a standardized 4-section executive report (`First Meaningful Divergence`, `Guide Compliance Matrix`, `Root Cause & Friction Analysis`, and `Actionable Fix Recommendations`).
+
+### Frontend Comparison UI (`compare.html` & `compare.js`)
+* **Split-Pane Navigation Tabs:**
+  - **Assertions Comparison:** Side-by-side check of Playwright test assertions (`PASSED` vs `FAILED`) with drill-downs into exact error traces.
+  - **Trajectory Timeline:** Side-by-side step visualizer displaying agent reasoning (`step-thought`), tool executions (`step-action`), and enriched tool results (`step-outcome.output` / `modern-web.log`) alongside direct deep-links (`Open Full Step Result`) into complete trajectory HTML sessions (`session-*.html`).
+  - **Code Diffs:** Interactive rendering of unified diff hunks across all three comparison axes.
+* **Live LLM Diagnosis:** Displays the 4-section executive diagnostic report. When running locally (`gd dashboard`), users can trigger on-the-fly diagnoses (`/api/run-comparison`) that stream terminal execution progress and markdown synthesis directly into the browser in real time.
+
 ## Deploying Changes
 
 If you make modifications to the `eval-view` code (HTML, CSS, JS), you can deploy your changes directly to the live GitHub Pages site using the built-in deploy script.
