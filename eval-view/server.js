@@ -12,6 +12,53 @@ import { extractSuiteSummary } from './summary-extractor.js';
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
 
+// Registry of supported agent identifiers mapping path substrings to Agent display names.
+// To add a new agent in the future, simply append an entry here (e.g., { match: 'newagent', name: 'New Agent CLI' }).
+const SUPPORTED_AGENTS = [
+  { match: 'claude', name: 'claude_code' },
+  { match: 'gemini', name: 'gemini_cli' },
+  { match: 'jetski', name: 'jetski_cli' },
+  { match: 'codex', name: 'codex_cli' }
+];
+
+/**
+ * Detects the agent display name from a file path based on SUPPORTED_AGENTS.
+ * Returns { agentName: string, isKnown: boolean }.
+ */
+/**
+ * @param {string} filePath
+ */
+function detectAgentFromPath(filePath) {
+  const lowerPath = (filePath || '').toLowerCase();
+  for (const agent of SUPPORTED_AGENTS) {
+    if (lowerPath.includes(agent.match)) {
+      return { agentName: agent.name, isKnown: true };
+    }
+  }
+  return { agentName: 'Unknown Agent', isKnown: false };
+}
+
+/**
+ * Resolves the agent identifier from evals.json in parent directories, falling back to fallbackAgent.
+ * @param {string} startDir
+ * @param {string} fallbackAgent
+ * @returns {string}
+ */
+function getAgentFromEvalsJson(startDir, fallbackAgent) {
+  let curr = startDir;
+  while (curr && curr !== path.dirname(curr)) {
+    const evalsPath = path.join(curr, 'evals.json');
+    if (fs.existsSync(evalsPath)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+        if (data && data.agent) return data.agent;
+      } catch (e) {}
+    }
+    curr = path.dirname(curr);
+  }
+  return fallbackAgent;
+}
+
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
@@ -95,6 +142,14 @@ const MIME_TYPES = {
  * @property {Record<string, any>} [guidedStats]
  * @property {Record<string, any>} [unguidedStats]
  */
+
+const EVAL_VIEW_ROOT = import.meta.dirname;
+const ROOT_DIR = path.resolve(EVAL_VIEW_ROOT, '..');
+const HARNESS_DIR = path.join(ROOT_DIR, 'harness');
+const RESULTS_DIR = process.env.USE_MOCK_RESULTS === 'true' ? path.join(EVAL_VIEW_ROOT, 'mock-results') : path.join(HARNESS_DIR, 'results');
+const BASE_APPS_DIR = path.join(HARNESS_DIR, 'base_apps');
+const TASKS_DIR = path.join(HARNESS_DIR, 'tasks');
+const GUIDES_DIR = path.join(ROOT_DIR, 'guides');
 
 /** @type {string | null} */
 let cachedGcsToken = null;
@@ -211,6 +266,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+
   // Block directory traversal attempts
   if (decodedPath.includes('..')) {
     console.log(`403 Forbidden: Traversal attempt - ${req.method} ${reqUrl}`);
@@ -232,16 +288,14 @@ const server = http.createServer(async (req, res) => {
     /** @type {SuiteInfo[]} */
     let suitesList = [];
 
-    // Local
-    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
     try {
-      if (fs.existsSync(resultsDir)) {
-        const dirs = fs.readdirSync(resultsDir, { withFileTypes: true })
+      if (fs.existsSync(RESULTS_DIR)) {
+        const dirs = fs.readdirSync(RESULTS_DIR, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {
-          const suiteDir = path.join(resultsDir, d);
+          const suiteDir = path.join(RESULTS_DIR, d);
           const evalsJsonPath = path.join(suiteDir, 'evals.json');
           let timestamp = null;
           try {
@@ -313,15 +367,14 @@ const server = http.createServer(async (req, res) => {
   // --- /api/available-skills : lists folders with SKILL.md ---
   if (decodedPath === '/api/available-skills') {
     try {
-      const guidesDir = path.resolve('../guides');
       const skills = [];
-      if (fs.existsSync(guidesDir)) {
-        const candidates = fs.readdirSync(guidesDir, { withFileTypes: true })
+      if (fs.existsSync(GUIDES_DIR)) {
+        const candidates = fs.readdirSync(GUIDES_DIR, { withFileTypes: true })
           .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
           .map(d => d.name);
 
         for (const candidate of candidates) {
-          const skillSource = path.join(guidesDir, candidate, "SKILL.md");
+          const skillSource = path.join(GUIDES_DIR, candidate, "SKILL.md");
           if (fs.existsSync(skillSource)) {
             skills.push(candidate);
           }
@@ -343,7 +396,6 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        // Return 200 immediately so UI can track the run
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
 
@@ -366,7 +418,7 @@ const server = http.createServer(async (req, res) => {
           ...options.tasks
         ], {
           stdio: 'inherit',
-          cwd: path.resolve('..'), // Run from root to resolve paths correctly
+          cwd: ROOT_DIR,
           detached: false
         });
 
@@ -379,10 +431,173 @@ const server = http.createServer(async (req, res) => {
           }
         });
 
-        p.unref(); // Avoid holding parent open if terminating event context
+        p.unref();
       } catch (e) {
         console.error('Launch failure:', e);
       }
+    });
+    return;
+  }
+
+  // --- /api/ensure-run : lazily downloads run directories from GCS if missing locally with live log streaming ---
+  if (decodedPath === '/api/ensure-run') {
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
+    const dirA = parsedUrl.searchParams.get('dirA');
+    const dirB = parsedUrl.searchParams.get('dirB');
+
+    if (!dirA && !dirB) {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Missing dirA or dirB parameter');
+      return;
+    }
+
+    const authHeader = req.headers.authorization || '';
+    if (authHeader) {
+      process.env.GD_GCS_TOKEN = authHeader;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    /** @param {any} str */
+    const stripAnsi = (str) => typeof str === 'string' ? str.replace(/\x1B\[\d+m/g, '') : String(str);
+
+    const origLog = console.log;
+    const origWarn = console.warn;
+    const origErr = console.error;
+
+    /** @param {...any} args */
+    const streamLog = (...args) => {
+      const msg = args.map(stripAnsi).join(' ') + '\n';
+      res.write(msg);
+      origLog(...args);
+    };
+    /** @param {...any} args */
+    const streamWarn = (...args) => {
+      const msg = args.map(stripAnsi).join(' ') + '\n';
+      res.write(msg);
+      origWarn(...args);
+    };
+    /** @param {...any} args */
+    const streamErr = (...args) => {
+      const msg = args.map(stripAnsi).join(' ') + '\n';
+      res.write(msg);
+      origErr(...args);
+    };
+
+    console.log = streamLog;
+    console.warn = streamWarn;
+    console.error = streamErr;
+
+    try {
+      const authHeader = req.headers.authorization || '';
+      if (authHeader) {
+        process.env.GD_GCS_TOKEN = authHeader;
+      }
+      res.write(`[Server] Verifying local run files before loading comparison...\n`);
+      const { downloadRunFromGcsIfMissing } = await import('../harness/lib/gcs-downloader.ts');
+      const absoluteResultsDir = path.resolve(RESULTS_DIR);
+
+      if (dirA) {
+        const absA = path.resolve(RESULTS_DIR, dirA);
+        const relA = path.relative(absoluteResultsDir, absA);
+        if (!relA.startsWith('..') && !path.isAbsolute(relA)) {
+          res.write(`[Server] Checking run A: ${dirA}\n`);
+          await downloadRunFromGcsIfMissing(absA);
+        }
+      }
+      if (dirB && dirB !== dirA) {
+        const absB = path.resolve(RESULTS_DIR, dirB);
+        const relB = path.relative(absoluteResultsDir, absB);
+        if (!relB.startsWith('..') && !path.isAbsolute(relB)) {
+          res.write(`[Server] Checking run B: ${dirB}\n`);
+          await downloadRunFromGcsIfMissing(absB);
+        }
+      }
+      res.write(`[Server] Run files ready.\n`);
+    } catch (/** @type {any} */ e) {
+      const errMsg = `[Server Error] /api/ensure-run failed: ${e.message}\n`;
+      res.write(errMsg);
+      origErr(errMsg, e);
+    } finally {
+      console.log = origLog;
+      console.warn = origWarn;
+      console.error = origErr;
+      res.end();
+    }
+    return;
+  }
+
+  // --- /api/compare : runs comparison on the fly, streaming output ---
+  if (decodedPath === '/api/compare') {
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
+    const relativeDirA = parsedUrl.searchParams.get('runDirA');
+    const relativeDirB = parsedUrl.searchParams.get('runDirB');
+
+    if (!relativeDirA || !relativeDirB) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Missing runDirA or runDirB parameter');
+      return;
+    }
+
+    const absoluteResultsDir = path.resolve(RESULTS_DIR);
+    const absDirA = path.resolve(RESULTS_DIR, relativeDirA);
+    const absDirB = path.resolve(RESULTS_DIR, relativeDirB);
+
+    // Security check: ensure both paths are strictly within the results directory
+    const relA = path.relative(absoluteResultsDir, absDirA);
+    const relB = path.relative(absoluteResultsDir, absDirB);
+
+    if (relA.startsWith('..') || path.isAbsolute(relA) || relB.startsWith('..') || path.isAbsolute(relB)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Forbidden: Paths must be within the results directory');
+      return;
+    }
+
+    // Set headers for chunked streaming
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    res.write(`[Server] Starting on-the-fly comparison between:\n  A: ${absDirA}\n  B: ${absDirB}\n\n`);
+
+    const authHeader = req.headers.authorization || '';
+
+    const gdTsPath = path.join(ROOT_DIR, 'bin', 'gd.ts');
+    const p = spawn('npx', ['tsx', gdTsPath, 'compare', absDirA, absDirB], {
+      cwd: ROOT_DIR,
+      env: { ...process.env, GD_GCS_TOKEN: authHeader }
+    });
+
+    p.stdout.on('data', (data) => {
+      const str = data.toString();
+      res.write(str);
+      process.stdout.write(str);
+    });
+
+    p.stderr.on('data', (data) => {
+      const str = data.toString();
+      res.write(str);
+      process.stderr.write(str);
+    });
+
+    p.on('close', (code) => {
+      if (code !== 0) {
+        res.write(`\n[Server Error] Comparison command failed with code ${code}.\n`);
+      }
+      res.end();
+    });
+
+    p.on('error', (err) => {
+      res.write(`\n[Server Error] Failed to spawn comparison command: ${err.message}\n`);
+      res.end();
     });
     return;
   }
@@ -401,8 +616,7 @@ const server = http.createServer(async (req, res) => {
     /** @type {string[]} */
     let files = [];
     if (source === 'local') {
-      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-      const targetDir = path.join(resultsDir, relativePath);
+      const targetDir = path.join(RESULTS_DIR, relativePath);
       try {
         if (fs.existsSync(targetDir)) {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
@@ -429,7 +643,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- Silent File Probing API ---
-  // Avoids native browser 404 console errors by returning JSON { exists: boolean }
   if (decodedPath === '/api/exists') {
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const checkPath = parsedUrl.searchParams.get('path');
@@ -441,19 +654,16 @@ const server = http.createServer(async (req, res) => {
 
     let filePath;
     if (checkPath.startsWith('base_apps/')) {
-      filePath = path.join('../harness/base_apps', checkPath.substring(10));
+      filePath = path.join(BASE_APPS_DIR, checkPath.substring(10));
     } else if (checkPath.startsWith('tasks/')) {
-      filePath = path.join('../harness/tasks', checkPath.substring(6));
+      filePath = path.join(TASKS_DIR, checkPath.substring(6));
     } else {
-      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-      filePath = path.join(resultsDir, checkPath);
+      filePath = path.join(RESULTS_DIR, checkPath);
     }
 
     const absolutePath = path.resolve(filePath);
-    const evalViewRoot = path.resolve('.');
-    const harnessRoot = path.resolve('../harness');
-    const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
-    const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
+    const isInsideEvalView = absolutePath === EVAL_VIEW_ROOT || absolutePath.startsWith(EVAL_VIEW_ROOT + path.sep);
+    const isInsideHarness = absolutePath === HARNESS_DIR || absolutePath.startsWith(HARNESS_DIR + path.sep);
 
     let exists = false;
     if (isInsideEvalView || isInsideHarness) {
@@ -468,47 +678,32 @@ const server = http.createServer(async (req, res) => {
   let filePath;
   // Map results and setup to the harness directory
   if (decodedPath.startsWith('/base_apps/')) {
-    filePath = path.join('../harness/base_apps', decodedPath.substring(11));
+    filePath = path.join(BASE_APPS_DIR, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/tasks/')) {
-    filePath = path.join('../harness/tasks', decodedPath.substring(7));
+    filePath = path.join(TASKS_DIR, decodedPath.substring(7));
   } else if (decodedPath.startsWith('/guides/')) {
-    filePath = path.join('../guides', decodedPath.substring(8));
+    filePath = path.join(GUIDES_DIR, decodedPath.substring(8));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
-    let localEvalViewPath = path.join('.', relativePath);
+    let localEvalViewPath = path.join(EVAL_VIEW_ROOT, relativePath);
     if (decodedPath === '/' || decodedPath === '') {
-      localEvalViewPath = './index.html';
+      localEvalViewPath = path.join(EVAL_VIEW_ROOT, 'index.html');
     }
 
     // If the file exists in eval-view, serve it.
-    // Otherwise, assume it's a test result file in ../harness/results
+    // Otherwise, assume it's a test result file in RESULTS_DIR
     if (fs.existsSync(localEvalViewPath)) {
         filePath = localEvalViewPath;
     } else {
-        const useLocal = reqUrl.includes('source=local');
-        const referer = req.headers.referer;
-        const refererLocal = referer && (referer.includes('source=local') || referer.includes('localhost'));
-        
-        if (!useLocal && !refererLocal && decodedPath.includes('/')) {
-            // Give a decent error if someone tries to stream a remote file directly
-            res.writeHead(400);
-            res.end('400 Bad Request: Remote GCS streaming must use client-side authenticated fetches directly to GCS.');
-            return;
-        }
-
-        // If this is an absolute navigation link (e.g. /menu) clicked from inside a test result,
-        // it will lack the <suite>/<run>/... prefix. We must restore it from the referer.
         let finalRelativePath = relativePath;
+        const referer = req.headers.referer;
         if (referer) {
             try {
                 const refererUrl = new URL(referer);
-                const refPath = refererUrl.pathname.substring(1); // remove leading slash
+                const refPath = refererUrl.pathname.substring(1);
                 
-                // If referer is a test result (e.g. suite/1/task/guided/index.html)
-                // and the requested path does NOT start with the suite name
                 const parts = refPath.split('/');
                 if (parts.length >= 4 && !finalRelativePath.startsWith(parts[0] + '/')) {
-                    // Reconstruct the base path up to the run type directory
                     const basePath = parts.slice(0, 4).join('/');
                     finalRelativePath = path.join(basePath, finalRelativePath);
                 }
@@ -517,21 +712,57 @@ const server = http.createServer(async (req, res) => {
             }
         }
 
-        const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-        filePath = path.join(resultsDir, finalRelativePath);
+        filePath = path.join(RESULTS_DIR, finalRelativePath);
+
+        // Auto-generate missing or outdated trajectory_summary.json on the fly
+        if (path.basename(filePath) === 'trajectory_summary.json') {
+          let needsGeneration = !fs.existsSync(filePath);
+          if (!needsGeneration) {
+            try {
+              const summaryJson = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+              if (summaryJson.schemaVersion !== "2.0") needsGeneration = true;
+            } catch {
+              needsGeneration = true;
+            }
+          }
+          if (needsGeneration) {
+            const runDir = path.dirname(filePath);
+            if (fs.existsSync(runDir)) {
+              try {
+                const { generateNormalizedTrajectory } = await import('../harness/lib/trajectory-parser.ts');
+                const { agentName, isKnown } = detectAgentFromPath(filePath);
+                const resolvedAgent = getAgentFromEvalsJson(runDir, agentName);
+                if (!isKnown && resolvedAgent === agentName) {
+                  console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`);
+                }
+                await generateNormalizedTrajectory(runDir, resolvedAgent, 'local');
+              } catch (e) {
+                console.error('Failed to auto-generate trajectory summary:', e);
+              }
+            }
+          }
+        }
+
+        // If file does not exist locally and request is not local, return 400 for remote GCS streaming
+        if (!fs.existsSync(filePath)) {
+            const useLocal = reqUrl.includes('source=local');
+            const refererLocal = referer && (referer.includes('source=local') || referer.includes('localhost') || referer.includes('127.0.0.1') || referer.includes('compare.html') || referer.includes('dashboard.html') || referer.includes('guide.html'));
+            
+            if (!useLocal && !refererLocal && decodedPath.includes('/')) {
+                res.writeHead(400);
+                res.end('400 Bad Request: Remote GCS streaming must use client-side authenticated fetches directly to GCS.');
+                return;
+            }
+        }
     }
   }
 
   // Final check: Resolve the absolute path and ensure it's within allowed directories
   const absolutePath = path.resolve(filePath);
-  const evalViewRoot = path.resolve('.');
-  const harnessRoot = path.resolve('../harness');
-  const guidesRoot = path.resolve('../guides');
 
-  // Use path.sep to ensure we match whole directory names
-  const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
-  const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
-  const isInsideGuides = absolutePath === guidesRoot || absolutePath.startsWith(guidesRoot + path.sep);
+  const isInsideEvalView = absolutePath === EVAL_VIEW_ROOT || absolutePath.startsWith(EVAL_VIEW_ROOT + path.sep);
+  const isInsideHarness = absolutePath === HARNESS_DIR || absolutePath.startsWith(HARNESS_DIR + path.sep);
+  const isInsideGuides = absolutePath === GUIDES_DIR || absolutePath.startsWith(GUIDES_DIR + path.sep);
 
   if (!isInsideEvalView && !isInsideHarness && !isInsideGuides) {
     console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${reqUrl} -> ${absolutePath}`);
@@ -564,6 +795,39 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (err.code === 'ENOENT') {
+        if (path.basename(filePath) === 'trajectory_summary.json') {
+          const runDir = path.dirname(filePath);
+          if (fs.existsSync(runDir)) {
+            import('../harness/lib/trajectory-parser.ts').then(async ({ generateNormalizedTrajectory }) => {
+              const { agentName, isKnown } = detectAgentFromPath(filePath);
+              const resolvedAgent = getAgentFromEvalsJson(runDir, agentName);
+              if (!isKnown && resolvedAgent === agentName) {
+                console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`);
+              }
+              await generateNormalizedTrajectory(runDir, resolvedAgent, 'local');
+              if (fs.existsSync(filePath)) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(fs.readFileSync(filePath), 'utf-8');
+                return;
+              }
+              const errMsg = !isKnown
+                ? `404 Not Found: Trajectory summary generation failed because an unknown agent was used for path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add another agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`
+                : `404 Not Found: Trajectory summary generation failed for agent "${agentName}" in path "${filePath}".`;
+              res.writeHead(404);
+              res.end(errMsg);
+            }).catch(e => {
+              const { agentName, isKnown } = detectAgentFromPath(filePath);
+              const errMsg = !isKnown
+                ? `Failed to auto-generate trajectory summary for unknown agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add another agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`
+                : `Failed to auto-generate trajectory summary for agent "${agentName}": ${e.message}`;
+              console.error(errMsg, e);
+              res.writeHead(404);
+              res.end(`404 Not Found (${errMsg})`);
+            });
+            return;
+          }
+        }
+
         // SPA Fallback: If it's a structural route (no extension or .html) that 404s,
         // try to serve the index.html from the same base run directory instead.
         if (!extname || extname === '.html') {
@@ -586,6 +850,150 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      if (contentType === 'text/html' && path.basename(filePath).startsWith('session-')) {
+        let htmlStr = content.toString('utf-8');
+        
+        // If file contains logData and has an empty logs container, pre-render statically
+        if (htmlStr.includes('const logData = [') && (htmlStr.includes('<div id="logs"></div>') || htmlStr.includes('<div id="logs">\n</div>'))) {
+          try {
+            const startIdx = htmlStr.indexOf('const logData = [');
+            const endIdx = htmlStr.indexOf('];\n    const logsContainer');
+            if (startIdx !== -1 && endIdx !== -1) {
+              const rawLogData = htmlStr.slice(startIdx + 'const logData = '.length, endIdx + 1);
+              const logData = eval(rawLogData);
+
+              /** @param {any} s */
+              const escapeHtml = (s) => (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
+              let preRenderedLogsHtml = '';
+              let toolStepCounter = 0;
+
+              /**
+               * @param {any} entry
+               * @param {number} i
+               */
+              logData.forEach((/** @type {any} */ entry, /** @type {number} */ i) => {
+                let role = entry.role || entry.type || 'unknown';
+                let contentHtml = '';
+                const timestamp = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '';
+
+                if (entry.type === 'turn_context') {
+                  role = 'system';
+                  contentHtml = '<div class="text-content" style="color:#8b949e;">[System Instructions Collapsed]</div>';
+                } else if (entry.type === 'event_msg') {
+                  const p = entry.payload || {};
+                  if (p.type === 'user_message') { role = 'user'; contentHtml = '<div class="text-content">' + escapeHtml(p.message) + '</div>'; }
+                  else if (p.type === 'agent_message') { role = 'assistant'; contentHtml = '<div class="text-content" style="color: #7ee787;">' + escapeHtml(p.message) + '</div>'; }
+                  else if (p.type === 'token_count') { role = 'system'; contentHtml = '<div class="text-content" style="font-size:0.8em; color:#8b949e;">Tokens: ' + (p.total_tokens || 'N/A') + '</div>'; }
+                } else if (entry.type === 'response_item') {
+                  const p = entry.payload || {};
+                  if (p.type === 'message') { role = p.role || 'assistant'; contentHtml = '<div class="text-content">' + escapeHtml(p.content?.[0]?.text || p.content?.[0]?.input_text || '') + '</div>'; }
+                  else if (p.type === 'reasoning') { role = 'assistant'; contentHtml = '<div class="thought"><b>Reasoning Process:</b><br/>' + escapeHtml(p.content || '[Reasoning]') + '</div>'; }
+                  else if (p.type === 'function_call' || p.type === 'custom_tool_call') {
+                    role = 'assistant';
+                    let argsStr = '';
+                    try {
+                      const parsed = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : p.arguments;
+                      argsStr = Object.entries(parsed).map(([k, v]) => `<div style="margin-top:4px;"><strong>${escapeHtml(k)}:</strong> <span style="color:#79c0ff;">${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : String(v))}</span></div>`).join('');
+                    } catch { argsStr = escapeHtml(String(p.arguments)); }
+                    contentHtml = `<div class="tool-use"><b>Tool: ${escapeHtml(p.name)} [${escapeHtml(p.call_id)}]</b><br/>${argsStr}</div>`;
+                  } else if (p.type === 'function_call_output' || p.type === 'custom_tool_call_output') {
+                    role = 'system';
+                    const errCls = p.is_error ? ' error' : '';
+                    contentHtml = `<div class="tool-result${errCls}"><b>Tool Result [${escapeHtml(p.call_id)}]:</b><br/>${escapeHtml(p.output || '')}</div>`;
+                  }
+                }
+
+                if (contentHtml) {
+                  let elId = 'entry-' + (i + 1);
+                  let badge = '';
+                  if (entry.type === 'response_item' && entry.payload && (entry.payload.type === 'function_call' || entry.payload.type === 'custom_tool_call')) {
+                    toolStepCounter++;
+                    elId = 'step-' + toolStepCounter;
+                    badge = '<span class="step-badge" style="background:#1f6feb22; color:#58a6ff; border:1px solid #1f6feb; border-radius:4px; padding:2px 8px; font-size:0.8em; font-weight:bold; margin-left:8px;">STEP ' + toolStepCounter + '</span>';
+                  }
+                  preRenderedLogsHtml += `<div class="log-entry role-${escapeHtml(role)}" id="${elId}"><div class="meta"><div><span>${escapeHtml(role).toUpperCase()}</span>${badge}</div><span class="timestamp">${timestamp}</span></div><div class="content-block">${contentHtml}</div><div class="toggle-raw" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'block' ? 'none' : 'block')">Toggle Raw JSON</div><pre class="raw-json">${escapeHtml(JSON.stringify(entry, null, 2))}</pre></div>\n`;
+                }
+              });
+
+              htmlStr = htmlStr.replace('<div id="logs"></div>', '<div id="logs">\n' + preRenderedLogsHtml + '</div>')
+                               .replace('<div id="logs">\n</div>', '<div id="logs">\n' + preRenderedLogsHtml + '</div>');
+            }
+          } catch (e) {
+            console.error('Failed to pre-render session html:', e);
+          }
+        }
+
+        if (!htmlStr.includes('id="step-auto-scroll-injected"')) {
+          const scriptToInject = `
+<script id="step-auto-scroll-injected">
+(function() {
+  function initStepAnchors() {
+    const logsContainer = document.getElementById("logs");
+    if (!logsContainer) return;
+
+    let toolStepCounter = 0;
+    const entries = Array.from(logsContainer.children);
+    entries.forEach((el, idx) => {
+      if (!el.id) el.id = "entry-" + (idx + 1);
+      const isToolCall = !!el.querySelector(".tool-use");
+      if (isToolCall) {
+        toolStepCounter++;
+        if (!el.id || el.id.startsWith("entry-")) el.id = "step-" + toolStepCounter;
+
+        const meta = el.querySelector(".meta");
+        if (meta && !meta.querySelector(".step-badge")) {
+          const badge = document.createElement("span");
+          badge.className = "step-badge";
+          badge.style.cssText = "background:#1f6feb22; color:#58a6ff; border:1px solid #1f6feb; border-radius:4px; padding:2px 8px; font-size:0.8em; font-weight:bold; margin-left:8px;";
+          badge.textContent = "STEP " + toolStepCounter;
+          const firstChild = meta.firstElementChild;
+          if (firstChild && firstChild.tagName === "SPAN") {
+            meta.insertBefore(badge, firstChild.nextSibling);
+          } else {
+            meta.appendChild(badge);
+          }
+        }
+      }
+    });
+
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#step-')) {
+      const target = document.querySelector(hash);
+      if (target) {
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.style.outline = '3px solid #58a6ff';
+          target.style.boxShadow = '0 0 25px rgba(88, 166, 255, 0.6)';
+        }, 150);
+      }
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(initStepAnchors, 100));
+  } else {
+    setTimeout(initStepAnchors, 100);
+  }
+
+  window.addEventListener('hashchange', () => {
+    const target = document.querySelector(window.location.hash);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.style.outline = '3px solid #58a6ff';
+      target.style.boxShadow = '0 0 25px rgba(88, 166, 255, 0.6)';
+    }
+  });
+})();
+</script>
+`;
+          htmlStr = htmlStr.replace('</body>', scriptToInject + '\n</body>');
+        }
+
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(htmlStr, 'utf-8');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
     }
