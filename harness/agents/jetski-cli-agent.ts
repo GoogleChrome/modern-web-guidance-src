@@ -288,24 +288,33 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           }
         }
 
-        // Protobuf token extraction from metadata tag 9
+        // Protobuf token extraction from metadata
         if (row.metadata) {
           const proto = parseProtobuf(Buffer.from(row.metadata));
-          if (proto[9]) {
-            for (const item of proto[9]) {
-              if (typeof item === 'object' && item !== null) {
-                const input = (item[2] && typeof item[2][0] === 'number') ? item[2][0] : 0;
-                const output = (item[3] && typeof item[3][0] === 'number') ? item[3][0] : 0;
-                const cached = (item[5] && typeof item[5][0] === 'number') ? item[5][0] : 0;
-                if (input > 0 || output > 0 || cached > 0) {
-                  totalInput += input;
-                  totalOutput += output;
-                  totalCached += cached;
-                  hasTokens = true;
-                }
-              }
+          const visited = new Set<any>();
+          const extractTokensFromNode = (node: any) => {
+            if (!node || typeof node !== 'object' || visited.has(node)) return;
+            visited.add(node);
+            if (Array.isArray(node)) {
+              for (const item of node) extractTokensFromNode(item);
+              return;
             }
-          }
+            const input = (node[2] && typeof node[2][0] === 'number') ? node[2][0] : 0;
+            const output = (node[3] && typeof node[3][0] === 'number') ? node[3][0] : 0;
+            const cached = (node[5] && typeof node[5][0] === 'number') ? node[5][0] : 0;
+            // Token usage records contain a session/task reference in tag 7 or tag 8
+            const hasSessionRef = Boolean(node[7] || node[8]);
+            if (hasSessionRef && (input > 0 || output > 0 || cached > 0)) {
+              totalInput += input;
+              totalOutput += output;
+              totalCached += cached;
+              hasTokens = true;
+            }
+            for (const key of Object.keys(node)) {
+              extractTokensFromNode(node[key]);
+            }
+          };
+          extractTokensFromNode(proto);
         }
       }
 
