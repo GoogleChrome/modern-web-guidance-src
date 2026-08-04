@@ -53,7 +53,6 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
 
   // Set environment variables
   process.env.HOME = tempHome;
-  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {

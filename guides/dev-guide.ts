@@ -181,7 +181,8 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Summary
-  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { jetski: { passed: 0, failed: 0, failingTests: [] }, claude: { passed: 0, failed: 0, failingTests: [] }, codex: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
+  const defaultAgent = getDefaultSolutionAgent();
+  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, claude: { passed: 0, failed: 0, failingTests: [] }, codex: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
 
   return overallSuccess;
 }
@@ -335,7 +336,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
         skipEval: true,
         guidedOnly,
         suiteConfig: {
-          ...(suiteConfig || {}),
+          ...suiteConfig,
           ...(agentOverride ? { agent: agentOverride } : {}),
         },
       });

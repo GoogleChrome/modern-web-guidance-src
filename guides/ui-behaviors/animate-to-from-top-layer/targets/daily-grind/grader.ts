@@ -3,7 +3,7 @@ import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseHTML } from 'linkedom';
-import { Project, SyntaxKind } from 'ts-morph';
+import { Project } from 'ts-morph';
 
 // Setup target workspace details
 const patchFile = process.env.PATCH_FILE;
