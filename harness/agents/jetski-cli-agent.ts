@@ -316,8 +316,8 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           if (!row.data) continue;
           const proto = parseProtobuf(Buffer.from(row.data));
           const strings = getProtoStrings(proto);
-          // Look for standard Gemini model name patterns across string fields in the Protobuf message
-          const modelCandidate = strings.find(s => /^gemini-/i.test(s));
+          // Look for Gemini model name patterns across string fields in the Protobuf message
+          const modelCandidate = strings.find(s => /^gemini/i.test(s));
           if (modelCandidate) {
             modelName = modelCandidate;
             break;
