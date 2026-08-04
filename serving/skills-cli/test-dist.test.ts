@@ -54,6 +54,24 @@ test('Gemini and VS Code manifests', async () => {
   assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills/modern-web-guidance/SKILL.md');
 });
 
+test('Kimi plugin manifest', async () => {
+  const kimiJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'kimi.plugin.json'), 'utf8'));
+  assert.strictEqual(kimiJson.name, 'modern-web-guidance');
+  assert.strictEqual(kimiJson.author.name, 'Google Chrome');
+
+  // updateVersionsInDir must keep the manifest version in sync with the rest of the distribution
+  const pkgJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8'));
+  assert.strictEqual(kimiJson.version, pkgJson.version, 'kimi.plugin.json version should match package.json version');
+
+  // Kimi resolves each `skills` entry relative to the plugin root (the dist dir)
+  assert.deepStrictEqual(kimiJson.skills, ['./skills/modern-web-guidance/', './skills/chrome-extensions/']);
+  for (const skillDir of kimiJson.skills) {
+    assert.ok(skillDir.startsWith('./'), `Kimi skills path ${skillDir} must start with './'`);
+    const resolvedSkillMd = path.join(STAGING_DIR, skillDir, 'SKILL.md');
+    await assert.doesNotReject(fs.access(resolvedSkillMd), `Kimi skills path ${skillDir} must resolve to a directory containing SKILL.md`);
+  }
+});
+
 test('SKILL.md validations', async () => {
   const skillPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/SKILL.md');
   await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web-guidance`);
