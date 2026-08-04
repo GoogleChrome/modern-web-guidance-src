@@ -502,7 +502,15 @@ function renderSummary(data) {
 
     const upliftDelta = guidedPassRate - unguidedPassRate;
 
-    const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
+    const totalEarlyFailures = (summary.unguidedEarlyFailures || 0) + (summary.guidedEarlyFailures || 0);
+
+    let totalAllRunsCount = 0;
+    Object.keys(data.results || {}).forEach(key => {
+        totalAllRunsCount += (data.results[key] || []).length;
+    });
+
+    const rawRate = totalAllRunsCount > 0 ? (totalEarlyFailures / totalAllRunsCount) * 100 : 0;
+    const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? rawRate.toFixed(1) : Math.round(rawRate);
 
     container.innerHTML = `
         <div class="header-meta-item dog-ear-card">
@@ -519,10 +527,10 @@ function renderSummary(data) {
                 Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
             </div>
             ` : ''}
-            ${summary.unguidedEarlyFailures !== undefined ? `
+            ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || summary.totalEarlyFailures !== undefined) ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - unguidedEarlyFailureRate)}">${unguidedEarlyFailureRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - totalEarlyFailureRate)}">${totalEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - totalEarlyFailureRate)}">(${totalEarlyFailures} run${totalEarlyFailures === 1 ? '' : 's'})</span>
             </div>
             ` : ''}
 

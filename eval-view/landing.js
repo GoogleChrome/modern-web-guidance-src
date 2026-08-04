@@ -551,7 +551,10 @@ function renderSuites() {
         let maxRuns = 1;
         scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
 
-        const earlyFailureRate = data.summary?.unguidedEarlyFailureRate || 0;
+        const totalEarlyFailures = (data.summary?.unguidedEarlyFailures || 0) + (data.summary?.guidedEarlyFailures || 0);
+        let totalAllRuns = 0;
+        scenarioKeys.forEach(k => { totalAllRuns += (data.results[k] || []).length; });
+        const earlyFailureRate = totalAllRuns > 0 ? Math.round((totalEarlyFailures / totalAllRuns) * 100) : 0;
         const isFaulty = earlyFailureRate === 100;
 
         const { label, ldap } = formatSuiteLabel(testInfo);
