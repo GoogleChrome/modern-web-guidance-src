@@ -449,15 +449,30 @@ env.PATH = \`${targetDir}:\${env.PATH}\`;
 const start = Date.now();
 let result;
 let attempts = 0;
-const maxAttempts = 3; // 1 initial attempt + 2 retries
+const maxAttempts = 5; // 1 initial attempt + 4 retries with exponential backoff
+const baseDelay = 15000; // 15 seconds base delay
 
 while (attempts < maxAttempts) {
   attempts++;
   result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
   if (result.status === 0) break;
+
+  // Check if this is a rate limit error (429)
+  const isRateLimit = result.status === 1 || (result.stderr && result.stderr.toString().includes('429'));
+
   if (attempts < maxAttempts) {
-    console.warn('⚠️ Attempt ' + attempts + ' failed with status ' + result.status + '. Waiting 20 seconds before retrying...');
-    spawnSync(process.execPath, ['-e', 'setTimeout(()=>{}, 20000)']);
+    // Exponential backoff: 15s, 30s, 60s, 120s (with some jitter)
+    // For rate limits, use longer delays
+    const base = isRateLimit ? 30000 : baseDelay;
+    const delay = base * Math.pow(2, attempts - 1) + Math.random() * 5000;
+    const delaySec = Math.round(delay / 1000);
+
+    if (isRateLimit) {
+      console.warn('⚠️ Rate limit hit (429). Attempt ' + attempts + ' failed. Waiting ' + delaySec + 's before retry...');
+    } else {
+      console.warn('⚠️ Attempt ' + attempts + ' failed with status ' + result.status + '. Waiting ' + delaySec + 's (exponential backoff)...');
+    }
+    spawnSync(process.execPath, ['-e', 'setTimeout(()=>{}, ' + delay + ')']);
   }
 }
 const runtime = Date.now() - start;
