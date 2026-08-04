@@ -1,11 +1,34 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 import { fileURLToPath } from 'url';
+
+export function setupCodexCliCredentials(tempHome: string): void {
+  const codexGlobalDir = path.join(os.homedir(), '.codex');
+  const codexDestDir = path.join(tempHome, '.codex');
+  if (fs.existsSync(codexGlobalDir)) {
+    fs.cpSync(codexGlobalDir, codexDestDir, {
+      recursive: true,
+      filter: (src) => !src.includes('sessions') && !src.includes('log')
+    });
+  }
+}
+
+export function getCodexCliCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
+  const command = config.environment.codexCliBin;
+  const model = process.env.CODEX_MODEL;
+  const commandArgs = [
+    'exec',
+    prompt,
+    '--yolo',
+    ...(model ? ['--model', model] : [])
+  ];
+  return { command, commandArgs };
+}
 
 const TRAJECTORY_GLOB = 'session-*.jsonl';
 
@@ -22,11 +45,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
   const tempHome = createIsolatedHome('ghh-codex', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
-  // Copy Codex auth file
-  const codexGlobalDir = path.join(os.homedir(), '.codex');
-  const codexDestDir = path.join(tempHome, '.codex');
-  fs.mkdirSync(codexDestDir, { recursive: true });
-  copyFileIfExists(path.join(codexGlobalDir, 'auth.json'), path.join(codexDestDir, 'auth.json'));
+  setupCodexCliCredentials(tempHome);
 
   process.env.HOME = tempHome;
 
@@ -103,14 +122,7 @@ async function run() {
   try {
     console.log(`Starting Codex agent in: ${workDir}`);
 
-    const command = config.environment.codexCliBin;
-    const model = process.env.CODEX_MODEL;
-    const commandArgs = [
-      'exec', 
-      userPrompt,
-      '--yolo',
-      ...(model ? ['--model', model] : [])
-    ];
+    const { command, commandArgs } = getCodexCliCommandAndArgs(userPrompt);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 

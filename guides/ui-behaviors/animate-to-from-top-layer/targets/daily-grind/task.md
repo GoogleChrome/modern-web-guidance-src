@@ -1,0 +1,1 @@
+- Add smooth entry and exit animations for top layer elements such as dialogs, popovers, and tooltips.

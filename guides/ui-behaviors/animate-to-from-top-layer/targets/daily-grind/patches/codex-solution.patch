@@ -1,0 +1,214 @@
+diff --git a/index.html b/index.html
+index 66c9173..a4b3988 100644
+--- a/index.html
++++ b/index.html
+@@ -128,6 +128,9 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
+       transition: background 0.3s;
+     }
+ 
+@@ -152,6 +155,127 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 28px;
++    }
++
++    dialog,
++    [popover] {
++      width: min(92vw, 420px);
++      margin: auto;
++      border: 0;
++      border-radius: 8px;
++      padding: 28px;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 24px 70px rgba(62, 39, 35, 0.28);
++      opacity: 0;
++      transform: translateY(-18px) scale(0.96);
++      transition:
++        opacity 0.3s ease,
++        transform 0.3s ease,
++        display 0.3s allow-discrete,
++        overlay 0.3s allow-discrete;
++      transition-behavior: allow-discrete;
++    }
++
++    dialog[open],
++    [popover]:popover-open {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++
++      @starting-style {
++        opacity: 0;
++        transform: translateY(-18px) scale(0.96);
++      }
++    }
++
++    dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0);
++      transition:
++        background-color 0.3s ease,
++        display 0.3s allow-discrete,
++        overlay 0.3s allow-discrete;
++      transition-behavior: allow-discrete;
++    }
++
++    dialog[open]::backdrop {
++      background-color: rgba(0, 0, 0, 0.5);
++
++      @starting-style {
++        background-color: rgba(0, 0, 0, 0);
++      }
++    }
++
++    dialog h2,
++    [popover] h2 {
++      color: var(--primary);
++      font-size: 1.45rem;
++      line-height: 1.2;
++      margin-bottom: 10px;
++    }
++
++    dialog p,
++    [popover] p {
++      margin-bottom: 16px;
++    }
++
++    .panel-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 18px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        scroll-behavior: auto !important;
++      }
++
++      dialog,
++      [popover] {
++        transform: none;
++        transition:
++          opacity 0.1s ease,
++          display 0.1s allow-discrete,
++          overlay 0.1s allow-discrete;
++        transition-behavior: allow-discrete;
++      }
++
++      dialog[open],
++      [popover]:popover-open {
++        transform: none;
++
++        @starting-style {
++          opacity: 0;
++          transform: none;
++        }
++      }
++
++      dialog::backdrop {
++        transition:
++          background-color 0.1s ease,
++          display 0.1s allow-discrete,
++          overlay 0.1s allow-discrete;
++        transition-behavior: allow-discrete;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -194,9 +318,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="actions">
++        <button class="btn" type="button" id="open-dialog">Reserve a Tasting</button>
++        <button class="btn btn-secondary" type="button" popovertarget="roast-popover">Roast Notes</button>
++      </div>
+     </section>
+   </main>
+ 
++  <dialog id="tasting-dialog" aria-labelledby="tasting-title">
++    <h2 id="tasting-title">Reserve a Tasting</h2>
++    <p>Choose a guided pour-over flight with our baristas and sample the newest single-origin roasts.</p>
++    <div class="panel-actions">
++      <button class="btn btn-secondary" type="button" id="close-dialog">Close</button>
++      <a href="/reservations" class="btn">Reserve</a>
++    </div>
++  </dialog>
++
++  <div id="roast-popover" popover aria-labelledby="roast-title">
++    <h2 id="roast-title">Roast Notes</h2>
++    <p>The maple oat latte pairs best with our medium roast: cocoa upfront, citrus on the finish, and a clean body.</p>
++    <div class="panel-actions">
++      <button class="btn btn-secondary" type="button" popovertarget="roast-popover" popovertargetaction="hide">
++        Close
++      </button>
++    </div>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +354,26 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const tastingDialog = document.querySelector('#tasting-dialog');
++    const openDialogButton = document.querySelector('#open-dialog');
++    const closeDialogButton = document.querySelector('#close-dialog');
++
++    if (
++      tastingDialog instanceof HTMLDialogElement &&
++      openDialogButton instanceof HTMLButtonElement &&
++      closeDialogButton instanceof HTMLButtonElement
++    ) {
++      openDialogButton.addEventListener('click', () => {
++        tastingDialog.showModal();
++      });
++
++      closeDialogButton.addEventListener('click', () => {
++        tastingDialog.close();
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..ca11bb2 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "test -f index.html",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

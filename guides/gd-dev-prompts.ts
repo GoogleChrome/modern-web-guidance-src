@@ -2,9 +2,11 @@
  * Centralized, typed prompt builder functions for the gd dev evaluation generation process.
  * 
  * Having these prompts in one dedicated module ensures high visibility, easy tuning of AI
- * behavior across target capsules (solution.patch, zero-passrate.patch, grader.ts, task.md), and
+ * behavior across target capsules (patches, grader.ts, task.md), and
  * type-safe parameter interpolation.
  */
+
+import type { SolutionAgent } from '../lib/guide-validation.ts';
 
 export interface PatchPromptOptions {
   guideFile: string;
@@ -55,7 +57,7 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 export interface GraderPromptOptions {
   guideFile: string;
   expectationsFile: string;
-  solutionPatchFile: string;
+  solutionPatchFiles: Partial<Record<SolutionAgent, string>>;
   zeroPassratePatchFile: string;
   graderFile: string;
   baseApp: string;
@@ -83,17 +85,30 @@ Analyze this failure and modify the existing grader file to fix these assertions
 `
     : '';
 
+  const agentLabels: Record<SolutionAgent, string> = {
+    gemini: 'Gemini CLI',
+    jetski: 'Jetski CLI',
+    claude: 'Claude Code',
+    codex: 'Codex CLI',
+  };
+
+  const solutionList = Object.entries(opts.solutionPatchFiles)
+    .filter(([_, file]) => Boolean(file))
+    .map(([agent, file]) => `   - ${agentLabels[agent as SolutionAgent] || agent} Solution: \`${file}\` (must pass 100% of tests)`)
+    .join('\n');
+
   const patchInstruction = opts.failureContext
-    ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because the golden solution patch (\`${opts.solutionPatchFile}\`) or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
+    ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because any of the golden solution patches or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
     : '';
 
   return `${contextBlock}# GOAL
-Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application.${patchInstruction}
+Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${patchInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Requirements**: \`${opts.expectationsFile}\`
-3. **Golden Solution Diff**: \`${opts.solutionPatchFile}\` (must pass 100% of tests)
+3. **Golden Solution Diffs**:
+${solutionList}
 4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of tests)
 5. **Boilerplate Template**: \`${opts.templateFile}\`
 

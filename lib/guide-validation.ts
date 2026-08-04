@@ -284,8 +284,32 @@ export function getSupportedBaseApps(): string[] {
 }
 
 export const TARGETS_DIR = 'targets';
-export const SOLUTION_PATCH_FILE = 'solution.patch';
-export const ZERO_PASSRATE_PATCH_FILE = 'zero-passrate.patch';
+export const PATCHES_DIR = 'patches';
+export const ALL_SOLUTION_AGENTS = ['gemini', 'jetski', 'claude', 'codex'] as const;
+export type SolutionAgent = (typeof ALL_SOLUTION_AGENTS)[number];
+
+export function getDefaultSolutionAgent(): 'gemini' | 'jetski' {
+  return process.env.GD_DEV_USE_JETSKI === '1' ? 'jetski' : 'gemini';
+}
+
+export function getActiveSolutionAgents(targetDir?: string): SolutionAgent[] {
+  const defaultAgent = getDefaultSolutionAgent();
+  if (!targetDir || !fs.existsSync(targetDir)) {
+    return [defaultAgent, 'claude', 'codex'];
+  }
+  const hasGemini = fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.gemini));
+  const hasJetski = fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.jetski));
+  const primary: SolutionAgent = hasGemini ? 'gemini' : (hasJetski ? 'jetski' : defaultAgent);
+  return [primary, 'claude', 'codex'];
+}
+
+export const SOLUTION_PATCH_FILES: Record<SolutionAgent, string> = {
+  gemini: path.join(PATCHES_DIR, 'gemini-solution.patch'),
+  jetski: path.join(PATCHES_DIR, 'jetski-solution.patch'),
+  claude: path.join(PATCHES_DIR, 'claude-solution.patch'),
+  codex: path.join(PATCHES_DIR, 'codex-solution.patch'),
+};
+export const ZERO_PASSRATE_PATCH_FILE = path.join(PATCHES_DIR, 'zero-passrate.patch');
 
 export interface TargetInventory {
   name: string;
@@ -491,10 +515,16 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     for (const baseApp of appsToInventory) {
       const targetDir = path.join(targetsDir, baseApp);
       const exists = fs.existsSync(targetDir) && fs.statSync(targetDir).isDirectory();
+      const hasPrimarySolution =
+        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.gemini)) ||
+        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.jetski));
       const appInv: TargetInventory = {
         name: baseApp,
         dir: targetDir,
-        hasSolution: exists && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILE)),
+        hasSolution: exists &&
+          hasPrimarySolution &&
+          fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.claude)) &&
+          fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.codex)),
         hasZeroPassrate: exists && fs.existsSync(path.join(targetDir, ZERO_PASSRATE_PATCH_FILE)),
         hasGrader: exists && fs.existsSync(path.join(targetDir, GRADER_FILE)),
         hasTask: exists && fs.existsSync(path.join(targetDir, TASK_FILE)),

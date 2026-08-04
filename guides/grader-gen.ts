@@ -3,15 +3,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { baseAppsDir } from '../lib/paths.ts';
-import { setupIsolatedWorkDir, runAgent } from './lib/utils.ts';
+import { setupIsolatedWorkDir, runAgentForModel } from './lib/utils.ts';
 import { buildTargetGraderPrompt } from './gd-dev-prompts.ts';
 import {
   GUIDE_FILE,
   EXPECTATIONS_FILE,
-  SOLUTION_PATCH_FILE,
+  getDefaultSolutionAgent,
+  getActiveSolutionAgents,
+  SOLUTION_PATCH_FILES,
+  type SolutionAgent,
   ZERO_PASSRATE_PATCH_FILE,
   GRADER_FILE,
   TARGETS_DIR,
+  PATCHES_DIR,
   SUPPORTED_BASE_APPS
 } from '../lib/guide-validation.ts';
 import { cCyan, cGreen } from '../lib/colors.ts';
@@ -59,11 +63,10 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       path.join(workDir, 'playwright-pattern-library.grader.ts')
     );
 
-    const solutionPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, SOLUTION_PATCH_FILE);
-    const zeroPassratePatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
-    if (fs.existsSync(solutionPatch)) fs.copyFileSync(solutionPatch, path.join(workDir, SOLUTION_PATCH_FILE));
-    if (fs.existsSync(zeroPassratePatch)) fs.copyFileSync(zeroPassratePatch, path.join(workDir, ZERO_PASSRATE_PATCH_FILE));
-
+    const sourcePatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
+    if (fs.existsSync(sourcePatches)) {
+      fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
+    }
 
     const parserPatternsPath = path.join(workDir, 'parser-pattern-library.test.ts');
     const playwrightPatternsPath = path.join(workDir, 'playwright-pattern-library.grader.ts');
@@ -71,10 +74,17 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     const tsMorphDts = path.join(repoRoot, 'guides', 'node_modules/ts-morph/lib/ts-morph.d.ts');
     const linkedomDts = path.join(repoRoot, 'guides', 'node_modules/linkedom/types/index.d.ts');
 
+    const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
+    const activeAgents = getActiveSolutionAgents(targetDir);
+    const solutionPatchFiles: Partial<Record<SolutionAgent, string>> = {};
+    for (const agent of activeAgents) {
+      solutionPatchFiles[agent] = SOLUTION_PATCH_FILES[agent];
+    }
+
     const prompt = buildTargetGraderPrompt({
       guideFile: GUIDE_FILE,
       expectationsFile: EXPECTATIONS_FILE,
-      solutionPatchFile: SOLUTION_PATCH_FILE,
+      solutionPatchFiles,
       zeroPassratePatchFile: ZERO_PASSRATE_PATCH_FILE,
       graderFile: GRADER_FILE,
       baseApp,
@@ -86,7 +96,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       failureContext,
     });
 
-    await runAgent(prompt, workDir);
+    await runAgentForModel(getDefaultSolutionAgent(), prompt, workDir);
 
     const generatedGrader = path.join(workDir, GRADER_FILE);
     if (fs.existsSync(generatedGrader)) {
@@ -95,19 +105,18 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.copyFileSync(generatedGrader, destGrader);
     }
 
-    const generatedSolution = path.join(workDir, SOLUTION_PATCH_FILE);
-    if (fs.existsSync(generatedSolution)) {
-      const destSolution = path.join(guideDirAbs, TARGETS_DIR, baseApp, SOLUTION_PATCH_FILE);
-      fs.copyFileSync(generatedSolution, destSolution);
-    }
-
-    const generatedZeroPassrate = path.join(workDir, ZERO_PASSRATE_PATCH_FILE);
-    if (fs.existsSync(generatedZeroPassrate)) {
-      const destZeroPassrate = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
-      fs.copyFileSync(generatedZeroPassrate, destZeroPassrate);
+    const generatedPatches = path.join(workDir, PATCHES_DIR);
+    if (fs.existsSync(generatedPatches)) {
+      const destPatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
+      fs.mkdirSync(destPatches, { recursive: true });
+      fs.cpSync(generatedPatches, destPatches, { recursive: true });
     }
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    try {
+      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    } catch (e) {
+      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+    }
   }
 }
 
