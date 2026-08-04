@@ -14,11 +14,11 @@ function removeTempDir(dir: string) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-// Helper to patch the 20-second delay in the generated run.mjs to 1ms
+// Helper to patch the delay in the generated run.mjs to 1ms
 function patchRunnerDelay(targetDir: string) {
   const runMjsPath = path.join(targetDir, 'run.mjs');
   let content = fs.readFileSync(runMjsPath, 'utf8');
-  content = content.replace("setTimeout(()=>{}, 20000)", "setTimeout(()=>{}, 1)");
+  content = content.replace(/setTimeout\(\(\)=>{}, ' \+ delay \+ '\)/g, "setTimeout(()=>{}, 1)");
   fs.writeFileSync(runMjsPath, content, 'utf8');
 }
 
@@ -199,7 +199,7 @@ test('run.mjs: fails permanently after maximum attempts', () => {
     // Check state
     const state = getMockAgentState(tempDir);
     assert.ok(state, 'State file should exist');
-    assert.strictEqual(state.attempts, 3, 'Should have attempted exactly 3 times (1 initial + 2 retries)');
+    assert.strictEqual(state.attempts, 5, 'Should have attempted exactly 5 times (1 initial + 4 retries)');
 
     // Check generation_failed.json exists and has correct info
     const failureFile = path.join(tempDir, 'generation_failed.json');
