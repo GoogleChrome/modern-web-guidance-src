@@ -468,8 +468,8 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     fs.mkdirSync(workDir, { recursive: true });
     return workDir;
   }
-  // For the suite run, copy the template directory to the isolated home directory, following symlinks
-  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
+  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
+  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   const workDir = path.join(homeDir, path.basename(templateDir));
   initGitRepo(workDir);
   return workDir;
