@@ -1,1 +1,0 @@
-- Update UI components in the app so their styles and layouts adapt based on their container width or height rather than the viewport.

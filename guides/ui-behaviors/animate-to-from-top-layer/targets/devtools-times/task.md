@@ -1,1 +1,0 @@
-- Add smooth entry and exit animations for top-layer UI elements like dialogs, popovers, and tooltips in the application.

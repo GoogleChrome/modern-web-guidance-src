@@ -44,7 +44,7 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
     baseApp: 'daily-grind',
     templateFile: 'template.grader.ts',
   });
-  assert.ok(prompt.includes('extractTargetFilesFromPatch'));
+  assert.ok(prompt.includes('getTargetFiles'));
   assert.ok(prompt.includes('Static Analysis First'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Jetski CLI Solution'));

@@ -115,7 +115,7 @@ ${solutionList}
 # VERIFICATION & SCOPING RULES
 
 ## 1. Strictly Follow the Boilerplate Template
-Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`extractTargetFilesFromPatch\`, \`extractAllCss\`, \`populateJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
+Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`extractAllCss\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
 ## 2. Assertion Hierarchy
 - **Static Analysis First**: Prioritize static analysis over browser execution for structural assertions.
