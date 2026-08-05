@@ -9,7 +9,7 @@ import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts
 // NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
 // However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
 // into the test output directory to ensure uniform matching across the dashboard and metrics engine.
-const TRAJECTORY_GLOB = 'session-*.jsonl';
+const TRAJECTORY_GLOB = '*.jsonl';
 
 function getSessionFiles(dir: string, recursive = false): string[] {
   return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
@@ -64,19 +64,19 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
 
   // Find all jsonl files in the Claude projects directory
   const files = fs.globSync('**/*.jsonl', { cwd: claudeLogDir });
-  
+  const parsedSessions: { relativePath: string; baseName: string; logData: any[] }[] = [];
+  const subagentsMap: Record<string, any[]> = {};
+
+  // Step 1: Read all JSONL files and populate subagentsMap
   for (const relativePath of files as string[]) {
     const src = path.join(claudeLogDir, relativePath);
-    
-    // 1. Determine base name and copy original JSONL file to targetDir
     const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
-    const rawDestName = `session-${baseName}.jsonl`;
+    const isSubagent = relativePath.includes('subagents/');
+    const rawDestName = isSubagent ? `subagent-${baseName}.jsonl` : `session-${baseName}.jsonl`;
     fs.copyFileSync(src, path.join(targetDir, rawDestName));
 
-    // 2. Read and parse JSONL
     const logContent = fs.readFileSync(src, 'utf8');
     const jsonLines = logContent.split(/\r?\n/).filter(Boolean);
-    
     const logData = jsonLines.map(line => {
       try {
         return JSON.parse(line);
@@ -86,13 +86,23 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
       }
     });
 
-    // 3. Generate and save the HTML viewer
-    const htmlContent = generateClaudeTrajectoryHtml(logData);
+    parsedSessions.push({ relativePath, baseName, logData });
 
-    // 4. Save HTML viewer to target directory
-    const destName = `session-${baseName}.html`;
-    const dest = path.join(targetDir, destName);
-    fs.writeFileSync(dest, htmlContent, 'utf8');
+    // Match subagent ID if this is a subagent file
+    const match = relativePath.match(/subagents[/\\]agent-([a-zA-Z0-9_-]+)\.jsonl$/);
+    if (match && match[1]) {
+      subagentsMap[match[1]] = logData;
+    }
+  }
+
+  // Step 2: Generate HTML viewers embedding subagent trajectories where referenced (main sessions only)
+  for (const session of parsedSessions) {
+    if (!session.relativePath.includes('subagents/')) {
+      const htmlContent = generateClaudeTrajectoryHtml(session.logData, subagentsMap);
+      const destName = `session-${session.baseName}.html`;
+      const dest = path.join(targetDir, destName);
+      fs.writeFileSync(dest, htmlContent, 'utf8');
+    }
   }
 }
 
@@ -111,11 +121,13 @@ async function run() {
     console.log(`Starting Claude Code agent in: ${workDir}`);
 
     const command = config.environment.claudeCodeCliBin;
+    const model = process.env.ANTHROPIC_MODEL;
     const commandArgs = [
       '-p', userPrompt,
       '--dangerously-skip-permissions',
       '--verbose',
-      '--output-format', 'stream-json'
+      '--output-format', 'stream-json',
+      ...(model ? ['--model', model] : [])
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
@@ -222,15 +234,17 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
   const sessionFiles = getSessionFiles(dir);
   if (sessionFiles.length === 0) return toolsUsed;
 
-  const items = parseJsonlFile(path.join(dir, sessionFiles[0]));
-  for (const obj of items) {
-    const content = obj.message?.content;
-    for (const item of Array.isArray(content) ? content : []) {
-      if (item.type === 'tool_use') {
-        if (item.name === 'Skill' && item.input?.skill) {
-          toolsUsed.push(item.input.skill);
-        } else if (item.name === 'activate_skill' && item.input?.name) {
-          toolsUsed.push(item.input.name);
+  for (const file of sessionFiles) {
+    const items = parseJsonlFile(path.join(dir, file));
+    for (const obj of items) {
+      const content = obj.message?.content;
+      for (const item of Array.isArray(content) ? content : []) {
+        if (item.type === 'tool_use') {
+          if (item.name === 'Skill' && item.input?.skill) {
+            toolsUsed.push(item.input.skill);
+          } else if (item.name === 'activate_skill' && item.input?.name) {
+            toolsUsed.push(item.input.name);
+          }
         }
       }
     }

@@ -106,11 +106,9 @@ async function run() {
     console.log(`Starting Jetski CLI agent in ${workDir}`);
 
     const command = config.environment.jetskiCliBin;
-    const model = process.env.JETSKI_MODEL;
     const commandArgs = [
       '-p', userPrompt,
-      '--dangerously-skip-permissions',
-      ...(model ? ['--model', model] : [])
+      '--dangerously-skip-permissions'
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
@@ -257,79 +255,78 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
       const db = new DatabaseSync(fullPath, { readOnly: true });
       const rows = db.prepare('SELECT step_type, metadata, step_payload FROM steps').all() as Array<{ step_type?: number; metadata?: Uint8Array; step_payload?: Uint8Array }>;
       for (const row of rows) {
-        // Decode Protobuf step_payload for specific tool execution step types
+        // Decode Protobuf step_payload for tool executions
         if (row.step_payload) {
           const proto = parseProtobuf(Buffer.from(row.step_payload));
           const strings = getProtoStrings(proto);
 
-          // Shell commands (step_type = 21: RUN_COMMAND)
-          if (row.step_type === 21) {
-            for (const text of strings) {
-              if (text.includes('retrieve')) {
-                const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
-                if (match && match[1]) {
-                  const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
-                  retrievedGuides.push(...parts);
-                }
+          for (const text of strings) {
+            // Shell commands & guide retrieval
+            if (text.includes('retrieve')) {
+              const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
+              if (match && match[1]) {
+                const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
+                retrievedGuides.push(...parts);
               }
             }
-          }
 
-          // File reads (step_type = 8: VIEW_FILE)
-          if (row.step_type === 8) {
-            for (const filePath of strings) {
-              if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                if (match) {
-                  fileReadGuides.push(match[1]);
-                }
+            // File reads for guides and skills
+            if (text.includes('/skills/') && text.endsWith('/guide.md')) {
+              const match = text.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+              if (match) {
+                fileReadGuides.push(match[1]);
               }
-              if (filePath.includes('/skills/') && filePath.endsWith('/SKILL.md')) {
-                const match = filePath.match(/\/skills\/([^/]+)\/SKILL\.md$/);
-                if (match) {
-                  toolsUsed.push(match[1]);
-                }
+            }
+            if (text.includes('/skills/') && text.endsWith('/SKILL.md')) {
+              const match = text.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+              if (match) {
+                toolsUsed.push(match[1]);
               }
             }
           }
         }
 
-        // Protobuf token extraction from metadata tag 9
+        // Protobuf token extraction from metadata (schema-agnostic across tags)
         if (row.metadata) {
           const proto = parseProtobuf(Buffer.from(row.metadata));
-          if (proto[9]) {
-            for (const item of proto[9]) {
-              if (typeof item === 'object' && item !== null) {
-                const input = (item[2] && typeof item[2][0] === 'number') ? item[2][0] : 0;
-                const output = (item[3] && typeof item[3][0] === 'number') ? item[3][0] : 0;
-                const cached = (item[5] && typeof item[5][0] === 'number') ? item[5][0] : 0;
-                if (input > 0 || output > 0 || cached > 0) {
-                  totalInput += input;
-                  totalOutput += output;
-                  totalCached += cached;
-                  hasTokens = true;
-                }
-              }
+          const visited = new Set<any>();
+          const extractTokensFromNode = (node: any) => {
+            if (!node || typeof node !== 'object' || visited.has(node)) return;
+            visited.add(node);
+            if (Array.isArray(node)) {
+              for (const item of node) extractTokensFromNode(item);
+              return;
             }
-          }
+            const input = (node[2] && typeof node[2][0] === 'number') ? node[2][0] : 0;
+            const output = (node[3] && typeof node[3][0] === 'number') ? node[3][0] : 0;
+            const cached = (node[5] && typeof node[5][0] === 'number') ? node[5][0] : 0;
+            if (input > 0 || output > 0 || cached > 0) {
+              totalInput += input;
+              totalOutput += output;
+              totalCached += cached;
+              hasTokens = true;
+            }
+            for (const key of Object.keys(node)) {
+              extractTokensFromNode(node[key]);
+            }
+          };
+          extractTokensFromNode(proto);
         }
       }
 
-      // Extract model name from gen_metadata (Protobuf Tag 1 -> Tag 21)
+      // Extract model name from gen_metadata by scanning string values
       try {
         const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
         for (const row of genRows) {
           if (!row.data) continue;
           const proto = parseProtobuf(Buffer.from(row.data));
-          if (proto[1]) {
-            for (const item of proto[1]) {
-              if (typeof item === 'object' && item !== null && item[21] && typeof item[21][0] === 'string') {
-                modelName = item[21][0];
-                break;
-              }
-            }
+          const strings = getProtoStrings(proto);
+          // Look for Gemini model name patterns across string fields in the Protobuf message
+          const modelCandidate = strings.find(s => /^gemini/i.test(s));
+          if (modelCandidate) {
+            modelName = modelCandidate;
+            break;
           }
-          if (modelName !== 'unknown') break;
         }
       } catch {}
 

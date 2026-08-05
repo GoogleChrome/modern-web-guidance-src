@@ -30,9 +30,9 @@ guides/security/passkey-reauthentication/ @agektmr
 guides/security/passkey-registration/ @agektmr
 guides/security/passkeys/ @agektmr
 # Owned via feature "container-scroll-state-queries"
-guides/ui-atoms/context-sensitive-sticky-headers/ @bramus
 guides/ui-atoms/scroll-position-aware-elements/ @bramus
 guides/ui-atoms/scrollability-affordance-hints/ @bramus
+guides/ui-atoms/state-aware-sticky-headers/ @bramus
 # Owned via group "scrolling"
 guides/ui-atoms/carousel-slide-effects/ @bramus
 guides/ui-atoms/pull-to-reveal/ @bramus

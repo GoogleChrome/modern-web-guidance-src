@@ -133,42 +133,29 @@ test.describe('<guide-name> Target Grader', () => {
   });
 
   // --- BROWSER ASSERTIONS (E2E) ---
-  // Use browser assertions ONLY when you need to compute real CSS styles, evaluate dynamic pages,
-  // interact with elements (clicks/input), or verify rendered layout/visibility.
+  // Use browser assertions ONLY for requirements that cannot be verified statically, such as runtime click events or dynamic state updates.
   // If browser assertions are not needed, this entire `test.describe('Browser tests', ...)` section should be omitted.
   
   test.describe('Browser tests', () => {
     
     test.beforeEach(async ({ page, TARGET_URL }) => {
-      // Only mock local routes if it's a file-based demo, else let the dev server handle it
-      if (TARGET_URL.startsWith('http://localhost/')) {
-        await page.route('http://localhost/*', async (route: any) => {
-          const requestPath = new URL(route.request().url()).pathname;
-          const localFilePath = path.join(rootDir, requestPath === '/' ? 'index.html' : requestPath);
-
-          if (fs.existsSync(localFilePath)) {
-            await route.fulfill({ path: localFilePath });
-          } else {
-            await route.continue();
-          }
-        });
-      }
-      
       await page.goto(TARGET_URL);
     });
 
-    // test('browser behavior matches guide requirements', async ({ page }) => {
-    //   // EXAMPLE 1: Checking computed styles:
-    //   // const color = await page.$eval('.target', el => window.getComputedStyle(el).color);
-    //   // expect(color).toBe('rgb(255, 0, 0)');
-    //
-    //   // EXAMPLE 2: Layout / Position checks:
-    //   // const pos = await page.evaluate(() => {
-    //   //   const a = document.getElementById('a')!.getBoundingClientRect();
-    //   //   const b = document.getElementById('b')!.getBoundingClientRect();
-    //   //   return { aBottom: a.bottom, bTop: b.top };
-    //   // });
-    //   // expect(pos.bTop).toBeGreaterThanOrEqual(pos.aBottom);
+    // EXAMPLE 1: Checking computed styles
+    // test('target element has correct computed color', async ({ page }) => {
+    //   const color = await page.$eval('.target', el => window.getComputedStyle(el).color);
+    //   expect(color).toBe('rgb(255, 0, 0)');
+    // });
+
+    // EXAMPLE 2: Layout / Position checks using getBoundingClientRect
+    // test('element B is positioned below element A', async ({ page }) => {
+    //   const pos = await page.evaluate(() => {
+    //     const a = document.getElementById('a')!.getBoundingClientRect();
+    //     const b = document.getElementById('b')!.getBoundingClientRect();
+    //     return { aBottom: a.bottom, bTop: b.top };
+    //   });
+    //   expect(pos.bTop).toBeGreaterThanOrEqual(pos.aBottom);
     // });
   });
 });

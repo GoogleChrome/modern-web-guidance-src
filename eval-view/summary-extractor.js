@@ -86,7 +86,10 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     });
 
     const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctScenarios.size;
-    const earlyFailureRate = evalsData.summary?.unguidedEarlyFailureRate || 0;
+    const totalEarlyFailures = (evalsData.summary?.unguidedEarlyFailures || 0) + (evalsData.summary?.guidedEarlyFailures || 0);
+    let totalAllRuns = 0;
+    scenarioKeys.forEach(k => { totalAllRuns += (results[k] || []).length; });
+    const earlyFailureRate = totalAllRuns > 0 ? Math.round((totalEarlyFailures / totalAllRuns) * 100) : 0;
 
     const chartData = calculateChartData(results);
 

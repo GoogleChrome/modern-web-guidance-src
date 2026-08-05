@@ -22,67 +22,13 @@ async function getFreePort(): Promise<number> {
 }
 
 export const test = base.extend<{}, ServerWorkerFixtures>({
-  page: [async ({ page, TARGET_URL }, use) => {
-    const targetFile = process.env.TARGET_FILE;
-    if (!targetFile) {
-      await use(page);
-      return;
-    }
-    const targetDir = path.dirname(targetFile);
-    const pkgJsonPath = path.join(targetDir, 'package.json');
-    const isStaticApp = fs.existsSync(pkgJsonPath) && !JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8')).scripts?.build;
-
-    if (isStaticApp) {
-      const urlObj = new URL(TARGET_URL);
-      await page.route('**/*', async (route: any) => {
-        const reqUrl = new URL(route.request().url());
-        if (reqUrl.origin === urlObj.origin) {
-          const pathname = reqUrl.pathname;
-          const relativePath = pathname.replace(urlObj.pathname.replace(/\/$/, ''), '').replace(/^\//, '');
-          const diskPath = path.resolve(targetDir, relativePath || 'index.html');
-          const fileExists = fs.existsSync(diskPath);
-          if (!fileExists && (relativePath === '' || !relativePath.includes('.'))) {
-            const indexPath = path.join(targetDir, 'index.html');
-            if (fs.existsSync(indexPath)) {
-              const indexContent = fs.readFileSync(indexPath, 'utf8');
-              await route.fulfill({
-                contentType: 'text/html',
-                body: indexContent
-              });
-              return;
-            }
-          }
-        }
-        await route.continue();
-      });
-    }
-
-    await use(page);
-  }, { scope: 'test' }],
-
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
-    const targetFile = process.env.TARGET_FILE;
-    if (!targetFile) {
-      throw new Error('TARGET_FILE environment variable not set.');
-    }
-    
-    const targetDir = path.dirname(targetFile);
+    const targetDir = process.cwd();
+
     const pkgJsonPath = path.join(targetDir, 'package.json');
-    const demoName = path.basename(targetFile);
-
-    if (!fs.existsSync(pkgJsonPath) && !fs.existsSync(targetFile)) {
-      throw new Error(`Target file not found: ${targetFile}`);
-    }
-
-    console.log(`[TEST-FIXTURE] targetFile: ${targetFile}`);
-    console.log(`[TEST-FIXTURE] targetDir: ${targetDir}`);
-    console.log(`[TEST-FIXTURE] pkgJsonPath: ${pkgJsonPath}`);
-    console.log(`[TEST-FIXTURE] pkgJsonExists: ${fs.existsSync(pkgJsonPath)}`);
-
     if (!fs.existsSync(pkgJsonPath)) {
-      await use(`http://localhost/${demoName}`);
-      return;
+      throw new Error(`package.json not found in target directory: ${targetDir}`);
     }
 
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
@@ -110,14 +56,12 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
         shell: process.platform === 'win32'
       });
       if (buildResult.status !== 0) {
-        await use(`http://localhost/${demoName}`);
-        return;
+        throw new Error(`Failed to build target app in ${targetDir}`);
       }
     }
 
     if (!pkgJson.scripts || !pkgJson.scripts.start) {
-      await use(`http://localhost/${demoName}`);
-      return;
+      throw new Error(`package.json in ${targetDir} is missing a "start" script.`);
     }
 
     const port = await getFreePort();
@@ -158,8 +102,7 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
       if (serverProcess.pid) {
         try { process.kill(-serverProcess.pid); } catch (e) {}
       }
-      await use(`http://localhost/${demoName}`);
-      return;
+      throw new Error(`Server in ${targetDir} failed to start on port ${port}`);
     }
 
     process.env.TARGET_URL = url; // Exporting so legacy tests might use it if they read from process.env
