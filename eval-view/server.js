@@ -464,7 +464,7 @@ const server = http.createServer(async (req, res) => {
     });
 
     /** @param {any} str */
-    const stripAnsi = (str) => typeof str === 'string' ? str.replace(/\x1B\[\d+m/g, '') : String(str);
+    const stripAnsi = (str) => typeof str === 'string' ? str.replace(new RegExp(String.fromCharCode(27) + '\\[\\d+m', 'g'), '') : String(str);
 
     const origLog = console.log;
     const origWarn = console.warn;
@@ -860,7 +860,7 @@ const server = http.createServer(async (req, res) => {
             const endIdx = htmlStr.indexOf('];\n    const logsContainer');
             if (startIdx !== -1 && endIdx !== -1) {
               const rawLogData = htmlStr.slice(startIdx + 'const logData = '.length, endIdx + 1);
-              const logData = eval(rawLogData);
+              const logData = JSON.parse(rawLogData);
 
               /** @param {any} s */
               const escapeHtml = (s) => (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
