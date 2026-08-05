@@ -2,8 +2,9 @@ import { test, expect } from '../../../../test-fixture.ts';
 import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
-import { Project } from 'ts-morph';
+import { Project, SyntaxKind } from 'ts-morph';
 
 // Setup target workspace details
 const patchFile = process.env.PATCH_FILE;
@@ -12,8 +13,23 @@ if (!patchFile) {
 }
 
 const rootDir = process.cwd();
+const BASE_APP_DEFAULT_FILES: Record<string, string[]> = {
+  'daily-grind': ['index.html'],
+  'devtools-times': [
+    'src/components/ArticleTeaser.astro',
+    'src/layouts/Layout.astro',
+    'src/styles/global.css',
+    'src/components/SearchFlyout.tsx',
+    'src/components/ReadingListFlyout.tsx',
+  ],
+};
+
+const graderDir = path.dirname(fileURLToPath(import.meta.url));
+const baseAppName = path.basename(graderDir);
 const rawTargetFiles = extractTargetFilesFromPatch(patchFile);
-const targetFiles = rawTargetFiles.map((f: string) => f.replace(/^b\//, ''));
+const patchTargetFiles = rawTargetFiles.map((f: string) => f.replace(/^b\//, ''));
+const defaultFiles = BASE_APP_DEFAULT_FILES[baseAppName] || [];
+const targetFiles = Array.from(new Set([...patchTargetFiles, ...defaultFiles]));
 const absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
 // --- HELPER UTILITIES FOR EMBEDDED & STANDALONE CODE ---
@@ -46,6 +62,13 @@ export function extractAllCss(files: string[]): string[] {
       } catch {
         const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
         if (styleMatches) styleMatches.forEach((s: string) => cssBlocks.push(s));
+      }
+    } else if (JS_EXTS.test(file)) {
+      const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      if (styleMatches) {
+        for (const match of styleMatches) {
+          cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
+        }
       }
     }
   }

@@ -1,1 +1,1 @@
-- Can you animate elements such as dialogs, popovers, and tooltips as they enter and exit the top layer?
+- Add smooth entry and exit animations for top-layer UI elements like dialogs, popovers, and tooltips in the application.

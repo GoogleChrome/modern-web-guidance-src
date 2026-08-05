@@ -18,7 +18,8 @@ export { setupAgentCredentials, getAgentCommandAndArgs, type AgentName };
 export function stageBaseAppWorkspace(
   baseApp: string,
   patchFile?: string,
-  prefix: string = 'grade-run'
+  prefix: string = 'grade-run',
+  zeroPassrateFile?: string
 ): { workDir: string; cleanup: () => void } {
   const tempHome = createIsolatedHome(prefix);
   const workDir = path.join(tempHome, baseApp);
@@ -26,7 +27,16 @@ export function stageBaseAppWorkspace(
 
   const refBaseAppDir = path.join(baseAppsDir, baseApp);
   if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workDir, { recursive: true });
+    fs.cpSync(refBaseAppDir, workDir, {
+      recursive: true,
+      filter: (src) => !src.includes('/dist') && !src.includes('/.astro'),
+    });
+  }
+
+  if (zeroPassrateFile && fs.existsSync(zeroPassrateFile)) {
+    if (fs.readFileSync(zeroPassrateFile, 'utf8').trim().length > 0) {
+      applyPatchSync(workDir, zeroPassrateFile);
+    }
   }
 
   if (patchFile && fs.existsSync(patchFile)) {

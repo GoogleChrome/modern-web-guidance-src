@@ -318,9 +318,11 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
 
       const { workDir: stagingDir, cleanup } = stageBaseAppWorkspace(baseApp, patchToApply, `gd-pre-grade-${baseApp}`);
       try {
+        if (patchToApply) process.env.PATCH_FILE = path.resolve(patchToApply);
         const preResults = await gradeOutput(stagingDir, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
         if (preResults) results['pre'] = preResults;
       } finally {
+        delete process.env.PATCH_FILE;
         cleanup();
       }
 

@@ -2,6 +2,7 @@ import { test, expect } from '../../../../test-fixture.ts';
 import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
 import { Project, SyntaxKind } from 'ts-morph';
 
@@ -12,7 +13,22 @@ if (!patchFile) {
 }
 
 const rootDir = process.cwd();
-const targetFiles = extractTargetFilesFromPatch(patchFile);
+const BASE_APP_DEFAULT_FILES: Record<string, string[]> = {
+  'daily-grind': ['index.html'],
+  'devtools-times': [
+    'src/components/ArticleTeaser.astro',
+    'src/layouts/Layout.astro',
+    'src/styles/global.css',
+    'src/components/SearchFlyout.tsx',
+    'src/components/ReadingListFlyout.tsx',
+  ],
+};
+
+const graderDir = path.dirname(fileURLToPath(import.meta.url));
+const baseAppName = path.basename(graderDir);
+const patchTargetFiles = extractTargetFilesFromPatch(patchFile);
+const defaultFiles = BASE_APP_DEFAULT_FILES[baseAppName] || [];
+const targetFiles = Array.from(new Set([...patchTargetFiles, ...defaultFiles]));
 const absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
 // --- HELPER UTILITIES FOR EMBEDDED & STANDALONE CODE ---
@@ -45,6 +61,13 @@ export function extractAllCss(files: string[]): string[] {
       } catch {
         const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
         if (styleMatches) cssBlocks.push(...styleMatches);
+      }
+    } else if (JS_EXTS.test(file)) {
+      const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      if (styleMatches) {
+        for (const match of styleMatches) {
+          cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
+        }
       }
     }
   }
@@ -108,18 +131,18 @@ test.describe('devtools-times Target Grader', () => {
   test('Component uses @container queries to apply styles based on container width', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    expect(cleanCss).toMatch(/@container\s+[^\{]*\(\s*min-width/i);
+    expect(cleanCss).toMatch(/@container\s+[^{]*\(\s*min-width/i);
   });
 
   test('Component modifies layout properties inside @container queries when crossing width threshold', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    expect(cleanCss).toMatch(/@container\s+[^\{]+\{[\s\S]*?(?:flex-direction\s*:\s*(?:row|row-reverse)|grid-template-columns|display\s*:\s*(?:grid|flex)|flex\s*:)/i);
+    expect(cleanCss).toMatch(/@container\s+[^{]+\{[\s\S]*?(?:flex-direction\s*:\s*(?:row|row-reverse)|grid-template-columns|display\s*:\s*(?:grid|flex)|flex\s*:)/i);
   });
 
   test('Component provides a media query or default fallback strategy for non-container-query browsers', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    expect(cleanCss).toMatch(/@media\s*\([^{]+\{/i);
+    expect(/(@media\s*\([^)]*width|@supports\s*\([^)]*container)/i.test(cleanCss)).toBe(true);
   });
 });

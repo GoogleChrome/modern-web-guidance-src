@@ -76,7 +76,9 @@ export async function runPlaywright(
       throw new Error(`Could not determine target baseApp from grader path: ${graderPath}`);
     }
     const baseApp = targetsMatch[1];
-    const { workDir: tempGradingDir, cleanup } = stageBaseAppWorkspace(baseApp, agentPatch);
+    const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
+    const zeroPassrateFile = fs.existsSync(zeroPassratePatch) ? zeroPassratePatch : undefined;
+    const { workDir: tempGradingDir, cleanup } = stageBaseAppWorkspace(baseApp, agentPatch, 'grade-run', zeroPassrateFile);
     cleanupGradingDir = cleanup;
     effectiveTargetPath = isDir ? tempGradingDir : path.join(tempGradingDir, path.basename(targetPathAbs));
   }

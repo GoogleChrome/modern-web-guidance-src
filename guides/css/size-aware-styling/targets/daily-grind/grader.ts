@@ -2,6 +2,7 @@ import { test, expect } from '../../../../test-fixture.ts';
 import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
 import { Project, SyntaxKind } from 'ts-morph';
 
@@ -12,7 +13,22 @@ if (!patchFile) {
 }
 
 const rootDir = process.cwd();
-const targetFiles = extractTargetFilesFromPatch(patchFile);
+const BASE_APP_DEFAULT_FILES: Record<string, string[]> = {
+  'daily-grind': ['index.html'],
+  'devtools-times': [
+    'src/components/ArticleTeaser.astro',
+    'src/layouts/Layout.astro',
+    'src/styles/global.css',
+    'src/components/SearchFlyout.tsx',
+    'src/components/ReadingListFlyout.tsx',
+  ],
+};
+
+const graderDir = path.dirname(fileURLToPath(import.meta.url));
+const baseAppName = path.basename(graderDir);
+const patchTargetFiles = extractTargetFilesFromPatch(patchFile);
+const defaultFiles = BASE_APP_DEFAULT_FILES[baseAppName] || [];
+const targetFiles = Array.from(new Set([...patchTargetFiles, ...defaultFiles]));
 const absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
 // --- HELPER UTILITIES FOR EMBEDDED & STANDALONE CODE ---
@@ -45,6 +61,13 @@ export function extractAllCss(files: string[]): string[] {
       } catch {
         const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
         if (styleMatches) cssBlocks.push(...styleMatches);
+      }
+    } else if (JS_EXTS.test(file)) {
+      const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      if (styleMatches) {
+        for (const match of styleMatches) {
+          cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
+        }
       }
     }
   }
@@ -109,24 +132,24 @@ test.describe('Daily Grind Size-Aware Styling Target Grader', () => {
   test('CSS uses @container queries conditioned on width', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    expect(/@container\s+[^\{]*\((min-|max-)?width\s*:/i.test(cleanCss)).toBe(true);
+    expect(/@container\s+[^{]*\((min-|max-)?width\s*:/i.test(cleanCss)).toBe(true);
   });
 
   test('CSS modifies layout properties within @container query rules', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    expect(/@container\s+[^\{]*\([^\)]*width[^\)]*\)\s*\{[^\}]*\b(flex-direction|grid-template|display)\b/i.test(cleanCss)).toBe(true);
+    expect(/@container\s+[^{]*\([^)]*width[^)]*\)\s*\{[^}]*\b(flex-direction|grid-template|display)\b/i.test(cleanCss)).toBe(true);
   });
 
   test('CSS provides media query or @supports fallbacks for browser compatibility', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    expect(/(@media\s*\([^\)]*width|@supports\s*\([^\)]*container)/i.test(cleanCss)).toBe(true);
+    expect(/(@media\s*\([^)]*width|@supports\s*\([^)]*container)/i.test(cleanCss)).toBe(true);
   });
 
   test('CSS defines a default flex or grid layout structure on card components', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    expect(/\.card\s*\{[^\}]*\bdisplay\s*:\s*(flex|grid)\b/i.test(cleanCss)).toBe(true);
+    expect(/\.card\s*\{[^}]*\bdisplay\s*:\s*(flex|grid)\b/i.test(cleanCss)).toBe(true);
   });
 });

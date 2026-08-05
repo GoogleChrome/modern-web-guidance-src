@@ -2,8 +2,9 @@ import { test, expect } from '../../../../test-fixture.ts';
 import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
-import { Project } from 'ts-morph';
+import { Project, SyntaxKind } from 'ts-morph';
 
 // Setup target workspace details
 const patchFile = process.env.PATCH_FILE;
@@ -12,7 +13,22 @@ if (!patchFile) {
 }
 
 const rootDir = process.cwd();
-const targetFiles = extractTargetFilesFromPatch(patchFile);
+const BASE_APP_DEFAULT_FILES: Record<string, string[]> = {
+  'daily-grind': ['index.html'],
+  'devtools-times': [
+    'src/components/ArticleTeaser.astro',
+    'src/layouts/Layout.astro',
+    'src/styles/global.css',
+    'src/components/SearchFlyout.tsx',
+    'src/components/ReadingListFlyout.tsx',
+  ],
+};
+
+const graderDir = path.dirname(fileURLToPath(import.meta.url));
+const baseAppName = path.basename(graderDir);
+const patchTargetFiles = extractTargetFilesFromPatch(patchFile);
+const defaultFiles = BASE_APP_DEFAULT_FILES[baseAppName] || [];
+const targetFiles = Array.from(new Set([...patchTargetFiles, ...defaultFiles]));
 const absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
 /**
@@ -40,6 +56,13 @@ export function extractAllCss(files: string[]): string[] {
       } catch {
         const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
         if (styleMatches) cssBlocks.push(...styleMatches);
+      }
+    } else if (/\.(js|ts|tsx|jsx)$/i.test(file)) {
+      const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      if (styleMatches) {
+        for (const match of styleMatches) {
+          cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
+        }
       }
     }
   }

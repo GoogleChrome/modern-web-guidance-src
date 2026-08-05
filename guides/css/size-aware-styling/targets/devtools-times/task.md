@@ -1,1 +1,1 @@
-- Can you build UI components whose styles and layouts adapt based on their own width or height rather than the width or height of the viewport?
+- Update UI components in the app so their styles and layouts adapt based on their container width or height rather than the viewport.

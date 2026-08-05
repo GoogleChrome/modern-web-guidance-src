@@ -351,15 +351,14 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
 
   const refBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
   if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workspaceBaseAppDir, { recursive: true });
+    fs.cpSync(refBaseAppDir, workspaceBaseAppDir, {
+      recursive: true,
+      filter: (src) => !src.includes('/dist') && !src.includes('/.astro'),
+    });
   } else {
     console.warn(`Source base app not found at ${refBaseAppDir}`);
     return null;
   }
-  if (!fs.existsSync(path.join(workspaceBaseAppDir, '.git'))) {
-    initGitRepo(workspaceBaseAppDir);
-  }
-
   const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
   if (fs.existsSync(pkgJsonPath)) {
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
@@ -368,7 +367,7 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
     }
   }
 
-  // If this is a target-based task and zero-passrate.patch exists, apply it before agent execution
+  // If this is a target-based task and zero-passrate.patch exists, apply it before git init & agent execution
   const targetZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskName, ZERO_PASSRATE_PATCH_FILE);
   const baseAppZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskInfo.baseApp, ZERO_PASSRATE_PATCH_FILE);
   const zeroPassratePath = fs.existsSync(targetZeroPassrate)
@@ -382,6 +381,10 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
     } else {
       console.log(`Applied zero-passrate.patch to ${workspaceBaseAppDir}`);
     }
+  }
+
+  if (!fs.existsSync(path.join(workspaceBaseAppDir, '.git'))) {
+    initGitRepo(workspaceBaseAppDir);
   }
 
   return workspaceBaseAppDir;
