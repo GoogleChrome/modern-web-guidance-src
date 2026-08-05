@@ -3,9 +3,37 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, type GuideUsage } from '../lib/agent-shared.ts';
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, createTrustedFolders, copyFileIfExists, type GuideUsage } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
+
+export function setupJetskiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const jetskiSource = path.join(originalHome, '.gemini', 'jetski');
+  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
+  const geminiDest = path.join(tempHome, '.gemini');
+
+  fs.mkdirSync(jetskiDest, { recursive: true });
+
+  const filesToCopy = [
+    'installation_id',
+    'user_settings.pb',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
+  }
+
+  process.env.JETSKI_DIR = jetskiDest;
+  createTrustedFolders(geminiDest, [tempHome]);
+  return jetskiDest;
+}
+
+export function getJetskiCliCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
+  const command = config.environment.jetskiCliBin;
+  const commandArgs = ['-p', prompt, '--dangerously-skip-permissions'];
+  return { command, commandArgs };
+}
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
 
@@ -29,32 +57,6 @@ export function readTrajectorySummary(dir: string): TrajectorySummary | null {
     } catch {}
   }
   return null;
-}
-
-/**
- * Copies Jetski CLI authentication and configuration files from ~/.gemini/jetski to the isolated HOME,
- * and sets process.env.JETSKI_DIR.
- * @param tempHome Path to the isolated HOME directory
- * @returns Path to the destination .gemini/jetski directory
- */
-export function setupJetskiCliCredentials(tempHome: string): string {
-  const originalHome = process.env.HOME || process.cwd();
-  const jetskiSource = path.join(originalHome, '.gemini', 'jetski');
-  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
-
-  fs.mkdirSync(jetskiDest, { recursive: true });
-
-  const filesToCopy = [
-    'installation_id',
-    'user_settings.pb',
-  ];
-
-  for (const file of filesToCopy) {
-    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
-  }
-
-  process.env.JETSKI_DIR = jetskiDest;
-  return jetskiDest;
 }
 
 // Usage: node jetski-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -106,11 +108,7 @@ async function run() {
   try {
     console.log(`Starting Jetski CLI agent in ${workDir}`);
 
-    const command = config.environment.jetskiCliBin;
-    const commandArgs = [
-      '-p', userPrompt,
-      '--dangerously-skip-permissions'
-    ];
+    const { command, commandArgs } = getJetskiCliCommandAndArgs(userPrompt);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 

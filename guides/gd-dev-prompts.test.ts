@@ -34,23 +34,34 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
   const prompt = buildTargetGraderPrompt({
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
-    solutionPatchFile: 'solution.patch',
-    zeroPassratePatchFile: 'zero-passrate.patch',
+    solutionPatchFiles: {
+      jetski: 'patches/jetski-solution.patch',
+      claude: 'patches/claude-solution.patch',
+      codex: 'patches/codex-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
     graderFile: 'grader.ts',
     baseApp: 'daily-grind',
     templateFile: 'template.grader.ts',
   });
-  assert.ok(prompt.includes('extractTargetFilesFromPatch'));
+  assert.ok(prompt.includes('getTargetFiles'));
   assert.ok(prompt.includes('Static Analysis First'));
   assert.ok(prompt.includes('daily-grind'));
+  assert.ok(prompt.includes('Jetski CLI Solution'));
+  assert.ok(prompt.includes('Claude Code Solution'));
+  assert.ok(prompt.includes('Codex CLI Solution'));
 });
 
 test('buildTargetGraderPrompt formats failure context correctly when provided', () => {
   const prompt = buildTargetGraderPrompt({
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
-    solutionPatchFile: 'solution.patch',
-    zeroPassratePatchFile: 'zero-passrate.patch',
+    solutionPatchFiles: {
+      jetski: 'patches/jetski-solution.patch',
+      claude: 'patches/claude-solution.patch',
+      codex: 'patches/codex-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
     graderFile: 'grader.ts',
     baseApp: 'devtools-times',
     templateFile: 'template.grader.ts',

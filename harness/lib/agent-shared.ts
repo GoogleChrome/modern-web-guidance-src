@@ -7,6 +7,48 @@ import { rootDir, guidesDir } from '../../lib/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
 
 import { type SuiteConfig } from '../config.ts';
+import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
+import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
+import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
+import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
+
+export {
+  setupGeminiCliCredentials,
+  getGeminiCliCommandAndArgs,
+  setupJetskiCliCredentials,
+  getJetskiCliCommandAndArgs,
+  setupClaudeCodeCredentials,
+  getClaudeCodeCommandAndArgs,
+  setupCodexCliCredentials,
+  getCodexCliCommandAndArgs,
+};
+
+export type AgentName = 'gemini' | 'jetski' | 'claude' | 'codex';
+
+export function setupAgentCredentials(agent: AgentName, tempHome: string): void {
+  if (agent === 'jetski') {
+    setupJetskiCliCredentials(tempHome);
+  } else if (agent === 'gemini') {
+    setupGeminiCliCredentials(tempHome);
+  } else if (agent === 'claude') {
+    setupClaudeCodeCredentials(tempHome);
+  } else if (agent === 'codex') {
+    setupCodexCliCredentials(tempHome);
+  }
+}
+
+export function getAgentCommandAndArgs(agent: AgentName, prompt: string): { command: string; commandArgs: string[] } {
+  switch (agent) {
+    case 'jetski':
+      return getJetskiCliCommandAndArgs(prompt);
+    case 'gemini':
+      return getGeminiCliCommandAndArgs(prompt);
+    case 'claude':
+      return getClaudeCodeCommandAndArgs(prompt);
+    case 'codex':
+      return getCodexCliCommandAndArgs(prompt);
+  }
+}
 
 export interface GuideUsage {
   retrievedGuides: string[];

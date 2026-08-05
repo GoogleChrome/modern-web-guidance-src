@@ -7,11 +7,6 @@ import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
-/**
- * Copies Gemini CLI authentication and identification files from ~/.gemini to the isolated HOME.
- * @param tempHome Path to the isolated HOME directory
- * @returns Path to the destination .gemini directory
- */
 export function setupGeminiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
   const geminiSource = path.join(originalHome, '.gemini');
@@ -30,7 +25,14 @@ export function setupGeminiCliCredentials(tempHome: string): string {
     copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
   }
 
+  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
   return geminiDest;
+}
+
+export function getGeminiCliCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
+  const command = config.environment.geminiCliBin;
+  const commandArgs = ['-p', prompt, ...extraArgs, '--yolo'];
+  return { command, commandArgs };
 }
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
@@ -52,7 +54,6 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
 
   // Set environment variables
   process.env.HOME = tempHome;
-  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -89,12 +90,7 @@ async function run() {
   try {
     console.log(`Starting Gemini CLI agent in ${workDir}`);
 
-    const command = config.environment.geminiCliBin;
-    const commandArgs = [
-      '-p', userPrompt,
-      '-o', 'stream-json',
-      '--yolo'
-    ];
+    const { command, commandArgs } = getGeminiCliCommandAndArgs(userPrompt, ['-o', 'stream-json']);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
@@ -249,27 +245,28 @@ export function extractGeminiCliTokenUsage(dir: string): { total: number; cached
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = getSessionFiles(dir);
-  const firstSession = sessionFiles[0];
-  if (!firstSession) return toolsUsed;
+  if (sessionFiles.length === 0) return toolsUsed;
 
-  try {
-    const sessionPath = path.join(dir, firstSession);
-    const session = readTrajectory(sessionPath);
-    if (Array.isArray(session.messages)) {
-      for (const msg of session.messages) {
-        if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
-          for (const tc of msg.toolCalls) {
-            if (tc.name.includes('get_best_practices')) {
-              toolsUsed.push('modern-web-guidance');
-            } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
-              toolsUsed.push(tc.args.name as string);
+  for (const sessionFile of sessionFiles) {
+    try {
+      const sessionPath = path.join(dir, sessionFile);
+      const session = readTrajectory(sessionPath);
+      if (Array.isArray(session.messages)) {
+        for (const msg of session.messages) {
+          if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
+            for (const tc of msg.toolCalls) {
+              if (tc.name.includes('get_best_practices')) {
+                toolsUsed.push('modern-web-guidance');
+              } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
+                toolsUsed.push(tc.args.name as string);
+              }
             }
           }
         }
       }
+    } catch (e) {
+      console.error(`Failed to collect guidance tools used for Gemini CLI in ${sessionFile}:`, e);
     }
-  } catch (e) {
-    console.error(`Failed to collect guidance tools used for Gemini CLI:`, e);
   }
 
   return Array.from(new Set(toolsUsed));
