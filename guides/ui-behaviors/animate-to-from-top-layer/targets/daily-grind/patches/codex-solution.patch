@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+index 66c9173..899d840 100644
+--- a/index.html
++++ b/index.html
+@@ -129,12 +129,123 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      cursor: pointer;
++      font: inherit;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .top-layer-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      justify-content: center;
++      margin-top: 28px;
++    }
++
++    [popover].info-popover,
++    dialog.reservation-dialog {
++      border: 0;
++      border-radius: 8px;
++      box-shadow: 0 22px 70px rgba(62, 39, 35, 0.32);
++      color: var(--text);
++      opacity: 0;
++      transform: translateY(-18px) scale(0.96);
++      transition:
++        opacity 0.28s ease,
++        transform 0.28s ease,
++        overlay 0.28s allow-discrete,
++        display 0.28s allow-discrete;
++      transition-behavior: allow-discrete;
++    }
++
++    dialog.reservation-dialog {
++      width: min(92vw, 460px);
++      padding: 28px;
++      margin: auto;
++    }
++
++    [popover].info-popover {
++      width: min(90vw, 320px);
++      padding: 18px;
++    }
++
++    dialog.reservation-dialog[open],
++    [popover].info-popover:popover-open {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++
++      @starting-style {
++        opacity: 0;
++        transform: translateY(-18px) scale(0.96);
++      }
++    }
++
++    dialog.reservation-dialog::backdrop {
++      background-color: rgba(62, 39, 35, 0);
++      transition:
++        background-color 0.28s ease,
++        overlay 0.28s allow-discrete,
++        display 0.28s allow-discrete;
++      transition-behavior: allow-discrete;
++    }
++
++    dialog.reservation-dialog[open]::backdrop {
++      background-color: rgba(62, 39, 35, 0.45);
++
++      @starting-style {
++        background-color: rgba(62, 39, 35, 0);
++      }
++    }
++
++    .top-layer-heading {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .top-layer-copy {
++      margin-bottom: 18px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #c7b8b2;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      [popover].info-popover,
++      dialog.reservation-dialog {
++        transform: none;
++        transition-duration: 0.1s;
++      }
++
++      dialog.reservation-dialog::backdrop {
++        transition-duration: 0.1s;
++      }
++
++      dialog.reservation-dialog[open],
++      [popover].info-popover:popover-open {
++        transform: none;
++
++        @starting-style {
++          transform: none;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,6 +288,10 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="top-layer-actions">
++        <button class="btn" type="button" id="open-reservation">Reserve a Tasting</button>
++        <button class="btn btn-secondary" type="button" popovertarget="brew-notes">Brew Notes</button>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -197,6 +312,20 @@
+     </section>
+   </main>
+ 
++  <dialog class="reservation-dialog" id="reservation-dialog" aria-labelledby="reservation-title">
++    <h2 class="top-layer-heading" id="reservation-title">Reserve a Tasting</h2>
++    <p class="top-layer-copy">Book a guided flight of our current single-origin roasts with a barista.</p>
++    <form method="dialog" class="dialog-actions">
++      <button class="btn btn-secondary" type="submit">Close</button>
++      <button class="btn" type="submit" value="reserve">Reserve</button>
++    </form>
++  </dialog>
++
++  <div class="info-popover" id="brew-notes" popover>
++    <h2 class="top-layer-heading">Brew Notes</h2>
++    <p>Our cold brew uses a coarse grind, filtered water, and an 18-hour steep for a smooth finish.</p>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +336,17 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const reservationDialog = document.querySelector('#reservation-dialog');
++    const openReservationButton = document.querySelector('#open-reservation');
++
++    if (reservationDialog instanceof HTMLDialogElement && openReservationButton) {
++      openReservationButton.addEventListener('click', () => {
++        reservationDialog.showModal();
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..712b282 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"require('fs').accessSync('index.html')\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

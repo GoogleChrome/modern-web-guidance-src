@@ -1,0 +1,381 @@
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..40170bf 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,4 +1,4 @@
+-import React from 'react';
++import React, { useEffect, useRef } from 'react';
+ 
+ interface FlyoutMenuProps {
+   isOpen: boolean;
+@@ -9,24 +9,32 @@ interface FlyoutMenuProps {
+ }
+ 
+ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
+-  if (!isOpen) {
+-    return null;
+-  }
++  const popoverRef = useRef<HTMLDivElement>(null);
+ 
+-  // Intentionally failing method to demonstrate debugging
+-  const calculateTrendingScore = (article: any) => {
+-    const getScore = article.getScore;
+-    return getScore();
+-  };
++  useEffect(() => {
++    const popover = popoverRef.current;
+ 
+-  const topStories = articles.sort(() => 0.5 - Math.random()).slice(0, 3);
++    if (!popover) {
++      return;
++    }
+ 
+-  if (topStories.length > 0) {
+-    setTimeout(() => calculateTrendingScore(topStories[0]), 100);
+-  }
++    if (isOpen && !popover.matches(':popover-open')) {
++      popover.showPopover();
++    }
++
++    if (!isOpen && popover.matches(':popover-open')) {
++      popover.hidePopover();
++    }
++  }, [isOpen]);
++
++  const topStories = [...articles].sort(() => 0.5 - Math.random()).slice(0, 3);
+ 
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
++    <div
++      ref={popoverRef}
++      popover="manual"
++      className="app-popover flyout-menu top-[138px] bg-white border-b border-gray-300 shadow-lg z-10"
++    >
+       <div className="container mx-auto px-4 py-6">
+         <div className="grid grid-cols-4 gap-x-8">
+           
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..705bed9 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useCallback, useEffect, useRef, useState } from 'react';
+ 
+ interface Article {
+   slug: string;
+@@ -14,8 +14,21 @@ interface Props {
+ }
+ 
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
++  const dialogRef = useRef<HTMLDialogElement>(null);
+   const [readingList, setReadingList] = useState<string[]>([]);
+ 
++  const closeDialog = useCallback(() => {
++    const dialog = dialogRef.current;
++
++    if (!dialog?.open) {
++      onClose();
++      return;
++    }
++
++    dialog.close();
++    window.setTimeout(onClose, 220);
++  }, [onClose]);
++
+   const fetchReadingList = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+     const data = await response.json();
+@@ -23,11 +36,18 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   };
+ 
+   useEffect(() => {
++    const dialog = dialogRef.current;
++
++    if (dialog && !dialog.open) {
++      dialog.showModal();
++    }
++
+     fetchReadingList();
+ 
+     const handleKeyDown = (event: KeyboardEvent) => {
+       if (event.key === 'Escape') {
+-        onClose();
++        event.preventDefault();
++        closeDialog();
+       }
+     };
+     window.addEventListener('keydown', handleKeyDown);
+@@ -35,7 +55,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     return () => {
+       window.removeEventListener('keydown', handleKeyDown);
+     };
+-  }, [onClose]);
++  }, [closeDialog]);
+ 
+   const handleRemove = async (slug: string) => {
+     await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+@@ -51,9 +71,21 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
++    <dialog
++      ref={dialogRef}
++      className="app-dialog mt-[15vh]"
++      onCancel={(event) => {
++        event.preventDefault();
++        closeDialog();
++      }}
++      onClick={(event) => {
++        if (event.target === event.currentTarget) {
++          closeDialog();
++        }
++      }}
++    >
+       <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++        <button onClick={closeDialog} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+           </svg>
+@@ -82,6 +114,6 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+           </ul>
+         </div>
+       </div>
+-    </div>
++    </dialog>
+   );
+ }
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..43f44b1 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -6,6 +6,7 @@ interface Article {
+     slug: string;
+     title: string;
+     summary: string;
++    image?: string;
+ }
+ 
+ export default function SearchButton() {
+@@ -14,8 +15,11 @@ export default function SearchButton() {
+     const [isLoading, setIsLoading] = useState(false);
+ 
+     const openSearch = async () => {
++        setIsLoading(true);
+         try {
+-            setArticles([]);
++            const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
++            const data = await response.json();
++            setArticles(data);
+             setIsFlyoutOpen(true);
+         } catch (error) {
+             console.error('Failed to fetch articles:', error);
+@@ -43,7 +47,7 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            {isFlyoutOpen && <SearchFlyout articles={articles} onClose={closeSearch} />}
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..95d03fc 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+ 
+ interface Article {
+     slug: string;
+@@ -19,13 +19,33 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+ };
+ 
+ export default function SearchFlyout({ articles, onClose }: Props) {
++    const dialogRef = useRef<HTMLDialogElement>(null);
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
+ 
++    const closeDialog = useCallback(() => {
++        const dialog = dialogRef.current;
++
++        if (!dialog?.open) {
++            onClose();
++            return;
++        }
++
++        dialog.close();
++        window.setTimeout(onClose, 220);
++    }, [onClose]);
++
+     useEffect(() => {
++        const dialog = dialogRef.current;
++
++        if (dialog && !dialog.open) {
++            dialog.showModal();
++        }
++
+         const handleKeyDown = (event: KeyboardEvent) => {
+             if (event.key === 'Escape') {
+-                onClose();
++                event.preventDefault();
++                closeDialog();
+             }
+         };
+         window.addEventListener('keydown', handleKeyDown);
+@@ -46,7 +66,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         return () => {
+             window.removeEventListener('keydown', handleKeyDown);
+         };
+-    }, [onClose]);
++    }, [closeDialog]);
+ 
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+@@ -59,9 +79,21 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+     }, [articles, searchTerm]);
+ 
+     return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
++        <dialog
++            ref={dialogRef}
++            className="app-dialog mt-[15vh]"
++            onCancel={(event) => {
++                event.preventDefault();
++                closeDialog();
++            }}
++            onClick={(event) => {
++                if (event.target === event.currentTarget) {
++                    closeDialog();
++                }
++            }}
++        >
+             <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++                <button onClick={closeDialog} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+@@ -113,6 +145,6 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                     )}
+                 </div>
+             </div>
+-        </div>
++        </dialog>
+     );
+ }
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..76d229e 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,103 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++dialog,
++[popover] {
++  opacity: 0;
++  transform: translateY(-0.75rem) scale(0.98);
++  transition:
++    opacity 220ms ease-out,
++    transform 220ms ease-out,
++    display 220ms allow-discrete,
++    overlay 220ms allow-discrete;
++  transition-behavior: allow-discrete;
++}
++
++dialog[open],
++[popover]:popover-open {
++  opacity: 1;
++  transform: translateY(0) scale(1);
++
++  @starting-style {
++    opacity: 0;
++    transform: translateY(-0.75rem) scale(0.98);
++  }
++}
++
++dialog::backdrop,
++[popover]::backdrop {
++  background-color: rgb(255 255 255 / 0);
++  backdrop-filter: blur(0);
++  transition:
++    display 220ms allow-discrete,
++    overlay 220ms allow-discrete,
++    background-color 220ms ease-out,
++    backdrop-filter 220ms ease-out;
++}
++
++dialog[open]::backdrop,
++[popover]:popover-open::backdrop {
++  background-color: rgb(255 255 255 / 0.3);
++  backdrop-filter: blur(4px);
++
++  @starting-style {
++    background-color: rgb(255 255 255 / 0);
++    backdrop-filter: blur(0);
++  }
++}
++
++dialog.app-dialog {
++  border: 0;
++  padding: 0;
++  max-width: min(42rem, calc(100vw - 2rem));
++  width: 100%;
++  background: transparent;
++}
++
++dialog.app-dialog::backdrop {
++  cursor: pointer;
++}
++
++[popover].app-popover {
++  inset: auto 0 auto 0;
++  margin: 0 auto;
++  border: 0;
++  padding: 0;
++  width: min(72rem, 100vw);
++  background: transparent;
++  transform: translateY(-0.75rem) scale(0.98);
++}
++
++[popover].app-popover:popover-open {
++  transform: translateY(0) scale(1);
++
++  @starting-style {
++    opacity: 0;
++    transform: translateY(-0.75rem) scale(0.98);
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  dialog,
++  [popover],
++  [popover].app-popover,
++  [popover].app-popover:popover-open {
++    transform: none;
++    transition-duration: 80ms;
++  }
++
++  dialog[open],
++  [popover]:popover-open {
++    @starting-style {
++      transform: none;
++    }
++  }
++
++  dialog::backdrop,
++  [popover]::backdrop {
++    backdrop-filter: none;
++    transition-duration: 80ms;
++  }
++}

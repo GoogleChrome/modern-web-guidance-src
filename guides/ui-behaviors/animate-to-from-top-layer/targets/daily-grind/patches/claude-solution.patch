@@ -1,0 +1,241 @@
+diff --git a/index.html b/index.html
+index 66c9173..f13fbcd 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,149 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 15px;
++      justify-content: center;
++      margin-top: 10px;
++    }
++
++    .btn-outline {
++      background: transparent;
++      border: 1px solid white;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .btn-outline:hover {
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .btn-secondary:hover {
++      background: #c7bab5;
++    }
++
++    /* ---------------------------------------------------------------- */
++    /* Top-layer animations: <dialog> and [popover]                     */
++    /* ---------------------------------------------------------------- */
++
++    /* Base (closed) state shared by dialog and popover elements */
++    dialog,
++    [popover] {
++      opacity: 0;
++      transform: scale(0.9) translateY(10px);
++
++      /* MANDATORY: transition display and overlay for top-layer elements */
++      transition-property: opacity, transform, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      /* Applies to discrete properties like display and overlay */
++      transition-behavior: allow-discrete;
++
++      border: none;
++      border-radius: 10px;
++      padding: 30px;
++      max-width: 420px;
++      width: 90%;
++      color: var(--text);
++      background: var(--light);
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
++    }
++
++    /* Visible (open) state + entry starting point */
++    dialog[open],
++    [popover]:popover-open {
++      opacity: 1;
++      transform: scale(1) translateY(0);
++
++      @starting-style {
++        opacity: 0;
++        transform: scale(0.9) translateY(10px);
++      }
++    }
++
++    dialog h2,
++    [popover] h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    dialog p,
++    [popover] p {
++      margin-bottom: 20px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .dialog-actions .btn,
++    .dialog-actions .btn-secondary {
++      margin-top: 0;
++    }
++
++    #promo-popover {
++      border-top: 4px solid var(--accent);
++    }
++
++    /* JS fallback state for browsers without allow-discrete/overlay support:
++       forces the closed visual style while the dialog is still in the DOM
++       so the exit transition can play before JS calls .close(). */
++    dialog.is-closing {
++      opacity: 0;
++      transform: scale(0.9) translateY(10px);
++    }
++
++    /* Animate the backdrop behind the dialog */
++    dialog::backdrop {
++      background-color: rgba(0, 0, 0, 0);
++      transition:
++        display 0.3s allow-discrete,
++        overlay 0.3s allow-discrete,
++        background-color 0.3s ease-out;
++    }
++
++    dialog[open]::backdrop {
++      background-color: rgba(0, 0, 0, 0.5);
++
++      @starting-style {
++        background-color: rgba(0, 0, 0, 0);
++      }
++    }
++
++    /* Respect user preference for reduced motion */
++    @media (prefers-reduced-motion: reduce) {
++
++      dialog,
++      [popover] {
++        transform: none;
++        transition-duration: 0.1s;
++      }
++
++      dialog::backdrop {
++        transition-duration: 0.1s;
++      }
++
++      @starting-style {
++
++        dialog[open],
++        [popover]:popover-open {
++          transform: none;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -171,9 +314,31 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" class="btn btn-outline" id="open-rewards-dialog">Join Rewards</button>
++      <button type="button" class="btn btn-outline" popovertarget="promo-popover">Today's Special</button>
++    </div>
+   </header>
+ 
++  <dialog id="rewards-dialog" aria-labelledby="rewards-title">
++    <form method="dialog">
++      <h2 id="rewards-title">Join The Daily Grind Rewards</h2>
++      <p>Earn points on every purchase and unlock free drinks, birthday treats, and exclusive offers.</p>
++      <div class="dialog-actions">
++        <button type="submit" class="btn">Sign Me Up</button>
++        <button type="button" class="btn-secondary" data-close-dialog>Maybe Later</button>
++      </div>
++    </form>
++  </dialog>
++
++  <div id="promo-popover" popover>
++    <h3>Today's Special</h3>
++    <p>Buy one Maple Oat Latte, get a second half off &mdash; today only!</p>
++    <button type="button" class="btn-secondary" popovertarget="promo-popover" popovertargetaction="hide">Got
++      it</button>
++  </div>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +372,53 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const dialog = document.getElementById('rewards-dialog');
++      const openBtn = document.getElementById('open-rewards-dialog');
++
++      // Feature detection for native top-layer animations
++      const supportsTopLayerAnimation =
++        window.CSS &&
++        CSS.supports('transition-behavior', 'allow-discrete') &&
++        CSS.supports('overlay', 'auto');
++
++      function closeDialog() {
++        if (supportsTopLayerAnimation) {
++          // The CSS transition (including `overlay`/`display`) handles
++          // keeping the dialog visible in the top layer during exit.
++          dialog.close();
++          return;
++        }
++
++        // Manual JS fallback for browsers without top-layer animations:
++        // wait for the transition to finish before actually closing.
++        dialog.classList.add('is-closing');
++        dialog.addEventListener('transitionend', function onEnd() {
++          dialog.classList.remove('is-closing');
++          dialog.close();
++          dialog.removeEventListener('transitionend', onEnd);
++        });
++      }
++
++      openBtn.addEventListener('click', () => dialog.showModal());
++
++      dialog.addEventListener('click', (event) => {
++        if (event.target.closest('[data-close-dialog]')) {
++          event.preventDefault();
++          closeDialog();
++        }
++      });
++
++      dialog.addEventListener('submit', (event) => {
++        if (!supportsTopLayerAnimation) {
++          event.preventDefault();
++          closeDialog();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

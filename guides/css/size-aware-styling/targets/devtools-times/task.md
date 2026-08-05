@@ -1,1 +1,1 @@
-- Refactor the existing article card components so that their layout and styling adapt dynamically based on their own width rather than the width of the viewport.
+- Update the components in the application so their styles and layouts conditionally adjust based on their own width or height rather than the size of the viewport.
