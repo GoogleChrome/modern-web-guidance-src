@@ -283,9 +283,6 @@ window.__featuresMapping = {
     "color-scheme",
     "light-dark"
   ],
-  "context-sensitive-sticky-headers": [
-    "container-scroll-state-queries"
-  ],
   "position-aware-tooltips": [
     "container-anchor-position-queries",
     "popover"
@@ -309,6 +306,9 @@ window.__featuresMapping = {
   ],
   "shrinking-header-on-scroll": [
     "scroll-driven-animations"
+  ],
+  "state-aware-sticky-headers": [
+    "container-scroll-state-queries"
   ],
   "anchor-positioning-tab-underline": [
     "anchor-positioning",
