@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
-import { Project, SyntaxKind } from 'ts-morph';
+import { Project } from 'ts-morph';
 
 // Setup target workspace details
 const patchFile = process.env.PATCH_FILE;
