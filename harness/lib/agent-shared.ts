@@ -4,8 +4,14 @@ import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
+import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
 
 import { type SuiteConfig } from '../config.ts';
+
+export interface GuideUsage {
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+}
 
 /**
  * Gets the suite configuration from environment variables or returns default.
@@ -32,7 +38,15 @@ export function getSuiteConfig(): SuiteConfig {
 export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, options);
-    child.on('close', (code) => resolve(code ?? 1));
+    let resolved = false;
+    const done = (code: number) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(code);
+      }
+    };
+    child.on('exit', (code) => done(code ?? 1));
+    child.on('close', (code) => done(code ?? 1));
     child.on('error', reject);
   });
 }
@@ -454,10 +468,11 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     fs.mkdirSync(workDir, { recursive: true });
     return workDir;
   }
-  // For the suite run, copy the template directory to the isolated home directory, following symlinks
-  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
-  console.log(`Copied ${templateDir} to ${homeDir}...`);
-  return path.join(homeDir, path.basename(templateDir));
+  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
+  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
+  const workDir = path.join(homeDir, path.basename(templateDir));
+  initGitRepo(workDir);
+  return workDir;
 }
 
 /**
@@ -467,9 +482,27 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
  * @param subPath Optional sub-path within workDir to copy from (e.g. if you only want specific files)
  */
 export function copyResultsToTarget(workDir: string, targetDir: string, subPath: string = '.'): void {
-  const sourceDir = path.join(workDir, subPath);
-  execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
-  console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
+  const isLegacyTask = path.basename(path.dirname(targetDir)) === 'task';
+
+  if (isLegacyTask) {
+    // For legacy single-page guides, copy workspace files directly using cp -R
+    const sourceDir = path.join(workDir, subPath);
+    try {
+      execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
+      console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
+    } catch (e) {
+      console.warn(`Failed to copy results from ${sourceDir} to ${targetDir}: ${e}`);
+    }
+  } else {
+    // For target-based guides, capture agent.patch for patch-only storage
+    try {
+      const agentPatchPath = path.join(targetDir, 'agent.patch');
+      capturePatchFromGit(workDir, agentPatchPath);
+    } catch (err) {
+      console.warn(`Failed to capture agent patch: ${err}`);
+    }
+    console.log(`Saved agent patch in: ${targetDir}`);
+  }
 }
 
 /**
@@ -730,7 +763,6 @@ export function getGraderScriptContent(
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
 
   return `import fs from 'fs';
-import { spawnSync } from 'child_process';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {

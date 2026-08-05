@@ -24,35 +24,24 @@ async function getFreePort(): Promise<number> {
 export const test = base.extend<{}, ServerWorkerFixtures>({
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
-    const targetFile = process.env.TARGET_FILE;
-    if (!targetFile) {
-      throw new Error('TARGET_FILE environment variable not set.');
-    }
-    
-    const targetDir = path.dirname(targetFile);
+    const targetDir = process.cwd();
+
     const pkgJsonPath = path.join(targetDir, 'package.json');
-    const demoName = path.basename(targetFile);
-
-    if (!fs.existsSync(pkgJsonPath) && !fs.existsSync(targetFile)) {
-      throw new Error(`Target file not found: ${targetFile}`);
-    }
-
-    console.log(`[TEST-FIXTURE] targetFile: ${targetFile}`);
-    console.log(`[TEST-FIXTURE] targetDir: ${targetDir}`);
-    console.log(`[TEST-FIXTURE] pkgJsonPath: ${pkgJsonPath}`);
-    console.log(`[TEST-FIXTURE] pkgJsonExists: ${fs.existsSync(pkgJsonPath)}`);
-
     if (!fs.existsSync(pkgJsonPath)) {
-      await use(`http://localhost/${demoName}`);
-      return;
+      throw new Error(`package.json not found in target directory: ${targetDir}`);
     }
 
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
 
     if (pkgJson.scripts && pkgJson.scripts.build) {
       // Running install on base app
+      const repoRoot = path.resolve(import.meta.dirname, '..');
+      const lockfilePath = path.join(repoRoot, 'pnpm-lock.yaml');
+      if (fs.existsSync(lockfilePath)) {
+        fs.copyFileSync(lockfilePath, path.join(targetDir, 'pnpm-lock.yaml'));
+      }
       console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
-      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install'], {
+      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force'], {
         cwd: targetDir,
         stdio: 'ignore',
         shell: process.platform === 'win32'
@@ -67,14 +56,12 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
         shell: process.platform === 'win32'
       });
       if (buildResult.status !== 0) {
-        await use(`http://localhost/${demoName}`);
-        return;
+        throw new Error(`Failed to build target app in ${targetDir}`);
       }
     }
 
     if (!pkgJson.scripts || !pkgJson.scripts.start) {
-      await use(`http://localhost/${demoName}`);
-      return;
+      throw new Error(`package.json in ${targetDir} is missing a "start" script.`);
     }
 
     const port = await getFreePort();
@@ -87,8 +74,18 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
     });
 
     let isReady = false;
-    const url = `http://localhost:${port}`;
-    for (let i = 0; i < 5; i++) {
+    let baseUrlPath = '/';
+    const configPath = path.join(targetDir, 'astro.config.mjs');
+    if (fs.existsSync(configPath)) {
+      const configContent = fs.readFileSync(configPath, 'utf8');
+      const baseMatch = configContent.match(/base:\s*['"`](.*?)['"`]/);
+      if (baseMatch) {
+        baseUrlPath = '/' + baseMatch[1].replace(/^\/|\/$/g, '') + '/';
+      }
+    }
+
+    const url = `http://localhost:${port}${baseUrlPath}`;
+    for (let i = 0; i < 30; i++) {
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(1000) });
         if (res.ok) {
@@ -105,8 +102,7 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
       if (serverProcess.pid) {
         try { process.kill(-serverProcess.pid); } catch (e) {}
       }
-      await use(`http://localhost/${demoName}`);
-      return;
+      throw new Error(`Server in ${targetDir} failed to start on port ${port}`);
     }
 
     process.env.TARGET_URL = url; // Exporting so legacy tests might use it if they read from process.env

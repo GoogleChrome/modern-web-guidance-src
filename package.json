@@ -26,7 +26,6 @@
     "build:mcp": "pnpm --filter serving build",
     "build:megaskill": "pnpm --filter serving build:megaskill",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
-    "generate-negative": "node --env-file=.env --experimental-strip-types guides/negative-gen.ts",
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
     "grade": "node --experimental-strip-types guides/run-grader.ts",

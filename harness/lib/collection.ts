@@ -7,26 +7,29 @@ import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts'
 import { extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
+import { extractJetskiCliModel, extractJetskiCliTokenUsage } from '../agents/jetski-cli-agent.ts';
 import { getGraderScriptContent } from './agent-shared.ts';
 
-function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
-  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
+function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
+  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
 }
 
 export function extractModelFromResults(resultsDir: string, agent: string): string {
   if (agent === Agents.GEMINI_CLI) {
     return extractGeminiCliModel(resultsDir);
+  } else if (agent === Agents.JETSKI_CLI) {
+    return extractJetskiCliModel(resultsDir);
   } else if (agent === Agents.CLAUDE_CODE) {
     return extractClaudeCodeModel(resultsDir);
   } else if (agent === Agents.CODEX_CLI) {
     return extractCodexCliModel(resultsDir);
   }
-  // JETSKI impl does not support trajectory pb parsing, leave model as unknown
   return 'unknown';
 }
 
 export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | null {
   if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir) ?? null;
+  if (agent === Agents.JETSKI_CLI) return extractJetskiCliTokenUsage(resultsDir) ?? null;
   if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;
   if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir) ?? null;
   return null;
@@ -99,9 +102,15 @@ function getAppFiles(currentDir: string, base = ''): string[] {
 }
 
 export function extractTargetModifiedFile(dir: string, prompt?: string): string | undefined {
+  if (fs.existsSync(path.join(dir, 'agent.patch'))) {
+    return 'agent.patch';
+  }
   try {
     const appFiles = getAppFiles(dir).filter(f => {
       if (
+        f === 'npx' ||
+        f === 'node_modules' ||
+        f.startsWith('.') ||
         f.endsWith('.log') ||
         f.endsWith('.txt') ||
         f.endsWith('.mjs') ||
@@ -206,9 +215,14 @@ function getTaskRunContext(
   const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
   const targetFile = path.join(dir, targetModifiedFile || 'index.html');
   const targetPkgJson = path.join(dir, 'package.json');
-  const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+  const targetPatchFile = path.join(dir, 'agent.patch');
+  let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+  const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
+  if (fs.existsSync(targetGraderPath)) {
+    graderPath = targetGraderPath;
+  }
   const graderResults = path.join(dir, `${guide}_results.json`);
-  const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
+  const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson, targetPatchFile);
 
   return {
     guide,
