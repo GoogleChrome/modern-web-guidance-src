@@ -1,1 +1,1 @@
-- Modify the existing card components in the application so their layout and styles conditionally adapt based on their own width or height rather than the viewport size.
+- Can you update the components in the app so that their layout and styling adapt dynamically based on their own width and height rather than the size of the viewport?

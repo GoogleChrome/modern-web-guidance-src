@@ -3,7 +3,7 @@ import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseHTML } from 'linkedom';
-import { Project } from 'ts-morph';
+import { Project, SyntaxKind } from 'ts-morph';
 
 // Setup target workspace details
 const patchFile = process.env.PATCH_FILE;
@@ -13,15 +13,7 @@ if (!patchFile) {
 
 const rootDir = process.cwd();
 const targetFiles = extractTargetFilesFromPatch(patchFile);
-let absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
-
-// If patch touches no files (e.g. zero-passrate patch), fall back to inspecting workspace files
-if (absoluteTargetFiles.length === 0) {
-  const defaultFiles = ['index.html', 'styles.css', 'style.css'];
-  absoluteTargetFiles = defaultFiles
-    .map((f) => path.resolve(rootDir, f))
-    .filter((f) => fs.existsSync(f));
-}
+const absoluteTargetFiles = targetFiles.map((f: string) => path.resolve(rootDir, f));
 
 // --- HELPER UTILITIES FOR EMBEDDED & STANDALONE CODE ---
 const HTML_EXTS = /\.(html|htm|astro)$/i;
@@ -106,72 +98,35 @@ export function getHtmlDocuments(files: string[]): Array<{ file: string; documen
   return docs;
 }
 
-/**
- * Extracts block contents for @container rules by tracking matching braces.
- */
-function extractContainerBlocks(css: string): string[] {
-  const blocks: string[] = [];
-  const regex = /@container\b/gi;
-  let match;
-  while ((match = regex.exec(css)) !== null) {
-    const startIndex = match.index;
-    let braceCount = 0;
-    let started = false;
-    let endIndex = css.length;
-    for (let i = startIndex; i < css.length; i++) {
-      if (css[i] === '{') {
-        braceCount++;
-        started = true;
-      } else if (css[i] === '}') {
-        braceCount--;
-      }
-      if (started && braceCount === 0) {
-        endIndex = i + 1;
-        break;
-      }
-    }
-    if (started) {
-      blocks.push(css.slice(startIndex, endIndex));
-    }
-  }
-  return blocks;
-}
-
-// Grader tests for size-aware-styling
-test.describe('size-aware-styling Target Grader', () => {
-
-  test('Component wrapper defines container-type as inline-size or size', () => {
+// Grader tests
+test.describe('Daily Grind Size-Aware Styling Target Grader', () => {
+  test('CSS applies container-type inline-size or size to a container element', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasContainerType = /\bcontainer-type\s*:\s*(inline-size|size)\b|\bcontainer\s*:\s*[^;}]*\b(inline-size|size)\b/i.test(cleanCss);
-    expect(hasContainerType).toBe(true);
+    expect(/container(-type)?\s*:[^;]*\b(inline-size|size)\b/i.test(cleanCss)).toBe(true);
   });
 
-  test('CSS defines @container queries for container-width based styles', () => {
+  test('CSS uses @container queries conditioned on width', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasContainerQuery = /@container\s+[^{]*\([^)]*\b(min-width|max-width|width|inline-size)\b/i.test(cleanCss);
-    expect(hasContainerQuery).toBe(true);
+    expect(/@container\s+[^\{]*\((min-|max-)?width\s*:/i.test(cleanCss)).toBe(true);
   });
 
-  test('Component changes layout properties within @container query at width threshold', () => {
+  test('CSS modifies layout properties within @container query rules', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const containerBlocks = extractContainerBlocks(cleanCss);
-    const hasLayoutChange = containerBlocks.some((block) =>
-      /\([^)]*\b(min-width|max-width|width|inline-size)\b[^)]*\)/i.test(block) &&
-      /\b(flex-direction|grid-template|grid-auto|display|justify-content|align-items|flex|columns)\b/i.test(block)
-    );
-    expect(hasLayoutChange).toBe(true);
+    expect(/@container\s+[^\{]*\([^\)]*width[^\)]*\)\s*\{[^\}]*\b(flex-direction|grid-template|display)\b/i.test(cleanCss)).toBe(true);
   });
 
-  test('Provides media query or @supports fallback strategy for browsers without container queries', () => {
+  test('CSS provides media query or @supports fallbacks for browser compatibility', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasFallbackStrategy =
-      /@media\s*\([^)]*\b(min-width|max-width|width)\b[^)]*\)/i.test(cleanCss) ||
-      /@supports\s*\([^)]*container/i.test(cleanCss);
-    expect(hasFallbackStrategy).toBe(true);
+    expect(/(@media\s*\([^\)]*width|@supports\s*\([^\)]*container)/i.test(cleanCss)).toBe(true);
   });
 
+  test('CSS defines a default flex or grid layout structure on card components', () => {
+    const cssBlocks = extractAllCss(absoluteTargetFiles);
+    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
+    expect(/\.card\s*\{[^\}]*\bdisplay\s*:\s*(flex|grid)\b/i.test(cleanCss)).toBe(true);
+  });
 });

@@ -3,7 +3,7 @@ import { extractTargetFilesFromPatch } from '../../../../../lib/patch-utils.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseHTML } from 'linkedom';
-import { Project } from 'ts-morph';
+import { Project, SyntaxKind } from 'ts-morph';
 
 // Setup target workspace details
 const patchFile = process.env.PATCH_FILE;
@@ -98,55 +98,28 @@ export function getHtmlDocuments(files: string[]): Array<{ file: string; documen
   return docs;
 }
 
-// Grader tests
-test.describe('size-aware-styling Target Grader', () => {
-
-  test('HTML component template contains container or wrapper element', () => {
-    const docs = getHtmlDocuments(absoluteTargetFiles);
-    const hasWrapper = docs.some(d => d.document.querySelector('.card-container, [class*="container"], article, div') !== null);
-    expect(hasWrapper).toBe(true);
-  });
-
-  test('CSS defines container-type property as inline-size or size', () => {
+test.describe('devtools-times Target Grader', () => {
+  test('Component wrapper has container-type inline-size or size applied', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasContainerType = /\bcontainer(-type)?\s*:[^;}]*\b(inline-size|size)\b/i.test(cleanCss);
-    expect(hasContainerType).toBe(true);
+    expect(cleanCss).toMatch(/container-type\s*:\s*(?:inline-size|size)\b/i);
   });
 
-  test('CSS contains @container query rule for size-aware styling', () => {
+  test('Component uses @container queries to apply styles based on container width', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasContainerQuery = /@container\b/i.test(cleanCss);
-    expect(hasContainerQuery).toBe(true);
+    expect(cleanCss).toMatch(/@container\s+[^\{]*\(\s*min-width/i);
   });
 
-  test('CSS @container query specifies a width threshold condition', () => {
+  test('Component modifies layout properties inside @container queries when crossing width threshold', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasWidthThreshold = /@container\b[^{]*\b(min-width|max-width|width|inline-size)\b/i.test(cleanCss);
-    expect(hasWidthThreshold).toBe(true);
+    expect(cleanCss).toMatch(/@container\s+[^\{]+\{[\s\S]*?(?:flex-direction\s*:\s*(?:row|row-reverse)|grid-template-columns|display\s*:\s*(?:grid|flex)|flex\s*:)/i);
   });
 
-  test('CSS @container query defines layout properties for responsive changes', () => {
+  test('Component provides a media query or default fallback strategy for non-container-query browsers', () => {
     const cssBlocks = extractAllCss(absoluteTargetFiles);
     const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasLayoutChanges = /@container[^{]+\{[^}]*\b(flex-direction|grid-template|display|width|columns|flex-flow)\b/i.test(cleanCss);
-    expect(hasLayoutChanges).toBe(true);
+    expect(cleanCss).toMatch(/@media\s*\([^{]+\{/i);
   });
-
-  test('CSS provides a default layout before container query overrides', () => {
-    const cssBlocks = extractAllCss(absoluteTargetFiles);
-    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasDefaultLayout = /\b(display\s*:\s*(flex|grid|block)|flex-direction\s*:\s*(column|row))\b/i.test(cleanCss);
-    expect(hasDefaultLayout).toBe(true);
-  });
-
-  test('CSS includes @media queries or @supports rules for browser fallback', () => {
-    const cssBlocks = extractAllCss(absoluteTargetFiles);
-    const cleanCss = cssBlocks.join('\n').replace(/\s+/g, ' ');
-    const hasFallback = /(@media|@supports)\b/i.test(cleanCss);
-    expect(hasFallback).toBe(true);
-  });
-
 });

@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..fac086a 100644
+index 66c9173..877c98f 100644
 --- a/index.html
 +++ b/index.html
-@@ -107,12 +107,20 @@
+@@ -107,16 +107,26 @@
        margin-top: 20px;
      }
  
@@ -20,11 +20,28 @@ index 66c9173..fac086a 100644
 +      flex-direction: column;
 +      gap: 1rem;
 +      align-items: center;
++      justify-content: center;
++      height: 100%;
      }
  
      .card h3 {
-@@ -120,6 +128,34 @@
+-      margin-bottom: 10px;
++      margin-bottom: 0;
        color: var(--primary);
+     }
+ 
+@@ -127,14 +137,43 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-top: 0;
+       transition: background 0.3s;
++      white-space: nowrap;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
      }
  
 +    /* Fallback using media queries for older browsers */
@@ -49,24 +66,16 @@ index 66c9173..fac086a 100644
 +        .card {
 +          flex-direction: row;
 +          justify-content: space-between;
-+          align-items: center;
 +          text-align: left;
++          align-items: center;
 +        }
 +      }
 +    }
 +
-     .btn {
-       display: inline-block;
-       background: var(--primary);
-@@ -127,7 +163,6 @@
-       padding: 10px 20px;
-       text-decoration: none;
-       border-radius: 5px;
--      margin-top: 15px;
-       transition: background 0.3s;
-     }
- 
-@@ -171,27 +206,39 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,27 +210,33 @@
    <header class="hero">
      <h1>Wake Up Your Senses</h1>
      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
@@ -84,10 +93,8 @@ index 66c9173..fac086a 100644
 -          <a href="/menu/seasonal" class="btn">View Details</a>
 +        <div class="card-container">
 +          <div class="card">
-+            <div>
-+              <h3>Maple Oat Latte</h3>
-+              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+            </div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 +            <a href="/menu/seasonal" class="btn">View Details</a>
 +          </div>
          </div>
@@ -97,10 +104,8 @@ index 66c9173..fac086a 100644
 -          <a href="/menu/espresso" class="btn">View Details</a>
 +        <div class="card-container">
 +          <div class="card">
-+            <div>
-+              <h3>Dark Roast Espresso</h3>
-+              <p>Bold, smokey, and perfect for a morning boost.</p>
-+            </div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
 +            <a href="/menu/espresso" class="btn">View Details</a>
 +          </div>
          </div>
@@ -110,17 +115,15 @@ index 66c9173..fac086a 100644
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
 +        <div class="card-container">
 +          <div class="card">
-+            <div>
-+              <h3>Cold Brew</h3>
-+              <p>Steeped for 18 hours for maximum smoothness.</p>
-+            </div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
 +            <a href="/menu/cold-brew" class="btn">View Details</a>
 +          </div>
          </div>
        </div>
      </section>
 diff --git a/package.json b/package.json
-index 2bd4d77..bb70d39 100644
+index 2bd4d77..94920fa 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,7 +2,8 @@
@@ -129,7 +132,7 @@ index 2bd4d77..bb70d39 100644
    "scripts": {
 -    "start": "pnpm dlx statikk --port ${PORT:-11222}"
 +    "start": "pnpm dlx statikk --port ${PORT:-11222}",
-+    "build": "echo 'Build successful'"
++    "build": "echo Build succeeded"
    },
    "pnpm": {
      "onlyBuiltDependencies": []

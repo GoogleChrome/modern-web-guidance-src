@@ -1,1 +1,1 @@
-- Refactor the existing article card components so that their layout and styling adapt dynamically based on their own width rather than the width of the viewport.
+- Can you build UI components whose styles and layouts adapt based on their own width or height rather than the width or height of the viewport?
