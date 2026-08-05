@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import child_process from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { extractFeatureIds } from '../lib/feature-parser.ts';
 
 // Define content file name constants inline to avoid importing from 'lib/guide-validation.ts'
 // which would transitively require external packages (like 'gray-matter' and 'marked')
@@ -121,10 +122,70 @@ export function resolveAtl(category: string, featureIds: string[], atlConfig: At
   return resolvedValue;
 }
 
-export function handleIssue(issueNumber: number, labels: string[], atlConfig: AtlConfig) {
+export function getAtlsFromDescription(description: string, atlConfig: AtlConfig): string[] {
+  if (!description) return [];
+
+  // 1. Extract feature IDs from known patterns (fields, URLs, etc.)
+  const featureIds = new Set(extractFeatureIds(description));
+
+  // 2. Scan the description for any known feature IDs (keyword match) as a fallback
+  const candidates = Array.from(
+    new Set([
+      ...Object.keys(atlConfig.web_features),
+      ...Object.keys(featureGroups)
+    ])
+  ).sort((a, b) => b.length - a.length);
+
+  if (candidates.length > 0) {
+    const escapedCandidates = candidates.map(fid => fid.replace(new RegExp('[-/\\\\^$*+?.()|[\\]{}]', 'g'), '\\$&'));
+    const regex = new RegExp(`(?<![a-zA-Z0-9_-])(${escapedCandidates.join('|')})(?![a-zA-Z0-9_-])`, 'g');
+
+    let match;
+    while ((match = regex.exec(description)) !== null) {
+      featureIds.add(match[1]);
+    }
+  }
+
+  if (featureIds.size === 0) return [];
+
+  if (featureIds.size > 0) {
+    console.log(`Matched/extracted feature IDs in description: ${Array.from(featureIds).join(', ')}`);
+  }
+
+  const resolvedAtls = new Set<string>();
+  for (const fid of featureIds) {
+    // 1. Direct match
+    if (atlConfig.web_features[fid]) {
+      const val = atlConfig.web_features[fid];
+      if (Array.isArray(val)) {
+        val.forEach(a => resolvedAtls.add(a));
+      } else {
+        resolvedAtls.add(val);
+      }
+    }
+    // 2. Group match
+    const groups = featureGroups[fid] || [];
+    for (const group of groups) {
+      if (atlConfig.web_features_groups[group]) {
+        const val = atlConfig.web_features_groups[group];
+        if (Array.isArray(val)) {
+          val.forEach(a => resolvedAtls.add(a));
+        } else {
+          resolvedAtls.add(val);
+        }
+      }
+    }
+  }
+
+  return Array.from(resolvedAtls);
+}
+
+export function handleIssue(issueNumber: number, labels: string[], issueDescription: string, atlConfig: AtlConfig) {
   console.log(`Triaging issue #${issueNumber} with labels: ${labels.join(', ')}`);
   
   const assignedAtls = new Set<string>();
+  
+  // 1. Check labels
   for (const label of labels) {
     const normalized = normalizeLabel(label);
     
@@ -142,15 +203,22 @@ export function handleIssue(issueNumber: number, labels: string[], atlConfig: At
     }
   }
 
+  // 2. Check issue description for web-feature IDs
+  const descriptionAtls = getAtlsFromDescription(issueDescription, atlConfig);
+  if (descriptionAtls.length > 0) {
+    console.log(`Found ATLs from description: ${descriptionAtls.join(', ')}`);
+    descriptionAtls.forEach(a => assignedAtls.add(a));
+  }
+
   if (assignedAtls.size === 0) {
-    console.log('No matching ATL labels found for this issue.');
+    console.log('No matching ATL signals found for this issue.');
     return [];
   }
 
   const assignees = Array.from(assignedAtls).join(',');
   console.log(`Assigning issue #${issueNumber} to: ${assignees}`);
   try {
-    execSync(`gh issue edit ${issueNumber} --add-assignee "${assignees}"`, { stdio: 'inherit' });
+    child_process.execSync(`gh issue edit ${issueNumber} --add-assignee "${assignees}"`, { stdio: 'inherit' });
     console.log('Successfully assigned issue.');
   } catch (err) {
     console.error(`Failed to assign issue #${issueNumber}:`, err);
@@ -166,7 +234,7 @@ export function handlePR(prNumber: number, prAuthor: string, atlConfig: AtlConfi
     files = mockFiles;
   } else {
     try {
-      const output = execSync(`gh pr view ${prNumber} --json files --jq ".files[].path"`, { encoding: 'utf8' });
+      const output = child_process.execSync(`gh pr view ${prNumber} --json files --jq ".files[].path"`, { encoding: 'utf8' });
       files = output.trim().split('\n').map(f => f.trim()).filter(Boolean);
     } catch (err) {
       console.error(`Failed to fetch files for PR #${prNumber}:`, err);
@@ -211,7 +279,7 @@ export function handlePR(prNumber: number, prAuthor: string, atlConfig: AtlConfi
 
   if (!mockFiles) {
     try {
-      const output = execSync(`gh pr view ${prNumber} --json reviews,reviewRequests`, { encoding: 'utf8' });
+      const output = child_process.execSync(`gh pr view ${prNumber} --json reviews,reviewRequests`, { encoding: 'utf8' });
       const prData = JSON.parse(output);
       
       const existingRequested = (prData.reviewRequests || []).map((r: any) => r.login).filter(Boolean);
@@ -241,7 +309,7 @@ export function handlePR(prNumber: number, prAuthor: string, atlConfig: AtlConfi
   console.log(`Requesting review on PR #${prNumber} from: ${reviewers}`);
   if (!mockFiles) {
     try {
-      execSync(`gh pr edit ${prNumber} --add-reviewer "${reviewers}"`, { stdio: 'inherit' });
+      child_process.execSync(`gh pr edit ${prNumber} --add-reviewer "${reviewers}"`, { stdio: 'inherit' });
       console.log('Successfully requested reviews.');
     } catch (err) {
       console.error(`Failed to request reviews for PR #${prNumber}:`, err);
@@ -262,7 +330,8 @@ export function main() {
     if (event.issue) {
       const issueNumber = event.issue.number;
       const labels = (event.issue.labels || []).map((l: any) => l.name);
-      handleIssue(issueNumber, labels, atlConfig);
+      const issueDescription = event.issue.body || '';
+      handleIssue(issueNumber, labels, issueDescription, atlConfig);
     } 
     // Check if it's a pull request event
     else if (event.pull_request) {
@@ -293,7 +362,13 @@ export function main() {
 
     if (type === 'issue') {
       const labels = args.slice(2);
-      handleIssue(number, labels, atlConfig);
+      let issueDescription = '';
+      try {
+        issueDescription = child_process.execSync(`gh issue view ${number} --json body --jq ".body"`, { encoding: 'utf8' }).trim();
+      } catch (err) {
+        console.warn(`Failed to fetch issue body for issue #${number}:`, err);
+      }
+      handleIssue(number, labels, issueDescription, atlConfig);
     } else if (type === 'pr') {
       const author = args[2] || '';
       handlePR(number, author, atlConfig);
