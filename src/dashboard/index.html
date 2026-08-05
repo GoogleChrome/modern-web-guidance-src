@@ -60,6 +60,10 @@
             <input type="checkbox" id="insights-show-all-check" style="cursor: pointer;">
             <span>Show all</span>
           </label>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="insights-run-filter-input" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Filter run name:</label>
+            <input type="text" id="insights-run-filter-input" value="nightly" placeholder="e.g. nightly" style="width: 120px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; outline: none;">
+          </div>
         </div>
         <div id="insights-container" class="insights-grid">
           <!-- Populated by JS -->
