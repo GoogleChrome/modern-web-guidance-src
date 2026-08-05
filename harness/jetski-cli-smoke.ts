@@ -41,21 +41,34 @@ export async function runJetskiCliSmokeTest() {
       process.exit(1);
     }
 
-    // Verify the output
+    // Verify the output file
     const filePath = path.join(tempProjectDir, 'hello-cli.txt');
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf8').trim();
-      if (content === 'hello jetski cli') {
-        console.log('✅ Success: hello-cli.txt was created with correct content.');
-        process.exit(0);
-      } else {
-        console.error(`❌ Failure: hello-cli.txt had incorrect content: "${content}"`);
-        process.exit(1);
-      }
-    } else {
+    if (!fs.existsSync(filePath)) {
       console.error('❌ Failure: hello-cli.txt was not created.');
       process.exit(1);
     }
+    const content = fs.readFileSync(filePath, 'utf8').trim();
+    if (content !== 'hello jetski cli') {
+      console.error(`❌ Failure: hello-cli.txt had incorrect content: "${content}"`);
+      process.exit(1);
+    }
+    console.log('✅ Success: hello-cli.txt was created with correct content.');
+
+    // Verify trajectory parsing and metric extraction
+    const { parseJetskiCliSession } = await import('./agents/jetski-cli-agent.ts');
+    const summary = parseJetskiCliSession(tempProjectDir);
+    console.log('📊 Trajectory summary from smoke test:', summary);
+
+    if (!summary.model || summary.model === 'unknown' || !/^gemini/i.test(summary.model)) {
+      console.error(`❌ Failure: Model name was not properly extracted (got "${summary.model}").`);
+      process.exit(1);
+    }
+    if (!summary.tokenUsage || summary.tokenUsage.total <= 0) {
+      console.error('❌ Failure: Token usage was not extracted from trajectory.');
+      process.exit(1);
+    }
+    console.log('✅ Success: Trajectory model and token usage extracted accurately.');
+    process.exit(0);
   } catch (err) {
     console.error('❌ An error occurred during the smoke test:', err);
     process.exit(1);

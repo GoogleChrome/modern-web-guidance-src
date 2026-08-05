@@ -1,0 +1,1 @@
+- Refactor the existing article card components so that their layout and styling adapt dynamically based on their own width rather than the width of the viewport.

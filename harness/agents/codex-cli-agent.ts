@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
@@ -142,8 +142,9 @@ async function run() {
   }
 }
 
-export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
-  const guidesFromSkills: string[] = [];
+export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<GuideUsage> {
+  const retrievedGuides: string[] = [];
+  const fileReadGuides: string[] = [];
 
   for (const file of getSessionFiles(dirPath)) {
     const items = parseJsonlFile(path.join(dirPath, file));
@@ -157,12 +158,12 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
           if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
             const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
             if (match) {
-              guidesFromSkills.push(...match[1].split(',').map((s: string) => s.trim()));
+              retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
             }
           } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
             const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
             if (match) {
-              guidesFromSkills.push(match[1]);
+              retrievedGuides.push(match[1]);
             }
           }
         } catch {
@@ -171,7 +172,10 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
       }
     }
   }
-  return [...new Set(guidesFromSkills)];
+  return {
+    retrievedGuides: [...new Set(retrievedGuides)],
+    fileReadGuides: [...new Set(fileReadGuides)]
+  };
 }
 
 export function extractCodexCliModel(resultsDir: string): string {
