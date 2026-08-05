@@ -23,14 +23,12 @@ To use Trusted Types, follow four main steps:
 A policy is a set of rules for sanitizing content. You create it using `trustedTypes.createPolicy()`.
 
 ```javascript
-const myPolicy = trustedTypes.createPolicy('my-escape-policy', {
-  createHTML: (toEscape) => {
-    // A simple escaping rule.
+const myPolicy = trustedTypes.createPolicy('my-no-pretzel-policy', {
+  createHTML: (input) => {
+    // A simple replacement rule.
     // In a real app, you might use the Sanitizer API, or a library like DOMPurify.
-    return toEscape
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    return input
+      .replace(/pretzel/g, "popcorn");
   }
 });
 ```
@@ -40,13 +38,14 @@ const myPolicy = trustedTypes.createPolicy('my-escape-policy', {
 Instead of passing a string directly to a sink, you call the policy's creation method.
 
 ```javascript
-const untrustedInput = '<img src=x onerror=alert(1)>';
+const untrustedInput = 'I love eating a soft pretzel.';
 
 // In an enforced environment, this would throw a TypeError:
 // element.innerHTML = untrustedInput;
 
 // This returns a TrustedHTML object:
 const cleanHTML = myPolicy.createHTML(untrustedInput);
+// Result: "I love eating a soft popcorn."
 ```
 
 ### 3. Transitioning sinks to use Trusted Types
@@ -85,10 +84,10 @@ Content-Security-Policy: require-trusted-types-for 'script';
 You can also restrict which policies are allowed to be created:
 
 ```http
-Content-Security-Policy: trusted-types my-escape-policy;
+Content-Security-Policy: trusted-types my-no-pretzel-policy;
 ```
 
-With this CSP in place, any writes to a sink that don't use Trusted Types will throw an error. In addition, attempting to create a Trusted Type with a name that isn't `my-escape-policy` will throw an error.
+With this CSP in place, any writes to a sink that don't use Trusted Types will throw an error. In addition, attempting to create a Trusted Type with a name that isn't `my-no-pretzel-policy` will throw an error.
 
 You can also set this CSP as a `<meta>` tag in your document's `<head>`, although this is potentially less secure.
 
@@ -96,7 +95,7 @@ You can also set this CSP as a `<meta>` tag in your document's `<head>`, althoug
 <!-- First child of `<head>`, as earlier tags will not enforce this CSP. -->
 <meta
   http-equiv="Content-Security-Policy"
-  content="require-trusted-types-for 'script'; trusted-types my-escape-policy;"
+  content="require-trusted-types-for 'script'; trusted-types my-no-pretzel-policy;"
 />
 ```
 
@@ -107,8 +106,7 @@ You can also set this CSP as a `<meta>` tag in your document's `<head>`, althoug
 For browsers that do not yet support Trusted Types, you can use a minimal "tinyfill" to ensure your code doesn't break while still providing sanitization.
 
 ```javascript
-if (!window.trustedTypes || !window.trustedTypes.createPolicy) {
-  // Tinyfill: Pass through the rules as a mock policy
+if (!window.trustedTypes) {
   window.trustedTypes = {
     createPolicy: (name, rules) => rules,
   };

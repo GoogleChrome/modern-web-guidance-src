@@ -3,7 +3,7 @@
   <head>
     <meta
       http-equiv="Content-Security-Policy"
-      content="require-trusted-types-for 'script'; trusted-types my-escape-policy;"
+      content="require-trusted-types-for 'script'; trusted-types my-no-pretzel-policy;"
     />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -125,18 +125,17 @@
 
     <div class="card">
       <p>
-        This demo uses the <strong>Trusted Types API</strong> to prevent
-        DOM-based XSS. We use a "tinyfill" for backwards compatibility.
+        This demo uses the <strong>Trusted Types API</strong> to ensure the word "pretzel" is not included in output.
+        It intentionally does not show sanitization or escaping, to avoid a policy that is not secure enough for a specific use case.
+        It uses a "tinyfill" for backwards compatibility.
       </p>
 
       <h2>1. Input Content</h2>
       <p>
-        Enter some potentially dangerous HTML (e.g.,
-        <code>&lt;img src=x onerror="alert('XSS!')"&gt;</code>):
+        Enter some text with the word "pretzel"
       </p>
-      <textarea id="input-field" placeholder="Enter HTML here...">
-&lt;img src=x onerror="alert('XSS!')"&gt;</textarea
-      >
+      <textarea id="input-field" placeholder="Enter HTML here...">A pretzel is a deicious snack. The best soft pretzel was baked in a coal-fired brick oven, but alas, that pretzel shop has closed.
+      </textarea>
 
       <div class="controls">
         <button id="btn-unsafe">Update Unsafely (Raw String)</button>
@@ -159,15 +158,13 @@
       }
 
       // 2. Create a Trusted Types policy
-      // This policy defines how to safely transform a string into TrustedHTML.
-      const myPolicy = trustedTypes.createPolicy("my-escape-policy", {
+      // This policy defines how to transform a string into a TrustedHTML form that you define.
+      const myPolicy = trustedTypes.createPolicy("my-no-pretzel-policy", {
         createHTML: (input) => {
-          // A simple escaping rule for this demo.
+          // A simple replacement rule for this demo.
           // In a real app, you might use the Sanitizer API, or a library like DOMPurify.
           return input
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
+            .replace(/pretzel/g, "popcorn");
         },
       });
 
