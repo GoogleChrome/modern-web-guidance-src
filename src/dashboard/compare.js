@@ -1,4 +1,4 @@
-import { getAccessToken, capitalize, normalizeTrajectoryClient } from './utils.js';
+import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey } from './utils.js';
 
 // Cross-Run Performance Variance Diagnosis Dashboard JavaScript
 
@@ -44,7 +44,8 @@ function renderMarkdown(md) {
   if (!md) return '';
   
   // Strip ANSI escape sequences (e.g. \x1b[36m)
-  let cleanMd = md.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '').trim();
+  const ansiRegex = new RegExp('[' + String.fromCharCode(27) + String.fromCharCode(155) + '][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]', 'g');
+  let cleanMd = md.replace(ansiRegex, '').trim();
   
   const lines = cleanMd.split('\n');
   let html = '';
@@ -301,6 +302,7 @@ function initParams() {
  * Handles reloading of workspace files and running diagnosis when run type is toggled.
  */
 async function handleRunTypeChange() {
+  updateExecutiveSummary();
   await loadActiveTaskDetails();
   await runDiagnosticAgent();
 }
@@ -412,24 +414,38 @@ async function loadTrialMetadata() {
     console.error('Failed to load Trial B suite data:', e);
   }
 
-  // Determine tasks belonging to this guide
-  // Filter the evaluations to find tasks matching this guide
-  const tasksSet = new Set();
-  const allEvals = [...(suiteDataA?.evaluations || []), ...(suiteDataB?.evaluations || [])];
-  allEvals.forEach(ev => {
-    // ev.task is usually "guideName/taskName"
-    if (ev.task && ev.task.startsWith(`${guideName}/`)) {
-      tasksSet.add(ev.task.split('/')[1]);
-    }
-  });
+  // Determine tasks belonging to this guide in Trial A and Trial B
+  const tasksA = new Set();
+  const tasksB = new Set();
 
-  availableTasks = Array.from(tasksSet);
+  if (suiteDataA?.results) {
+    Object.keys(suiteDataA.results).forEach(key => {
+      const parsedKey = parseResultKey(key);
+      if (parsedKey && parsedKey.guide === guideName) {
+        tasksA.add(parsedKey.task);
+      }
+    });
+  }
+
+  if (suiteDataB?.results) {
+    Object.keys(suiteDataB.results).forEach(key => {
+      const parsedKey = parseResultKey(key);
+      if (parsedKey && parsedKey.guide === guideName) {
+        tasksB.add(parsedKey.task);
+      }
+    });
+  }
+
+  const allTasksSet = new Set([...tasksA, ...tasksB]);
+  const commonTasks = Array.from(tasksA).filter(t => tasksB.has(t)).sort();
+
+  availableTasks = Array.from(allTasksSet).sort();
   if (availableTasks.length === 0) {
-    // Fallback: search the directories or use guideName/task
     availableTasks = ['task'];
   }
 
-  activeTask = availableTasks[0];
+  // Prefer a common task that exists in both trials as the default active task
+  activeTask = commonTasks.length > 0 ? commonTasks[0] : availableTasks[0];
   
   // Populate sidebar
   populateSidebar();
@@ -444,21 +460,38 @@ async function loadTrialMetadata() {
   await runDiagnosticAgent();
 }
 
+function checkTaskInSuite(suiteData, task) {
+  if (!suiteData || !suiteData.results) return false;
+  return Object.keys(suiteData.results).some(key => {
+    const parsedKey = parseResultKey(key);
+    return parsedKey && parsedKey.guide === guideName && parsedKey.task === task;
+  });
+}
+
 function populateSidebar() {
   const sidebarList = document.getElementById('task-sidebar-list');
   sidebarList.innerHTML = '';
   availableTasks.forEach(task => {
     const btn = document.createElement('button');
     btn.className = `task-btn ${task === activeTask ? 'active' : ''}`;
-    btn.innerText = task;
+    
+    const inA = suiteDataA ? checkTaskInSuite(suiteDataA, task) : true;
+    const inB = suiteDataB ? checkTaskInSuite(suiteDataB, task) : true;
+    
+    let taskLabel = task;
+    if (!inA && inB) {
+      taskLabel = `${task} (Trial B only)`;
+    } else if (inA && !inB) {
+      taskLabel = `${task} (Trial A only)`;
+    }
+
+    btn.innerText = taskLabel;
     btn.onclick = () => switchTask(task);
     sidebarList.appendChild(btn);
   });
 }
 
 function updateExecutiveSummary() {
-  const _resultsBase = isStatic ? 'results' : '';
-  
   const displayRunA = runIndexA ? runIndexA : runNumA;
   const displayRunB = runIndexB ? runIndexB : runNumB;
 
@@ -466,8 +499,8 @@ function updateExecutiveSummary() {
   document.getElementById('title-a').innerText = `${trialA.slice(0, 18)} (Run ${displayRunA})`;
   document.getElementById('meta-a').innerText = trialA.includes('test-') ? `Date: ${trialA.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   
-  const displayAgentA = agentA || 'Unknown';
-  const displayModelA = modelA || 'Unknown';
+  const displayAgentA = agentA || suiteDataA?.agent || 'Unknown';
+  const displayModelA = modelA || suiteDataA?.model || 'Unknown';
   document.getElementById('agent-model-a').innerText = `Agent: ${displayAgentA} | Model: ${displayModelA}`;
 
   // Trial B
@@ -479,24 +512,23 @@ function updateExecutiveSummary() {
     document.getElementById('meta-b').innerText = trialB.includes('test-') ? `Date: ${trialB.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   }
   
-  const displayAgentB = agentB || 'Unknown';
-  const displayModelB = modelB || 'Unknown';
+  const displayAgentB = agentB || suiteDataB?.agent || 'Unknown';
+  const displayModelB = modelB || suiteDataB?.model || 'Unknown';
   document.getElementById('agent-model-b').innerText = `Agent: ${displayAgentB} | Model: ${displayModelB}`;
 
-  // Calculate Scores for the specific guide
-  // Fall back to forwarded score parameters if evals.json is missing
-  const scoreA = suiteDataA ? calculateGuideScore(suiteDataA, runNumA) : (scoreAParam !== null ? parseInt(scoreAParam) : 0);
-  const scoreB = suiteDataB ? calculateGuideScore(suiteDataB, runNumB) : (scoreBParam !== null ? parseInt(scoreBParam) : 0);
+  // Calculate Scores for the specific guide across active run types and runs
+  currentScoreA = suiteDataA ? calculateGuideScore(suiteDataA, runNumA, runTypeA) : (scoreAParam !== null ? parseInt(scoreAParam) : 0);
+  currentScoreB = suiteDataB ? calculateGuideScore(suiteDataB, runNumB, runTypeB) : (scoreBParam !== null ? parseInt(scoreBParam) : 0);
 
   const badgeA = document.getElementById('score-badge-a');
-  badgeA.innerText = `${scoreA}%`;
-  badgeA.className = `score-badge ${scoreA >= 70 ? 'score-high' : 'score-low'}`;
+  badgeA.innerText = `${currentScoreA}%`;
+  badgeA.className = `score-badge ${currentScoreA >= 70 ? 'score-high' : 'score-low'}`;
 
   const badgeB = document.getElementById('score-badge-b');
-  badgeB.innerText = `${scoreB}%`;
-  badgeB.className = `score-badge ${scoreB >= 70 ? 'score-high' : 'score-low'}`;
+  badgeB.innerText = `${currentScoreB}%`;
+  badgeB.className = `score-badge ${currentScoreB >= 70 ? 'score-high' : 'score-low'}`;
 
-  const delta = scoreB - scoreA;
+  const delta = currentScoreB - currentScoreA;
   const deltaText = delta === 0 ? 'No change (0%)' : delta > 0 ? `+${delta}% Improvement` : `${delta}% Regression`;
   const deltaSpan = document.getElementById('summary-delta');
   deltaSpan.innerText = deltaText;
@@ -509,24 +541,38 @@ function updateExecutiveSummary() {
   }
 }
 
-function calculateGuideScore(suiteData, runNum) {
-  if (!suiteData || !suiteData.evaluations) return 0;
-  const guideEvals = suiteData.evaluations.filter(ev => ev.task.startsWith(`${guideName}/`) && String(ev.run) === String(runNum));
-  if (guideEvals.length === 0) return 0;
+function calculateGuideScore(suiteData, runNum, runType) {
+  if (!suiteData || !suiteData.results) return 0;
   
   let totalAsserts = 0;
   let passedAsserts = 0;
   
-  guideEvals.forEach(ev => {
-    if (ev.results && Array.isArray(ev.results)) {
-      totalAsserts += ev.results.length;
-      passedAsserts += ev.results.filter(r => r.passed).length;
+  const targetRunType = runType || 'guided';
+  const targetRunNum = parseInt(runNum, 10);
+
+  Object.keys(suiteData.results).forEach(key => {
+    const parsedKey = parseResultKey(key);
+    if (!parsedKey) return;
+    if (parsedKey.guide === guideName && parsedKey.runType === targetRunType) {
+      const runs = suiteData.results[key] || [];
+      const matchingRuns = (!isNaN(targetRunNum) && runs.some(r => r.runNumber === targetRunNum))
+        ? runs.filter(r => r.runNumber === targetRunNum)
+        : runs;
+
+      matchingRuns.forEach(r => {
+        if (r.results && Array.isArray(r.results)) {
+          totalAsserts += r.results.length;
+          passedAsserts += r.results.filter(check => check.passed).length;
+        }
+      });
     }
   });
 
   return totalAsserts > 0 ? Math.round((passedAsserts / totalAsserts) * 100) : 0;
 }
+
 async function switchTask(task) {
+  if (activeTask === task) return;
   activeTask = task;
   
   // Update sidebar active state
@@ -534,6 +580,8 @@ async function switchTask(task) {
     btn.classList.toggle('active', btn.textContent.trim() === activeTask);
   });
 
+  await loadActiveTaskDetails();
+  await runDiagnosticAgent();
 }
 
 function getRunDateString(trialId) {
@@ -664,39 +712,21 @@ async function loadAssertions(pathA, pathB) {
     }
   } catch (e) {}
 
-  // Calculate live scores from parsed assertions and update badges dynamically
+  // Update Assertion table column headers with task-specific pass rate
+  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, null, suiteDataA, runIndexA);
+  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, null, suiteDataB, runIndexB);
   if (resultsA.length > 0) {
     const passedA = resultsA.filter(r => r.passed).length;
-    currentScoreA = Math.round((passedA / resultsA.length) * 100);
-    const badgeA = document.getElementById('score-badge-a');
-    badgeA.innerText = `${currentScoreA}%`;
-    badgeA.className = `score-badge ${currentScoreA >= 70 ? 'score-high' : 'score-low'}`;
-  } else {
-    currentScoreA = scoreAParam !== null ? parseInt(scoreAParam) : 0;
-    const badgeA = document.getElementById('score-badge-a');
-    badgeA.innerText = `${currentScoreA}%`;
-    badgeA.className = `score-badge ${currentScoreA >= 70 ? 'score-high' : 'score-low'}`;
+    const taskScoreA = Math.round((passedA / resultsA.length) * 100);
+    const headerA = document.getElementById('header-assert-a');
+    if (headerA) headerA.innerText = `${titleAStr} [Task: ${taskScoreA}%]`;
   }
-
   if (resultsB.length > 0) {
     const passedB = resultsB.filter(r => r.passed).length;
-    currentScoreB = Math.round((passedB / resultsB.length) * 100);
-    const badgeB = document.getElementById('score-badge-b');
-    badgeB.innerText = `${currentScoreB}%`;
-    badgeB.className = `score-badge ${currentScoreB >= 70 ? 'score-high' : 'score-low'}`;
-  } else {
-    currentScoreB = scoreBParam !== null ? parseInt(scoreBParam) : 0;
-    const badgeB = document.getElementById('score-badge-b');
-    badgeB.innerText = `${currentScoreB}%`;
-    badgeB.className = `score-badge ${currentScoreB >= 70 ? 'score-high' : 'score-low'}`;
+    const taskScoreB = Math.round((passedB / resultsB.length) * 100);
+    const headerB = document.getElementById('header-assert-b');
+    if (headerB) headerB.innerText = `${titleBStr} [Task: ${taskScoreB}%]`;
   }
-
-  // Update Score Delta dynamically
-  const delta = currentScoreB - currentScoreA;
-  const deltaText = delta === 0 ? 'No change (0%)' : delta > 0 ? `+${delta}% Improvement` : `${delta}% Regression`;
-  const deltaSpan = document.getElementById('summary-delta');
-  deltaSpan.innerText = deltaText;
-  deltaSpan.style.color = delta === 0 ? '#475569' : delta > 0 ? '#166534' : '#991b1b';
 
   // Merge assertions list to compare side-by-side
   const allAssertionMessages = Array.from(new Set([
@@ -1345,6 +1375,24 @@ async function runDiagnosticAgent() {
   }
 
   // Local Mode: Call Node dev server API to run comparison on the fly!
+  const hasTaskA = suiteDataA ? checkTaskInSuite(suiteDataA, activeTask) : true;
+  const hasTaskB = suiteDataB ? checkTaskInSuite(suiteDataB, activeTask) : true;
+
+  if (suiteDataA && suiteDataB && (!hasTaskA || !hasTaskB)) {
+    const missingIn = !hasTaskA && !hasTaskB ? 'both trials' : !hasTaskA ? 'Trial A' : 'Trial B';
+    const presentIn = !hasTaskA ? 'Trial B' : 'Trial A';
+    diagnosisText.innerHTML = `
+      <div style="color:#92400e; font-weight:600;">Cross-trial comparison unavailable for this task.</div>
+      <div style="font-size:0.9em; margin-top:5px; color:#78350f;">
+        Task <code>${escapeHtml(activeTask)}</code> was only executed in ${presentIn} and is not present in ${missingIn}.
+        To run an AI variance diagnosis, select a task that was executed in both trials.
+      </div>
+    `;
+    statusSpan.innerText = 'Single Trial Only';
+    statusSpan.style.color = '#64748b';
+    return;
+  }
+
   // Use dynamic runTypeA and runTypeB values
   const relativeA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
   const relativeB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
