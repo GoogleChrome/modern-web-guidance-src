@@ -3,6 +3,7 @@ import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escape
 let allTestData = {}; // Cache all test data by testId
 let isCompareMode = false;
 let selectedPoints = []; // array of { testId, source, combKey }
+let currentRunFilter = 'nightly';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
@@ -10,6 +11,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!guideName) {
         window.location.href = './';
         return;
+    }
+
+    const runFilterParam = params.get('runFilter') ?? params.get('runName');
+    if (runFilterParam !== null) {
+        currentRunFilter = runFilterParam;
     }
 
     $('#guide-name-header').textContent = guideName;
@@ -184,24 +190,50 @@ async function loadRemoteTests() {
     }
 }
 
+function updateUrlParams(guideName) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('guide', guideName);
+    if (currentRunFilter === 'nightly') {
+        url.searchParams.delete('runFilter');
+    } else {
+        url.searchParams.set('runFilter', currentRunFilter);
+    }
+    window.history.replaceState({}, '', url);
+}
+
 function setupTimelineFilterControls(guideName) {
-    const limitInput = /** @type {HTMLInputElement} */ ($('#timeline-limit-input'));
-    const showAllCheck = /** @type {HTMLInputElement} */ ($('#timeline-show-all-check'));
+    const limitInput = /** @type {HTMLInputElement | null} */ ($('#timeline-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement | null} */ ($('#timeline-show-all-check'));
+    const runFilterInput = /** @type {HTMLInputElement | null} */ ($('#guide-run-filter-input'));
 
-    if (!limitInput || !showAllCheck) return;
+    if (runFilterInput) {
+        runFilterInput.value = currentRunFilter;
+        runFilterInput.addEventListener('input', () => {
+            currentRunFilter = runFilterInput.value;
+            updateUrlParams(guideName);
+            setupNavigationControls(guideName);
+            renderGraphs(guideName);
+        });
+    }
 
-    limitInput.addEventListener('change', () => {
-        let val = parseInt(limitInput.value);
-        if (isNaN(val) || val < 1) {
-            limitInput.value = '30';
-        }
-        renderGraphs(guideName);
-    });
+    if (limitInput) {
+        limitInput.addEventListener('change', () => {
+            let val = parseInt(limitInput.value);
+            if (isNaN(val) || val < 1) {
+                limitInput.value = '30';
+            }
+            renderGraphs(guideName);
+        });
+    }
 
-    showAllCheck.addEventListener('change', () => {
-        limitInput.disabled = showAllCheck.checked;
-        renderGraphs(guideName);
-    });
+    if (showAllCheck) {
+        showAllCheck.addEventListener('change', () => {
+            if (limitInput) {
+                limitInput.disabled = showAllCheck.checked;
+            }
+            renderGraphs(guideName);
+        });
+    }
 }
 
 function setupNavigationControls(currentGuide) {
@@ -219,6 +251,11 @@ function setupNavigationControls(currentGuide) {
     const list = $('#autocomplete-list');
     const goBtn = /** @type {HTMLButtonElement} */ ($('#go-guide-btn'));
 
+    const backLink = document.querySelector('a[href^="./"]');
+    if (backLink) {
+        backLink.setAttribute('href', `./${currentRunFilter ? `?runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`);
+    }
+
     if (allGuides.length <= 1) {
         prevBtn.disabled = true;
         nextBtn.disabled = true;
@@ -228,20 +265,20 @@ function setupNavigationControls(currentGuide) {
         prevBtn.disabled = false;
         prevBtn.onclick = () => {
             const prevIndex = (currentIndex - 1 + allGuides.length) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
         };
 
         nextBtn.disabled = false;
         nextBtn.onclick = () => {
             const nextIndex = (currentIndex + 1) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
         };
     }
 
     goBtn.onclick = () => {
         const val = searchInput.value.trim();
         if (val) {
-            window.location.href = `guide.html?guide=${encodeURIComponent(val)}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
         }
     };
 
@@ -271,7 +308,7 @@ function setupNavigationControls(currentGuide) {
             div.onclick = () => {
                 searchInput.value = match;
                 list.classList.add('hidden');
-                goBtn.click();
+                window.location.href = `guide.html?guide=${encodeURIComponent(match)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
             };
             list.appendChild(div);
         });
@@ -329,12 +366,19 @@ function renderGraphs(guideName) {
 
     const testKeys = Object.keys(allTestData);
     
-    // Filter out suites that don't have this guide, or have 0 trials for it
+    // Filter out suites that don't have this guide, or have 0 trials for it, or don't match run filter
     const filteredKeys = testKeys.filter(key => {
         const run = allTestData[key];
         if (!run.guides || !run.guides[guideName]) return false;
         const g = run.guides[guideName];
-        return g.guidedTotal > 0 || g.unguidedTotal > 0;
+        if (g.guidedTotal === 0 && g.unguidedTotal === 0) return false;
+
+        if (currentRunFilter && currentRunFilter.trim()) {
+            const query = currentRunFilter.trim().toLowerCase();
+            const testId = (run.testId || '').toLowerCase();
+            if (!testId.includes(query)) return false;
+        }
+        return true;
     });
 
     if (filteredKeys.length === 0) {
