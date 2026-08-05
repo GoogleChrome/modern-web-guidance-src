@@ -4,22 +4,17 @@ import { fileURLToPath } from 'url';
 import { rootDir, baseAppsDir } from '../lib/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import { generateTargetGrader } from './grader-gen.ts';
-import {
-  createIsolatedHome,
-  cleanupIsolatedHome,
-  spawnAsync
-} from '../harness/lib/agent-shared.ts';
+import { spawnAsync } from '../harness/lib/agent-shared.ts';
 import { defaultSuiteConfig, Serving, Agents, type SuiteConfig } from '../harness/config.ts';
 import { collectGuidesUsed } from '../harness/lib/guidance_validation.ts';
-import { setupIsolatedWorkDir, runAgent } from './lib/utils.ts';
+import { setupIsolatedWorkDir, runAgent, stageBaseAppWorkspace } from './lib/utils.ts';
 import {
   buildSolutionPrompt,
   buildZeroPassratePrompt,
   buildTargetTaskPrompt,
 } from './gd-dev-prompts.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { execSync } from 'node:child_process';
-import { capturePatchFromGit, applyPatchSync } from '../lib/patch-utils.ts';
+import { capturePatchFromGit, initGitRepo } from '../lib/patch-utils.ts';
 import {
   type GuideInventory,
   type GuideStatus,
@@ -145,14 +140,14 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
     let success = false;
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      const res = await testGrader(targetDirRaw, baseApp);
+      const res = await testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp));
       if (res.success) {
         console.log(cGreen(`✅ ${baseApp} calibrated successfully on attempt ${attempt}!`));
         success = true;
         break;
       }
 
-      if (res.stage === 'calibration' && attempt <= maxRetries) {
+      if (attempt <= maxRetries) {
         console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
         await generateTargetGrader(targetDir, baseApp, res.errorDetails);
       } else {
@@ -169,7 +164,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Summary
-  printSummary(targetDir, currentInv, { success: overallSuccess, demo: { passed: 0, failed: 0, failingTests: [] }, negative: { passed: 0, failed: 0, passingTests: [] } }, 1);
+  printSummary(targetDir, currentInv, { success: overallSuccess, solution: { passed: 0, failed: 0, failingTests: [] }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
 
   return overallSuccess;
 }
@@ -186,7 +181,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
 
     // Git init is required for capturePatchFromGit to extract git diffs
-    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
+    initGitRepo(workDir);
 
     const prompt = patchType === 'solution'
       ? buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
@@ -289,25 +284,15 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
     const results: Record<string, { passed: number; total: number }> = {};
 
     // 1. Grade base app (with zero-passrate baseline applied)
-    const baseAppDir = path.join(baseAppsDir, baseApp);
-    if (fs.existsSync(baseAppDir)) {
-      const tempHome = createIsolatedHome(`gd-pre-grade-${baseApp}`);
-      try {
-        const stagingDir = path.join(tempHome, baseApp);
-        fs.cpSync(baseAppDir, stagingDir, { recursive: true });
-        const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
-        if (fs.existsSync(zeroPassratePatch)) {
-          applyPatchSync(stagingDir, zeroPassratePatch);
-          process.env.PATCH_FILE = zeroPassratePatch;
-        } else {
-          process.env.PATCH_FILE = path.join(targetsDir, baseApp, SOLUTION_PATCH_FILE);
-        }
-        const preResults = await gradeOutput(stagingDir, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
-        delete process.env.PATCH_FILE;
-        if (preResults) results['pre'] = preResults;
-      } finally {
-        cleanupIsolatedHome(tempHome);
-      }
+    const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
+    const patchToApply = fs.existsSync(zeroPassratePatch) ? zeroPassratePatch : undefined;
+
+    const { workDir: stagingDir, cleanup } = stageBaseAppWorkspace(baseApp, patchToApply, `gd-pre-grade-${baseApp}`);
+    try {
+      const preResults = await gradeOutput(stagingDir, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
+      if (preResults) results['pre'] = preResults;
+    } finally {
+      cleanup();
     }
 
     // 2. Run agent suite
@@ -330,13 +315,11 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       const resultDir = path.join(testOutputDir, '1', guideName, baseApp, runType);
       if (!fs.existsSync(resultDir)) continue;
 
-      process.env.PATCH_FILE = path.join(resultDir, 'agent.patch');
       const gradeResults = await gradeOutput(
         resultDir,
         targetGraderPath,
         path.join(resultDir, 'grade-report')
       );
-      delete process.env.PATCH_FILE;
       if (gradeResults) results[runType] = gradeResults;
     }
 

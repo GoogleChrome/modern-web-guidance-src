@@ -1,6 +1,6 @@
 # Releasing Modern Web Guidance Skills
 
-To release updates for our AI skills (Claude Code, Gemini CLI, and VS Code Extensions), we use an automated pipeline that bundles our source files into a lightweight distribution pack (`dist/`) and pushes it to `GoogleChrome/modern-web-guidance`.
+To release updates for our AI skills (Claude Code, Gemini CLI, VS Code, Cursor, GitHub Copilot CLI, and Kimi Code), we use an automated pipeline that bundles our source files into a lightweight distribution pack (`dist/`) and pushes it to `GoogleChrome/modern-web-guidance`.
 
 ## The Publishing Pipeline
 
@@ -11,7 +11,7 @@ pnpm --filter serving run publish-skills
 ```
 
 **What this script does under the hood:**
-1. Increments the patch version (`v0.0.x`) across all extension manifests (Gemini, Claude, and VS Code).
+1. Increments the patch version (`v0.0.x`) across all extension manifests (Gemini, Claude, VS Code, Cursor, Copilot, and Kimi).
 2. Executes the build process to bundle all tools, local databases, and metadata, alongside injecting dynamic markdown into the README.
 3. Runs integration tests to ensure the `dist/` directory was compiled correctly.
 4. Pushes the compiled `dist/` folder to the `main` branch of `git@github.com:GoogleChrome/modern-web-guidance.git`.

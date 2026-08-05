@@ -121,11 +121,13 @@ async function run() {
     console.log(`Starting Claude Code agent in: ${workDir}`);
 
     const command = config.environment.claudeCodeCliBin;
+    const model = process.env.ANTHROPIC_MODEL;
     const commandArgs = [
       '-p', userPrompt,
       '--dangerously-skip-permissions',
       '--verbose',
-      '--output-format', 'stream-json'
+      '--output-format', 'stream-json',
+      ...(model ? ['--model', model] : [])
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);

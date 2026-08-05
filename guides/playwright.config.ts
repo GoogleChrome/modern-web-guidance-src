@@ -39,7 +39,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        channel: 'chrome', // Force usage of system Chrome to avoid EPERM on macOS
+        ...(process.platform === 'darwin' ? { channel: 'chrome' } : {}), // Force usage of system Chrome on macOS to avoid EPERM
       },
     },
   ],

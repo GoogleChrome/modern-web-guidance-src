@@ -90,7 +90,7 @@ completion.on('arg1', ({ before, line, reply }) => {
     const tasks = Array.from(getTaskMap().keys());
     reply(['suite', ...tasks, ...listGuideDirs(), ...flags]);
   } else if (before === 'gen') {
-    reply(['grader', 'negative']);
+    reply(['grader']);
   } else if (before === 'audit') {
     reply(flags);
   } else if (['dev', 'test', 'grade'].includes(before)) {
@@ -110,7 +110,7 @@ completion.on('arg2', ({ before, line, reply }) => {
     if (fs.existsSync(baseAppsDir)) {
       reply(fs.readdirSync(baseAppsDir).filter(d => fs.statSync(path.join(baseAppsDir, d)).isDirectory()));
     }
-  } else if (['grader', 'negative'].includes(before) && line.includes('gen')) {
+  } else if (before === 'grader' && line.includes('gen')) {
     reply(listGuideDirs());
   } else {
     reply(flags);
@@ -233,15 +233,13 @@ async function main() {
 
     case 'dev': {
       const dir = requireArg(positionals[1], 'gd dev <path/to/guide>');
-      if (values.grade) {
-        const { gradeFile } = await import('../guides/run-grader.ts');
-        await gradeFile(path.resolve(process.cwd(), dir));
-        break;
-      }
-      if (values['test-grader']) {
-        const { testGrader } = await import('../guides/test-grader.ts');
-        const result = await testGrader(dir);
-        process.exit(result.success ? 0 : 1);
+      if (values.grade || values['test-grader']) {
+        const { testGrader } = await import('../guides/run-grader.ts');
+        const res = await testGrader(dir);
+        if (!res.success && res.errorDetails) {
+          console.error(cRed(`\nCalibration Error:\n${res.errorDetails}`));
+        }
+        process.exit(res.success ? 0 : 1);
       }
       if (values['gen-grader']) {
         const { generateGrader } = await import('../guides/grader-gen.ts');
@@ -366,8 +364,8 @@ async function main() {
         console.error(cRed("'gd grade' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --grade") + "\n");
       } else if (['test', 'test-grader'].includes(command)) {
         console.error(cRed("'gd test' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --test-grader") + "\n");
-      } else if (['gen', 'gen-grader', 'gen-negative', 'gen:grader', 'gen:negative'].includes(command)) {
-        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --gen-grader") + " or " + cCyan("--gen-negative") + "\n");
+      } else if (['gen', 'gen-grader', 'gen:grader'].includes(command)) {
+        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --gen-grader") + "\n");
       } else {
         console.error(cRed("Unknown command: " + command + ".") + " Run " + cCyan("gd --help") + " for usage.");
       }
