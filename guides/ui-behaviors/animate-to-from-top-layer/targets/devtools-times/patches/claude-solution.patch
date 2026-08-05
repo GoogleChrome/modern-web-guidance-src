@@ -1,0 +1,565 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..97c72b3 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -29,7 +29,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+     return (
+         <div onMouseLeave={handleMouseLeave}>
+             <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++                <nav className="bottom-nav-bar container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+                         return (
+                             <div 
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..8797048 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,17 +1,28 @@
+-import React from 'react';
++import React, { useEffect, useRef } from 'react';
+ 
+ interface FlyoutMenuProps {
+   isOpen: boolean;
+   categories: string[];
+-  articles: any[];
+-  reports: any[];
+-  multimedia: any[];
++  articles?: any[];
++  reports?: any[];
++  multimedia?: any[];
++  onClose?: () => void;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
+-  if (!isOpen) {
+-    return null;
+-  }
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles = [], reports = [], multimedia = [] }) => {
++  const popoverRef = useRef<HTMLDivElement>(null);
++
++  useEffect(() => {
++    const popover = popoverRef.current;
++    if (!popover) return;
++
++    const isShown = popover.matches(':popover-open');
++    if (isOpen && !isShown) {
++      popover.showPopover();
++    } else if (!isOpen && isShown) {
++      popover.hidePopover();
++    }
++  }, [isOpen]);
+ 
+   // Intentionally failing method to demonstrate debugging
+   const calculateTrendingScore = (article: any) => {
+@@ -21,12 +32,15 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+ 
+   const topStories = articles.sort(() => 0.5 - Math.random()).slice(0, 3);
+ 
+-  if (topStories.length > 0) {
+-    setTimeout(() => calculateTrendingScore(topStories[0]), 100);
+-  }
++  useEffect(() => {
++    if (isOpen && topStories.length > 0) {
++      setTimeout(() => calculateTrendingScore(topStories[0]), 100);
++    }
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [isOpen]);
+ 
+   return (
+-    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
++    <div ref={popoverRef} popover="manual" className="mega-menu-popover flyout-menu bg-white border-b border-gray-300 shadow-lg">
+       <div className="container mx-auto px-4 py-6">
+         <div className="grid grid-cols-4 gap-x-8">
+           
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..7e861f5 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -40,7 +40,7 @@ export default function ReadingListButton() {
+           />
+         </svg>
+       </button>
+-      {isOpen && <ReadingListFlyout articles={articles} onClose={() => setIsOpen(false)} />}
++      <ReadingListFlyout articles={articles} isOpen={isOpen} onClose={() => setIsOpen(false)} />
+     </>
+   );
+ }
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..30a1ae4 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState, useEffect, useRef } from 'react';
+ 
+ interface Article {
+   slug: string;
+@@ -10,10 +10,12 @@ interface Article {
+ 
+ interface Props {
+   articles: Article[];
++  isOpen: boolean;
+   onClose: () => void;
+ }
+ 
+-export default function ReadingListFlyout({ articles, onClose }: Props) {
++export default function ReadingListFlyout({ articles, isOpen, onClose }: Props) {
++  const dialogRef = useRef<HTMLDialogElement>(null);
+   const [readingList, setReadingList] = useState<string[]>([]);
+ 
+   const fetchReadingList = async () => {
+@@ -23,20 +25,31 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   };
+ 
+   useEffect(() => {
+-    fetchReadingList();
++    const dialog = dialogRef.current;
++    if (!dialog) return;
++
++    if (isOpen && !dialog.open) {
++      dialog.showModal();
++    } else if (!isOpen && dialog.open) {
++      dialog.close();
++    }
++  }, [isOpen]);
+ 
+-    const handleKeyDown = (event: KeyboardEvent) => {
+-      if (event.key === 'Escape') {
+-        onClose();
+-      }
+-    };
+-    window.addEventListener('keydown', handleKeyDown);
++  useEffect(() => {
++    const dialog = dialogRef.current;
++    if (!dialog) return;
+ 
+-    return () => {
+-      window.removeEventListener('keydown', handleKeyDown);
+-    };
++    const handleClose = () => onClose();
++    dialog.addEventListener('close', handleClose);
++    return () => dialog.removeEventListener('close', handleClose);
+   }, [onClose]);
+ 
++  useEffect(() => {
++    if (isOpen) {
++      fetchReadingList();
++    }
++  }, [isOpen]);
++
+   const handleRemove = async (slug: string) => {
+     await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+       method: 'POST',
+@@ -48,40 +61,56 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     fetchReadingList();
+   };
+ 
++  const handleDialogClick = (event: React.MouseEvent<HTMLDialogElement>) => {
++    const dialog = dialogRef.current;
++    if (!dialog) return;
++    const rect = dialog.getBoundingClientRect();
++    const clickedInsideContent =
++      event.clientX >= rect.left &&
++      event.clientX <= rect.right &&
++      event.clientY >= rect.top &&
++      event.clientY <= rect.bottom;
++    if (!clickedInsideContent) {
++      dialog.close();
++    }
++  };
++
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
+ 
+   return (
+-    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-        <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-          </svg>
+-        </button>
+-        <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
+-        </div>
+-        <div className="p-4 max-h-[60vh] overflow-y-auto">
+-          {readingListArticles.length === 0 && (
+-            <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
+-          )}
+-          <ul className="space-y-2">
+-            {readingListArticles.map(article => (
+-              <li key={article.slug} className="flex items-center">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
+-                  <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                  <p className="text-sm text-gray-600">{article.summary}</p>
+-                </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+-                    </svg>
+-                </button>
+-              </li>
+-            ))}
+-          </ul>
+-        </div>
++    <dialog
++      ref={dialogRef}
++      onClick={handleDialogClick}
++      className="bg-white shadow-xl w-full max-w-2xl rounded-md p-0 border-0"
++    >
++      <button onClick={() => dialogRef.current?.close()} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
++        </svg>
++      </button>
++      <div className="p-4">
++        <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++      </div>
++      <div className="p-4 max-h-[60vh] overflow-y-auto">
++        {readingListArticles.length === 0 && (
++          <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
++        )}
++        <ul className="space-y-2">
++          {readingListArticles.map(article => (
++            <li key={article.slug} className="flex items-center">
++              <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors flex-grow">
++                <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                <p className="text-sm text-gray-600">{article.summary}</p>
++              </a>
++              <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
++                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
++                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
++                  </svg>
++              </button>
++            </li>
++          ))}
++        </ul>
+       </div>
+-    </div>
++    </dialog>
+   );
+ }
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..1c7808c 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -43,7 +43,7 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            <SearchFlyout articles={[]} isOpen={isFlyoutOpen} onClose={closeSearch} />
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..fd617cd 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,5 @@
+ 
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useRef } from 'react';
+ 
+ interface Article {
+     slug: string;
+@@ -10,6 +10,7 @@ interface Article {
+ 
+ interface Props {
+     articles: Article[];
++    isOpen: boolean;
+     onClose: () => void;
+ }
+ 
+@@ -18,18 +19,36 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+     return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+ };
+ 
+-export default function SearchFlyout({ articles, onClose }: Props) {
++export default function SearchFlyout({ articles, isOpen, onClose }: Props) {
++    const dialogRef = useRef<HTMLDialogElement>(null);
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
+ 
+     useEffect(() => {
+-        const handleKeyDown = (event: KeyboardEvent) => {
+-            if (event.key === 'Escape') {
+-                onClose();
+-            }
+-        };
+-        window.addEventListener('keydown', handleKeyDown);
+-        
++        const dialog = dialogRef.current;
++        if (!dialog) return;
++
++        if (isOpen && !dialog.open) {
++            dialog.showModal();
++        } else if (!isOpen && dialog.open) {
++            dialog.close();
++        }
++    }, [isOpen]);
++
++    useEffect(() => {
++        const dialog = dialogRef.current;
++        if (!dialog) return;
++
++        const handleClose = () => onClose();
++        dialog.addEventListener('close', handleClose);
++        return () => dialog.removeEventListener('close', handleClose);
++    }, [onClose]);
++
++    useEffect(() => {
++        if (!isOpen) return;
++
++        setSearchTerm('');
++
+         // Bug: Redundant fetch for suggestions
+         const fetchSuggestions = async () => {
+             try {
+@@ -42,11 +61,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         };
+ 
+         fetchSuggestions();
+-
+-        return () => {
+-            window.removeEventListener('keydown', handleKeyDown);
+-        };
+-    }, [onClose]);
++    }, [isOpen]);
+ 
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+@@ -58,61 +73,77 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         );
+     }, [articles, searchTerm]);
+ 
++    const handleDialogClick = (event: React.MouseEvent<HTMLDialogElement>) => {
++        const dialog = dialogRef.current;
++        if (!dialog) return;
++        const rect = dialog.getBoundingClientRect();
++        const clickedInsideContent =
++            event.clientX >= rect.left &&
++            event.clientX <= rect.right &&
++            event.clientY >= rect.top &&
++            event.clientY <= rect.bottom;
++        if (!clickedInsideContent) {
++            dialog.close();
++        }
++    };
++
+     return (
+-        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+-            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
+-                <button onClick={onClose} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
+-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+-                    </svg>
+-                </button>
+-                <div className="p-4">
+-                    {!searchTerm && suggestions.length > 0 && (
+-                        <div>
+-                            <h3 className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
+-                            <ul className="grid grid-cols-3 gap-4 mb-4">
+-                                {suggestions.map(article => {
+-                                    const imagePath = article.image ? article.image.replace(/^\//, '') : '';
+-                                    return (
+-                                        <li key={article.slug}>
+-                                            <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
+-                                                <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
+-                                                <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                            </a>
+-                                        </li>
+-                                    );
+-                                })}
+-                            </ul>
+-                        </div>
+-                    )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
+-                </div>
+-                <div className="p-4 max-h-[60vh] overflow-y-auto">
+-                    {searchTerm && filteredArticles.length === 0 && (
+-                        <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
+-                    )}
+-                    {searchTerm && (
+-                        <ul className="space-y-2">
+-                            {filteredArticles.map(article => (
+-                                <li key={article.slug}>
+-                                    <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
+-                                        <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+-                                        <p className="text-sm text-gray-600">{article.summary}</p>
+-                                    </a>
+-                                </li>
+-                            ))}
++        <dialog
++            ref={dialogRef}
++            onClick={handleDialogClick}
++            className="bg-white shadow-xl w-full max-w-2xl rounded-md p-0 border-0"
++        >
++            <button onClick={() => dialogRef.current?.close()} className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-amber-400 hover:scale-110 transition-transform z-10">
++                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
++                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
++                </svg>
++            </button>
++            <div className="p-4">
++                {!searchTerm && suggestions.length > 0 && (
++                    <div>
++                        <h3 className="text-sm font-semibold text-gray-500 mb-3">Featured</h3>
++                        <ul className="grid grid-cols-3 gap-4 mb-4">
++                            {suggestions.map(article => {
++                                const imagePath = article.image ? article.image.replace(/^\//, '') : '';
++                                return (
++                                    <li key={article.slug}>
++                                        <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-2 rounded-md transition-colors">
++                                            <img src={`${import.meta.env.BASE_URL}${imagePath}`} alt={article.title} className="w-full h-20 object-cover rounded-md mb-2" />
++                                            <h4 className="font-bold text-sm text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                                        </a>
++                                    </li>
++                                );
++                            })}
+                         </ul>
+-                    )}
+-                </div>
++                    </div>
++                )}
++                <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
++                <input
++                    type="text"
++                    placeholder="Search for articles..."
++                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                    value={searchTerm}
++                    onChange={e => setSearchTerm(e.target.value)}
++                    autoFocus
++                />
++            </div>
++            <div className="p-4 max-h-[60vh] overflow-y-auto">
++                {searchTerm && filteredArticles.length === 0 && (
++                    <p className="text-gray-500 text-center py-8">No results found for "{searchTerm}".</p>
++                )}
++                {searchTerm && (
++                    <ul className="space-y-2">
++                        {filteredArticles.map(article => (
++                            <li key={article.slug}>
++                                <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`} className="block hover:bg-gray-100 p-4 rounded-md transition-colors">
++                                    <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
++                                    <p className="text-sm text-gray-600">{article.summary}</p>
++                                </a>
++                            </li>
++                        ))}
++                    </ul>
++                )}
+             </div>
+-        </div>
++        </dialog>
+     );
+ }
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..3301cfd 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,96 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/* Top-layer entry/exit animations for <dialog> and [popover] elements. */
++
++dialog {
++  margin-top: 10vh;
++  opacity: 0;
++  transform: scale(0.95);
++
++  transition-property: opacity, transform, display, overlay;
++  transition-duration: 0.3s;
++  transition-timing-function: ease-out;
++  transition-behavior: allow-discrete; /* must come after the shorthand */
++}
++
++dialog[open] {
++  opacity: 1;
++  transform: scale(1);
++
++  @starting-style {
++    opacity: 0;
++    transform: scale(0.95);
++  }
++}
++
++dialog::backdrop {
++  background-color: rgba(17, 24, 39, 0);
++
++  transition:
++    background-color 0.3s ease-out,
++    display 0.3s allow-discrete,
++    overlay 0.3s allow-discrete;
++}
++
++dialog[open]::backdrop {
++  background-color: rgba(17, 24, 39, 0.4);
++
++  @starting-style {
++    background-color: rgba(17, 24, 39, 0);
++  }
++}
++
++[popover] {
++  opacity: 0;
++  transform: translateY(-0.5rem) scale(0.98);
++
++  transition-property: opacity, transform, display, overlay;
++  transition-duration: 0.25s;
++  transition-timing-function: ease-out;
++  transition-behavior: allow-discrete; /* must come after the shorthand */
++}
++
++[popover]:popover-open {
++  opacity: 1;
++  transform: translateY(0) scale(1);
++
++  @starting-style {
++    opacity: 0;
++    transform: translateY(-0.5rem) scale(0.98);
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  dialog,
++  [popover] {
++    transform: none;
++    transition-duration: 1ms;
++  }
++
++  dialog::backdrop {
++    transition-duration: 1ms;
++  }
++
++  @starting-style {
++    dialog[open],
++    [popover]:popover-open {
++      transform: none;
++    }
++  }
++}
++
++/* Anchor the category mega-menu popover beneath the bottom nav bar. */
++.bottom-nav-bar {
++  anchor-name: --bottom-nav-bar;
++}
++
++.mega-menu-popover {
++  position: fixed;
++  inset-inline: 0;
++  top: 110px;
++  top: anchor(--bottom-nav-bar bottom);
++  margin: 0;
+ }
+\ No newline at end of file
