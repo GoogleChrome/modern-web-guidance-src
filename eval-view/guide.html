@@ -59,7 +59,7 @@
 
         <div style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px;">Performance over time by agent and model combination</div>
 
-        <div class="timeline-filter-controls" style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.85em; color: var(--text-primary);">
+        <div class="timeline-filter-controls" style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.85em; color: var(--text-primary); flex-wrap: wrap;">
           <span>Show last</span>
           <input type="number" id="timeline-limit-input" value="30" min="1" style="width: 50px; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); outline: none;">
           <span>days</span>
@@ -67,6 +67,10 @@
             <input type="checkbox" id="timeline-show-all-check">
             <span>Show all</span>
           </label>
+          <div style="display: flex; align-items: center; gap: 6px; margin-left: 12px;">
+            <label for="guide-run-filter-input" style="color: var(--text-secondary); font-weight: 500;">Filter run name:</label>
+            <input type="text" id="guide-run-filter-input" value="nightly" placeholder="e.g. nightly" style="width: 110px; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); outline: none;">
+          </div>
         </div>
       </div>
       <div style="display: flex; gap: 12px; justify-content: flex-end;">
