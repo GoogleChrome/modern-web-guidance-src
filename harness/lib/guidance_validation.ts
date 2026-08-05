@@ -7,6 +7,7 @@ import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory } f
 import { collectJetskiCliGuidesFromTrajectory, collectJetskiCliToolsFromTrajectory } from '../agents/jetski-cli-agent.ts';
 import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory } from '../agents/claude-code-agent.ts';
 import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } from '../agents/codex-cli-agent.ts';
+import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory } from '../agents/pi-agent.ts';
 
 export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<GuideUsage> {
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
@@ -52,10 +53,10 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
 
   if (agent === Agents.CLAUDE_CODE) {
     return collectClaudeGuidesFromTrajectory(dirPath, serving);
-  }
-
-  if (agent === Agents.CODEX_CLI) {
+  } else if (agent === Agents.CODEX_CLI) {
     return collectCodexGuidesFromTrajectory(dirPath, serving);
+  } else if (agent === Agents.PI) {
+    return collectPiGuidesFromTrajectory(dirPath, serving);
   }
 
   console.warn(`Unknown agent ${agent} for skills collection`);
@@ -84,6 +85,8 @@ export async function collectGuidanceToolsUsed(dir: string, serving: Serving, ag
 
   if (agent === Agents.CODEX_CLI) {
     return collectCodexToolsFromTrajectory(dir);
+  } else if (agent === Agents.PI) {
+    return collectPiToolsFromTrajectory(dir);
   }
 
   console.warn(`Unknown agent ${agent} for guidance tools collection`);

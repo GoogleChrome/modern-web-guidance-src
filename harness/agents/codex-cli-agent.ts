@@ -237,21 +237,23 @@ export function collectCodexToolsFromTrajectory(dir: string): string[] {
   const sessionFiles = getSessionFiles(dir);
   if (sessionFiles.length === 0) return toolsUsed;
 
-  const items = parseJsonlFile(path.join(dir, sessionFiles[0]));
-  for (const obj of items) {
-    const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
-    if (functionCall?.name === 'exec_command' && functionCall.arguments) {
-      try {
-        const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
-        const command = args.cmd || '';
-        if (command.includes('/skills/') && command.includes('SKILL.md')) {
-          const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
-          if (match) {
-            toolsUsed.push(match[1]);
+  for (const file of sessionFiles) {
+    const items = parseJsonlFile(path.join(dir, file));
+    for (const obj of items) {
+      const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
+      if (functionCall?.name === 'exec_command' && functionCall.arguments) {
+        try {
+          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+          const command = args.cmd || '';
+          if (command.includes('/skills/') && command.includes('SKILL.md')) {
+            const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
+            if (match) {
+              toolsUsed.push(match[1]);
+            }
           }
+        } catch {
+          // Ignore
         }
-      } catch {
-        // Ignore
       }
     }
   }

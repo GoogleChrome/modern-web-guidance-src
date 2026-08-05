@@ -238,27 +238,28 @@ export function extractGeminiCliTokenUsage(dir: string): { total: number; cached
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = getSessionFiles(dir);
-  const firstSession = sessionFiles[0];
-  if (!firstSession) return toolsUsed;
+  if (sessionFiles.length === 0) return toolsUsed;
 
-  try {
-    const sessionPath = path.join(dir, firstSession);
-    const session = readTrajectory(sessionPath);
-    if (Array.isArray(session.messages)) {
-      for (const msg of session.messages) {
-        if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
-          for (const tc of msg.toolCalls) {
-            if (tc.name.includes('get_best_practices')) {
-              toolsUsed.push('modern-web-guidance');
-            } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
-              toolsUsed.push(tc.args.name as string);
+  for (const sessionFile of sessionFiles) {
+    try {
+      const sessionPath = path.join(dir, sessionFile);
+      const session = readTrajectory(sessionPath);
+      if (Array.isArray(session.messages)) {
+        for (const msg of session.messages) {
+          if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
+            for (const tc of msg.toolCalls) {
+              if (tc.name.includes('get_best_practices')) {
+                toolsUsed.push('modern-web-guidance');
+              } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
+                toolsUsed.push(tc.args.name as string);
+              }
             }
           }
         }
       }
+    } catch (e) {
+      console.error(`Failed to collect guidance tools used for Gemini CLI in ${sessionFile}:`, e);
     }
-  } catch (e) {
-    console.error(`Failed to collect guidance tools used for Gemini CLI:`, e);
   }
 
   return Array.from(new Set(toolsUsed));
