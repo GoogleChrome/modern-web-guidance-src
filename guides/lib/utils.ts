@@ -1,7 +1,6 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
-import config from '../../harness/config.ts';
 import { rootDir, baseAppsDir } from '../../lib/paths.ts';
 import { applyPatchSync } from '../../lib/patch-utils.ts';
 import {
@@ -9,14 +8,18 @@ import {
   cleanupIsolatedHome,
   createTrustedFolders,
   spawnAsync,
+  setupAgentCredentials,
+  getAgentCommandAndArgs,
+  type AgentName,
 } from '../../harness/lib/agent-shared.ts';
-import { setupJetskiCliCredentials } from '../../harness/agents/jetski-cli-agent.ts';
-import { setupGeminiCliCredentials } from '../../harness/agents/gemini-cli-agent.ts';
+
+export { setupAgentCredentials, getAgentCommandAndArgs, type AgentName };
 
 export function stageBaseAppWorkspace(
   baseApp: string,
   patchFile?: string,
-  prefix: string = 'grade-run'
+  prefix: string = 'grade-run',
+  zeroPassrateFile?: string
 ): { workDir: string; cleanup: () => void } {
   const tempHome = createIsolatedHome(prefix);
   const workDir = path.join(tempHome, baseApp);
@@ -24,7 +27,16 @@ export function stageBaseAppWorkspace(
 
   const refBaseAppDir = path.join(baseAppsDir, baseApp);
   if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workDir, { recursive: true });
+    fs.cpSync(refBaseAppDir, workDir, {
+      recursive: true,
+      filter: (src) => !src.includes('/dist') && !src.includes('/.astro'),
+    });
+  }
+
+  if (zeroPassrateFile && fs.existsSync(zeroPassrateFile)) {
+    if (fs.readFileSync(zeroPassrateFile, 'utf8').trim().length > 0) {
+      applyPatchSync(workDir, zeroPassrateFile);
+    }
   }
 
   if (patchFile && fs.existsSync(patchFile)) {
@@ -42,11 +54,11 @@ export function stageBaseAppWorkspace(
   return { workDir, cleanup };
 }
 
-export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
+export async function runCommand(command: string, args: string[], cwd?: string, env?: NodeJS.ProcessEnv): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
-      env: { ...process.env },
+      env: env || { ...process.env },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -69,54 +81,43 @@ export async function runCommand(command: string, args: string[], cwd?: string):
   });
 }
 
-export async function runAgent(
+export async function runAgentForModel(
+  agent: AgentName,
   prompt: string,
   workDir?: string,
   options: { captureOutput?: boolean } = {}
 ): Promise<string> {
-  const useJetski = process.env.GD_DEV_USE_JETSKI === '1';
-  const command = useJetski ? config.environment.jetskiCliBin : config.environment.geminiCliBin;
-  const commandArgs = ['-p', prompt];
-
-  if (useJetski) {
-    const model = process.env.JETSKI_MODEL;
-    if (model) commandArgs.push('--model', model);
-    commandArgs.push('--dangerously-skip-permissions');
-  } else {
-    commandArgs.push('--yolo');
-  }
+  const { command, commandArgs } = getAgentCommandAndArgs(agent, prompt);
+  const tempHome = workDir ? path.dirname(workDir) : undefined;
+  const env = tempHome ? { ...process.env, HOME: tempHome } : { ...process.env };
 
   if (options.captureOutput) {
-    return runCommand(command, commandArgs, workDir);
+    return runCommand(command, commandArgs, workDir, env);
   }
 
   const exitCode = await spawnAsync(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env },
-    stdio: 'inherit',
+    env,
+    stdio: ['ignore', 'inherit', 'inherit'],
   });
 
   if (exitCode !== 0) {
-    throw new Error(`${useJetski ? 'Jetski' : 'Gemini'} CLI exited with code ${exitCode}`);
+    throw new Error(`${agent} CLI exited with code ${exitCode}`);
   }
 
   return '';
 }
 
-export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string): string {
+export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string, agent?: AgentName): string {
   const tempHome = createIsolatedHome(prefix);
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
   const geminiDest = path.join(tempHome, '.gemini');
-  if (process.env.GD_DEV_USE_JETSKI === '1') {
-    setupJetskiCliCredentials(tempHome);
-  } else {
-    setupGeminiCliCredentials(tempHome);
-  }
+  const effectiveAgent: AgentName = agent ?? (process.env.GD_DEV_USE_JETSKI === '1' ? 'jetski' : 'gemini');
+  setupAgentCredentials(effectiveAgent, tempHome);
 
   createTrustedFolders(geminiDest, [tempHome]);
-  process.env.HOME = tempHome;
 
   // Symlink host node_modules to tempHome/node_modules and tempHome/guides/node_modules for local typechecking inside the sandbox
   const hostNodeModules = path.join(rootDir, 'node_modules');

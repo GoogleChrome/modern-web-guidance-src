@@ -6,11 +6,6 @@ import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHom
 import type { ConversationRecord } from '@google/gemini-cli-core';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
-/**
- * Copies Gemini CLI authentication and identification files from ~/.gemini to the isolated HOME.
- * @param tempHome Path to the isolated HOME directory
- * @returns Path to the destination .gemini directory
- */
 export function setupGeminiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
   const geminiSource = path.join(originalHome, '.gemini');
@@ -29,7 +24,14 @@ export function setupGeminiCliCredentials(tempHome: string): string {
     copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
   }
 
+  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
   return geminiDest;
+}
+
+export function getGeminiCliCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
+  const command = config.environment.geminiCliBin;
+  const commandArgs = ['-p', prompt, ...extraArgs, '--yolo'];
+  return { command, commandArgs };
 }
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
@@ -51,7 +53,6 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
 
   // Set environment variables
   process.env.HOME = tempHome;
-  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -88,12 +89,7 @@ async function run() {
   try {
     console.log(`Starting Gemini CLI agent in ${workDir}`);
 
-    const command = config.environment.geminiCliBin;
-    const commandArgs = [
-      '-p', userPrompt,
-      '-o', 'stream-json',
-      '--yolo'
-    ];
+    const { command, commandArgs } = getGeminiCliCommandAndArgs(userPrompt, ['-o', 'stream-json']);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 

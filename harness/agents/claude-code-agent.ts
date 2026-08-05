@@ -1,10 +1,28 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand, parseJsonlFile, copyFileIfExists, type GuideUsage } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
+
+export function setupClaudeCodeCredentials(tempHome: string): void {
+  const gcloudConfigDest = path.join(tempHome, '.config', 'gcloud');
+  fs.mkdirSync(gcloudConfigDest, { recursive: true });
+  copyFileIfExists(config.environment.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
+}
+
+export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
+  const command = config.environment.claudeCodeCliBin;
+  const model = process.env.ANTHROPIC_MODEL;
+  const commandArgs = [
+    '-p', prompt,
+    '--dangerously-skip-permissions',
+    ...extraArgs,
+    ...(model ? ['--model', model] : [])
+  ];
+  return { command, commandArgs };
+}
 
 // NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
 // However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
@@ -25,10 +43,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
   const tempHome = createIsolatedHome('ghh-claude', targetDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
-  // Copy GCP credentials (for Vertex auth)
-  const gcloudConfigDest = path.join(tempHome, '.config/gcloud');
-  fs.mkdirSync(gcloudConfigDest, { recursive: true });
-  copyFileIfExists(config.environment.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
+  setupClaudeCodeCredentials(tempHome);
 
   // Set environment variables
   process.env.HOME = tempHome;
@@ -120,15 +135,7 @@ async function run() {
   try {
     console.log(`Starting Claude Code agent in: ${workDir}`);
 
-    const command = config.environment.claudeCodeCliBin;
-    const model = process.env.ANTHROPIC_MODEL;
-    const commandArgs = [
-      '-p', userPrompt,
-      '--dangerously-skip-permissions',
-      '--verbose',
-      '--output-format', 'stream-json',
-      ...(model ? ['--model', model] : [])
-    ];
+    const { command, commandArgs } = getClaudeCodeCommandAndArgs(userPrompt, ['--verbose', '--output-format', 'stream-json']);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 

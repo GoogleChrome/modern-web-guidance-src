@@ -2,9 +2,11 @@
  * Centralized, typed prompt builder functions for the gd dev evaluation generation process.
  * 
  * Having these prompts in one dedicated module ensures high visibility, easy tuning of AI
- * behavior across target capsules (solution.patch, zero-passrate.patch, grader.ts, task.md), and
+ * behavior across target capsules (patches, grader.ts, task.md), and
  * type-safe parameter interpolation.
  */
+
+import type { SolutionAgent } from '../lib/guide-validation.ts';
 
 export interface PatchPromptOptions {
   guideFile: string;
@@ -55,7 +57,7 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 export interface GraderPromptOptions {
   guideFile: string;
   expectationsFile: string;
-  solutionPatchFile: string;
+  solutionPatchFiles: Partial<Record<SolutionAgent, string>>;
   zeroPassratePatchFile: string;
   graderFile: string;
   baseApp: string;
@@ -83,24 +85,37 @@ Analyze this failure and modify the existing grader file to fix these assertions
 `
     : '';
 
+  const agentLabels: Record<SolutionAgent, string> = {
+    gemini: 'Gemini CLI',
+    jetski: 'Jetski CLI',
+    claude: 'Claude Code',
+    codex: 'Codex CLI',
+  };
+
+  const solutionList = Object.entries(opts.solutionPatchFiles)
+    .filter(([_, file]) => Boolean(file))
+    .map(([agent, file]) => `   - ${agentLabels[agent as SolutionAgent] || agent} Solution: \`${file}\` (must pass 100% of tests)`)
+    .join('\n');
+
   const patchInstruction = opts.failureContext
-    ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because the golden solution patch (\`${opts.solutionPatchFile}\`) or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
+    ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because any of the golden solution patches or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
     : '';
 
   return `${contextBlock}# GOAL
-Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application.${patchInstruction}
+Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${patchInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Requirements**: \`${opts.expectationsFile}\`
-3. **Golden Solution Diff**: \`${opts.solutionPatchFile}\` (must pass 100% of tests)
+3. **Golden Solution Diffs**:
+${solutionList}
 4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of tests)
 5. **Boilerplate Template**: \`${opts.templateFile}\`
 
 # VERIFICATION & SCOPING RULES
 
 ## 1. Strictly Follow the Boilerplate Template
-Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`extractTargetFilesFromPatch\`, \`extractAllCss\`, \`populateJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
+Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`extractAllCss\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
 ## 2. Assertion Hierarchy
 - **Static Analysis First**: Prioritize static analysis over browser execution for structural assertions.
@@ -148,7 +163,7 @@ Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-leve
 3. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
 4. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
 5. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant.
-6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "add X", "can you build Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
+6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
 7. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
 8. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
 
