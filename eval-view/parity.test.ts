@@ -45,7 +45,8 @@ test('Parity: Static manifests should be correctly generated and accessible', as
         .filter(d => d.isDirectory() && fs.existsSync(path.join(targetResultsDir, d.name, 'evals.json')))
         .map(d => d.name);
         
-    assert.deepStrictEqual(suitesData.sort(), localDirs.sort(), 'Static suites manifest should match local completed suites');
+    const suiteIds = suitesData.map((s: any) => typeof s === 'string' ? s : s.testId);
+    assert.deepStrictEqual(suiteIds.sort(), localDirs.sort(), 'Static suites manifest should match local completed suites');
 });
 
 test('generateSuitesManifest merges live suites with local suites via mock fetch', async () => {
@@ -60,7 +61,7 @@ test('generateSuitesManifest merges live suites with local suites via mock fetch
     if (url === 'https://googlechrome.github.io/guidance-dash/suites.gen.json') {
       return {
         ok: true,
-        json: async () => ['live-suite']
+        json: async () => [{ testId: 'live-suite' }]
       };
     }
     return originalFetch(url);
@@ -68,7 +69,8 @@ test('generateSuitesManifest merges live suites with local suites via mock fetch
 
   try {
     const result = await generateSuitesManifest('.', testMockDir);
-    assert.deepStrictEqual(result, ['live-suite', 'local-suite'], 'Manifest should contain both live and local suites');
+    const resultIds = result.map((s: any) => typeof s === 'string' ? s : s.testId);
+    assert.deepStrictEqual(resultIds, ['live-suite', 'local-suite'], 'Manifest should contain both live and local suites');
   } finally {
     // Restore fetch
     global.fetch = originalFetch;
@@ -90,7 +92,8 @@ test('Parity: evals.json should be valid in all completed suites', async () => {
     
     const suitesData = JSON.parse(fs.readFileSync(suitesPath, 'utf8'));
     
-    for (const suiteId of suitesData) {
+    for (const suiteObj of suitesData) {
+        const suiteId = typeof suiteObj === 'string' ? suiteObj : suiteObj.testId;
         const evalsPath = path.join(targetResultsDir, suiteId, 'evals.json');
         assert.strictEqual(fs.existsSync(evalsPath), true, `evals.json should exist for suite ${suiteId}`);
         
