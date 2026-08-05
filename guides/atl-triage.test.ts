@@ -144,6 +144,20 @@ Web Feature ID: user-action-pseudos
     const result = handleIssue(123, [], description, mockConfig);
     assert.deepStrictEqual(result, ['user-action-reviewer']);
   });
+  it('assigns the category ATL if the issue is a use case under that category', () => {
+    const description = `Use case subdir: [guides/css-layout/some-use-case](https://github.com/...)`;
+    const result = handleIssue(123, [], description, mockConfig);
+    assert.deepStrictEqual(result, ['malchata']);
+  });
+
+  it('assigns both the category ATL and feature override ATL for use case issues', () => {
+    const description = `
+Use case subdir: [guides/css-layout/some-use-case](https://github.com/...)
+Affected web-feature IDs: [canvas-html](...)
+`;
+    const result = handleIssue(123, [], description, mockConfig);
+    assert.deepStrictEqual(result.sort(), ['malchata', 'override-issue-reviewer'].sort());
+  });
 });
 
 describe('handlePR', () => {
@@ -169,10 +183,10 @@ describe('handlePR', () => {
     ];
 
     const result = handlePR(456, 'some-contributor', mockConfig, mockFiles);
-    // 'deliver-optimized-decorative-images' resolves to 'override-pr-reviewer' (via feature 'image-set' override)
+    // 'deliver-optimized-decorative-images' resolves to 'override-pr-reviewer' (via feature 'image-set' override) + 'rviscomi', 'paulirish' (default performance)
     // 'carousel-slide-effects' resolves to 'philipwalton' (default motion)
     // 'grid-layout' resolves to 'malchata' (default css-layout)
-    assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'philipwalton', 'malchata'].sort());
+    assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'rviscomi', 'paulirish', 'philipwalton', 'malchata'].sort());
   });
 
   it('does not request review from the PR author', () => {
@@ -181,9 +195,9 @@ describe('handlePR', () => {
       'guides/motion/carousel-slide-effects/expectations.md'
     ];
 
-    // Author is override-pr-reviewer, so only philipwalton should be requested
+    // Author is override-pr-reviewer, so only rviscomi, paulirish, and philipwalton should be requested
     const result = handlePR(456, 'override-pr-reviewer', mockConfig, mockFiles);
-    assert.deepStrictEqual(result.sort(), ['philipwalton'].sort());
+    assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton'].sort());
   });
 
   it('returns empty array when no content files are touched', () => {
@@ -208,7 +222,9 @@ describe('handlePR', () => {
         // Return active requested / reviewed ATLs with mixed case to test case-insensitivity
         return JSON.stringify({
           reviewRequests: [
-            { login: 'Override-Pr-Reviewer' }
+            { login: 'Override-Pr-Reviewer' },
+            { login: 'rviscomi' },
+            { login: 'paulirish' }
           ],
           reviews: [
             { author: { login: 'PhilipWalton' }, state: 'APPROVED' }
@@ -222,8 +238,8 @@ describe('handlePR', () => {
     });
 
     try {
-      // both 'override-pr-reviewer' (via feature 'image-set' override) and 'philipwalton' (default motion)
-      // are resolved, but they are excluded because they are in reviewRequests/reviews.
+      // 'override-pr-reviewer' (via feature 'image-set' override), 'rviscomi', 'paulirish' (default performance),
+      // and 'philipwalton' (default motion) are resolved, but they are excluded because they are in reviewRequests/reviews.
       // So no additional review request is made.
       const result = handlePR(456, 'some-contributor', mockConfig);
       assert.deepStrictEqual(result, []);
