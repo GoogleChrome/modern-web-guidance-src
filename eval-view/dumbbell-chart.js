@@ -1,6 +1,55 @@
+/**
+ * @typedef {Object} DumbbellChartOptions
+ * @property {number} [size]
+ * @property {number} [rowHeight]
+ * @property {{ top: number, right: number, bottom: number, left: number }} [margin]
+ * @property {boolean} [hideLegend]
+ * @property {boolean} [hideAxes]
+ * @property {string} [title]
+ * @property {boolean} [hideZeros]
+ * @property {number | null} [height]
+ * @property {number | null} [maxHeight]
+ * @property {boolean} [hideSeparators]
+ * @property {boolean} [hideLabels]
+ */
+
+/**
+ * @typedef {Object} ChartGroupItem
+ * @property {string} useCaseId
+ * @property {number} uVal
+ * @property {number} gVal
+ * @property {number} uTokens
+ * @property {number} gTokens
+ * @property {boolean} uFailed
+ * @property {boolean} gFailed
+ * @property {number} originalIndex
+ */
+
+/**
+ * @typedef {Object} ChartDataset
+ * @property {string} label
+ * @property {number[]} data
+ * @property {number[]} [tokens]
+ * @property {boolean[]} [failed]
+ * @property {(index: number, label: string) => void} [onClick]
+ */
+
+/**
+ * @property {HTMLElement} container
+ * @property {Required<DumbbellChartOptions>} options
+ * @property {HTMLElement | null} tooltip
+ * @property {SVGElement} svg
+ */
 export class DumbbellChart {
+  /**
+   * @param {string | HTMLElement} containerId
+   * @param {DumbbellChartOptions} [options]
+   */
   constructor(containerId, options = {}) {
-    this.container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+    const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+    if (!container) throw new Error(`Container not found: ${containerId}`);
+    this.container = container;
+
     this.options = {
       size: options.size || 600,
       rowHeight: options.rowHeight || 30,
@@ -32,6 +81,13 @@ export class DumbbellChart {
     }
   }
 
+  /**
+   * @param {{
+   *   labels: string[],
+   *   datasets: ChartDataset[]
+   * }} data
+   * @returns {number}
+   */
   render(data) {
     let offsetStep = 8;
     this.init();
@@ -39,16 +95,17 @@ export class DumbbellChart {
     const labels = data.labels || [];
     const datasets = data.datasets || [];
     
-    if (labels.length === 0) return;
+    if (labels.length === 0) return 0;
 
-    let unguidedSet = datasets.find(d => d.label.toLowerCase() === 'unguided') || { data: Array.from({ length: labels.length }).fill(0), tokens: Array.from({ length: labels.length }).fill(0) };
-    let guidedSet = datasets.find(d => d.label.toLowerCase() === 'guided') || { data: Array.from({ length: labels.length }).fill(0), tokens: Array.from({ length: labels.length }).fill(0) };
+    const unguidedSet = /** @type {ChartDataset} */ (datasets.find(d => d.label.toLowerCase() === 'unguided') || { label: 'unguided', data: Array.from({ length: labels.length }).fill(0), tokens: Array.from({ length: labels.length }).fill(0) });
+    const guidedSet = /** @type {ChartDataset} */ (datasets.find(d => d.label.toLowerCase() === 'guided') || { label: 'guided', data: Array.from({ length: labels.length }).fill(0), tokens: Array.from({ length: labels.length }).fill(0) });
 
     const width = this.options.size;
 
     // Group items by Feature Name (lookup from features_mapping.gen.js if available)
+    /** @type {Record<string, ChartGroupItem[]>} */
     const groups = {};
-    const featuresMap = window.__featuresMapping || {};
+    const featuresMap = /** @type {Record<string, string[]>} */ (/** @type {any} */ (window).__featuresMapping || {});
 
     labels.forEach((label, i) => {
         let taskName = label;
@@ -117,7 +174,9 @@ export class DumbbellChart {
     // If an explicit height is passed (like dashboard), use it. Otherwise use our tightly bounded finalSvgHeight.
     const height = this.options.height || finalSvgHeight;
 
-    this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    if (!svg) throw new Error("Failed to create SVG element");
+    this.svg = svg;
     this.svg.setAttribute("width", "100%");
     this.svg.setAttribute("height", `${height}px`);
     this.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -159,13 +218,15 @@ export class DumbbellChart {
     // Add Glow Filter for expensive token usage
     const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
     filter.setAttribute("id", "red-glow");
-    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
-    shadow.setAttribute("dx", "0");
-    shadow.setAttribute("dy", "0");
-    shadow.setAttribute("stdDeviation", "3");
-    shadow.setAttribute("flood-color", "#da3633");
-    shadow.setAttribute("flood-opacity", "0.8");
-    filter.appendChild(shadow);
+    const shadow = document.createElementNS("FeDropShadow", "feDropShadow");
+    if (shadow) {
+        shadow.setAttribute("dx", "0");
+        shadow.setAttribute("dy", "0");
+        shadow.setAttribute("stdDeviation", "3");
+        shadow.setAttribute("flood-color", "#da3633");
+        shadow.setAttribute("flood-opacity", "0.8");
+        filter.appendChild(shadow);
+    }
     defs.appendChild(filter);
 
     this.svg.appendChild(defs);
@@ -175,7 +236,7 @@ export class DumbbellChart {
 
     const chartWidth = width - this.options.margin.left - this.options.margin.right;
     const leftAxis = this.options.margin.left;
-    const scale = (val) => leftAxis + (val / 100) * chartWidth;
+    const scale = (/** @type {number} */ val) => leftAxis + (val / 100) * chartWidth;
 
 
 
@@ -215,7 +276,7 @@ export class DumbbellChart {
       legendG.appendChild(uText);
       legendG.appendChild(guidedCircle);
       legendG.appendChild(gText);
-      this.svg.appendChild(legendG);
+      svg.appendChild(legendG);
     }
 
     // Axes & Grid
@@ -233,7 +294,7 @@ export class DumbbellChart {
         tick.setAttribute("stroke", "var(--color-outline-variant)");
         tick.setAttribute("stroke-width", "1");
         if (val !== 0 && val !== 100) tick.setAttribute("stroke-dasharray", "4 4");
-        this.svg.appendChild(tick);
+        svg.appendChild(tick);
         
         const tickText = document.createElementNS("http://www.w3.org/2000/svg", "text");
         tickText.setAttribute("x", x.toString());
@@ -242,7 +303,7 @@ export class DumbbellChart {
         tickText.setAttribute("font-size", "10");
         tickText.setAttribute("text-anchor", "middle");
         tickText.textContent = val + "%";
-        this.svg.appendChild(tickText);
+        svg.appendChild(tickText);
       });
     }
 
@@ -259,13 +320,13 @@ export class DumbbellChart {
       // Faint horizontal separator
       if (rowIndex > 0 && !this.options.hideSeparators) {
         const sep = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        sep.setAttribute("x1", leftAxis);
-        sep.setAttribute("y1", currentY);
-        sep.setAttribute("x2", scale(100));
-        sep.setAttribute("y2", currentY);
+        sep.setAttribute("x1", leftAxis.toString());
+        sep.setAttribute("y1", currentY.toString());
+        sep.setAttribute("x2", scale(100).toString());
+        sep.setAttribute("y2", currentY.toString());
         sep.setAttribute("stroke", "rgba(255, 255, 255, 0.1)");
         sep.setAttribute("stroke-width", "1");
-        this.svg.appendChild(sep);
+        svg.appendChild(sep);
       }
 
       // Label text for Feature (Feature Name only) - Moved to the right
@@ -276,13 +337,13 @@ export class DumbbellChart {
       rowBg.setAttribute("width", width.toString());
       rowBg.setAttribute("height", rowHeight.toString());
       rowBg.setAttribute("fill", "transparent");
-      this.svg.appendChild(rowBg);
+      svg.appendChild(rowBg);
 
       if (!this.options.hideLabels) {
         const hasFailure = items.some(item => item.uFailed || item.gFailed);
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        text.setAttribute("x", scale(100) + 15);
-        text.setAttribute("y", rowY);
+        text.setAttribute("x", (scale(100) + 15).toString());
+        text.setAttribute("y", rowY.toString());
         text.setAttribute("fill", hasFailure ? "var(--color-accent-failure, #da3633)" : "var(--color-outline)");
         text.setAttribute("font-size", "11");
         text.setAttribute("font-family", "var(--font-sans)");
@@ -296,7 +357,7 @@ export class DumbbellChart {
         text.onmouseenter = () => rowBg.setAttribute("fill", "rgba(0, 0, 0, 0.05)");
         text.onmouseleave = () => rowBg.setAttribute("fill", "transparent");
         
-        this.svg.appendChild(text);
+        svg.appendChild(text);
       }
 
       const startOffset = -((items.length - 1) / 2) * offsetStep;
@@ -313,39 +374,37 @@ export class DumbbellChart {
 
           // Connecting Line (The Delta)
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-          line.setAttribute("x1", uX);
-          line.setAttribute("y1", y);
-          line.setAttribute("x2", gX);
-          line.setAttribute("y2", y);
+          line.setAttribute("x1", uX.toString());
+          line.setAttribute("y1", y.toString());
+          line.setAttribute("x2", gX.toString());
+          line.setAttribute("y2", y.toString());
           line.setAttribute("stroke", lineColor);
           line.setAttribute("stroke-width", "1.5");
           line.setAttribute("stroke-linecap", "round");
 
-          this.svg.appendChild(line);
+          svg.appendChild(line);
 
           // Unguided Dot (Baseline)
           const uDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-          uDot.setAttribute("cx", uX);
-          uDot.setAttribute("cy", y);
+          uDot.setAttribute("cx", uX.toString());
+          uDot.setAttribute("cy", y.toString());
           uDot.setAttribute("r", "3");
           uDot.setAttribute("fill", "var(--color-surface-container-lowest)");
           uDot.setAttribute("stroke", item.uFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
           uDot.setAttribute("stroke-width", "1.5");
-          this.svg.appendChild(uDot);
+          svg.appendChild(uDot);
 
           // Guided Dot (Outcome)
           const gDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-          gDot.setAttribute("cx", gX);
-          gDot.setAttribute("cy", y);
+          gDot.setAttribute("cx", gX.toString());
+          gDot.setAttribute("cy", y.toString());
           gDot.setAttribute("r", "3");
           gDot.setAttribute("fill", item.gFailed ? "var(--color-accent-failure, #da3633)" : "var(--color-primary)");
-          this.svg.appendChild(gDot);
-
-
+          svg.appendChild(gDot);
 
           // Hit area for tooltip (covers the specific sub-line)
           const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-          hitArea.setAttribute("x", leftAxis); // only over the chart area
+          hitArea.setAttribute("x", leftAxis.toString()); // only over the chart area
           hitArea.setAttribute("y", (y - (offsetStep / 2)).toString());
           hitArea.setAttribute("width", (width - this.options.margin.left - this.options.margin.right).toString());
           hitArea.setAttribute("height", offsetStep.toString());
@@ -390,16 +449,16 @@ export class DumbbellChart {
                          <div style="font-weight: bold; color: ${deltaColor}; font-size: 14px;">Uplift: ${deltaSign}${delta}%</div>
                          <div style="white-space: nowrap; color: ${item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Guided: ${Math.round(gVal)}% ${item.gFailed ? '(Failed)' : ''}</div>
                          <div style="white-space: nowrap; color: ${item.uFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">Unguided: ${Math.round(uVal)}% ${item.uFailed ? '(Failed)' : ''}</div>
-                    </div>
+                     </div>
                 </div>
             `;
           };
           
           hitArea.onmouseleave = () => { if (this.tooltip) this.tooltip.style.display = 'none'; };
           if (guidedSet.onClick) {
-              hitArea.onclick = () => guidedSet.onClick(item.originalIndex, 'Guided');
+              hitArea.onclick = () => guidedSet.onClick ? guidedSet.onClick(item.originalIndex, 'Guided') : null;
           }
-          this.svg.appendChild(hitArea);
+          svg.appendChild(hitArea);
       });
 
       currentY += rowHeight; // Shift Y down for the next feature row

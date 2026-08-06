@@ -1,11 +1,10 @@
-// @ts-nocheck
 import { getRunStats, parseResultKey, calculateChartData } from './utils.js';
 
 /**
  * Extracts a compact summary object from an evals.json payload.
  *
  * @param {string} testId
- * @param {any} evalsData
+ * @param {import('../harness/lib/metrics.ts').EvalsReport & { enableSkills?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
  * @returns {Record<string, any>|null}
  */
@@ -29,6 +28,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     let maxRuns = 1;
 
     const distinctScenarios = new Set();
+    /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
     const suiteGuides = {};
 
     scenarioKeys.forEach(key => {
@@ -61,12 +61,14 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             }
 
             if (parsedKey && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided')) {
-                suiteGuides[parsedKey.guide][parsedKey.runType].passed += s.passed;
-                suiteGuides[parsedKey.guide][parsedKey.runType].total += s.total;
+                const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
+                suiteGuides[parsedKey.guide][runType].passed += s.passed;
+                suiteGuides[parsedKey.guide][runType].total += s.total;
             }
         });
     });
 
+    /** @type {Record<string, any>} */
     const guidesFormatted = {};
     Object.keys(suiteGuides).forEach(guide => {
         const g = suiteGuides[guide];
