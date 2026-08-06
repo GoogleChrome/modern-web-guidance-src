@@ -7,6 +7,10 @@ let isCompareMode = false;
 let selectedPoints = []; // array of { testId, source, combKey }
 let currentRunFilter = 'nightly';
 
+function hasNightlyRuns() {
+    return Object.values(allTestData).some(t => (t.testId || '').toLowerCase().includes('nightly'));
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
     const guideName = params.get('guide');
@@ -27,6 +31,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         initGoogleAuth(async () => {
             await loadRemoteTests();
+            if (runFilterParam === null && hasNightlyRuns()) {
+                currentRunFilter = 'nightly';
+                const runFilterInput = /** @type {HTMLInputElement | null} */ ($('#guide-run-filter-input'));
+                if (runFilterInput) runFilterInput.value = currentRunFilter;
+            }
             setupNavigationControls(guideName);
             renderGraphs(guideName);
         });
@@ -34,6 +43,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadLocalTests();
         if (getAccessToken()) {
             await loadRemoteTests();
+        }
+        if (runFilterParam === null) {
+            currentRunFilter = hasNightlyRuns() ? 'nightly' : '';
+            const runFilterInput = /** @type {HTMLInputElement | null} */ ($('#guide-run-filter-input'));
+            if (runFilterInput) runFilterInput.value = currentRunFilter;
         }
         setupNavigationControls(guideName);
         renderGraphs(guideName);
