@@ -279,7 +279,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     const solPatchFile = SOLUTION_PATCH_FILES[agent];
     const solutionPatch = path.join(targetDir, solPatchFile);
     const solutionOutDir = path.join(targetDir, 'grade-report', `solution-${agent}`);
-    const { workDir: goldenSandbox, cleanup: cleanupGolden } = stageBaseAppWorkspace(baseApp, solutionPatch, `gd-cal-${baseApp}-${agent}`);
+    const { workDir: goldenSandbox, cleanup: cleanupGolden } = stageBaseAppWorkspace(baseApp, solutionPatch, `cal-${baseApp}-${agent}`);
     let unexpected = 0;
     try {
       console.log(cYellow(`\nRunning against ${baseApp} with ${solPatchFile} (${agent})... (Expecting 100% pass)`));
@@ -326,7 +326,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   let zeroPassrateStatus = '';
   let zeroPassrateFailed = false;
   const zeroPassrateTask = (async () => {
-    const { workDir: zeroPassrateSandbox, cleanup: cleanupZeroPassrate } = stageBaseAppWorkspace(baseApp, zeroPassratePatch, `gd-cal-${baseApp}-zp`);
+    const { workDir: zeroPassrateSandbox, cleanup: cleanupZeroPassrate } = stageBaseAppWorkspace(baseApp, zeroPassratePatch, `cal-${baseApp}-zp`);
     let passed = 0;
     try {
       console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { baseAppsDir } from '../lib/paths.ts';
-import { setupIsolatedWorkDir, runAgentForModel } from './lib/utils.ts';
+import { setupGuideDevWorkDir, runAgent } from './lib/utils.ts';
 import { buildTargetGraderPrompt } from './gd-dev-prompts.ts';
 import {
   GUIDE_FILE,
@@ -25,7 +25,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
 
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-grader`, relativeWorkSubdir);
+  const workDir = setupGuideDevWorkDir(`${baseApp}-grader`, relativeWorkSubdir);
   try {
     fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
       recursive: true,
@@ -96,7 +96,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       failureContext,
     });
 
-    await runAgentForModel(getDefaultSolutionAgent(), prompt, workDir);
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
 
     const generatedGrader = path.join(workDir, GRADER_FILE);
     if (fs.existsSync(generatedGrader)) {

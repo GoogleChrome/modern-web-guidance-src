@@ -1,53 +1,72 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
-import { Agents } from '../config.ts';
+import { Agents, Serving, type SuiteConfig } from '../config.ts';
 import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
 
-import { type SuiteConfig } from '../config.ts';
 import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
 import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
 import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
+import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
 
-export {
-  setupGeminiCliCredentials,
-  getGeminiCliCommandAndArgs,
-  setupJetskiCliCredentials,
-  getJetskiCliCommandAndArgs,
-  setupClaudeCodeCredentials,
-  getClaudeCodeCommandAndArgs,
-  setupCodexCliCredentials,
-  getCodexCliCommandAndArgs,
-};
-
-export type AgentName = 'gemini' | 'jetski' | 'claude' | 'codex';
-
-export function setupAgentCredentials(agent: AgentName, tempHome: string): void {
-  if (agent === 'jetski') {
+export function setupAgentCredentials(agent: Agents, tempHome: string): void {
+  if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     setupJetskiCliCredentials(tempHome);
-  } else if (agent === 'gemini') {
+  } else if (agent === Agents.GEMINI_CLI) {
     setupGeminiCliCredentials(tempHome);
-  } else if (agent === 'claude') {
+  } else if (agent === Agents.CLAUDE_CODE) {
     setupClaudeCodeCredentials(tempHome);
-  } else if (agent === 'codex') {
+  } else if (agent === Agents.CODEX_CLI) {
     setupCodexCliCredentials(tempHome);
+  } else if (agent === Agents.PI) {
+    setupPiCredentials(tempHome);
   }
 }
 
-export function getAgentCommandAndArgs(agent: AgentName, prompt: string): { command: string; commandArgs: string[] } {
+export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command: string; commandArgs: string[] } {
   switch (agent) {
-    case 'jetski':
+    case Agents.JETSKI:
+    case Agents.JETSKI_CLI:
       return getJetskiCliCommandAndArgs(prompt);
-    case 'gemini':
+    case Agents.GEMINI_CLI:
       return getGeminiCliCommandAndArgs(prompt);
-    case 'claude':
+    case Agents.CLAUDE_CODE:
       return getClaudeCodeCommandAndArgs(prompt);
-    case 'codex':
+    case Agents.CODEX_CLI:
       return getCodexCliCommandAndArgs(prompt);
+    case Agents.PI:
+      return getPiCommandAndArgs(prompt);
+    default:
+      throw new Error(`Unsupported agent: ${agent}`);
   }
+}
+
+export function setupIsolatedWorkDir(
+  agent: Agents,
+  templateDir: string,
+  runType: string,
+  targetDir?: string
+): string {
+  const tempHome = createIsolatedHome(`ghh-${agent}`, targetDir);
+  const workDir = createWorkDir(templateDir, tempHome, runType);
+
+  setupAgentCredentials(agent, tempHome);
+  process.env.HOME = tempHome;
+
+  if (runType === 'guided') {
+    const suiteConfig = getSuiteConfig();
+    copySkills(
+      tempHome,
+      agent,
+      suiteConfig.serving === Serving.SKILLS_CLI,
+      suiteConfig.skillsToEnable
+    );
+  }
+
+  return workDir;
 }
 
 export interface GuideUsage {
@@ -326,13 +345,13 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
+export function copySkills(homeDir: string, agent: Agents, cli: boolean, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
   const guidesSource = guidesDir;
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
     destDir = path.join(homeDir, '.claude', 'skills');
-  } else if (agent === Agents.CODEX_CLI) {
+  } else if (agent === Agents.CODEX_CLI || agent === Agents.PI) {
     destDir = path.join(homeDir, '.agents', 'skills');
   } else if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');

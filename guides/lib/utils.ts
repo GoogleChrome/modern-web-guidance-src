@@ -10,17 +10,16 @@ import {
   spawnAsync,
   setupAgentCredentials,
   getAgentCommandAndArgs,
-  type AgentName,
 } from '../../harness/lib/agent-shared.ts';
-
-export { setupAgentCredentials, getAgentCommandAndArgs, type AgentName };
+import { Agents } from '../../harness/config.ts';
 
 export function stageBaseAppWorkspace(
   baseApp: string,
-  patchFile?: string,
-  prefix: string = 'grade-run',
+  patchFile: string,
+  suffix: string,
   zeroPassrateFile?: string
 ): { workDir: string; cleanup: () => void } {
+  const prefix = suffix.startsWith('gd-') ? suffix : `gd-${suffix}`;
   const tempHome = createIsolatedHome(prefix);
   const workDir = path.join(tempHome, baseApp);
   fs.mkdirSync(workDir, { recursive: true });
@@ -58,7 +57,7 @@ export async function runCommand(command: string, args: string[], cwd?: string, 
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
-      env: env || { ...process.env },
+      env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -81,8 +80,8 @@ export async function runCommand(command: string, args: string[], cwd?: string, 
   });
 }
 
-export async function runAgentForModel(
-  agent: AgentName,
+export async function runAgent(
+  agent: Agents,
   prompt: string,
   workDir?: string,
   options: { captureOutput?: boolean } = {}
@@ -108,13 +107,13 @@ export async function runAgentForModel(
   return '';
 }
 
-export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string, agent?: AgentName): string {
-  const tempHome = createIsolatedHome(prefix);
+export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string, agent?: Agents): string {
+  const tempHome = createIsolatedHome(`gd-gen-${suffix}`);
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
   const geminiDest = path.join(tempHome, '.gemini');
-  const effectiveAgent: AgentName = agent ?? (process.env.GD_DEV_USE_JETSKI === '1' ? 'jetski' : 'gemini');
+  const effectiveAgent: Agents = agent ?? (process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.GEMINI_CLI);
   setupAgentCredentials(effectiveAgent, tempHome);
 
   createTrustedFolders(geminiDest, [tempHome]);

@@ -7,7 +7,7 @@ import { generateTargetGrader } from './grader-gen.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
 import { defaultSuiteConfig, Serving, Agents, type SuiteConfig } from '../harness/config.ts';
 import { collectGuidesUsed } from '../harness/lib/guidance_validation.ts';
-import { setupIsolatedWorkDir, runAgentForModel, stageBaseAppWorkspace, type AgentName } from './lib/utils.ts';
+import { setupGuideDevWorkDir, runAgent, stageBaseAppWorkspace } from './lib/utils.ts';
 import {
   buildSolutionPrompt,
   buildZeroPassratePrompt,
@@ -182,14 +182,14 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Summary
   const defaultAgent = getDefaultSolutionAgent();
-  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, claude: { passed: 0, failed: 0, failingTests: [] }, codex: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
+  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
 
   return overallSuccess;
 }
 
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
-  const agent: AgentName = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-${patchType}`, undefined, agent);
+  const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
+  const workDir = setupGuideDevWorkDir(`${baseApp}-${patchType}`, undefined, agent);
   try {
     fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
       recursive: true,
@@ -206,7 +206,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
       ? buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
       : buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
 
-    await runAgentForModel(agent, prompt, workDir);
+    await runAgent(agent, prompt, workDir);
 
     const patchRelFile = patchType === 'zero-passrate' ? ZERO_PASSRATE_PATCH_FILE : SOLUTION_PATCH_FILES[patchType];
     const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchRelFile);
@@ -225,7 +225,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
 }
 
 async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-task`);
+  const workDir = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
@@ -240,7 +240,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       baseApp,
     });
 
-    await runAgentForModel(getDefaultSolutionAgent(), prompt, workDir);
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
 
     const generatedTask = path.join(workDir, TASK_FILE);
     if (fs.existsSync(generatedTask)) {
@@ -314,11 +314,10 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
 
       // 1. Grade base app (with zero-passrate baseline applied)
       const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
-      const patchToApply = fs.existsSync(zeroPassratePatch) ? zeroPassratePatch : undefined;
 
-      const { workDir: stagingDir, cleanup } = stageBaseAppWorkspace(baseApp, patchToApply, `gd-pre-grade-${baseApp}`);
+      const { workDir: stagingDir, cleanup } = stageBaseAppWorkspace(baseApp, zeroPassratePatch, `pre-grade-${baseApp}`);
       try {
-        if (patchToApply) process.env.PATCH_FILE = path.resolve(patchToApply);
+        process.env.PATCH_FILE = path.resolve(zeroPassratePatch);
         const preResults = await gradeOutput(stagingDir, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
         if (preResults) results['pre'] = preResults;
       } finally {
