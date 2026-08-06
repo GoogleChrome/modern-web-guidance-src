@@ -219,8 +219,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill || isDisciplineGuide) {
-        // Discipline skills/guides don't require the same frontmatter as use cases
+      if (isDisciplineSkill || isDisciplineGuide || !hasGuide) {
+        // Discipline skills/guides and stubs don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
 
