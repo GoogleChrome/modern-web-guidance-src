@@ -5,6 +5,7 @@ import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 import { fileURLToPath } from 'url';
 
 export function setupCodexCliCredentials(tempHome: string): void {
@@ -144,6 +145,7 @@ async function run() {
     }
 
     exportCodexTrajectories(workDir, targetDir);
+    await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, getSuiteConfig().serving);
 
     console.log("Codex agent finished successfully.");
   } catch (err) {

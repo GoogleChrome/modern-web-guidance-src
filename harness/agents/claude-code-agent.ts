@@ -5,6 +5,7 @@ import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
 export function setupClaudeCodeCredentials(tempHome: string): void {
   const gcloudConfigDest = path.join(tempHome, '.config', 'gcloud');
@@ -157,6 +158,12 @@ async function run() {
     }
 
     exportClaudeCodeTrajectories(workDir, targetDir);
+    
+    try {
+      await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, getSuiteConfig().serving);
+    } catch (e: any) {
+      console.error("Failed to generate normalized trajectory:", e.message);
+    }
 
     console.log("Claude Code agent finished successfully.");
 

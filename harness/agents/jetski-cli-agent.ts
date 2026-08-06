@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import config, { Agents, Serving } from '../config.ts';
 import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, createTrustedFolders, copyFileIfExists, type GuideUsage } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
 export function setupJetskiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
@@ -134,10 +135,9 @@ async function run() {
     exportTrajectories(conversationsDir, '*.db', targetDir);
 
     try {
-      const summary = parseJetskiCliSession(targetDir);
-      writeTrajectorySummary(targetDir, summary);
-    } catch (e) {
-      console.warn(`Failed to generate trajectory summary in ${targetDir}:`, e);
+      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, getSuiteConfig().serving);
+    } catch (e: any) {
+      console.warn("Failed to generate normalized trajectory:", e.message);
     }
 
     console.log("Jetski CLI agent finished successfully.");

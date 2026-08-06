@@ -1,6 +1,104 @@
 export function generateCodexTrajectoryHtml(logData: any[]): string {
   // Escape '<' in the JSON representation to prevent XSS or broken script tags
-  const safeJsonData = JSON.stringify(logData).replace(/</g, '\\u003c');
+  const _safeJsonData = JSON.stringify(logData).replace(/</g, '\\u003c');
+
+  function escapeHtml(str: any): string {
+    return (str || '').toString()
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function renderTool(name: string, args: any, callId: string): string {
+    const safeName = escapeHtml(name || 'unknown');
+    let formattedArgs = '';
+    try {
+      const parsedArgs = typeof args === 'string' ? JSON.parse(args) : args;
+      formattedArgs = Object.entries(parsedArgs).map(([key, val]) => {
+        if (typeof val === 'string' && (val.includes('\n') || val.length > 80)) {
+          return '<div style="margin-top:10px;"><strong>' + escapeHtml(key) + ':</strong><pre style="background: #010409; border: 1px solid #30363d; padding: 12px; overflow-x: auto; margin-top: 8px; white-space: pre-wrap; color: #79c0ff;">' + escapeHtml(val) + '</pre></div>';
+        }
+        const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+        return '<div style="margin-top:4px;"><strong>' + escapeHtml(key) + ':</strong> <span style="color: #79c0ff;">' + escapeHtml(displayVal) + '</span></div>';
+      }).join('');
+    } catch (e) {
+      formattedArgs = escapeHtml(String(args));
+    }
+    return '<div class="tool-use"><b>Tool: ' + safeName + ' [' + escapeHtml(callId || 'unknown') + ']</b><br/>' + formattedArgs + '</div>';
+  }
+
+  // Pre-render log entries to static HTML with explicit step IDs
+  let preRenderedLogsHtml = '';
+  let sessionMetaHtml = '';
+  let toolStepCounter = 0;
+
+  if (Array.isArray(logData)) {
+    logData.forEach((entry, i) => {
+      let role = entry.role || entry.type || 'unknown';
+      let contentHtml = '';
+
+      if (entry.type === 'session_meta') {
+        const p = entry.payload || {};
+        sessionMetaHtml = '<div style="font-size: 0.9em; color: #8b949e; margin-top: 10px;">Session: <b>' + escapeHtml(p.id) + '</b> | CLI: <b>' + escapeHtml(p.cli_version) + '</b> | Model: <b>' + escapeHtml(p.model_provider) + '</b></div>';
+        return;
+      }
+
+      const timestamp = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '';
+
+      if (entry.type === 'turn_context') {
+        role = 'system';
+        contentHtml = '<div class="text-content" style="color:#8b949e;">[System Instructions Collapsed]</div>';
+      } else if (entry.type === 'event_msg') {
+        const p = entry.payload || {};
+        if (p.type === 'user_message') {
+          role = 'user';
+          contentHtml = '<div class="text-content">' + escapeHtml(p.message) + '</div>';
+        } else if (p.type === 'agent_message') {
+          role = 'assistant';
+          contentHtml = '<div class="text-content" style="color: #7ee787;">' + escapeHtml(p.message) + '</div>';
+        } else if (p.type === 'token_count') {
+          role = 'system';
+          contentHtml = '<div class="text-content" style="font-size:0.8em; color:#8b949e;">Tokens: ' + (p.total_tokens || 'N/A') + '</div>';
+        }
+      } else if (entry.type === 'response_item') {
+        const p = entry.payload || {};
+        if (p.type === 'message') {
+          role = p.role || 'assistant';
+          const text = p.content?.[0]?.text || p.content?.[0]?.input_text || '';
+          contentHtml = '<div class="text-content">' + escapeHtml(text) + '</div>';
+        } else if (p.type === 'reasoning') {
+          role = 'assistant';
+          contentHtml = '<div class="thought"><b>Reasoning Process:</b><br/>' + escapeHtml(p.content || '[Reasoning]') + '</div>';
+        } else if (p.type === 'function_call' || p.type === 'custom_tool_call') {
+          role = 'assistant';
+          contentHtml = renderTool(p.name, p.arguments, p.call_id);
+        } else if (p.type === 'function_call_output' || p.type === 'custom_tool_call_output') {
+          role = 'system';
+          const errorClass = p.is_error ? ' error' : '';
+          contentHtml = '<div class="tool-result' + errorClass + '"><b>Tool Result [' + escapeHtml(p.call_id) + ']:</b><br/>' + escapeHtml(p.output || '') + '</div>';
+        }
+      }
+
+      if (contentHtml) {
+        let elementId = 'entry-' + (i + 1);
+        let stepBadgeHtml = '';
+        if (entry.type === 'response_item' && entry.payload && (entry.payload.type === 'function_call' || entry.payload.type === 'custom_tool_call')) {
+          toolStepCounter++;
+          elementId = 'step-' + toolStepCounter;
+          stepBadgeHtml = '<span class="step-badge" style="background:#1f6feb22; color:#58a6ff; border:1px solid #1f6feb; border-radius:4px; padding:2px 8px; font-size:0.8em; font-weight:bold; margin-left:8px;">STEP ' + toolStepCounter + '</span>';
+        }
+        let innerHTML = '<div class="log-entry role-' + escapeHtml(role) + '" id="' + elementId + '">';
+        innerHTML += '<div class="meta"><div><span>' + escapeHtml(role).toUpperCase() + '</span>' + stepBadgeHtml + '</div><span class="timestamp">' + timestamp + '</span></div>';
+        innerHTML += '<div class="content-block">' + contentHtml + '</div>';
+        innerHTML += '<div class="toggle-raw" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === \'block\' ? \'none\' : \'block\')">Toggle Raw JSON</div>';
+        innerHTML += '<pre class="raw-json">' + escapeHtml(JSON.stringify(entry, null, 2)) + '</pre>';
+        innerHTML += '</div>\n';
+        preRenderedLogsHtml += innerHTML;
+      }
+    });
+  }
 
   let html = '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>Codex CLI Trajectory</title>\n';
   
@@ -14,7 +112,7 @@ export function generateCodexTrajectoryHtml(logData: any[]): string {
   html += '    .role-assistant { border-left: 5px solid #238636; }\n';
   html += '    .role-developer { border-left: 5px solid #8957e5; }\n';
   html += '    .role-system { border-left: 5px solid #484f58; }\n';
-  html += '    .meta { font-size: 0.85em; color: #8b949e; margin-bottom: 12px; font-weight: bold; font-family: ui-monospace, SFMono-Regular, monospace; display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 4px; }\n';
+  html += '    .meta { font-size: 0.85em; color: #8b949e; margin-bottom: 12px; font-weight: bold; font-family: ui-monospace, SFMono-Regular, monospace; display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 4px; align-items: center; }\n';
   html += '    .timestamp { font-weight: normal; color: #6e7681; }\n';
   html += '    .content-block { margin-top: 10px; }\n';
   html += '    .text-content { white-space: pre-wrap; font-size: 0.95rem; color: #e6edf3; }\n';
@@ -34,109 +132,27 @@ export function generateCodexTrajectoryHtml(logData: any[]): string {
   html += '  </style>\n';
   html += '</head>\n';
 
-  // 2. HTML Body Structure
+  // 2. HTML Body Structure with Pre-rendered Logs
   html += '<body>\n';
   html += '  <div class="container">\n';
   html += '    <div class="header" id="header">\n';
   html += '      <h2 style="margin: 0; color: #58a6ff;">Codex CLI Trajectory</h2>\n';
+  html +=        sessionMetaHtml + '\n';
   html += '    </div>\n';
-  html += '    <div id="logs"></div>\n';
+  html += '    <div id="logs">\n' + preRenderedLogsHtml + '    </div>\n';
   html += '  </div>\n';
 
-  // 3. Browser-side Script
+  // 3. Auto-scroll Hash Listener
   html += '  <script>\n';
-  html += '    const logData = ' + safeJsonData + ';\n';
-  html += '    const logsContainer = document.getElementById("logs");\n';
-  html += '    const headerEl = document.getElementById("header");\n\n';
-
-  html += '    function escapeHtml(str) {\n';
-  html += '      return (str || "").toString()\n';
-  html += '        .replace(/&/g, "&amp;")\n';
-  html += '        .replace(/</g, "&lt;")\n';
-  html += '        .replace(/>/g, "&gt;")\n';
-  html += '        .replace(/"/g, "&quot;")\n';
-  html += '        .replace(/\'/g, "&#039;");\n';
-  html += '    }\n\n';
-
-  html += '    function renderTool(name, args, callId) {\n';
-  html += '        const safeName = escapeHtml(name || "unknown");\n';
-  html += '        let formattedArgs = "";\n';
-  html += '        try {\n';
-  html += '            const parsedArgs = typeof args === "string" ? JSON.parse(args) : args;\n';
-  html += '            formattedArgs = Object.entries(parsedArgs).map(([key, val]) => {\n';
-  html += '                if (typeof val === "string" && (val.includes("\\n") || val.length > 80)) {\n';
-  html += "                    return '<div style=\"margin-top:10px;\"><strong>' + escapeHtml(key) + ':</strong><pre style=\"background: #010409; border: 1px solid #30363d; padding: 12px; overflow-x: auto; margin-top: 8px; white-space: pre-wrap; color: #79c0ff;\">' + escapeHtml(val) + '</pre></div>';\n";
-  html += '                }\n';
-  html += '                const displayVal = typeof val === "object" ? JSON.stringify(val) : String(val);\n';
-  html += "                return '<div style=\"margin-top:4px;\"><strong>' + escapeHtml(key) + ':</strong> <span style=\"color: #79c0ff;\">' + escapeHtml(displayVal) + '</span></div>';\n";
-  html += '            }).join("");\n';
-  html += '        } catch (e) {\n';
-  html += '            formattedArgs = escapeHtml(String(args));\n';
-  html += '        }\n';
-  html += "        return '<div class=\"tool-use\"><b>Tool: ' + safeName + ' [' + escapeHtml(callId || 'unknown') + ']</b><br/>' + formattedArgs + '</div>';\n";
-  html += '    }\n\n';
-
-  html += '    logData.forEach((entry, i) => {\n';
-  html += '      const div = document.createElement("div");\n';
-  html += '      let role = entry.role || entry.type || "unknown";\n';
-  html += '      let contentHtml = "";\n\n';
-
-  html += '      if (entry.type === "session_meta") {\n';
-  html += '          const p = entry.payload || {};\n';
-  html += "          headerEl.innerHTML += '<div style=\"font-size: 0.9em; color: #8b949e; margin-top: 10px;\">Session: <b>' + escapeHtml(p.id) + '</b> | CLI: <b>' + escapeHtml(p.cli_version) + '</b> | Model: <b>' + escapeHtml(p.model_provider) + '</b></div>';\n";
-  html += '          return;\n';
-  html += '      }\n\n';
-
-  html += '      const timestamp = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : "";\n\n';
-
-  html += '      if (entry.type === "turn_context") {\n';
-  html += '          role = "system";\n';
-  html += "          contentHtml = '<div class=\"text-content\" style=\"color:#8b949e;\">[System Instructions Collapsed]</div>';\n";
-  html += '      } else if (entry.type === "event_msg") {\n';
-  html += '          const p = entry.payload || {};\n';
-  html += '          if (p.type === "user_message") {\n';
-  html += '              role = "user";\n';
-  html += "              contentHtml = '<div class=\"text-content\">' + escapeHtml(p.message) + '</div>';\n";
-  html += '          } else if (p.type === "agent_message") {\n';
-  html += '              role = "assistant";\n';
-  html += "              contentHtml = '<div class=\"text-content\" style=\"color: #7ee787;\">' + escapeHtml(p.message) + '</div>';\n";
-  html += '          } else if (p.type === "token_count") {\n';
-  html += '              role = "system";\n';
-  html += "              contentHtml = '<div class=\"text-content\" style=\"font-size:0.8em; color:#8b949e;\">Tokens: ' + (p.total_tokens || 'N/A') + '</div>';\n";
-  html += '          }\n';
-  html += '      } else if (entry.type === "response_item") {\n';
-  html += '          const p = entry.payload || {};\n';
-  html += '          if (p.type === "message") {\n';
-  html += '              role = p.role || "assistant";\n';
-  // Use a string here to avoid nested quotes mess
-  html += '              const text = p.content?.[0]?.text || p.content?.[0]?.input_text || "";\n';
-  html += "              contentHtml = '<div class=\"text-content\">' + escapeHtml(text) + '</div>';\n";
-  html += '          } else if (p.type === "reasoning") {\n';
-  html += '              role = "assistant";\n';
-  html += "              contentHtml = '<div class=\"thought\"><b>Reasoning Process:</b><br/>' + escapeHtml(p.content || '[Reasoning]') + '</div>';\n";
-  html += '          } else if (p.type === "function_call" || p.type === "custom_tool_call") {\n';
-  html += '              role = "assistant";\n';
-  html += '              contentHtml = renderTool(p.name, p.arguments, p.call_id);\n';
-  html += '          } else if (p.type === "function_call_output" || p.type === "custom_tool_call_output") {\n';
-  html += '              role = "system";\n';
-  html += '              const errorClass = p.is_error ? " error" : "";\n';
-  html += "              contentHtml = '<div class=\"tool-result' + errorClass + '\"><b>Tool Result [' + escapeHtml(p.call_id) + ']:</b><br/>' + escapeHtml(p.output || '') + '</div>';\n";
-  html += '          }\n';
-  html += '      }\n\n';
-
-  html += '      if (contentHtml) {\n';
-  html += '          div.className = "log-entry role-" + escapeHtml(role);\n';
-  html += "          let innerHTML = '<div class=\"meta\"><span>' + escapeHtml(role).toUpperCase() + '</span><span class=\"timestamp\">' + timestamp + '</span></div>';\n";
-  html += "          innerHTML += '<div class=\"content-block\">' + contentHtml + '</div>';\n";
-  html += "          innerHTML += '<div class=\"toggle-raw\" onclick=\"this.nextElementSibling.style.display = (this.nextElementSibling.style.display === \\'block\\' ? \\'none\\' : \\'block\\')\">Toggle Raw JSON</div>';\n";
-  html += "          innerHTML += '<pre class=\"raw-json\">' + escapeHtml(JSON.stringify(entry, null, 2)) + '</pre>';\n";
-  html += '          div.innerHTML = innerHTML;\n';
-  html += '          logsContainer.appendChild(div);\n';
+  html += '    if (window.location.hash) {\n';
+  html += '      const target = document.querySelector(window.location.hash);\n';
+  html += '      if (target) {\n';
+  html += '        setTimeout(() => {\n';
+  html += '          target.scrollIntoView({ behavior: "smooth", block: "center" });\n';
+  html += '          target.style.outline = "3px solid #58a6ff";\n';
+  html += '          target.style.boxShadow = "0 0 25px rgba(88, 166, 255, 0.6)";\n';
+  html += '        }, 100);\n';
   html += '      }\n';
-  html += '    });\n\n';
-
-  html += '    if (logsContainer.children.length === 0) {\n';
-  html += '        logsContainer.innerHTML = \'<div style="text-align:center; padding: 100px; color: #484f58;">No visible events present in session log.</div>\';\n';
   html += '    }\n';
   html += '  </script>\n';
   html += '</body>\n';
