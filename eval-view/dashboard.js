@@ -4,10 +4,17 @@ import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability_trend.js';
 
 /**
+ * @typedef {Object} DiffChange
+ * @property {boolean} [added]
+ * @property {boolean} [removed]
+ * @property {string} value
+ */
+
+/**
  * @typedef {Object} CurrentDetails
  * @property {string} testName
- * @property {any} runs
- * @property {any} stats
+ * @property {DashboardRunResult[]} runs
+ * @property {import('../harness/lib/metrics.ts').Metrics['testStats'][string]} stats
  * @property {string} testId
  */
 
@@ -1427,7 +1434,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
             // @ts-expect-error global library
             const diff = Diff.diffLines(setupText, resultText);
 
-            diff.forEach((/** @type {any} */ part, /** @type {number} */ index) => {
+            diff.forEach((/** @type {DiffChange} */ part, /** @type {number} */ index) => {
                 const colorClass = part.added ? 'diff-added' :
                     part.removed ? 'diff-removed' : 'diff-unchanged';
 

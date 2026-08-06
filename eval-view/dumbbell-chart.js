@@ -105,7 +105,7 @@ export class DumbbellChart {
     // Group items by Feature Name (lookup from features_mapping.gen.js if available)
     /** @type {Record<string, ChartGroupItem[]>} */
     const groups = {};
-    const featuresMap = /** @type {Record<string, string[]>} */ (/** @type {any} */ (window).__featuresMapping || {});
+    const featuresMap = window.__featuresMapping || {};
 
     labels.forEach((label, i) => {
         let taskName = label;

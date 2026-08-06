@@ -15,12 +15,12 @@ export function getRunStats(checks) {
 }
 
 /**
- * @param {any} run
+ * @param {{ isDisciplineSkill?: boolean; isSkill?: boolean } | null | undefined} run
  * @returns {boolean}
  */
 export function isDisciplineSkillRun(run) {
     if (!run) return false;
-    return run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
+    return (run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill) || false;
 }
 
 /**
@@ -153,7 +153,7 @@ export function parseResultKey(key) {
  * }}
  */
 export function calculateChartData(results) {
-    /** @type {Record<string, ChartAppData & Record<string, any>>} */
+    /** @type {Record<string, ChartAppData>} */
     const apps = {};
     /** @type {Record<string, string>} */
     const taskNames = {};
@@ -163,7 +163,12 @@ export function calculateChartData(results) {
         if (!parsedKey) return;
         const { task: taskName, guide, runType } = parsedKey;
 
-        if (!runType || !['guided', 'unguided'].includes(runType)) return;
+        if (runType !== 'guided' && runType !== 'unguided') return;
+        /** @type {'guided' | 'unguided'} */
+        const rType = runType;
+        const failedKey = rType === 'guided' ? 'guided_failed' : 'unguided_failed';
+        const tokensKey = rType === 'guided' ? 'guided_tokens' : 'unguided_tokens';
+
         const scenario = `${taskName} (${guide})`;
         if (!apps[scenario]) {
             apps[scenario] = { 
@@ -183,19 +188,19 @@ export function calculateChartData(results) {
         
         const isEarlyFailure = runs.some(r => r.results?.some(c => c.isEarlyFailure));
         if (isEarlyFailure) {
-            apps[scenario][runType + '_failed'] = true;
+            apps[scenario][failedKey] = true;
         }
         
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
         const total = runs.reduce((acc, r) => acc + (r.results?.length || 0), 0);
-        apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
+        apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
 
         const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);
         const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
-        if (!apps[scenario][runType + '_tokens']) {
-            apps[scenario][runType + '_tokens'] = [];
+        if (!apps[scenario][tokensKey]) {
+            apps[scenario][tokensKey] = [];
         }
-        apps[scenario][runType + '_tokens'].push(avgTokens);
+        apps[scenario][tokensKey].push(avgTokens);
     });
     
     const labels = Object.keys(apps).sort((a, b) => {
@@ -206,7 +211,7 @@ export function calculateChartData(results) {
 
     /**
      * @param {string} l
-     * @param {string} type
+     * @param {'guided' | 'unguided'} type
      * @returns {number}
      */
     const getAvg = (l, type) => {
@@ -216,11 +221,12 @@ export function calculateChartData(results) {
 
     /**
      * @param {string} l
-     * @param {string} type
+     * @param {'guided' | 'unguided'} type
      * @returns {number}
      */
     const getAvgTokens = (l, type) => {
-        const s = apps[l][type + '_tokens'];
+        const tokensKey = type === 'guided' ? 'guided_tokens' : 'unguided_tokens';
+        const s = apps[l][tokensKey];
         return s && s.length > 0 ? Math.round(s.reduce((/** @type {number} */ acc, /** @type {number} */ b) => acc + b, 0) / s.length) : 0;
     };
 
