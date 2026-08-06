@@ -30,7 +30,12 @@ export function setupJetskiCliCredentials(tempHome: string): string {
 
 export function getJetskiCliCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
   const command = config.environment.jetskiCliBin;
-  const commandArgs = ['-p', prompt, '--dangerously-skip-permissions'];
+  const model = process.env.JETSKI_MODEL;
+  const commandArgs = [
+    '-p', prompt,
+    '--dangerously-skip-permissions',
+    ...(model ? ['--model', model] : [])
+  ];
   return { command, commandArgs };
 }
 
