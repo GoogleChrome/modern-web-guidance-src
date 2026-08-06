@@ -1188,7 +1188,7 @@ function formatPromptText(text) {
  */
 function openTrajectory(usedBasePath, sessionFile) {
     if (api.source === 'remote') {
-        const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
+        const finalPath = `${usedBasePath}/${sessionFile}`;
         api.getFileBlob(finalPath)
             .then(blob => {
                 const htmlBlob = new Blob([blob], { type: 'text/html' });

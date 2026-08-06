@@ -218,7 +218,7 @@ export class DumbbellChart {
     // Add Glow Filter for expensive token usage
     const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
     filter.setAttribute("id", "red-glow");
-    const shadow = document.createElementNS("FeDropShadow", "feDropShadow");
+    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
     if (shadow) {
         shadow.setAttribute("dx", "0");
         shadow.setAttribute("dy", "0");
