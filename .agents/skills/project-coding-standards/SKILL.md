@@ -80,8 +80,12 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 ## Verification & Testing Gates
 
 ### Tiered Preflight Gates
-All changes must pass verification before PR submission:
-- **Core preflight gate (all PRs):** Runs build, typecheck, lint, and unit tests across all workspace packages in parallel:
+All changes must pass linting, typechecking, and tests before PR submission:
+- **Fast dev check (lint & typecheck):**
+  ```bash
+  pnpm typecheck && pnpm lint
+  ```
+- **Full preflight gate (all PRs):** Bundles build, typecheck, lint, and parallel unit tests across all workspaces:
   ```bash
   pnpm run preflight
   ```
