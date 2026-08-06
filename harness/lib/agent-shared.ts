@@ -531,6 +531,13 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
     const sourceDir = path.join(workDir, subPath);
     try {
       execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
+      // Remove .git and node_modules directories if present
+      for (const dirName of ['.git', 'node_modules']) {
+        const dirPath = path.join(targetDir, dirName);
+        if (fs.existsSync(dirPath)) {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+        }
+      }
       console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
     } catch (e) {
       console.warn(`Failed to copy results from ${sourceDir} to ${targetDir}: ${e}`);
