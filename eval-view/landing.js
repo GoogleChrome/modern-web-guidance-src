@@ -7,6 +7,7 @@ let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentServingFilter = 'all';
 let currentModelFilter = 'all';
+let currentRunFilter = 'nightly';
 
 // Guides Pivot Table Sort State
 let currentGuideSort = 'alphabetic';
@@ -16,6 +17,10 @@ function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 }
 
+function hasNightlyRuns() {
+    return Object.values(allTestData).some(t => (t.testId || '').toLowerCase().includes('nightly'));
+}
+
 const servingDisplayNames = {
     'skills': 'Skills',
     'skills_cli': 'Skills (CLI)',
@@ -23,21 +28,37 @@ const servingDisplayNames = {
 };
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        const params = new URLSearchParams(window.location.search);
+        const runFilterParam = params.get('runFilter') ?? params.get('runName');
+        if (runFilterParam !== null) {
+            currentRunFilter = runFilterParam;
+        }
+
         // Initialize UI
         setupTestFilters(); // New filter setup
         setupTableFilters();
         setupInsightsTimelineFilters();
-
-        const params = new URLSearchParams(window.location.search);
         
         // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
         initGoogleAuth(async () => {
              await loadRemoteTests();
+             if (runFilterParam === null && hasNightlyRuns()) {
+                 currentRunFilter = 'nightly';
+                 const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+                 if (runFilterInput) runFilterInput.value = currentRunFilter;
+                 renderPivotInsights();
+             }
         });
 
         await loadLocalTests();
         if (getAccessToken()) {
              await loadRemoteTests();
+        }
+
+        if (runFilterParam === null) {
+            currentRunFilter = hasNightlyRuns() ? 'nightly' : '';
+            const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+            if (runFilterInput) runFilterInput.value = currentRunFilter;
         }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
@@ -71,6 +92,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
+    const runFilterParam = params.get('runFilter') ?? params.get('runName');
+    currentRunFilter = runFilterParam !== null ? runFilterParam : 'nightly';
+    const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+    if (runFilterInput) {
+        runFilterInput.value = currentRunFilter;
+    }
 
     selectedTestIds = new Set(Object.keys(allTestData)); // Default to all
     const testsParam = params.get('tests');
@@ -176,6 +203,16 @@ function setupTableFilters() {
 function setupInsightsTimelineFilters() {
     const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
     const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
+    const runFilterInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-run-filter-input'));
+
+    if (runFilterInput) {
+        runFilterInput.value = currentRunFilter;
+        runFilterInput.addEventListener('input', () => {
+            currentRunFilter = runFilterInput.value;
+            updateUrlParams();
+            renderPivotInsights();
+        });
+    }
 
     if (limitInput) {
         limitInput.addEventListener('change', () => {
@@ -277,6 +314,12 @@ function updateUrlParams() {
     } else {
         // Only list selected
         url.searchParams.set('tests', Array.from(selectedTestIds).join(','));
+    }
+
+    if (currentRunFilter === 'nightly') {
+        url.searchParams.delete('runFilter');
+    } else {
+        url.searchParams.set('runFilter', currentRunFilter);
     }
 
     window.history.replaceState({}, '', url);
@@ -388,6 +431,13 @@ async function loadRemoteTests() {
 }
 
 function registerTestData(testId, source, parsed, forcedTimestamp) {
+    if (source === 'remote' && (allTestData[`${testId}|||local`] || allTestData[`${testId}|||static`])) {
+        return;
+    }
+    if ((source === 'local' || source === 'static') && allTestData[`${testId}|||remote`]) {
+        delete allTestData[`${testId}|||remote`];
+    }
+
     let serving = 'unknown';
     if (parsed.serving !== undefined) {
         serving = parsed.serving;
@@ -791,6 +841,16 @@ function getSortedTestIds() {
 function renderPivotInsights() {
     let testIds = getSortedTestIds(); // Uses selected filters!
 
+    if (currentRunFilter && currentRunFilter.trim()) {
+        const query = currentRunFilter.trim().toLowerCase();
+        testIds = testIds.filter(id => {
+            const testInfo = allTestData[id];
+            if (!testInfo) return false;
+            const testId = (testInfo.testId || '').toLowerCase();
+            return testId.includes(query);
+        });
+    }
+
     const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
     const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
     const showAll = showAllCheck ? showAllCheck.checked : false;
@@ -956,7 +1016,7 @@ function renderPivotInsights() {
             const gSD_width = Math.min(100, gRate + gSD) - gSD_left;
 
             const clickAttr = filterKey === 'guide'
-                ? `onclick="window.location.href='guide.html?guide=${encodeURIComponent(key)}'"`
+                ? `onclick="window.location.href='guide.html?guide=${encodeURIComponent(key)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}'"`
                 : `onclick="setInsightFilter('${filterKey}', '${key}')"`;
 
             const uBandHtml = uSD > 0 ? `<div class="variance-band unguided" style="left: ${uSD_left}%; width: ${uSD_width}%;"></div>` : '';

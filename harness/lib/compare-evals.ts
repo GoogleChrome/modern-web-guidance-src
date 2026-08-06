@@ -262,13 +262,13 @@ function parsePlaywrightResults(report: any): { message: string; passed: boolean
             if (Array.isArray(test.results)) {
               for (const res of test.results) {
                 if (res.error?.message) {
-                  const cleanMsg = res.error.message.replace(/\u001b\[[0-9;]*m/g, '');
+                  const cleanMsg = res.error.message.replace(new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g'), '');
                   if (!errors.includes(cleanMsg)) errors.push(cleanMsg);
                 }
                 if (Array.isArray(res.errors)) {
                   for (const err of res.errors) {
                     if (err.message) {
-                      const cleanMsg = err.message.replace(/\u001b\[[0-9;]*m/g, '');
+                      const cleanMsg = err.message.replace(new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g'), '');
                       if (!errors.includes(cleanMsg)) errors.push(cleanMsg);
                     }
                     if (err.location && !location) {
