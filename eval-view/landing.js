@@ -18,6 +18,10 @@ function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 }
 
+function hasNightlyRuns() {
+    return Object.values(allTestData).some(t => (t.testId || '').toLowerCase().includes('nightly'));
+}
+
 const servingDisplayNames = {
     'skills': 'Skills',
     'skills_cli': 'Skills (CLI)',
@@ -39,11 +43,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
         initGoogleAuth(async () => {
              await loadRemoteTests();
+             if (runFilterParam === null && hasNightlyRuns()) {
+                 currentRunFilter = 'nightly';
+                 const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+                 if (runFilterInput) runFilterInput.value = currentRunFilter;
+                 renderPivotInsights();
+             }
         });
 
         await loadLocalTests();
         if (getAccessToken()) {
              await loadRemoteTests();
+        }
+
+        if (runFilterParam === null) {
+            currentRunFilter = hasNightlyRuns() ? 'nightly' : '';
+            const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+            if (runFilterInput) runFilterInput.value = currentRunFilter;
         }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
