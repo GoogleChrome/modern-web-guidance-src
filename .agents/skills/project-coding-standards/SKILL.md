@@ -77,13 +77,26 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 
 ---
 
-## Linting & Code Hygiene
+## Verification & Testing Gates
 
-### Zero Errors & Zero Warnings
-- All code must pass typecheck and linting without errors or warnings:
+### Tiered Preflight Gates
+All changes must pass verification before PR submission:
+- **Core preflight gate (all PRs):** Runs build, typecheck, lint, and unit tests across all workspace packages in parallel:
   ```bash
-  pnpm typecheck && pnpm lint
+  pnpm run preflight
   ```
+- **Browser E2E gate (eval-view / dashboard / UI changes):** Playwright browser tests are not included in `pnpm run preflight` and must be executed when touching frontend visualizers, dashboard code, or server endpoints in `eval-view/`:
+  ```bash
+  pnpm --filter eval-view run test:e2e
+  ```
+  *(Run `pnpm run setup:playwright` first if browser binaries are not installed).*
+
+### Domain-Specific Validation
+- **Serving & Skills:** When modifying MCP servers or skills packaging, verify with `pnpm --filter serving run publish-skills --dry-run`.
+- **Guides & Graders:** When authoring or updating evaluation capsules, verify grader calibration via `gd dev <guide> --test-grader`.
+- **Clean Git Tree:** The build must produce zero uncommitted side effects or untracked artifacts (`git status` must remain clean).
+
+### Code Hygiene
 - **Safe data parsing:** Never use `eval()` to parse data or JSON; use `JSON.parse()` or dedicated parsers.
 - **Clean regular expressions:** Avoid raw or unescaped control characters in regular expressions; use explicit Unicode escapes (e.g., `[\u001b\u009b]`).
 
@@ -99,4 +112,4 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 6. [ ] **Configs:** Root `tsconfig.json`, `package.json`, and `.oxlintignore` are untouched unless explicitly intended.
 7. [ ] **Remote I/O & Git:** Remote fetches are strictly scoped and cached; no transient debug artifacts committed.
 8. [ ] **Dashboard/UI:** Handles static vs. local server modes; URL parameters safely parsed and sanitized.
-9. [ ] **Verification:** `pnpm typecheck && pnpm lint` passes with 0 errors.
+9. [ ] **Verification:** `pnpm run preflight` (and `pnpm --filter eval-view run test:e2e` for `eval-view/` changes) passes with 0 errors.
