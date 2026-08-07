@@ -75,5 +75,57 @@
     "guidedPassRate": 84,
     "skillVersion": "2026_05_16-c5e78707",
     "cliVersion": "0.0.180"
+  },
+  {
+    "testId": "nightly-2026-08-03_18-02-27-codex_cli",
+    "timestamp": "2026-08-03T18:28:44.821Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 129,
+    "assertionCount": 1104,
+    "unguidedPassRate": 55,
+    "guidedPassRate": 82,
+    "skillVersion": "2026_05_16-c5e78707",
+    "cliVersion": "0.0.179"
+  },
+  {
+    "testId": "nightly-2026-08-03_17-20-07-claude_code",
+    "timestamp": "2026-08-03T17:59:44.227Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-sonnet-5",
+    "taskCount": 129,
+    "assertionCount": 1104,
+    "unguidedPassRate": 54,
+    "guidedPassRate": 88,
+    "skillVersion": "2026_05_16-c5e78707",
+    "cliVersion": "0.0.179"
+  },
+  {
+    "testId": "nightly-2026-08-03_17-00-02-agy",
+    "timestamp": "2026-08-03T17:17:29.615Z",
+    "agent": "antigravity",
+    "serving": "skills_cli",
+    "model": "unknown",
+    "taskCount": 129,
+    "assertionCount": 1104,
+    "unguidedPassRate": 55,
+    "guidedPassRate": 89,
+    "skillVersion": "2026_05_16-c5e78707",
+    "cliVersion": "0.0.179"
+  },
+  {
+    "testId": "nightly-2026-07-31_17-59-29-codex_cli",
+    "timestamp": "2026-07-31T18:25:35.498Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-5.5",
+    "taskCount": 129,
+    "assertionCount": 1104,
+    "unguidedPassRate": 57,
+    "guidedPassRate": 85,
+    "skillVersion": "2026_05_16-c5e78707",
+    "cliVersion": "0.0.177"
   }
 ]
