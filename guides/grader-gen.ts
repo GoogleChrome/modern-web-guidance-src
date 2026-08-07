@@ -36,23 +36,35 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
 
     const tempHome = path.resolve(workDir, '../../../../..'); // workDir is tempHome/guides/cat/guide/targets/app
     
-    // Copy patch-utils.ts to tempHome/lib/patch-utils.ts
-    const srcLibDir = path.resolve(repoRoot, 'lib');
+    // =========================================================================
+    // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
+    // Required so grader.ts runtime import `../../../../test-fixture.ts` and
+    // test-fixture.ts import `../lib/patch-utils.ts` resolve during Playwright execution.
+    // =========================================================================
     fs.mkdirSync(path.join(tempHome, 'lib'), { recursive: true });
     fs.copyFileSync(
-      path.join(srcLibDir, 'patch-utils.ts'),
+      path.resolve(repoRoot, 'lib', 'patch-utils.ts'),
       path.join(tempHome, 'lib', 'patch-utils.ts')
     );
-
-    // Copy template.grader.ts, test-fixture.ts, and pattern libraries to tempHome/guides/
     fs.mkdirSync(path.join(tempHome, 'guides'), { recursive: true });
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'test-fixture.ts'),
+      path.join(tempHome, 'guides', 'test-fixture.ts')
+    );
+
+    // =========================================================================
+    // 2. AGENT SANDBOX VIEWING & EDITING DEPENDENCIES (in workDir)
+    // All reference files, pattern libraries, API definitions, and patches must live
+    // directly inside `workDir` so the CLI agent's `read_file` tool can access them
+    // without triggering sandbox "Path not in workspace" security errors.
+    // =========================================================================
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'template.grader.ts'),
       path.join(workDir, 'template.grader.ts')
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'test-fixture.ts'),
-      path.join(tempHome, 'guides', 'test-fixture.ts')
+      path.join(workDir, 'test-fixture.ts')
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'parser-pattern-library.test.ts'),
@@ -62,17 +74,19 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       path.resolve(repoRoot, 'guides', 'playwright-pattern-library.grader.ts'),
       path.join(workDir, 'playwright-pattern-library.grader.ts')
     );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
+      path.join(workDir, 'ts-morph.d.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'node_modules', 'linkedom', 'types', 'index.d.ts'),
+      path.join(workDir, 'linkedom.d.ts')
+    );
 
     const sourcePatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
     if (fs.existsSync(sourcePatches)) {
       fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
     }
-
-    const parserPatternsPath = path.join(workDir, 'parser-pattern-library.test.ts');
-    const playwrightPatternsPath = path.join(workDir, 'playwright-pattern-library.grader.ts');
-
-    const tsMorphDts = path.join(repoRoot, 'guides', 'node_modules/ts-morph/lib/ts-morph.d.ts');
-    const linkedomDts = path.join(repoRoot, 'guides', 'node_modules/linkedom/types/index.d.ts');
 
     const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
     const activeAgents = getActiveSolutionAgents(targetDir);
@@ -89,10 +103,10 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       graderFile: GRADER_FILE,
       baseApp,
       templateFile: 'template.grader.ts',
-      parserPatternLibraryPath: parserPatternsPath,
-      playwrightPatternLibraryPath: playwrightPatternsPath,
-      tsMorphDtsPath: tsMorphDts,
-      linkedomDtsPath: linkedomDts,
+      parserPatternLibraryPath: path.join(workDir, 'parser-pattern-library.test.ts'),
+      playwrightPatternLibraryPath: path.join(workDir, 'playwright-pattern-library.grader.ts'),
+      tsMorphDtsPath: path.join(workDir, 'ts-morph.d.ts'),
+      linkedomDtsPath: path.join(workDir, 'linkedom.d.ts'),
       failureContext,
     });
 

@@ -8,6 +8,7 @@ import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../lib/patch-utils.ts';
 import { getGraderScriptContent } from './lib/agent-shared.ts';
+import { copyBaseAppToWorkspace } from '../guides/lib/utils.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -351,15 +352,11 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
   }
 
   const refBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
-  if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workspaceBaseAppDir, {
-      recursive: true,
-      filter: (src) => !src.includes('/dist') && !src.includes('/.astro'),
-    });
-  } else {
+  if (!fs.existsSync(refBaseAppDir)) {
     console.warn(`Source base app not found at ${refBaseAppDir}`);
     return null;
   }
+  await copyBaseAppToWorkspace(taskInfo.baseApp, workspaceBaseAppDir);
   const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
   if (fs.existsSync(pkgJsonPath)) {
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));

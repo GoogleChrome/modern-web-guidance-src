@@ -2,10 +2,8 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { rootDir, baseAppsDir } from '../../lib/paths.ts';
-import { applyPatchSync } from '../../lib/patch-utils.ts';
 import {
   createIsolatedHome,
-  cleanupIsolatedHome,
   createTrustedFolders,
   spawnAsync,
   setupAgentCredentials,
@@ -13,45 +11,18 @@ import {
 } from '../../harness/lib/agent-shared.ts';
 import { Agents } from '../../harness/config.ts';
 
-export function stageBaseAppWorkspace(
-  baseApp: string,
-  patchFile: string,
-  suffix: string,
-  zeroPassrateFile?: string
-): { workDir: string; cleanup: () => void } {
-  const prefix = suffix.startsWith('gd-') ? suffix : `gd-${suffix}`;
-  const tempHome = createIsolatedHome(prefix);
-  const workDir = path.join(tempHome, baseApp);
-  fs.mkdirSync(workDir, { recursive: true });
-
+export async function copyBaseAppToWorkspace(baseApp: string, destDir: string): Promise<void> {
   const refBaseAppDir = path.join(baseAppsDir, baseApp);
-  if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workDir, {
-      recursive: true,
-      filter: (src) => !src.includes('/dist') && !src.includes('/.astro'),
-    });
+  if (!fs.existsSync(refBaseAppDir)) {
+    console.warn(`Source base app not found at ${refBaseAppDir}`);
+    return;
   }
-
-  if (zeroPassrateFile && fs.existsSync(zeroPassrateFile)) {
-    if (fs.readFileSync(zeroPassrateFile, 'utf8').trim().length > 0) {
-      applyPatchSync(workDir, zeroPassrateFile);
-    }
-  }
-
-  if (patchFile && fs.existsSync(patchFile)) {
-    if (fs.readFileSync(patchFile, 'utf8').trim().length > 0) {
-      applyPatchSync(workDir, patchFile);
-    }
-  }
-
-  const cleanup = () => {
-    try {
-      cleanupIsolatedHome(tempHome);
-    } catch (e) {}
-  };
-
-  return { workDir, cleanup };
+  await fs.promises.cp(refBaseAppDir, destDir, {
+    recursive: true,
+    filter: (src) => !src.includes('/dist') && !src.includes('/.astro') && !src.includes('node_modules'),
+  });
 }
+
 
 export async function runCommand(command: string, args: string[], cwd?: string, env?: NodeJS.ProcessEnv): Promise<string> {
   return new Promise((resolve, reject) => {

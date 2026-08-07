@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, Serving, type SuiteConfig } from '../config.ts';
-import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
+import { classifyGuide, scanAllGuides, ZERO_PASSRATE_PATCH_FILE } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
 
@@ -829,17 +829,23 @@ export function getGraderScriptContent(
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
+  const agentPatch = path.join(targetDir, 'agent.patch');
+  const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
 
   return `import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
+    const patchFile = fs.existsSync(${JSON.stringify(agentPatch)}) ? ${JSON.stringify(agentPatch)} : undefined;
+    const zeroPassrateFile = fs.existsSync(${JSON.stringify(zeroPassratePatch)}) ? ${JSON.stringify(zeroPassratePatch)} : undefined;
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
       ${JSON.stringify(gradeReportDir)},
-      'inherit'
+      'inherit',
+      patchFile,
+      zeroPassrateFile
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {
