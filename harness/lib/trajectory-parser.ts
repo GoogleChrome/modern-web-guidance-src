@@ -29,6 +29,10 @@ export interface TrajectorySummary {
   steps: StandardizedStep[];
   tokenUsage?: { total: number; cached: number };
   initialPrompt?: string;
+  model?: string;
+  retrievedGuides?: string[];
+  fileReadGuides?: string[];
+  toolsUsed?: string[];
 }
 
 export function categorizeAction(name: string, params?: Record<string, any>, thought?: string): NonNullable<StandardizedStep['action']>['canonicalCategory'] {
@@ -369,7 +373,7 @@ function findJsonObjectsInString(str: string): any[] {
 /**
  * Synthesizes a normalized TrajectorySummary for Jetski/MCP using .db files, modern-web.log, and chat_log.txt.
  */
-export async function parseJetskiTrajectory(dirPath: string, serving: string): Promise<TrajectorySummary> {
+export async function parseJetskiTrajectory(dirPath: string, agentName: string, serving: string): Promise<TrajectorySummary> {
   const steps: StandardizedStep[] = [];
   let stepCounter = 1;
   const seenJsonHashes = new Set<string>();
@@ -422,7 +426,7 @@ export async function parseJetskiTrajectory(dirPath: string, serving: string): P
             let actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
             let actName = 'run_command';
             let params: any = { command: truncateMessage(obj.CommandLine, 150) };
-            if (obj.CommandLine.includes('modern-web-guidance') && (obj.CommandLine.includes('search') || obj.CommandLine.includes('retrieve'))) {
+            if (/(?:modern-web-guidance|modern-web|\bgd\b)/.test(obj.CommandLine) && (obj.CommandLine.includes('search') || obj.CommandLine.includes('retrieve'))) {
               actType = 'web_search';
               actName = 'get_best_practices';
               const qMatch = obj.CommandLine.match(/(?:search|retrieve)\s+["']?([^"'\n]+)["']?/i);
@@ -549,7 +553,7 @@ export async function parseJetskiTrajectory(dirPath: string, serving: string): P
   }
 
   return finalizeTrajectorySummary({
-    agent: Agents.JETSKI,
+    agent: agentName,
     serving,
     steps,
     initialPrompt: extractInitialPromptFromLogs(steps, chatText)
@@ -647,7 +651,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
 
     // To add another agent in the future, check agentName or session files here and invoke the corresponding parser.
     if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI || agentName.toLowerCase().includes('jetski') || (!sessionFiles[0] && fs.existsSync(targetDir) && fs.readdirSync(targetDir).some(f => f.endsWith('.db')))) {
-      summary = await parseJetskiTrajectory(targetDir, serving);
+      summary = await parseJetskiTrajectory(targetDir, agentName, serving);
     } else if (sessionFiles[0]) {
       const filePath = path.join(targetDir, sessionFiles[0]);
       const isJsonl = filePath.endsWith('.jsonl');
@@ -664,7 +668,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary = parseCodexTrajectory(logData, serving);
       }
     } else {
-      summary = await parseJetskiTrajectory(targetDir, serving);
+      summary = await parseJetskiTrajectory(targetDir, agentName, serving);
     }
 
       if (summary) {
