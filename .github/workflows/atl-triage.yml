@@ -3,6 +3,11 @@ name: Content ATL Triage
 on:
   issues:
     types: [opened, labeled]
+  # Note: `pull_request` gives fork PRs a read-only GITHUB_TOKEN, so the bot
+  # cannot request reviewers on PRs from forks (branch PRs work fine). This is
+  # accepted for now since review requests are non-blocking. To cover forks,
+  # switch to `pull_request_target` (read-write token) and fetch changed-file
+  # contents via the API rather than the base checkout.
   pull_request:
     types: [opened, synchronize]
 
