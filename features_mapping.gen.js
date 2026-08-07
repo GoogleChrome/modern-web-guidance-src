@@ -106,6 +106,9 @@ window.__featuresMapping = {
   "validate-input-after-interaction": [
     "user-pseudos"
   ],
+  "migrate-web-app-origin": [
+    "app-migration"
+  ],
   "accessible-web-components": [
     "aria-attribute-reflection",
     "shadow-dom"
