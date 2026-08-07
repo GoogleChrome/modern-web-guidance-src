@@ -1,16 +1,183 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sanitizer API Demo</title>
-  <style>
-    
-  </style>
-</head>
-<body>
-  <h1>Sanitizer API: Todo</h1>
-  <p>Demo will accept user input, and show sanitized output from parseHTML. It will also output the HTML using setHTML, with a different Sanitizer config.</p>
-  <p>To consider: fallback, server-side recommendations, Trusted Types?</p>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sanitizer API Demo</title>
+    <style>
+      @layer reset, base, demo;
+
+      @layer base {
+        body {
+          font-family: system-ui, sans-serif;
+          line-height: 1.5;
+          max-width: 800px;
+          margin: 2rem auto;
+          padding: 0 1rem;
+        }
+
+        section {
+          margin-bottom: 2rem;
+          padding: 1rem;
+          border: 1px solid #ccc;
+          border-radius: 8px;
+        }
+
+        h2 {
+          margin-top: 0;
+        }
+
+        textarea {
+          width: 100%;
+          height: 120px;
+          font-family: monospace;
+          margin-bottom: 1rem;
+          padding: 0.5rem;
+          border: 1px solid #999;
+        }
+
+        .controls {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        button {
+          padding: 0.5rem 1rem;
+          cursor: pointer;
+          background: #eee;
+          border: 1px solid #999;
+          border-radius: 4px;
+        }
+
+        button:hover {
+          background: #ddd;
+        }
+
+        .output-label {
+          font-weight: bold;
+          margin-top: 1rem;
+          display: block;
+        }
+
+        .output-box {
+          padding: 1rem;
+          background: #f9f9f9;
+          border: 1px dashed #999;
+          min-height: 50px;
+          margin-top: 0.5rem;
+        }
+
+        code {
+          background: #eee;
+          padding: 0.2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sanitizer API Demo</h1>
+
+    <section>
+      <h2>Untrusted Input</h2>
+      <textarea id="untrusted-input">
+<p style="color: green">Safe text with <b>bold</b>.</p>
+<script>console.log('XSS Triggered!')</script>
+<img src="x" onerror="console.log('Event Triggered!')">
+<div style="color: blue;" onclick="alert('clicked')">Styled div with click handler</div>
+    </textarea
+      >
+      <div class="controls">
+        <button id="btn-run">Process HTML</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Results</h2>
+
+      <span class="output-label"
+        >Output 1: <code>Element.setHTML()</code> (Default Sanitization)</span
+      >
+      <div id="output-set" class="output-box"></div>
+
+      <span class="output-label"
+        >Output 2: <code>Element.setHTML({sanitizer})</code> (Custom
+        Config)</span
+      >
+      <div id="output-custom" class="output-box"></div>
+
+      <span class="output-label">Output 3: <code>Sanitized String Output</code></span>
+      <div id="output-sanitized" class="output-box"></div>
+    </section>
+
+    <script type="module">
+      let domPurifyPromise;
+
+      function loadDOMPurify() {
+        if (!domPurifyPromise) {
+          domPurifyPromise =
+            import("https://unpkg.com/dompurify@3/dist/purify.es.mjs").then(
+              (mod) => mod.default ?? mod,
+            );
+        }
+        return domPurifyPromise;
+      }
+      async function safeSetHTML(el, html) {
+        if (Object.hasOwn(Element.prototype, "setHTML")) {
+          el.setHTML(html);
+        } else {
+          // Load DOMPurify only in browsers that do not support Element.setHTML()
+          const DOMPurify = await loadDOMPurify();
+          el.innerHTML = DOMPurify.sanitize(html);
+        }
+      }
+      if (!("setHTML" in Element.prototype) || !("parseHTML" in Document)) {
+        loadDOMPurify();
+      }
+
+      const input = document.getElementById("untrusted-input");
+
+      const outSet = document.getElementById("output-set");
+      const outCustom = document.getElementById("output-custom");
+      const outputSanitized = document.getElementById("output-sanitized");
+
+      document.getElementById("btn-run").addEventListener("click", () => {
+        const rawHTML = input.value;
+        // 1. Using setHTML
+        outSet.innerHTML = "";
+        safeSetHTML(outSet, rawHTML);
+
+        // 2. Using setHTML() with a custom config
+        outCustom.innerHTML = "";
+        if (Object.hasOwn(Element.prototype, "setHTML") && 'Sanitizer' in window) {
+          const config = {
+            elements: ["p", "b", "i", "strong", "em"],
+            attributes: ["style"],
+            replaceWithChildrenElements: ['div']
+          };
+
+          const mySanitizer = new Sanitizer(config);
+          outCustom.setHTML(rawHTML, { sanitizer: mySanitizer });
+        } else {
+          // Load DOMPurify only in browsers that do not support Element.setHTML()
+          loadDOMPurify().then((dompurify) => {
+            outCustom.innerHTML = dompurify.sanitize(rawHTML, {
+              ALLOWED_TAGS: ["p", "b", "i", "strong", "em"],
+              ALLOWED_ATTR: ["style"],
+            });
+          });
+        }
+
+        // 3. Sanitized HTML output
+        if (Object.hasOwn(Document, "parseHTML")) {
+          const doc = Document.parseHTML(rawHTML);
+          outputSanitized.innerText = doc.body.innerHTML;
+        } else {
+          loadDOMPurify().then((dompurify) => {
+            outputSanitized.innerText = dompurify.sanitize(rawHTML);
+          });
+        }
+      });
+    </script>
+  </body>
 </html>
