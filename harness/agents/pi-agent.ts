@@ -3,26 +3,20 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
+import config, { Agents } from '../config.ts';
+import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 const TRAJECTORY_GLOB = '*.jsonl';
 
-function getSessionFiles(dir: string): string[] {
-  return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
+function getSessionFiles(dir: string, recursive = false): string[] {
+  if (!fs.existsSync(dir)) return [];
+  const pattern = recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB;
+  return fs.globSync(pattern, { cwd: dir });
 }
 
-// Usage: node pi-agent.ts <prompt> <runType> <targetDir> <templateDir>
-/**
- * Sets up an isolated HOME and work directory to ensure test isolation.
- * @returns {string} The path to the temporary work directory.
- */
-function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
-  const tempHome = createIsolatedHome('ghh-pi', targetDir);
-  const workDir = createWorkDir(templateDir, tempHome, runType);
-
+export function setupPiCredentials(tempHome: string): void {
   const piSource = path.join(os.homedir(), '.pi');
   const piDest = path.join(tempHome, '.pi');
   const piDestAgent = path.join(piDest, 'agent');
@@ -42,32 +36,27 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
     copyFileIfExists(src, path.join(piDestAgent, file));
   }
 
-  // Set environment variables
-  process.env.HOME = tempHome;
-  process.env.PI_CODING_AGENT_DIR = path.join(tempHome, '.pi', 'agent');
+  process.env.PI_CODING_AGENT_DIR = piDestAgent;
+}
 
-  // Add context and resources for guided runs
-  if (runType === 'guided') {
-    const suiteConfig = getSuiteConfig();
-    const approach = suiteConfig.serving;
+export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
+  const command = config.environment.piBin || 'pi';
+  const piModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
+  const modelArg = piModel ? ['--model', piModel] : [];
 
-    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.CLAUDE_CODE, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
-      // Pi uses .agents/skills/ directory structure
-      const skillsSrc = path.join(tempHome, '.claude', 'skills');
-      const skillsDest = path.join(tempHome, '.agents', 'skills');
-      if (fs.existsSync(skillsSrc)) {
-        fs.mkdirSync(skillsDest, { recursive: true });
-        fs.cpSync(skillsSrc, skillsDest, { recursive: true });
-      }
-    } else if (approach === Serving.MCP) {
-      // Pi doesn't have native MCP support per documentation
-      // "No MCP. Build CLI tools with READMEs (see Skills), or build an extension"
-      console.warn('Warning: MCP serving mode is not natively supported by Pi. Consider using SKILLS_CLI mode instead.');
-    }
-  }
+  // Allow overriding --no-session via env var for trajectory testing
+  const noSession = process.env.PI_NO_SESSION !== 'false';
+  const sessionArgs = noSession ? ['--no-session'] : [];
 
-  return workDir;
+  const commandArgs = [
+    '-p', // print mode: non-interactive, process and exit
+    ...sessionArgs, // ephemeral mode: don't save session (unless disabled)
+    '--offline', // disable network operations for update checks
+    ...modelArg,
+    ...extraArgs,
+    prompt
+  ];
+  return { command, commandArgs };
 }
 
 /**
@@ -75,7 +64,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('pi-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -84,26 +73,7 @@ async function run() {
   try {
     console.log(`Starting Pi agent in ${workDir}`);
 
-    const command = config.environment.piBin || 'pi';
-    
-    // Determine model from environment or suite config
-    let modelArg: string[] = [];
-    const piModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
-    if (piModel) {
-      modelArg = ['--model', piModel];
-    }
-
-    // Allow overriding --no-session via env var for trajectory testing
-    const noSession = process.env.PI_NO_SESSION !== 'false';
-    const sessionArgs = noSession ? ['--no-session'] : [];
-
-    const commandArgs = [
-      '-p', // print mode: non-interactive, process and exit
-      ...sessionArgs, // ephemeral mode: don't save session (unless disabled)
-      '--offline', // disable network operations for update checks
-      ...modelArg,
-      userPrompt
-    ];
+    const { command, commandArgs } = getPiCommandAndArgs(userPrompt);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
@@ -140,35 +110,28 @@ async function run() {
 }
 
 export function extractPiModel(resultsDir: string): string {
-  const sessionFiles = getSessionFiles(resultsDir);
+  const sessionFiles = getSessionFiles(resultsDir, true);
   if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
   for (const file of sessionFiles) {
     const sessionPath = path.join(resultsDir, file);
     try {
-      const content = fs.readFileSync(sessionPath, 'utf8');
-      const lines = content.split('\n').filter(line => line.trim());
-      
-      for (const line of lines) {
-        try {
-          const msg = JSON.parse(line);
-          let model: string | undefined;
-          if (msg.type === 'message' && msg.message?.model) {
-            model = msg.message.model;
-          } else if (msg.type === 'model_change' && msg.modelId) {
-            model = msg.modelId;
-          }
-          // Fallback for older formats
-          if (!model && msg.metadata?.model) {
-            model = msg.metadata.model;
-          }
+      const items = parseJsonlFile(sessionPath);
+      for (const msg of items) {
+        let model: string | undefined;
+        if (msg.type === 'message' && msg.message?.model) {
+          model = msg.message.model;
+        } else if (msg.type === 'model_change' && msg.modelId) {
+          model = msg.modelId;
+        }
+        // Fallback for older formats
+        if (!model && msg.metadata?.model) {
+          model = msg.metadata.model;
+        }
 
-          if (model) {
-            counts[model] = (counts[model] || 0) + 1;
-          }
-        } catch {
-          // Ignore parse errors
+        if (model) {
+          counts[model] = (counts[model] || 0) + 1;
         }
       }
     } catch (e) {
@@ -187,26 +150,19 @@ export function extractPiTokenUsage(dir: string): { total: number; cached: numbe
   let cached = 0;
   let hasData = false;
   try {
-    const sessionFiles = getSessionFiles(dir);
+    const sessionFiles = getSessionFiles(dir, true);
     for (const file of sessionFiles) {
       try {
         const sessionPath = path.join(dir, file);
-        const content = fs.readFileSync(sessionPath, 'utf8');
-        const lines = content.split('\n').filter(line => line.trim());
-        
-        for (const line of lines) {
-          try {
-            const msg = JSON.parse(line);
-            const usage = msg.message?.usage || msg.metadata?.usage || msg.usage;
-            if (usage) {
-              total += usage.totalTokens || 0;
-              if (usage.cacheRead !== undefined) {
-                cached += usage.cacheRead;
-              }
-              hasData = true;
+        const items = parseJsonlFile(sessionPath);
+        for (const msg of items) {
+          const usage = msg.message?.usage || msg.metadata?.usage || msg.usage;
+          if (usage) {
+            total += usage.totalTokens || 0;
+            if (usage.cacheRead !== undefined) {
+              cached += usage.cacheRead;
             }
-          } catch {
-            // Ignore parse errors
+            hasData = true;
           }
         }
       } catch {
@@ -222,17 +178,13 @@ export function extractPiTokenUsage(dir: string): { total: number; cached: numbe
 export function collectPiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = getSessionFiles(dir);
-  const firstSession = sessionFiles[0];
-  if (!firstSession) return toolsUsed;
+  if (sessionFiles.length === 0) return toolsUsed;
 
-  try {
-    const sessionPath = path.join(dir, firstSession);
-    const content = fs.readFileSync(sessionPath, 'utf8');
-    const lines = content.split('\n').filter(line => line.trim());
-    
-    for (const line of lines) {
-      try {
-        const msg = JSON.parse(line);
+  for (const file of sessionFiles) {
+    try {
+      const sessionPath = path.join(dir, file);
+      const items = parseJsonlFile(sessionPath);
+      for (const msg of items) {
         const assistantMsg = msg.type === 'message' ? msg.message : msg;
         
         if (assistantMsg?.role === 'assistant') {
@@ -255,19 +207,17 @@ export function collectPiToolsFromTrajectory(dir: string): string[] {
             }
           }
         }
-      } catch {
-        // Ignore parse errors
       }
+    } catch (e) {
+      console.error(`Failed to collect tools used for Pi:`, e);
     }
-  } catch (e) {
-    console.error(`Failed to collect tools used for Pi:`, e);
   }
 
   return Array.from(new Set(toolsUsed));
 }
 
 
-export function collectPiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
+export async function collectPiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {
@@ -275,59 +225,53 @@ export function collectPiGuidesFromTrajectory(dirPath: string, _serving: string)
 
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
-      const content = fs.readFileSync(sessionPath, 'utf8');
-      const lines = content.split('\n').filter(line => line.trim());
+      const items = parseJsonlFile(sessionPath);
 
-      for (const line of lines) {
-        try {
-          const entry = JSON.parse(line);
-          const assistantMsg = entry.type === 'message' ? entry.message : entry;
+      for (const entry of items) {
+        const assistantMsg = entry.type === 'message' ? entry.message : entry;
 
-          if (assistantMsg?.role === 'assistant') {
-            const toolCalls = assistantMsg.content?.filter((c: any) => c.type === 'toolCall') || [];
-            if (assistantMsg.tool_calls) {
-              toolCalls.push(...assistantMsg.tool_calls);
-            }
+        if (assistantMsg?.role === 'assistant') {
+          const toolCalls = assistantMsg.content?.filter((c: any) => c.type === 'toolCall') || [];
+          if (assistantMsg.tool_calls) {
+            toolCalls.push(...assistantMsg.tool_calls);
+          }
 
-            for (const contentItem of toolCalls) {
-              const args = contentItem.arguments || {};
-              const toolName = contentItem.function?.name || contentItem.name;
+          for (const contentItem of toolCalls) {
+            const args = contentItem.arguments || {};
+            const toolName = contentItem.function?.name || contentItem.name;
 
-              // Check for read tool accessing skill files
-              if (toolName === 'read' && (args.path || args.file_path)) {
-                  const filePath = (args.path || args.file_path) as string;
-                  if (filePath.includes('/skills/') || filePath.includes('.agents/skills/')) {
-                    // Match guide.md files in guides/{category}/{guide-name}/guide.md structure
-                    const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
-                                  // Match .md files in references/{category}/{guide-name}.md structure  
-                                  filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
-                                  // Fallback: match {guide-name}.md in any skills subdirectory (but not guide.md itself)
-                                  filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
-                    if (match && match[1] !== 'guide') {
-                      fileReadGuides.push(match[1]);
-                    }
-                  }
-                } else if (toolName === 'bash' && args.command) {
-                  const command = args.command as string;
-                  const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                  if (match) {
-                    retrievedGuides.push(...match[1].split(',').map(s => s.trim()));
+            // Check for read tool accessing skill files
+            if (toolName === 'read' && (args.path || args.file_path)) {
+                const filePath = (args.path || args.file_path) as string;
+                if (filePath.includes('/skills/') || filePath.includes('.agents/skills/')) {
+                  // Match guide.md files in guides/{category}/{guide-name}/guide.md structure
+                  const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
+                                // Match .md files in references/{category}/{guide-name}.md structure  
+                                filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
+                                // Fallback: match {guide-name}.md in any skills subdirectory (but not guide.md itself)
+                                filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
+                  if (match && match[1] !== 'guide') {
+                    fileReadGuides.push(match[1]);
                   }
                 }
-            }
+              } else if (toolName === 'bash' && args.command) {
+                const command = args.command as string;
+                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+                if (match) {
+                  retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
+                }
+              }
           }
-        } catch {
-          // Ignore parse errors
         }
       }
     }
   } catch (e) {
     console.error(`Error reading session files in ${dirPath}:`, e);
   }
-  return Promise.resolve({
+  return {
     retrievedGuides: [...new Set(retrievedGuides)],
     fileReadGuides: [...new Set(fileReadGuides)]
-  });
+  };
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);

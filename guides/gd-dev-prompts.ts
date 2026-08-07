@@ -6,7 +6,8 @@
  * type-safe parameter interpolation.
  */
 
-import type { SolutionAgent } from '../lib/guide-validation.ts';
+import { type SolutionAgent } from '../lib/guide-validation.ts';
+import { Agents } from '../harness/config.ts';
 
 export interface PatchPromptOptions {
   guideFile: string;
@@ -86,10 +87,10 @@ Analyze this failure and modify the existing grader file to fix these assertions
     : '';
 
   const agentLabels: Record<SolutionAgent, string> = {
-    gemini: 'Gemini CLI',
-    jetski: 'Jetski CLI',
-    claude: 'Claude Code',
-    codex: 'Codex CLI',
+    [Agents.GEMINI_CLI]: 'Gemini CLI',
+    [Agents.JETSKI_CLI]: 'Jetski CLI',
+    [Agents.CLAUDE_CODE]: 'Claude Code',
+    [Agents.CODEX_CLI]: 'Codex CLI',
   };
 
   const solutionList = Object.entries(opts.solutionPatchFiles)

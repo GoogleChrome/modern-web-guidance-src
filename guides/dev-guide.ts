@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { rootDir, baseAppsDir } from '../lib/paths.ts';
+import { rootDir } from '../lib/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import { generateTargetGrader } from './grader-gen.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
 import { defaultSuiteConfig, Serving, Agents, type SuiteConfig } from '../harness/config.ts';
 import { collectGuidesUsed } from '../harness/lib/guidance_validation.ts';
-import { setupIsolatedWorkDir, runAgentForModel, stageBaseAppWorkspace, type AgentName } from './lib/utils.ts';
+import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from './lib/utils.ts';
 import {
   buildSolutionPrompt,
   buildZeroPassratePrompt,
@@ -182,19 +182,16 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Summary
   const defaultAgent = getDefaultSolutionAgent();
-  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, claude: { passed: 0, failed: 0, failingTests: [] }, codex: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
+  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
 
   return overallSuccess;
 }
 
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
-  const agent: AgentName = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-${patchType}`, undefined, agent);
+  const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
+  const workDir = setupGuideDevWorkDir(`${baseApp}-${patchType}`, undefined, agent);
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
-      recursive: true,
-      filter: (src) => !src.includes('node_modules')
-    });
+    await copyBaseAppToWorkspace(baseApp, workDir);
 
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
@@ -206,7 +203,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
       ? buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
       : buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
 
-    await runAgentForModel(agent, prompt, workDir);
+    await runAgent(agent, prompt, workDir);
 
     const patchRelFile = patchType === 'zero-passrate' ? ZERO_PASSRATE_PATCH_FILE : SOLUTION_PATCH_FILES[patchType];
     const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchRelFile);
@@ -225,14 +222,11 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
 }
 
 async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-task`);
+  const workDir = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
-    const sourceBaseAppDir = path.join(baseAppsDir, baseApp);
-    if (fs.existsSync(sourceBaseAppDir)) {
-      await fs.promises.cp(sourceBaseAppDir, workDir, { recursive: true });
-    }
+    await copyBaseAppToWorkspace(baseApp, workDir);
 
     const prompt = buildTargetTaskPrompt({
       guideFile: GUIDE_FILE,
@@ -240,7 +234,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       baseApp,
     });
 
-    await runAgentForModel(getDefaultSolutionAgent(), prompt, workDir);
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
 
     const generatedTask = path.join(workDir, TASK_FILE);
     if (fs.existsSync(generatedTask)) {
@@ -314,22 +308,18 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
 
       // 1. Grade base app (with zero-passrate baseline applied)
       const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
-      const patchToApply = fs.existsSync(zeroPassratePatch) ? zeroPassratePatch : undefined;
-
-      const { workDir: stagingDir, cleanup } = stageBaseAppWorkspace(baseApp, patchToApply, `gd-pre-grade-${baseApp}`);
-      try {
-        if (patchToApply) process.env.PATCH_FILE = path.resolve(patchToApply);
-        const preResults = await gradeOutput(stagingDir, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
-        if (preResults) results['pre'] = preResults;
-      } finally {
-        delete process.env.PATCH_FILE;
-        cleanup();
-      }
+      const preResults = await gradeOutput(
+        targetsDir,
+        targetGraderPath,
+        path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'),
+        zeroPassratePatch
+      );
+      if (preResults) results['pre'] = preResults;
 
       // 2. Run agent suite
       const { runSuite } = await import('../harness/run_suite.ts');
       const testOutputDir = path.join(targetDir, 'test-app-results', baseApp);
-      const agentOverride = process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : undefined;
+      const agent = getDefaultSolutionAgent();
       await runSuite({
         name: `${guideName}-${baseApp}`,
         outputDir: testOutputDir,
@@ -339,7 +329,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
         guidedOnly,
         suiteConfig: {
           ...suiteConfig,
-          ...(agentOverride ? { agent: agentOverride } : {}),
+          agent,
         },
       });
 
@@ -348,11 +338,13 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       for (const runType of runTypes) {
         const resultDir = path.join(testOutputDir, '1', guideName, baseApp, runType);
         if (!fs.existsSync(resultDir)) continue;
-
+        const patchFile = path.join(resultDir, 'agent.patch');
         const gradeResults = await gradeOutput(
           resultDir,
           targetGraderPath,
-          path.join(resultDir, 'grade-report')
+          path.join(resultDir, 'grade-report'),
+          patchFile,
+          zeroPassratePatch
         );
         if (gradeResults) results[runType] = gradeResults;
       }
@@ -362,22 +354,28 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       if (fs.existsSync(guidedDir)) {
         const suiteConfig = defaultSuiteConfig;
         const servingMode = suiteConfig.serving as any;
-        const activeAgent = agentOverride || suiteConfig.agent;
+        const activeAgent = agent;
         const usage = await collectGuidesUsed(guidedDir, servingMode, activeAgent);
         guidesConsumed = [...new Set([...usage.retrievedGuides, ...usage.fileReadGuides])];
       }
 
-      printTestComparison(results, guidesConsumed);
+      printTestComparison(results, guidesConsumed, baseApp);
     })
   );
 }
 
-async function gradeOutput(appDir: string, graderPath: string, outputDir: string): Promise<{ passed: number; total: number } | null> {
+async function gradeOutput(
+  appDir: string,
+  graderPath: string,
+  outputDir: string,
+  patchFile?: string,
+  zeroPassrateFile?: string
+): Promise<{ passed: number; total: number } | null> {
   const label = path.basename(path.dirname(outputDir));
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {
-    const gradeResults = await runPlaywright(appDir, graderPath, outputDir, 'pipe');
+    const gradeResults = await runPlaywright(appDir, graderPath, outputDir, 'pipe', patchFile, zeroPassrateFile);
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;
@@ -394,7 +392,8 @@ async function gradeOutput(appDir: string, graderPath: string, outputDir: string
 
 export function printTestComparison(
   results: Record<string, { passed: number; total: number }>,
-  guidesConsumed?: string[]
+  guidesConsumed: string[] | undefined,
+  baseApp: string
 ): void {
   const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;
   if (total === 0) return;
@@ -405,7 +404,7 @@ export function printTestComparison(
     return `  ${label.padEnd(pad)} ${r.passed}/${r.total} checks passed (${pct}%)`;
   };
 
-  console.log(cBold(`\nAgent test results:`));
+  console.log(cBold(`\nAgent test results (${baseApp}):`));
   console.log(fmt('Base app (zero-passrate):', results.pre, 25));
   console.log(fmt('Unguided:', results.unguided, 25));
   console.log(fmt('Guided:', results.guided, 25));

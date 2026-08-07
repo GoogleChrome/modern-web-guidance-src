@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
+import config, { Agents } from '../config.ts';
+import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
@@ -40,47 +40,12 @@ function getSessionFiles(dir: string, recursive = false): string[] {
   return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
 }
 
-// Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
-/**
- * Sets up an isolated HOME and work directory to ensure test isolation.
- * @returns {string} The path to the temporary work directory.
- */
-function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
-  const tempHome = createIsolatedHome('ghh-gemini', targetDir);
-  const workDir = createWorkDir(templateDir, tempHome, runType);
-
-  const geminiDest = setupGeminiCliCredentials(tempHome);
-
-  // Set environment variables
-  process.env.HOME = tempHome;
-
-  // Add GEMINI context and MCP servers for guided runs
-  if (runType === 'guided') {
-    const suiteConfig = getSuiteConfig();
-    const approach = suiteConfig.serving;
-
-    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
-    } else if (approach === Serving.MCP) {
-      updateMcpConfig(
-        path.join(geminiDest, 'settings.json'),
-        suiteConfig.mcpServersToEnable,
-        config.environment.modernWebServerPath,
-        config.environment.mcpApiKey,
-        Agents.GEMINI_CLI
-      );
-    }
-  }
-
-  return workDir;
-}
-
 /**
  * Executes the Gemini CLI command and captures output.
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.GEMINI_CLI, templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);

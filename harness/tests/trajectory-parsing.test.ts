@@ -62,8 +62,8 @@ test('collectJetski metrics from trajectory files', async () => {
     ]);
     const metadataProto = encodeField(9, 2, statsInner);
 
-    // 3. gen_metadata with tag 1 -> tag 21 ("Gemini 3.5 Flash")
-    const modelInner = encodeField(21, 2, Buffer.from('Gemini 3.5 Flash'));
+    // 3. gen_metadata with tag 1 -> tag 21 ("gemini-3.6-flash")
+    const modelInner = encodeField(21, 2, Buffer.from('gemini-3.6-flash'));
     const genDataProto = encodeField(1, 2, modelInner);
 
     const insertStep = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
@@ -81,8 +81,8 @@ test('collectJetski metrics from trajectory files', async () => {
     assert.deepStrictEqual(parsed.retrievedGuides, ['validate-input-after-interaction', 'required-field-feedback']);
     assert.deepStrictEqual(parsed.fileReadGuides, ['required-field-feedback']);
     assert.deepStrictEqual(parsed.toolsUsed, ['modern-web-guidance']);
-    assert.strictEqual(parsed.model, 'Gemini 3.5 Flash');
-    assert.deepStrictEqual(parsed.tokenUsage, { total: 1500, cached: 400 });
+    assert.strictEqual(parsed.model, 'gemini-3.6-flash');
+    assert.deepStrictEqual(parsed.tokenUsage, { total: 1900, cached: 400 });
 
     // 2. Write summary file as done by the agent run() lifecycle
     writeTrajectorySummary(tempDir, parsed);
@@ -96,10 +96,10 @@ test('collectJetski metrics from trajectory files', async () => {
     assert.deepStrictEqual(tools, ['modern-web-guidance']);
 
     const model = extractModelFromResults(tempDir, Agents.JETSKI_CLI);
-    assert.strictEqual(model, 'Gemini 3.5 Flash');
+    assert.strictEqual(model, 'gemini-3.6-flash');
 
     const tokens = extractTokenUsageFromResults(tempDir, Agents.JETSKI_CLI);
-    assert.deepStrictEqual(tokens, { total: 1500, cached: 400 });
+    assert.deepStrictEqual(tokens, { total: 1900, cached: 400 });
   } finally {
     removeTempDir(tempDir);
   }
