@@ -3,6 +3,9 @@ window.__featuresMapping = {
   "accessible-error-announcement": [
     "user-pseudos"
   ],
+  "respect-os-text-scale": [
+    "meta-text-scale"
+  ],
   "language-detection": [
     "languagedetector"
   ],
