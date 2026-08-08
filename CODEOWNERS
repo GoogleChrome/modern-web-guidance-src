@@ -20,6 +20,8 @@ guides/webmcp/*/ @beaufortfrancois @Kulikowski
 # Owned via group "transitions"
 guides/css/animate-to-intrinsic-sizes/ @bramus
 guides/css/calculate-with-intrinsic-sizes/ @bramus
+# Owned via group "view-transitions"
+guides/motion/scoped-component-transitions/ @bramus
 # Owned via group "scrolling"
 guides/performance/defer-work-until-scroll-ends/ @bramus
 # Owned via group "webauthn"

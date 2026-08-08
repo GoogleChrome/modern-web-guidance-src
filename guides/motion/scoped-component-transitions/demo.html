@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Element-Scoped View Transitions Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      margin: 0;
+      padding: 6rem 1.5rem 1.5rem;
+    }
+
+    /* A document-level transition would snapshot this fixed toolbar.
+       Scoped transitions leave it interactive. */
+    .toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 1rem 1.5rem;
+      background: #1a73e8;
+      color: white;
+      font-weight: 600;
+      z-index: 10;
+    }
+
+    .toolbar button {
+      margin-left: 1rem;
+      padding: 0.35rem 0.75rem;
+      background: white;
+      color: #1a73e8;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 600;
+    }
+
+    h1,
+    .intro {
+      max-width: 900px;
+      margin: 0 auto 0.75rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .card h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+      color: #555;
+    }
+
+    .card button {
+      padding: 0.5rem 1rem;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font: inherit;
+      margin-bottom: 1rem;
+    }
+
+    .card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .card li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      background: #f0f4ff;
+      border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+
+      /* match-element derives each item's name from its element identity */
+      view-transition-name: match-element;
+    }
+
+    .card li button {
+      margin: 0;
+      padding: 0 0.4rem;
+      background: none;
+      color: #555;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    /* Shorten the default animation */
+    ::view-transition-group(*) {
+      animation-duration: 300ms;
+      animation-timing-function: ease-in-out;
+    }
+
+    /* Respect user preference for reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(*),
+      ::view-transition-old(*),
+      ::view-transition-new(*) {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    Toolbar (stays visible during scoped transitions)
+    <button id="rotate-both">Rotate both at once</button>
+  </div>
+
+  <h1>Element-Scoped View Transitions</h1>
+  <p class="intro">Rotate either card, or both at once, or remove an item. Each transition
+    runs inside its own card, so the two animate concurrently, the toolbar stays put, and
+    the rest of the page remains interactive.</p>
+
+  <div class="grid">
+    <section class="card" id="left">
+      <h2>Card A</h2>
+      <button id="left-rotate">Rotate Card A</button>
+      <ul id="left-list"></ul>
+    </section>
+
+    <section class="card" id="right">
+      <h2>Card B</h2>
+      <button id="right-rotate">Rotate Card B</button>
+      <ul id="right-list"></ul>
+    </section>
+  </div>
+
+  <script>
+    // Scoped view transitions add startViewTransition to Element, not just Document
+    const supportsScopedTransition =
+      'startViewTransition' in Element.prototype;
+
+    // Reorder by moving the existing <li> elements: match-element tracks
+    // element identity, so recreating them would prevent any animation
+    function render(listEl, items) {
+      const existing = new Map(
+        Array.from(listEl.children, (li) => [li.dataset.label, li]),
+      );
+      for (const label of items) {
+        let li = existing.get(label);
+        if (li) {
+          existing.delete(label);
+        } else {
+          li = document.createElement('li');
+          li.dataset.label = label;
+          const name = document.createElement('span');
+          name.textContent = label;
+          const remove = document.createElement('button');
+          remove.textContent = '\u00d7';
+          remove.setAttribute('aria-label', `Remove ${label}`);
+          li.append(name, remove);
+        }
+        listEl.appendChild(li);
+      }
+      for (const removed of existing.values()) removed.remove();
+    }
+
+    // Move the first item to the end
+    function rotate(items) {
+      if (items.length <= 1) return items.slice();
+      return [...items.slice(1), items[0]];
+    }
+
+    function runWithTransition(scopeEl, listEl, next) {
+      if (!supportsScopedTransition) {
+        // Fallback for browsers without scoped view transitions
+        render(listEl, next);
+        return next;
+      }
+
+      // Capture and animate only this card's subtree
+      const transition = scopeEl.startViewTransition(() => render(listEl, next));
+
+      // A skipped transition rejects `ready`, and Chrome 151 leaves that
+      // rejection unhandled for scoped transitions, so overlapping clicks
+      // would log uncaught errors. The DOM update still applies.
+      transition.ready.catch(() => {});
+      return next;
+    }
+
+    let leftItems = ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry'];
+    let rightItems = ['Fig', 'Grape', 'Honeydew', 'Kiwi', 'Lemon'];
+
+    render(document.getElementById('left-list'), leftItems);
+    render(document.getElementById('right-list'), rightItems);
+
+    document.getElementById('left-rotate').addEventListener('click', () => {
+      leftItems = runWithTransition(
+        document.getElementById('left'),
+        document.getElementById('left-list'),
+        rotate(leftItems),
+      );
+    });
+    document.getElementById('right-rotate').addEventListener('click', () => {
+      rightItems = runWithTransition(
+        document.getElementById('right'),
+        document.getElementById('right-list'),
+        rotate(rightItems),
+      );
+    });
+
+    function removeItem(scopeId, listId, items, li) {
+      // Chrome 151 aborts a scoped transition when a match-element participant
+      // is removed, so name the outgoing item explicitly to keep its exit
+      // animation
+      li.style.viewTransitionName = `removing-${li.dataset.label}`;
+      return runWithTransition(
+        document.getElementById(scopeId),
+        document.getElementById(listId),
+        items.filter((label) => label !== li.dataset.label),
+      );
+    }
+
+    document.getElementById('left-list').addEventListener('click', (event) => {
+      const li = event.target.closest('button') && event.target.closest('li');
+      if (li) leftItems = removeItem('left', 'left-list', leftItems, li);
+    });
+    document.getElementById('right-list').addEventListener('click', (event) => {
+      const li = event.target.closest('button') && event.target.closest('li');
+      if (li) rightItems = removeItem('right', 'right-list', rightItems, li);
+    });
+
+    // Both scoped transitions animate at the same time; a second
+    // document-level startViewTransition call would skip the first instead
+    document.getElementById('rotate-both').addEventListener('click', () => {
+      leftItems = runWithTransition(
+        document.getElementById('left'),
+        document.getElementById('left-list'),
+        rotate(leftItems),
+      );
+      rightItems = runWithTransition(
+        document.getElementById('right'),
+        document.getElementById('right-list'),
+        rotate(rightItems),
+      );
+    });
+  </script>
+</body>
+</html>
