@@ -18,8 +18,11 @@ export const Agents = {
   JETSKI_CLI: 'jetski_cli',
   GEMINI_CLI: 'gemini_cli',
   CLAUDE_CODE: 'claude_code',
-  CODEX_CLI: 'codex_cli'
+  CODEX_CLI: 'codex_cli',
+  PI: 'pi'
 } as const;
+
+export type Agents = typeof Agents[keyof typeof Agents];
 
 export const Serving = {
   SKILLS_CLI: 'skills_cli',
@@ -52,6 +55,9 @@ export const environmentConfig: EnvironmentConfig = {
 
   // Codex Configuration
   codexCliBin: process.env.CODEX_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/codex'),
+
+  // Pi Configuration
+  piBin: process.env.PI_BIN || 'pi',
 
   // MCP Server Configuration
   modernWebServerPath: path.join(rootDir, 'serving/mcp-server/index.ts'), // For modern-web-guidance MCP server
@@ -108,6 +114,7 @@ export interface EnvironmentConfig {
   geminiDir: string;
   claudeCodeCliBin: string;
   codexCliBin: string;
+  piBin: string;
   gcpCredentials: string;
   modernWebServerPath: string;
   mcpApiKey: string;
