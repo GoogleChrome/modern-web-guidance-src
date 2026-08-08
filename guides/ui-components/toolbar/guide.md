@@ -4,4 +4,5 @@ description: Build a toolbar component that displays a set of controls for perfo
 web-feature-ids: []
 guides:
   - overflow-popup
+  - icons
 ---
