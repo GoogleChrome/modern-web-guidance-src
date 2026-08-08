@@ -6,6 +6,7 @@ import {
   buildTargetGraderPrompt,
   buildTargetTaskPrompt,
 } from './gd-dev-prompts.ts';
+import { Agents } from '../harness/config.ts';
 
 test('buildSolutionPrompt includes instructions and paths', () => {
   const prompt = buildSolutionPrompt({
@@ -34,23 +35,34 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
   const prompt = buildTargetGraderPrompt({
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
-    solutionPatchFile: 'solution.patch',
-    zeroPassratePatchFile: 'zero-passrate.patch',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+      [Agents.CLAUDE_CODE]: 'patches/claude-solution.patch',
+      [Agents.CODEX_CLI]: 'patches/codex-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
     graderFile: 'grader.ts',
     baseApp: 'daily-grind',
     templateFile: 'template.grader.ts',
   });
-  assert.ok(prompt.includes('extractTargetFilesFromPatch'));
+  assert.ok(prompt.includes('getTargetFiles'));
   assert.ok(prompt.includes('Static Analysis First'));
   assert.ok(prompt.includes('daily-grind'));
+  assert.ok(prompt.includes('Jetski CLI Solution'));
+  assert.ok(prompt.includes('Claude Code Solution'));
+  assert.ok(prompt.includes('Codex CLI Solution'));
 });
 
 test('buildTargetGraderPrompt formats failure context correctly when provided', () => {
   const prompt = buildTargetGraderPrompt({
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
-    solutionPatchFile: 'solution.patch',
-    zeroPassratePatchFile: 'zero-passrate.patch',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+      [Agents.CLAUDE_CODE]: 'patches/claude-solution.patch',
+      [Agents.CODEX_CLI]: 'patches/codex-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
     graderFile: 'grader.ts',
     baseApp: 'devtools-times',
     templateFile: 'template.grader.ts',

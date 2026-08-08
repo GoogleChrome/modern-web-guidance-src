@@ -73,6 +73,11 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   copilotPluginData.version = newVersion;
   fs.writeFileSync(copilotPluginPath, JSON.stringify(copilotPluginData, null, 2) + '\n');
 
+  // Kimi plugin
+  const kimiPluginPath = path.join(publishCliDir, "kimi.plugin.json");
+  const kimiPluginData = JSON.parse(fs.readFileSync(kimiPluginPath, 'utf8'));
+  kimiPluginData.version = newVersion;
+  fs.writeFileSync(kimiPluginPath, JSON.stringify(kimiPluginData, null, 2) + '\n');
 }
 
 export function processSkills(publishRoot: string) {

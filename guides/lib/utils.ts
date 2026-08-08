@@ -1,21 +1,34 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
-import config from '../../harness/config.ts';
-import { rootDir } from '../../lib/paths.ts';
+import { rootDir, baseAppsDir } from '../../lib/paths.ts';
 import {
   createIsolatedHome,
   createTrustedFolders,
   spawnAsync,
+  setupAgentCredentials,
+  getAgentCommandAndArgs,
 } from '../../harness/lib/agent-shared.ts';
-import { setupJetskiCliCredentials } from '../../harness/agents/jetski-cli-agent.ts';
-import { setupGeminiCliCredentials } from '../../harness/agents/gemini-cli-agent.ts';
+import { Agents } from '../../harness/config.ts';
 
-export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
+export async function copyBaseAppToWorkspace(baseApp: string, destDir: string): Promise<void> {
+  const refBaseAppDir = path.join(baseAppsDir, baseApp);
+  if (!fs.existsSync(refBaseAppDir)) {
+    console.warn(`Source base app not found at ${refBaseAppDir}`);
+    return;
+  }
+  await fs.promises.cp(refBaseAppDir, destDir, {
+    recursive: true,
+    filter: (src) => !src.includes('/dist') && !src.includes('/.astro') && !src.includes('node_modules'),
+  });
+}
+
+
+export async function runCommand(command: string, args: string[], cwd?: string, env?: NodeJS.ProcessEnv): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
-      env: { ...process.env },
+      env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -39,53 +52,42 @@ export async function runCommand(command: string, args: string[], cwd?: string):
 }
 
 export async function runAgent(
+  agent: Agents,
   prompt: string,
   workDir?: string,
   options: { captureOutput?: boolean } = {}
 ): Promise<string> {
-  const useJetski = process.env.GD_DEV_USE_JETSKI === '1';
-  const command = useJetski ? config.environment.jetskiCliBin : config.environment.geminiCliBin;
-  const commandArgs = ['-p', prompt];
-
-  if (useJetski) {
-    const model = process.env.JETSKI_MODEL;
-    if (model) commandArgs.push('--model', model);
-    commandArgs.push('--dangerously-skip-permissions');
-  } else {
-    commandArgs.push('--yolo');
-  }
+  const { command, commandArgs } = getAgentCommandAndArgs(agent, prompt);
+  const tempHome = workDir ? path.dirname(workDir) : undefined;
+  const env = tempHome ? { ...process.env, HOME: tempHome } : { ...process.env };
 
   if (options.captureOutput) {
-    return runCommand(command, commandArgs, workDir);
+    return runCommand(command, commandArgs, workDir, env);
   }
 
   const exitCode = await spawnAsync(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env },
-    stdio: 'inherit',
+    env,
+    stdio: ['ignore', 'inherit', 'inherit'],
   });
 
   if (exitCode !== 0) {
-    throw new Error(`${useJetski ? 'Jetski' : 'Gemini'} CLI exited with code ${exitCode}`);
+    throw new Error(`${agent} CLI exited with code ${exitCode}`);
   }
 
   return '';
 }
 
-export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string): string {
-  const tempHome = createIsolatedHome(prefix);
+export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string, agent?: Agents): string {
+  const tempHome = createIsolatedHome(`gd-gen-${suffix}`);
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
   const geminiDest = path.join(tempHome, '.gemini');
-  if (process.env.GD_DEV_USE_JETSKI === '1') {
-    setupJetskiCliCredentials(tempHome);
-  } else {
-    setupGeminiCliCredentials(tempHome);
-  }
+  const effectiveAgent: Agents = agent ?? (process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.GEMINI_CLI);
+  setupAgentCredentials(effectiveAgent, tempHome);
 
   createTrustedFolders(geminiDest, [tempHome]);
-  process.env.HOME = tempHome;
 
   // Symlink host node_modules to tempHome/node_modules and tempHome/guides/node_modules for local typechecking inside the sandbox
   const hostNodeModules = path.join(rootDir, 'node_modules');

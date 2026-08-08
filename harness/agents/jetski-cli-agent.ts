@@ -2,9 +2,42 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
-import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, type GuideUsage } from '../lib/agent-shared.ts';
+import config, { Agents } from '../config.ts';
+import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, createTrustedFolders, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+
+export function setupJetskiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const jetskiSource = path.join(originalHome, '.gemini', 'jetski');
+  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
+  const geminiDest = path.join(tempHome, '.gemini');
+
+  fs.mkdirSync(jetskiDest, { recursive: true });
+
+  const filesToCopy = [
+    'installation_id',
+    'user_settings.pb',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
+  }
+
+  process.env.JETSKI_DIR = jetskiDest;
+  createTrustedFolders(geminiDest, [tempHome]);
+  return jetskiDest;
+}
+
+export function getJetskiCliCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
+  const command = config.environment.jetskiCliBin;
+  const model = process.env.JETSKI_MODEL;
+  const commandArgs = [
+    '-p', prompt,
+    '--dangerously-skip-permissions',
+    ...(model ? ['--model', model] : [])
+  ];
+  return { command, commandArgs };
+}
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
 
@@ -31,72 +64,11 @@ export function readTrajectorySummary(dir: string): TrajectorySummary | null {
 }
 
 /**
- * Copies Jetski CLI authentication and configuration files from ~/.gemini/jetski to the isolated HOME,
- * and sets process.env.JETSKI_DIR.
- * @param tempHome Path to the isolated HOME directory
- * @returns Path to the destination .gemini/jetski directory
- */
-export function setupJetskiCliCredentials(tempHome: string): string {
-  const originalHome = process.env.HOME || process.cwd();
-  const jetskiSource = path.join(originalHome, '.gemini', 'jetski');
-  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
-
-  fs.mkdirSync(jetskiDest, { recursive: true });
-
-  const filesToCopy = [
-    'installation_id',
-    'user_settings.pb',
-  ];
-
-  for (const file of filesToCopy) {
-    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
-  }
-
-  process.env.JETSKI_DIR = jetskiDest;
-  return jetskiDest;
-}
-
-// Usage: node jetski-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
-/**
- * Sets up an isolated HOME and work directory to ensure test isolation.
- * @returns {string} The path to the temporary work directory.
- */
-function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
-  const tempHome = createIsolatedHome('ghh-jetski-cli', targetDir);
-  const workDir = createWorkDir(templateDir, tempHome, runType);
-
-  const jetskiDest = setupJetskiCliCredentials(tempHome);
-
-  // Set environment variables
-  process.env.HOME = tempHome;
-
-  // Add GEMINI context and MCP servers for guided runs
-  if (runType === 'guided') {
-    const suiteConfig = getSuiteConfig();
-    const approach = suiteConfig.serving;
-
-    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.JETSKI_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
-    } else if (approach === Serving.MCP) {
-      updateMcpConfig(
-        path.join(jetskiDest, 'mcp_config.json'),
-        suiteConfig.mcpServersToEnable,
-        config.environment.modernWebServerPath,
-        config.environment.mcpApiKey,
-        Agents.JETSKI_CLI
-      );
-    }
-  }
-
-  return workDir;
-}
-
-/**
  * Executes the Jetski CLI command and captures output.
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -105,13 +77,7 @@ async function run() {
   try {
     console.log(`Starting Jetski CLI agent in ${workDir}`);
 
-    const command = config.environment.jetskiCliBin;
-    const model = process.env.JETSKI_MODEL;
-    const commandArgs = [
-      '-p', userPrompt,
-      '--dangerously-skip-permissions',
-      ...(model ? ['--model', model] : [])
-    ];
+    const { command, commandArgs } = getJetskiCliCommandAndArgs(userPrompt);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
@@ -245,8 +211,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   const fileReadGuides: string[] = [];
   const toolsUsed: string[] = [];
   let modelName = 'unknown';
-  let totalInput = 0;
-  let totalOutput = 0;
+  let totalTokens = 0;
   let totalCached = 0;
   let hasTokens = false;
 
@@ -256,90 +221,86 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
     try {
       const db = new DatabaseSync(fullPath, { readOnly: true });
       const rows = db.prepare('SELECT step_type, metadata, step_payload FROM steps').all() as Array<{ step_type?: number; metadata?: Uint8Array; step_payload?: Uint8Array }>;
+      let fileInput = 0;
+      let fileLastCached = 0;
+      let fileOutput = 0;
+      let fileHasTokens = false;
+
       for (const row of rows) {
-        // Decode Protobuf step_payload for specific tool execution step types
+        // Decode Protobuf step_payload for tool executions
         if (row.step_payload) {
           const proto = parseProtobuf(Buffer.from(row.step_payload));
           const strings = getProtoStrings(proto);
 
-          // Shell commands (step_type = 21: RUN_COMMAND)
-          if (row.step_type === 21) {
-            for (const text of strings) {
-              if (text.includes('retrieve')) {
-                const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
-                if (match && match[1]) {
-                  const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
-                  retrievedGuides.push(...parts);
-                }
+          for (const text of strings) {
+            // Shell commands & guide retrieval
+            if (text.includes('retrieve')) {
+              const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
+              if (match && match[1]) {
+                const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
+                retrievedGuides.push(...parts);
               }
             }
-          }
 
-          // File reads (step_type = 8: VIEW_FILE)
-          if (row.step_type === 8) {
-            for (const filePath of strings) {
-              if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                if (match) {
-                  fileReadGuides.push(match[1]);
-                }
+            // File reads for guides and skills
+            if (text.includes('/skills/') && text.endsWith('/guide.md')) {
+              const match = text.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+              if (match) {
+                fileReadGuides.push(match[1]);
               }
-              if (filePath.includes('/skills/') && filePath.endsWith('/SKILL.md')) {
-                const match = filePath.match(/\/skills\/([^/]+)\/SKILL\.md$/);
-                if (match) {
-                  toolsUsed.push(match[1]);
-                }
+            }
+            if (text.includes('/skills/') && text.endsWith('/SKILL.md')) {
+              const match = text.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+              if (match) {
+                toolsUsed.push(match[1]);
               }
             }
           }
         }
 
-        // Protobuf token extraction from metadata tag 9
+        // Protobuf token extraction from metadata (field 9 stores Gemini UsageMetadata)
         if (row.metadata) {
           const proto = parseProtobuf(Buffer.from(row.metadata));
-          if (proto[9]) {
-            for (const item of proto[9]) {
-              if (typeof item === 'object' && item !== null) {
-                const input = (item[2] && typeof item[2][0] === 'number') ? item[2][0] : 0;
-                const output = (item[3] && typeof item[3][0] === 'number') ? item[3][0] : 0;
-                const cached = (item[5] && typeof item[5][0] === 'number') ? item[5][0] : 0;
-                if (input > 0 || output > 0 || cached > 0) {
-                  totalInput += input;
-                  totalOutput += output;
-                  totalCached += cached;
-                  hasTokens = true;
-                }
-              }
+          const usageNode = proto[9]?.[0];
+          if (usageNode && typeof usageNode === 'object') {
+            const input = (usageNode[2] && typeof usageNode[2][0] === 'number') ? usageNode[2][0] : 0;
+            const output = (usageNode[3] && typeof usageNode[3][0] === 'number') ? usageNode[3][0] : 0;
+            const cached = (usageNode[5] && typeof usageNode[5][0] === 'number') ? usageNode[5][0] : 0;
+            if (input > 0 || output > 0 || cached > 0) {
+              fileInput += input;
+              fileLastCached = Math.max(fileLastCached, cached);
+              fileOutput += output;
+              fileHasTokens = true;
             }
           }
         }
       }
 
-      // Extract model name from gen_metadata (Protobuf Tag 1 -> Tag 21)
+      if (fileHasTokens) {
+        totalTokens += (fileInput + fileLastCached + fileOutput);
+        totalCached += fileLastCached;
+        hasTokens = true;
+      }
+
+      // Extract model name from gen_metadata by scanning string values
       try {
         const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
         for (const row of genRows) {
           if (!row.data) continue;
           const proto = parseProtobuf(Buffer.from(row.data));
-          if (proto[1]) {
-            for (const item of proto[1]) {
-              if (typeof item === 'object' && item !== null && item[21] && typeof item[21][0] === 'string') {
-                modelName = item[21][0];
-                break;
-              }
-            }
+          const strings = getProtoStrings(proto);
+          // Look for Gemini model name patterns across string fields in the Protobuf message
+          const modelCandidate = strings.find(s => /^gemini/i.test(s));
+          if (modelCandidate) {
+            modelName = modelCandidate;
+            break;
           }
-          if (modelName !== 'unknown') break;
         }
       } catch {}
 
       db.close();
     } catch {}
   }
-
-  const totalTokens = (hasTokens && totalInput > 0 && totalOutput === 0 && totalCached > 0 && totalInput >= totalCached) 
-    ? totalInput 
-    : totalInput + totalOutput + totalCached;
 
   return {
     retrievedGuides: [...new Set(retrievedGuides)],

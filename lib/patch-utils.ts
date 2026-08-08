@@ -28,22 +28,24 @@ export interface PatchResult {
  * Tries git apply first, falling back to standard patch -p1.
  */
 export function applyPatchSync(targetDir: string, patchPath: string): PatchResult {
-  if (!fs.existsSync(patchPath)) {
-    return { success: false, error: `Patch file not found: ${patchPath}` };
+  const absPatchPath = path.resolve(patchPath);
+  const absTargetDir = path.resolve(targetDir);
+  if (!fs.existsSync(absPatchPath)) {
+    return { success: false, error: `Patch file not found: ${absPatchPath}` };
   }
-  if (!fs.existsSync(targetDir)) {
-    return { success: false, error: `Target directory not found: ${targetDir}` };
+  if (!fs.existsSync(absTargetDir)) {
+    return { success: false, error: `Target directory not found: ${absTargetDir}` };
   }
 
   try {
-    execSync(`git apply --whitespace=nowarn "${patchPath}"`, { cwd: targetDir, stdio: 'pipe' });
+    execSync(`patch -p1 --no-backup-if-mismatch -i "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe' });
     return { success: true };
-  } catch (gitErr: any) {
+  } catch (patchErr: any) {
     try {
-      execSync(`patch -p1 --no-backup-if-mismatch -i "${patchPath}"`, { cwd: targetDir, stdio: 'pipe' });
+      execSync(`git apply --whitespace=nowarn --unsafe-paths "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe' });
       return { success: true };
-    } catch (patchErr: any) {
-      const errorMsg = gitErr?.stderr?.toString() || patchErr?.stderr?.toString() || gitErr?.message || patchErr?.message || 'Unknown error applying patch';
+    } catch (gitErr: any) {
+      const errorMsg = patchErr?.stderr?.toString() || gitErr?.stderr?.toString() || patchErr?.message || gitErr?.message || 'Unknown error applying patch';
       return { success: false, error: errorMsg.trim() };
     }
   }
@@ -79,3 +81,17 @@ export function capturePatchFromGit(
   }
 }
 
+/**
+ * Initializes a clean git repository in the target directory with an initial commit.
+ * Required so git diff / capturePatchFromGit can track modified and new files.
+ */
+export function initGitRepo(workDir: string): void {
+  try {
+    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit --allow-empty -m "init"', {
+      cwd: workDir,
+      stdio: 'ignore'
+    });
+  } catch (err) {
+    console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
+  }
+}
