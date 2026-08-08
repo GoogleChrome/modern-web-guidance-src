@@ -1,6 +1,6 @@
 ---
 name: tabs
-description: "Build an accessible, responsive tabbed interface, with assistive technology support and good UX when not all tabs fit on screen."
+description: "Build a responsive tabbed interface with good UX when not all tabs fit on screen."
 web-feature-ids:
   - anchor-positioning
   - hidden-until-found

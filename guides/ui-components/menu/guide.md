@@ -1,6 +1,6 @@
 ---
 name: menu
-description: Build a menu component that displays a list of options or actions, with support for nested submenus, keyboard navigation, and assistive-technology support.
+description: Build a menu component that displays a list of options or actions, with support for nested submenus.
 web-feature-ids:
   - container-scroll-state-queries
   - popover

@@ -1,6 +1,6 @@
 ---
 name: slider
-description: Style a native slider in a brand-consistent way while preserving full keyboard and assistive-technology support.
+description: Style a native slider in a brand-consistent way while preserving native functionality and accessibility.
 web-feature-ids:
   - accent-color
   - input-range

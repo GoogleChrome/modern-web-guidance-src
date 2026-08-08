@@ -1,6 +1,6 @@
 ---
 name: dynamic-sort
-description: Best practices for dynamically sorting lists of items based on user input, with proper accessibility, UX, and performance considerations for large lists.
+description: Best practices for dynamically sorting lists of items based on user input, including performance considerations for large lists.
 web-feature-ids:
   - view-transitions
   - move-before

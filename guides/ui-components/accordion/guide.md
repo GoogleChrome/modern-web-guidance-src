@@ -1,6 +1,6 @@
 ---
 name: accordion
-description: "Build an accordion component with animation and optional exclusive (one-open-at-a-time) behavior, using brand-consistent styling and full keyboard and assistive-technology support."
+description: "Build an accordion component with animation, optional exclusive (one-open-at-a-time) behavior, and brand-consistent styling."
 web-feature-ids:
   - hidden-until-found
   - interpolate-size
