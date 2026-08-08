@@ -8,7 +8,7 @@
     /*
       Baseline. Always applies, including in browsers that do not implement
       the at-rule() function. The card's transition lives here so the fade
-      timing carries over to the unsupporting fallback path.
+      timing carries over to the fallback path.
     */
     .card {
       padding: 1rem 1.25rem;
@@ -28,7 +28,7 @@
       Enhancement gated on at-rule support. The argument is a single
       at-keyword token. The body uses the @starting-style at-rule whose
       grammar this query is detecting. Browsers that do not implement
-      at-rule() drop the entire block, so the cards still render — just
+      at-rule() drop the entire block, so the cards still render, just
       without the fade-in.
     */
     @supports at-rule(@starting-style) {
@@ -51,11 +51,11 @@
   </div>
   <div class="card">
     <h2>Card two</h2>
-    <p>Same baseline, same enhancement.</p>
+    <p>Behaves the same as card one.</p>
   </div>
   <div class="card">
     <h2>Card three</h2>
-    <p>Same baseline, same enhancement.</p>
+    <p>Behaves the same as card one.</p>
   </div>
 </body>
 </html>
