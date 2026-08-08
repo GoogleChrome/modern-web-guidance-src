@@ -114,8 +114,8 @@ importers:
         specifier: ^27.0.2
         version: 27.0.2
       web-features:
-        specifier: ^3.34.0
-        version: 3.34.0
+        specifier: latest
+        version: 3.30.0
 
   harness:
     dependencies:
@@ -187,8 +187,8 @@ importers:
         specifier: ^1.25.1
         version: 1.25.1
       web-features:
-        specifier: ^3.34.0
-        version: 3.34.0
+        specifier: latest
+        version: 3.30.0
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -3276,6 +3276,9 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
+
+  web-features@3.30.0:
+    resolution: {integrity: sha512-IF5V6RRMD2DO7Dy/s2ApI99SnnPUEomLU/j9PgBBEQHJHyM7swVzktmbVXTsaI9u7bxp6o+LlclS2HoMEjz9nw==}
 
   web-features@3.34.0:
     resolution: {integrity: sha512-hvIf75+7/1tlf1AAJHg64kMsvXDnx6gVRGWD6Q1uMjTNAQc0H1kPTra1VW0fGnm28gfudk89KY+14KiWC20EYQ==}
@@ -6647,6 +6650,8 @@ snapshots:
       spdx-expression-parse: 3.0.1
 
   vary@1.1.2: {}
+
+  web-features@3.30.0: {}
 
   web-features@3.34.0: {}
 
