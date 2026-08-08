@@ -43,6 +43,7 @@ web-feature-ids:
 ---
 ```
 * **web-features**: Must be a list of accurate IDs found via webstatus.dev. Include ALL features referenced in the guide body, not just the primary one. If an ID is missing, inform the USER.
+* **draft** (optional): Set `draft: true` (or any truthy value, e.g. `draft: future`) to withhold the guide from all distribution (search index, README, megaskill) without deleting it. Omit for normal publishing.
 
 ### 2. Tone and Formatting
 
