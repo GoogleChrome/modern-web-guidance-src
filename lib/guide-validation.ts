@@ -184,7 +184,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const hasTargets = !!targets && targets.length > 0;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
-    const isDisciplineGuide = inv.name === inv.category || ['css-layout', 'passkeys'].includes(inv.name);
+    const isDisciplineGuide = inv.name === inv.category || ['css-layout', 'passkeys', 'selector-atrule-combinations'].includes(inv.name);
     
     // Discipline skills don't need demo.html; a frontmatter-only stub
     // (a proposed use case) doesn't need one either
