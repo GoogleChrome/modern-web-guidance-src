@@ -39,12 +39,20 @@ Map the `<meta>` back to the property so the cascade follows it:
 **DO NOT** hardcode `color-scheme: light` or `color-scheme: dark` as the root default; the base declaration MUST stay `light dark`.
 CSS MUST NOT depend on JS: if JS never runs, the `<meta>` stays `light dark` and the site follows the system preference — nothing breaks.
 
-### Two states, not three
+## Two or three states?
 
-Three states ("Light", "Dark", "System") are plausible ("Follow system (currently dark)" sounds distinct from "Always dark") but wrong: at the moment of choosing, an override that matches the system preference is indistinguishable from the system default, so users cannot meaningfully express that intent — and selecting it produces no visible feedback.
-A manual toggle is a temporary comfort adjustment ("it's too bright right now"), not a long-term policy ("make sure this never changes").
+Prefer two states in space-constrained toggles, such as persistent toggles in the site chrome (header, nav, footer, etc.) where space is limited and tweaking settings is usually orthogonal to the user goal.
 
-The only two states:
+Three states ("Light", "Dark", "System") sound best but a manual toggle is a temporary comfort adjustment ("it's too bright right now"), not a long-term policy ("make sure this never changes").
+At the moment of choosing, an override that matches the system preference is indistinguishable from the system default, so users cannot meaningfully express that intent — and selecting it produces no visible feedback.
+
+A color scheme control on a **separate settings page** is a different scenario and MAY expose all three states explicitly ("Light", "Dark", "System"): there, the user is already making deliberate decisions about future behavior, and there is room to explain the options.
+In that case, it should _also_ indicate what the current system color scheme is, not display a generic "System" label.
+
+Three explicit states are also warranted if the site implements context-aware schemes (e.g. a dimmer light mode when the OS is dark), since "Light" and "System (currently light)" then genuinely differ.
+
+The rest of this section assumes a two-state toggle.
+The only two states should be:
 
 1. **System default** — no stored value, `<meta>` content `light dark`. Displayed as its current resolved value (e.g. a sun icon when light).
 2. **Override** — stored literally as `light` or `dark`.
@@ -59,7 +67,7 @@ On each toggle:
 4. Set the `<meta>` content to the stored value, or `light dark` if none.
 
 Divergence is checked only at storage time, never retroactively: a stored value that the system preference later changes to match MUST be kept.
-Invariant: a stored value exists if and only if the user has an active override.
+Many users' OS switches schemes automatically based on time of day; removing the stored value whenever the two happen to coincide would make it impossible to pin a scheme at all.
 
 Example scenario, starting with the OS set to light:
 
@@ -82,8 +90,10 @@ document.querySelector('meta[name="color-scheme"]').content = localStorage.getIt
 ```
 
 - This inline script exists **only** for FOUC prevention. Keep it as small as possible; the rest of the component's JS can load later.
-- In rare cases `localStorage` access can throw (e.g. site data blocked), but since this script does nothing else, the only side effect would be a console error. Wrap in `try .. catch` if this matters.
+- In rare cases `localStorage` access can throw (e.g. site data blocked), but since this script does nothing else, the only side effect would be a console error. Wrap in `try .. catch` if this matters. Ensure the theme is still applied to the page, even if it cannot be persisted.
 - The override can change from another tab: handle `window`'s `storage` event to stay in sync.
+- **DO NOT** use `matchMedia()` to remove the stored value when the system preference changes to match it.
+Many users' OS switches schemes automatically based on time of day; removing the stored value whenever the two happen to coincide would make it impossible to pin a scheme at all.
 
 ## Branching for HTML and non-color values
 
