@@ -1,32 +1,34 @@
-# Guidance Project — Context Document
+# Modern Web Guidance Project — Context Document
 
 *(Note: This is an auto-maintained LLM context document, meant to provide overarching project goals, architecture, and workflow details to AI agents working in this repository. It is not intended to replace the READMEs for human contributors, but rather to supplement them with "big picture" state. AI agents are instructed to update this file as they work.)*
 
-This document describes the goals, architecture, contributor workflow, and current state of the Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
+This document describes the goals, architecture, contributor workflow, and current state of the Modern Web Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
 
-Last updated: 2026-03-06.
+Last updated: 2026-07-10.
 
 ---
 
 ## 1. What This Project Is
 
-**Guidance** is a Google Chrome project where subject matter experts (SMEs) write curated guides for modern web platform features (CSS, JS APIs, HTML). These guides are served to AI coding agents via Agent Skills and a CLI (or MCP), so that when developers ask an AI tool to implement something, the agent produces code that uses modern best practices rather than outdated patterns. The project has two intertwined goals:
+**Modern Web Guidance** is a Google Chrome project where subject matter experts (SMEs) write curated guides for modern web platform features (CSS, JS APIs, HTML). These guides are served to AI coding agents via Agent Skills and a CLI (or MCP), so that when developers ask an AI tool to implement something, the agent produces code that uses modern best practices rather than outdated patterns. The project has two intertwined goals:
 
 1. **Create high-quality guidance** — structured markdown documents that teach coding agents how to use modern web features correctly.
 2. **Prove the guidance works** — an evaluation harness that measures whether agents with access to the guidance produce better output than agents without it.
 
 ### People involved
 
-- **~15 subject matter experts**: Google engineers with deep knowledge of specific web features. They write the guides, demo files, and expectations. They contribute via PRs into the `guides/` directory.
+- **Content Area Tech Leads (Content ATLs)**: Domain experts who oversee individual categories (Performance, Forms, Accessibility, etc.), review PRs, triage content quality issues, and manage the category's health.
+- **~15 subject matter experts (SMEs)**: Google engineers with deep knowledge of specific web features. They write the guides, demo files, and expectations. They contribute via PRs into the `guides/` directory.
 - **~3 infrastructure engineers** (Paul, Rick, Micah, and others): Maintain the CLI tooling, eval harness, MCP server, dashboard, and grader generation pipeline.
 
 ### Repository structure
 
 ```
-guidance/
+modern-web-guidance-src/
   guides/                     # All guide content, organized by discipline
     performance/              # e.g. batch-analytics-events, optimize-image-priority
-    user-experience/          # e.g. light-dismiss-dialog, animate-to-intrinsic-sizes
+    overlays/                 # e.g. light-dismiss-dialog, declarative-dialog-popover-control
+    css-layout/               # e.g. animate-to-intrinsic-sizes
     accessibility/            # (empty so far)
     security/                 # (empty so far)
     AGENTS.md                 # Instructions for AI agents working in this repo
@@ -59,7 +61,7 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 
 | File | Author | Purpose |
 |---|---|---|
-| `guide.md` / `SKILL.md` | SME (human) | The guidance itself. Read by coding agents via MCP. `SKILL.md` is used for discipline-level skills. Contains YAML frontmatter (name, description, web-feature-ids, sources) and structured markdown with DO/DO NOT directives, code snippets, and fallback strategies. |
+| `guide.md` / `SKILL.md` | SME (human) | The guidance itself. Read by coding agents via MCP. `SKILL.md` is used for discipline-level skills. Contains YAML frontmatter (name, description, web-feature-ids) and structured markdown with DO/DO NOT directives, code snippets, and fallback strategies. |
 | `demo.html` | SME (human) | Gold-standard implementation of the use case. Must score 100% against the grader. |
 | `expectations.md` | SME (human) | Natural-language bulleted list of assertions that must be true if the guidance is followed correctly. Used as input for grader generation. |
 | `negative-demo.html` | Generated (Gemini CLI) | A deliberately incorrect implementation. Must score 0% against the grader. Used for grader calibration. |
@@ -82,17 +84,17 @@ The task file connects a base application the agent will modify, and the prompt 
 
 A guide progresses through three main stages:
 
-1. **Stage 1: Identifying use cases (Stub state)**
+1. **Stage 1: Identifying use cases (Needs use cases)**
    - **Goal**: Translate a web platform feature into distinct use cases.
    - **Artifacts**: Directory structure, `guide.md` with only YAML frontmatter (stub), and a basic `demo.html`.
    - SME contributes via PR for review.
 
-2. **Stage 2: Authoring guidance (Needs calibration state)**
+2. **Stage 2: Authoring guidance (Needs guidance)**
    - **Goal**: Flesh out the guidance and define testable expectations.
    - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
    - SME creates these files after use case approval.
 
-3. **Stage 3: Evaluating guidance (Eval-ready state)**
+3. **Stage 3: Evaluating guidance (Needs evals)**
    - **Goal**: Generate evaluation artifacts and prove the guidance works.
    - **Artifacts**: `negative-demo.html`, `grader.ts`, `tasks/task.md`.
    - Handled by `gd dev` pipeline for auto-generation and calibration.
@@ -191,11 +193,11 @@ The eval harness measures whether guides actually improve agent output.
 
 Five agents are supported, configured in `harness/config.ts`:
 
-- **Jetski** (default): Google's internal IDE agent. Requires the Jetski app.
+- **Jetski** (default): Google's internal IDE agent. 
 - **Jetski CLI**: CLI version of Jetski.
 - **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` env vars.
-- **Claude Code**: Uses Claude on Vertex AI. Requires GCP setup.
-- **Codex CLI**: Requires requesting an exception and PCounsel approval. See root README for details.
+- **Claude Code**
+- **Codex CLI** 
 
 ### Base apps
 
@@ -216,7 +218,7 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 ### Build process
 
-`pnpm build:mcp` compiles all `guide.md` and `SKILL.md` files (that have valid frontmatter and content) into a searchable index. The build script also generates a "megaskill" — a concatenated document of all guides for agents that support skill-based injection rather than MCP.
+`pnpm build` compiles all `guide.md` and `SKILL.md` files (that have valid frontmatter and content) into a searchable index. The build script also generates a "megaskill" — a concatenated document of all guides for agents that support skill-based injection rather than MCP.
 
 ### How agents access guidance
 
@@ -226,7 +228,7 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 ---
 
-## 7. Current State (as of 2026-03-06)
+## 7. Current State (as of 2026-07-10)
 
 ### Guide inventory
 
@@ -234,12 +236,14 @@ An evolving list of guides organized across multiple categories.
 
 | Stage | Status | Count | Description |
 |---|---|---|---|
-| **Stage 3** | Eval-ready | 4 | All artifacts exist, included in suite runs |
-| **Stage 3** | Needs test | 1 | Grader calibrated, missing prompts/task |
-| **Stage 2** | Needs calibration | 3 | Has guide + demo + expectations, needs `gd dev` |
-| **Stage 1** | Stub | 36 | YAML frontmatter only, no guide content yet |
+| **Stage 3** | Eval-ready (Complete) | 129 | All artifacts exist, included in suite runs |
+| **Stage 3** | Needs evals (needs agent test) | 0 | Grader calibrated, missing prompts/task |
+| **Stage 3** | Needs evals (needs calibration) | 0 | Has guide + demo + expectations, needs `gd dev` |
+| **Stage 2** | Needs guidance (missing expectations) | 8 | Has guide + demo, needs expectations.md |
+| **Stage 2** | Needs guidance (stub) | 4 | YAML frontmatter only, no guide content yet |
+| **Stage 1** | Needs use cases (incomplete) | 0 | Missing guide.md or demo.html |
 
-The 4 eval-ready guides: `batch-analytics-events`, `full-session-analytics`, `adapt-scrollbar-to-contrast-preferences`, `customize-scrollbar-color-and-thickness`.
+See `gd audit` for the full list of eval-ready guides covering performance, css-layout, overlays, accessibility, and security features.
 
 ### Open PRs (representative)
 
@@ -260,7 +264,7 @@ To prevent SMEs from investing time writing full guides for use cases that might
 **Checkpoint 1 — Use case identification:**
 - SME picks a web feature from the tracking sheet
 - Creates directory structure under `guides/<discipline>/`
-- Writes `guide.md` with **only YAML frontmatter** (name, description, web-feature-ids, sources) — this is a stub
+- Writes `guide.md` with **only YAML frontmatter** (name, description, web-feature-ids) — this is a stub
 - Creates a basic `demo.html` showing the concept
 - Opens a PR for review — the team validates that the use cases are well-chosen, distinct, and don't overlap with existing guides
 - `gd audit` shows these as "stub" status
@@ -276,7 +280,7 @@ To prevent SMEs from investing time writing full guides for use cases that might
 ### Writing guide.md
 
 Guides are read by AI coding agents, not humans directly. Key requirements:
-- YAML frontmatter with `name`, `description`, `web-feature-ids`, and `sources`
+- YAML frontmatter with `name`, `description`, and `web-feature-ids`
 - Imperative directives: use `MANDATORY:`, `DO`, `DO NOT` — agents respond to rigid constraints
 - Self-contained: all necessary information must be in the document, no reliance on external links
 - Short, commented code snippets with directives in code comments
@@ -302,11 +306,15 @@ The architecture is designed so that each group can work independently without n
 
 **Subject Matter Experts (SMEs)** focus exclusively on technical accuracy: understanding edge cases of a web feature, writing clear guidance, building a canonical demo, and defining testable expectations. They are shielded from the underlying Playwright infrastructure and do not need to be functional test engineers. Their deliverables are `guide.md`, `expectations.md`, and `demo.html`.
 
+**Content Area Tech Leads (Content ATLs)** act as domain-level owners for entire categories (Performance, Layout, Forms, etc.). They ensure category health, research gaps, triage content quality/failures, author or review all guidance written in their area, and are responsible for ensuring that all guidance is eval-ready. Their full expectations and responsibilities are detailed in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+
+
 **Infrastructure Engineers** focus on the reliability of the `gd` CLI, the evaluation harness, LLM invocation stability, MCP server correctness, and diagnosing systemic issues (e.g., why guided vs. unguided pass rates show no delta for a particular category of guide).
 
-**The LLM Pipeline (`gd dev`)** bridges the gap between human-authored guidance and the automated evaluation harness. It translates natural-language expectations into executable Playwright test assertions and scaffolds negative test cases, absorbing the friction of maintaining the testing infrastructure. When calibration fails, the retry loop handles most issues automatically — the SME should not need to understand why a Playwright selector was flaky.
+**The LLM Pipeline (`gd dev`)** bridges the gap between human-authored guidance and the automated evaluation harness. It translates natural-language expectations into executable Playwright test assertions and scaffolds negative test cases, absorbing the friction of maintaining the testing infrastructure. When calibration fails, the retry loop handles most issues automatically — the SME/ATL should not need to understand why a Playwright selector was flaky.
 
-The boundary is intentionally drawn so that SMEs never need to write or debug Playwright code, and infra engineers rarely need to understand the specifics of a web feature. The `gd dev` pipeline is the interface between these two worlds.
+The boundary is intentionally drawn so that SMEs/ATLs never need to write or debug Playwright code, and infra engineers rarely need to understand the specifics of a web feature. The `gd dev` pipeline is the interface between these two worlds.
 
 ---
 
@@ -323,27 +331,6 @@ Different agents have different integration capabilities. MCP provides dynamic, 
 
 ### Why a retry loop for calibration?
 Gemini-generated graders frequently fail calibration on the first attempt — tests may be too strict, too lenient, or check the wrong thing. Feeding failure context back into regeneration significantly improves success rates. The retry loop (up to 3 total attempts) automates what was previously a tedious manual cycle.
-
----
-
-## 11. Future Direction
-
-### Near-term (in progress or planned)
-
-- **Reconcile contributor docs**: Rick's `.agents/skills/` approach (modular skill files for project-use-cases, project-guides, project-evals) and the `gd` CLI approach need to be unified into a single coherent contributor workflow. The two-checkpoint model from Rick's proposal is compatible with the `gd dev` pipeline and will likely be adopted.
-- **Merge `cli-plus-dev` to main**: The CLI and dev pipeline need to land on main so all contributors can use them.
-
-### Medium-term
-
-- **Second base app**: A more complex base application beyond `daily-grind` to provide a harder test for agents. More ambiguous tasks that challenge the system.
-- **Grader failure responsibility model**: When grader calibration fails repeatedly, clarify whether the SME iterates on `expectations.md` or an infra engineer debugs the generation prompt. This hasn't been an issue yet but will become important as more SMEs run the pipeline.
-- **Scale to all 44 guides**: Currently 36 guides are stubs. The `gd dev-all` batch command exists for processing multiple guides once SMEs have fleshed them out.
-
-### Longer-term
-
-- **Additional agent support**: Evaluating more AI coding tools beyond Gemini CLI, Claude Code, and Jetski.
-- **Continuous evaluation**: Automated suite runs on CI to detect regressions in guide effectiveness as models update.
-- **Guide effectiveness feedback loop**: Using eval results to identify which guides need improvement (low guided scores, or guided scores not significantly better than unguided).
 
 ---
 

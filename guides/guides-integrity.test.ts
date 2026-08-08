@@ -2,12 +2,14 @@ import test, { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execSync } from 'node:child_process';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 
 // Import shared utilities
 import { scanAllGuides, processGuideInventory } from '../lib/guide-validation.ts';
 import { MACRO_PATTERN, replaceMacros } from '../serving/lib/macros.ts';
+import { updateCodeowners } from './generate-codeowners.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -20,6 +22,20 @@ describe('Guides Validation (Single Source of Truth)', () => {
     });
     return;
   }
+
+  it('ensures all guide IDs are unique', () => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const guide of guides) {
+      if (seen.has(guide.name)) {
+        duplicates.add(guide.name);
+      }
+      seen.add(guide.name);
+    }
+    if (duplicates.size > 0) {
+      assert.fail(`Duplicate guide IDs found: ${Array.from(duplicates).join(', ')}`);
+    }
+  });
 
   for (const guide of guides) {
     const relativeDir = path.relative(REPO_ROOT, guide.dir);
@@ -65,10 +81,10 @@ describe('Guides Validation (Single Source of Truth)', () => {
         assert.fail(`Marked parsing failed: ${e}`);
       }
 
-      // 4. Check for git conflict markers
+      // 4. Check for git conflict markers at the start of a line
       const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
       for (const marker of conflictMarkers) {
-        if (content.includes(marker)) {
+        if (lines.some(l => l.startsWith(marker))) {
           assert.fail(`File contains git conflict marker "${marker}" in ${relativeDir}`);
         }
       }
@@ -100,4 +116,39 @@ describe('Guides Validation (Single Source of Truth)', () => {
       }
     });
   }
+
+  it('checks all tracked files for conflict markers', () => {
+    const files = execSync('git ls-files', { encoding: 'utf8' }).trim().split('\n');
+    const extensions = ['.md', '.html', '.txt', '.yaml', '.yml'];
+    const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
+    const failedFiles: string[] = [];
+
+    for (const file of files) {
+      const ext = path.extname(file);
+      if (!extensions.includes(ext)) continue;
+
+      const filePath = path.resolve(REPO_ROOT, file);
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const fileLines = content.split('\n');
+        for (const marker of conflictMarkers) {
+          if (fileLines.some(l => l.startsWith(marker))) {
+            failedFiles.push(`${file} (contains "${marker}")`);
+            break;
+          }
+        }
+      } catch (e) {
+        // Ignore files that cannot be read
+      }
+    }
+
+    if (failedFiles.length > 0) {
+      assert.fail(`Conflict markers found in the following files:\n${failedFiles.join('\n')}`);
+    }
+  });
+
+  it('ensures CODEOWNERS and feature-to-groups.generated.json are synchronized with guides/atls.json', () => {
+    const success = updateCodeowners(true);
+    assert.ok(success, 'CODEOWNERS or guides/feature-to-groups.generated.json are out of sync. Please run: node guides/generate-codeowners.ts');
+  });
 });

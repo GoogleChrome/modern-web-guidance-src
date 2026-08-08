@@ -4,6 +4,9 @@ import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
+// Disable telemetry globally for all evaluation and test harness runs
+process.env.DISABLE_TELEMETRY = '1';
+
 try {
   process.loadEnvFile(path.join(rootDir, '.env'));
 } catch {
@@ -15,8 +18,11 @@ export const Agents = {
   JETSKI_CLI: 'jetski_cli',
   GEMINI_CLI: 'gemini_cli',
   CLAUDE_CODE: 'claude_code',
-  CODEX_CLI: 'codex_cli'
+  CODEX_CLI: 'codex_cli',
+  PI: 'pi'
 } as const;
+
+export type Agents = typeof Agents[keyof typeof Agents];
 
 export const Serving = {
   SKILLS_CLI: 'skills_cli',
@@ -29,7 +35,7 @@ export type Serving = typeof Serving[keyof typeof Serving];
 
 // ******************************************
 // *** Set environment configuration      ***
-// *** Set env variables in guidance/.env ***
+// *** Set env variables in modern-web-guidance-src/.env ***
 // ******************************************
 export const environmentConfig: EnvironmentConfig = {
   // Jetski Configuration
@@ -50,8 +56,11 @@ export const environmentConfig: EnvironmentConfig = {
   // Codex Configuration
   codexCliBin: process.env.CODEX_CLI_BIN || path.join(harnessDir, 'node_modules/.bin/codex'),
 
+  // Pi Configuration
+  piBin: process.env.PI_BIN || 'pi',
+
   // MCP Server Configuration
-  modernWebServerPath: path.join(rootDir, 'serving/mcp-server/index.ts'), // For modern-web MCP server
+  modernWebServerPath: path.join(rootDir, 'serving/mcp-server/index.ts'), // For modern-web-guidance MCP server
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
@@ -59,11 +68,12 @@ export const defaultSuiteConfig: SuiteConfig = {
   name: null,
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
-  mcpServersToEnable: ['modern-web'],
-  skillsToEnable: ['modern-web'],
+  mcpServersToEnable: ['modern-web-guidance'],
+  skillsToEnable: ['modern-web-guidance'],
   serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
   workerCount: undefined,
+  includeTrace: false,
 };
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
@@ -104,6 +114,7 @@ export interface EnvironmentConfig {
   geminiDir: string;
   claudeCodeCliBin: string;
   codexCliBin: string;
+  piBin: string;
   gcpCredentials: string;
   modernWebServerPath: string;
   mcpApiKey: string;
@@ -118,6 +129,7 @@ export interface SuiteConfig {
   serving: Serving;
   agent: string;
   workerCount?: number;
+  includeTrace?: boolean;
 }
 
 export const config = {

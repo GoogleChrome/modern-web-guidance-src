@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shaped Cutouts Demo</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --accent-primary: #6366f1;
+      --accent-secondary: #3b82f6;
+      --text-light: #f8fafc;
+      --text-muted: #94a3b8;
+      --gradient-bg: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    }
+
+    body {
+      font-family: sans-serif;
+      background: var(--gradient-bg);
+      color: var(--text-muted);
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* Subtle micro-pattern background */
+      background-image: radial-gradient(rgba(99, 102, 241, 0.15) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    header {
+      text-align: center;
+      max-width: 800px;
+      margin-bottom: 60px;
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    /* Main Layout Grid */
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    @media (min-width: 768px) {
+      .demo-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .demo-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    /* Section Styling */
+    .demo-section {
+      border: 1px solid rgba(30, 41, 59, 0.4);
+      border-radius: 24px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-top: 0;
+      margin-bottom: 8px;
+      align-self: flex-start;
+      color: #c7d2fe;
+    }
+
+    .section-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      line-height: 1.5;
+      align-self: flex-start;
+    }
+
+    /* --- USE CASE 1: Masking Arbitrary Images --- */
+    .image-showcase {
+      position: relative;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .shaped-avatar {
+      width: 150px;
+      height: 150px;
+      object-fit: cover;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+      filter: grayscale(20%) contrast(105%);
+
+      /* Standard and vendor-prefixed mask application */
+      -webkit-mask-image: url(#splat-mask);
+      mask-image: url(#splat-mask);
+    }
+
+    .shaped-avatar:hover {
+      transform: scale(1.05) rotate(2deg);
+      filter: grayscale(0%) contrast(110%);
+    }
+
+    /* --- USE CASE 2: Masking Elements with Text --- */
+    .unified-card {
+      display: flex;
+      width: 100%;
+      max-width: 400px;
+      box-sizing: border-box;
+      /* Shadow silhouettes the whole custom shape perfectly */
+      filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+      cursor: pointer;
+    }
+
+    .unified-card:hover {
+      transform: translateY(-6px);
+      filter: drop-shadow(0 15px 30px rgba(99, 102, 241, 0.25));
+    }
+
+    .card-body {
+      flex: 1;
+      background-color: var(--bg-card);
+      padding: 24px;
+      border-top-left-radius: 16px;
+      border-bottom-left-radius: 16px;
+      /* Seamless visual merging */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .card-body h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .card-body p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .card-accent {
+      width: 70px;
+      background-color: var(--bg-card);
+      border-top-right-radius: 16px;
+      border-bottom-right-radius: 16px;
+
+      /* Apply the SVG mask to this empty decorative shape */
+      -webkit-mask-image: url(#accent-stencil);
+      mask-image: url(#accent-stencil);
+    }
+
+    /* --- USE CASE 3: Masking with CSS Gradients --- */
+    .gradient-masked-card {
+      background: linear-gradient(135deg, #4f46e5 0%, #1e1b4b 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 44px 24px 24px 24px;
+      /* Extra top padding ensures content clears the top notch */
+      text-align: center;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 240px;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+      cursor: pointer;
+
+      /* radial-gradient places a circle at 50% (horizontal center) and 0% (top edge), cutting out a 20px transparent notch */
+      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
+      mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
+    }
+
+    .gradient-masked-card:hover {
+      transform: translateY(-6px);
+      filter: drop-shadow(0 15px 30px rgba(99, 102, 241, 0.25));
+    }
+
+    .gradient-masked-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .gradient-masked-card p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- SVG Mask Definitions Container (zero-size, hidden from view & accessible) -->
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+    <defs>
+      <!-- Mask 1: Organic Paint Splat Shape for Use Case 1 -->
+      <mask id="splat-mask" maskContentUnits="objectBoundingBox">
+        <path
+          d="M 0.5 0.05 C 0.58 0.05, 0.58 0.21, 0.67 0.18 C 0.76 0.15, 0.79 0.08, 0.85 0.15 C 0.91 0.22, 0.83 0.32, 0.89 0.38 C 0.95 0.44, 1.03 0.45, 0.99 0.55 C 0.95 0.65, 0.82 0.62, 0.8 0.72 C 0.78 0.82, 0.89 0.92, 0.8 0.97 C 0.71 1.02, 0.64 0.88, 0.55 0.93 C 0.46 0.98, 0.44 1.06, 0.35 1.01 C 0.26 0.96, 0.31 0.81, 0.22 0.79 C 0.13 0.77, 0.01 0.88, 0.01 0.77 C 0.01 0.66, 0.16 0.62, 0.14 0.52 C 0.12 0.42, -0.02 0.39, 0.03 0.29 C 0.08 0.19, 0.23 0.27, 0.29 0.19 C 0.35 0.11, 0.3 0.01, 0.4 0.01 C 0.5 0.01, 0.42 0.05, 0.5 0.05 Z"
+          fill="white" />
+      </mask>
+      
+      <!-- Mask 2: Convex Curved Side Cutout for Use Case 2 -->
+      <mask id="accent-stencil" maskContentUnits="objectBoundingBox">
+        <!-- Everything inside white stays visible -->
+        <rect width="1" height="1" fill="white" />
+        <!-- Black path cuts out a sleek concave curve. Extending to x=1.1 guarantees it clears the right edge without subpixel slivers -->
+        <path d="M 1.1,0 C 0.4,0.1 0.4,0.9 1.1,1 L 1.1,0 Z" fill="black" />
+      </mask>
+    </defs>
+  </svg>
+
+  <header>
+    <h1>Modern Shaped Cutouts</h1>
+    <p>
+      CSS masking is an incredibly powerful layout technique. Learn how to implement beautiful,
+      scalable shapes for arbitrary images, safely design custom shapes for text components, or use pure CSS gradients.
+    </p>
+  </header>
+  
+  <div class="demo-grid">
+  
+    <!-- SECTION 1: Image Masking -->
+    <section class="demo-section">
+      <h2 class="section-title">1. Arbitrary Image Masking</h2>
+      <p class="section-desc">
+        The SVG mask is applied directly to the image element. The mask scales automatically to the shape bounds
+        using <code>objectBoundingBox</code>. Hover to see scale and tone animations.
+      </p>
+  
+      <div class="image-showcase">
+        <!-- High-quality premium portrait image from Unsplash -->
+        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&h=500&q=80"
+          alt="User Profile Portrait" class="shaped-avatar">
+  
+        <!-- High-quality modern architecture image from Unsplash -->
+        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=500&h=500&q=80"
+          alt="Minimalist Building Architecture" class="shaped-avatar">
+      </div>
+    </section>
+  
+    <!-- SECTION 2: Safe Text Card Masking -->
+    <section class="demo-section">
+      <h2 class="section-title">2. Text-Bearing Card Masking</h2>
+      <p class="section-desc">
+        Applying a mask to the text element directly would crop your content. Instead, we mask an
+        <strong>empty div placed adjacent</strong> to the text block. Sharing the same background color makes them
+        look like one unified shaped card.
+      </p>
+  
+      <div class="unified-card">
+        <div class="card-body">
+          <h3>Ultra-Creative Space</h3>
+          <p>Building robust responsive design patterns using modern web platform APIs.</p>
+        </div>
+        <div class="card-accent"></div>
+      </div>
+    </section>
+  
+    <!-- SECTION 3: Pure CSS Gradient Cutout -->
+    <section class="demo-section">
+      <h2 class="section-title">3. Pure CSS Gradient Cutout</h2>
+      <p class="section-desc">
+        For simple shapes, you can define linear or radial gradients directly in CSS. The dot pattern background
+        shines right through the transparent semi-circular notch cut out along the top edge.
+      </p>
+  
+      <div class="gradient-masked-card">
+        <h3>Notched Coupon</h3>
+        <p>The background pattern is visible through the top notch, created using a single CSS radial-gradient.</p>
+      </div>
+    </section>
+
+  </div>
+
+</body>
+
+</html>

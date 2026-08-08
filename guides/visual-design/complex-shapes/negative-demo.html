@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Complex Shapes</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: black;
+    }
+
+    .container {
+      position: relative;
+      width: 200px;
+      height: 200px;
+    }
+
+    .shaped-element {
+      width: 200px;
+      height: 200px;
+      background-color: #e74c3c;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+      font-weight: bold;
+      padding: 40px 0;
+      box-sizing: border-box;
+    }
+
+    .blocker-top-left {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 80px;
+      height: 80px;
+      background-color: black;
+      transform: rotate(45deg);
+    }
+
+    .blocker-top-right {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 80px;
+      height: 80px;
+      background-color: black;
+      transform: rotate(-45deg);
+    }
+
+    .blocker-bottom-left {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 80px;
+      height: 80px;
+      background-color: black;
+      transform: rotate(-45deg);
+    }
+
+    .blocker-bottom-right {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 80px;
+      height: 80px;
+      background-color: black;
+      transform: rotate(45deg);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="shaped-element">
+      This element and its text content are shaped by the surrounding overlay blockers.
+    </div>
+    <div class="blocker-top-left"></div>
+    <div class="blocker-top-right"></div>
+    <div class="blocker-bottom-left"></div>
+    <div class="blocker-bottom-right"></div>
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+- The implementation MUST use `@container style()` queries to respond to changes in custom property values.
+- The implementation MUST define the queried custom property on an ancestor element of the element being styled.
+- The implementation MUST NOT use JavaScript for applying the styles that react to custom property changes.
+- The implementation MUST NOT attempt to style the container element using its own style query.
+- The implementation MUST use custom properties (CSS variables) when querying styles with `@container style()`.
+- The implementation SHOULD use a style query to feature-check for container style query support when conditionally displaying UI that relies on it.

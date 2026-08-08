@@ -1,0 +1,189 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..7fbf14d 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -17,7 +17,7 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <div class="article-teaser-container bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+@@ -52,32 +52,34 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++    <div class="article-teaser-container h-full">
++        <article class="article-teaser-card flex flex-col h-full group">
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="article-teaser-media">
++                <Image 
++                    src={image} 
++                    alt={article.data.title} 
++                    width={400}
++                    height={225}
++                    format="webp"
++                    class="article-teaser-image w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                />
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++            <div class="article-teaser-body flex flex-col flex-grow mt-3">
++                <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
++                    <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                        {article.data.title}
++                    </h3>
++                    <p class="article-teaser-summary text-gray-600 mt-1">{article.data.summary}</p>
++                </a>
++                <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++                    <span class="text-sm font-medium flex items-center">
++                        <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                        {article.data.readingTime} Min.
++                    </span>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+-        </div>
+-    </article>
+-)}
+\ No newline at end of file
++        </article>
++    </div>
++)}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..fffa4bd 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,106 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.article-teaser-container {
++  container-type: inline-size;
++}
++
++.article-teaser-card {
++  display: flex;
++  flex-direction: column;
++}
++
++.article-teaser-media {
++  display: block;
++  flex-shrink: 0;
++}
++
++.article-teaser-body {
++  min-width: 0;
++}
++
++.article-teaser-image {
++  aspect-ratio: 16 / 9;
++  width: 100%;
++}
++
++@media (min-width: 48rem) {
++  .article-teaser-container .article-teaser-card {
++    align-items: stretch;
++    flex-direction: row;
++    gap: 1rem;
++  }
++
++  .article-teaser-container .article-teaser-media {
++    width: 42%;
++    max-width: 14rem;
++  }
++
++  .article-teaser-container .article-teaser-body {
++    flex: 1;
++    margin-top: 0;
++  }
++
++  .article-teaser-container .article-teaser-image {
++    aspect-ratio: auto;
++    height: 100%;
++    min-height: 10rem;
++  }
++}
++
++@supports (container-type: inline-size) {
++  @media (min-width: 48rem) {
++    .article-teaser-container .article-teaser-card {
++      flex-direction: column;
++      gap: 0;
++    }
++
++    .article-teaser-container .article-teaser-media {
++      width: auto;
++      max-width: none;
++    }
++
++    .article-teaser-container .article-teaser-body {
++      margin-top: 0.75rem;
++    }
++
++    .article-teaser-container .article-teaser-image {
++      aspect-ratio: 16 / 9;
++      height: auto;
++      min-height: 0;
++    }
++  }
++
++  @container (min-width: 400px) {
++    .article-teaser-card {
++      align-items: stretch;
++      flex-direction: row;
++      gap: 1rem;
++    }
++
++    .article-teaser-media {
++      width: 42%;
++      max-width: 14rem;
++    }
++
++    .article-teaser-body {
++      flex: 1;
++      margin-top: 0;
++    }
++
++    .article-teaser-image {
++      aspect-ratio: auto;
++      height: 100%;
++      min-height: 10rem;
++    }
++  }
++
++  @container (min-width: 620px) {
++    .article-teaser-summary {
++      font-size: 1.0625rem;
++      line-height: 1.6;
++    }
++  }
++}

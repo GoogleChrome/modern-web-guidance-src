@@ -3,6 +3,7 @@ import path from 'path';
 import { Octokit } from '@octokit/rest';
 import { fileURLToPath } from 'url';
 import { ProjectStatus, processGuideInventory, scanAllGuides, type GuideInventory } from '../lib/guide-validation.ts';
+import { extractFeatureIds } from '../lib/feature-parser.ts';
 
 // --- Types ---
 
@@ -67,7 +68,7 @@ const PRIORITY_LABEL_REGEX = /^P\d+$/;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const PROJECT_GITHUB_TOKEN = process.env.PROJECT_GITHUB_TOKEN || GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
-const REPO = 'guidance';
+const REPO = 'modern-web-guidance-src';
 const PROJECT_NUMBER = 30;
 // Default to dry run mode unless explicitly disabled.
 const IS_DRY_RUN = process.env.DRY_RUN !== 'false';
@@ -165,13 +166,13 @@ export function buildIssueContent(
 export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueData> {
   const map = new Map<string, FeatureIssueData>();
   for (const issue of issues) {
-    const match = issue.body?.match(/(?:Feature ID:|### web-feature-id)[\s\r\n]+([a-z0-9-]+)/i);
-    if (match) {
+    const fids = extractFeatureIds(issue.body ?? '');
+    for (const fid of fids) {
       const priorityLabel = issue.labels
         .map((l: any) => (typeof l === 'string' ? l : l.name))
         .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
       const milestoneNumber = issue.milestone ? issue.milestone.number : null;
-      map.set(match[1], { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
+      map.set(fid, { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
     }
   }
   return map;

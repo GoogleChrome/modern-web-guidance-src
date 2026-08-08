@@ -1,11 +1,78 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
-import { Agents } from '../config.ts';
-import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
+import { Agents, Serving, type SuiteConfig } from '../config.ts';
+import { classifyGuide, scanAllGuides, ZERO_PASSRATE_PATCH_FILE } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
+import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
 
-import { type SuiteConfig } from '../config.ts';
+import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
+import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
+import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
+import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
+import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
+
+export function setupAgentCredentials(agent: Agents, tempHome: string): void {
+  if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
+    setupJetskiCliCredentials(tempHome);
+  } else if (agent === Agents.GEMINI_CLI) {
+    setupGeminiCliCredentials(tempHome);
+  } else if (agent === Agents.CLAUDE_CODE) {
+    setupClaudeCodeCredentials(tempHome);
+  } else if (agent === Agents.CODEX_CLI) {
+    setupCodexCliCredentials(tempHome);
+  } else if (agent === Agents.PI) {
+    setupPiCredentials(tempHome);
+  }
+}
+
+export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command: string; commandArgs: string[] } {
+  switch (agent) {
+    case Agents.JETSKI:
+    case Agents.JETSKI_CLI:
+      return getJetskiCliCommandAndArgs(prompt);
+    case Agents.GEMINI_CLI:
+      return getGeminiCliCommandAndArgs(prompt);
+    case Agents.CLAUDE_CODE:
+      return getClaudeCodeCommandAndArgs(prompt);
+    case Agents.CODEX_CLI:
+      return getCodexCliCommandAndArgs(prompt);
+    case Agents.PI:
+      return getPiCommandAndArgs(prompt);
+    default:
+      throw new Error(`Unsupported agent: ${agent}`);
+  }
+}
+
+export function setupIsolatedWorkDir(
+  agent: Agents,
+  templateDir: string,
+  runType: string,
+  targetDir?: string
+): string {
+  const tempHome = createIsolatedHome(`ghh-${agent}`, targetDir);
+  const workDir = createWorkDir(templateDir, tempHome, runType);
+
+  setupAgentCredentials(agent, tempHome);
+  process.env.HOME = tempHome;
+
+  if (runType === 'guided') {
+    const suiteConfig = getSuiteConfig();
+    copySkills(
+      tempHome,
+      agent,
+      suiteConfig.serving === Serving.SKILLS_CLI,
+      suiteConfig.skillsToEnable
+    );
+  }
+
+  return workDir;
+}
+
+export interface GuideUsage {
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+}
 
 /**
  * Gets the suite configuration from environment variables or returns default.
@@ -32,27 +99,59 @@ export function getSuiteConfig(): SuiteConfig {
 export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, options);
-    child.on('close', (code) => resolve(code ?? 1));
+    let resolved = false;
+    const done = (code: number) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(code);
+      }
+    };
+    child.on('exit', (code) => done(code ?? 1));
+    child.on('close', (code) => done(code ?? 1));
     child.on('error', reject);
   });
 }
 
 /**
+ * Sets up shell profile files (.bashrc, .bash_profile, .zshrc, .zprofile, .profile) in the isolated HOME directory
+ * to ensure that targetDir (containing our npx interceptor shim) remains at the front of PATH even if
+ * an external binary or login shell invokes /usr/libexec/path_helper and resets PATH.
+ * @param homeDir Path to the isolated HOME directory
+ * @param targetDir Path to the directory containing our intercepted binaries (like npx)
+ */
+export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): void {
+  try {
+    const profileContent = `export PATH="${targetDir}:$PATH"\n`;
+    const profileFiles = ['.bashrc', '.bash_profile', '.zshrc', '.zprofile', '.profile'];
+    for (const file of profileFiles) {
+      fs.writeFileSync(path.join(homeDir, file), profileContent, 'utf8');
+    }
+  } catch (err) {
+    console.warn('Warning: Failed to create isolated shell profiles in HOME:', err);
+  }
+}
+
+/**
  * Creates a unique isolated HOME directory in /tmp.
  * @param prefix The prefix for the directory name
+ * @param targetDir Optional path to the target directory containing intercepted binaries
  * @returns The path to the created directory.
  */
-export function createIsolatedHome(prefix: string): string {
+export function createIsolatedHome(prefix: string, targetDir?: string): string {
   // Use /tmp/ deliberately because os.tmpdir() on macOS can return paths that are 
   // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
   const tempHome = `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
 
+  if (targetDir) {
+    setupIsolatedShellProfiles(tempHome, targetDir);
+  }
+
   // Provide authentication to the isolated environment so npm tasks work
   const originalHome = process.env.HOME || process.cwd();
   copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
-  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/guidance/pull/479
+  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/modern-web-guidance-src/pull/479
   try {
     const geminiDir = path.join(tempHome, '.gemini');
     fs.mkdirSync(geminiDir, { recursive: true });
@@ -101,6 +200,29 @@ export function copyFileIfExists(src: string, dest: string): void {
 }
 
 /**
+ * Safely reads and parses a JSONL file, filtering out empty or malformed lines.
+ */
+export function parseJsonlFile<T = any>(filePath: string): T[] {
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    const content = fs.readFileSync(filePath, 'utf8');
+    return content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .flatMap(line => {
+        try {
+          return [JSON.parse(line) as T];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Creates a trustedFolders.json file to avoid "untrusted folder" errors.
  * @param contentsDir Directory to write the trustedFolders.json file to (e.g. .gemini or .gemini/jetski)
  * @param folders List of absolute paths to trust
@@ -143,11 +265,11 @@ export function updateMcpConfig(
    const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
   for (const serverName of serversToEnable) {
-    if (serverName === 'modern-web') {
+    if (serverName.startsWith('modern-web')) {
       if (!modernWebServerPath || !fs.existsSync(modernWebServerPath)) {
         throw new Error(`Example MCP server path not found: ${modernWebServerPath}`);
       }
-      mcpConfig.mcpServers['modern-web'] = {
+      mcpConfig.mcpServers[serverName] = {
         command: 'node',
         args: [modernWebServerPath]
       };
@@ -223,13 +345,13 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web']): boolean {
+export function copySkills(homeDir: string, agent: Agents, cli: boolean, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
   const guidesSource = guidesDir;
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
     destDir = path.join(homeDir, '.claude', 'skills');
-  } else if (agent === Agents.CODEX_CLI) {
+  } else if (agent === Agents.CODEX_CLI || agent === Agents.PI) {
     destDir = path.join(homeDir, '.agents', 'skills');
   } else if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
@@ -240,8 +362,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli && skillsToEnable.includes('modern-web')) { // Add modern-web Skill (& resources) from skills-cli dist
-      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web');
+    if (cli && skillsToEnable.some(s => s.startsWith('modern-web'))) { // Add modern-web-guidance Skill (& resources) from skills-cli dist
+      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-guidance');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
         try {
@@ -257,7 +379,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
       }
 
       try {
-        const destSkillDir = path.join(destDir, 'modern-web');
+        const destSkillDir = path.join(destDir, 'modern-web-guidance');
         fs.mkdirSync(destSkillDir, { recursive: true });
 
         if (fs.existsSync(distSource)) {
@@ -288,8 +410,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
         d => d.isDirectory() &&
         !d.name.startsWith('.') &&
         d.name !== 'node_modules' &&
-        d.name !== 'modern-web' && // only needed when using Skills (CLI), already added above
-        skillsToEnable.includes(d.name)
+        !d.name.startsWith('modern-web') && // only needed when using Skills (CLI), already added above
+        skillsToEnable.some(s => s === d.name || (d.name.startsWith('modern-web') && s.startsWith('modern-web')))
       );
 
     for (const dir of topLevelDirs) {
@@ -407,10 +529,11 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     fs.mkdirSync(workDir, { recursive: true });
     return workDir;
   }
-  // For the suite run, copy the template directory to the isolated home directory, following symlinks
-  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
-  console.log(`Copied ${templateDir} to ${homeDir}...`);
-  return path.join(homeDir, path.basename(templateDir));
+  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
+  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
+  const workDir = path.join(homeDir, path.basename(templateDir));
+  initGitRepo(workDir);
+  return workDir;
 }
 
 /**
@@ -420,9 +543,34 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
  * @param subPath Optional sub-path within workDir to copy from (e.g. if you only want specific files)
  */
 export function copyResultsToTarget(workDir: string, targetDir: string, subPath: string = '.'): void {
-  const sourceDir = path.join(workDir, subPath);
-  execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
-  console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
+  const isLegacyTask = path.basename(path.dirname(targetDir)) === 'task';
+
+  if (isLegacyTask) {
+    // For legacy single-page guides, copy workspace files directly using cp -R
+    const sourceDir = path.join(workDir, subPath);
+    try {
+      execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
+      // Remove .git and node_modules directories if present
+      for (const dirName of ['.git', 'node_modules']) {
+        const dirPath = path.join(targetDir, dirName);
+        if (fs.existsSync(dirPath)) {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+        }
+      }
+      console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
+    } catch (e) {
+      console.warn(`Failed to copy results from ${sourceDir} to ${targetDir}: ${e}`);
+    }
+  } else {
+    // For target-based guides, capture agent.patch for patch-only storage
+    try {
+      const agentPatchPath = path.join(targetDir, 'agent.patch');
+      capturePatchFromGit(workDir, agentPatchPath);
+    } catch (err) {
+      console.warn(`Failed to capture agent patch: ${err}`);
+    }
+    console.log(`Saved agent patch in: ${targetDir}`);
+  }
 }
 
 /**
@@ -474,7 +622,7 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
       fs.copyFileSync(srcFile, destFile);
       console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
 
-      const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+      const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);
       const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
       const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
@@ -502,9 +650,10 @@ export async function runCliAgentCommand(
   targetDir: string,
   agentName: string
 ): Promise<void> {
+  const sanitizedEnv = { ...process.env, PWD: workDir };
   const child = spawn(command, commandArgs, {
     cwd: workDir,
-    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
     stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
   });
 
@@ -561,6 +710,20 @@ export async function runCliAgentCommand(
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
     
+    // Save generation failure info so results collector registers early failure
+    try {
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      fs.writeFileSync(failureFile, JSON.stringify({
+        agentName,
+        exitCode: -1,
+        stderr: stderrData || err.message || String(err),
+        stdout: stdoutData
+      }, null, 2));
+      console.log(`Saved generation failure info to: ${failureFile}`);
+    } catch (writeErr) {
+      console.error(`Failed to write generation_failed.json:`, writeErr);
+    }
+
     // Fallback: Save whatever we have to agent_stderr.log even if it failed
     const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
     let fallbackContent = `Execution failed: ${err.message || err}\n`;
@@ -583,7 +746,7 @@ export async function runCliAgentCommand(
  * @returns HTML content
  */
 export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, prodBase = DEFAULT_PROD_BASE): string {
-    const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+    const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
     const title = `Trajectory - ${trajectoryId}`;
 
     // Node.js environment: Buffer is faster than manual conversion
@@ -663,36 +826,26 @@ export function getGraderScriptContent(
   guideName: string
 ): string {
   const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-  const targetPkgJson = path.join(targetDir, 'package.json');
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
+  const agentPatch = path.join(targetDir, 'agent.patch');
+  const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
 
   return `import fs from 'fs';
-import { spawnSync } from 'child_process';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
-    const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
-    if (fs.existsSync(pkgJsonPath)) {
-      const installResult = spawnSync('pnpm', ['install', '--no-frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
-        cwd: ${JSON.stringify(targetDir)},
-        stdio: 'inherit',
-        shell: true,
-        env: { ...process.env, CI: 'true' }
-      });
-      if (installResult.status !== 0) {
-        console.error("pnpm install failed");
-        process.exit(1);
-      }
-    }
-
+    const patchFile = fs.existsSync(${JSON.stringify(agentPatch)}) ? ${JSON.stringify(agentPatch)} : undefined;
+    const zeroPassrateFile = fs.existsSync(${JSON.stringify(zeroPassratePatch)}) ? ${JSON.stringify(zeroPassratePatch)} : undefined;
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
       ${JSON.stringify(gradeReportDir)},
-      'inherit'
+      'inherit',
+      patchFile,
+      zeroPassrateFile
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {

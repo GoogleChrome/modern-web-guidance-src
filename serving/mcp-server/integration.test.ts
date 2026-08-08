@@ -25,7 +25,7 @@ describe("MCP Server Integration (Functional)", () => {
 
       const result = await client.callTool({
         name: "search_use_cases",
-        arguments: { query: "performance" },
+        arguments: { query: "lazy load images" },
       });
 
       if (!result.content || !Array.isArray(result.content)) {
@@ -41,6 +41,7 @@ describe("MCP Server Integration (Functional)", () => {
       assert.ok(Array.isArray(data));
       assert.ok(data.length > 0);
       assert.ok(data[0].id !== undefined);
+      assert.ok(data[0].tokenCount > 0);
     } finally {
       // Ensure we always try to close the transport to avoid leaking processes
       try {

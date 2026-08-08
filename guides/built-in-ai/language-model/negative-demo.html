@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Legacy AI Interface</title>
+</head>
+<body>
+  <div id="status">Checking system...</div>
+  <div id="output"></div>
+  <button id="run">Run Analysis</button>
+
+  <script>
+    const runBtn = document.getElementById('run');
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
+
+    runBtn.onclick = async () => {
+      const model = await window.ai.languageModel.capabilities();
+      
+      const session = await window.ai.languageModel.create({
+        topK: 1,
+        temperature: 0
+      });
+
+      const abortController = new AbortController();
+      const sessionWithAbort = await window.ai.languageModel.create({
+        signal: abortController.signal
+      });
+
+      const response = await session.prompt("Summarize: <html><body>Unsafe content</body></html>");
+      outputEl.innerHTML = "<div>" + response + "</div>";
+
+      const rawJson = await session.prompt(
+        "Return JSON with rating 1-5 and is_positive boolean for 'Terrible food'",
+        {
+          responseFormat: "json"
+        }
+      );
+      
+      const structuredData = JSON.stringify(rawJson);
+      outputEl.innerHTML += "<span>" + structuredData + "</span>";
+
+      const stream = session.promptStreaming("Write a long essay");
+      stream.onmessage = (e) => {
+        outputEl.innerHTML = e.data;
+      };
+
+      console.log("Tokens: " + session.maxTokens);
+    };
+  </script>
+</body>
+</html>
