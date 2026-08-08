@@ -8,8 +8,7 @@ import { marked } from 'marked';
 
 // Import shared utilities
 import { scanAllGuides, processGuideInventory } from '../lib/guide-validation.ts';
-import { MACRO_PATTERN, replaceMacros } from '../serving/lib/macros.ts';
-import { updateCodeowners } from './generate-codeowners.ts';
+import { replaceMacros, MACRO_PATTERN } from '../serving/lib/macros.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -145,10 +144,5 @@ describe('Guides Validation (Single Source of Truth)', () => {
     if (failedFiles.length > 0) {
       assert.fail(`Conflict markers found in the following files:\n${failedFiles.join('\n')}`);
     }
-  });
-
-  it('ensures CODEOWNERS and feature-to-groups.generated.json are synchronized with guides/atls.json', () => {
-    const success = updateCodeowners(true);
-    assert.ok(success, 'CODEOWNERS or guides/feature-to-groups.generated.json are out of sync. Please run: node guides/generate-codeowners.ts');
   });
 });

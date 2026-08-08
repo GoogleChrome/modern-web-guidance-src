@@ -3,6 +3,7 @@ import path from 'node:path';
 import child_process from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { extractFeatureIds } from '../lib/feature-parser.ts';
+import { getTranscludedFeatureIds } from '../serving/lib/macro-parsing.ts';
 
 // Define content file name constants inline to avoid importing from 'lib/guide-validation.ts'
 // which would transitively require external packages (like 'gray-matter' and 'marked')
@@ -249,7 +250,60 @@ export function handleIssue(issueNumber: number, labels: string[], issueDescript
   return Array.from(assignedAtls);
 }
 
-export function handlePR(prNumber: number, prAuthor: string, atlConfig: AtlConfig, mockFiles?: string[]) {
+export interface TranscludedGuide {
+  category: string;
+  relativePath: string;
+  fullPath: string;
+}
+
+export function findGuidesTranscludingFeature(
+  featureId: string,
+  guidesRootDir: string = path.join(path.resolve(__dirname, '..'), 'guides')
+): TranscludedGuide[] {
+  const matches: TranscludedGuide[] = [];
+
+  function scanDir(dir: string) {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) {
+        continue;
+      }
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanDir(fullPath);
+      } else if (entry.isFile() && (entry.name === GUIDE_FILE || entry.name === SKILL_FILE)) {
+        const rel = path.relative(guidesRootDir, fullPath);
+        const parts = rel.split(path.sep);
+        const category = parts[0];
+        try {
+          const content = fs.readFileSync(fullPath, 'utf8');
+          const transcluded = getTranscludedFeatureIds(content);
+          if (transcluded.includes(featureId)) {
+            matches.push({
+              category,
+              relativePath: path.relative(path.resolve(__dirname, '..'), fullPath),
+              fullPath
+            });
+          }
+        } catch (err) {
+          console.warn(`Could not read guide file ${fullPath}:`, err);
+        }
+      }
+    }
+  }
+
+  scanDir(guidesRootDir);
+  return matches;
+}
+
+export function handlePR(
+  prNumber: number,
+  prAuthor: string,
+  atlConfig: AtlConfig,
+  mockFiles?: string[],
+  guidesRootDir: string = path.join(path.resolve(__dirname, '..'), 'guides')
+) {
   console.log(`Triaging PR #${prNumber} by author: @${prAuthor}`);
   
   let files: string[] = [];
@@ -273,25 +327,52 @@ export function handlePR(prNumber: number, prAuthor: string, atlConfig: AtlConfi
   const REPO_ROOT = path.resolve(__dirname, '..');
 
   for (const file of files) {
-    const parts = file.split('/');
-    if (parts[0] !== 'guides' || parts.length < 2) {
-      continue;
+    const parts = file.split(/[/\\]/);
+
+    // 1. Content files under guides/<category>/...
+    if (parts[0] === 'guides' && parts.length >= 2) {
+      const category = parts[1];
+      const filename = parts[parts.length - 1];
+
+      if (contentFilenames.has(filename)) {
+        const absolutePath = path.isAbsolute(file) ? file : path.join(REPO_ROOT, file);
+        const dir = path.dirname(absolutePath);
+        const guidePath = path.join(dir, GUIDE_FILE);
+        const featureIds = getFeatureIdsFromGuide(guidePath);
+        const atl = resolveAtl(category, featureIds, atlConfig);
+        if (atl) {
+          const atls = Array.isArray(atl) ? atl : [atl];
+          for (const a of atls) {
+            console.log(`File "${file}" is a content file in category "${category}" (feature IDs: ${featureIds.join(', ')}). ATL: @${a}`);
+            matchedAtls.add(a);
+          }
+        }
+      }
     }
 
-    const category = parts[1];
-    const filename = parts[parts.length - 1];
+    // 2. Feature definition files (features/<feature-id>.md)
+    if (parts[0] === 'features' && file.endsWith('.md')) {
+      const featureId = path.basename(file, '.md');
 
-    if (contentFilenames.has(filename)) {
-      const absolutePath = path.isAbsolute(file) ? file : path.join(REPO_ROOT, file);
-      const dir = path.dirname(absolutePath);
-      const guidePath = path.join(dir, GUIDE_FILE);
-      const featureIds = getFeatureIdsFromGuide(guidePath);
-      const atl = resolveAtl(category, featureIds, atlConfig);
-      if (atl) {
-        const atls = Array.isArray(atl) ? atl : [atl];
-        for (const a of atls) {
-          console.log(`File "${file}" is a content file in category "${category}" (feature IDs: ${featureIds.join(', ')}). ATL: @${a}`);
-          matchedAtls.add(a);
+      // Auto-assign feature-level owners
+      const featureAtls = resolveAtl('', [featureId], atlConfig);
+      for (const a of featureAtls) {
+        console.log(`File "${file}" is a feature definition for "${featureId}". Feature ATL: @${a}`);
+        matchedAtls.add(a);
+      }
+
+      // Look for guides in which that feature is being transcluded, and assign category-level owners
+      const transcludedGuides = findGuidesTranscludingFeature(featureId, guidesRootDir);
+      for (const guide of transcludedGuides) {
+        const category = guide.category;
+        if (atlConfig.default[category]) {
+          const catAtls = Array.isArray(atlConfig.default[category])
+            ? atlConfig.default[category]
+            : [atlConfig.default[category]];
+          for (const a of catAtls) {
+            console.log(`Feature "${featureId}" is transcluded in guide "${guide.relativePath}" (category: "${category}"). Category ATL: @${a}`);
+            matchedAtls.add(a);
+          }
         }
       }
     }
