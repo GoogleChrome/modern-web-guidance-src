@@ -63,7 +63,7 @@ To support browsers without `contrast-color()`, you must provide a fallback. If 
 | **Relative Color Syntax** | Automated, high-quality CSS-only contrast calculation. | Highest quality CSS-only fallback. |
 | **Text Shadow** | Quick readability boost on any background. | Can look "dirty" or "glowy"; may not fit all designs. |
 | **Text Stroke** | Preserving font weight while ensuring edge contrast. | Use `paint-order` to avoid thinning letterforms, if available. |
-| **Translucent Overlay** | `Ensuring a minimum contrast area behind the text. | Changes the look of the background color under the text, requires a separate text element. |
+| **Translucent Overlay** | Ensuring a minimum contrast area behind the text. | Changes the look of the background color under the text, requires a separate text element. |
 | **SVG Filters** | Reactive contrast that updates as the background changes. | Requires a separate text element; hacky implementation. |
 
 ### Recommended: Relative Color Syntax (RCS)
@@ -93,7 +93,7 @@ For browsers that support it, RCS provides the most robust automated fallback fo
 
 DO: Select the fallback that best matches your design constraints if RCS is not sufficient or supported.
 
-#### Option 1: Text Stroke (with paint-order to preserve letterforms)
+#### Option 1: Text Stroke
 
 {{ BASELINE_STATUS("text-stroke-fill") }}
 
@@ -186,4 +186,4 @@ DO: Select the fallback that best matches your design constraints if RCS is not 
   color: var(--badge-bg);
   filter: url(#contrast-filter);
 }
-
+```
