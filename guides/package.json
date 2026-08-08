@@ -12,6 +12,6 @@
     "gray-matter": "^4.0.3",
     "marked": "^18.0.3",
     "serving": "workspace:*",
-    "web-features": "^3.34.0"
+    "web-features": "latest"
   }
 }
