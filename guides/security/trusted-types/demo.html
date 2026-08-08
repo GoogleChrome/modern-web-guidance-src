@@ -1,16 +1,203 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="require-trusted-types-for 'script'; trusted-types my-no-pretzel-policy;"
+    />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Trusted Types</title>
-    <style></style>
+    <title>Trusted Types Demo</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        line-height: 1.5;
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        background-color: #f4f4f9;
+        color: #333;
+      }
+      .card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+      }
+      h1 {
+        text-align: center;
+        color: #1a1a1a;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1.25rem;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 0.5rem;
+      }
+      code {
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family: ui-monospace, monospace;
+      }
+      pre {
+        background: #1e1e1e;
+        color: #dcdcdc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      textarea {
+        width: 100%;
+        height: 80px;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-family: ui-monospace, monospace;
+        box-sizing: border-box;
+      }
+      .controls {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1rem;
+      }
+      button {
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      #btn-unsafe {
+        background-color: #e5e7eb;
+        color: #374151;
+      }
+      #btn-unsafe:hover {
+        background-color: #d1d5db;
+      }
+      #btn-safe {
+        background-color: #2563eb;
+        color: white;
+      }
+      #btn-safe:hover {
+        background-color: #1d4ed8;
+      }
+      .output-label {
+        font-weight: bold;
+        margin-top: 1.5rem;
+        display: block;
+      }
+      #output {
+        border: 2px dashed #cbd5e1;
+        padding: 1rem;
+        min-height: 60px;
+        margin-top: 0.5rem;
+        background: #fff;
+        border-radius: 8px;
+        word-break: break-all;
+      }
+      #error-log {
+        display: none;
+        background-color: #fef2f2;
+        border: 1px solid #fee2e2;
+        color: #991b1b;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        font-family: ui-monospace, monospace;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+      }
+      .info-box {
+        background-color: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 1rem;
+        font-size: 0.9rem;
+      }
+    </style>
   </head>
   <body>
-    <p>
-      Demo will use tinyfill from MDN for backwards compat. It will create a
-      policy, and set some content based on that. It will describe but not
-      implement CSP.
-    </p>
+    <h1>Trusted Types Demo</h1>
+
+    <div class="card">
+      <p>
+        This demo uses the <strong>Trusted Types API</strong> to ensure the word "pretzel" is not included in output.
+        It intentionally does not show sanitization or escaping, to avoid a policy that is not secure enough for a specific use case.
+        It uses a "tinyfill" for backwards compatibility.
+      </p>
+
+      <h2>1. Input Content</h2>
+      <p>
+        Enter some text with the word "pretzel"
+      </p>
+      <textarea id="input-field" placeholder="Enter HTML here...">A pretzel is a deicious snack. The best soft pretzel was baked in a coal-fired brick oven, but alas, that pretzel shop has closed.
+      </textarea>
+
+      <div class="controls">
+        <button id="btn-unsafe">Update Unsafely (Raw String)</button>
+        <button id="btn-safe">Update Safely (Trusted Types)</button>
+      </div>
+
+      <span class="output-label">Result in <code>innerHTML</code>:</span>
+      <div id="output"></div>
+      <div id="error-log"></div>
+    </div>
+
+    <script>
+      // 1. Tinyfill from MDN for backwards compatibility
+      // If the browser doesn't support Trusted Types, we mock the API
+      // so the code continues to work (and still sanitizes!) in older browsers.
+      if (!window.trustedTypes) {
+        window.trustedTypes = {
+          createPolicy: (name, rules) => rules,
+        };
+      }
+
+      // 2. Create a Trusted Types policy
+      // This policy defines how to transform a string into a TrustedHTML form that you define.
+      const myPolicy = trustedTypes.createPolicy("my-no-pretzel-policy", {
+        createHTML: (input) => {
+          // A simple replacement rule for this demo.
+          // In a real app, you might use the Sanitizer API, or a library like DOMPurify.
+          return input
+            .replace(/pretzel/g, "popcorn");
+        },
+      });
+
+      const inputField = document.getElementById("input-field");
+      const output = document.getElementById("output");
+      const errorLog = document.getElementById("error-log");
+
+      function updateOutput(content, label) {
+        errorLog.style.display = "none";
+        try {
+          output.innerHTML = content;
+          console.log(`Updated using ${label}:`, typeof content);
+        } catch (e) {
+          errorLog.textContent = `Caught Error: ${e.name}\n${e.message}`;
+          errorLog.style.display = "block";
+          console.error(`Error updating using ${label}:`, e);
+        }
+      }
+
+      // Update Unsafely: This button uses a raw string.
+      // In an enforced environment, this would FAIL.
+      document.getElementById("btn-unsafe").addEventListener("click", () => {
+        updateOutput(inputField.value, "raw string");
+      });
+
+      // Update Safely: This button uses our Trusted Types policy.
+      // In an enforced environment, this would SUCCEED.
+      document.getElementById("btn-safe").addEventListener("click", () => {
+        const value = inputField.value;
+        // Use the policy to create a TrustedHTML object
+        const trustedHTML = myPolicy.createHTML(value);
+        updateOutput(trustedHTML, "Trusted Type");
+      });
+    </script>
   </body>
 </html>
