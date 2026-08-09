@@ -421,3 +421,70 @@ test('Parser: Mixed and heterogeneous timestamp formats (ISO, epoch sec, epoch m
     removeTempDir(tempDir);
   }
 });
+
+test('Parser: Pi CLI normalization', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      JSON.stringify({
+        type: 'message',
+        timestamp: '2026-08-09T22:00:00.000Z',
+        message: {
+          role: 'user',
+          content: 'Add autocomplete to form'
+        }
+      }),
+      JSON.stringify({
+        type: 'message',
+        timestamp: '2026-08-09T22:00:01.000Z',
+        message: {
+          role: 'assistant',
+          content: [
+            { type: 'text', text: 'Searching for relevant guide' },
+            {
+              type: 'toolCall',
+              name: 'bash',
+              arguments: { command: 'node dist/cli.js --retrieve autofill-address-form' }
+            }
+          ]
+        }
+      }),
+      JSON.stringify({
+        type: 'message',
+        timestamp: '2026-08-09T22:00:05.000Z',
+        message: {
+          role: 'assistant',
+          content: [
+            { type: 'text', text: 'Editing form component' },
+            {
+              type: 'toolCall',
+              name: 'write',
+              arguments: { path: 'form.html', content: '<input autocomplete="street-address" />' }
+            }
+          ]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-pi.jsonl'), lines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.PI, 'Add autocomplete to form');
+
+    const summary = JSON.parse(fs.readFileSync(path.join(tempDir, 'trajectory_summary.json'), 'utf8'));
+    assert.strictEqual(summary.agent, Agents.PI);
+    assert.strictEqual(summary.steps.length, 2);
+
+    assert.strictEqual(summary.steps[0].stepNumber, 1);
+    assert.strictEqual(summary.steps[0].action?.name, 'bash');
+    assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[0].action?.canonicalCategory, 'guide_retrieval');
+
+    assert.strictEqual(summary.steps[1].stepNumber, 2);
+    assert.strictEqual(summary.steps[1].action?.name, 'write');
+    assert.strictEqual(summary.steps[1].action?.type, 'write_file');
+    assert.strictEqual(summary.steps[1].action?.canonicalCategory, 'code_mutation');
+
+  } finally {
+    removeTempDir(tempDir);
+  }
+});

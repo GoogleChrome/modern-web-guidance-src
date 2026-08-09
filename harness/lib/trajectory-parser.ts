@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { parseJsonlFile } from './agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
-import { Agents, Serving } from '../config.ts';
+import { Agents } from '../config.ts';
 
 // Import agent-specific extractors (accepting circular dependency for runtime execution)
 import { parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
@@ -54,7 +54,6 @@ export interface SubagentMetadata {
 
 export interface TrajectorySummary {
   agent: string;
-  serving?: string;
   steps: StandardizedStep[];
   subagents?: Record<string, SubagentMetadata>;
   tokenUsage?: { total: number; cached: number };
@@ -133,6 +132,8 @@ export function finalizeTrajectorySummary(summary: TrajectorySummary): Trajector
         const timeDiff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
         if (timeDiff !== 0) return timeDiff;
       }
+      if (a.timestamp && !b.timestamp) return -1;
+      if (!a.timestamp && b.timestamp) return 1;
       return 0;
     });
 
@@ -708,6 +709,94 @@ export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string
   });
 }
 
+/**
+ * Parses Pi CLI session JSONL files into a normalized TrajectorySummary.
+ */
+export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+  const steps: StandardizedStep[] = [];
+
+  const processEntries = (entries: any[], subagentId?: string) => {
+    for (const entry of entries) {
+      const timestamp = extractTimestamp(entry);
+      const msg = entry.type === 'message' ? entry.message : entry;
+      if (!msg) continue;
+
+      if (msg.role === 'assistant') {
+        let thought = '';
+        if (typeof msg.content === 'string') {
+          thought = msg.content;
+        } else if (Array.isArray(msg.content)) {
+          const textBlock = msg.content.find((c: any) => c.type === 'text');
+          if (textBlock) thought = textBlock.text || '';
+        }
+
+        const toolCalls: any[] = [];
+        if (Array.isArray(msg.content)) {
+          toolCalls.push(...msg.content.filter((c: any) => c.type === 'toolCall'));
+        }
+        if (Array.isArray(msg.tool_calls)) {
+          toolCalls.push(...msg.tool_calls);
+        }
+
+        if (toolCalls.length === 0) {
+          if (thought) {
+            steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought,
+              action: {
+                type: 'other',
+                name: 'respond_to_user',
+                params: { response: truncateMessage(thought, 150) }
+              },
+              outcome: { status: 'success' }
+            });
+          }
+        } else {
+          for (const tc of toolCalls) {
+            const toolName = tc.function?.name || tc.name || 'tool_call';
+            const args = tc.arguments || tc.function?.arguments || {};
+            steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought: thought || `Executing ${toolName}`,
+              action: {
+                type: mapToolType(toolName),
+                name: toolName,
+                params: typeof args === 'string' ? (() => { try { return JSON.parse(args); } catch { return { raw: args }; } })() : args
+              },
+              outcome: { status: 'success' }
+            });
+          }
+        }
+      }
+    }
+  };
+
+  processEntries(logData);
+  for (const [subId, subLogs] of Object.entries(subagentsMap)) {
+    processEntries(subLogs, subId);
+  }
+
+  const subagentsMeta: Record<string, SubagentMetadata> = {};
+  for (const subId of Object.keys(subagentsMap)) {
+    const subStepsCount = steps.filter(s => s.subagentId === subId).length;
+    subagentsMeta[subId] = {
+      id: subId,
+      agent: Agents.PI,
+      totalSteps: subStepsCount
+    };
+  }
+
+  return finalizeTrajectorySummary({
+    agent: Agents.PI,
+    steps,
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
+  });
+}
+
 export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
   try {
     let summary: TrajectorySummary | null = null;
@@ -789,7 +878,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.model = model;
         summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.PI) {
-        summary = parseCodexTrajectory(logData, subagentsMap);
+        summary = parsePiTrajectory(logData, subagentsMap);
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectPiGuidesFromTrajectory(targetDir),
           Promise.resolve(collectPiToolsFromTrajectory(targetDir)),
