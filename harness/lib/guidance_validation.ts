@@ -9,30 +9,42 @@ import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory } f
 import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } from '../agents/codex-cli-agent.ts';
 import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory } from '../agents/pi-agent.ts';
 
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}
+
 export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<GuideUsage> {
   const summaryPath = path.join(dirPath, 'trajectory_summary.json');
-  if (fs.existsSync(summaryPath)) {
-    try {
-      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-      if (Array.isArray(summary.retrievedGuides) || Array.isArray(summary.fileReadGuides)) {
-        return {
-          retrievedGuides: summary.retrievedGuides || [],
-          fileReadGuides: summary.fileReadGuides || []
-        };
-      }
-    } catch {}
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    if (Array.isArray(summary.retrievedGuides) || Array.isArray(summary.fileReadGuides)) {
+      return {
+        retrievedGuides: summary.retrievedGuides || [],
+        fileReadGuides: summary.fileReadGuides || []
+      };
+    }
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
 
   // Legacy Fallback (when summary is missing or old format)
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
     const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
-    if (!fs.existsSync(logPath)) {
-      return { retrievedGuides: [], fileReadGuides: [] };
+    let logContent = '';
+    try {
+      logContent = fs.readFileSync(logPath, 'utf8').trim();
+    } catch (err) {
+      if (isEnoent(err)) {
+        return { retrievedGuides: [], fileReadGuides: [] };
+      }
+      throw err;
     }
 
-    const logContent = fs.readFileSync(logPath, 'utf8').trim();
     const toolCalls: any[] = [];
-
     if (logContent) {
       const lines = logContent.split('\n');
       for (const line of lines) {
@@ -79,21 +91,23 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
 
 export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {
   const summaryPath = path.join(dir, 'trajectory_summary.json');
-  if (fs.existsSync(summaryPath)) {
-    try {
-      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-      if (Array.isArray(summary.toolsUsed)) {
-        return summary.toolsUsed;
-      }
-    } catch {}
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    if (Array.isArray(summary.toolsUsed)) {
+      return summary.toolsUsed;
+    }
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
 
   // Legacy Fallback
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
-    if (fs.existsSync(path.join(dir, MODERN_WEB_LOG_FILE))) {
+    try {
+      fs.accessSync(path.join(dir, MODERN_WEB_LOG_FILE));
       return ['modern-web-guidance'];
+    } catch {
+      return [];
     }
-    return [];
   }
 
   if (agent === Agents.GEMINI_CLI) {

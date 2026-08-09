@@ -11,6 +11,14 @@ import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory, ex
 import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory, extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
 import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory, extractPiModel, extractPiTokenUsage } from '../agents/pi-agent.ts';
 
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}
+
 export interface StandardizedStep {
   stepNumber: number;
   timestamp?: string;
@@ -321,7 +329,12 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
   const seenJsonHashes = new Set<string>();
 
   // 1. Check for Jetski SQLite .db database files to extract real tool calls and step mutations
-  const dbFiles = fs.existsSync(dirPath) ? fs.readdirSync(dirPath).filter(f => f.endsWith('.db')) : [];
+  let dbFiles: string[] = [];
+  try {
+    dbFiles = fs.readdirSync(dirPath).filter(f => f.endsWith('.db'));
+  } catch (err) {
+    if (!isEnoent(err)) throw err;
+  }
   if (dbFiles.length > 0) {
     try {
       const { DatabaseSync } = await import('node:sqlite');
@@ -422,76 +435,77 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
 
   // 2. Process modern-web.log for guide searches/retrievals and attach actual results
   const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
-  if (fs.existsSync(logPath)) {
-    try {
-      const logContent = fs.readFileSync(logPath, 'utf8').trim();
-      if (logContent) {
-        const lines = logContent.split('\n');
-        const logCalls: any[] = [];
-        for (const line of lines) {
-          if (line.trim().startsWith('{')) {
-            try { logCalls.push(JSON.parse(line)); } catch {}
-          }
+  let logContent = '';
+  try {
+    logContent = fs.readFileSync(logPath, 'utf8').trim();
+  } catch (err) {
+    if (!isEnoent(err)) {
+      console.error(`[TrajectoryParser] Error reading modern-web.log:`, err);
+    }
+  }
+  if (logContent) {
+    const lines = logContent.split('\n');
+    const logCalls: any[] = [];
+    for (const line of lines) {
+      if (line.trim().startsWith('{')) {
+        try { logCalls.push(JSON.parse(line)); } catch {}
+      }
+    }
+    if (steps.length === 0) {
+      for (const call of logCalls) {
+        if (call.tool === 'get_best_practices' || call.tool === 'search_use_cases') {
+          steps.push({
+            stepNumber: stepCounter++,
+            thought: call.tool === 'search_use_cases' ? 'Searching for relevant web guidance patterns' : 'Retrieving guidance best practices',
+            action: {
+              type: 'web_search',
+              name: call.tool,
+              params: { query: call.query }
+            },
+            outcome: {
+              status: 'success',
+              message: `Retrieved ${call.result?.length || 0} items`,
+              output: call.result
+            }
+          });
         }
-        if (steps.length === 0) {
-          for (const call of logCalls) {
-            if (call.tool === 'get_best_practices' || call.tool === 'search_use_cases') {
-              steps.push({
-                stepNumber: stepCounter++,
-                thought: call.tool === 'search_use_cases' ? 'Searching for relevant web guidance patterns' : 'Retrieving guidance best practices',
-                action: {
-                  type: 'web_search',
-                  name: call.tool,
-                  params: { query: call.query }
-                },
-                outcome: {
-                  status: 'success',
-                  message: `Retrieved ${call.result?.length || 0} items`,
-                  output: call.result
-                }
-              });
-            }
-          }
-        } else {
-          let logIdx = 0;
-          for (const step of steps) {
-            if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
-              if (logCalls[logIdx]) {
-                if (!step.outcome) step.outcome = { status: 'success' };
-                step.outcome.output = logCalls[logIdx].result;
-                if (!step.outcome.message) step.outcome.message = `Retrieved ${logCalls[logIdx].result?.length || 0} items`;
-                logIdx++;
-              }
-            }
+      }
+    } else {
+      let logIdx = 0;
+      for (const step of steps) {
+        if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
+          if (logCalls[logIdx]) {
+            if (!step.outcome) step.outcome = { status: 'success' };
+            step.outcome.output = logCalls[logIdx].result;
+            if (!step.outcome.message) step.outcome.message = `Retrieved ${logCalls[logIdx].result?.length || 0} items`;
+            logIdx++;
           }
         }
       }
-    } catch (e) {
-      console.error(`[TrajectoryParser] Error reading modern-web.log:`, e);
     }
   }
 
   // 3. Process chat_log.txt for final response / high-level actions
   let chatText = '';
   const chatLogPath = path.join(dirPath, 'chat_log.txt');
-  if (fs.existsSync(chatLogPath)) {
-    try {
-      chatText = fs.readFileSync(chatLogPath, 'utf8').trim();
-      if (chatText && (steps.length === 0 || steps[steps.length - 1].action?.name !== 'respond_to_user')) {
-        steps.push({
-          stepNumber: stepCounter++,
-          thought: 'Completed task implementation and summarized changes',
-          action: {
-            type: 'other',
-            name: 'respond_to_user',
-            params: { response: truncateMessage(chatText, 300) }
-          },
-          outcome: { status: 'success' }
-        });
-      }
-    } catch (e) {
-      console.error(`[TrajectoryParser] Error reading chat_log.txt:`, e);
+  try {
+    chatText = fs.readFileSync(chatLogPath, 'utf8').trim();
+  } catch (err) {
+    if (!isEnoent(err)) {
+      console.error(`[TrajectoryParser] Error reading chat_log.txt:`, err);
     }
+  }
+  if (chatText && (steps.length === 0 || steps[steps.length - 1].action?.name !== 'respond_to_user')) {
+    steps.push({
+      stepNumber: stepCounter++,
+      thought: 'Completed task implementation and summarized changes',
+      action: {
+        type: 'other',
+        name: 'respond_to_user',
+        params: { response: truncateMessage(chatText, 300) }
+      },
+      outcome: { status: 'success' }
+    });
   }
 
   const legacy = parseJetskiCliSession(dirPath);
@@ -584,7 +598,12 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
   try {
     let summary: TrajectorySummary | null = null;
 
-    const allSessionFiles = fs.existsSync(targetDir) ? fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
+    let allSessionFiles: string[] = [];
+    try {
+      allSessionFiles = fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
+    } catch (err) {
+      if (!isEnoent(err)) throw err;
+    }
     const sessionFiles = allSessionFiles.sort((a, b) => {
       const aSub = a.includes('-subagents-');
       const bSub = b.includes('-subagents-');
@@ -702,25 +721,26 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
 
 function extractGuidesFromMcpLog(dirPath: string): string[] {
   const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
-  if (!fs.existsSync(logPath)) return [];
+  let logContent = '';
   try {
-    const logContent = fs.readFileSync(logPath, 'utf8').trim();
-    if (!logContent) return [];
-    const lines = logContent.split('\n');
-    const toolCalls: any[] = [];
-    for (const line of lines) {
-      if (line.trim().startsWith('{')) {
-        try {
-          toolCalls.push(JSON.parse(line));
-        } catch {}
-      }
-    }
-    return toolCalls
-      .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
-      .flatMap(call => call.result.map((r: any) => r.id || ''))
-      .filter(Boolean);
-  } catch (e) {
-    console.error(`Error reading MCP log:`, e);
+    logContent = fs.readFileSync(logPath, 'utf8').trim();
+  } catch (err) {
+    if (isEnoent(err)) return [];
+    console.error(`Error reading MCP log:`, err);
     return [];
   }
+  if (!logContent) return [];
+  const lines = logContent.split('\n');
+  const toolCalls: any[] = [];
+  for (const line of lines) {
+    if (line.trim().startsWith('{')) {
+      try {
+        toolCalls.push(JSON.parse(line));
+      } catch {}
+    }
+  }
+  return toolCalls
+    .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+    .flatMap(call => call.result.map((r: any) => r.id || ''))
+    .filter(Boolean);
 }
