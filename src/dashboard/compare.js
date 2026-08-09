@@ -299,12 +299,12 @@ function initParams() {
 }
 
 /**
- * Handles reloading of workspace files and running diagnosis when run type is toggled.
+ * Handles reloading of workspace files and resetting diagnosis state when run type is toggled.
  */
 async function handleRunTypeChange() {
   updateExecutiveSummary();
   await loadActiveTaskDetails();
-  await runDiagnosticAgent();
+  resetDiagnosisUI();
 }
 
 async function ensureRunDirectories(dirA, dirB) {
@@ -456,8 +456,8 @@ async function loadTrialMetadata() {
   // Load active task details
   await loadActiveTaskDetails();
 
-  // Trigger Diagnosis
-  await runDiagnosticAgent();
+  // Reset Diagnosis UI state
+  resetDiagnosisUI();
 }
 
 function checkTaskInSuite(suiteData, task) {
@@ -581,7 +581,7 @@ async function switchTask(task) {
   });
 
   await loadActiveTaskDetails();
-  await runDiagnosticAgent();
+  resetDiagnosisUI();
 }
 
 function getRunDateString(trialId) {
@@ -1325,10 +1325,44 @@ function switchTab(tab) {
   }
 }
 
+function resetDiagnosisUI() {
+  const diagnosisText = document.getElementById('diagnosis-text');
+  const statusSpan = document.getElementById('summary-status');
+  const runBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('run-diagnosis-btn'));
+
+  if (runBtn) {
+    runBtn.disabled = false;
+    runBtn.innerHTML = '✨ Run AI Diagnosis';
+  }
+  if (statusSpan) {
+    statusSpan.innerText = 'Ready';
+    statusSpan.style.color = '#64748b';
+  }
+  if (diagnosisText) {
+    diagnosisText.innerHTML = `
+      <div style="color:#64748b; font-size:0.95em;">
+        Click <strong>"Run AI Diagnosis"</strong> above to dispatch the 3-phase AI variance analysis (Compliance Audit + Code & Friction Diagnostic) for this task comparison.
+      </div>
+    `;
+  }
+}
+
 async function runDiagnosticAgent() {
   const diagnosisBox = document.getElementById('diagnosis-box');
   const diagnosisText = document.getElementById('diagnosis-text');
   const statusSpan = document.getElementById('summary-status');
+  const runBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('run-diagnosis-btn'));
+
+  const relativeA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
+  const relativeB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
+
+  if (runBtn) {
+    runBtn.disabled = true;
+    runBtn.innerHTML = `
+      <div class="spinner" style="width:14px; height:14px; border-width:2px; margin-bottom:0; display:inline-block; vertical-align:middle; border-left-color:#fff;"></div>
+      <span>Running Diagnosis...</span>
+    `;
+  }
 
   diagnosisBox.style.display = 'block';
   diagnosisText.innerHTML = `
@@ -1340,66 +1374,60 @@ async function runDiagnosticAgent() {
   statusSpan.innerText = 'Analyzing Runs...';
   statusSpan.style.color = '#d97706';
 
-  // If in static mode, we fetch pre-generated markdown
-  if (isStatic) {
-    const resultsBase = 'results';
-    // Format is results/test_xxx/variance_diagnoses/guideName-taskName-guided.md
-    // Since we don't know the exact taskName or runType, we'll construct the filename:
-    const fileName = `${guideName}-${activeTask}-guided.md`;
-    const url = `${resultsBase}/${trialA}/variance_diagnoses/${fileName}`;
-    
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        const markdown = await response.text();
-        diagnosisText.innerHTML = renderMarkdown(markdown);
-        statusSpan.innerText = 'Completed';
-        statusSpan.style.color = '#166534';
-      } else {
-        diagnosisText.innerHTML = `
-          <div style="color:#b91c1c; font-weight:600;">Diagnostic report not pre-generated for this run combination.</div>
-          <div style="font-size:0.9em; margin-top:5px; color:#475569;">
-            Running in STATIC mode. On-the-fly LLM comparison is only available when running the dashboard locally via <code>pnpm dashboard</code>.
-            To generate this report locally, run:
-            <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ${trialA}/${runNumA}/${guideName}/${activeTask}/guided ${trialB}/${runNumB}/${guideName}/${activeTask}/guided</pre>
-          </div>
-        `;
-        statusSpan.innerText = 'Not Pre-generated';
-        statusSpan.style.color = '#b91c1c';
-      }
-    } catch (e) {
-      diagnosisText.innerText = 'Failed to load pre-generated diagnostic report.';
-      statusSpan.innerText = 'Error';
-    }
-    return;
-  }
-
-  // Local Mode: Call Node dev server API to run comparison on the fly!
-  const hasTaskA = suiteDataA ? checkTaskInSuite(suiteDataA, activeTask) : true;
-  const hasTaskB = suiteDataB ? checkTaskInSuite(suiteDataB, activeTask) : true;
-
-  if (suiteDataA && suiteDataB && (!hasTaskA || !hasTaskB)) {
-    const missingIn = !hasTaskA && !hasTaskB ? 'both trials' : !hasTaskA ? 'Trial A' : 'Trial B';
-    const presentIn = !hasTaskA ? 'Trial B' : 'Trial A';
-    diagnosisText.innerHTML = `
-      <div style="color:#92400e; font-weight:600;">Cross-trial comparison unavailable for this task.</div>
-      <div style="font-size:0.9em; margin-top:5px; color:#78350f;">
-        Task <code>${escapeHtml(activeTask)}</code> was only executed in ${presentIn} and is not present in ${missingIn}.
-        To run an AI variance diagnosis, select a task that was executed in both trials.
-      </div>
-    `;
-    statusSpan.innerText = 'Single Trial Only';
-    statusSpan.style.color = '#64748b';
-    return;
-  }
-
-  // Use dynamic runTypeA and runTypeB values
-  const relativeA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
-  const relativeB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
-
-  const apiUrl = `/api/compare?runDirA=${encodeURIComponent(relativeA)}&runDirB=${encodeURIComponent(relativeB)}`;
-  
   try {
+    // If in static mode, we fetch pre-generated markdown
+    if (isStatic) {
+      const resultsBase = 'results';
+      const fileName = `${guideName}-${activeTask}-guided.md`;
+      const url = `${resultsBase}/${trialA}/variance_diagnoses/${fileName}`;
+      
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const markdown = await response.text();
+          diagnosisText.innerHTML = renderMarkdown(markdown);
+          statusSpan.innerText = 'Completed';
+          statusSpan.style.color = '#166534';
+        } else {
+          diagnosisText.innerHTML = `
+            <div style="color:#b91c1c; font-weight:600;">Diagnostic report not pre-generated for this run combination.</div>
+            <div style="font-size:0.9em; margin-top:5px; color:#475569;">
+              Running in STATIC mode. On-the-fly LLM comparison is only available when running the dashboard locally via <code>pnpm dashboard</code>.
+              To generate this report locally, run:
+              <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ${trialA}/${runNumA}/${guideName}/${activeTask}/guided ${trialB}/${runNumB}/${guideName}/${activeTask}/guided</pre>
+            </div>
+          `;
+          statusSpan.innerText = 'Not Pre-generated';
+          statusSpan.style.color = '#b91c1c';
+        }
+      } catch (e) {
+        diagnosisText.innerText = 'Failed to load pre-generated diagnostic report.';
+        statusSpan.innerText = 'Error';
+      }
+      return;
+    }
+
+    // Local Mode: Call Node dev server API to run comparison on the fly!
+    const hasTaskA = suiteDataA ? checkTaskInSuite(suiteDataA, activeTask) : true;
+    const hasTaskB = suiteDataB ? checkTaskInSuite(suiteDataB, activeTask) : true;
+
+    if (suiteDataA && suiteDataB && (!hasTaskA || !hasTaskB)) {
+      const missingIn = !hasTaskA && !hasTaskB ? 'both trials' : !hasTaskA ? 'Trial A' : 'Trial B';
+      const presentIn = !hasTaskA ? 'Trial B' : 'Trial A';
+      diagnosisText.innerHTML = `
+        <div style="color:#92400e; font-weight:600;">Cross-trial comparison unavailable for this task.</div>
+        <div style="font-size:0.9em; margin-top:5px; color:#78350f;">
+          Task <code>${escapeHtml(activeTask)}</code> was only executed in ${presentIn} and is not present in ${missingIn}.
+          To run an AI variance diagnosis, select a task that was executed in both trials.
+        </div>
+      `;
+      statusSpan.innerText = 'Single Trial Only';
+      statusSpan.style.color = '#64748b';
+      return;
+    }
+
+    const apiUrl = `/api/compare?runDirA=${encodeURIComponent(relativeA)}&runDirB=${encodeURIComponent(relativeB)}`;
+    
     /** @type {Record<string, string>} */
     const headers = {};
     const token = getAccessToken();
@@ -1503,6 +1531,11 @@ async function runDiagnosticAgent() {
     `;
     statusSpan.innerText = 'Failed';
     statusSpan.style.color = '#b91c1c';
+  } finally {
+    if (runBtn) {
+      runBtn.disabled = false;
+      runBtn.innerHTML = '🔄 Re-run Diagnosis';
+    }
   }
 }
 
@@ -1525,6 +1558,7 @@ window.onload = async () => {
 // Expose module functions globally for inline HTML event handlers (since compare.js is loaded as a module)
 /** @type {any} */ (window).switchTab = switchTab;
 /** @type {any} */ (window).switchTask = switchTask;
+/** @type {any} */ (window).runDiagnosticAgent = runDiagnosticAgent;
 
 function switchTimelineMode(mode) {
   timelineViewMode = mode;
