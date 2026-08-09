@@ -3,33 +3,33 @@ import { DumbbellChart } from './dumbbell-chart.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /**
- * @typedef {Object} LandingSuiteSummary
- * @property {string} testId
- * @property {string} timestamp
- * @property {string} source
- * @property {string} agent
- * @property {string} serving
- * @property {string} model
- * @property {number} taskCount
- * @property {number} maxRuns
- * @property {{ passed: number, total: number }} guidedStats
- * @property {{ passed: number, total: number }} unguidedStats
- * @property {number} earlyFailureRate
- * @property {Record<string, any>} guides
- * @property {{ labels: string[], guided: number[], unguided: number[] }} chartData
- * @property {any} data
+ * @typedef {import('./summary-extractor.js').SuiteSummary & {
+ *   source: import('./api.js').DataSource;
+ *   data?: any;
+ * }} LandingSuiteSummary
  */
+
+/** @typedef {'all' | import('./api.js').DataSource} SourceFilter */
+/** @typedef {'alphabetic' | 'uplift' | 'unguided' | 'guided' | 'variance'} GuideSortKey */
+/** @typedef {'asc' | 'desc'} SortDirection */
 
 /** @type {Record<string, LandingSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
+/** @type {Set<string>} */
 let selectedTestIds = new Set(); // Set of test IDs to show
+/** @type {SourceFilter} */
 let currentSourceFilter = 'all';
+/** @type {string} */
 let currentAgentFilter = 'all';
+/** @type {string} */
 let currentServingFilter = 'all';
+/** @type {string} */
 let currentModelFilter = 'all';
 
 // Guides Pivot Table Sort State
+/** @type {GuideSortKey} */
 let currentGuideSort = 'alphabetic';
+/** @type {SortDirection} */
 let currentGuideSortDir = 'asc';
 
 function isRemoteDashboard() {
@@ -175,7 +175,7 @@ function setupTestFilters() {
 function setupTableFilters() {
     /** @type {Record<string, (val: string) => void>} */
     const filters = {
-        'filter-source': (val) => currentSourceFilter = val,
+        'filter-source': (val) => currentSourceFilter = /** @type {SourceFilter} */ (val),
         'filter-agent': (val) => currentAgentFilter = val,
         'filter-serving': (val) => currentServingFilter = val,
         'filter-model': (val) => currentModelFilter = val
@@ -401,26 +401,15 @@ async function loadRemoteTests() {
 }
 
 /**
- * @param {any} summary
- * @param {string} source
+ * @param {import('./summary-extractor.js').SuiteSummary & { data?: any }} summary
+ * @param {import('./api.js').DataSource} source
  */
 function registerSuiteSummary(summary, source) {
     const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
-        testId: summary.testId,
-        timestamp: summary.timestamp,
+        ...summary,
         source: source,
-        agent: summary.agent || 'unknown',
-        serving: summary.serving || 'unknown',
-        model: summary.model || 'unknown',
-        taskCount: summary.taskCount || 0,
-        maxRuns: summary.maxRuns || 1,
-        guidedStats: summary.guidedStats || { passed: 0, total: 0 },
-        unguidedStats: summary.unguidedStats || { passed: 0, total: 0 },
-        earlyFailureRate: summary.earlyFailureRate || 0,
-        guides: summary.guides || {},
-        chartData: summary.chartData || { labels: [], guided: [], unguided: [] },
         data: summary.data || null
     };
     
@@ -432,15 +421,14 @@ function registerSuiteSummary(summary, source) {
 
 /**
  * @param {string} testId
- * @param {string} source
+ * @param {import('./api.js').DataSource} source
  * @param {import('../harness/lib/metrics.ts').EvalsReport} parsed
  * @param {string} [forcedTimestamp]
  */
 function registerTestData(testId, source, parsed, forcedTimestamp) {
     const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
     if (summary) {
-        summary.data = parsed;
-        registerSuiteSummary(summary, source);
+        registerSuiteSummary({ ...summary, data: parsed }, source);
     }
 }
 
@@ -929,26 +917,38 @@ function renderPivotInsights() {
                 let valA = 0;
                 /** @type {string | number} */
                 let valB = 0;
-                if (currentGuideSort === 'alphabetic') {
-                    valA = a.toLowerCase();
-                    valB = b.toLowerCase();
-                } else if (currentGuideSort === 'uplift') {
-                    valA = itemA.uplift;
-                    valB = itemB.uplift;
-                } else if (currentGuideSort === 'unguided') {
-                    valA = itemA.uRate;
-                    valB = itemB.uRate;
-                } else if (currentGuideSort === 'guided') {
-                    valA = itemA.gRate;
-                    valB = itemB.gRate;
-                } else if (currentGuideSort === 'variance') {
-                    const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
-                    const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
-                    valA = Math.max(sdUA, sdGA);
+                switch (currentGuideSort) {
+                    case 'alphabetic':
+                        valA = a.toLowerCase();
+                        valB = b.toLowerCase();
+                        break;
+                    case 'uplift':
+                        valA = itemA.uplift;
+                        valB = itemB.uplift;
+                        break;
+                    case 'unguided':
+                        valA = itemA.uRate;
+                        valB = itemB.uRate;
+                        break;
+                    case 'guided':
+                        valA = itemA.gRate;
+                        valB = itemB.gRate;
+                        break;
+                    case 'variance': {
+                        const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
+                        const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
+                        valA = Math.max(sdUA, sdGA);
 
-                    const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
-                    const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
-                    valB = Math.max(sdUB, sdGB);
+                        const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
+                        const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
+                        valB = Math.max(sdUB, sdGB);
+                        break;
+                    }
+                    default: {
+                        /** @type {never} */
+                        const _exhaustive = currentGuideSort;
+                        throw new Error(`Unhandled sort option: ${_exhaustive}`);
+                    }
                 }
 
                 if (valA < valB) return currentGuideSortDir === 'asc' ? -1 : 1;
@@ -1065,7 +1065,7 @@ function renderPivotInsights() {
             sortSelect.addEventListener('change', (e) => {
                 const target = e.target;
                 if (target instanceof HTMLSelectElement) {
-                    currentGuideSort = target.value;
+                    currentGuideSort = /** @type {GuideSortKey} */ (target.value);
                     renderPivotInsights();
                 }
             });
@@ -1081,10 +1081,9 @@ function renderPivotInsights() {
 }
 
 /**
- * @param {string} filterKey
+ * @param {'agent' | 'serving' | 'model'} filterKey
  * @param {string} value
  */
-// @ts-expect-error global export
 window.setInsightFilter = (filterKey, value) => {
     /** @type {Record<string, HTMLSelectElement | null>} */
     const selects = {

@@ -367,23 +367,25 @@ export async function authenticatedFetch(url, options = {}) {
 
 /**
  * @template {string} T
- * @typedef {T extends `${infer TagName}#${string}` 
- *   ? TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : TagName extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[TagName] : HTMLElement 
- *   : T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement} ParseSelector
+ * @typedef {T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T]
+ *   : T extends `${infer TagName}#${string}` ? (TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : HTMLElement)
+ *   : T extends `${infer TagName}.${string}` ? (TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : HTMLElement)
+ *   : HTMLElement} ParseSelector
  */
 
 /**
  * Guaranteed querySelector. Always returns an element or throws if nothing matches.
- * @template {string} T
+ * @template {string} [T=string]
+ * @template {Element} [E=ParseSelector<T>]
  * @param {T} query
- * @param {ParentNode=} context
- * @return {ParseSelector<T>}
+ * @param {ParentNode} [context]
+ * @returns {E}
  */
 export function $(query, context) {
   const result = (context || document).querySelector(query);
   if (result === null) {
     throw new Error(`querySelector('${query}') not found`);
   }
-  return /** @type {ParseSelector<T>} */ (result);
+  return /** @type {E} */ (result);
 }
 

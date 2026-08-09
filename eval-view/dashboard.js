@@ -1205,7 +1205,6 @@ function openTrajectory(usedBasePath, sessionFile) {
 }
 
 // Global helper to open details from task list
-// @ts-expect-error global export
 window.openDetailsFromTask = (/** @type {string} */ scenarioName, /** @type {string} */ testId) => {
     if (!allTestData) return;
     // Attempt to find runData. We might need to fetch it or pass it.
@@ -1224,11 +1223,8 @@ window.openDetailsFromTask = (/** @type {string} */ scenarioName, /** @type {str
 };
 
 // Expose functions to window for onclick handlers
-// @ts-expect-error global export
 window.openTrajectory = openTrajectory;
-// @ts-expect-error global export
 window.viewContent = viewContent;
-// @ts-expect-error global export
 window.viewDiff = viewDiff;
 
 /**

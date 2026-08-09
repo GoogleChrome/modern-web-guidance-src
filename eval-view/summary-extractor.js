@@ -1,12 +1,41 @@
 import { getRunStats, parseResultKey, calculateChartData } from './utils.js';
 
 /**
+ * @typedef {Object} GuideSummary
+ * @property {number} guidedPassed
+ * @property {number} guidedTotal
+ * @property {number} guidedRate
+ * @property {number} unguidedPassed
+ * @property {number} unguidedTotal
+ * @property {number} unguidedRate
+ * @property {number} uplift
+ * @property {{ passed: number, total: number }} guided
+ * @property {{ passed: number, total: number }} unguided
+ */
+
+/**
+ * @typedef {Object} SuiteSummary
+ * @property {string} testId
+ * @property {string} timestamp
+ * @property {string} agent
+ * @property {string} serving
+ * @property {string} model
+ * @property {number} taskCount
+ * @property {number} maxRuns
+ * @property {{ passed: number, total: number }} guidedStats
+ * @property {{ passed: number, total: number }} unguidedStats
+ * @property {number} earlyFailureRate
+ * @property {Record<string, GuideSummary>} guides
+ * @property {ReturnType<typeof calculateChartData>} chartData
+ */
+
+/**
  * Extracts a compact summary object from an evals.json payload.
  *
  * @param {string} testId
  * @param {import('../harness/lib/metrics.ts').EvalsReport & { enableSkills?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
- * @returns {Record<string, any>|null}
+ * @returns {SuiteSummary|null}
  */
 export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     if (!evalsData) return null;
@@ -68,7 +97,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         });
     });
 
-    /** @type {Record<string, any>} */
+    /** @type {Record<string, GuideSummary>} */
     const guidesFormatted = {};
     Object.keys(suiteGuides).forEach(guide => {
         const g = suiteGuides[guide];

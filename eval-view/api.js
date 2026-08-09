@@ -1,18 +1,23 @@
 import { authenticatedFetch, parseResultKey } from './utils.js';
 
+/**
+ * @typedef {'local' | 'remote' | 'static'} DataSource
+ */
+
 export class ApiClient {
     constructor() {
         const params = new URLSearchParams(window.location.search);
-        let sourceParam = params.get('source');
-        if (!sourceParam) {
-            // Auto-detect static Github Pages deployment
-            if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                sourceParam = 'remote';
-            } else {
-                sourceParam = 'local';
-            }
+        const sourceParam = params.get('source');
+        /** @type {DataSource} */
+        let source;
+        if (sourceParam === 'remote' || sourceParam === 'local' || sourceParam === 'static') {
+            source = sourceParam;
+        } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            source = 'remote';
+        } else {
+            source = 'local';
         }
-        this.source = sourceParam;
+        this.source = source;
         this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
     }
 
