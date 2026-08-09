@@ -444,7 +444,7 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
           const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
           if (seenJsonHashes.has(key)) continue;
           seenJsonHashes.add(key);
-          const timestamp = extractTimestamp(obj) || (r.timestamp ? new Date(r.timestamp).toISOString() : undefined);
+          const timestamp = extractTimestamp(obj) || extractTimestamp(r);
           const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
 
           if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {

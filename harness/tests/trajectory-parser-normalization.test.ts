@@ -351,3 +351,73 @@ test('Parser: Monotonic timestamp sorting across multiple subagents', async () =
     removeTempDir(tempDir);
   }
 });
+
+test('Parser: Mixed and heterogeneous timestamp formats (ISO, epoch sec, epoch ms, undefined)', async () => {
+  const tempDir = createTempDir();
+  try {
+    // Step A: Epoch seconds (1786309200 = 2026-08-09T21:00:00.000Z)
+    // Step B: Epoch milliseconds (1786309205000 = 2026-08-09T21:00:05.000Z)
+    // Step C: ISO string (2026-08-09T21:00:02.000Z)
+    // Step D: No timestamp
+    const lines = [
+      JSON.stringify({
+        role: 'assistant',
+        created_at: 1786309200, // 21:00:00
+        message: {
+          content: [{ type: 'tool_use', id: 'c1', name: 'search_use_cases', input: { query: 'first' } }]
+        }
+      }),
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: 1786309205000, // 21:00:05
+        message: {
+          content: [{ type: 'tool_use', id: 'c2', name: 'write_file', input: { targetFile: 'app.js' } }]
+        }
+      }),
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T21:00:02.000Z', // 21:00:02
+        message: {
+          content: [{ type: 'tool_use', id: 'c3', name: 'replace_file_content', input: { targetFile: 'app.js' } }]
+        }
+      }),
+      JSON.stringify({
+        role: 'assistant',
+        message: {
+          content: [{ type: 'text', text: 'All done' }]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Mixed formats');
+
+    const summary = JSON.parse(fs.readFileSync(path.join(tempDir, 'trajectory_summary.json'), 'utf8'));
+    assert.strictEqual(summary.steps.length, 4);
+
+    // Verify chronological order:
+    // 1. 21:00:00 (epoch sec) -> step 1
+    // 2. 21:00:02 (ISO)       -> step 2
+    // 3. 21:00:05 (epoch ms)  -> step 3
+    // 4. Undefined timestamp  -> step 4 (stable insertion order at end)
+    assert.strictEqual(summary.steps[0].stepNumber, 1);
+    assert.strictEqual(summary.steps[0].action?.name, 'search_use_cases');
+    assert.strictEqual(new Date(summary.steps[0].timestamp).getTime(), 1786309200000);
+
+    assert.strictEqual(summary.steps[1].stepNumber, 2);
+    assert.strictEqual(summary.steps[1].action?.name, 'replace_file_content');
+    assert.strictEqual(summary.steps[1].timestamp, '2026-08-09T21:00:02.000Z');
+
+    assert.strictEqual(summary.steps[2].stepNumber, 3);
+    assert.strictEqual(summary.steps[2].action?.name, 'write_file');
+    assert.strictEqual(new Date(summary.steps[2].timestamp).getTime(), 1786309205000);
+
+    assert.strictEqual(summary.steps[3].stepNumber, 4);
+    assert.strictEqual(summary.steps[3].action?.name, 'respond_to_user');
+    assert.strictEqual(summary.steps[3].timestamp, undefined);
+
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
