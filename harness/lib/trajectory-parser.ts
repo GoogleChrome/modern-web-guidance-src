@@ -19,6 +19,13 @@ function isEnoent(err: unknown): boolean {
   return isNodeError(err) && err.code === 'ENOENT';
 }
 
+/**
+ * Represents a single normalized action step in an agent's execution trajectory.
+ * 
+ * Note: Tool outputs (`outcome.message`) and large parameter payloads are intentionally
+ * truncated during normalization to keep `trajectory_summary.json` lightweight for fast
+ * UI timeline rendering and prompt budgeting in downstream comparison tools.
+ */
 export interface StandardizedStep {
   stepNumber: number;
   timestamp?: string;
@@ -112,6 +119,14 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
 
 export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
   if (Array.isArray(summary.steps)) {
+    let missingTimestampCount = 0;
+    for (const step of summary.steps) {
+      if (!step.timestamp) missingTimestampCount++;
+    }
+    if (missingTimestampCount > 0 && missingTimestampCount < summary.steps.length) {
+      console.warn(`[TrajectoryParser] Warning: ${missingTimestampCount} of ${summary.steps.length} steps in ${summary.agent} trajectory are missing timestamps. Sequence ordering will fallback to insertion order for untimestamped steps.`);
+    }
+
     // Sort steps monotonically by timestamp when available, preserving stable order otherwise
     summary.steps.sort((a, b) => {
       if (a.timestamp && b.timestamp) {
