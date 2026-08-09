@@ -6,8 +6,6 @@ import config from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { rootDir, baseAppsDir } from '../../lib/paths.ts';
-import { parseJsonlFile } from './agent-shared.ts';
-import { extractInitialPromptFromLogs } from './trajectory-parser.ts';
 import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from './compare-prompts.ts';
 
 /**
@@ -241,6 +239,11 @@ function findCodeOutput(dir: string, targetFileFromEvals?: string): { path: stri
   return { path: 'unknown', content: '' };
 }
 
+function stripAnsi(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\u001b\[[0-9;]*m/g, '');
+}
+
 /**
  * Recursively parses Playwright's JSON report and extracts assertions with detailed error traces and locations.
  */
@@ -262,13 +265,13 @@ function parsePlaywrightResults(report: any): { message: string; passed: boolean
             if (Array.isArray(test.results)) {
               for (const res of test.results) {
                 if (res.error?.message) {
-                  const cleanMsg = res.error.message.replace(/\u001b\[[0-9;]*m/g, '');
+                  const cleanMsg = stripAnsi(res.error.message);
                   if (!errors.includes(cleanMsg)) errors.push(cleanMsg);
                 }
                 if (Array.isArray(res.errors)) {
                   for (const err of res.errors) {
                     if (err.message) {
-                      const cleanMsg = err.message.replace(/\u001b\[[0-9;]*m/g, '');
+                      const cleanMsg = stripAnsi(err.message);
                       if (!errors.includes(cleanMsg)) errors.push(cleanMsg);
                     }
                     if (err.location && !location) {
@@ -505,22 +508,7 @@ function loadRunContext(runDir: string): RunContext {
   const code = findCodeOutput(absoluteDir, targetFileFromEvals);
   const preprocessed = preprocessTrajectory(trajectorySummary, chatLog, targetFileFromEvals);
 
-  const allSessionFiles = fs.existsSync(absoluteDir) ? fs.readdirSync(absoluteDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
-  const sessionFiles = allSessionFiles.sort((a, b) => {
-    const aSub = a.includes('-subagents-');
-    const bSub = b.includes('-subagents-');
-    if (aSub && !bSub) return 1;
-    if (!aSub && bSub) return -1;
-    return a.localeCompare(b);
-  });
-  const sessionPath = sessionFiles[0] ? path.join(absoluteDir, sessionFiles[0]) : '';
-  let logData: any[] = [];
-  if (sessionPath && fs.existsSync(sessionPath)) {
-    try {
-      logData = sessionPath.endsWith('.jsonl') ? parseJsonlFile(sessionPath) : JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
-    } catch {}
-  }
-  const initialPrompt = trajectorySummary?.initialPrompt || extractInitialPromptFromLogs(logData, chatLog) || 'Initial prompt not found in logs.';
+  const initialPrompt = trajectorySummary?.initialPrompt || 'Initial prompt not found in trajectory summary.';
 
   return {
     dir: absoluteDir,
