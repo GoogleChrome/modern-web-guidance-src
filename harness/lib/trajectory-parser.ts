@@ -22,6 +22,7 @@ function isEnoent(err: unknown): boolean {
 export interface StandardizedStep {
   stepNumber: number;
   timestamp?: string;
+  subagentId?: string;
   thought?: string;
   action?: {
     type: 'tool_call' | 'api_call' | 'web_search' | 'read_file' | 'write_file' | 'run_command' | 'other';
@@ -37,16 +38,40 @@ export interface StandardizedStep {
   };
 }
 
+export interface SubagentMetadata {
+  id: string;
+  agent?: string;
+  purpose?: string;
+  totalSteps?: number;
+}
+
 export interface TrajectorySummary {
   agent: string;
   serving?: string;
   steps: StandardizedStep[];
+  subagents?: Record<string, SubagentMetadata>;
   tokenUsage?: { total: number; cached: number };
   initialPrompt?: string;
   model?: string;
   retrievedGuides?: string[];
   fileReadGuides?: string[];
   toolsUsed?: string[];
+}
+
+export function extractTimestamp(entry: any): string | undefined {
+  if (!entry || typeof entry !== 'object') return undefined;
+  const raw = entry.timestamp || entry.created_at || entry.time || entry.clientTimestamp || entry.message?.created_at || entry.payload?.created_at;
+  if (!raw) return undefined;
+  if (typeof raw === 'number') {
+    const ms = raw < 1e11 ? raw * 1000 : raw;
+    const d = new Date(ms);
+    return !isNaN(d.getTime()) ? d.toISOString() : undefined;
+  }
+  if (typeof raw === 'string') {
+    const d = new Date(raw);
+    return !isNaN(d.getTime()) ? d.toISOString() : undefined;
+  }
+  return undefined;
 }
 
 export function categorizeAction(name: string, params?: Record<string, any>, thought?: string): NonNullable<StandardizedStep['action']>['canonicalCategory'] {
@@ -87,7 +112,19 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
 
 export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
   if (Array.isArray(summary.steps)) {
-    for (const step of summary.steps) {
+    // Sort steps monotonically by timestamp when available, preserving stable order otherwise
+    summary.steps.sort((a, b) => {
+      if (a.timestamp && b.timestamp) {
+        const timeDiff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        if (timeDiff !== 0) return timeDiff;
+      }
+      return 0;
+    });
+
+    // Re-index step numbers strictly 1..N and populate canonicalCategory
+    for (let i = 0; i < summary.steps.length; i++) {
+      const step = summary.steps[i];
+      step.stepNumber = i + 1;
       if (step.action && !step.action.canonicalCategory) {
         step.action.canonicalCategory = categorizeAction(step.action.name, step.action.params, step.thought);
       }
@@ -131,12 +168,20 @@ function truncateMessage(msg: any, maxLen = 300): string {
 /**
  * Parses Claude Code session JSONL files into a normalized TrajectorySummary.
  */
-export function parseClaudeTrajectory(logData: any[]): TrajectorySummary {
+/**
+ * Helper to parse a list of Claude JSONL entries into StandardizedSteps.
+ */
+function parseClaudeLogEntries(
+  logData: any[],
+  subagentId?: string,
+  subagentsMap: Record<string, any[]> = {},
+  consumedSubagents: Set<string> = new Set()
+): StandardizedStep[] {
   const steps: StandardizedStep[] = [];
-  let stepCounter = 1;
-  const toolUseToStepMap = new Map<string, number>(); // tool_use_id -> step index in 'steps' array
+  const toolUseToStepMap = new Map<string, number>();
 
   for (const entry of logData) {
+    const timestamp = extractTimestamp(entry);
     let role = entry.role || entry.type || 'unknown';
     let content = entry.message?.content || entry.content || entry;
     if (entry.message) {
@@ -144,30 +189,28 @@ export function parseClaudeTrajectory(logData: any[]): TrajectorySummary {
     }
 
     if (role === 'assistant' && Array.isArray(content)) {
-      // 1. Extract thought from this assistant turn
       let thought = '';
-      const thinkingBlock = content.find(b => b.type === 'thinking');
-      const textBlock = content.find(b => b.type === 'text');
+      const thinkingBlock = content.find((b: any) => b.type === 'thinking');
+      const textBlock = content.find((b: any) => b.type === 'text');
       
       if (thinkingBlock?.thinking) {
         thought = thinkingBlock.thinking;
       } else if (textBlock?.text) {
-        // Try extracting <thinking>...</thinking>
         const match = textBlock.text.match(/<thinking>([\s\S]*?)<\/thinking>/);
         if (match) {
           thought = match[1];
         } else {
-          thought = textBlock.text; // fallback
+          thought = textBlock.text;
         }
       }
 
-      // 2. Process all tool calls in this turn
-      const toolUses = content.filter(b => b.type === 'tool_use');
+      const toolUses = content.filter((b: any) => b.type === 'tool_use');
       
       if (toolUses.length === 0) {
-        // Just a final text response / thought step
         steps.push({
-          stepNumber: stepCounter++,
+          stepNumber: 0,
+          timestamp,
+          subagentId,
           thought,
           action: {
             type: 'other',
@@ -178,8 +221,11 @@ export function parseClaudeTrajectory(logData: any[]): TrajectorySummary {
         });
       } else {
         for (const tool of toolUses) {
+          const isSubagentCall = ['task', 'agent', 'stitch', 'dispatch'].includes((tool.name || '').toLowerCase());
           const stepIdx = steps.push({
-            stepNumber: stepCounter++,
+            stepNumber: 0,
+            timestamp,
+            subagentId,
             thought,
             action: {
               type: mapToolType(tool.name || ''),
@@ -191,10 +237,21 @@ export function parseClaudeTrajectory(logData: any[]): TrajectorySummary {
           if (tool.id) {
             toolUseToStepMap.set(tool.id, stepIdx);
           }
+
+          if (isSubagentCall && subagentsMap) {
+            const subId = tool.input?.subagent_id || tool.input?.agent_id || tool.id;
+            for (const [key, subLogs] of Object.entries(subagentsMap)) {
+              if (!consumedSubagents.has(key) && (key === subId || key.includes(tool.id) || JSON.stringify(tool.input || {}).includes(key))) {
+                consumedSubagents.add(key);
+                const subSteps = parseClaudeLogEntries(subLogs, key, subagentsMap, consumedSubagents);
+                steps.push(...subSteps);
+                break;
+              }
+            }
+          }
         }
       }
     } else if (role === 'user' || role === 'system') {
-      // Process tool results which are returned by the user/system environment
       const contentList = Array.isArray(content) ? content : [content];
       for (const block of contentList) {
         if (block && block.type === 'tool_result' && block.tool_use_id) {
@@ -205,89 +262,131 @@ export function parseClaudeTrajectory(logData: any[]): TrajectorySummary {
               status: block.is_error ? 'error' : 'success',
               message: truncateMessage(outText)
             };
+
+            const match = typeof block.content === 'string' ? block.content.match(/agentId:\s*([a-zA-Z0-9_-]+)/) : null;
+            if (match && match[1] && subagentsMap[match[1]] && !consumedSubagents.has(match[1])) {
+              const matchedId = match[1];
+              consumedSubagents.add(matchedId);
+              const subSteps = parseClaudeLogEntries(subagentsMap[matchedId], matchedId, subagentsMap, consumedSubagents);
+              steps.push(...subSteps);
+            }
           }
         }
       }
     }
   }
-
-  return finalizeTrajectorySummary({
-    agent: Agents.CLAUDE_CODE,
-    steps
-  });
+  return steps;
 }
 
-/**
- * Parses Gemini CLI session JSON/JSONL files into a normalized TrajectorySummary.
- */
-export function parseGeminiTrajectory(session: any): TrajectorySummary {
-  const steps: StandardizedStep[] = [];
-  let stepCounter = 1;
+export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+  const consumedSubagents = new Set<string>();
+  const steps = parseClaudeLogEntries(logData, undefined, subagentsMap, consumedSubagents);
 
-  const messages = Array.isArray(session) ? session : (session.messages || []);
-  
-  // Track consecutive steps to match tool calls and tool results
-  let lastAssistantStepIndices: number[] = [];
+  for (const [subId, subLogs] of Object.entries(subagentsMap)) {
+    if (!consumedSubagents.has(subId)) {
+      consumedSubagents.add(subId);
+      const subSteps = parseClaudeLogEntries(subLogs, subId, subagentsMap, consumedSubagents);
+      steps.push(...subSteps);
+    }
+  }
 
-  for (const msg of messages) {
-    const role = msg.type || msg.role || 'unknown';
-
-    if (role === 'gemini') {
-      lastAssistantStepIndices = [];
-      const thought = msg.thought || msg.text || '';
-      
-      const toolCalls = msg.toolCalls || [];
-      if (toolCalls.length === 0) {
-        steps.push({
-          stepNumber: stepCounter++,
-          thought,
-          action: msg.text ? {
-            type: 'other',
-            name: 'respond_to_user',
-            params: { response: truncateMessage(msg.text, 150) }
-          } : undefined,
-          outcome: { status: 'success' }
-        });
-      } else {
-        for (const tc of toolCalls) {
-          const stepIdx = steps.push({
-            stepNumber: stepCounter++,
-            thought,
-            action: {
-              type: mapToolType(tc.name || ''),
-              name: tc.name || 'unknown',
-              params: tc.args
-            }
-          }) - 1;
-          lastAssistantStepIndices.push(stepIdx);
-        }
-      }
-    } else if (role === 'user' && lastAssistantStepIndices.length > 0) {
-      // Match tool results to the preceding assistant tool calls
-      const toolResults = msg.toolResults || [];
-      toolResults.forEach((tr: any, idx: number) => {
-        const stepIdx = lastAssistantStepIndices[idx];
-        if (stepIdx !== undefined && steps[stepIdx]) {
-          steps[stepIdx].outcome = {
-            status: tr.error || tr.status === 'error' ? 'error' : 'success',
-            message: truncateMessage(tr.output || tr.content || tr.error || '')
-          };
-        }
-      });
-      // Clear to avoid double-matching
-      lastAssistantStepIndices = [];
+  const subagentsMeta: Record<string, SubagentMetadata> = {};
+  for (const subId of Object.keys(subagentsMap)) {
+    const subStepsCount = steps.filter(s => s.subagentId === subId).length;
+    if (subStepsCount > 0) {
+      subagentsMeta[subId] = {
+        id: subId,
+        agent: Agents.CLAUDE_CODE,
+        totalSteps: subStepsCount
+      };
     }
   }
 
   return finalizeTrajectorySummary({
-    agent: Agents.GEMINI_CLI,
-    steps
+    agent: Agents.CLAUDE_CODE,
+    steps,
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
   });
 }
 
-/**
- * Helper to extract valid JSON objects from a raw string where binary protobuf bytes may surround the braces.
- */
+export function parseGeminiTrajectory(session: any, subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+  const steps: StandardizedStep[] = [];
+  const messages = Array.isArray(session) ? session : (session.messages || []);
+  let lastAssistantStepIndices: number[] = [];
+
+  const processMessages = (msgList: any[], subagentId?: string) => {
+    for (const msg of msgList) {
+      const timestamp = extractTimestamp(msg) || extractTimestamp(session);
+      const role = msg.type || msg.role || 'unknown';
+
+      if (role === 'gemini') {
+        lastAssistantStepIndices = [];
+        const thought = msg.thought || msg.text || '';
+        const toolCalls = msg.toolCalls || [];
+        if (toolCalls.length === 0) {
+          steps.push({
+            stepNumber: 0,
+            timestamp,
+            subagentId,
+            thought,
+            action: msg.text ? {
+              type: 'other',
+              name: 'respond_to_user',
+              params: { response: truncateMessage(msg.text, 150) }
+            } : undefined,
+            outcome: { status: 'success' }
+          });
+        } else {
+          for (const tc of toolCalls) {
+            const stepIdx = steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought,
+              action: {
+                type: mapToolType(tc.name || ''),
+                name: tc.name || 'unknown',
+                params: tc.args
+              }
+            }) - 1;
+            lastAssistantStepIndices.push(stepIdx);
+          }
+        }
+      } else if (role === 'user' && lastAssistantStepIndices.length > 0) {
+        const toolResults = msg.toolResults || [];
+        toolResults.forEach((tr: any, idx: number) => {
+          const stepIdx = lastAssistantStepIndices[idx];
+          if (stepIdx !== undefined && steps[stepIdx]) {
+            steps[stepIdx].outcome = {
+              status: tr.error || tr.status === 'error' ? 'error' : 'success',
+              message: truncateMessage(tr.output || tr.content || tr.error || '')
+            };
+          }
+        });
+        lastAssistantStepIndices = [];
+      }
+    }
+  };
+
+  processMessages(messages);
+  for (const [subId, subSession] of Object.entries(subagentsMap)) {
+    const subList = Array.isArray(subSession) ? subSession : ((subSession as any)?.messages || []);
+    processMessages(subList, subId);
+  }
+
+  const subagentsMeta: Record<string, SubagentMetadata> = {};
+  for (const subId of Object.keys(subagentsMap)) {
+    const subStepsCount = steps.filter(s => s.subagentId === subId).length;
+    subagentsMeta[subId] = { id: subId, agent: Agents.GEMINI_CLI, totalSteps: subStepsCount };
+  }
+
+  return finalizeTrajectorySummary({
+    agent: Agents.GEMINI_CLI,
+    steps,
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
+  });
+}
+
 function findJsonObjectsInString(str: string): any[] {
   const results: any[] = [];
   for (let i = 0; i < str.length; i++) {
@@ -320,12 +419,8 @@ function findJsonObjectsInString(str: string): any[] {
   return results;
 }
 
-/**
- * Synthesizes a normalized TrajectorySummary for Jetski (Desktop and CLI) using .db files, modern-web.log, and chat_log.txt.
- */
 export async function parseJetskiTrajectory(dirPath: string, agentName: string): Promise<TrajectorySummary> {
   const steps: StandardizedStep[] = [];
-  let stepCounter = 1;
   const seenJsonHashes = new Set<string>();
 
   // 1. Check for Jetski SQLite .db database files to extract real tool calls and step mutations
@@ -338,34 +433,27 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
   if (dbFiles.length > 0) {
     try {
       const { DatabaseSync } = await import('node:sqlite');
-      const dbPath = path.join(dirPath, dbFiles[0]);
-      const db = new DatabaseSync(dbPath);
-      const rows = db.prepare('SELECT idx, step_type, status, step_payload FROM steps ORDER BY idx').all() as any[];
-      
+      const db = new DatabaseSync(path.join(dirPath, dbFiles[0]));
+      const rows = db.prepare('SELECT * FROM steps ORDER BY idx').all() as any[];
       for (const r of rows) {
         if (!r.step_payload) continue;
-        const str = Buffer.from(r.step_payload).toString('utf8');
-        const objs = findJsonObjectsInString(str);
-        const isErr = r.status === 4 || r.status === 5 || r.status === 2;
-
+        const objs = findJsonObjectsInString(Buffer.from(r.step_payload).toString('utf8'));
+        const isErr = [2, 4, 5].includes(r.status);
         for (const obj of objs) {
-          if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) {
-            continue;
-          }
-
-          const key = JSON.stringify({
-            cmd: obj.CommandLine,
-            file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath,
-            act: obj.toolAction || obj.toolSummary
-          });
+          if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
+          const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
           if (seenJsonHashes.has(key)) continue;
           seenJsonHashes.add(key);
+          const timestamp = extractTimestamp(obj) || (r.timestamp ? new Date(r.timestamp).toISOString() : undefined);
+          const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
 
           if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
             const targetFile = obj.TargetFile || 'target_file';
             const toolName = obj.ReplacementChunks ? 'multi_replace_file_content' : (obj.CodeContent ? 'write_to_file' : 'replace_file_content');
             steps.push({
-              stepNumber: stepCounter++,
+              stepNumber: 0,
+              timestamp,
+              subagentId,
               thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
               action: {
                 type: 'write_file',
@@ -388,7 +476,9 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
               params = { query: qMatch ? truncateMessage(qMatch[1], 150) : truncateMessage(obj.CommandLine, 150), command: truncateMessage(obj.CommandLine, 150) };
             }
             steps.push({
-              stepNumber: stepCounter++,
+              stepNumber: 0,
+              timestamp,
+              subagentId,
               thought: obj.toolSummary || obj.toolAction || 'Running terminal command',
               action: {
                 type: actType,
@@ -396,40 +486,32 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
                 params
               },
               outcome: {
-                status: isErr ? 'error' : 'success'
+                status: isErr ? 'error' : 'success',
+                message: isErr ? 'Command failed' : 'Command completed successfully'
               }
             });
-          } else if (obj.AbsolutePath) {
+          } else if (obj.AbsolutePath || obj.DirectoryPath) {
             steps.push({
-              stepNumber: stepCounter++,
-              thought: obj.toolSummary || obj.toolAction || 'Reading file contents',
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
               action: {
                 type: 'read_file',
-                name: 'view_file',
-                params: { targetFile: truncateMessage(obj.AbsolutePath, 150) }
+                name: obj.DirectoryPath ? 'list_dir' : 'view_file',
+                params: { path: truncateMessage(obj.AbsolutePath || obj.DirectoryPath, 150) }
               },
               outcome: {
-                status: isErr ? 'error' : 'success'
-              }
-            });
-          } else if (obj.DirectoryPath) {
-            steps.push({
-              stepNumber: stepCounter++,
-              thought: obj.toolSummary || obj.toolAction || 'Listing directory',
-              action: {
-                type: 'read_file',
-                name: 'list_dir',
-                params: { directoryPath: truncateMessage(obj.DirectoryPath, 150) }
-              },
-              outcome: {
-                status: isErr ? 'error' : 'success'
+                status: isErr ? 'error' : 'success',
+                message: isErr ? 'Inspection failed' : 'Inspection completed'
               }
             });
           }
         }
       }
+      db.close();
     } catch (e: any) {
-      console.warn(`[TrajectoryParser] Note: Could not parse Jetski .db file with node:sqlite (${e.message}). Falling back to log files.`);
+      console.warn(`[TrajectoryParser] Note: Could not parse Jetski .db file (${e.message}).`);
     }
   }
 
@@ -455,7 +537,7 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
       for (const call of logCalls) {
         if (call.tool === 'get_best_practices' || call.tool === 'search_use_cases') {
           steps.push({
-            stepNumber: stepCounter++,
+            stepNumber: 0,
             thought: call.tool === 'search_use_cases' ? 'Searching for relevant web guidance patterns' : 'Retrieving guidance best practices',
             action: {
               type: 'web_search',
@@ -497,7 +579,7 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
   }
   if (chatText && (steps.length === 0 || steps[steps.length - 1].action?.name !== 'respond_to_user')) {
     steps.push({
-      stepNumber: stepCounter++,
+      stepNumber: 0,
       thought: 'Completed task implementation and summarized changes',
       action: {
         type: 'other',
@@ -520,107 +602,140 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
   });
 }
 
-/**
- * Parses Codex / OpenAI CLI session JSONL files into a normalized TrajectorySummary.
- */
-export function parseCodexTrajectory(logData: any[]): TrajectorySummary {
+export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
-  let stepCounter = 1;
   let currentThought = '';
   const callMap = new Map<string, StandardizedStep>();
 
-  for (const entry of logData) {
-    if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'commentary') {
-      const msg = entry.payload;
-      currentThought = currentThought ? `${currentThought}\n${msg.message}` : msg.message;
-    } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call' || entry.payload?.type === 'custom_tool_call')) {
-      const fc = entry.payload;
-      let cmdName = fc.name;
-      let params: Record<string, any> = {};
-      try {
-        params = typeof fc.arguments === 'string' ? JSON.parse(fc.arguments) : (fc.arguments || {});
-      } catch {}
+  const processEntries = (entries: any[], subagentId?: string) => {
+    for (const entry of entries) {
+      const timestamp = extractTimestamp(entry);
+      if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'commentary') {
+        const msg = entry.payload;
+        currentThought = currentThought ? `${currentThought}\n${msg.message}` : msg.message;
+      } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call' || entry.payload?.type === 'custom_tool_call')) {
+        const fc = entry.payload;
+        let cmdName = fc.name;
+        let params: Record<string, any> = {};
+        try {
+          params = typeof fc.arguments === 'string' ? JSON.parse(fc.arguments) : (fc.arguments || {});
+        } catch {}
 
-      if (cmdName === 'exec_command' && params.cmd) {
-        cmdName = params.cmd.split(' ')[0] || 'exec_command';
-      }
-
-      const step: StandardizedStep = {
-        stepNumber: stepCounter++,
-        thought: currentThought || `Executing ${cmdName}`,
-        action: {
-          type: mapToolType(cmdName),
-          name: fc.name === 'exec_command' ? (params.cmd || 'exec_command') : fc.name,
-          params
+        if (cmdName === 'exec_command' && params.cmd) {
+          cmdName = params.cmd.split(' ')[0] || 'exec_command';
         }
-      };
-      steps.push(step);
-      currentThought = '';
-      if (fc.call_id) {
-        callMap.set(fc.call_id, step);
-      }
-    } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
-      const fco = entry.payload;
-      const step = callMap.get(fco.call_id);
-      if (step) {
-        const out = typeof fco.output === 'string' ? fco.output : JSON.stringify(fco.output || '');
-        const isErr = out.includes('Process exited with code') && !out.includes('code 0');
-        step.outcome = {
-          status: isErr ? 'error' : 'success',
-          message: truncateMessage(out, 500)
+
+        const step: StandardizedStep = {
+          stepNumber: 0,
+          timestamp,
+          subagentId,
+          thought: currentThought || `Executing ${cmdName}`,
+          action: {
+            type: mapToolType(cmdName),
+            name: fc.name === 'exec_command' ? (params.cmd || 'exec_command') : fc.name,
+            params
+          }
         };
+        steps.push(step);
+        currentThought = '';
+        if (fc.call_id) {
+          callMap.set(fc.call_id, step);
+        }
+      } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
+        const fco = entry.payload;
+        const step = callMap.get(fco.call_id);
+        if (step) {
+          const out = typeof fco.output === 'string' ? fco.output : JSON.stringify(fco.output || '');
+          const isErr = out.includes('Process exited with code') && !out.includes('code 0');
+          step.outcome = {
+            status: isErr ? 'error' : 'success',
+            message: truncateMessage(out, 500)
+          };
+        }
+      } else if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'final_answer') {
+        steps.push({
+          stepNumber: 0,
+          timestamp,
+          subagentId,
+          thought: currentThought || 'Finalizing response to user',
+          action: {
+            type: 'other',
+            name: 'respond_to_user',
+            params: { response: entry.payload.message }
+          },
+          outcome: { status: 'success' }
+        });
+        currentThought = '';
       }
-    } else if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'final_answer') {
-      steps.push({
-        stepNumber: stepCounter++,
-        thought: currentThought || 'Finalizing response to user',
-        action: {
-          type: 'other',
-          name: 'respond_to_user',
-          params: { response: entry.payload.message }
-        },
-        outcome: { status: 'success' }
-      });
-      currentThought = '';
     }
+  };
+
+  processEntries(logData);
+
+  for (const [subId, subLogs] of Object.entries(subagentsMap)) {
+    processEntries(subLogs, subId);
+  }
+
+  const subagentsMeta: Record<string, SubagentMetadata> = {};
+  for (const subId of Object.keys(subagentsMap)) {
+    const subStepsCount = steps.filter(s => s.subagentId === subId).length;
+    subagentsMeta[subId] = {
+      id: subId,
+      agent: Agents.CODEX_CLI,
+      totalSteps: subStepsCount
+    };
   }
 
   return finalizeTrajectorySummary({
     agent: Agents.CODEX_CLI,
-    steps
+    steps,
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
   });
 }
 
-/**
- * Generates and saves 'trajectory_summary.json' in the target directory.
- */
 export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
   try {
     let summary: TrajectorySummary | null = null;
 
-    let allSessionFiles: string[] = [];
+    let allFiles: string[] = [];
     try {
-      allSessionFiles = fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
+      allFiles = fs.readdirSync(targetDir);
     } catch (err) {
       if (!isEnoent(err)) throw err;
     }
-    const sessionFiles = allSessionFiles.sort((a, b) => {
-      const aSub = a.includes('-subagents-');
-      const bSub = b.includes('-subagents-');
-      if (aSub && !bSub) return 1;
-      if (!aSub && bSub) return -1;
-      return a.localeCompare(b);
-    });
+
+    const mainSessionFiles = allFiles
+      .filter(f => f.startsWith('session-') && !f.includes('-subagents-') && (f.endsWith('.json') || f.endsWith('.jsonl')))
+      .sort((a, b) => a.localeCompare(b));
+
+    const subagentFiles = allFiles
+      .filter(f => (f.startsWith('subagent-') || f.includes('-subagents-')) && (f.endsWith('.json') || f.endsWith('.jsonl')))
+      .sort((a, b) => a.localeCompare(b));
+
+    const subagentsMap: Record<string, any[]> = {};
+    for (const file of subagentFiles) {
+      const filePath = path.join(targetDir, file);
+      try {
+        const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const stripped = file.replace(/\.jsonl?$/, '');
+        const parts = stripped.split(/agent[-_]/);
+        const key = parts.length > 1 ? parts[parts.length - 1] : stripped.replace(/^(?:subagent-|session-)/, '');
+        subagentsMap[key] = Array.isArray(logData) ? logData : ((logData as any)?.messages || []);
+      } catch (e) {
+        console.warn(`[TrajectoryParser] Failed to parse subagent file ${file}:`, e);
+      }
+    }
 
     if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI) {
       summary = await parseJetskiTrajectory(targetDir, agentName);
-    } else if (sessionFiles[0]) {
-      const filePath = path.join(targetDir, sessionFiles[0]);
+    } else if (mainSessionFiles[0] || subagentFiles[0]) {
+      const primaryFile = mainSessionFiles[0] || subagentFiles[0];
+      const filePath = path.join(targetDir, primaryFile);
       const isJsonl = filePath.endsWith('.jsonl');
       const logData = isJsonl ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
       if (agentName === Agents.CLAUDE_CODE) {
-        summary = parseClaudeTrajectory(logData);
+        summary = parseClaudeTrajectory(logData, subagentsMap);
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectClaudeGuidesFromTrajectory(targetDir),
           Promise.resolve(collectClaudeToolsFromTrajectory(targetDir)),
@@ -633,7 +748,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.model = model;
         summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.GEMINI_CLI) {
-        summary = parseGeminiTrajectory(logData);
+        summary = parseGeminiTrajectory(logData, subagentsMap);
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectGeminiGuidesFromTrajectory(targetDir),
           Promise.resolve(collectGeminiToolsFromTrajectory(targetDir)),
@@ -646,7 +761,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.model = model;
         summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.CODEX_CLI) {
-        summary = parseCodexTrajectory(logData);
+        summary = parseCodexTrajectory(logData, subagentsMap);
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectCodexGuidesFromTrajectory(targetDir),
           Promise.resolve(collectCodexToolsFromTrajectory(targetDir)),
@@ -659,7 +774,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.model = model;
         summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.PI) {
-        summary = parseCodexTrajectory(logData); // Fallback to Codex parser for steps
+        summary = parseCodexTrajectory(logData, subagentsMap);
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectPiGuidesFromTrajectory(targetDir),
           Promise.resolve(collectPiToolsFromTrajectory(targetDir)),
@@ -673,7 +788,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.tokenUsage = tokenUsage;
       } else {
         console.warn(`[TrajectoryParser] Warning: Unknown agent "${agentName}". Attempting generic Codex/standard trajectory parsing. To add another agent, register a parser in generateNormalizedTrajectory.`);
-        summary = parseCodexTrajectory(logData);
+        summary = parseCodexTrajectory(logData, subagentsMap);
       }
     } else {
       console.warn(`[TrajectoryParser] Warning: No session files found for non-Jetski agent "${agentName}". Cannot parse trajectory.`);

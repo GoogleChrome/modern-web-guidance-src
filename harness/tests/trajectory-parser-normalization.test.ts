@@ -109,16 +109,18 @@ test('Parser: Gemini CLI normalization', async () => {
   }
 });
 
-test('Parser: Claude Code normalization', async () => {
+test('Parser: Claude Code normalization with timestamps', async () => {
   const tempDir = createTempDir();
   try {
     const lines = [
       JSON.stringify({
         role: 'user',
+        timestamp: '2026-08-09T20:00:00.000Z',
         message: { content: 'Fix it' }
       }),
       JSON.stringify({
         role: 'assistant',
+        timestamp: '2026-08-09T20:00:01.000Z',
         message: {
           content: [
             {
@@ -136,6 +138,7 @@ test('Parser: Claude Code normalization', async () => {
       }),
       JSON.stringify({
         role: 'user',
+        timestamp: '2026-08-09T20:00:02.000Z',
         message: {
           content: [
             {
@@ -159,11 +162,190 @@ test('Parser: Claude Code normalization', async () => {
     assert.strictEqual(summary.agent, Agents.CLAUDE_CODE);
     assert.strictEqual(summary.initialPrompt, 'Fix it');
     assert.strictEqual(summary.steps.length, 1);
+    assert.strictEqual(summary.steps[0].stepNumber, 1);
+    assert.strictEqual(summary.steps[0].timestamp, '2026-08-09T20:00:01.000Z');
     assert.strictEqual(summary.steps[0].thought, 'I need to read the file');
     assert.strictEqual(summary.steps[0].action?.type, 'read_file');
     assert.strictEqual(summary.steps[0].action?.name, 'Read');
     assert.strictEqual(summary.steps[0].action?.params?.file_path, 'app.js');
     assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('Parser: Claude Code subagents inlining and metadata', async () => {
+  const tempDir = createTempDir();
+  try {
+    // 1. Main session that dispatches a subagent via Task tool
+    const mainLines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T20:00:00.000Z',
+        message: {
+          content: [
+            {
+              type: 'thinking',
+              thinking: 'Dispatching worker subagent'
+            },
+            {
+              type: 'tool_use',
+              id: 'task_call_1',
+              name: 'Task',
+              input: { prompt: 'Edit index.html' }
+            }
+          ]
+        }
+      }),
+      JSON.stringify({
+        role: 'user',
+        timestamp: '2026-08-09T20:00:05.000Z',
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'task_call_1',
+              content: 'Worker finished. agentId: worker-sub-1'
+            }
+          ]
+        }
+      })
+    ];
+
+    // 2. Subagent session log with file modifications and thought
+    const subagentLines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T20:00:02.000Z',
+        message: {
+          content: [
+            {
+              type: 'thinking',
+              thinking: 'Subagent editing index.html'
+            },
+            {
+              type: 'tool_use',
+              id: 'edit_call_1',
+              name: 'write_file',
+              input: { file_path: 'index.html', content: '<h1>Hello</h1>' }
+            }
+          ]
+        }
+      }),
+      JSON.stringify({
+        role: 'user',
+        timestamp: '2026-08-09T20:00:03.000Z',
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'edit_call_1',
+              content: 'File updated successfully'
+            }
+          ]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-main.jsonl'), mainLines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'subagent-subagents-agent-worker-sub-1.jsonl'), subagentLines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Build page');
+
+    const summaryPath = path.join(tempDir, 'trajectory_summary.json');
+    assert.ok(fs.existsSync(summaryPath));
+
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    assert.strictEqual(summary.agent, Agents.CLAUDE_CODE);
+    assert.ok(summary.subagents, 'subagents metadata should be populated');
+    assert.ok(summary.subagents['worker-sub-1'], 'worker-sub-1 should be in subagents metadata');
+    assert.strictEqual(summary.subagents['worker-sub-1'].totalSteps, 1);
+
+    // Total steps: 1 (main dispatch) + 1 (subagent edit) = 2 steps
+    assert.strictEqual(summary.steps.length, 2);
+
+    // Verify monotonic sorting: Step 1 is main dispatch (20:00:00), Step 2 is subagent edit (20:00:02)
+    assert.strictEqual(summary.steps[0].stepNumber, 1);
+    assert.strictEqual(summary.steps[0].timestamp, '2026-08-09T20:00:00.000Z');
+    assert.strictEqual(summary.steps[0].action?.name, 'Task');
+
+    assert.strictEqual(summary.steps[1].stepNumber, 2);
+    assert.strictEqual(summary.steps[1].timestamp, '2026-08-09T20:00:02.000Z');
+    assert.strictEqual(summary.steps[1].subagentId, 'worker-sub-1');
+    assert.strictEqual(summary.steps[1].action?.type, 'write_file');
+    assert.strictEqual(summary.steps[1].action?.name, 'write_file');
+    assert.strictEqual(summary.steps[1].action?.canonicalCategory, 'code_mutation');
+    assert.strictEqual(summary.steps[1].outcome?.status, 'success');
+
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('Parser: Monotonic timestamp sorting across multiple subagents', async () => {
+  const tempDir = createTempDir();
+  try {
+    const mainLines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T21:00:10.000Z',
+        message: {
+          content: [
+            { type: 'thinking', thinking: 'Parent wrap up' },
+            { type: 'text', text: 'All tasks completed' }
+          ]
+        }
+      })
+    ];
+
+    const sub1Lines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T21:00:01.000Z',
+        message: {
+          content: [
+            { type: 'tool_use', id: 's1', name: 'search_use_cases', input: { query: 'tabs' } }
+          ]
+        }
+      })
+    ];
+
+    const sub2Lines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T21:00:05.000Z',
+        message: {
+          content: [
+            { type: 'tool_use', id: 's2', name: 'replace_file_content', input: { TargetFile: 'tab.js' } }
+          ]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-main.jsonl'), mainLines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'subagent-agent-sub1.jsonl'), sub1Lines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'subagent-agent-sub2.jsonl'), sub2Lines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Multi agent test');
+
+    const summary = JSON.parse(fs.readFileSync(path.join(tempDir, 'trajectory_summary.json'), 'utf8'));
+    assert.strictEqual(summary.steps.length, 3);
+
+    // Verify timestamps are strictly sorted: 21:00:01 -> 21:00:05 -> 21:00:10
+    assert.strictEqual(summary.steps[0].stepNumber, 1);
+    assert.strictEqual(summary.steps[0].subagentId, 'sub1');
+    assert.strictEqual(summary.steps[0].timestamp, '2026-08-09T21:00:01.000Z');
+    assert.strictEqual(summary.steps[0].action?.name, 'search_use_cases');
+
+    assert.strictEqual(summary.steps[1].stepNumber, 2);
+    assert.strictEqual(summary.steps[1].subagentId, 'sub2');
+    assert.strictEqual(summary.steps[1].timestamp, '2026-08-09T21:00:05.000Z');
+    assert.strictEqual(summary.steps[1].action?.name, 'replace_file_content');
+
+    assert.strictEqual(summary.steps[2].stepNumber, 3);
+    assert.strictEqual(summary.steps[2].timestamp, '2026-08-09T21:00:10.000Z');
+    assert.strictEqual(summary.steps[2].action?.name, 'respond_to_user');
 
   } finally {
     removeTempDir(tempDir);
