@@ -3,10 +3,10 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 
-// Import shared utilities (using relative paths from guides/)
 import { validateMacros } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
-import { rootDir, guidesDir, baseAppsDir } from './paths.ts';
+import { rootDir, guidesDir } from './paths.ts';
+import { Agents } from '../harness/config.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -180,14 +180,16 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
   for (const inv of guides) {
     const subdir = inv.dir;
-    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill } = inv;
+    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill, targets } = inv;
+    const hasTargets = !!targets && targets.length > 0;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
     const isDisciplineGuide = inv.name === inv.category || ['css-layout', 'passkeys'].includes(inv.name);
     
     // Discipline skills don't need demo.html; a frontmatter-only stub
     // (a proposed use case) doesn't need one either
-    if (!isDisciplineSkill && !isDisciplineGuide && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
+    // Guides with multi-app targets don't need a top-level demo.html
+    if (!isDisciplineSkill && !isDisciplineGuide && !hasTargets && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
@@ -217,8 +219,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill || isDisciplineGuide) {
-        // Discipline skills/guides don't require the same frontmatter as use cases
+      if (isDisciplineSkill || isDisciplineGuide || !hasGuide) {
+        // Discipline skills/guides and stubs don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
 
@@ -274,31 +276,46 @@ export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const TASK_FILE = 'task.md';
 
+export const SUPPORTED_BASE_APPS = ['daily-grind', 'devtools-times'] as const;
+export type SupportedBaseApp = (typeof SUPPORTED_BASE_APPS)[number];
+
 export function getSupportedBaseApps(): string[] {
-  try {
-    if (!fs.existsSync(baseAppsDir)) return [];
-    return fs.readdirSync(baseAppsDir).filter((name) => {
-      if (name.startsWith('.')) return false;
-      const fullPath = path.join(baseAppsDir, name);
-      return fs.statSync(fullPath).isDirectory();
-    });
-  } catch (e) {
-    console.warn(`Failed to read base apps directory at ${baseAppsDir}: ${e}`);
-    return [];
-  }
+  return Array.from(SUPPORTED_BASE_APPS);
 }
 
-export type SupportedBaseApp = string;
-
 export const TARGETS_DIR = 'targets';
-export const SOLUTION_PATCH_FILE = 'solution.patch';
-export const BROKEN_PATCH_FILE = 'broken.patch';
+export const PATCHES_DIR = 'patches';
+
+export type SolutionAgent =
+  | typeof Agents.GEMINI_CLI
+  | typeof Agents.JETSKI_CLI
+  | typeof Agents.CLAUDE_CODE
+  | typeof Agents.CODEX_CLI;
+
+export function getDefaultSolutionAgent(): SolutionAgent {
+  return process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.GEMINI_CLI;
+}
+
+export function getActiveSolutionAgents(targetDir?: string): SolutionAgent[] {
+  const hasGemini = Boolean(targetDir && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.GEMINI_CLI])));
+  const hasJetski = Boolean(targetDir && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.JETSKI_CLI])));
+  const primary: SolutionAgent = hasGemini ? Agents.GEMINI_CLI : (hasJetski ? Agents.JETSKI_CLI : getDefaultSolutionAgent());
+  return [primary, Agents.CLAUDE_CODE, Agents.CODEX_CLI];
+}
+
+export const SOLUTION_PATCH_FILES: Record<SolutionAgent, string> = {
+  [Agents.GEMINI_CLI]: path.join(PATCHES_DIR, 'gemini-solution.patch'),
+  [Agents.JETSKI_CLI]: path.join(PATCHES_DIR, 'jetski-solution.patch'),
+  [Agents.CLAUDE_CODE]: path.join(PATCHES_DIR, 'claude-solution.patch'),
+  [Agents.CODEX_CLI]: path.join(PATCHES_DIR, 'codex-solution.patch'),
+};
+export const ZERO_PASSRATE_PATCH_FILE = path.join(PATCHES_DIR, 'zero-passrate.patch');
 
 export interface TargetInventory {
   name: string;
   dir: string;
   hasSolution: boolean;
-  hasBroken: boolean;
+  hasZeroPassrate: boolean;
   hasGrader: boolean;
   hasTask: boolean;
 }
@@ -350,8 +367,6 @@ export function getTaskMap(): Map<string, TaskInfo> {
   if (!fs.existsSync(guidesDir)) return taskMap;
 
   function processTasks(guideName: string, tasksDir: string, guideDir: string) {
-    let defaultPrompt: string | null = null;
-
     for (const taskEntry of fs.readdirSync(tasksDir, { withFileTypes: true })) {
       if (taskEntry.isDirectory() || !taskEntry.name.endsWith('.md')) continue;
       const taskFileName = taskEntry.name;
@@ -372,19 +387,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         guideDir: guideDir,
       };
 
-      if (taskName === 'task') {
-        defaultPrompt = prompt;
-      }
-
       taskMap.set(`${guideName}/${taskName}`, info);
-    }
-
-    if (defaultPrompt) {
-      taskMap.set(`${guideName}/negative`, {
-        baseApp: NEGATIVE_DEMO_FILE,
-        prompt: defaultPrompt,
-        guideDir: guideDir,
-      });
     }
   }
 
@@ -435,7 +438,8 @@ export function getTaskMap(): Map<string, TaskInfo> {
     const disciplineTasksDir = path.join(disciplineDir, 'tasks');
     if (fs.existsSync(disciplineTargetsDir)) {
       processBaseAppTasks(discipline, disciplineTargetsDir, disciplineDir);
-    } else if (fs.existsSync(disciplineTasksDir)) {
+    }
+    if (fs.existsSync(disciplineTasksDir)) {
       processTasks(discipline, disciplineTasksDir, disciplineDir);
     }
 
@@ -447,7 +451,8 @@ export function getTaskMap(): Map<string, TaskInfo> {
       const tasksDir = path.join(disciplineDir, guideName, 'tasks');
       if (fs.existsSync(targetsDir)) {
         processBaseAppTasks(guideName, targetsDir, path.join(disciplineDir, guideName));
-      } else if (fs.existsSync(tasksDir)) {
+      }
+      if (fs.existsSync(tasksDir)) {
         processTasks(guideName, tasksDir, path.join(disciplineDir, guideName));
       }
     }
@@ -455,7 +460,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
   return taskMap;
 }
 
-export function inventoryGuide(dir: string): GuideInventory {
+export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean }): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
   const isDisciplineSkill = isDisciplineSkillDir(dir);
@@ -487,25 +492,42 @@ export function inventoryGuide(dir: string): GuideInventory {
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
+  const tasksDir = path.join(dir, 'tasks');
+  const hasTasksDir = fs.existsSync(tasksDir) && fs.statSync(tasksDir).isDirectory();
+  const useTargets = !!(options?.useTargetEvals || (hasTargets && !hasTasksDir));
   const targets: TargetInventory[] = [];
 
-  let hasDemo = false;
+  const hasDemo = readFileSafe(path.join(dir, DEMO_FILE)).length > 0;
   let hasNegativeDemo = false;
   let hasGrader = false;
   let hasTask = false;
 
-  if (hasTargets) {
+  if (useTargets) {
     const supportedBaseApps = getSupportedBaseApps();
-    for (const entry of fs.readdirSync(targetsDir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name.startsWith('.') || !supportedBaseApps.includes(entry.name)) continue;
-      const targetDir = path.join(targetsDir, entry.name);
+    const appsToInventory = options?.useTargetEvals
+      ? supportedBaseApps
+      : (fs.existsSync(targetsDir)
+          ? fs.readdirSync(targetsDir, { withFileTypes: true })
+              .filter(e => e.isDirectory() && !e.name.startsWith('.') && supportedBaseApps.includes(e.name))
+              .map(e => e.name)
+          : []);
+
+    for (const baseApp of appsToInventory) {
+      const targetDir = path.join(targetsDir, baseApp);
+      const exists = fs.existsSync(targetDir) && fs.statSync(targetDir).isDirectory();
+      const hasPrimarySolution =
+        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.GEMINI_CLI])) ||
+        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.JETSKI_CLI]));
       const appInv: TargetInventory = {
-        name: entry.name,
+        name: baseApp,
         dir: targetDir,
-        hasSolution: fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILE)),
-        hasBroken: fs.existsSync(path.join(targetDir, BROKEN_PATCH_FILE)),
-        hasGrader: fs.existsSync(path.join(targetDir, GRADER_FILE)),
-        hasTask: fs.existsSync(path.join(targetDir, TASK_FILE)),
+        hasSolution: exists &&
+          hasPrimarySolution &&
+          fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.CLAUDE_CODE])) &&
+          fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.CODEX_CLI])),
+        hasZeroPassrate: exists && fs.existsSync(path.join(targetDir, ZERO_PASSRATE_PATCH_FILE)),
+        hasGrader: exists && fs.existsSync(path.join(targetDir, GRADER_FILE)),
+        hasTask: exists && fs.existsSync(path.join(targetDir, TASK_FILE)),
       };
       targets.push(appInv);
     }
@@ -515,7 +537,6 @@ export function inventoryGuide(dir: string): GuideInventory {
       hasTask = targets.every((a) => a.hasTask);
     }
   } else {
-    hasDemo = readFileSafe(path.join(dir, DEMO_FILE)).length > 0;
     hasNegativeDemo = fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE));
     hasGrader = fs.existsSync(path.join(dir, GRADER_FILE));
     hasTask = fs.existsSync(path.join(dir, 'tasks', TASK_FILE));
@@ -535,7 +556,7 @@ export function inventoryGuide(dir: string): GuideInventory {
     hasTask,
     featureIds,
     isDisciplineSkill,
-    targets,
+    targets: useTargets ? targets : undefined,
   };
 }
 
@@ -548,12 +569,12 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
 
   if (inv.targets && inv.targets.length > 0) {
     const allHaveSolutions = inv.targets.every(t => t.hasSolution);
-    const allHaveBroken = inv.targets.every(t => t.hasBroken);
+    const allHaveZeroPassrate = inv.targets.every(t => t.hasZeroPassrate);
     const allHaveGraders = inv.targets.every(t => t.hasGrader);
     const allHaveTasks = inv.targets.every(t => t.hasTask);
 
     if (!allHaveSolutions) return 'incomplete';
-    if (!allHaveBroken || !allHaveGraders) return 'needs-calibration';
+    if (!allHaveZeroPassrate || !allHaveGraders) return 'needs-calibration';
     if (!allHaveTasks) return 'needs-test';
     return 'eval-ready';
   } else {

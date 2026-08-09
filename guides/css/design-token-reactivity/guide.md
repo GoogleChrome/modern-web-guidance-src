@@ -95,7 +95,7 @@ For core features, an alternate approach using selectors should be used. This ex
 }
 ```
 
-A major limitation of this fallback approach is that it does not support nesting elements with the `data-density` attribute set, since the selector specificity is the same, order of appearance will be used to determine the styles (i.e. `[data-density="spacious"]` will always take precendence over `[data-density="compact"]`).
+A major limitation of this fallback approach is that it does not support nesting elements with the `data-density` attribute set, since the selector specificity is the same, order of appearance will be used to determine the styles (i.e. `[data-density="spacious"]` will always take precedence over `[data-density="compact"]`).
 
 ### Using style queries as a progressive enhancement
 

@@ -1,0 +1,200 @@
+diff --git a/index.html b/index.html
+index 66c9173..9b760c1 100644
+--- a/index.html
++++ b/index.html
+@@ -107,12 +107,44 @@
+       margin-top: 20px;
+     }
+ 
++    /*
++     * Card component: layout adapts to the width of its own container
++     * (the .card-container element), not the viewport. This lets the
++     * exact same card markup/CSS look right whether it's placed in a
++     * narrow grid slot or a full-width featured section.
++     */
++    .card-container {
++      /* Establish this element as a query container for its children. */
++      container-type: inline-size;
++      container-name: card;
++    }
++
++    /* Safe default (also acts as the fallback for browsers without
++       container query support): stacked, centered layout. */
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      height: 100%;
++    }
++
++    .card-media {
++      font-size: 2.5rem;
++      background: var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++      line-height: 1;
++    }
++
++    .card-body {
++      display: flex;
++      flex-direction: column;
++      flex: 1;
+     }
+ 
+     .card h3 {
+@@ -120,6 +152,79 @@
+       color: var(--primary);
+     }
+ 
++    /* Extra detail copy, only shown when the card has enough room. */
++    .card-details {
++      display: none;
++      color: #6d4c41;
++      font-size: 0.85rem;
++      margin-top: 8px;
++    }
++
++    /* Fallback for browsers without container query support: fall
++       back to a viewport-based guess so wide screens still get a
++       reasonable side-by-side layout. Progressively replaced below
++       by the real @container rules where supported. */
++    @media (min-width: 700px) {
++      .card {
++        flex-direction: row;
++        text-align: left;
++        align-items: center;
++      }
++
++      .card-media {
++        width: 120px;
++        height: 120px;
++        flex-shrink: 0;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++      }
++    }
++
++    /* Container query enhancement: once the browser can measure the
++       card's own container, use that instead of the viewport. */
++    @supports (container-type: inline-size) {
++      @media (min-width: 700px) {
++        /* Reset the viewport-based fallback so it doesn't fight with
++           the container-based rules below. */
++        .card {
++          flex-direction: column;
++          text-align: center;
++        }
++
++        .card-media {
++          width: auto;
++          height: auto;
++        }
++      }
++
++      /* Side-by-side layout once the container itself is wide enough,
++         regardless of viewport size. */
++      @container card (min-width: 400px) {
++        .card {
++          flex-direction: row;
++          text-align: left;
++          align-items: center;
++        }
++
++        .card-media {
++          width: 150px;
++          height: 150px;
++          flex-shrink: 0;
++          display: flex;
++          align-items: center;
++          justify-content: center;
++        }
++      }
++
++      /* Reveal extra detail copy once there's plenty of room. */
++      @container card (min-width: 600px) {
++        .card-details {
++          display: block;
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -176,22 +281,57 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 style="text-align: center;">Featured Roast</h2>
++      <!-- Full-width slot: the container is wide, so the card lays
++           itself out side-by-side automatically. -->
++      <div class="card-container">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-media">☕</div>
++          <div class="card-body">
++            <h3>Sumatra Reserve</h3>
++            <p>A single-origin dark roast with notes of cedar, dark chocolate, and dried fig.</p>
++            <p class="card-details">Grown at 1,200m in the Bukit Barisan highlands and wet-hulled for a heavier body. Limited batch, roasted weekly in-house.</p>
++            <a href="/menu/sumatra-reserve" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++
++      <h2 style="text-align: center; margin-top: 40px;">Seasonal Favorites</h2>
++      <!-- Grid slots are narrower, so the same card component stays
++           stacked here even at wide viewport sizes. -->
++      <div class="grid">
++        <div class="card-container">
++          <div class="card">
++            <div class="card-media">🥛</div>
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <p class="card-details">Made with espresso, steamed oat milk, and a house-made maple syrup, finished with a dusting of cinnamon.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card-container">
++          <div class="card">
++            <div class="card-media">☕</div>
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <p class="card-details">A blend of Ethiopian and Brazilian beans, roasted dark for a rich, syrupy shot with a smoky finish.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
++        </div>
++        <div class="card-container">
++          <div class="card">
++            <div class="card-media">🧊</div>
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <p class="card-details">Coarse-ground beans are cold-steeped for 18 hours, yielding a smooth, low-acid coffee served over ice.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
