@@ -1,17 +1,53 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 import config from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
-import { rootDir, baseAppsDir } from '../../lib/paths.ts';
+import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
 import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from './compare-prompts.ts';
+import { generateUnifiedDiff } from '../../lib/patch-utils.ts';
+import { categorizeAction, type StandardizedStep, type TrajectorySummary } from './trajectory-parser.ts';
+import { parseResultPath } from './collection.ts';
+import { GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE } from '../../lib/guide-validation.ts';
+
+const ERROR_LOOP_THRESHOLD = 2;
+const MAX_THOUGHT_SNIPPET_LEN = 120;
+const MAX_ACTION_PARAMS_SNIPPET_LEN = 200;
+
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}
+
+function tryReadFile(filePath: string): string | null {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch (err: unknown) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+}
+
+function tryReadJson<T = any>(filePath: string): T | null {
+  const content = tryReadFile(filePath);
+  if (!content) return null;
+  try {
+    return JSON.parse(content) as T;
+  } catch {
+    console.warn(`Warning: Failed to parse JSON from ${filePath}`);
+    return null;
+  }
+}
 
 /**
  * Calls the local agent CLI (Jetski or Gemini CLI based on GD_DEV_USE_JETSKI) to generate diagnostic text.
  */
-async function callAgentCli(systemInstruction: string, prompt: string, label: string = 'Compare Agent'): Promise<string> {
+async function callAgentCli(systemInstruction: string, prompt: string, label = 'Compare Agent'): Promise<string> {
   const useJetski = process.env.GD_DEV_USE_JETSKI === '1';
   const command = useJetski ? config.environment.jetskiCliBin : config.environment.geminiCliBin;
   const combinedPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
@@ -31,7 +67,7 @@ async function callAgentCli(systemInstruction: string, prompt: string, label: st
   return new Promise((resolve, reject) => {
     const child = spawn(command, commandArgs, {
       env: { ...process.env },
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['ignore', 'pipe', 'pipe']
     });
 
     let stdoutData = '';
@@ -58,13 +94,13 @@ async function callAgentCli(systemInstruction: string, prompt: string, label: st
           reject(new Error(`[${label}] Empty response received from ${useJetski ? 'Jetski' : 'Gemini'} CLI`));
         } else {
           try {
-            const debugDir = path.resolve('./harness/results/compare_work');
-            if (!fs.existsSync(debugDir)) {
-              fs.mkdirSync(debugDir, { recursive: true });
-            }
+            const debugDir = path.join(resultsDir, 'compare_work');
+            fs.mkdirSync(debugDir, { recursive: true });
             const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
             fs.writeFileSync(path.join(debugDir, `response_debug_${slug}.txt`), cleanOutput, 'utf8');
-          } catch {}
+          } catch (e) {
+            console.warn(`[${label}] Failed to save debug response:`, e);
+          }
 
           resolve(cleanOutput);
         }
@@ -80,7 +116,7 @@ export interface TaggedStep {
   actionName?: string;
   actionDetails?: string;
   isError?: boolean;
-  raw: any;
+  raw: StandardizedStep;
 }
 
 export interface PreprocessedTrajectory {
@@ -103,13 +139,19 @@ export interface GuideContext {
   baseAppContent: string;
 }
 
+export interface PlaywrightAssertion {
+  message: string;
+  passed: boolean;
+  errors?: string[];
+  location?: { file?: string; line?: number; column?: number };
+}
+
 export interface RunContext {
   dir: string;
   runNumber: number;
   score: number;
-  resultsJson: any;
-  trajectorySummary: any;
-  chatLog: string;
+  resultsJson: PlaywrightAssertion[];
+  trajectorySummary: TrajectorySummary | null;
   codeOutput: string;
   codePath: string;
   preprocessed: PreprocessedTrajectory;
@@ -117,10 +159,9 @@ export interface RunContext {
 }
 
 /**
- * Helper to find guide.md, expectations.md, task.md, grader.ts, and base app content for a given guide/task name.
+ * Finds guide.md, expectations.md, task.md, grader.ts, and base app content for a given guide/task name.
  */
 function findGuideContext(guideName: string, taskName: string): GuideContext {
-  const guidesBaseDir = path.join(rootDir, 'guides');
   let guideContent = '';
   let expectationsContent = '';
   let taskPrompt = '';
@@ -128,66 +169,54 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
   let baseAppContent = '';
   let guideDir = '';
 
-  if (fs.existsSync(guidesBaseDir)) {
-    // 1. Search for guide directory
-    const items = fs.readdirSync(guidesBaseDir, { withFileTypes: true });
-    for (const item of items) {
-      if (item.isDirectory()) {
-        const direct = path.join(guidesBaseDir, guideName);
-        if (fs.existsSync(direct)) {
-          guideDir = direct;
-          break;
+  // Direct check first
+  const directPath = path.join(guidesDir, guideName);
+  if (tryReadFile(path.join(directPath, GUIDE_FILE))) {
+    guideDir = directPath;
+  } else {
+    try {
+      const items = fs.readdirSync(guidesDir, { withFileTypes: true });
+      for (const item of items) {
+        if (item.isDirectory()) {
+          const nested = path.join(guidesDir, item.name, guideName);
+          if (tryReadFile(path.join(nested, GUIDE_FILE))) {
+            guideDir = nested;
+            break;
+          }
         }
-        const nested = path.join(guidesBaseDir, item.name, guideName);
-        if (fs.existsSync(nested)) {
-          guideDir = nested;
-          break;
-        }
+      }
+    } catch {
+      // guides directory not readable
+    }
+  }
+
+  if (guideDir) {
+    guideContent = tryReadFile(path.join(guideDir, GUIDE_FILE)) || '';
+    expectationsContent = tryReadFile(path.join(guideDir, EXPECTATIONS_FILE)) || '';
+    graderContent = tryReadFile(path.join(guideDir, GRADER_FILE)) || '';
+
+    // Task prompt lookup
+    const taskCandidates = [
+      path.join(guideDir, 'tasks', `${taskName}.md`),
+      path.join(guideDir, 'tasks', 'task.md'),
+      path.join(guideDir, 'task.md')
+    ];
+
+    for (const candidate of taskCandidates) {
+      const content = tryReadFile(candidate);
+      if (content) {
+        taskPrompt = content;
+        break;
       }
     }
 
-    if (guideDir) {
-      const guidePath = path.join(guideDir, 'guide.md');
-      if (fs.existsSync(guidePath)) {
-        guideContent = fs.readFileSync(guidePath, 'utf8');
-      }
-
-      // Expectations
-      const expPath = path.join(guideDir, 'expectations.md');
-      if (fs.existsSync(expPath)) {
-        expectationsContent = fs.readFileSync(expPath, 'utf8');
-      }
-
-      // Grader
-      const graderPath = path.join(guideDir, 'grader.ts');
-      if (fs.existsSync(graderPath)) {
-        graderContent = fs.readFileSync(graderPath, 'utf8');
-      }
-
-      // Task prompt
-      const taskPath1 = path.join(guideDir, 'tasks', `${taskName}.md`);
-      const taskPath2 = path.join(guideDir, 'tasks', 'task.md');
-      const taskPath3 = path.join(guideDir, 'task.md');
-      let foundTaskPath = '';
-      if (fs.existsSync(taskPath1)) {
-        foundTaskPath = taskPath1;
-      } else if (fs.existsSync(taskPath2)) {
-        foundTaskPath = taskPath2;
-      } else if (fs.existsSync(taskPath3)) {
-        foundTaskPath = taskPath3;
-      }
-
-      if (foundTaskPath) {
-        taskPrompt = fs.readFileSync(foundTaskPath, 'utf8');
-        const baseAppMatch = taskPrompt.match(/base_app:\s*([^\s\r\n]+)/i);
-        if (baseAppMatch) {
-          const baseAppName = baseAppMatch[1].trim();
-          const baseAppDir = path.join(baseAppsDir, baseAppName);
-          if (fs.existsSync(baseAppDir)) {
-            const baseCode = findCodeOutput(baseAppDir);
-            baseAppContent = baseCode.content;
-          }
-        }
+    if (taskPrompt) {
+      const baseAppMatch = taskPrompt.match(/base_app:\s*([^\s\r\n]+)/i);
+      if (baseAppMatch) {
+        const baseAppName = baseAppMatch[1].trim();
+        const baseAppDir = path.join(baseAppsDir, baseAppName);
+        const baseCode = findCodeOutput(baseAppDir);
+        baseAppContent = baseCode.content;
       }
     }
   }
@@ -204,18 +233,16 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
 }
 
 /**
- * Helper to find the main generated code file in a run directory.
+ * Finds the main generated code file in a run directory.
  */
 function findCodeOutput(dir: string, targetFileFromEvals?: string): { path: string; content: string } {
   if (targetFileFromEvals) {
-    const fullPath = path.join(dir, targetFileFromEvals);
-    if (fs.existsSync(fullPath)) {
-      return {
-        path: targetFileFromEvals,
-        content: fs.readFileSync(fullPath, 'utf8')
-      };
+    const content = tryReadFile(path.join(dir, targetFileFromEvals));
+    if (content !== null) {
+      return { path: targetFileFromEvals, content };
     }
   }
+
   const candidates = [
     'dist/index.html',
     'src/App.jsx',
@@ -227,15 +254,13 @@ function findCodeOutput(dir: string, targetFileFromEvals?: string): { path: stri
     'index.html'
   ];
 
-  for (const c of candidates) {
-    const fullPath = path.join(dir, c);
-    if (fs.existsSync(fullPath)) {
-      return {
-        path: c,
-        content: fs.readFileSync(fullPath, 'utf8')
-      };
+  for (const candidate of candidates) {
+    const content = tryReadFile(path.join(dir, candidate));
+    if (content !== null) {
+      return { path: candidate, content };
     }
   }
+
   return { path: 'unknown', content: '' };
 }
 
@@ -247,12 +272,12 @@ function stripAnsi(text: string): string {
 /**
  * Recursively parses Playwright's JSON report and extracts assertions with detailed error traces and locations.
  */
-function parsePlaywrightResults(report: any): { message: string; passed: boolean; errors?: string[]; location?: { file?: string; line?: number; column?: number } }[] {
-  const assertions: { message: string; passed: boolean; errors?: string[]; location?: { file?: string; line?: number; column?: number } }[] = [];
+function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
+  const assertions: PlaywrightAssertion[] = [];
   if (!report || !Array.isArray(report.suites)) {
     return assertions;
   }
-  
+
   function collectSpecs(suite: any) {
     if (Array.isArray(suite.specs)) {
       suite.specs.forEach((spec: any) => {
@@ -302,9 +327,9 @@ function parsePlaywrightResults(report: any): { message: string; passed: boolean
 }
 
 /**
- * Phase 1 Pre-Processor: Categorizes trajectory steps into 5 milestone/noise types and computes metrics.
+ * Categorizes trajectory steps into milestone/noise types and computes metrics.
  */
-function preprocessTrajectory(trajectorySummary: any, _chatLog: string, targetFileFromEvals?: string): PreprocessedTrajectory {
+function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): PreprocessedTrajectory {
   const steps = trajectorySummary?.steps || [];
   const taggedSteps: TaggedStep[] = [];
   const searchQueries: string[] = [];
@@ -319,87 +344,34 @@ function preprocessTrajectory(trajectorySummary: any, _chatLog: string, targetFi
     const rawStep = steps[i];
     const stepNumber = rawStep.stepNumber || i + 1;
     const thought = rawStep.thought || '';
-    const actionName = (rawStep.action?.name || rawStep.action?.type || '').toLowerCase();
-    const actionParamsStr = JSON.stringify(rawStep.action?.params || rawStep.action || {}).toLowerCase();
+    const actionName = rawStep.action?.name || '';
+    const actionParams = rawStep.action?.params;
+    const actionParamsStr = JSON.stringify(actionParams || {}).toLowerCase();
     const isErr = rawStep.outcome?.status === 'error';
 
     if (isErr) {
       consecutiveErrors++;
-      if (consecutiveErrors >= 2) {
+      if (consecutiveErrors >= ERROR_LOOP_THRESHOLD) {
         errorLoopCount++;
       }
     } else {
       consecutiveErrors = 0;
     }
 
-    let category: TaggedStep['category'] = 'incidental_noise';
-    if (rawStep.action?.canonicalCategory && rawStep.action.canonicalCategory !== 'other') {
-      category = rawStep.action.canonicalCategory as TaggedStep['category'];
-    }
+    const rawCat = rawStep.action?.canonicalCategory || categorizeAction(actionName, actionParams, thought);
+    const category: TaggedStep['category'] = rawCat && rawCat !== 'other' ? rawCat : 'incidental_noise';
 
-    // 1. Guide Retrieval
-    if (category === 'guide_retrieval' || actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
-      category = 'guide_retrieval';
-      const paramsObj = rawStep.action?.params || rawStep.action || {};
-      let guideId = paramsObj.id || paramsObj.guideId;
-      if (!guideId && typeof paramsObj.command === 'string' && paramsObj.command.includes('retrieve')) {
-        guideId = paramsObj.query;
-      }
-      if (!guideId && typeof paramsObj.query === 'string' && actionParamsStr.includes('retrieve')) {
-        guideId = paramsObj.query;
-      }
-      if (!guideId && typeof paramsObj.command === 'string') {
-        const match = paramsObj.command.match(/retrieve\s+\\?["']([^"'\\]+)/i) || paramsObj.command.match(/retrieve\s+([^"'\s]+)/i);
-        if (match) guideId = match[1];
-      }
-      if (!guideId) {
-        const match = actionParamsStr.match(/id["\s:]+\\?["']?([^"'\\}]+)/i) || actionParamsStr.match(/retrieve\s+\\?["']([^"'\\]+)/i) || actionParamsStr.match(/retrieve\s+([^"'\s}]+)/i);
-        if (match) guideId = match[1];
-      }
-      if (guideId) {
-        retrievedGuideIds.push(String(guideId).trim());
-      }
-    }
-    // 2. Skill Search
-    else if (category === 'skill_search' || actionName.includes('search') || actionParamsStr.includes('search')) {
-      category = 'skill_search';
-      const paramsObj = rawStep.action?.params || rawStep.action || {};
-      let query = paramsObj.query;
-      if (!query && typeof paramsObj.command === 'string') {
-        const match = paramsObj.command.match(/search\s+\\?["']([^"'\\]+)/i) || paramsObj.command.match(/search\s+([^"'\s]+)/i);
-        if (match) query = match[1];
-      }
-      if (!query) {
-        const match = actionParamsStr.match(/query["\s:]+\\?["']?([^"'\\}]+)/i) || actionParamsStr.match(/search\s+\\?["']([^"'\\]+)/i);
-        if (match) query = match[1];
-      }
-      if (query) {
-        searchQueries.push(String(query).trim());
-      }
-    }
-    // 3. Code Mutation
-    else if (
-      category === 'code_mutation' ||
-      actionName.includes('write') || actionName.includes('replace') || actionName.includes('touch') ||
-      actionParamsStr.includes('write_to_file') || actionParamsStr.includes('replace_file_content') ||
-      (targetFileFromEvals ? actionParamsStr.includes(path.basename(targetFileFromEvals).toLowerCase()) : (actionParamsStr.includes('index.html') || actionParamsStr.includes('app.jsx') || actionParamsStr.includes('style.css')))
-    ) {
-      category = 'code_mutation';
+    if (category === 'guide_retrieval') {
+      const guideId = actionParams?.id || actionParams?.guideId || actionParams?.query || actionParams?.command;
+      if (guideId) retrievedGuideIds.push(String(guideId).trim());
+    } else if (category === 'skill_search') {
+      const query = actionParams?.query || actionParams?.command || actionParams?.search;
+      if (query) searchQueries.push(String(query).trim());
+    } else if (category === 'code_mutation') {
       codeMutationCount++;
-    }
-    // 4. Mandatory Rule Thought / Adoption
-    else if (
-      category === 'mandatory_rule_thought' ||
-      thought.toLowerCase().includes('mandatory') || thought.toLowerCase().includes('fallback') ||
-      thought.toLowerCase().includes('css') || thought.toLowerCase().includes('baseline') ||
-      thought.toLowerCase().includes('guidance')
-    ) {
-      category = 'mandatory_rule_thought';
-      mandatoryRulesAdopted.push(thought.slice(0, 120));
-    }
-    // 5. Incidental Noise (view_file, ls, list_dir, grep)
-    else {
-      category = 'incidental_noise';
+    } else if (category === 'mandatory_rule_thought') {
+      mandatoryRulesAdopted.push(thought.slice(0, MAX_THOUGHT_SNIPPET_LEN));
+    } else {
       noiseCount++;
     }
 
@@ -407,11 +379,16 @@ function preprocessTrajectory(trajectorySummary: any, _chatLog: string, targetFi
       stepNumber,
       category,
       thought,
-      actionName: rawStep.action?.name,
-      actionDetails: actionParamsStr.slice(0, 200),
+      actionName,
+      actionDetails: actionParamsStr.slice(0, MAX_ACTION_PARAMS_SNIPPET_LEN),
       isError: isErr,
       raw: rawStep
     });
+  }
+
+  // Backfill top-level retrievedGuides if present
+  if (trajectorySummary?.retrievedGuides) {
+    retrievedGuideIds.push(...trajectorySummary.retrievedGuides);
   }
 
   return {
@@ -428,25 +405,20 @@ function preprocessTrajectory(trajectorySummary: any, _chatLog: string, targetFi
 function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
   let curr = runDir;
   while (curr && curr !== path.dirname(curr)) {
-    const evalsPath = path.join(curr, 'evals.json');
-    if (fs.existsSync(evalsPath)) {
-      try {
-        const data = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
-        if (data && data.results) {
-          const pathSegments = runDir.split(/[/\\]/);
-          const taskName = pathSegments[pathSegments.length - 2];
-          for (const testName in data.results) {
-            const runs = data.results[testName];
-            if (Array.isArray(runs)) {
-              for (const run of runs) {
-                if (run.targetFile && (run.taskName === taskName || testName.includes(taskName || ''))) {
-                  return run.targetFile;
-                }
-              }
+    const data = tryReadJson(path.join(curr, 'evals.json'));
+    if (data && data.results) {
+      const pathSegments = runDir.split(/[/\\]/);
+      const taskName = pathSegments[pathSegments.length - 2];
+      for (const testName in data.results) {
+        const runs = data.results[testName];
+        if (Array.isArray(runs)) {
+          for (const run of runs) {
+            if (run.targetFile && (run.taskName === taskName || testName.includes(taskName || ''))) {
+              return run.targetFile;
             }
           }
         }
-      } catch (e) {}
+      }
     }
     curr = path.dirname(curr);
   }
@@ -458,56 +430,45 @@ function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
  */
 function loadRunContext(runDir: string): RunContext {
   const absoluteDir = path.resolve(runDir);
-  if (!fs.existsSync(absoluteDir)) {
-    throw new Error(`Run directory not found: ${absoluteDir}`);
+  try {
+    fs.statSync(absoluteDir);
+  } catch (err: unknown) {
+    if (isEnoent(err)) {
+      throw new Error(`Run directory not found: ${absoluteDir}`);
+    }
+    throw err;
   }
 
   const pathSegments = absoluteDir.split(/[/\\]/);
   const runNumberMatch = absoluteDir.match(/[/\\](\d+)[/\\]/);
-  const runNumber = runNumberMatch ? parseInt(runNumberMatch[1]) : 0;
+  const runNumber = runNumberMatch ? parseInt(runNumberMatch[1], 10) : 0;
   const guideName = pathSegments[pathSegments.length - 3] || '';
 
-  let resultsPath = path.join(absoluteDir, `${guideName}_results.json`);
-  if (!fs.existsSync(resultsPath) && fs.existsSync(absoluteDir)) {
-    const fallbackResultsFile = fs.readdirSync(absoluteDir).find(f => f.endsWith('_results.json'));
-    if (fallbackResultsFile) {
-      resultsPath = path.join(absoluteDir, fallbackResultsFile);
-    }
-  }
-
-  let resultsJson: any = null;
+  let resultsJson: PlaywrightAssertion[] = [];
   let score = 0;
-  if (fs.existsSync(resultsPath)) {
+
+  let rawReport = tryReadJson(path.join(absoluteDir, `${guideName}_results.json`));
+  if (!rawReport) {
     try {
-      const rawReport = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
-      resultsJson = parsePlaywrightResults(rawReport);
-      const passed = resultsJson.filter((c: any) => c.passed).length;
-      score = resultsJson.length > 0 ? Math.round((passed / resultsJson.length) * 100) : 0;
-    } catch (e) {
-      console.warn(`Warning: Failed to parse results JSON in ${absoluteDir}`);
+      const fallbackFile = fs.readdirSync(absoluteDir).find((f) => f.endsWith('_results.json'));
+      if (fallbackFile) {
+        rawReport = tryReadJson(path.join(absoluteDir, fallbackFile));
+      }
+    } catch {
+      // directory listing failed
     }
   }
 
-  let trajectorySummary: any = null;
-  const trajPath = path.join(absoluteDir, 'trajectory_summary.json');
-  if (fs.existsSync(trajPath)) {
-    try {
-      trajectorySummary = JSON.parse(fs.readFileSync(trajPath, 'utf8'));
-    } catch (e) {
-      console.warn(`Warning: Failed to parse trajectory summary in ${absoluteDir}`);
-    }
+  if (rawReport) {
+    resultsJson = parsePlaywrightResults(rawReport);
+    const passed = resultsJson.filter((c) => c.passed).length;
+    score = resultsJson.length > 0 ? Math.round((passed / resultsJson.length) * 100) : 0;
   }
 
-  let chatLog = '';
-  const chatLogPath = path.join(absoluteDir, 'chat_log.txt');
-  if (fs.existsSync(chatLogPath)) {
-    chatLog = fs.readFileSync(chatLogPath, 'utf8');
-  }
-
+  const trajectorySummary = tryReadJson<TrajectorySummary>(path.join(absoluteDir, 'trajectory_summary.json'));
   const targetFileFromEvals = extractTargetFileFromEvalsJson(absoluteDir);
   const code = findCodeOutput(absoluteDir, targetFileFromEvals);
-  const preprocessed = preprocessTrajectory(trajectorySummary, chatLog, targetFileFromEvals);
-
+  const preprocessed = preprocessTrajectory(trajectorySummary);
   const initialPrompt = trajectorySummary?.initialPrompt || 'Initial prompt not found in trajectory summary.';
 
   return {
@@ -516,122 +477,11 @@ function loadRunContext(runDir: string): RunContext {
     score,
     resultsJson,
     trajectorySummary,
-    chatLog,
     codeOutput: code.content,
     codePath: code.path,
     preprocessed,
     initialPrompt
   };
-}
-
-/**
- * Generates an aligned LCS unified diff of two strings for accurate LLM context.
- */
-function generateUnifiedDiff(oldText: string, newText: string, oldLabel = 'Old', newLabel = 'New', contextLines = 3): string {
-  const oldLines = oldText.split(/\r?\n/);
-  const newLines = newText.split(/\r?\n/);
-
-  const m = oldLines.length;
-  const n = newLines.length;
-  
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (oldLines[i - 1] === newLines[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1;
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-      }
-    }
-  }
-
-  interface EditOp {
-    type: 'equal' | 'add' | 'remove';
-    oldIndex?: number;
-    newIndex?: number;
-    line: string;
-  }
-  const ops: EditOp[] = [];
-  let i = m, j = n;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-      ops.push({ type: 'equal', oldIndex: i, newIndex: j, line: oldLines[i - 1] });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      ops.push({ type: 'add', newIndex: j, line: newLines[j - 1] });
-      j--;
-    } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
-      ops.push({ type: 'remove', oldIndex: i, line: oldLines[i - 1] });
-      i--;
-    }
-  }
-  ops.reverse();
-
-  if (ops.every(op => op.type === 'equal')) {
-    return 'No differences detected.';
-  }
-
-  const hunks: {
-    oldStart: number;
-    oldLinesCount: number;
-    newStart: number;
-    newLinesCount: number;
-    lines: string[];
-  }[] = [];
-
-  let opIndex = 0;
-  while (opIndex < ops.length) {
-    while (opIndex < ops.length && ops[opIndex].type === 'equal') {
-      opIndex++;
-    }
-    if (opIndex >= ops.length) break;
-
-    const hunkStart = Math.max(0, opIndex - contextLines);
-    let hunkEnd = opIndex;
-
-    while (hunkEnd < ops.length) {
-      if (ops[hunkEnd].type !== 'equal') {
-        hunkEnd++;
-      } else {
-        let nextChange = hunkEnd;
-        while (nextChange < ops.length && ops[nextChange].type === 'equal' && (nextChange - hunkEnd) < 2 * contextLines) {
-          nextChange++;
-        }
-        if (nextChange < ops.length && ops[nextChange].type !== 'equal') {
-          hunkEnd = nextChange;
-        } else {
-          break;
-        }
-      }
-    }
-
-    const actualEnd = Math.min(ops.length - 1, hunkEnd + contextLines - 1);
-    const hunkOps = ops.slice(hunkStart, actualEnd + 1);
-    const oldStarts = hunkOps.filter(op => op.oldIndex !== undefined).map(op => op.oldIndex!);
-    const newStarts = hunkOps.filter(op => op.newIndex !== undefined).map(op => op.newIndex!);
-    
-    const oldStart = oldStarts.length > 0 ? oldStarts[0] : (hunkStart > 0 && ops[hunkStart - 1].oldIndex ? ops[hunkStart - 1].oldIndex! + 1 : 1);
-    const newStart = newStarts.length > 0 ? newStarts[0] : (hunkStart > 0 && ops[hunkStart - 1].newIndex ? ops[hunkStart - 1].newIndex! + 1 : 1);
-    const oldLinesCount = hunkOps.filter(op => op.type === 'equal' || op.type === 'remove').length;
-    const newLinesCount = hunkOps.filter(op => op.type === 'equal' || op.type === 'add').length;
-
-    const lines = hunkOps.map(op => {
-      if (op.type === 'equal') return `  ${op.line}`;
-      if (op.type === 'remove') return `- ${op.line}`;
-      return `+ ${op.line}`;
-    });
-
-    hunks.push({ oldStart, oldLinesCount, newStart, newLinesCount, lines });
-    opIndex = actualEnd + 1;
-  }
-
-  let result = `--- ${oldLabel}\n+++ ${newLabel}\n`;
-  for (const hunk of hunks) {
-    result += `@@ -${hunk.oldStart},${hunk.oldLinesCount} +${hunk.newStart},${hunk.newLinesCount} @@\n`;
-    result += hunk.lines.join('\n') + '\n';
-  }
-  return result.trim();
 }
 
 /**
@@ -661,7 +511,16 @@ async function runSubAgent2_CodeAndFriction(
   statusA: string,
   statusB: string
 ): Promise<string> {
-  const { systemInstruction, prompt } = getCodeAndFrictionPrompts(guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB, statusA, statusB);
+  const { systemInstruction, prompt } = getCodeAndFrictionPrompts(
+    guideCtx,
+    ctxA,
+    ctxB,
+    diffBaseVsA,
+    diffBaseVsB,
+    diffAvsB,
+    statusA,
+    statusB
+  );
   return callAgentCli(systemInstruction, prompt, 'Sub-Agent 2 (Code & Friction)');
 }
 
@@ -677,7 +536,15 @@ async function synthesizeDiagnosis(
   statusA: string,
   statusB: string
 ): Promise<string> {
-  const { systemInstruction, prompt } = getSynthesizerPrompts(guideCtx, ctxA, ctxB, complianceAnalysis, codeAndFrictionAnalysis, statusA, statusB);
+  const { systemInstruction, prompt } = getSynthesizerPrompts(
+    guideCtx,
+    ctxA,
+    ctxB,
+    complianceAnalysis,
+    codeAndFrictionAnalysis,
+    statusA,
+    statusB
+  );
   return callAgentCli(systemInstruction, prompt, 'Synthesizer Sub-Agent');
 }
 
@@ -689,21 +556,23 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   console.log(`Run A: ${runDirA}`);
   console.log(`Run B: ${runDirB}\n`);
 
-  await downloadRunFromGcsIfMissing(runDirA);
-  await downloadRunFromGcsIfMissing(runDirB);
+  await Promise.all([
+    downloadRunFromGcsIfMissing(runDirA),
+    downloadRunFromGcsIfMissing(runDirB)
+  ]);
 
   const ctxA = loadRunContext(runDirA);
   const ctxB = loadRunContext(runDirB);
 
+  console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
+
   const isAProblem = ctxA.score < ctxB.score;
   const successCtx = isAProblem ? ctxB : ctxA;
 
-  console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
-
-  const pathSegments = successCtx.dir.split(/[/\\]/);
-  const runType = pathSegments.pop() || 'guided';
-  const taskName = pathSegments.pop() || 'task';
-  const guideName = pathSegments.pop() || 'guide';
+  const parsedPath = parseResultPath(path.relative(resultsDir, successCtx.dir));
+  const guideName = parsedPath?.guide || successCtx.dir.split(/[/\\]/).slice(-3, -2)[0] || 'guide';
+  const taskName = parsedPath?.taskName || successCtx.dir.split(/[/\\]/).slice(-2, -1)[0] || 'task';
+  const runType = parsedPath?.runType || successCtx.dir.split(/[/\\]/).slice(-1)[0] || 'guided';
 
   const guideCtx = findGuideContext(guideName, taskName);
   const diffBaseVsA = generateUnifiedDiff(guideCtx.baseAppContent || '', ctxA.codeOutput || '', 'Base App', 'Run A Output');
@@ -716,9 +585,7 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   const suiteMatch = successCtx.dir.match(/(.*[/\\]results[/\\][^/\\]+)/);
   const suiteDir = suiteMatch ? suiteMatch[1] : successCtx.dir;
   const workDir = path.join(suiteDir, 'compare_work');
-  if (!fs.existsSync(workDir)) {
-    fs.mkdirSync(workDir, { recursive: true });
-  }
+  fs.mkdirSync(workDir, { recursive: true });
 
   try {
     console.log(cBold(`[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`));
@@ -742,15 +609,11 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
       statusB
     );
 
-    let savedPath = '';
     if (suiteMatch) {
       const diagnosesDir = path.join(suiteDir, 'variance_diagnoses');
-      if (!fs.existsSync(diagnosesDir)) {
-        fs.mkdirSync(diagnosesDir, { recursive: true });
-      }
-      
+      fs.mkdirSync(diagnosesDir, { recursive: true });
       const fileName = `${guideName}-${taskName}-${runType}.md`;
-      savedPath = path.join(diagnosesDir, fileName);
+      const savedPath = path.join(diagnosesDir, fileName);
       fs.writeFileSync(savedPath, markdownReport, 'utf8');
       console.log(cGreen(`\n✅ Saved diagnostic report to: ${savedPath}`));
     }
