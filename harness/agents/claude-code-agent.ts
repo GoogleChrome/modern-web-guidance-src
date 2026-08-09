@@ -158,12 +158,7 @@ async function run() {
     }
 
     exportClaudeCodeTrajectories(workDir, targetDir);
-    
-    try {
-      await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, getSuiteConfig().serving);
-    } catch (e: any) {
-      console.error("Failed to generate normalized trajectory:", e.message);
-    }
+    await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, getSuiteConfig().serving);
 
     console.log("Claude Code agent finished successfully.");
 

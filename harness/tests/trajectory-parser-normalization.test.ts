@@ -43,7 +43,6 @@ test('Parser: Jetski CLI normalization', async () => {
 
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
     assert.strictEqual(summary.agent, Agents.JETSKI_CLI);
-    assert.strictEqual(summary.schemaVersion, '2.0');
     assert.ok(Array.isArray(summary.steps));
     
     console.log('Jetski Summary Steps:', summary.steps);

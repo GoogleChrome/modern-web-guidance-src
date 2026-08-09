@@ -115,11 +115,7 @@ async function run() {
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
     exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
 
-    try {
-      await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, getSuiteConfig().serving);
-    } catch (e: any) {
-      console.error("Failed to generate normalized trajectory:", e.message);
-    }
+    await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, getSuiteConfig().serving);
 
     console.log("Gemini CLI agent finished successfully.");
 

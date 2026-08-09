@@ -30,7 +30,6 @@ export interface StandardizedStep {
 }
 
 export interface TrajectorySummary {
-  schemaVersion?: string;
   agent: string;
   serving: string;
   steps: StandardizedStep[];
@@ -79,7 +78,6 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
 }
 
 export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
-  summary.schemaVersion = "2.0";
   if (Array.isArray(summary.steps)) {
     for (const step of summary.steps) {
       if (step.action && !step.action.canonicalCategory) {
@@ -378,7 +376,7 @@ function findJsonObjectsInString(str: string): any[] {
 }
 
 /**
- * Synthesizes a normalized TrajectorySummary for Jetski/MCP using .db files, modern-web.log, and chat_log.txt.
+ * Synthesizes a normalized TrajectorySummary for Jetski (Desktop and CLI) using .db files, modern-web.log, and chat_log.txt.
  */
 export async function parseJetskiTrajectory(dirPath: string, agentName: string, serving: string): Promise<TrajectorySummary> {
   const steps: StandardizedStep[] = [];
@@ -662,15 +660,14 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       return a.localeCompare(b);
     });
 
-    // To add another agent in the future, check agentName or session files here and invoke the corresponding parser.
-    if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI || agentName.toLowerCase().includes('jetski') || (!sessionFiles[0] && fs.existsSync(targetDir) && fs.readdirSync(targetDir).some(f => f.endsWith('.db')))) {
+    if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI) {
       summary = await parseJetskiTrajectory(targetDir, agentName, serving);
     } else if (sessionFiles[0]) {
       const filePath = path.join(targetDir, sessionFiles[0]);
       const isJsonl = filePath.endsWith('.jsonl');
       const logData = isJsonl ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
-      if (agentName === Agents.CLAUDE_CODE || agentName.toLowerCase().includes('claude')) {
+      if (agentName === Agents.CLAUDE_CODE) {
         summary = parseClaudeTrajectory(logData, serving);
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectClaudeGuidesFromTrajectory(targetDir, serving),
@@ -683,7 +680,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.toolsUsed = tools;
         summary.model = model;
         summary.tokenUsage = tokenUsage;
-      } else if (agentName === Agents.GEMINI_CLI || agentName.toLowerCase().includes('gemini')) {
+      } else if (agentName === Agents.GEMINI_CLI) {
         summary = parseGeminiTrajectory(logData, serving);
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectGeminiGuidesFromTrajectory(targetDir, serving),
@@ -696,7 +693,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.toolsUsed = tools;
         summary.model = model;
         summary.tokenUsage = tokenUsage;
-      } else if (agentName === Agents.CODEX_CLI || agentName.toLowerCase().includes('codex')) {
+      } else if (agentName === Agents.CODEX_CLI) {
         summary = parseCodexTrajectory(logData, serving);
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectCodexGuidesFromTrajectory(targetDir, serving),
@@ -709,7 +706,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.toolsUsed = tools;
         summary.model = model;
         summary.tokenUsage = tokenUsage;
-      } else if (agentName === Agents.PI || agentName.toLowerCase().includes('pi')) {
+      } else if (agentName === Agents.PI) {
         summary = parseCodexTrajectory(logData, serving); // Fallback to Codex parser for steps
         const [guides, tools, model, tokenUsage] = await Promise.all([
           collectPiGuidesFromTrajectory(targetDir, serving),
@@ -727,7 +724,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary = parseCodexTrajectory(logData, serving);
       }
     } else {
-      summary = await parseJetskiTrajectory(targetDir, agentName, serving);
+      console.warn(`[TrajectoryParser] Warning: No session files found for non-Jetski agent "${agentName}". Cannot parse trajectory.`);
     }
 
       if (summary) {

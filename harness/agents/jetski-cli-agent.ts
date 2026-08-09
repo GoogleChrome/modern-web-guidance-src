@@ -134,11 +134,7 @@ async function run() {
     exportTrajectories(conversationsDir, '*.pb', targetDir);
     exportTrajectories(conversationsDir, '*.db', targetDir);
 
-    try {
-      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, getSuiteConfig().serving);
-    } catch (e: any) {
-      console.warn("Failed to generate normalized trajectory:", e.message);
-    }
+    await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, getSuiteConfig().serving);
 
     console.log("Jetski CLI agent finished successfully.");
 

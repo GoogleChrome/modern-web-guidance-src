@@ -7,6 +7,7 @@ import config, { Agents, Serving } from '../config.ts';
 import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
 const TRAJECTORY_GLOB = '*.jsonl';
 
@@ -130,6 +131,8 @@ async function run() {
     exportTrajectories(sessionsDir, '*.jsonl', targetDir);
 
     console.log("Pi agent finished successfully.");
+
+    await generateNormalizedTrajectory(targetDir, Agents.PI, getSuiteConfig().serving);
 
   } catch (err) {
     console.error("Error during Pi execution:", err);
