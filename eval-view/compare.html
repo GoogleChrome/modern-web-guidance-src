@@ -633,15 +633,22 @@
     </div>
 
     <!-- LLM Diagnosis Report -->
-    <div class="diagnosis-report" id="diagnosis-box" style="display:none;">
-      <div class="diagnosis-title">
-        <svg style="width:24px; height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-        </svg>
-        AI Diagnostic Explanation (Variance Diagnosis)
+    <div class="diagnosis-report" id="diagnosis-box" style="display:block;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div class="diagnosis-title" style="margin-bottom:0;">
+          <svg style="width:24px; height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+          </svg>
+          AI Diagnostic Explanation (Variance Diagnosis)
+        </div>
+        <button id="run-diagnosis-btn" class="back-btn" style="background-color:#7c3aed; color:#ffffff; border-color:#6d28d9; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;" onclick="runDiagnosticAgent()">
+          ✨ Run AI Diagnosis
+        </button>
       </div>
-      <div class="diagnosis-content" id="diagnosis-text">
-        Analyzing both runs and generating explanation. This may take up to 20 seconds...
+      <div class="diagnosis-content" id="diagnosis-text" style="margin-top:12px;">
+        <div style="color:#64748b; font-size:0.95em;">
+          Click <strong>"Run AI Diagnosis"</strong> above to dispatch the 3-phase AI variance analysis (Compliance Audit + Code & Friction Diagnostic) for this task comparison.
+        </div>
       </div>
     </div>
 
