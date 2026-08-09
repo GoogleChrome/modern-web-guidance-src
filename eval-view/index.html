@@ -50,6 +50,17 @@
     <div id="suites-tab" class="tab-content active">
       <details class="insights-drawer">
         <summary class="insights-summary">Uplift Comparisons</summary>
+        <div class="timeline-filter-controls" style="margin: 12px 0 6px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="insights-limit-input" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Show most recent</label>
+            <input type="number" id="insights-limit-input" value="15" min="1" max="365" style="width: 60px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-align: center; outline: none;">
+            <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">days of data</span>
+          </div>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+            <input type="checkbox" id="insights-show-all-check" style="cursor: pointer;">
+            <span>Show all</span>
+          </label>
+        </div>
         <div id="insights-container" class="insights-grid">
           <!-- Populated by JS -->
         </div>

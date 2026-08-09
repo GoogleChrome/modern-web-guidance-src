@@ -1,0 +1,1 @@
+- Update the application components so their styles and layout conditionally adapt based on their own width and height rather than the width or height of the viewport.

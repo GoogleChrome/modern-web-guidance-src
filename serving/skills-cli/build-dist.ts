@@ -61,13 +61,23 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   marketplaceData.plugins[0].version = newVersion;
   fs.writeFileSync(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
 
-
   // Cursor Plugin
   const cursorPluginPath = path.join(publishCliDir, ".cursor-plugin/plugin.json");
   const cursorPluginData = JSON.parse(fs.readFileSync(cursorPluginPath, 'utf8'));
   cursorPluginData.version = newVersion;
   fs.writeFileSync(cursorPluginPath, JSON.stringify(cursorPluginData, null, 2) + '\n');
 
+  // Copilot plugin
+  const copilotPluginPath = path.join(publishCliDir, ".github/plugin/plugin.json");
+  const copilotPluginData = JSON.parse(fs.readFileSync(copilotPluginPath, 'utf8'));
+  copilotPluginData.version = newVersion;
+  fs.writeFileSync(copilotPluginPath, JSON.stringify(copilotPluginData, null, 2) + '\n');
+
+  // Kimi plugin
+  const kimiPluginPath = path.join(publishCliDir, "kimi.plugin.json");
+  const kimiPluginData = JSON.parse(fs.readFileSync(kimiPluginPath, 'utf8'));
+  kimiPluginData.version = newVersion;
+  fs.writeFileSync(kimiPluginPath, JSON.stringify(kimiPluginData, null, 2) + '\n');
 }
 
 export function processSkills(publishRoot: string) {
@@ -137,6 +147,17 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     outputDir: DIST_DIR,
     target: 'skills-cli',
   });
+
+  // Create a symbolic link for prompt-api pointing to language-model.md
+  const promptApiLink = path.join(DIST_DIR, "guides/built-in-ai/prompt-api.md");
+  const categoryDir = path.dirname(promptApiLink);
+  if (fs.existsSync(categoryDir)) {
+    if (fs.existsSync(promptApiLink)) {
+      fs.unlinkSync(promptApiLink);
+    }
+    fs.symlinkSync("language-model.md", promptApiLink);
+    console.log("Created prompt-api.md symlink pointing to language-model.md in distribution guides");
+  }
 
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");

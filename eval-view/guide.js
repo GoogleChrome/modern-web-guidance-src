@@ -1,4 +1,5 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, parseResultKey, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 
 let allTestData = {}; // Cache all test data by testId
 
@@ -33,69 +34,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function registerTestData(testId, source, parsed, forcedTimestamp) {
-    let serving = 'unknown';
-    if (parsed.serving !== undefined) {
-        serving = parsed.serving;
-    } else if (parsed.enableSkills !== undefined) {
-        serving = parsed.enableSkills ? 'skills' : 'mcp';
-    }
-
-    const compoundKey = `${testId}|||${source}`;
-
-    const guides = {};
-    if (parsed.results) {
-        Object.keys(parsed.results).forEach(key => {
-            const parsedKey = parseResultKey(key);
-            if (parsedKey) {
-                const { guide, runType } = parsedKey;
-                if (!guides[guide]) {
-                    guides[guide] = {
-                        guidedPassed: 0, guidedTotal: 0,
-                        unguidedPassed: 0, unguidedTotal: 0
-                    };
-                }
-                parsed.results[key].forEach(run => {
-                    const s = getRunStats(run.results);
-                    if (runType === 'guided') {
-                        guides[guide].guidedPassed += s.passed;
-                        guides[guide].guidedTotal += s.total;
-                    } else if (runType === 'unguided') {
-                        guides[guide].unguidedPassed += s.passed;
-                        guides[guide].unguidedTotal += s.total;
-                    }
-                });
-            }
-        });
-    }
-
-    // Convert guide raw totals into rates
-    const guidesWithRates = {};
-    Object.keys(guides).forEach(guide => {
-        const g = guides[guide];
-        const guidedRate = g.guidedTotal > 0 ? Math.round((g.guidedPassed / g.guidedTotal) * 100) : 0;
-        const unguidedRate = g.unguidedTotal > 0 ? Math.round((g.unguidedPassed / g.unguidedTotal) * 100) : 0;
-        guidesWithRates[guide] = {
-            guidedPassed: g.guidedPassed,
-            guidedTotal: g.guidedTotal,
-            guidedRate,
-            unguidedPassed: g.unguidedPassed,
-            unguidedTotal: g.unguidedTotal,
-            unguidedRate,
-            uplift: guidedRate - unguidedRate
-        };
-    });
+function registerSuiteSummary(summary, source) {
+    const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
-        testId: testId,
-        timestamp: parsed.timestamp || forcedTimestamp || new Date().toISOString(),
-        data: parsed,
+        testId: summary.testId,
+        timestamp: summary.timestamp,
         source: source,
-        agent: parsed.agent || 'unknown',
-        serving: serving,
-        model: parsed.model || 'unknown',
-        guides: guidesWithRates
+        agent: summary.agent || 'unknown',
+        serving: summary.serving || 'unknown',
+        model: summary.model || 'unknown',
+        guides: summary.guides || {}
     };
+}
+
+function registerTestData(testId, source, parsed, forcedTimestamp) {
+    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
+    if (summary) {
+        registerSuiteSummary(summary, source);
+    }
 }
 
 async function loadLocalTests() {
@@ -111,27 +68,35 @@ async function loadLocalTests() {
         if (!response.ok) {
             const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
             if (!staticRes.ok) return;
-            const suites = await staticRes.json();
-            manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+            const suitesData = await staticRes.json();
+            if (Array.isArray(suitesData)) {
+                manifest = { suites: suitesData };
+            } else {
+                manifest = suitesData;
+            }
             useResultsPrefix = true;
         } else {
-            manifest = await response.json();
+            const data = await response.json();
+            manifest = Array.isArray(data) ? { suites: data } : data;
         }
 
         for (const suite of manifest.suites) {
-            if (suite.source !== 'local') continue;
-            
-            const testId = suite.id;
-            const suiteTimestamp = suite.timestamp;
-            try {
-                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
-                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+            if (typeof suite === 'object' && suite.testId && suite.guides) {
+                registerSuiteSummary(suite, useResultsPrefix ? 'static' : 'local');
+            } else {
+                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
+                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
+                if (!testId) continue;
+                try {
+                    const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                    const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
+                    if (response.ok) {
+                        const parsed = await response.json();
+                        registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load local test ${testId}:`, e);
                 }
-            } catch (e) {
-                console.warn(`Failed to load local test ${testId}:`, e);
             }
         }
     } catch {
@@ -141,34 +106,18 @@ async function loadLocalTests() {
 
 async function loadRemoteTests() {
     try {
-        const prefixes = [];
-        let pageToken = '';
-        
-        do {
-            const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}${pageToken ? `&pageToken=${pageToken}` : ''}`;
-            const response = await authenticatedFetch(url);
-            if (!response.ok) throw new Error('Failed to fetch remote suites');
-            
-            const data = await response.json();
-            if (data.prefixes) {
-                prefixes.push(...data.prefixes);
-            }
-            pageToken = data.nextPageToken || '';
-        } while (pageToken);
+        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
+        const response = await authenticatedFetch(fileUrl);
+        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
 
-        await Promise.all(prefixes.map(async (prefix) => {
-            const testId = prefix.slice(0, -1);
-            try {
-                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                const response = await authenticatedFetch(fileUrl);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed, null);
+        const manifest = await response.json();
+        if (Array.isArray(manifest) && manifest.length > 0) {
+            for (const item of manifest) {
+                if (item && item.testId) {
+                    registerSuiteSummary(item, 'remote');
                 }
-            } catch (e) {
-                console.warn(`Failed to load remote test ${testId}:`, e);
             }
-        }));
+        }
     } catch (error) {
         console.error('Error loading remote suites:', error);
     }
@@ -314,6 +263,9 @@ function renderGraphs(guideName) {
     const grid = $('#graphs-grid');
     grid.innerHTML = '';
 
+    const params = new URLSearchParams(window.location.search);
+    const highlightTestId = params.get('testId');
+
     const testKeys = Object.keys(allTestData);
     
     // Filter out suites that don't have this guide, or have 0 trials for it
@@ -321,7 +273,9 @@ function renderGraphs(guideName) {
         const run = allTestData[key];
         if (!run.guides || !run.guides[guideName]) return false;
         const g = run.guides[guideName];
-        return g.guidedTotal > 0 || g.unguidedTotal > 0;
+        const gTotal = g.guidedTotal !== undefined ? g.guidedTotal : (g.guided?.total || 0);
+        const uTotal = g.unguidedTotal !== undefined ? g.unguidedTotal : (g.unguided?.total || 0);
+        return gTotal > 0 || uTotal > 0;
     });
 
     if (filteredKeys.length === 0) {
@@ -466,6 +420,14 @@ function renderGraphs(guideName) {
             const x = globalTimeline.length > 1 ? paddingX + i * stepX : globalWidth / 2;
             
             const run = runs.find(r => getDateKey(r.timestamp) === suite.dateKey);
+            
+            const isHighlighted = run && run.testId === highlightTestId;
+            if (isHighlighted) {
+                svgContent += `
+                    <rect x="${x - 12}" y="${paddingY - 5}" width="24" height="${plotHeight + 10}" fill="var(--color-primary)" style="opacity: 0.12; rx: 4px;" />
+                `;
+            }
+
             if (run) {
                 const stats = run.guides[guideName];
                 const yU = rateToY(stats.unguidedRate);
@@ -522,6 +484,19 @@ function renderGraphs(guideName) {
         card.appendChild(chartWrapper);
         grid.appendChild(card);
 
+        // Auto-scroll to highlighted point if it exists in this chart
+        if (highlightTestId) {
+            const highlightedEl = svg.querySelector(`[data-testid="${highlightTestId}"]`);
+            if (highlightedEl) {
+                setTimeout(() => {
+                    const wrapperRect = chartWrapper.getBoundingClientRect();
+                    const elRect = highlightedEl.getBoundingClientRect();
+                    const targetScroll = chartWrapper.scrollLeft + (elRect.left - wrapperRect.left) - (wrapperRect.width / 2) + (elRect.width / 2);
+                    chartWrapper.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                }, 200);
+            }
+        }
+
         svg.querySelectorAll('.timeline-point').forEach(group => {
             group.addEventListener('mouseenter', () => {
                 const combKey = group.getAttribute('data-comb');
@@ -542,16 +517,21 @@ function renderGraphs(guideName) {
                     </div>
                 `;
 
+                const gPassed = stats.guidedPassed !== undefined ? stats.guidedPassed : (stats.guided?.passed || 0);
+                const gTotal = stats.guidedTotal !== undefined ? stats.guidedTotal : (stats.guided?.total || 0);
+                const uPassed = stats.unguidedPassed !== undefined ? stats.unguidedPassed : (stats.unguided?.passed || 0);
+                const uTotal = stats.unguidedTotal !== undefined ? stats.unguidedTotal : (stats.unguided?.total || 0);
+
                 content.innerHTML = `
                     <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.75rem;">${formattedDate}</div>
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <div style="display: flex; justify-content: space-between;">
                             <span>Guided Pass Rate:</span>
-                            <span style="font-weight: 600; color: var(--color-primary);">${stats.guidedRate}% (${stats.guidedPassed}/${stats.guidedTotal})</span>
+                            <span style="font-weight: 600; color: var(--color-primary);">${stats.guidedRate}% (${gPassed}/${gTotal})</span>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>Unguided Pass Rate:</span>
-                            <span style="font-weight: 600; color: var(--text-secondary);">${stats.unguidedRate}% (${stats.unguidedPassed}/${stats.unguidedTotal})</span>
+                            <span style="font-weight: 600; color: var(--text-secondary);">${stats.unguidedRate}% (${uPassed}/${uTotal})</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 4px; margin-top: 4px;">
                             <span style="font-weight: bold;">Uplift:</span>
@@ -594,7 +574,7 @@ function renderGraphs(guideName) {
                 const testId = group.getAttribute('data-testid');
                 const runData = combinations[combKey].find(r => r.testId === testId);
                 if (runData) {
-                    window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}`;
+                    window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}#guide-${guideName}`;
                 }
             });
         });

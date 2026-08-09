@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Utility functions shared between Dashboard and Landing pages.
  */
@@ -71,10 +72,10 @@ export function timeAgo(date) {
 
 export function parseResultKey(key) {
     const parts = key.split(' - ');
-    if (parts.length !== 3) return null;
+    if (parts.length < 2 || parts.length > 3) return null;
     let [task, guide, runType] = parts;
 
-    const featuresMap = window.__featuresMapping;
+    const featuresMap = typeof window !== 'undefined' ? window.__featuresMapping : undefined;
     let isFlipped = false;
 
     if (featuresMap) {
@@ -83,10 +84,10 @@ export function parseResultKey(key) {
         if (isTaskValidGuide && !isGuideValid) {
             isFlipped = true;
         } else if (!isGuideValid && !isTaskValidGuide) {
-            isFlipped = guide === 'task' || guide.endsWith('-task');
+            isFlipped = guide === 'task' || (guide && guide.endsWith('-task'));
         }
     } else {
-        isFlipped = guide === 'task' || guide.endsWith('-task');
+        isFlipped = guide === 'task' || (guide && guide.endsWith('-task'));
     }
 
     if (isFlipped) {
@@ -187,7 +188,7 @@ export function formatTestName(name, isDisciplineSkill = false) {
 
 // Google Identity Services (OAuth) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
-let accessToken = localStorage.getItem('gcs_access_token') || null;
+let accessToken = typeof localStorage !== 'undefined' ? localStorage.getItem('gcs_access_token') : null;
 
 export function getAccessToken() {
     return accessToken;
