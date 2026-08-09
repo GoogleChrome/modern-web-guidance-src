@@ -6,6 +6,7 @@ import {
   buildTargetGraderPrompt,
   buildTargetTaskPrompt,
 } from './gd-dev-prompts.ts';
+import { Agents } from '../harness/config.ts';
 
 test('buildSolutionPrompt includes instructions and paths', () => {
   const prompt = buildSolutionPrompt({
@@ -35,9 +36,9 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
     solutionPatchFiles: {
-      jetski: 'patches/jetski-solution.patch',
-      claude: 'patches/claude-solution.patch',
-      codex: 'patches/codex-solution.patch',
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+      [Agents.CLAUDE_CODE]: 'patches/claude-solution.patch',
+      [Agents.CODEX_CLI]: 'patches/codex-solution.patch',
     },
     zeroPassratePatchFile: 'patches/zero-passrate.patch',
     graderFile: 'grader.ts',
@@ -57,9 +58,9 @@ test('buildTargetGraderPrompt formats failure context correctly when provided', 
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
     solutionPatchFiles: {
-      jetski: 'patches/jetski-solution.patch',
-      claude: 'patches/claude-solution.patch',
-      codex: 'patches/codex-solution.patch',
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+      [Agents.CLAUDE_CODE]: 'patches/claude-solution.patch',
+      [Agents.CODEX_CLI]: 'patches/codex-solution.patch',
     },
     zeroPassratePatchFile: 'patches/zero-passrate.patch',
     graderFile: 'grader.ts',

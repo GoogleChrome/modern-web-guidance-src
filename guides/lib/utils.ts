@@ -2,63 +2,33 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { rootDir, baseAppsDir } from '../../lib/paths.ts';
-import { applyPatchSync } from '../../lib/patch-utils.ts';
 import {
   createIsolatedHome,
-  cleanupIsolatedHome,
   createTrustedFolders,
   spawnAsync,
   setupAgentCredentials,
   getAgentCommandAndArgs,
-  type AgentName,
 } from '../../harness/lib/agent-shared.ts';
+import { Agents } from '../../harness/config.ts';
 
-export { setupAgentCredentials, getAgentCommandAndArgs, type AgentName };
-
-export function stageBaseAppWorkspace(
-  baseApp: string,
-  patchFile?: string,
-  prefix: string = 'grade-run',
-  zeroPassrateFile?: string
-): { workDir: string; cleanup: () => void } {
-  const tempHome = createIsolatedHome(prefix);
-  const workDir = path.join(tempHome, baseApp);
-  fs.mkdirSync(workDir, { recursive: true });
-
+export async function copyBaseAppToWorkspace(baseApp: string, destDir: string): Promise<void> {
   const refBaseAppDir = path.join(baseAppsDir, baseApp);
-  if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workDir, {
-      recursive: true,
-      filter: (src) => !src.includes('/dist') && !src.includes('/.astro'),
-    });
+  if (!fs.existsSync(refBaseAppDir)) {
+    console.warn(`Source base app not found at ${refBaseAppDir}`);
+    return;
   }
-
-  if (zeroPassrateFile && fs.existsSync(zeroPassrateFile)) {
-    if (fs.readFileSync(zeroPassrateFile, 'utf8').trim().length > 0) {
-      applyPatchSync(workDir, zeroPassrateFile);
-    }
-  }
-
-  if (patchFile && fs.existsSync(patchFile)) {
-    if (fs.readFileSync(patchFile, 'utf8').trim().length > 0) {
-      applyPatchSync(workDir, patchFile);
-    }
-  }
-
-  const cleanup = () => {
-    try {
-      cleanupIsolatedHome(tempHome);
-    } catch (e) {}
-  };
-
-  return { workDir, cleanup };
+  await fs.promises.cp(refBaseAppDir, destDir, {
+    recursive: true,
+    filter: (src) => !src.includes('/dist') && !src.includes('/.astro') && !src.includes('node_modules'),
+  });
 }
+
 
 export async function runCommand(command: string, args: string[], cwd?: string, env?: NodeJS.ProcessEnv): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
-      env: env || { ...process.env },
+      env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -81,8 +51,8 @@ export async function runCommand(command: string, args: string[], cwd?: string, 
   });
 }
 
-export async function runAgentForModel(
-  agent: AgentName,
+export async function runAgent(
+  agent: Agents,
   prompt: string,
   workDir?: string,
   options: { captureOutput?: boolean } = {}
@@ -108,13 +78,13 @@ export async function runAgentForModel(
   return '';
 }
 
-export function setupIsolatedWorkDir(prefix: string, relativeWorkSubdir?: string, agent?: AgentName): string {
-  const tempHome = createIsolatedHome(prefix);
+export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string, agent?: Agents): string {
+  const tempHome = createIsolatedHome(`gd-gen-${suffix}`);
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
   const geminiDest = path.join(tempHome, '.gemini');
-  const effectiveAgent: AgentName = agent ?? (process.env.GD_DEV_USE_JETSKI === '1' ? 'jetski' : 'gemini');
+  const effectiveAgent: Agents = agent ?? (process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.GEMINI_CLI);
   setupAgentCredentials(effectiveAgent, tempHome);
 
   createTrustedFolders(geminiDest, [tempHome]);

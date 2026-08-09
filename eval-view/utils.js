@@ -1,3 +1,5 @@
+/// <reference path="./evals.d.ts" />
+
 /**
  * Utility functions shared between Dashboard and Landing pages.
  */

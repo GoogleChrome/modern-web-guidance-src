@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import config from '../config.ts';
-import { runAgentForModel } from '../../guides/lib/utils.ts';
+import { runAgent } from '../../guides/lib/utils.ts';
 import { getDefaultSolutionAgent } from '../../lib/guide-validation.ts';
 
-describe('runAgentForModel routing and argument building', () => {
+describe('runAgent routing and argument building', () => {
   let tempDir: string;
   let mockCliPath: string;
   let originalGeminiCli: string;
@@ -53,7 +53,7 @@ echo "mock-cli ran with args: $@"
   test('should invoke Gemini CLI by default with --yolo', async () => {
     delete process.env.GD_DEV_USE_JETSKI;
     
-    const output = await runAgentForModel(getDefaultSolutionAgent(), 'hello world', tempDir, { captureOutput: true });
+    const output = await runAgent(getDefaultSolutionAgent(), 'hello world', tempDir, { captureOutput: true });
     assert.ok(output.includes('mock-cli ran with args: -p hello world --yolo'));
   });
 
@@ -61,7 +61,7 @@ echo "mock-cli ran with args: $@"
     process.env.GD_DEV_USE_JETSKI = '1';
 
     try {
-      const output = await runAgentForModel(getDefaultSolutionAgent(), 'hello world', tempDir, { captureOutput: true });
+      const output = await runAgent(getDefaultSolutionAgent(), 'hello world', tempDir, { captureOutput: true });
       assert.ok(output.includes('mock-cli ran with args: -p hello world'));
       assert.ok(!output.includes('--yolo'));
     } finally {

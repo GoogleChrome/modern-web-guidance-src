@@ -3,10 +3,10 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 
-// Import shared utilities (using relative paths from guides/)
 import { validateMacros } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
 import { rootDir, guidesDir } from './paths.ts';
+import { Agents } from '../harness/config.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -219,8 +219,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill || isDisciplineGuide) {
-        // Discipline skills/guides don't require the same frontmatter as use cases
+      if (isDisciplineSkill || isDisciplineGuide || !hasGuide) {
+        // Discipline skills/guides and stubs don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
 
@@ -285,29 +285,29 @@ export function getSupportedBaseApps(): string[] {
 
 export const TARGETS_DIR = 'targets';
 export const PATCHES_DIR = 'patches';
-export const ALL_SOLUTION_AGENTS = ['gemini', 'jetski', 'claude', 'codex'] as const;
-export type SolutionAgent = (typeof ALL_SOLUTION_AGENTS)[number];
 
-export function getDefaultSolutionAgent(): 'gemini' | 'jetski' {
-  return process.env.GD_DEV_USE_JETSKI === '1' ? 'jetski' : 'gemini';
+export type SolutionAgent =
+  | typeof Agents.GEMINI_CLI
+  | typeof Agents.JETSKI_CLI
+  | typeof Agents.CLAUDE_CODE
+  | typeof Agents.CODEX_CLI;
+
+export function getDefaultSolutionAgent(): SolutionAgent {
+  return process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.GEMINI_CLI;
 }
 
 export function getActiveSolutionAgents(targetDir?: string): SolutionAgent[] {
-  const defaultAgent = getDefaultSolutionAgent();
-  if (!targetDir || !fs.existsSync(targetDir)) {
-    return [defaultAgent, 'claude', 'codex'];
-  }
-  const hasGemini = fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.gemini));
-  const hasJetski = fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.jetski));
-  const primary: SolutionAgent = hasGemini ? 'gemini' : (hasJetski ? 'jetski' : defaultAgent);
-  return [primary, 'claude', 'codex'];
+  const hasGemini = Boolean(targetDir && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.GEMINI_CLI])));
+  const hasJetski = Boolean(targetDir && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.JETSKI_CLI])));
+  const primary: SolutionAgent = hasGemini ? Agents.GEMINI_CLI : (hasJetski ? Agents.JETSKI_CLI : getDefaultSolutionAgent());
+  return [primary, Agents.CLAUDE_CODE, Agents.CODEX_CLI];
 }
 
 export const SOLUTION_PATCH_FILES: Record<SolutionAgent, string> = {
-  gemini: path.join(PATCHES_DIR, 'gemini-solution.patch'),
-  jetski: path.join(PATCHES_DIR, 'jetski-solution.patch'),
-  claude: path.join(PATCHES_DIR, 'claude-solution.patch'),
-  codex: path.join(PATCHES_DIR, 'codex-solution.patch'),
+  [Agents.GEMINI_CLI]: path.join(PATCHES_DIR, 'gemini-solution.patch'),
+  [Agents.JETSKI_CLI]: path.join(PATCHES_DIR, 'jetski-solution.patch'),
+  [Agents.CLAUDE_CODE]: path.join(PATCHES_DIR, 'claude-solution.patch'),
+  [Agents.CODEX_CLI]: path.join(PATCHES_DIR, 'codex-solution.patch'),
 };
 export const ZERO_PASSRATE_PATCH_FILE = path.join(PATCHES_DIR, 'zero-passrate.patch');
 
@@ -516,15 +516,15 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
       const targetDir = path.join(targetsDir, baseApp);
       const exists = fs.existsSync(targetDir) && fs.statSync(targetDir).isDirectory();
       const hasPrimarySolution =
-        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.gemini)) ||
-        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.jetski));
+        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.GEMINI_CLI])) ||
+        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.JETSKI_CLI]));
       const appInv: TargetInventory = {
         name: baseApp,
         dir: targetDir,
         hasSolution: exists &&
           hasPrimarySolution &&
-          fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.claude)) &&
-          fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES.codex)),
+          fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.CLAUDE_CODE])) &&
+          fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.CODEX_CLI])),
         hasZeroPassrate: exists && fs.existsSync(path.join(targetDir, ZERO_PASSRATE_PATCH_FILE)),
         hasGrader: exists && fs.existsSync(path.join(targetDir, GRADER_FILE)),
         hasTask: exists && fs.existsSync(path.join(targetDir, TASK_FILE)),
