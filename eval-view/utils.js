@@ -310,7 +310,6 @@ export function categorizeActionClient(name, params, thought) {
 
 export function normalizeTrajectoryClient(summary) {
   if (!summary) return summary;
-  summary.schemaVersion = "2.0";
   if (Array.isArray(summary.steps)) {
     for (const step of summary.steps) {
       if (step.action && !step.action.canonicalCategory) {
