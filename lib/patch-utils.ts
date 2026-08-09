@@ -98,3 +98,198 @@ export function initGitRepo(workDir: string): void {
     console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
   }
 }
+
+interface EditOp {
+  type: 'equal' | 'add' | 'remove';
+  oldIndex?: number;
+  newIndex?: number;
+  line: string;
+}
+
+/**
+ * Generates an aligned LCS unified diff of two strings for LLM context and file comparison.
+ * Trims common prefix and suffix to avoid quadratic allocations on large files.
+ */
+export function generateUnifiedDiff(
+  oldText: string,
+  newText: string,
+  oldLabel = 'Old',
+  newLabel = 'New',
+  contextLines = 3
+): string {
+  if (oldText === newText) {
+    return 'No differences detected.';
+  }
+
+  const oldLines = oldText.split(/\r?\n/);
+  const newLines = newText.split(/\r?\n/);
+
+  // 1. Trim common prefix
+  let prefixCount = 0;
+  while (
+    prefixCount < oldLines.length &&
+    prefixCount < newLines.length &&
+    oldLines[prefixCount] === newLines[prefixCount]
+  ) {
+    prefixCount++;
+  }
+
+  // 2. Trim common suffix
+  let suffixCount = 0;
+  while (
+    suffixCount < oldLines.length - prefixCount &&
+    suffixCount < newLines.length - prefixCount &&
+    oldLines[oldLines.length - 1 - suffixCount] === newLines[newLines.length - 1 - suffixCount]
+  ) {
+    suffixCount++;
+  }
+
+  const midOld = oldLines.slice(prefixCount, oldLines.length - suffixCount);
+  const midNew = newLines.slice(prefixCount, newLines.length - suffixCount);
+  const m = midOld.length;
+  const n = midNew.length;
+
+  const ops: EditOp[] = [];
+
+  // Add prefix equal ops
+  for (let i = 0; i < prefixCount; i++) {
+    ops.push({ type: 'equal', oldIndex: i + 1, newIndex: i + 1, line: oldLines[i] });
+  }
+
+  // Compute LCS on diverging middle lines
+  if (m > 0 || n > 0) {
+    const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (midOld[i - 1] === midNew[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+
+    const midOps: EditOp[] = [];
+    let i = m;
+    let j = n;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && midOld[i - 1] === midNew[j - 1]) {
+        midOps.push({
+          type: 'equal',
+          oldIndex: prefixCount + i,
+          newIndex: prefixCount + j,
+          line: midOld[i - 1]
+        });
+        i--;
+        j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        midOps.push({
+          type: 'add',
+          newIndex: prefixCount + j,
+          line: midNew[j - 1]
+        });
+        j--;
+      } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+        midOps.push({
+          type: 'remove',
+          oldIndex: prefixCount + i,
+          line: midOld[i - 1]
+        });
+        i--;
+      }
+    }
+    midOps.reverse();
+    ops.push(...midOps);
+  }
+
+  // Add suffix equal ops
+  const suffixOldStart = oldLines.length - suffixCount;
+  const suffixNewStart = newLines.length - suffixCount;
+  for (let i = 0; i < suffixCount; i++) {
+    ops.push({
+      type: 'equal',
+      oldIndex: suffixOldStart + i + 1,
+      newIndex: suffixNewStart + i + 1,
+      line: oldLines[suffixOldStart + i]
+    });
+  }
+
+  if (ops.every((op) => op.type === 'equal')) {
+    return 'No differences detected.';
+  }
+
+  // Generate unified diff hunks
+  const hunks: {
+    oldStart: number;
+    oldLinesCount: number;
+    newStart: number;
+    newLinesCount: number;
+    lines: string[];
+  }[] = [];
+
+  let opIndex = 0;
+  while (opIndex < ops.length) {
+    while (opIndex < ops.length && ops[opIndex].type === 'equal') {
+      opIndex++;
+    }
+    if (opIndex >= ops.length) break;
+
+    const hunkStart = Math.max(0, opIndex - contextLines);
+    let hunkEnd = opIndex;
+
+    while (hunkEnd < ops.length) {
+      if (ops[hunkEnd].type !== 'equal') {
+        hunkEnd++;
+      } else {
+        let nextChange = hunkEnd;
+        while (nextChange < ops.length && ops[nextChange].type === 'equal' && nextChange - hunkEnd < 2 * contextLines) {
+          nextChange++;
+        }
+        if (nextChange < ops.length && ops[nextChange].type !== 'equal') {
+          hunkEnd = nextChange;
+        } else {
+          break;
+        }
+      }
+    }
+
+    const actualEnd = Math.min(ops.length - 1, hunkEnd + contextLines - 1);
+    const hunkOps = ops.slice(hunkStart, actualEnd + 1);
+
+    let oldStart = 0;
+    let newStart = 0;
+    let oldLinesCount = 0;
+    let newLinesCount = 0;
+    const lines: string[] = [];
+
+    for (const op of hunkOps) {
+      if (op.oldIndex !== undefined && oldStart === 0) oldStart = op.oldIndex;
+      if (op.newIndex !== undefined && newStart === 0) newStart = op.newIndex;
+
+      if (op.type === 'equal') {
+        oldLinesCount++;
+        newLinesCount++;
+        lines.push(`  ${op.line}`);
+      } else if (op.type === 'remove') {
+        oldLinesCount++;
+        lines.push(`- ${op.line}`);
+      } else if (op.type === 'add') {
+        newLinesCount++;
+        lines.push(`+ ${op.line}`);
+      }
+    }
+
+    if (oldStart === 0) oldStart = 1;
+    if (newStart === 0) newStart = 1;
+
+    hunks.push({ oldStart, oldLinesCount, newStart, newLinesCount, lines });
+    opIndex = actualEnd + 1;
+  }
+
+  let result = `--- ${oldLabel}\n+++ ${newLabel}\n`;
+  for (const hunk of hunks) {
+    result += `@@ -${hunk.oldStart},${hunk.oldLinesCount} +${hunk.newStart},${hunk.newLinesCount} @@\n`;
+    result += hunk.lines.join('\n') + '\n';
+  }
+  return result.trim();
+}
