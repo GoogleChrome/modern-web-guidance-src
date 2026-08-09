@@ -10,6 +10,20 @@ import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } fro
 import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory } from '../agents/pi-agent.ts';
 
 export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<GuideUsage> {
+  const summaryPath = path.join(dirPath, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (Array.isArray(summary.retrievedGuides) || Array.isArray(summary.fileReadGuides)) {
+        return {
+          retrievedGuides: summary.retrievedGuides || [],
+          fileReadGuides: summary.fileReadGuides || []
+        };
+      }
+    } catch {}
+  }
+
+  // Legacy Fallback (when summary is missing or old format)
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
     const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
     if (!fs.existsSync(logPath)) {
@@ -64,6 +78,17 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
 }
 
 export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (Array.isArray(summary.toolsUsed)) {
+        return summary.toolsUsed;
+      }
+    } catch {}
+  }
+
+  // Legacy Fallback
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
     if (fs.existsSync(path.join(dir, MODERN_WEB_LOG_FILE))) {
       return ['modern-web-guidance'];

@@ -16,6 +16,17 @@ function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPat
 }
 
 export function extractModelFromResults(resultsDir: string, agent: string): string {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.model && summary.model !== 'unknown') {
+        return summary.model;
+      }
+    } catch {}
+  }
+
+  // Legacy Fallback
   if (agent === Agents.GEMINI_CLI) {
     return extractGeminiCliModel(resultsDir);
   } else if (agent === Agents.JETSKI_CLI) {
@@ -31,6 +42,17 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
 }
 
 export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | null {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.tokenUsage) {
+        return summary.tokenUsage;
+      }
+    } catch {}
+  }
+
+  // Legacy Fallback
   if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir) ?? null;
   if (agent === Agents.JETSKI_CLI) return extractJetskiCliTokenUsage(resultsDir) ?? null;
   if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;

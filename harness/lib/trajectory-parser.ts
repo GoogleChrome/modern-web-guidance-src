@@ -2,7 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { parseJsonlFile } from './agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
-import { Agents } from '../config.ts';
+import { Agents, Serving } from '../config.ts';
+
+// Import agent-specific extractors (accepting circular dependency for runtime execution)
+import { parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
+import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory, extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gemini-cli-agent.ts';
+import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory, extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
+import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory, extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
+import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory, extractPiModel, extractPiTokenUsage } from '../agents/pi-agent.ts';
 
 export interface StandardizedStep {
   stepNumber: number;
@@ -552,11 +559,17 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string, 
     }
   }
 
+  const legacy = parseJetskiCliSession(dirPath);
   return finalizeTrajectorySummary({
     agent: agentName,
     serving,
     steps,
-    initialPrompt: extractInitialPromptFromLogs(steps, chatText)
+    initialPrompt: extractInitialPromptFromLogs(steps, chatText),
+    model: legacy.model,
+    tokenUsage: legacy.tokenUsage,
+    retrievedGuides: legacy.retrievedGuides,
+    fileReadGuides: legacy.fileReadGuides,
+    toolsUsed: legacy.toolsUsed
   });
 }
 
@@ -659,10 +672,56 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
 
       if (agentName === Agents.CLAUDE_CODE || agentName.toLowerCase().includes('claude')) {
         summary = parseClaudeTrajectory(logData, serving);
+        const [guides, tools, model, tokenUsage] = await Promise.all([
+          collectClaudeGuidesFromTrajectory(targetDir, serving),
+          Promise.resolve(collectClaudeToolsFromTrajectory(targetDir)),
+          Promise.resolve(extractClaudeCodeModel(targetDir)),
+          Promise.resolve(extractClaudeCodeTokenUsage(targetDir))
+        ]);
+        summary.retrievedGuides = guides.retrievedGuides;
+        summary.fileReadGuides = guides.fileReadGuides;
+        summary.toolsUsed = tools;
+        summary.model = model;
+        summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.GEMINI_CLI || agentName.toLowerCase().includes('gemini')) {
         summary = parseGeminiTrajectory(logData, serving);
+        const [guides, tools, model, tokenUsage] = await Promise.all([
+          collectGeminiGuidesFromTrajectory(targetDir, serving),
+          Promise.resolve(collectGeminiToolsFromTrajectory(targetDir)),
+          Promise.resolve(extractGeminiCliModel(targetDir)),
+          Promise.resolve(extractGeminiCliTokenUsage(targetDir))
+        ]);
+        summary.retrievedGuides = guides.retrievedGuides;
+        summary.fileReadGuides = guides.fileReadGuides;
+        summary.toolsUsed = tools;
+        summary.model = model;
+        summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.CODEX_CLI || agentName.toLowerCase().includes('codex')) {
         summary = parseCodexTrajectory(logData, serving);
+        const [guides, tools, model, tokenUsage] = await Promise.all([
+          collectCodexGuidesFromTrajectory(targetDir, serving),
+          Promise.resolve(collectCodexToolsFromTrajectory(targetDir)),
+          Promise.resolve(extractCodexCliModel(targetDir)),
+          Promise.resolve(extractCodexCliTokenUsage(targetDir))
+        ]);
+        summary.retrievedGuides = guides.retrievedGuides;
+        summary.fileReadGuides = guides.fileReadGuides;
+        summary.toolsUsed = tools;
+        summary.model = model;
+        summary.tokenUsage = tokenUsage;
+      } else if (agentName === Agents.PI || agentName.toLowerCase().includes('pi')) {
+        summary = parseCodexTrajectory(logData, serving); // Fallback to Codex parser for steps
+        const [guides, tools, model, tokenUsage] = await Promise.all([
+          collectPiGuidesFromTrajectory(targetDir, serving),
+          Promise.resolve(collectPiToolsFromTrajectory(targetDir)),
+          Promise.resolve(extractPiModel(targetDir)),
+          Promise.resolve(extractPiTokenUsage(targetDir))
+        ]);
+        summary.retrievedGuides = guides.retrievedGuides;
+        summary.fileReadGuides = guides.fileReadGuides;
+        summary.toolsUsed = tools;
+        summary.model = model;
+        summary.tokenUsage = tokenUsage;
       } else {
         console.warn(`[TrajectoryParser] Warning: Unknown agent "${agentName}". Attempting generic Codex/standard trajectory parsing. To add another agent, register a parser in generateNormalizedTrajectory.`);
         summary = parseCodexTrajectory(logData, serving);
@@ -673,6 +732,18 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
 
       if (summary) {
         finalizeTrajectorySummary(summary);
+
+        // Merge MCP logs if running in MCP mode or if it is desktop Jetski
+        if (serving === Serving.MCP || agentName === Agents.JETSKI) {
+          const mcpGuides = extractGuidesFromMcpLog(targetDir);
+          summary.retrievedGuides = [...new Set([...(summary.retrievedGuides || []), ...mcpGuides])];
+          if (!summary.toolsUsed) {
+            summary.toolsUsed = ['modern-web-guidance'];
+          } else if (!summary.toolsUsed.includes('modern-web-guidance')) {
+            summary.toolsUsed.push('modern-web-guidance');
+          }
+        }
+
         // Inject token usage if available
         const runtimePath = path.join(targetDir, 'runtime.json');
         if (fs.existsSync(runtimePath)) {
@@ -721,5 +792,30 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       });
       fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), JSON.stringify(placeholder, null, 2), 'utf8');
     } catch {}
+  }
+}
+
+function extractGuidesFromMcpLog(dirPath: string): string[] {
+  const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
+  if (!fs.existsSync(logPath)) return [];
+  try {
+    const logContent = fs.readFileSync(logPath, 'utf8').trim();
+    if (!logContent) return [];
+    const lines = logContent.split('\n');
+    const toolCalls: any[] = [];
+    for (const line of lines) {
+      if (line.trim().startsWith('{')) {
+        try {
+          toolCalls.push(JSON.parse(line));
+        } catch {}
+      }
+    }
+    return toolCalls
+      .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+      .flatMap(call => call.result.map((r: any) => r.id || ''))
+      .filter(Boolean);
+  } catch (e) {
+    console.error(`Error reading MCP log:`, e);
+    return [];
   }
 }
