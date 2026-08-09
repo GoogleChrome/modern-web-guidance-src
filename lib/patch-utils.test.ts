@@ -111,5 +111,37 @@ describe('capturePatchFromGit', () => {
   });
 });
 
+describe('generateUnifiedDiff', () => {
+  test('returns "No differences detected." for identical content', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    assert.strictEqual(generateUnifiedDiff('const a = 1;\n', 'const a = 1;\n'), 'No differences detected.');
+    assert.strictEqual(generateUnifiedDiff('', ''), 'No differences detected.');
+  });
+
+  test('generates unified diff for modified lines with custom labels', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const oldText = 'line 1\nline 2\nline 3';
+    const newText = 'line 1\nline 2 modified\nline 3';
+    const diff = generateUnifiedDiff(oldText, newText, 'OldFile', 'NewFile');
+
+    assert.match(diff, /^--- OldFile/m);
+    assert.match(diff, /^\+\+\+ NewFile/m);
+    assert.match(diff, /^@@ -\d+,\d+ \+\d+,\d+ @@/m);
+    assert.match(diff, /^- line 2/m);
+    assert.match(diff, /^\+ line 2 modified/m);
+  });
+
+  test('handles insertions at beginning, middle, and end correctly with prefix/suffix trimming', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const oldText = 'header\nshared 1\nshared 2\nfooter';
+    const newText = 'top new\nheader\nshared 1\nmiddle inserted\nshared 2\nfooter\nbottom new';
+    const diff = generateUnifiedDiff(oldText, newText);
+
+    assert.match(diff, /^\+ top new/m);
+    assert.match(diff, /^\+ middle inserted/m);
+    assert.match(diff, /^\+ bottom new/m);
+  });
+});
+
 
 
