@@ -1,5 +1,6 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, parseResultKey, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 
 let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
@@ -7,6 +8,10 @@ let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentServingFilter = 'all';
 let currentModelFilter = 'all';
+
+// Guides Pivot Table Sort State
+let currentGuideSort = 'alphabetic';
+let currentGuideSortDir = 'asc';
 
 function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
@@ -22,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Initialize UI
         setupTestFilters(); // New filter setup
         setupTableFilters();
+        setupInsightsTimelineFilters();
 
         const params = new URLSearchParams(window.location.search);
         
@@ -168,6 +174,35 @@ function setupTableFilters() {
     });
 }
 
+function setupInsightsTimelineFilters() {
+    const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
+
+    if (limitInput) {
+        limitInput.addEventListener('change', () => {
+            let val = parseInt(limitInput.value);
+            if (isNaN(val) || val < 1) val = 15;
+            limitInput.value = val.toString();
+            renderPivotInsights();
+        });
+        limitInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                limitInput.blur();
+            }
+        });
+    }
+
+    if (showAllCheck) {
+        showAllCheck.addEventListener('change', () => {
+            if (limitInput) {
+                limitInput.disabled = showAllCheck.checked;
+                limitInput.style.opacity = showAllCheck.checked ? '0.5' : '1';
+            }
+            renderPivotInsights();
+        });
+    }
+}
+
 function syncSelectStyles(el) {
     el.classList.toggle('is-filtered', el.value !== 'all');
 }
@@ -268,9 +303,12 @@ async function loadLocalTests() {
             // Try fetching suites.gen.json as fallback for static mode
             const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
             if (!staticRes.ok) return; // Silent fail if both fail
-            const suites = await staticRes.json();
-            // convert array of strings to expected format [{id: string, source: 'local'}]
-            manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+            const suitesData = await staticRes.json();
+            if (Array.isArray(suitesData)) {
+                manifest = { suites: suitesData };
+            } else {
+                manifest = suitesData;
+            }
             useResultsPrefix = true;
         } else {
             manifest = await response.json();
@@ -282,19 +320,22 @@ async function loadLocalTests() {
 
         // Load local test data
         for (const suite of manifest.suites) {
-            if (suite.source !== 'local') continue;
-            
-            const testId = suite.id;
-            const suiteTimestamp = suite.timestamp;
-            try {
-                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
-                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+            if (typeof suite === 'object' && suite.testId && suite.guidedStats) {
+                registerSuiteSummary(suite, 'local');
+            } else {
+                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
+                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
+                if (!testId) continue;
+                try {
+                    const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                    const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
+                    if (response.ok) {
+                        const parsed = await response.json();
+                        registerTestData(testId, 'local', parsed, suiteTimestamp);
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load local test ${testId}:`, e);
                 }
-            } catch (e) {
-                console.warn(`Failed to load local test ${testId}:`, e);
             }
         }
     } catch {
@@ -304,41 +345,20 @@ async function loadLocalTests() {
 
 async function loadRemoteTests() {
     try {
-        const prefixes = [];
-        let pageToken = '';
-        
-        // Paginate GCS to retrieve all prefixes without truncation limits
-        do {
-            const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}${pageToken ? `&pageToken=${pageToken}` : ''}`;
-            const response = await authenticatedFetch(url);
-            if (!response.ok) throw new Error('Failed to fetch remote suites');
-            
-            const data = await response.json();
-            if (data.prefixes) {
-                prefixes.push(...data.prefixes);
+        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
+        const response = await authenticatedFetch(fileUrl);
+        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
+
+        const manifest = await response.json();
+        if (Array.isArray(manifest) && manifest.length > 0) {
+            document.getElementById('empty-state').style.display = 'none';
+            for (const item of manifest) {
+                if (item && item.testId) {
+                    registerSuiteSummary(item, 'remote');
+                }
             }
-            pageToken = data.nextPageToken || '';
-        } while (pageToken);
-        
-        if (prefixes.length > 0) {
-             document.getElementById('empty-state').style.display = 'none';
         }
 
-        // Load remote test data in parallel
-        await Promise.all(prefixes.map(async (prefix) => {
-            const testId = prefix.slice(0, -1); // Remove trailing slash
-            try {
-                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                const response = await authenticatedFetch(fileUrl);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed);
-                }
-            } catch (e) {
-                console.warn(`Failed to load remote test ${testId}:`, e);
-            }
-        }));
-        
         // Re-render UI now that we have remote data
         const params = new URLSearchParams(window.location.search);
         let initialTests = params.get('tests');
@@ -353,32 +373,38 @@ async function loadRemoteTests() {
     }
 }
 
-function registerTestData(testId, source, parsed, forcedTimestamp) {
-    let serving = 'unknown';
-    if (parsed.serving !== undefined) {
-        serving = parsed.serving;
-    } else if (parsed.enableSkills !== undefined) {
-        serving = parsed.enableSkills ? 'skills' : 'mcp';
-    }
-
-    const compoundKey = `${testId}|||${source}`;
+function registerSuiteSummary(summary, source) {
+    const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
-        testId: testId,
-        timestamp: parsed.timestamp || forcedTimestamp || new Date().toISOString(),
-        data: parsed,
+        testId: summary.testId,
+        timestamp: summary.timestamp,
         source: source,
-        agent: parsed.agent || 'unknown',
-        serving: serving,
-        model: parsed.model || 'unknown',
-        toolActivationRate: parsed.summary?.toolActivationRate || 0,
-        guideUsageRate: parsed.summary?.guideUsageRate || 0
+        agent: summary.agent || 'unknown',
+        serving: summary.serving || 'unknown',
+        model: summary.model || 'unknown',
+        taskCount: summary.taskCount || 0,
+        maxRuns: summary.maxRuns || 1,
+        guidedStats: summary.guidedStats || { passed: 0, total: 0 },
+        unguidedStats: summary.unguidedStats || { passed: 0, total: 0 },
+        earlyFailureRate: summary.earlyFailureRate || 0,
+        guides: summary.guides || {},
+        chartData: summary.chartData || { labels: [], guided: [], unguided: [] },
+        data: summary.data || null
     };
     
     updateFilterOptions('filter-model-group', 'model');
     updateFilterOptions('filter-serving-group', 'serving');
     updateServingFilterOptions();
     updateAgentFilterOptions();
+}
+
+function registerTestData(testId, source, parsed, forcedTimestamp) {
+    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
+    if (summary) {
+        summary.data = parsed;
+        registerSuiteSummary(summary, source);
+    }
 }
 
 function updateFilterOptions(groupId, key) {
@@ -459,8 +485,6 @@ function renderSuites() {
         if (currentServingFilter !== 'all' && testInfo.serving !== currentServingFilter) return;
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
-        const data = testInfo.data;
-        const results = data.results;
         let _date = new Date(testInfo.timestamp);
         
         // Match Action Date logic from dashboard.js: 
@@ -502,8 +526,8 @@ function renderSuites() {
             ? _date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
             : prettyTimestampStr;
 
-        const gStats = calculateGroupTotalStats(results, 'guided');
-        const uStats = calculateGroupTotalStats(results, 'unguided');
+        const gStats = testInfo.guidedStats || { passed: 0, total: 0 };
+        const uStats = testInfo.unguidedStats || { passed: 0, total: 0 };
 
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
@@ -511,13 +535,9 @@ function renderSuites() {
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
         const timeAgoStr = timeAgo(_date);
 
-        const scenarioKeys = Object.keys(data.results || {});
-        const distinctScenarios = new Set(scenarioKeys.map(k => k.replace(' - guided', '').replace(' - unguided', '')));
-        const taskCount = data.summary && data.summary.taskCount ? data.summary.taskCount : distinctScenarios.size;
-        let maxRuns = 1;
-        scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
-
-        const earlyFailureRate = data.summary?.unguidedEarlyFailureRate || 0;
+        const taskCount = testInfo.taskCount || 0;
+        const maxRuns = testInfo.maxRuns || 1;
+        const earlyFailureRate = testInfo.earlyFailureRate || 0;
         const isFaulty = earlyFailureRate === 100;
 
         const { label, ldap } = formatSuiteLabel(testInfo);
@@ -607,9 +627,9 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const results = testInfo.data.results;
-    const { labels, guided, unguided } = calculateChartData(results);
-    if (labels.length < 1) return;
+    const chartData = testInfo.chartData || (testInfo.data?.results ? calculateChartData(testInfo.data.results) : null);
+    if (!chartData || !chartData.labels || chartData.labels.length < 1) return;
+    const { labels, guided, unguided } = chartData;
 
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
@@ -722,25 +742,7 @@ function getAgentBadge(agentName) {
     return '';
 }
 
-function calculateGroupTotalStats(results, groupType) {
-    let passed = 0;
-    let total = 0;
 
-    if (!results) return { passed, total }; // Guard against missing results
-
-    Object.keys(results).forEach(key => {
-        // key format: "scenario - prompt - agent"
-        if (key.endsWith(` - ${groupType}`)) {
-            results[key].forEach(run => {
-                const s = getRunStats(run.results);
-                passed += s.passed;
-                total += s.total;
-            });
-        }
-    });
-
-    return { passed, total };
-}
 
 function getSortedTestIds() {
     // Return only SELECTED tests, sorted by date
@@ -752,7 +754,38 @@ function getSortedTestIds() {
 }
 
 function renderPivotInsights() {
-    const testIds = getSortedTestIds(); // Uses selected filters!
+    let testIds = getSortedTestIds(); // Uses selected filters!
+
+    const limitInput = /** @type {HTMLInputElement} */ (document.getElementById('insights-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement} */ (document.getElementById('insights-show-all-check'));
+    const showAll = showAllCheck ? showAllCheck.checked : false;
+    const limit = limitInput ? (parseInt(limitInput.value) || 15) : 15;
+
+    if (!showAll && testIds.length > 0) {
+        // Get all unique dates for these test runs
+        const datesMap = new Map();
+        testIds.forEach(id => {
+            const testInfo = allTestData[id];
+            if (testInfo) {
+                const dateKey = testInfo.timestamp.split('T')[0];
+                datesMap.set(dateKey, true);
+            }
+        });
+        
+        // Sort dates chronologically
+        const sortedDates = Array.from(datesMap.keys()).sort((a, b) => a.localeCompare(b));
+        
+        // Slice the last N dates
+        const activeDates = new Set(sortedDates.slice(-limit));
+        
+        // Filter testIds to only include runs falling on active dates
+        testIds = testIds.filter(id => {
+            const testInfo = allTestData[id];
+            if (!testInfo) return false;
+            const dateKey = testInfo.timestamp.split('T')[0];
+            return activeDates.has(dateKey);
+        });
+    }
     const grouped = {
         agent: {},
         serving: {},
@@ -764,9 +797,8 @@ function renderPivotInsights() {
         const testInfo = allTestData[compoundKey];
         if (!testInfo) return;
         
-        const data = testInfo.data;
-        const gStats = calculateGroupTotalStats(data.results, 'guided');
-        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+        const gStats = testInfo.guidedStats || { passed: 0, total: 0 };
+        const uStats = testInfo.unguidedStats || { passed: 0, total: 0 };
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
         const uplift = gRate - uRate;
@@ -780,31 +812,10 @@ function renderPivotInsights() {
         if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
         grouped.model[testInfo.model].push({ uplift, uRate, gRate });
 
-        // Calculate guide-specific statistics for this test run
-        const suiteGuides = {};
-        if (data.results) {
-            Object.keys(data.results).forEach(key => {
-                const parsedKey = parseResultKey(key);
-                if (parsedKey) {
-                    const { guide, runType } = parsedKey;
-                    if (!suiteGuides[guide]) {
-                        suiteGuides[guide] = {
-                            guided: { passed: 0, total: 0 },
-                            unguided: { passed: 0, total: 0 }
-                        };
-                    }
-                    data.results[key].forEach(run => {
-                        const s = getRunStats(run.results);
-                        suiteGuides[guide][runType].passed += s.passed;
-                        suiteGuides[guide][runType].total += s.total;
-                    });
-                }
-            });
-        }
-
+        const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
-            const gG = suiteGuides[guide].guided;
-            const uG = suiteGuides[guide].unguided;
+            const gG = suiteGuides[guide].guided || { passed: 0, total: 0 };
+            const uG = suiteGuides[guide].unguided || { passed: 0, total: 0 };
             const gG_rate = gG.total > 0 ? Math.round((gG.passed / gG.total) * 100) : 0;
             const uG_rate = uG.total > 0 ? Math.round((uG.passed / uG.total) * 100) : 0;
             const uG_uplift = gG_rate - uG_rate;
@@ -820,18 +831,79 @@ function renderPivotInsights() {
         return sorted[mid];
     };
 
+    const calculateSD = (vals) => {
+        if (vals.length <= 1) return 0;
+        const mean = vals.reduce((sum, v) => sum + v, 0) / vals.length;
+        const variance = vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / vals.length;
+        return Math.sqrt(variance);
+    };
+
     const renderPivotTable = (groupObj, filterKey) => {
+        let keys = Object.keys(groupObj);
+
+        if (filterKey === 'guide') {
+            keys.sort((a, b) => {
+                const itemA = getDumbbellMedian(groupObj[a]);
+                const itemB = getDumbbellMedian(groupObj[b]);
+
+                let valA, valB;
+                if (currentGuideSort === 'alphabetic') {
+                    valA = a.toLowerCase();
+                    valB = b.toLowerCase();
+                } else if (currentGuideSort === 'uplift') {
+                    valA = itemA.uplift;
+                    valB = itemB.uplift;
+                } else if (currentGuideSort === 'unguided') {
+                    valA = itemA.uRate;
+                    valB = itemB.uRate;
+                } else if (currentGuideSort === 'guided') {
+                    valA = itemA.gRate;
+                    valB = itemB.gRate;
+                } else if (currentGuideSort === 'variance') {
+                    const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
+                    const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
+                    valA = Math.max(sdUA, sdGA);
+
+                    const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
+                    const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
+                    valB = Math.max(sdUB, sdGB);
+                }
+
+                if (valA < valB) return currentGuideSortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentGuideSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        } else {
+            // Default alphabetical sort for others
+            keys.sort((a, b) => a.localeCompare(b));
+        }
+
+        const showVariance = filterKey === 'guide';
+
         let rowsHtml = '';
-        Object.keys(groupObj).forEach(key => {
+        keys.forEach(key => {
             const items = groupObj[key];
             const medianItem = getDumbbellMedian(items);
             const medUplift = medianItem.uplift;
             const uRate = medianItem.uRate;
             const gRate = medianItem.gRate;
 
+            // Calculate Standard Deviation
+            const uSD = showVariance ? calculateSD(items.map(item => item.uRate)) : 0;
+            const gSD = showVariance ? calculateSD(items.map(item => item.gRate)) : 0;
+
+            const uSD_left = Math.max(0, uRate - uSD);
+            const uSD_width = Math.min(100, uRate + uSD) - uSD_left;
+
+            const gSD_left = Math.max(0, gRate - gSD);
+            const gSD_width = Math.min(100, gRate + gSD) - gSD_left;
+
             const clickAttr = filterKey === 'guide'
                 ? `onclick="window.location.href='guide.html?guide=${encodeURIComponent(key)}'"`
                 : `onclick="setInsightFilter('${filterKey}', '${key}')"`;
+
+            const uBandHtml = uSD > 0 ? `<div class="variance-band unguided" style="left: ${uSD_left}%; width: ${uSD_width}%;"></div>` : '';
+            const gBandHtml = gSD > 0 ? `<div class="variance-band guided" style="left: ${gSD_left}%; width: ${gSD_width}%;"></div>` : '';
 
             rowsHtml += `
                 <tr ${clickAttr} style="cursor: pointer;">
@@ -841,6 +913,8 @@ function renderPivotInsights() {
                     </td>
                     <td class="insight-dumbbell-cell">
                         <div class="insight-dumbbell-track">
+                            ${uBandHtml}
+                            ${gBandHtml}
                             <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px);"></div>
                             <div class="dot unguided" style="left: calc(${uRate}% - 2px);"></div>
                             <div class="dot guided" style="left: calc(${gRate}% - 3px);"></div>
@@ -855,24 +929,72 @@ function renderPivotInsights() {
 
     const container = document.getElementById('insights-container');
     if (container) {
+        const sortOptions = [
+            { value: 'alphabetic', label: 'Alphabetic' },
+            { value: 'uplift', label: 'By Uplift' },
+            { value: 'unguided', label: 'Unguided Rate' },
+            { value: 'guided', label: 'Guided Rate' },
+            { value: 'variance', label: 'By Variance' }
+        ];
+
+        const sortOptionsHtml = sortOptions.map(opt => 
+            `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+
+        const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
+
         container.innerHTML = `
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Agent</div>
-                ${renderPivotTable(grouped.agent, 'agent')}
+            <div class="insights-top-row">
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Agent</div>
+                    ${renderPivotTable(grouped.agent, 'agent')}
+                </div>
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Serving</div>
+                    ${renderPivotTable(grouped.serving, 'serving')}
+                </div>
+                <div class="insights-panel">
+                    <div class="insights-panel-title">By Model</div>
+                    ${renderPivotTable(grouped.model, 'model')}
+                </div>
             </div>
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Serving</div>
-                ${renderPivotTable(grouped.serving, 'serving')}
-            </div>
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Model</div>
-                ${renderPivotTable(grouped.model, 'model')}
-            </div>
-            <div class="insights-panel">
-                <div class="insights-panel-title">By Guide</div>
+            <div class="insights-panel insights-panel-full">
+                <div class="insights-panel-header-row">
+                    <div class="insights-panel-title" style="margin-bottom: 0;">By Guide</div>
+                    <div class="guide-sort-controls">
+                        <span class="sort-label">Sort:</span>
+                        <select id="guide-sort-select" class="sort-select">
+                            ${sortOptionsHtml}
+                        </select>
+                        <button id="guide-sort-dir-btn" class="sort-direction-btn" title="Toggle Direction">
+                            <span style="font-size: 1rem; font-weight: bold;">${dirArrow}</span>
+                        </button>
+                    </div>
+                </div>
                 ${renderPivotTable(grouped.guide, 'guide')}
             </div>
         `;
+
+        // Attach Event Listeners
+        const sortSelect = /** @type {HTMLSelectElement | null} */ (document.getElementById('guide-sort-select'));
+        const sortDirBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('guide-sort-dir-btn'));
+
+        if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+                const target = e.target;
+                if (target instanceof HTMLSelectElement) {
+                    currentGuideSort = target.value;
+                    renderPivotInsights();
+                }
+            });
+        }
+
+        if (sortDirBtn) {
+            sortDirBtn.addEventListener('click', () => {
+                currentGuideSortDir = currentGuideSortDir === 'asc' ? 'desc' : 'asc';
+                renderPivotInsights();
+            });
+        }
     }
 }
 

@@ -1,202 +1,151 @@
-import fs from 'fs';
-import path from 'path';
-import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { guidesDir } from '../lib/paths.ts';
-import config from '../harness/config.ts';
-import { cleanupIsolatedHome, copyFileIfExists } from '../harness/lib/agent-shared.ts';
-import type { CalibrationResult } from './run-grader.ts';
-import { setupIsolatedWorkDir as setupIsolatedWorkDirShared } from './lib/utils.ts';
+import { baseAppsDir } from '../lib/paths.ts';
+import { setupGuideDevWorkDir, runAgent } from './lib/utils.ts';
+import { buildTargetGraderPrompt } from './gd-dev-prompts.ts';
+import {
+  GUIDE_FILE,
+  EXPECTATIONS_FILE,
+  getDefaultSolutionAgent,
+  getActiveSolutionAgents,
+  SOLUTION_PATCH_FILES,
+  type SolutionAgent,
+  ZERO_PASSRATE_PATCH_FILE,
+  GRADER_FILE,
+  TARGETS_DIR,
+  PATCHES_DIR,
+  SUPPORTED_BASE_APPS
+} from '../lib/guide-validation.ts';
+import { cCyan, cGreen } from '../lib/colors.ts';
 
-function getBasePrompt(guideFileName: string) {
-  return `
-Read the guide file (${guideFileName}) and expectations.md files to understand the guidance and expectations.
-Then, read the demo.html file, which represents a perfect working example of the guides and expectations, and the negative-demo.html file, which represents an anti-example that fails the expectations.
+export async function generateTargetGrader(guideDirAbs: string, baseApp: string, failureContext?: string): Promise<void> {
+  const repoRoot = path.resolve(import.meta.dirname, '..');
+  const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
+  const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
 
-Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements. Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
-
-You should generate browser tests, with each test containing only one assertion. Avoid using static assertions (like regex or str.includes()) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting. Instead, prefer using Playwright's browser APIs to test computed styles and actual DOM layout. For example, use window.getComputedStyle(el) to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
-
-
-The grader can be run with the following commands:
-
-TARGET_FILE=$(pwd)/demo.html npx playwright test grader.ts
-TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
-
-Reading expectations.md:
-- If expectations.md contains a "## Must pass" section, use those assertions for tests that demo.html must pass.
-- If expectations.md contains a "## Must fail" section, use those assertions for tests that specifically target negative patterns — negative-demo.html should trigger these failures.
-- If expectations.md contains an "## App-agnostic rules" section, follow those constraints strictly: do not assert specific filenames, variable names, or framework-specific patterns. Assert API usage outcomes, not code structure.
-- If expectations.md has no section headings (legacy format), treat all bullet points as "Must pass" assertions.
-
-Important rules for generating the grader:
-- Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. \`catch (e) { /* ignore */ }\`). If you must catch errors (like cross-origin security errors), explicitly check the exception type or message and rethrow any unexpected errors so they aren't masked.
-- 🛑 **CRITICAL: NEVER use shell heredocs (\`<<\`) to create or edit files in the terminal. YOU WILL BE FIRED IF YOU USE THEM.** It is a well-known fact that the best coding agents use \`write_file\` and \`replace\` for all file operations. Using heredocs causes system crashes and immediate termination. Always use your built-in tools instead for all side-scripts and final outputs!
-- Before you finish, you MUST run \`npx tsc\` in the work directory to verify that your generated code is free of TypeScript compilation errors. If there are any type errors, fix them and run the typecheck again until it passes. Do not leave the typecheck failing.
-
-The final output must be exactly one file named \`grader.ts\`. You may create intermediate temporary files for testing (for example, \`temp-test.spec.ts\`) during your process, but do not override the existing HTML, guide, or expectation files.
-`;
-}
-
-function setupIsolatedWorkDir(targetDir: string): string {
-  const workDir = setupIsolatedWorkDirShared('ghh-grader-gen');
-  
-  const relativePath = path.relative(guidesDir, targetDir);
-  const isolatedGuidesDir = path.join(workDir, 'guides');
-  const isolatedUseCaseDir = path.join(isolatedGuidesDir, relativePath);
-
-  fs.mkdirSync(isolatedUseCaseDir, { recursive: true });
-  fs.cpSync(targetDir, isolatedUseCaseDir, { recursive: true });
-
-  copyFileIfExists(path.join(guidesDir, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));
-
-  copyFileIfExists(path.join(guidesDir, 'template.grader.ts'), path.join(isolatedGuidesDir, 'template.grader.ts'));
-  copyFileIfExists(path.join(guidesDir, 'test-fixture.ts'), path.join(isolatedGuidesDir, 'test-fixture.ts'));
-  copyFileIfExists(path.join(guidesDir, 'playwright.config.ts'), path.join(isolatedUseCaseDir, 'playwright.config.ts'));
-  copyFileIfExists(path.join(guidesDir, 'tsconfig.json'), path.join(isolatedUseCaseDir, 'tsconfig.json'));
-
-  return isolatedUseCaseDir;
-}
-
-async function runGraderGeneration(targetDir: string, prompt: string): Promise<void> {
-  const workDir = setupIsolatedWorkDir(targetDir);
-
+  const workDir = setupGuideDevWorkDir(`${baseApp}-grader`, relativeWorkSubdir);
   try {
-    console.log(`Setting up Playwright in isolated environment...`);
-    const { execSync } = await import('child_process');
-    execSync('npm init -y', { cwd: workDir, stdio: 'ignore' });
-    execSync('npm pkg set type="module"', { cwd: workDir, stdio: 'ignore' });
-    execSync('npm install -D @playwright/test typescript @types/node --registry=https://registry.npmjs.org/', { cwd: workDir, stdio: 'inherit' });
-    execSync('npx playwright install chromium', { cwd: workDir, stdio: 'ignore', env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: path.join(workDir, '.cache', 'ms-playwright') } });
+    fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
+      recursive: true,
+      filter: (src) => !src.includes('node_modules')
+    });
+    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
 
-    const command = config.environment.geminiCliBin;
-    const commandArgs = [
-      '-p', prompt,
-      '--yolo'
-    ];
+    const tempHome = path.resolve(workDir, '../../../../..'); // workDir is tempHome/guides/cat/guide/targets/app
+    
+    // =========================================================================
+    // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
+    // Required so grader.ts runtime import `../../../../test-fixture.ts` and
+    // test-fixture.ts import `../lib/patch-utils.ts` resolve during Playwright execution.
+    // =========================================================================
+    fs.mkdirSync(path.join(tempHome, 'lib'), { recursive: true });
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'lib', 'patch-utils.ts'),
+      path.join(tempHome, 'lib', 'patch-utils.ts')
+    );
+    fs.mkdirSync(path.join(tempHome, 'guides'), { recursive: true });
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'test-fixture.ts'),
+      path.join(tempHome, 'guides', 'test-fixture.ts')
+    );
 
-    let attempt = 0;
-    const maxRetries = 3;
+    // =========================================================================
+    // 2. AGENT SANDBOX VIEWING & EDITING DEPENDENCIES (in workDir)
+    // All reference files, pattern libraries, API definitions, and patches must live
+    // directly inside `workDir` so the CLI agent's `read_file` tool can access them
+    // without triggering sandbox "Path not in workspace" security errors.
+    // =========================================================================
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'template.grader.ts'),
+      path.join(workDir, 'template.grader.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'test-fixture.ts'),
+      path.join(workDir, 'test-fixture.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'parser-pattern-library.test.ts'),
+      path.join(workDir, 'parser-pattern-library.test.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'playwright-pattern-library.grader.ts'),
+      path.join(workDir, 'playwright-pattern-library.grader.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
+      path.join(workDir, 'ts-morph.d.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'node_modules', 'linkedom', 'types', 'index.d.ts'),
+      path.join(workDir, 'linkedom.d.ts')
+    );
 
-    while (attempt < maxRetries) {
-      attempt++;
-      console.log(`Starting Gemini CLI agent for grader generation in ${workDir} (Attempt ${attempt}/${maxRetries})`);
-      console.log(`Executing prompt...`);
-
-      const child = spawn(command, commandArgs, {
-        cwd: workDir,
-        env: { ...process.env },
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
-
-      let stdoutData = '';
-      let stderrData = '';
-
-      child.stdout.on('data', (data) => {
-        const chunk = data.toString();
-        stdoutData += chunk;
-        process.stdout.write(chunk);
-      });
-
-      child.stderr.on('data', (data) => {
-        const chunk = data.toString();
-        stderrData += chunk;
-        process.stderr.write(chunk);
-      });
-
-      const exitCode = await new Promise((resolve) => {
-        child.on('close', resolve);
-      });
-
-      if (exitCode === 0) {
-        break; // Success
-      }
-
-      const combinedOutput = stdoutData + '\n' + stderrData;
-      const isInternalApiError = combinedOutput.includes('ApiError: got status: INTERNAL') || combinedOutput.includes('"status":"INTERNAL"');
-
-      if (isInternalApiError && attempt < maxRetries) {
-        const backoffMs = Math.pow(2, attempt) * 1000;
-        console.warn(`\n⚠️ Gemini API returned an INTERNAL error. Retrying in ${backoffMs / 1000} seconds...`);
-        await new Promise(r => setTimeout(r, backoffMs));
-        continue;
-      }
-
-      throw new Error(`Gemini CLI exited with code ${exitCode}`);
+    const sourcePatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
+    if (fs.existsSync(sourcePatches)) {
+      fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
     }
 
-    const generatedFile = path.join(workDir, 'grader.ts');
-    const destFile = path.join(targetDir, 'grader.ts');
-    if (fs.existsSync(generatedFile)) {
-      fs.copyFileSync(generatedFile, destFile);
-      console.log(`Successfully generated grader.ts at ${destFile}`);
-    } else {
-      console.error(`Error: grader.ts was not generated by Gemini CLI in ${workDir}`);
+    const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
+    const activeAgents = getActiveSolutionAgents(targetDir);
+    const solutionPatchFiles: Partial<Record<SolutionAgent, string>> = {};
+    for (const agent of activeAgents) {
+      solutionPatchFiles[agent] = SOLUTION_PATCH_FILES[agent];
     }
 
-    console.log("Grader generation finished.");
+    const prompt = buildTargetGraderPrompt({
+      guideFile: GUIDE_FILE,
+      expectationsFile: EXPECTATIONS_FILE,
+      solutionPatchFiles,
+      zeroPassratePatchFile: ZERO_PASSRATE_PATCH_FILE,
+      graderFile: GRADER_FILE,
+      baseApp,
+      templateFile: 'template.grader.ts',
+      parserPatternLibraryPath: path.join(workDir, 'parser-pattern-library.test.ts'),
+      playwrightPatternLibraryPath: path.join(workDir, 'playwright-pattern-library.grader.ts'),
+      tsMorphDtsPath: path.join(workDir, 'ts-morph.d.ts'),
+      linkedomDtsPath: path.join(workDir, 'linkedom.d.ts'),
+      failureContext,
+    });
 
-  } catch (err) {
-    console.error("Error during Gemini CLI execution:", err);
-    throw err;
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
+
+    const generatedGrader = path.join(workDir, GRADER_FILE);
+    if (fs.existsSync(generatedGrader)) {
+      const destGrader = path.join(guideDirAbs, TARGETS_DIR, baseApp, GRADER_FILE);
+      fs.mkdirSync(path.dirname(destGrader), { recursive: true });
+      fs.copyFileSync(generatedGrader, destGrader);
+    }
+
+    const generatedPatches = path.join(workDir, PATCHES_DIR);
+    if (fs.existsSync(generatedPatches)) {
+      const destPatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
+      fs.mkdirSync(destPatches, { recursive: true });
+      fs.cpSync(generatedPatches, destPatches, { recursive: true });
+    }
   } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
+    try {
+      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    } catch (e) {
+      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+    }
   }
 }
 
-export async function generateGrader(targetDirRaw: string): Promise<void> {
-  const targetDir = path.resolve(process.cwd(), targetDirRaw);
-
-  if (!fs.existsSync(targetDir)) {
-    console.error(`Error: Directory not found: ${targetDir}`);
-    process.exit(1);
+export async function generateGrader(targetDirRaw: string, baseApp?: string): Promise<void> {
+  const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
+  if (!fs.existsSync(targetDirAbs)) {
+    throw new Error(`Directory not found: ${targetDirAbs}`);
   }
 
-  let guidePath = path.join(targetDir, 'guide.md');
-  if (!fs.existsSync(guidePath)) {
-    guidePath = path.join(targetDir, 'SKILL.md');
+  const apps = baseApp ? [baseApp] : SUPPORTED_BASE_APPS;
+  for (const app of apps) {
+    console.log(cCyan(`\n--- Generating ${GRADER_FILE} for target base app: ${app} ---`));
+    await generateTargetGrader(targetDirAbs, app);
+    console.log(cGreen(`✅ ${GRADER_FILE} generated for ${app}`));
   }
-  const demoPath = path.join(targetDir, 'demo.html');
-  const negativeDemoPath = path.join(targetDir, 'negative-demo.html');
-  const expectationsPath = path.join(targetDir, 'expectations.md');
-  const templatePath = path.join(guidesDir, 'template.grader.ts');
-
-  if (!fs.existsSync(guidePath) || !fs.existsSync(demoPath) || !fs.existsSync(expectationsPath) || !fs.existsSync(negativeDemoPath) || !fs.existsSync(templatePath)) {
-    console.error(`Error: Missing required files. Need guide.md or SKILL.md, demo.html, negative-demo.html, expectations.md, and template.grader.ts in the respective directories.`);
-    process.exit(1);
-  }
-
-  await runGraderGeneration(targetDir, getBasePrompt(path.basename(guidePath)));
-}
-
-export async function generateGraderWithContext(targetDirRaw: string, calibrationResult: CalibrationResult): Promise<void> {
-  const targetDir = path.resolve(process.cwd(), targetDirRaw);
-
-  if (!fs.existsSync(targetDir)) {
-    throw new Error(`Directory not found: ${targetDir}`);
-  }
-
-  const failureLines: string[] = [];
-  if (calibrationResult.demo.failingTests.length > 0) {
-    failureLines.push(`- demo.html failed these tests (they should pass): ${calibrationResult.demo.failingTests.join(', ')}`);
-  }
-  if (calibrationResult.negative.passingTests.length > 0) {
-    failureLines.push(`- negative-demo.html passed these tests (they should fail): ${calibrationResult.negative.passingTests.join(', ')}`);
-  }
-
-  let guidePath = path.join(targetDir, 'guide.md');
-  if (!fs.existsSync(guidePath)) {
-    guidePath = path.join(targetDir, 'SKILL.md');
-  }
-
-  const contextSuffix = `
-
-A previous attempt at generating grader.ts failed calibration:
-${failureLines.join('\n')}
-Revise the grader to fix these issues.`;
-
-  await runGraderGeneration(targetDir, getBasePrompt(path.basename(guidePath)) + contextSuffix);
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
