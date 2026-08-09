@@ -22,6 +22,8 @@ export const Agents = {
   PI: 'pi'
 } as const;
 
+export type Agents = typeof Agents[keyof typeof Agents];
+
 export const Serving = {
   SKILLS_CLI: 'skills_cli',
   SKILLS: 'skills',

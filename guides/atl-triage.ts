@@ -90,36 +90,48 @@ function getFeatureIdsFromGuide(guidePath: string): string[] {
   }
 }
 
-export function resolveAtl(category: string, featureIds: string[], atlConfig: AtlConfig): string | string[] {
-  let resolvedValue = atlConfig.default[category];
+export function resolveAtl(category: string, featureIds: string[], atlConfig: AtlConfig): string[] {
+  const resolved = new Set<string>();
+
+  // Add category default ATL
+  const categoryDefault = atlConfig.default[category];
+  if (categoryDefault) {
+    if (Array.isArray(categoryDefault)) {
+      categoryDefault.forEach(a => resolved.add(a));
+    } else {
+      resolved.add(categoryDefault);
+    }
+  }
 
   if (featureIds && featureIds.length > 0) {
-    let foundOverride = false;
     // Check specific feature ID overrides
     for (const fid of featureIds) {
       if (atlConfig.web_features[fid]) {
-        resolvedValue = atlConfig.web_features[fid];
-        foundOverride = true;
-        break;
+        const override = atlConfig.web_features[fid];
+        if (Array.isArray(override)) {
+          override.forEach(a => resolved.add(a));
+        } else {
+          resolved.add(override);
+        }
       }
     }
     // Check feature group overrides
-    if (!foundOverride) {
-      for (const fid of featureIds) {
-        const groups = featureGroups[fid] || [];
-        for (const group of groups) {
-          if (atlConfig.web_features_groups[group]) {
-            resolvedValue = atlConfig.web_features_groups[group];
-            foundOverride = true;
-            break;
+    for (const fid of featureIds) {
+      const groups = featureGroups[fid] || [];
+      for (const group of groups) {
+        if (atlConfig.web_features_groups[group]) {
+          const override = atlConfig.web_features_groups[group];
+          if (Array.isArray(override)) {
+            override.forEach(a => resolved.add(a));
+          } else {
+            resolved.add(override);
           }
         }
-        if (foundOverride) break;
       }
     }
   }
 
-  return resolvedValue;
+  return Array.from(resolved);
 }
 
 export function getAtlsFromDescription(description: string, atlConfig: AtlConfig): string[] {
@@ -208,6 +220,17 @@ export function handleIssue(issueNumber: number, labels: string[], issueDescript
   if (descriptionAtls.length > 0) {
     console.log(`Found ATLs from description: ${descriptionAtls.join(', ')}`);
     descriptionAtls.forEach(a => assignedAtls.add(a));
+  }
+
+  // 3. Check issue description for use case category
+  const categoryMatch = issueDescription.match(/Use case subdir:\s*\[guides\/([^/\]]+)/i);
+  if (categoryMatch) {
+    const category = categoryMatch[1].trim().toLowerCase();
+    if (atlConfig.default[category]) {
+      const atls = Array.isArray(atlConfig.default[category]) ? atlConfig.default[category] : [atlConfig.default[category]];
+      console.log(`Found category "${category}" from use case subdir in description. ATL: ${atls.join(', ')}`);
+      atls.forEach(a => assignedAtls.add(a));
+    }
   }
 
   if (assignedAtls.size === 0) {

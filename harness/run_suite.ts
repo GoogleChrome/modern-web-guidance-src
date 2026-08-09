@@ -8,6 +8,7 @@ import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../lib/patch-utils.ts';
 import { getGraderScriptContent } from './lib/agent-shared.ts';
+import { copyBaseAppToWorkspace } from '../guides/lib/utils.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -17,7 +18,7 @@ let logStream: fs.WriteStream | null = null;
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-export async function runAgent(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
+export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
   const agent = suiteConfig.agent;
   let templateDir = templateDirRaw;
@@ -351,15 +352,11 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
   }
 
   const refBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
-  if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workspaceBaseAppDir, {
-      recursive: true,
-      filter: (src) => !src.includes('/dist') && !src.includes('/.astro'),
-    });
-  } else {
+  if (!fs.existsSync(refBaseAppDir)) {
     console.warn(`Source base app not found at ${refBaseAppDir}`);
     return null;
   }
+  await copyBaseAppToWorkspace(taskInfo.baseApp, workspaceBaseAppDir);
   const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
   if (fs.existsSync(pkgJsonPath)) {
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));

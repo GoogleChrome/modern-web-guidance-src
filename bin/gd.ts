@@ -278,8 +278,8 @@ async function main() {
 
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
-      const { runAgent } = await import('../harness/run_suite.ts');
-      await runAgent(tmpl, prompt, mergedSuiteConfig);
+      const { runSingleTask } = await import('../harness/run_suite.ts');
+      await runSingleTask(tmpl, prompt, mergedSuiteConfig);
       break;
     }
 

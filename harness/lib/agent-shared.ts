@@ -1,53 +1,72 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
-import { Agents } from '../config.ts';
-import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
+import { Agents, Serving, type SuiteConfig } from '../config.ts';
+import { classifyGuide, scanAllGuides, ZERO_PASSRATE_PATCH_FILE } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
 
-import { type SuiteConfig } from '../config.ts';
 import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
 import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
 import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
+import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
 
-export {
-  setupGeminiCliCredentials,
-  getGeminiCliCommandAndArgs,
-  setupJetskiCliCredentials,
-  getJetskiCliCommandAndArgs,
-  setupClaudeCodeCredentials,
-  getClaudeCodeCommandAndArgs,
-  setupCodexCliCredentials,
-  getCodexCliCommandAndArgs,
-};
-
-export type AgentName = 'gemini' | 'jetski' | 'claude' | 'codex';
-
-export function setupAgentCredentials(agent: AgentName, tempHome: string): void {
-  if (agent === 'jetski') {
+export function setupAgentCredentials(agent: Agents, tempHome: string): void {
+  if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     setupJetskiCliCredentials(tempHome);
-  } else if (agent === 'gemini') {
+  } else if (agent === Agents.GEMINI_CLI) {
     setupGeminiCliCredentials(tempHome);
-  } else if (agent === 'claude') {
+  } else if (agent === Agents.CLAUDE_CODE) {
     setupClaudeCodeCredentials(tempHome);
-  } else if (agent === 'codex') {
+  } else if (agent === Agents.CODEX_CLI) {
     setupCodexCliCredentials(tempHome);
+  } else if (agent === Agents.PI) {
+    setupPiCredentials(tempHome);
   }
 }
 
-export function getAgentCommandAndArgs(agent: AgentName, prompt: string): { command: string; commandArgs: string[] } {
+export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command: string; commandArgs: string[] } {
   switch (agent) {
-    case 'jetski':
+    case Agents.JETSKI:
+    case Agents.JETSKI_CLI:
       return getJetskiCliCommandAndArgs(prompt);
-    case 'gemini':
+    case Agents.GEMINI_CLI:
       return getGeminiCliCommandAndArgs(prompt);
-    case 'claude':
+    case Agents.CLAUDE_CODE:
       return getClaudeCodeCommandAndArgs(prompt);
-    case 'codex':
+    case Agents.CODEX_CLI:
       return getCodexCliCommandAndArgs(prompt);
+    case Agents.PI:
+      return getPiCommandAndArgs(prompt);
+    default:
+      throw new Error(`Unsupported agent: ${agent}`);
   }
+}
+
+export function setupIsolatedWorkDir(
+  agent: Agents,
+  templateDir: string,
+  runType: string,
+  targetDir?: string
+): string {
+  const tempHome = createIsolatedHome(`ghh-${agent}`, targetDir);
+  const workDir = createWorkDir(templateDir, tempHome, runType);
+
+  setupAgentCredentials(agent, tempHome);
+  process.env.HOME = tempHome;
+
+  if (runType === 'guided') {
+    const suiteConfig = getSuiteConfig();
+    copySkills(
+      tempHome,
+      agent,
+      suiteConfig.serving === Serving.SKILLS_CLI,
+      suiteConfig.skillsToEnable
+    );
+  }
+
+  return workDir;
 }
 
 export interface GuideUsage {
@@ -326,13 +345,13 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
+export function copySkills(homeDir: string, agent: Agents, cli: boolean, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
   const guidesSource = guidesDir;
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
     destDir = path.join(homeDir, '.claude', 'skills');
-  } else if (agent === Agents.CODEX_CLI) {
+  } else if (agent === Agents.CODEX_CLI || agent === Agents.PI) {
     destDir = path.join(homeDir, '.agents', 'skills');
   } else if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
@@ -531,6 +550,13 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
     const sourceDir = path.join(workDir, subPath);
     try {
       execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
+      // Remove .git and node_modules directories if present
+      for (const dirName of ['.git', 'node_modules']) {
+        const dirPath = path.join(targetDir, dirName);
+        if (fs.existsSync(dirPath)) {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+        }
+      }
       console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
     } catch (e) {
       console.warn(`Failed to copy results from ${sourceDir} to ${targetDir}: ${e}`);
@@ -803,17 +829,23 @@ export function getGraderScriptContent(
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
+  const agentPatch = path.join(targetDir, 'agent.patch');
+  const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
 
   return `import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
+    const patchFile = fs.existsSync(${JSON.stringify(agentPatch)}) ? ${JSON.stringify(agentPatch)} : undefined;
+    const zeroPassrateFile = fs.existsSync(${JSON.stringify(zeroPassratePatch)}) ? ${JSON.stringify(zeroPassratePatch)} : undefined;
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
       ${JSON.stringify(gradeReportDir)},
-      'inherit'
+      'inherit',
+      patchFile,
+      zeroPassrateFile
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {
