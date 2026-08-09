@@ -76,11 +76,11 @@ Agent test results:
   });
 });
 
-test('setupIsolatedWorkDir conditionally copies credentials based on GD_DEV_USE_JETSKI', async (t) => {
+test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_JETSKI', async (t) => {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
-  const { setupIsolatedWorkDir } = await import('./lib/utils.ts');
+  const { setupGuideDevWorkDir } = await import('./lib/utils.ts');
   const { cleanupIsolatedHome } = await import('../harness/lib/agent-shared.ts');
 
   const originalHome = process.env.HOME;
@@ -115,8 +115,8 @@ test('setupIsolatedWorkDir conditionally copies credentials based on GD_DEV_USE_
   // 1. Without GD_DEV_USE_JETSKI (Gemini CLI mode)
   delete process.env.GD_DEV_USE_JETSKI;
   delete process.env.JETSKI_DIR;
-  setupIsolatedWorkDir('test-dev-gemini');
-  const geminiTempHome = process.env.HOME!;
+  const geminiWorkDir = setupGuideDevWorkDir('test-dev-gemini');
+  const geminiTempHome = path.dirname(geminiWorkDir);
   
   assert.ok(fs.existsSync(path.join(geminiTempHome, '.gemini', 'oauth_creds.json')), 'Gemini credentials should be copied');
   assert.strictEqual(fs.existsSync(path.join(geminiTempHome, '.gemini', 'jetski', 'installation_id')), false, 'Jetski credentials should not be copied');
@@ -129,8 +129,8 @@ test('setupIsolatedWorkDir conditionally copies credentials based on GD_DEV_USE_
 
   // 2. With GD_DEV_USE_JETSKI=1 (Jetski CLI mode)
   process.env.GD_DEV_USE_JETSKI = '1';
-  setupIsolatedWorkDir('test-dev-jetski');
-  const jetskiTempHome = process.env.HOME!;
+  const jetskiWorkDir = setupGuideDevWorkDir('test-dev-jetski');
+  const jetskiTempHome = path.dirname(jetskiWorkDir);
 
   assert.strictEqual(fs.existsSync(path.join(jetskiTempHome, '.gemini', 'oauth_creds.json')), false, 'Gemini credentials should not be copied');
   assert.ok(fs.existsSync(path.join(jetskiTempHome, '.gemini', 'jetski', 'installation_id')), 'Jetski credentials should be copied');

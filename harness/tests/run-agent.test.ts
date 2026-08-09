@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import config from '../config.ts';
 import { runAgent } from '../../guides/lib/utils.ts';
+import { getDefaultSolutionAgent } from '../../lib/guide-validation.ts';
 
 describe('runAgent routing and argument building', () => {
   let tempDir: string;
@@ -12,7 +13,6 @@ describe('runAgent routing and argument building', () => {
   let originalGeminiCli: string;
   let originalJetskiCli: string;
   let originalGdUseJetski: string | undefined;
-  let originalJetskiModel: string | undefined;
 
   before(() => {
     // Create temporary directory and mock CLI
@@ -29,7 +29,6 @@ echo "mock-cli ran with args: $@"
     originalGeminiCli = config.environment.geminiCliBin;
     originalJetskiCli = config.environment.jetskiCliBin;
     originalGdUseJetski = process.env.GD_DEV_USE_JETSKI;
-    originalJetskiModel = process.env.JETSKI_MODEL;
 
     // Override config paths to point to the mock CLI
     config.environment.geminiCliBin = mockCliPath;
@@ -47,12 +46,6 @@ echo "mock-cli ran with args: $@"
       process.env.GD_DEV_USE_JETSKI = originalGdUseJetski;
     }
 
-    if (originalJetskiModel === undefined) {
-      delete process.env.JETSKI_MODEL;
-    } else {
-      process.env.JETSKI_MODEL = originalJetskiModel;
-    }
-
     // Clean up temp directory
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -60,24 +53,19 @@ echo "mock-cli ran with args: $@"
   test('should invoke Gemini CLI by default with --yolo', async () => {
     delete process.env.GD_DEV_USE_JETSKI;
     
-    const output = await runAgent('hello world', tempDir, { captureOutput: true });
+    const output = await runAgent(getDefaultSolutionAgent(), 'hello world', tempDir, { captureOutput: true });
     assert.ok(output.includes('mock-cli ran with args: -p hello world --yolo'));
   });
 
   test('should invoke Jetski CLI when GD_DEV_USE_JETSKI=1', async () => {
     process.env.GD_DEV_USE_JETSKI = '1';
-    delete process.env.JETSKI_MODEL;
 
-    const output = await runAgent('hello world', tempDir, { captureOutput: true });
-    assert.ok(output.includes('mock-cli ran with args: -p hello world'));
-    assert.ok(!output.includes('--yolo'));
-  });
-
-  test('should pass --model to Jetski CLI when GD_DEV_USE_JETSKI=1 and JETSKI_MODEL is defined', async () => {
-    process.env.GD_DEV_USE_JETSKI = '1';
-    process.env.JETSKI_MODEL = 'gemini-2.0-flash';
-
-    const output = await runAgent('hello world', tempDir, { captureOutput: true });
-    assert.ok(output.includes('mock-cli ran with args: -p hello world --model gemini-2.0-flash'));
+    try {
+      const output = await runAgent(getDefaultSolutionAgent(), 'hello world', tempDir, { captureOutput: true });
+      assert.ok(output.includes('mock-cli ran with args: -p hello world'));
+      assert.ok(!output.includes('--yolo'));
+    } finally {
+      delete process.env.GD_DEV_USE_JETSKI;
+    }
   });
 });

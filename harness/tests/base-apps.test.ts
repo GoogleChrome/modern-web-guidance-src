@@ -43,11 +43,12 @@ test('setupWorkspaceBaseApp copies base app and applies zero-passrate.patch if p
 
   const mockGuideDir = path.join(osTmp, 'mock-guide');
   const mockTargetsDir = path.join(mockGuideDir, 'targets', 'daily-grind');
-  fs.mkdirSync(mockTargetsDir, { recursive: true });
+  const mockPatchesDir = path.join(mockTargetsDir, 'patches');
+  fs.mkdirSync(mockPatchesDir, { recursive: true });
 
   // Create a valid zero-passrate patch
   const patchContent = 'diff --git a/index.html b/index.html\n--- a/index.html\n+++ b/index.html\n@@ -1,2 +1,3 @@\n+<!-- ZERO_PASSRATE_APPLIED -->\n <!DOCTYPE html>\n <html lang="en">\n';
-  fs.writeFileSync(path.join(mockTargetsDir, 'zero-passrate.patch'), patchContent);
+  fs.writeFileSync(path.join(mockPatchesDir, 'zero-passrate.patch'), patchContent);
 
   const taskInfo = {
     baseApp: 'daily-grind',

@@ -116,12 +116,15 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-test-'));
     const guideDir = path.join(tmpDir, 'test-guide');
     const targetsDir = path.join(guideDir, 'targets', 'daily-grind');
-    fs.mkdirSync(targetsDir, { recursive: true });
+    const patchesDir = path.join(targetsDir, 'patches');
+    fs.mkdirSync(patchesDir, { recursive: true });
     
     fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Test Guide\nContent');
     fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
-    fs.writeFileSync(path.join(targetsDir, 'solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
-    fs.writeFileSync(path.join(targetsDir, 'zero-passrate.patch'), '+++ b/src/app.ts\n+const x = 2;');
+    fs.writeFileSync(path.join(patchesDir, 'jetski-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
+    fs.writeFileSync(path.join(patchesDir, 'claude-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
+    fs.writeFileSync(path.join(patchesDir, 'codex-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
+    fs.writeFileSync(path.join(patchesDir, 'zero-passrate.patch'), '+++ b/src/app.ts\n+const x = 2;');
     fs.writeFileSync(path.join(targetsDir, 'grader.ts'), 'console.log("test");');
     fs.writeFileSync(path.join(targetsDir, 'task.md'), '- Implement feature');
 
@@ -145,23 +148,26 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-test-target-partial-'));
     const guideDir = path.join(tmpDir, 'guides', 'test-category', 'test-guide-partial');
     const targetsDir = path.join(guideDir, 'targets', 'daily-grind');
-    fs.mkdirSync(targetsDir, { recursive: true });
+    const patchesDir = path.join(targetsDir, 'patches');
+    fs.mkdirSync(patchesDir, { recursive: true });
 
     fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Test Guide\nContent');
     fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
 
     try {
-      // Case 1: only solution.patch exists across targets
-      fs.writeFileSync(path.join(targetsDir, 'solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
+      // Case 1: only partial solutions exist across targets -> hasSolution is false
+      fs.writeFileSync(path.join(patchesDir, 'jetski-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
       let inv = inventoryGuide(guideDir);
-      assert.strictEqual(classifyGuide(inv), 'needs-calibration');
+      assert.strictEqual(classifyGuide(inv), 'incomplete');
 
-      // Case 2: solution and zero-passrate exist, but missing grader
-      fs.writeFileSync(path.join(targetsDir, 'zero-passrate.patch'), '+++ b/src/app.ts\n+const x = 2;');
+      // Case 2: all solution patches and zero-passrate exist, but missing grader
+      fs.writeFileSync(path.join(patchesDir, 'claude-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
+      fs.writeFileSync(path.join(patchesDir, 'codex-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
+      fs.writeFileSync(path.join(patchesDir, 'zero-passrate.patch'), '+++ b/src/app.ts\n+const x = 2;');
       inv = inventoryGuide(guideDir);
       assert.strictEqual(classifyGuide(inv), 'needs-calibration');
 
-      // Case 3: solution, zero-passrate, and grader exist, but missing task
+      // Case 3: solutions, zero-passrate, and grader exist, but missing task
       fs.writeFileSync(path.join(targetsDir, 'grader.ts'), 'console.log("test");');
       inv = inventoryGuide(guideDir);
       assert.strictEqual(classifyGuide(inv), 'needs-test');
@@ -179,16 +185,19 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-both-test-'));
     const guideDir = path.join(tmpDir, 'test-guide');
     const targetsDir = path.join(guideDir, 'targets', 'daily-grind');
+    const patchesDir = path.join(targetsDir, 'patches');
     const tasksDir = path.join(guideDir, 'tasks');
-    fs.mkdirSync(targetsDir, { recursive: true });
+    fs.mkdirSync(patchesDir, { recursive: true });
     fs.mkdirSync(tasksDir, { recursive: true });
     
     fs.writeFileSync(path.join(guideDir, 'guide.md'), '# Test Guide\nContent');
     fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
     
     // Write Option B files
-    fs.writeFileSync(path.join(targetsDir, 'solution.patch'), 'patch');
-    fs.writeFileSync(path.join(targetsDir, 'zero-passrate.patch'), 'patch');
+    fs.writeFileSync(path.join(patchesDir, 'jetski-solution.patch'), 'patch');
+    fs.writeFileSync(path.join(patchesDir, 'claude-solution.patch'), 'patch');
+    fs.writeFileSync(path.join(patchesDir, 'codex-solution.patch'), 'patch');
+    fs.writeFileSync(path.join(patchesDir, 'zero-passrate.patch'), 'patch');
     fs.writeFileSync(path.join(targetsDir, 'grader.ts'), 'grader');
     fs.writeFileSync(path.join(targetsDir, 'task.md'), '- task');
     
@@ -221,7 +230,3 @@ describe('getSupportedBaseApps', () => {
     assert.deepStrictEqual(apps, ['daily-grind', 'devtools-times']);
   });
 });
-
-
-
-

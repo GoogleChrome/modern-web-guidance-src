@@ -2,16 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
+import { getSuiteConfig, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
-/**
- * Copies Gemini CLI authentication and identification files from ~/.gemini to the isolated HOME.
- * @param tempHome Path to the isolated HOME directory
- * @returns Path to the destination .gemini directory
- */
 export function setupGeminiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
   const geminiSource = path.join(originalHome, '.gemini');
@@ -30,7 +25,14 @@ export function setupGeminiCliCredentials(tempHome: string): string {
     copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
   }
 
+  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
   return geminiDest;
+}
+
+export function getGeminiCliCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
+  const command = config.environment.geminiCliBin;
+  const commandArgs = ['-p', prompt, ...extraArgs, '--yolo'];
+  return { command, commandArgs };
 }
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
@@ -39,48 +41,12 @@ function getSessionFiles(dir: string, recursive = false): string[] {
   return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
 }
 
-// Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
-/**
- * Sets up an isolated HOME and work directory to ensure test isolation.
- * @returns {string} The path to the temporary work directory.
- */
-function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
-  const tempHome = createIsolatedHome('ghh-gemini', targetDir);
-  const workDir = createWorkDir(templateDir, tempHome, runType);
-
-  const geminiDest = setupGeminiCliCredentials(tempHome);
-
-  // Set environment variables
-  process.env.HOME = tempHome;
-  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
-
-  // Add GEMINI context and MCP servers for guided runs
-  if (runType === 'guided') {
-    const suiteConfig = getSuiteConfig();
-    const approach = suiteConfig.serving;
-
-    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
-    } else if (approach === Serving.MCP) {
-      updateMcpConfig(
-        path.join(geminiDest, 'settings.json'),
-        suiteConfig.mcpServersToEnable,
-        config.environment.modernWebServerPath,
-        config.environment.mcpApiKey,
-        Agents.GEMINI_CLI
-      );
-    }
-  }
-
-  return workDir;
-}
-
 /**
  * Executes the Gemini CLI command and captures output.
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.GEMINI_CLI, templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -89,12 +55,7 @@ async function run() {
   try {
     console.log(`Starting Gemini CLI agent in ${workDir}`);
 
-    const command = config.environment.geminiCliBin;
-    const commandArgs = [
-      '-p', userPrompt,
-      '-o', 'stream-json',
-      '--yolo'
-    ];
+    const { command, commandArgs } = getGeminiCliCommandAndArgs(userPrompt, ['-o', 'stream-json']);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
@@ -249,27 +210,28 @@ export function extractGeminiCliTokenUsage(dir: string): { total: number; cached
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = getSessionFiles(dir);
-  const firstSession = sessionFiles[0];
-  if (!firstSession) return toolsUsed;
+  if (sessionFiles.length === 0) return toolsUsed;
 
-  try {
-    const sessionPath = path.join(dir, firstSession);
-    const session = readTrajectory(sessionPath);
-    if (Array.isArray(session.messages)) {
-      for (const msg of session.messages) {
-        if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
-          for (const tc of msg.toolCalls) {
-            if (tc.name.includes('get_best_practices')) {
-              toolsUsed.push('modern-web-guidance');
-            } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
-              toolsUsed.push(tc.args.name as string);
+  for (const sessionFile of sessionFiles) {
+    try {
+      const sessionPath = path.join(dir, sessionFile);
+      const session = readTrajectory(sessionPath);
+      if (Array.isArray(session.messages)) {
+        for (const msg of session.messages) {
+          if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
+            for (const tc of msg.toolCalls) {
+              if (tc.name.includes('get_best_practices')) {
+                toolsUsed.push('modern-web-guidance');
+              } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
+                toolsUsed.push(tc.args.name as string);
+              }
             }
           }
         }
       }
+    } catch (e) {
+      console.error(`Failed to collect guidance tools used for Gemini CLI in ${sessionFile}:`, e);
     }
-  } catch (e) {
-    console.error(`Failed to collect guidance tools used for Gemini CLI:`, e);
   }
 
   return Array.from(new Set(toolsUsed));

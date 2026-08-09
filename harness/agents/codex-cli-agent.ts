@@ -1,54 +1,40 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
+import { getSuiteConfig, cleanupIsolatedHome, parseAgentArgs, watchLogFile, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 import { fileURLToPath } from 'url';
 
+export function setupCodexCliCredentials(tempHome: string): void {
+  const codexGlobalDir = path.join(os.homedir(), '.codex');
+  const codexDestDir = path.join(tempHome, '.codex');
+  if (fs.existsSync(codexGlobalDir)) {
+    fs.cpSync(codexGlobalDir, codexDestDir, {
+      recursive: true,
+      filter: (src) => !src.includes('sessions') && !src.includes('log')
+    });
+  }
+}
+
+export function getCodexCliCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
+  const command = config.environment.codexCliBin;
+  const model = process.env.CODEX_MODEL;
+  const commandArgs = [
+    'exec',
+    prompt,
+    '--yolo',
+    ...(model ? ['--model', model] : [])
+  ];
+  return { command, commandArgs };
+}
+
 const TRAJECTORY_GLOB = 'session-*.jsonl';
 
 function getSessionFiles(dir: string, recursive = false): string[] {
   return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
-}
-
-// Usage: node codex-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
-/**
- * Sets up an isolated HOME and work directory to ensure test isolation.
- * @returns {string} The path to the temporary work directory.
- */
-function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
-  const tempHome = createIsolatedHome('ghh-codex', targetDir);
-  const workDir = createWorkDir(templateDir, tempHome, runType);
-
-  // Copy Codex auth file
-  const codexGlobalDir = path.join(os.homedir(), '.codex');
-  const codexDestDir = path.join(tempHome, '.codex');
-  fs.mkdirSync(codexDestDir, { recursive: true });
-  copyFileIfExists(path.join(codexGlobalDir, 'auth.json'), path.join(codexDestDir, 'auth.json'));
-
-  process.env.HOME = tempHome;
-
-  if (runType === 'guided') {
-    const suiteConfig = getSuiteConfig();
-    const approach = suiteConfig.serving;
-
-    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.CODEX_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
-    } else if (approach === Serving.MCP) {
-      updateMcpConfig(
-        path.join(tempHome, '.codex', 'config.toml'),
-        suiteConfig.mcpServersToEnable,
-        config.environment.modernWebServerPath,
-        config.environment.mcpApiKey,
-        Agents.CODEX_CLI
-      );
-    }
-  }
-
-  return workDir;
 }
 
 function exportCodexTrajectories(workDir: string, targetDir: string): void {
@@ -95,7 +81,7 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -104,14 +90,7 @@ async function run() {
   try {
     console.log(`Starting Codex agent in: ${workDir}`);
 
-    const command = config.environment.codexCliBin;
-    const model = process.env.CODEX_MODEL;
-    const commandArgs = [
-      'exec', 
-      userPrompt,
-      '--yolo',
-      ...(model ? ['--model', model] : [])
-    ];
+    const { command, commandArgs } = getCodexCliCommandAndArgs(userPrompt);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
@@ -227,21 +206,23 @@ export function collectCodexToolsFromTrajectory(dir: string): string[] {
   const sessionFiles = getSessionFiles(dir);
   if (sessionFiles.length === 0) return toolsUsed;
 
-  const items = parseJsonlFile(path.join(dir, sessionFiles[0]));
-  for (const obj of items) {
-    const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
-    if (functionCall?.name === 'exec_command' && functionCall.arguments) {
-      try {
-        const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
-        const command = args.cmd || '';
-        if (command.includes('/skills/') && command.includes('SKILL.md')) {
-          const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
-          if (match) {
-            toolsUsed.push(match[1]);
+  for (const file of sessionFiles) {
+    const items = parseJsonlFile(path.join(dir, file));
+    for (const obj of items) {
+      const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
+      if (functionCall?.name === 'exec_command' && functionCall.arguments) {
+        try {
+          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+          const command = args.cmd || '';
+          if (command.includes('/skills/') && command.includes('SKILL.md')) {
+            const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
+            if (match) {
+              toolsUsed.push(match[1]);
+            }
           }
+        } catch {
+          // Ignore
         }
-      } catch {
-        // Ignore
       }
     }
   }

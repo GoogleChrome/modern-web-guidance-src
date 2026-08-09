@@ -1,58 +1,37 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
-import config, { Agents, Serving } from '../config.ts';
+import { getSuiteConfig, cleanupIsolatedHome, parseAgentArgs, watchLogFile, runCliAgentCommand, parseJsonlFile, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import config, { Agents } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
+export function setupClaudeCodeCredentials(tempHome: string): void {
+  const gcloudConfigDest = path.join(tempHome, '.config', 'gcloud');
+  fs.mkdirSync(gcloudConfigDest, { recursive: true });
+  copyFileIfExists(config.environment.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
+}
+
+export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
+  const command = config.environment.claudeCodeCliBin;
+  const model = process.env.ANTHROPIC_MODEL;
+  const commandArgs = [
+    '-p', prompt,
+    '--dangerously-skip-permissions',
+    ...extraArgs,
+    ...(model ? ['--model', model] : [])
+  ];
+  return { command, commandArgs };
+}
+
 // NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
 // However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
 // into the test output directory to ensure uniform matching across the dashboard and metrics engine.
-const TRAJECTORY_GLOB = 'session-*.jsonl';
+const TRAJECTORY_GLOB = '*.jsonl';
 
 function getSessionFiles(dir: string, recursive = false): string[] {
   return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
-}
-
-
-// Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
-/**
- * Sets up an isolated HOME and work directory to ensure test isolation.
- * @returns {string} The path to the temporary work directory.
- */
-function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
-  const tempHome = createIsolatedHome('ghh-claude', targetDir);
-  const workDir = createWorkDir(templateDir, tempHome, runType);
-
-  // Copy GCP credentials (for Vertex auth)
-  const gcloudConfigDest = path.join(tempHome, '.config/gcloud');
-  fs.mkdirSync(gcloudConfigDest, { recursive: true });
-  copyFileIfExists(config.environment.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
-
-  // Set environment variables
-  process.env.HOME = tempHome;
-
-  // Add CLAUDE context and MCP servers for guided runs
-  if (runType === 'guided') {
-    const suiteConfig = getSuiteConfig();
-    const approach = suiteConfig.serving;
-
-    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.CLAUDE_CODE, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
-    } else if (approach === Serving.MCP) {
-      updateMcpConfig(
-        path.join(tempHome, '.claude.json'),
-        suiteConfig.mcpServersToEnable,
-        config.environment.modernWebServerPath,
-        config.environment.mcpApiKey,
-        Agents.CLAUDE_CODE
-      );
-    }
-  }
-
-  return workDir;
 }
 
 function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void {
@@ -65,19 +44,19 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
 
   // Find all jsonl files in the Claude projects directory
   const files = fs.globSync('**/*.jsonl', { cwd: claudeLogDir });
-  
+  const parsedSessions: { relativePath: string; baseName: string; logData: any[] }[] = [];
+  const subagentsMap: Record<string, any[]> = {};
+
+  // Step 1: Read all JSONL files and populate subagentsMap
   for (const relativePath of files as string[]) {
     const src = path.join(claudeLogDir, relativePath);
-    
-    // 1. Determine base name and copy original JSONL file to targetDir
     const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
-    const rawDestName = `session-${baseName}.jsonl`;
+    const isSubagent = relativePath.includes('subagents/');
+    const rawDestName = isSubagent ? `subagent-${baseName}.jsonl` : `session-${baseName}.jsonl`;
     fs.copyFileSync(src, path.join(targetDir, rawDestName));
 
-    // 2. Read and parse JSONL
     const logContent = fs.readFileSync(src, 'utf8');
     const jsonLines = logContent.split(/\r?\n/).filter(Boolean);
-    
     const logData = jsonLines.map(line => {
       try {
         return JSON.parse(line);
@@ -87,13 +66,23 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
       }
     });
 
-    // 3. Generate and save the HTML viewer
-    const htmlContent = generateClaudeTrajectoryHtml(logData);
+    parsedSessions.push({ relativePath, baseName, logData });
 
-    // 4. Save HTML viewer to target directory
-    const destName = `session-${baseName}.html`;
-    const dest = path.join(targetDir, destName);
-    fs.writeFileSync(dest, htmlContent, 'utf8');
+    // Match subagent ID if this is a subagent file
+    const match = relativePath.match(/subagents[/\\]agent-([a-zA-Z0-9_-]+)\.jsonl$/);
+    if (match && match[1]) {
+      subagentsMap[match[1]] = logData;
+    }
+  }
+
+  // Step 2: Generate HTML viewers embedding subagent trajectories where referenced (main sessions only)
+  for (const session of parsedSessions) {
+    if (!session.relativePath.includes('subagents/')) {
+      const htmlContent = generateClaudeTrajectoryHtml(session.logData, subagentsMap);
+      const destName = `session-${session.baseName}.html`;
+      const dest = path.join(targetDir, destName);
+      fs.writeFileSync(dest, htmlContent, 'utf8');
+    }
   }
 }
 
@@ -102,7 +91,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.CLAUDE_CODE, templateDir, runType, targetDir);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -111,15 +100,7 @@ async function run() {
   try {
     console.log(`Starting Claude Code agent in: ${workDir}`);
 
-    const command = config.environment.claudeCodeCliBin;
-    const model = process.env.ANTHROPIC_MODEL;
-    const commandArgs = [
-      '-p', userPrompt,
-      '--dangerously-skip-permissions',
-      '--verbose',
-      '--output-format', 'stream-json',
-      ...(model ? ['--model', model] : [])
-    ];
+    const { command, commandArgs } = getClaudeCodeCommandAndArgs(userPrompt, ['--verbose', '--output-format', 'stream-json']);
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
@@ -231,15 +212,17 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
   const sessionFiles = getSessionFiles(dir);
   if (sessionFiles.length === 0) return toolsUsed;
 
-  const items = parseJsonlFile(path.join(dir, sessionFiles[0]));
-  for (const obj of items) {
-    const content = obj.message?.content;
-    for (const item of Array.isArray(content) ? content : []) {
-      if (item.type === 'tool_use') {
-        if (item.name === 'Skill' && item.input?.skill) {
-          toolsUsed.push(item.input.skill);
-        } else if (item.name === 'activate_skill' && item.input?.name) {
-          toolsUsed.push(item.input.name);
+  for (const file of sessionFiles) {
+    const items = parseJsonlFile(path.join(dir, file));
+    for (const obj of items) {
+      const content = obj.message?.content;
+      for (const item of Array.isArray(content) ? content : []) {
+        if (item.type === 'tool_use') {
+          if (item.name === 'Skill' && item.input?.skill) {
+            toolsUsed.push(item.input.skill);
+          } else if (item.name === 'activate_skill' && item.input?.name) {
+            toolsUsed.push(item.input.name);
+          }
         }
       }
     }

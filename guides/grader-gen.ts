@@ -3,15 +3,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { baseAppsDir } from '../lib/paths.ts';
-import { setupIsolatedWorkDir, runAgent } from './lib/utils.ts';
+import { setupGuideDevWorkDir, runAgent } from './lib/utils.ts';
 import { buildTargetGraderPrompt } from './gd-dev-prompts.ts';
 import {
   GUIDE_FILE,
   EXPECTATIONS_FILE,
-  SOLUTION_PATCH_FILE,
+  getDefaultSolutionAgent,
+  getActiveSolutionAgents,
+  SOLUTION_PATCH_FILES,
+  type SolutionAgent,
   ZERO_PASSRATE_PATCH_FILE,
   GRADER_FILE,
   TARGETS_DIR,
+  PATCHES_DIR,
   SUPPORTED_BASE_APPS
 } from '../lib/guide-validation.ts';
 import { cCyan, cGreen } from '../lib/colors.ts';
@@ -21,7 +25,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
 
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-grader`, relativeWorkSubdir);
+  const workDir = setupGuideDevWorkDir(`${baseApp}-grader`, relativeWorkSubdir);
   try {
     fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
       recursive: true,
@@ -32,23 +36,35 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
 
     const tempHome = path.resolve(workDir, '../../../../..'); // workDir is tempHome/guides/cat/guide/targets/app
     
-    // Copy patch-utils.ts to tempHome/lib/patch-utils.ts
-    const srcLibDir = path.resolve(repoRoot, 'lib');
+    // =========================================================================
+    // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
+    // Required so grader.ts runtime import `../../../../test-fixture.ts` and
+    // test-fixture.ts import `../lib/patch-utils.ts` resolve during Playwright execution.
+    // =========================================================================
     fs.mkdirSync(path.join(tempHome, 'lib'), { recursive: true });
     fs.copyFileSync(
-      path.join(srcLibDir, 'patch-utils.ts'),
+      path.resolve(repoRoot, 'lib', 'patch-utils.ts'),
       path.join(tempHome, 'lib', 'patch-utils.ts')
     );
-
-    // Copy template.grader.ts, test-fixture.ts, and pattern libraries to tempHome/guides/
     fs.mkdirSync(path.join(tempHome, 'guides'), { recursive: true });
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'test-fixture.ts'),
+      path.join(tempHome, 'guides', 'test-fixture.ts')
+    );
+
+    // =========================================================================
+    // 2. AGENT SANDBOX VIEWING & EDITING DEPENDENCIES (in workDir)
+    // All reference files, pattern libraries, API definitions, and patches must live
+    // directly inside `workDir` so the CLI agent's `read_file` tool can access them
+    // without triggering sandbox "Path not in workspace" security errors.
+    // =========================================================================
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'template.grader.ts'),
       path.join(workDir, 'template.grader.ts')
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'test-fixture.ts'),
-      path.join(tempHome, 'guides', 'test-fixture.ts')
+      path.join(workDir, 'test-fixture.ts')
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'parser-pattern-library.test.ts'),
@@ -58,35 +74,43 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       path.resolve(repoRoot, 'guides', 'playwright-pattern-library.grader.ts'),
       path.join(workDir, 'playwright-pattern-library.grader.ts')
     );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
+      path.join(workDir, 'ts-morph.d.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'node_modules', 'linkedom', 'types', 'index.d.ts'),
+      path.join(workDir, 'linkedom.d.ts')
+    );
 
-    const solutionPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, SOLUTION_PATCH_FILE);
-    const zeroPassratePatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
-    if (fs.existsSync(solutionPatch)) fs.copyFileSync(solutionPatch, path.join(workDir, SOLUTION_PATCH_FILE));
-    if (fs.existsSync(zeroPassratePatch)) fs.copyFileSync(zeroPassratePatch, path.join(workDir, ZERO_PASSRATE_PATCH_FILE));
+    const sourcePatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
+    if (fs.existsSync(sourcePatches)) {
+      fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
+    }
 
-
-    const parserPatternsPath = path.join(workDir, 'parser-pattern-library.test.ts');
-    const playwrightPatternsPath = path.join(workDir, 'playwright-pattern-library.grader.ts');
-
-    const tsMorphDts = path.join(repoRoot, 'guides', 'node_modules/ts-morph/lib/ts-morph.d.ts');
-    const linkedomDts = path.join(repoRoot, 'guides', 'node_modules/linkedom/types/index.d.ts');
+    const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
+    const activeAgents = getActiveSolutionAgents(targetDir);
+    const solutionPatchFiles: Partial<Record<SolutionAgent, string>> = {};
+    for (const agent of activeAgents) {
+      solutionPatchFiles[agent] = SOLUTION_PATCH_FILES[agent];
+    }
 
     const prompt = buildTargetGraderPrompt({
       guideFile: GUIDE_FILE,
       expectationsFile: EXPECTATIONS_FILE,
-      solutionPatchFile: SOLUTION_PATCH_FILE,
+      solutionPatchFiles,
       zeroPassratePatchFile: ZERO_PASSRATE_PATCH_FILE,
       graderFile: GRADER_FILE,
       baseApp,
       templateFile: 'template.grader.ts',
-      parserPatternLibraryPath: parserPatternsPath,
-      playwrightPatternLibraryPath: playwrightPatternsPath,
-      tsMorphDtsPath: tsMorphDts,
-      linkedomDtsPath: linkedomDts,
+      parserPatternLibraryPath: path.join(workDir, 'parser-pattern-library.test.ts'),
+      playwrightPatternLibraryPath: path.join(workDir, 'playwright-pattern-library.grader.ts'),
+      tsMorphDtsPath: path.join(workDir, 'ts-morph.d.ts'),
+      linkedomDtsPath: path.join(workDir, 'linkedom.d.ts'),
       failureContext,
     });
 
-    await runAgent(prompt, workDir);
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
 
     const generatedGrader = path.join(workDir, GRADER_FILE);
     if (fs.existsSync(generatedGrader)) {
@@ -95,19 +119,18 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.copyFileSync(generatedGrader, destGrader);
     }
 
-    const generatedSolution = path.join(workDir, SOLUTION_PATCH_FILE);
-    if (fs.existsSync(generatedSolution)) {
-      const destSolution = path.join(guideDirAbs, TARGETS_DIR, baseApp, SOLUTION_PATCH_FILE);
-      fs.copyFileSync(generatedSolution, destSolution);
-    }
-
-    const generatedZeroPassrate = path.join(workDir, ZERO_PASSRATE_PATCH_FILE);
-    if (fs.existsSync(generatedZeroPassrate)) {
-      const destZeroPassrate = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
-      fs.copyFileSync(generatedZeroPassrate, destZeroPassrate);
+    const generatedPatches = path.join(workDir, PATCHES_DIR);
+    if (fs.existsSync(generatedPatches)) {
+      const destPatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
+      fs.mkdirSync(destPatches, { recursive: true });
+      fs.cpSync(generatedPatches, destPatches, { recursive: true });
     }
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    try {
+      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    } catch (e) {
+      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+    }
   }
 }
 
