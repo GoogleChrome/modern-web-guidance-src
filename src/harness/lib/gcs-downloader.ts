@@ -17,7 +17,7 @@ async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: s
   if (!needsGeneration) {
     try {
       const summaryJson = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-      if (summaryJson.schemaVersion !== "2.0") {
+      if (!Array.isArray(summaryJson.steps) || summaryJson.steps.length === 0) {
         needsGeneration = true;
       }
     } catch {
