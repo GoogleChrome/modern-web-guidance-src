@@ -463,7 +463,7 @@ async function run(): Promise<void> {
     exportTrajectories(conversationsDir, '*.pb', targetDir);
     exportTrajectories(conversationsDir, '*.db', targetDir);
 
-    await generateNormalizedTrajectory(targetDir, Agents.JETSKI, getSuiteConfig().serving);
+    await generateNormalizedTrajectory(targetDir, Agents.JETSKI, userPrompt);
 
   } catch (err) {
     console.error("Error during execution:", err);

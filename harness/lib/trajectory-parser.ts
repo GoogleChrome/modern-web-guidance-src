@@ -31,7 +31,7 @@ export interface StandardizedStep {
 
 export interface TrajectorySummary {
   agent: string;
-  serving: string;
+  serving?: string;
   steps: StandardizedStep[];
   tokenUsage?: { total: number; cached: number };
   initialPrompt?: string;
@@ -85,66 +85,7 @@ export function finalizeTrajectorySummary(summary: TrajectorySummary): Trajector
       }
     }
   }
-  if (!summary.initialPrompt && summary.steps) {
-    summary.initialPrompt = extractInitialPromptFromLogs(summary.steps);
-  }
   return summary;
-}
-
-export function extractInitialPromptFromLogs(logData?: any[], chatLogText?: string): string {
-  if (logData && Array.isArray(logData)) {
-    for (const entry of logData) {
-      let role = entry.role || entry.type || 'unknown';
-      let content = entry.message?.content || entry.content || entry.payload?.message || entry;
-      if (entry.message) role = entry.message.role || role;
-      
-      if (role === 'user' || role === 'USER_INPUT' || (entry.type === 'event_msg' && entry.payload?.type === 'user_message')) {
-        const text = Array.isArray(content)
-          ? content.find((c: any) => c.type === 'text')?.text || content[0]?.text || ''
-          : (typeof content === 'string' ? content : (content?.text || ''));
-        const cleanText = String(text).trim();
-        if (cleanText && !cleanText.includes('Base directory for this skill') && !cleanText.includes('Launching skill')) {
-          if (cleanText.includes('ARGUMENTS:')) {
-            const idx = cleanText.indexOf('ARGUMENTS:');
-            return cleanText.slice(idx).trim();
-          }
-          return cleanText;
-        }
-      }
-    }
-  }
-
-  if (chatLogText) {
-    const lines = chatLogText.split(/\r?\n/);
-    for (const line of lines) {
-      if (line.trim().startsWith('{')) {
-        try {
-          const obj = JSON.parse(line);
-          const role = obj.role || obj.type || obj.message?.role || 'unknown';
-          if (role === 'user' || role === 'USER_INPUT') {
-            const content = obj.message?.content || obj.content;
-            const text = Array.isArray(content)
-              ? content.find((c: any) => c.type === 'text')?.text || content[0]?.text || ''
-              : (typeof content === 'string' ? content : (content?.text || ''));
-            const cleanText = String(text).trim();
-            if (cleanText && !cleanText.includes('Base directory for this skill') && !cleanText.includes('Launching skill')) {
-              if (cleanText.includes('ARGUMENTS:')) {
-                const idx = cleanText.indexOf('ARGUMENTS:');
-                return cleanText.slice(idx).trim();
-              }
-              return cleanText;
-            }
-          }
-        } catch {}
-      }
-    }
-    const firstChunk = chatLogText.slice(0, 2000).trim();
-    if (firstChunk && !firstChunk.startsWith('{')) {
-      return firstChunk.split('\n')[0].trim();
-    }
-  }
-
-  return '';
 }
 
 /**
@@ -182,7 +123,7 @@ function truncateMessage(msg: any, maxLen = 300): string {
 /**
  * Parses Claude Code session JSONL files into a normalized TrajectorySummary.
  */
-export function parseClaudeTrajectory(logData: any[], serving: string): TrajectorySummary {
+export function parseClaudeTrajectory(logData: any[]): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let stepCounter = 1;
   const toolUseToStepMap = new Map<string, number>(); // tool_use_id -> step index in 'steps' array
@@ -264,16 +205,14 @@ export function parseClaudeTrajectory(logData: any[], serving: string): Trajecto
 
   return finalizeTrajectorySummary({
     agent: Agents.CLAUDE_CODE,
-    serving,
-    steps,
-    initialPrompt: extractInitialPromptFromLogs(logData)
+    steps
   });
 }
 
 /**
  * Parses Gemini CLI session JSON/JSONL files into a normalized TrajectorySummary.
  */
-export function parseGeminiTrajectory(session: any, serving: string): TrajectorySummary {
+export function parseGeminiTrajectory(session: any): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let stepCounter = 1;
 
@@ -334,9 +273,7 @@ export function parseGeminiTrajectory(session: any, serving: string): Trajectory
 
   return finalizeTrajectorySummary({
     agent: Agents.GEMINI_CLI,
-    serving,
-    steps,
-    initialPrompt: extractInitialPromptFromLogs(session)
+    steps
   });
 }
 
@@ -378,7 +315,7 @@ function findJsonObjectsInString(str: string): any[] {
 /**
  * Synthesizes a normalized TrajectorySummary for Jetski (Desktop and CLI) using .db files, modern-web.log, and chat_log.txt.
  */
-export async function parseJetskiTrajectory(dirPath: string, agentName: string, serving: string): Promise<TrajectorySummary> {
+export async function parseJetskiTrajectory(dirPath: string, agentName: string): Promise<TrajectorySummary> {
   const steps: StandardizedStep[] = [];
   let stepCounter = 1;
   const seenJsonHashes = new Set<string>();
@@ -560,9 +497,7 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string, 
   const legacy = parseJetskiCliSession(dirPath);
   return finalizeTrajectorySummary({
     agent: agentName,
-    serving,
     steps,
-    initialPrompt: extractInitialPromptFromLogs(steps, chatText),
     model: legacy.model,
     tokenUsage: legacy.tokenUsage,
     retrievedGuides: legacy.retrievedGuides,
@@ -574,7 +509,7 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string, 
 /**
  * Parses Codex / OpenAI CLI session JSONL files into a normalized TrajectorySummary.
  */
-export function parseCodexTrajectory(logData: any[], serving: string): TrajectorySummary {
+export function parseCodexTrajectory(logData: any[]): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let stepCounter = 1;
   let currentThought = '';
@@ -638,16 +573,14 @@ export function parseCodexTrajectory(logData: any[], serving: string): Trajector
 
   return finalizeTrajectorySummary({
     agent: Agents.CODEX_CLI,
-    serving,
-    steps,
-    initialPrompt: extractInitialPromptFromLogs(logData)
+    steps
   });
 }
 
 /**
  * Generates and saves 'trajectory_summary.json' in the target directory.
  */
-export async function generateNormalizedTrajectory(targetDir: string, agentName: string, serving: string): Promise<void> {
+export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
   try {
     let summary: TrajectorySummary | null = null;
 
@@ -661,16 +594,16 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
     });
 
     if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI) {
-      summary = await parseJetskiTrajectory(targetDir, agentName, serving);
+      summary = await parseJetskiTrajectory(targetDir, agentName);
     } else if (sessionFiles[0]) {
       const filePath = path.join(targetDir, sessionFiles[0]);
       const isJsonl = filePath.endsWith('.jsonl');
       const logData = isJsonl ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
       if (agentName === Agents.CLAUDE_CODE) {
-        summary = parseClaudeTrajectory(logData, serving);
+        summary = parseClaudeTrajectory(logData);
         const [guides, tools, model, tokenUsage] = await Promise.all([
-          collectClaudeGuidesFromTrajectory(targetDir, serving),
+          collectClaudeGuidesFromTrajectory(targetDir),
           Promise.resolve(collectClaudeToolsFromTrajectory(targetDir)),
           Promise.resolve(extractClaudeCodeModel(targetDir)),
           Promise.resolve(extractClaudeCodeTokenUsage(targetDir))
@@ -681,9 +614,9 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.model = model;
         summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.GEMINI_CLI) {
-        summary = parseGeminiTrajectory(logData, serving);
+        summary = parseGeminiTrajectory(logData);
         const [guides, tools, model, tokenUsage] = await Promise.all([
-          collectGeminiGuidesFromTrajectory(targetDir, serving),
+          collectGeminiGuidesFromTrajectory(targetDir),
           Promise.resolve(collectGeminiToolsFromTrajectory(targetDir)),
           Promise.resolve(extractGeminiCliModel(targetDir)),
           Promise.resolve(extractGeminiCliTokenUsage(targetDir))
@@ -694,9 +627,9 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.model = model;
         summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.CODEX_CLI) {
-        summary = parseCodexTrajectory(logData, serving);
+        summary = parseCodexTrajectory(logData);
         const [guides, tools, model, tokenUsage] = await Promise.all([
-          collectCodexGuidesFromTrajectory(targetDir, serving),
+          collectCodexGuidesFromTrajectory(targetDir),
           Promise.resolve(collectCodexToolsFromTrajectory(targetDir)),
           Promise.resolve(extractCodexCliModel(targetDir)),
           Promise.resolve(extractCodexCliTokenUsage(targetDir))
@@ -707,9 +640,9 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.model = model;
         summary.tokenUsage = tokenUsage;
       } else if (agentName === Agents.PI) {
-        summary = parseCodexTrajectory(logData, serving); // Fallback to Codex parser for steps
+        summary = parseCodexTrajectory(logData); // Fallback to Codex parser for steps
         const [guides, tools, model, tokenUsage] = await Promise.all([
-          collectPiGuidesFromTrajectory(targetDir, serving),
+          collectPiGuidesFromTrajectory(targetDir),
           Promise.resolve(collectPiToolsFromTrajectory(targetDir)),
           Promise.resolve(extractPiModel(targetDir)),
           Promise.resolve(extractPiTokenUsage(targetDir))
@@ -721,50 +654,29 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.tokenUsage = tokenUsage;
       } else {
         console.warn(`[TrajectoryParser] Warning: Unknown agent "${agentName}". Attempting generic Codex/standard trajectory parsing. To add another agent, register a parser in generateNormalizedTrajectory.`);
-        summary = parseCodexTrajectory(logData, serving);
+        summary = parseCodexTrajectory(logData);
       }
     } else {
       console.warn(`[TrajectoryParser] Warning: No session files found for non-Jetski agent "${agentName}". Cannot parse trajectory.`);
     }
 
-      if (summary) {
-        finalizeTrajectorySummary(summary);
+    if (summary) {
+      finalizeTrajectorySummary(summary);
 
-        // Merge MCP logs if running in MCP mode or if it is desktop Jetski
-        if (serving === Serving.MCP || agentName === Agents.JETSKI) {
-          const mcpGuides = extractGuidesFromMcpLog(targetDir);
-          summary.retrievedGuides = [...new Set([...(summary.retrievedGuides || []), ...mcpGuides])];
-          if (!summary.toolsUsed) {
-            summary.toolsUsed = ['modern-web-guidance'];
-          } else if (!summary.toolsUsed.includes('modern-web-guidance')) {
-            summary.toolsUsed.push('modern-web-guidance');
-          }
-        }
+      if (initialPrompt) {
+        summary.initialPrompt = initialPrompt;
+      }
 
-        // Inject token usage if available
-        const runtimePath = path.join(targetDir, 'runtime.json');
-        if (fs.existsSync(runtimePath)) {
-          try {
-            const runJson = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
-            if (runJson.tokenUsage) {
-              summary.tokenUsage = runJson.tokenUsage;
-            }
-          } catch {}
+      // Merge MCP logs if it is desktop Jetski
+      if (agentName === Agents.JETSKI) {
+        const mcpGuides = extractGuidesFromMcpLog(targetDir);
+        summary.retrievedGuides = [...new Set([...(summary.retrievedGuides || []), ...mcpGuides])];
+        if (!summary.toolsUsed) {
+          summary.toolsUsed = ['modern-web-guidance'];
+        } else if (!summary.toolsUsed.includes('modern-web-guidance')) {
+          summary.toolsUsed.push('modern-web-guidance');
         }
-
-        if (!summary.initialPrompt) {
-          const chatLogPath = path.join(targetDir, 'chat_log.txt');
-          const chatText = fs.existsSync(chatLogPath) ? fs.readFileSync(chatLogPath, 'utf8') : '';
-          const filePath = sessionFiles[0] ? path.join(targetDir, sessionFiles[0]) : '';
-          let logData: any[] = [];
-          if (filePath && fs.existsSync(filePath)) {
-            try {
-              logData = filePath.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            } catch {}
-          }
-          const promptFound = extractInitialPromptFromLogs(Array.isArray(logData) ? logData : [], chatText);
-          if (promptFound) summary.initialPrompt = truncateMessage(promptFound, 1000);
-        }
+      }
 
       const outPath = path.join(targetDir, 'trajectory_summary.json');
       fs.writeFileSync(outPath, JSON.stringify(summary, null, 2), 'utf8');
@@ -773,14 +685,10 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       console.warn(`[TrajectoryParser] No trajectory files found in ${targetDir} to summarize.`);
     }
   } catch (err: any) {
-    // Graceful failure constraint! Ensure it never crashes the run.
     console.error(`[TrajectoryParser] Robustness warning: Failed to generate trajectory summary: ${err.message}`);
-    
-    // Write a placeholder file so the UI knows it failed but remains robust
     try {
       const placeholder: TrajectorySummary = finalizeTrajectorySummary({
         agent: agentName,
-        serving,
         steps: [{
           stepNumber: 1,
           thought: "Failed to parse trajectory logs during execution.",

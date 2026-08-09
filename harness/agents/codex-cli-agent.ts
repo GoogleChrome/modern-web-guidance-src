@@ -145,7 +145,7 @@ async function run() {
     }
 
     exportCodexTrajectories(workDir, targetDir);
-    await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, getSuiteConfig().serving);
+    await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, userPrompt);
 
     console.log("Codex agent finished successfully.");
   } catch (err) {
@@ -156,7 +156,7 @@ async function run() {
   }
 }
 
-export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<GuideUsage> {
+export async function collectCodexGuidesFromTrajectory(dirPath: string, serving?: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
 

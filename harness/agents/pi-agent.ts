@@ -132,7 +132,7 @@ async function run() {
 
     console.log("Pi agent finished successfully.");
 
-    await generateNormalizedTrajectory(targetDir, Agents.PI, getSuiteConfig().serving);
+    await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
 
   } catch (err) {
     console.error("Error during Pi execution:", err);
@@ -270,7 +270,7 @@ export function collectPiToolsFromTrajectory(dir: string): string[] {
 }
 
 
-export function collectPiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
+export function collectPiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {

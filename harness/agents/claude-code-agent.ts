@@ -158,7 +158,7 @@ async function run() {
     }
 
     exportClaudeCodeTrajectories(workDir, targetDir);
-    await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, getSuiteConfig().serving);
+    await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, userPrompt);
 
     console.log("Claude Code agent finished successfully.");
 
@@ -170,7 +170,7 @@ async function run() {
   }
 }
 
-export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
+export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
 

@@ -115,7 +115,7 @@ async function run() {
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
     exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
 
-    await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, getSuiteConfig().serving);
+    await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, userPrompt);
 
     console.log("Gemini CLI agent finished successfully.");
 
@@ -136,7 +136,7 @@ function readTrajectory(filePath: string): ConversationRecord {
   return JSON.parse(content) as ConversationRecord;
 }
 
-export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {

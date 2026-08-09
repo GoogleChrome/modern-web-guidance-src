@@ -36,16 +36,16 @@ test('Parser: Jetski CLI normalization', async () => {
     insertStep.run(1, 21, 1, null, payload1);
     db.close();
 
-    await generateNormalizedTrajectory(tempDir, Agents.JETSKI_CLI, 'skills_cli');
+    await generateNormalizedTrajectory(tempDir, Agents.JETSKI_CLI, 'Test prompt for Jetski');
 
     const summaryPath = path.join(tempDir, 'trajectory_summary.json');
     assert.ok(fs.existsSync(summaryPath), 'trajectory_summary.json should be created');
 
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
     assert.strictEqual(summary.agent, Agents.JETSKI_CLI);
+    assert.strictEqual(summary.initialPrompt, 'Test prompt for Jetski');
     assert.ok(Array.isArray(summary.steps));
     
-    console.log('Jetski Summary Steps:', summary.steps);
     assert.strictEqual(summary.steps.length, 1);
     assert.strictEqual(summary.steps[0].action?.type, 'web_search');
     assert.strictEqual(summary.steps[0].action?.name, 'get_best_practices');
@@ -89,13 +89,14 @@ test('Parser: Gemini CLI normalization', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-123.json'), JSON.stringify(sessionData));
 
-    await generateNormalizedTrajectory(tempDir, Agents.GEMINI_CLI, 'mcp');
+    await generateNormalizedTrajectory(tempDir, Agents.GEMINI_CLI, 'Hello');
 
     const summaryPath = path.join(tempDir, 'trajectory_summary.json');
     assert.ok(fs.existsSync(summaryPath));
 
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
     assert.strictEqual(summary.agent, Agents.GEMINI_CLI);
+    assert.strictEqual(summary.initialPrompt, 'Hello');
     assert.strictEqual(summary.steps.length, 1);
     assert.strictEqual(summary.steps[0].thought, 'Thinking...');
     assert.strictEqual(summary.steps[0].action?.type, 'web_search');
@@ -149,13 +150,14 @@ test('Parser: Claude Code normalization', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
 
-    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'mcp');
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Fix it');
 
     const summaryPath = path.join(tempDir, 'trajectory_summary.json');
     assert.ok(fs.existsSync(summaryPath));
 
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
     assert.strictEqual(summary.agent, Agents.CLAUDE_CODE);
+    assert.strictEqual(summary.initialPrompt, 'Fix it');
     assert.strictEqual(summary.steps.length, 1);
     assert.strictEqual(summary.steps[0].thought, 'I need to read the file');
     assert.strictEqual(summary.steps[0].action?.type, 'read_file');
