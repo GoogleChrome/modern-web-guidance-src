@@ -157,7 +157,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   // 2. Scan & Hash
   let readyGuides = scanAllGuides().filter(inv => {
     const excluded = config.monoskill.excludeFromBundling || [];
-    return inv.hasGuide && !excluded.includes(inv.category) && !excluded.includes(inv.name);
+    return inv.isPublished && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
 
