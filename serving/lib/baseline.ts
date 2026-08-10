@@ -11,7 +11,7 @@ type Feature = typeof features[string];
  */
 export interface FeatureValidationResult {
   isValid: boolean;
-  error?: 'not_found' | 'invalid_kind';
+  error?: 'not_found' | 'invalid_kind' | 'temp_feature_now_available';
   kind?: string;
   suggestion?: string;
   errorMessage?: string;
@@ -183,7 +183,13 @@ export function resolveFeatureId(featureId: string): string[] {
  * @returns The feature name
  */
 export function getFeatureName(featureId: string): string {
-  const feature = features[featureId] as Feature;
+  const feature = features[featureId] as Feature | undefined;
+  if (!feature) {
+    if (featureId.startsWith('tmp-')) {
+      return featureId.slice(4);
+    }
+    return featureId;
+  }
   return feature.name;
 }
 
@@ -228,6 +234,18 @@ export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string
  * Validates a feature ID.
  */
 export function validateFeature(id: string): FeatureValidationResult {
+  if (id.startsWith('tmp-')) {
+    const realId = id.slice(4);
+    if (features[realId]) {
+      return {
+        isValid: false,
+        error: 'temp_feature_now_available',
+        errorMessage: `Temporary web feature ID "${id}" is now available in web-features package as "${realId}". Please update guide frontmatter to use "${realId}".`
+      };
+    }
+    return { isValid: true };
+  }
+
   const feature = features[id] as Feature | undefined;
   if (!feature) {
     return {

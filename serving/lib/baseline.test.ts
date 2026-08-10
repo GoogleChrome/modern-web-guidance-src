@@ -95,6 +95,19 @@ describe('baseline data', () => {
       assert.ok(result.suggestion!.includes('gradients')); // It might contain multiple targets
       assert.ok(result.errorMessage!.includes('is a split record, not a primary feature'));
     });
+
+    it('returns valid for a pending temporary feature ID', () => {
+      assert.deepStrictEqual(validateFeature('tmp-pending-feature-xyz'), { isValid: true });
+    });
+
+    it('returns error when a temporary feature ID is now available upstream', () => {
+      const result = validateFeature('tmp-grid');
+      assert.deepStrictEqual(result, {
+        isValid: false,
+        error: 'temp_feature_now_available',
+        errorMessage: 'Temporary web feature ID "tmp-grid" is now available in web-features package as "grid". Please update guide frontmatter to use "grid".'
+      });
+    });
   });
 
   describe('resolveFeatureId', () => {
