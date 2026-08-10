@@ -91,11 +91,32 @@ window.__featuresMapping = {
   "branded-select-styling": [
     "customizable-select"
   ],
+  "button-group": [
+    "customizable-select"
+  ],
+  "combobox": [
+    "customizable-select",
+    "datalist"
+  ],
   "custom-select-picker-layouts": [
     "customizable-select"
   ],
+  "cycle-toggle": [
+    "customizable-select"
+  ],
+  "filterable-select": [
+    "customizable-select",
+    "view-transitions",
+    "transition-behavior",
+    "starting-style"
+  ],
   "form-fields-automatically-fit-contents": [
     "field-sizing"
+  ],
+  "rating": [
+    "meter",
+    "input-range",
+    "customizable-select"
   ],
   "required-field-feedback": [
     "user-pseudos"
@@ -105,6 +126,28 @@ window.__featuresMapping = {
   ],
   "select-menu-interaction": [
     "user-pseudos"
+  ],
+  "slider": [
+    "accent-color",
+    "input-range"
+  ],
+  "slider-range": [
+    "accent-color",
+    "input-range",
+    "grid"
+  ],
+  "slider-tooltip": [
+    "anchor-positioning",
+    "progress"
+  ],
+  "switch": [
+    "switch-control",
+    "accent-color"
+  ],
+  "tree-view": [
+    "details",
+    "details-content",
+    "customizable-select"
   ],
   "validate-input-after-interaction": [
     "user-pseudos"
@@ -289,6 +332,13 @@ window.__featuresMapping = {
     "color-scheme",
     "light-dark"
   ],
+  "icons": [
+    "masks",
+    "image-set",
+    "svg",
+    "container-style-queries",
+    "registered-custom-properties"
+  ],
   "position-aware-tooltips": [
     "container-anchor-position-queries",
     "popover"
@@ -357,8 +407,18 @@ window.__featuresMapping = {
     "view-transitions",
     "active-view-transition"
   ],
+  "drag": [
+    "user-select"
+  ],
+  "drag-and-drop": [
+    "user-select"
+  ],
   "dynamic-sibling-animations": [
     "sibling-count"
+  ],
+  "dynamic-sort": [
+    "view-transitions",
+    "move-before"
   ],
   "group-element-transitions": [
     "view-transitions",
@@ -386,6 +446,11 @@ window.__featuresMapping = {
   "move-dom-element-without-losing-state": [
     "move-before"
   ],
+  "overflow-popup": [
+    "container-scroll-state-queries",
+    "popover",
+    "resize-observer"
+  ],
   "parallax-scroll-effects": [
     "scroll-driven-animations"
   ],
@@ -397,6 +462,12 @@ window.__featuresMapping = {
   ],
   "platform-controls-dismiss-dialog": [
     "dialog-closedby"
+  ],
+  "responsive-disclosure": [
+    "popover",
+    "dialog",
+    "details",
+    "container-queries"
   ],
   "same-document-transitions": [
     "view-transitions"
@@ -424,6 +495,10 @@ window.__featuresMapping = {
     "details-name",
     "hidden-until-found"
   ],
+  "sortable-table": [
+    "invoker-commands",
+    "view-transitions"
+  ],
   "swipe-to-remove": [
     "scroll-snap",
     "scroll-initial-target",
@@ -433,6 +508,77 @@ window.__featuresMapping = {
     "mutationobserver",
     "resize-observer",
     "web-animations"
+  ],
+  "accordion": [
+    "hidden-until-found",
+    "interpolate-size",
+    "transition-behavior",
+    "starting-style",
+    "details-name",
+    "details"
+  ],
+  "breadcrumbs": [
+    "border-shape",
+    "corner-shape",
+    "popover"
+  ],
+  "card": [
+    "has",
+    "container-queries",
+    "container-style-queries"
+  ],
+  "carousel": [
+    "scroll-snap",
+    "scroll-driven-animations",
+    "scroll-buttons"
+  ],
+  "checkbox": [
+    "accent-color",
+    "indeterminate"
+  ],
+  "checkbox-group": [
+    "subgrid",
+    "indeterminate",
+    "customizable-select"
+  ],
+  "content-table": [
+    "sticky-positioning",
+    "container-scroll-state-queries"
+  ],
+  "context-menu": [
+    "popover",
+    "anchor-positioning",
+    "menu"
+  ],
+  "copy-button": [
+    "invoker-commands",
+    "async-clipboard"
+  ],
+  "dark-mode-toggle": [
+    "color-scheme",
+    "prefers-color-scheme",
+    "light-dark",
+    "has"
+  ],
+  "data-grid": [
+    "field-sizing"
+  ],
+  "hovercard": [
+    "popover",
+    "anchor-positioning",
+    "interest-invokers",
+    "cross-document-view-transitions"
+  ],
+  "menu": [
+    "container-scroll-state-queries",
+    "popover",
+    "subgrid",
+    "menu",
+    "sticky-positioning",
+    "anchor-positioning"
+  ],
+  "navbar": [
+    "popover"
   ],
   "navigation-drawer": [
     "inert",
@@ -453,6 +599,30 @@ window.__featuresMapping = {
     "sibling-count",
     "transition-behavior"
   ],
+  "progress": [
+    "accent-color",
+    "progress"
+  ],
+  "progress-ring": [
+    "progress",
+    "conic-gradients"
+  ],
+  "scrollspy": [
+    "scroll-marker-targets",
+    "scroll-target-group"
+  ],
+  "skeleton": [
+    "masks",
+    "text-decoration",
+    "gradients",
+    "prefers-reduced-motion",
+    "registered-custom-properties"
+  ],
+  "spinner": [
+    "prefers-reduced-motion",
+    "conic-gradients",
+    "progress"
+  ],
   "stack-drill-down": [
     "inert",
     "intersection-observer",
@@ -460,12 +630,25 @@ window.__featuresMapping = {
     "scroll-snap",
     "scroll-snap-events"
   ],
+  "tabs": [
+    "anchor-positioning",
+    "hidden-until-found",
+    "scroll-snap",
+    "popover",
+    "scroll-buttons"
+  ],
   "adapt-scrollbar-to-contrast-preferences": [
     "scrollbar-color",
     "prefers-contrast"
   ],
   "apply-webgl-shaders": [
     "canvas-html"
+  ],
+  "color-ramps": [
+    "relative-color",
+    "function",
+    "oklab",
+    "color-mix"
   ],
   "complex-shapes": [
     "masks",
@@ -483,6 +666,11 @@ window.__featuresMapping = {
     "prefers-color-scheme",
     "light-dark",
     "accent-color"
+  ],
+  "element-shape": [
+    "border-shape",
+    "corner-shape",
+    "border-radius"
   ],
   "export-html-media-from-canvas": [
     "canvas-html"
