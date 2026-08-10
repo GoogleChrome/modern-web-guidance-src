@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import config, { Agents } from '../config.ts';
+import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
@@ -80,11 +80,7 @@ async function run() {
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
     exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
 
-    try {
-      await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, getSuiteConfig().serving);
-    } catch (e: any) {
-      console.error("Failed to generate normalized trajectory:", e.message);
-    }
+    await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, userPrompt);
 
     console.log("Gemini CLI agent finished successfully.");
 
@@ -105,7 +101,7 @@ function readTrajectory(filePath: string): ConversationRecord {
   return JSON.parse(content) as ConversationRecord;
 }
 
-export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {

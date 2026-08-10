@@ -4,9 +4,32 @@ import { parseJsonlFile } from './agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { Agents } from '../config.ts';
 
+// Import agent-specific extractors (accepting circular dependency for runtime execution)
+import { parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
+import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory, extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gemini-cli-agent.ts';
+import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory, extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
+import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory, extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
+import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory, extractPiModel, extractPiTokenUsage } from '../agents/pi-agent.ts';
+
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}
+
+/**
+ * Represents a single normalized action step in an agent's execution trajectory.
+ * 
+ * Note: Tool outputs (`outcome.message`) and large parameter payloads are intentionally
+ * truncated during normalization to keep `trajectory_summary.json` lightweight for fast
+ * UI timeline rendering and prompt budgeting in downstream comparison tools.
+ */
 export interface StandardizedStep {
   stepNumber: number;
   timestamp?: string;
+  subagentId?: string;
   thought?: string;
   action?: {
     type: 'tool_call' | 'api_call' | 'web_search' | 'read_file' | 'write_file' | 'run_command' | 'other';
@@ -22,13 +45,39 @@ export interface StandardizedStep {
   };
 }
 
+export interface SubagentMetadata {
+  id: string;
+  agent?: string;
+  purpose?: string;
+  totalSteps?: number;
+}
+
 export interface TrajectorySummary {
-  schemaVersion?: string;
   agent: string;
-  serving: string;
   steps: StandardizedStep[];
+  subagents?: Record<string, SubagentMetadata>;
   tokenUsage?: { total: number; cached: number };
   initialPrompt?: string;
+  model?: string;
+  retrievedGuides?: string[];
+  fileReadGuides?: string[];
+  toolsUsed?: string[];
+}
+
+export function extractTimestamp(entry: any): string | undefined {
+  if (!entry || typeof entry !== 'object') return undefined;
+  const raw = entry.timestamp || entry.created_at || entry.time || entry.clientTimestamp || entry.message?.created_at || entry.payload?.created_at;
+  if (!raw) return undefined;
+  if (typeof raw === 'number') {
+    const ms = raw < 1e11 ? raw * 1000 : raw;
+    const d = new Date(ms);
+    return !isNaN(d.getTime()) ? d.toISOString() : undefined;
+  }
+  if (typeof raw === 'string') {
+    const d = new Date(raw);
+    return !isNaN(d.getTime()) ? d.toISOString() : undefined;
+  }
+  return undefined;
 }
 
 export function categorizeAction(name: string, params?: Record<string, any>, thought?: string): NonNullable<StandardizedStep['action']>['canonicalCategory'] {
@@ -68,74 +117,36 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
 }
 
 export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
-  summary.schemaVersion = "2.0";
   if (Array.isArray(summary.steps)) {
+    let missingTimestampCount = 0;
     for (const step of summary.steps) {
+      if (!step.timestamp) missingTimestampCount++;
+    }
+    if (missingTimestampCount > 0 && missingTimestampCount < summary.steps.length) {
+      console.warn(`[TrajectoryParser] Warning: ${missingTimestampCount} of ${summary.steps.length} steps in ${summary.agent} trajectory are missing timestamps. Sequence ordering will fallback to insertion order for untimestamped steps.`);
+    }
+
+    // Sort steps monotonically by timestamp when available, preserving stable order otherwise
+    summary.steps.sort((a, b) => {
+      if (a.timestamp && b.timestamp) {
+        const timeDiff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        if (timeDiff !== 0) return timeDiff;
+      }
+      if (a.timestamp && !b.timestamp) return -1;
+      if (!a.timestamp && b.timestamp) return 1;
+      return 0;
+    });
+
+    // Re-index step numbers strictly 1..N and populate canonicalCategory
+    for (let i = 0; i < summary.steps.length; i++) {
+      const step = summary.steps[i];
+      step.stepNumber = i + 1;
       if (step.action && !step.action.canonicalCategory) {
         step.action.canonicalCategory = categorizeAction(step.action.name, step.action.params, step.thought);
       }
     }
   }
-  if (!summary.initialPrompt && summary.steps) {
-    summary.initialPrompt = extractInitialPromptFromLogs(summary.steps);
-  }
   return summary;
-}
-
-export function extractInitialPromptFromLogs(logData?: any[], chatLogText?: string): string {
-  if (logData && Array.isArray(logData)) {
-    for (const entry of logData) {
-      let role = entry.role || entry.type || 'unknown';
-      let content = entry.message?.content || entry.content || entry.payload?.message || entry;
-      if (entry.message) role = entry.message.role || role;
-      
-      if (role === 'user' || role === 'USER_INPUT' || (entry.type === 'event_msg' && entry.payload?.type === 'user_message')) {
-        const text = Array.isArray(content)
-          ? content.find((c: any) => c.type === 'text')?.text || content[0]?.text || ''
-          : (typeof content === 'string' ? content : (content?.text || ''));
-        const cleanText = String(text).trim();
-        if (cleanText && !cleanText.includes('Base directory for this skill') && !cleanText.includes('Launching skill')) {
-          if (cleanText.includes('ARGUMENTS:')) {
-            const idx = cleanText.indexOf('ARGUMENTS:');
-            return cleanText.slice(idx).trim();
-          }
-          return cleanText;
-        }
-      }
-    }
-  }
-
-  if (chatLogText) {
-    const lines = chatLogText.split(/\r?\n/);
-    for (const line of lines) {
-      if (line.trim().startsWith('{')) {
-        try {
-          const obj = JSON.parse(line);
-          const role = obj.role || obj.type || obj.message?.role || 'unknown';
-          if (role === 'user' || role === 'USER_INPUT') {
-            const content = obj.message?.content || obj.content;
-            const text = Array.isArray(content)
-              ? content.find((c: any) => c.type === 'text')?.text || content[0]?.text || ''
-              : (typeof content === 'string' ? content : (content?.text || ''));
-            const cleanText = String(text).trim();
-            if (cleanText && !cleanText.includes('Base directory for this skill') && !cleanText.includes('Launching skill')) {
-              if (cleanText.includes('ARGUMENTS:')) {
-                const idx = cleanText.indexOf('ARGUMENTS:');
-                return cleanText.slice(idx).trim();
-              }
-              return cleanText;
-            }
-          }
-        } catch {}
-      }
-    }
-    const firstChunk = chatLogText.slice(0, 2000).trim();
-    if (firstChunk && !firstChunk.startsWith('{')) {
-      return firstChunk.split('\n')[0].trim();
-    }
-  }
-
-  return '';
 }
 
 /**
@@ -173,12 +184,20 @@ function truncateMessage(msg: any, maxLen = 300): string {
 /**
  * Parses Claude Code session JSONL files into a normalized TrajectorySummary.
  */
-export function parseClaudeTrajectory(logData: any[], serving: string): TrajectorySummary {
+/**
+ * Helper to parse a list of Claude JSONL entries into StandardizedSteps.
+ */
+function parseClaudeLogEntries(
+  logData: any[],
+  subagentId?: string,
+  subagentsMap: Record<string, any[]> = {},
+  consumedSubagents: Set<string> = new Set()
+): StandardizedStep[] {
   const steps: StandardizedStep[] = [];
-  let stepCounter = 1;
-  const toolUseToStepMap = new Map<string, number>(); // tool_use_id -> step index in 'steps' array
+  const toolUseToStepMap = new Map<string, number>();
 
   for (const entry of logData) {
+    const timestamp = extractTimestamp(entry);
     let role = entry.role || entry.type || 'unknown';
     let content = entry.message?.content || entry.content || entry;
     if (entry.message) {
@@ -186,30 +205,28 @@ export function parseClaudeTrajectory(logData: any[], serving: string): Trajecto
     }
 
     if (role === 'assistant' && Array.isArray(content)) {
-      // 1. Extract thought from this assistant turn
       let thought = '';
-      const thinkingBlock = content.find(b => b.type === 'thinking');
-      const textBlock = content.find(b => b.type === 'text');
+      const thinkingBlock = content.find((b: any) => b.type === 'thinking');
+      const textBlock = content.find((b: any) => b.type === 'text');
       
       if (thinkingBlock?.thinking) {
         thought = thinkingBlock.thinking;
       } else if (textBlock?.text) {
-        // Try extracting <thinking>...</thinking>
         const match = textBlock.text.match(/<thinking>([\s\S]*?)<\/thinking>/);
         if (match) {
           thought = match[1];
         } else {
-          thought = textBlock.text; // fallback
+          thought = textBlock.text;
         }
       }
 
-      // 2. Process all tool calls in this turn
-      const toolUses = content.filter(b => b.type === 'tool_use');
+      const toolUses = content.filter((b: any) => b.type === 'tool_use');
       
       if (toolUses.length === 0) {
-        // Just a final text response / thought step
         steps.push({
-          stepNumber: stepCounter++,
+          stepNumber: 0,
+          timestamp,
+          subagentId,
           thought,
           action: {
             type: 'other',
@@ -220,8 +237,11 @@ export function parseClaudeTrajectory(logData: any[], serving: string): Trajecto
         });
       } else {
         for (const tool of toolUses) {
+          const isSubagentCall = ['task', 'agent', 'stitch', 'dispatch'].includes((tool.name || '').toLowerCase());
           const stepIdx = steps.push({
-            stepNumber: stepCounter++,
+            stepNumber: 0,
+            timestamp,
+            subagentId,
             thought,
             action: {
               type: mapToolType(tool.name || ''),
@@ -233,10 +253,21 @@ export function parseClaudeTrajectory(logData: any[], serving: string): Trajecto
           if (tool.id) {
             toolUseToStepMap.set(tool.id, stepIdx);
           }
+
+          if (isSubagentCall && subagentsMap) {
+            const subId = tool.input?.subagent_id || tool.input?.agent_id || tool.id;
+            for (const [key, subLogs] of Object.entries(subagentsMap)) {
+              if (!consumedSubagents.has(key) && (key === subId || key.includes(tool.id) || JSON.stringify(tool.input || {}).includes(key))) {
+                consumedSubagents.add(key);
+                const subSteps = parseClaudeLogEntries(subLogs, key, subagentsMap, consumedSubagents);
+                steps.push(...subSteps);
+                break;
+              }
+            }
+          }
         }
       }
     } else if (role === 'user' || role === 'system') {
-      // Process tool results which are returned by the user/system environment
       const contentList = Array.isArray(content) ? content : [content];
       for (const block of contentList) {
         if (block && block.type === 'tool_result' && block.tool_use_id) {
@@ -247,93 +278,131 @@ export function parseClaudeTrajectory(logData: any[], serving: string): Trajecto
               status: block.is_error ? 'error' : 'success',
               message: truncateMessage(outText)
             };
+
+            const match = typeof block.content === 'string' ? block.content.match(/agentId:\s*([a-zA-Z0-9_-]+)/) : null;
+            if (match && match[1] && subagentsMap[match[1]] && !consumedSubagents.has(match[1])) {
+              const matchedId = match[1];
+              consumedSubagents.add(matchedId);
+              const subSteps = parseClaudeLogEntries(subagentsMap[matchedId], matchedId, subagentsMap, consumedSubagents);
+              steps.push(...subSteps);
+            }
           }
         }
       }
     }
   }
-
-  return finalizeTrajectorySummary({
-    agent: Agents.CLAUDE_CODE,
-    serving,
-    steps,
-    initialPrompt: extractInitialPromptFromLogs(logData)
-  });
+  return steps;
 }
 
-/**
- * Parses Gemini CLI session JSON/JSONL files into a normalized TrajectorySummary.
- */
-export function parseGeminiTrajectory(session: any, serving: string): TrajectorySummary {
-  const steps: StandardizedStep[] = [];
-  let stepCounter = 1;
+export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+  const consumedSubagents = new Set<string>();
+  const steps = parseClaudeLogEntries(logData, undefined, subagentsMap, consumedSubagents);
 
-  const messages = Array.isArray(session) ? session : (session.messages || []);
-  
-  // Track consecutive steps to match tool calls and tool results
-  let lastAssistantStepIndices: number[] = [];
+  for (const [subId, subLogs] of Object.entries(subagentsMap)) {
+    if (!consumedSubagents.has(subId)) {
+      consumedSubagents.add(subId);
+      const subSteps = parseClaudeLogEntries(subLogs, subId, subagentsMap, consumedSubagents);
+      steps.push(...subSteps);
+    }
+  }
 
-  for (const msg of messages) {
-    const role = msg.type || msg.role || 'unknown';
-
-    if (role === 'gemini') {
-      lastAssistantStepIndices = [];
-      const thought = msg.thought || msg.text || '';
-      
-      const toolCalls = msg.toolCalls || [];
-      if (toolCalls.length === 0) {
-        steps.push({
-          stepNumber: stepCounter++,
-          thought,
-          action: msg.text ? {
-            type: 'other',
-            name: 'respond_to_user',
-            params: { response: truncateMessage(msg.text, 150) }
-          } : undefined,
-          outcome: { status: 'success' }
-        });
-      } else {
-        for (const tc of toolCalls) {
-          const stepIdx = steps.push({
-            stepNumber: stepCounter++,
-            thought,
-            action: {
-              type: mapToolType(tc.name || ''),
-              name: tc.name || 'unknown',
-              params: tc.args
-            }
-          }) - 1;
-          lastAssistantStepIndices.push(stepIdx);
-        }
-      }
-    } else if (role === 'user' && lastAssistantStepIndices.length > 0) {
-      // Match tool results to the preceding assistant tool calls
-      const toolResults = msg.toolResults || [];
-      toolResults.forEach((tr: any, idx: number) => {
-        const stepIdx = lastAssistantStepIndices[idx];
-        if (stepIdx !== undefined && steps[stepIdx]) {
-          steps[stepIdx].outcome = {
-            status: tr.error || tr.status === 'error' ? 'error' : 'success',
-            message: truncateMessage(tr.output || tr.content || tr.error || '')
-          };
-        }
-      });
-      // Clear to avoid double-matching
-      lastAssistantStepIndices = [];
+  const subagentsMeta: Record<string, SubagentMetadata> = {};
+  for (const subId of Object.keys(subagentsMap)) {
+    const subStepsCount = steps.filter(s => s.subagentId === subId).length;
+    if (subStepsCount > 0) {
+      subagentsMeta[subId] = {
+        id: subId,
+        agent: Agents.CLAUDE_CODE,
+        totalSteps: subStepsCount
+      };
     }
   }
 
   return finalizeTrajectorySummary({
-    agent: Agents.GEMINI_CLI,
-    serving,
+    agent: Agents.CLAUDE_CODE,
     steps,
-    initialPrompt: extractInitialPromptFromLogs(session)
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
   });
 }
 
-/**
- * Helper to extract valid JSON objects from a raw string where binary protobuf bytes may surround the braces.
- */
+export function parseGeminiTrajectory(session: any, subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+  const steps: StandardizedStep[] = [];
+  const messages = Array.isArray(session) ? session : (session.messages || []);
+  let lastAssistantStepIndices: number[] = [];
+
+  const processMessages = (msgList: any[], subagentId?: string) => {
+    for (const msg of msgList) {
+      const timestamp = extractTimestamp(msg) || extractTimestamp(session);
+      const role = msg.type || msg.role || 'unknown';
+
+      if (role === 'gemini') {
+        lastAssistantStepIndices = [];
+        const thought = msg.thought || msg.text || '';
+        const toolCalls = msg.toolCalls || [];
+        if (toolCalls.length === 0) {
+          steps.push({
+            stepNumber: 0,
+            timestamp,
+            subagentId,
+            thought,
+            action: msg.text ? {
+              type: 'other',
+              name: 'respond_to_user',
+              params: { response: truncateMessage(msg.text, 150) }
+            } : undefined,
+            outcome: { status: 'success' }
+          });
+        } else {
+          for (const tc of toolCalls) {
+            const stepIdx = steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought,
+              action: {
+                type: mapToolType(tc.name || ''),
+                name: tc.name || 'unknown',
+                params: tc.args
+              }
+            }) - 1;
+            lastAssistantStepIndices.push(stepIdx);
+          }
+        }
+      } else if (role === 'user' && lastAssistantStepIndices.length > 0) {
+        const toolResults = msg.toolResults || [];
+        toolResults.forEach((tr: any, idx: number) => {
+          const stepIdx = lastAssistantStepIndices[idx];
+          if (stepIdx !== undefined && steps[stepIdx]) {
+            steps[stepIdx].outcome = {
+              status: tr.error || tr.status === 'error' ? 'error' : 'success',
+              message: truncateMessage(tr.output || tr.content || tr.error || '')
+            };
+          }
+        });
+        lastAssistantStepIndices = [];
+      }
+    }
+  };
+
+  processMessages(messages);
+  for (const [subId, subSession] of Object.entries(subagentsMap)) {
+    const subList = Array.isArray(subSession) ? subSession : ((subSession as any)?.messages || []);
+    processMessages(subList, subId);
+  }
+
+  const subagentsMeta: Record<string, SubagentMetadata> = {};
+  for (const subId of Object.keys(subagentsMap)) {
+    const subStepsCount = steps.filter(s => s.subagentId === subId).length;
+    subagentsMeta[subId] = { id: subId, agent: Agents.GEMINI_CLI, totalSteps: subStepsCount };
+  }
+
+  return finalizeTrajectorySummary({
+    agent: Agents.GEMINI_CLI,
+    steps,
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
+  });
+}
+
 function findJsonObjectsInString(str: string): any[] {
   const results: any[] = [];
   for (let i = 0; i < str.length; i++) {
@@ -366,47 +435,41 @@ function findJsonObjectsInString(str: string): any[] {
   return results;
 }
 
-/**
- * Synthesizes a normalized TrajectorySummary for Jetski/MCP using .db files, modern-web.log, and chat_log.txt.
- */
-export async function parseJetskiTrajectory(dirPath: string, serving: string): Promise<TrajectorySummary> {
+export async function parseJetskiTrajectory(dirPath: string, agentName: string): Promise<TrajectorySummary> {
   const steps: StandardizedStep[] = [];
-  let stepCounter = 1;
   const seenJsonHashes = new Set<string>();
 
   // 1. Check for Jetski SQLite .db database files to extract real tool calls and step mutations
-  const dbFiles = fs.existsSync(dirPath) ? fs.readdirSync(dirPath).filter(f => f.endsWith('.db')) : [];
+  let dbFiles: string[] = [];
+  try {
+    dbFiles = fs.readdirSync(dirPath).filter(f => f.endsWith('.db'));
+  } catch (err) {
+    if (!isEnoent(err)) throw err;
+  }
   if (dbFiles.length > 0) {
     try {
       const { DatabaseSync } = await import('node:sqlite');
-      const dbPath = path.join(dirPath, dbFiles[0]);
-      const db = new DatabaseSync(dbPath);
-      const rows = db.prepare('SELECT idx, step_type, status, step_payload FROM steps ORDER BY idx').all() as any[];
-      
+      const db = new DatabaseSync(path.join(dirPath, dbFiles[0]));
+      const rows = db.prepare('SELECT * FROM steps ORDER BY idx').all() as any[];
       for (const r of rows) {
         if (!r.step_payload) continue;
-        const str = Buffer.from(r.step_payload).toString('utf8');
-        const objs = findJsonObjectsInString(str);
-        const isErr = r.status === 4 || r.status === 5 || r.status === 2;
-
+        const objs = findJsonObjectsInString(Buffer.from(r.step_payload).toString('utf8'));
+        const isErr = [2, 4, 5].includes(r.status);
         for (const obj of objs) {
-          if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) {
-            continue;
-          }
-
-          const key = JSON.stringify({
-            cmd: obj.CommandLine,
-            file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath,
-            act: obj.toolAction || obj.toolSummary
-          });
+          if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
+          const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
           if (seenJsonHashes.has(key)) continue;
           seenJsonHashes.add(key);
+          const timestamp = extractTimestamp(obj) || extractTimestamp(r);
+          const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
 
           if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
             const targetFile = obj.TargetFile || 'target_file';
             const toolName = obj.ReplacementChunks ? 'multi_replace_file_content' : (obj.CodeContent ? 'write_to_file' : 'replace_file_content');
             steps.push({
-              stepNumber: stepCounter++,
+              stepNumber: 0,
+              timestamp,
+              subagentId,
               thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
               action: {
                 type: 'write_file',
@@ -422,14 +485,16 @@ export async function parseJetskiTrajectory(dirPath: string, serving: string): P
             let actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
             let actName = 'run_command';
             let params: any = { command: truncateMessage(obj.CommandLine, 150) };
-            if (obj.CommandLine.includes('modern-web-guidance') && (obj.CommandLine.includes('search') || obj.CommandLine.includes('retrieve'))) {
+            if (/(?:modern-web-guidance|modern-web|\bgd\b)/.test(obj.CommandLine) && (obj.CommandLine.includes('search') || obj.CommandLine.includes('retrieve'))) {
               actType = 'web_search';
               actName = 'get_best_practices';
               const qMatch = obj.CommandLine.match(/(?:search|retrieve)\s+["']?([^"'\n]+)["']?/i);
               params = { query: qMatch ? truncateMessage(qMatch[1], 150) : truncateMessage(obj.CommandLine, 150), command: truncateMessage(obj.CommandLine, 150) };
             }
             steps.push({
-              stepNumber: stepCounter++,
+              stepNumber: 0,
+              timestamp,
+              subagentId,
               thought: obj.toolSummary || obj.toolAction || 'Running terminal command',
               action: {
                 type: actType,
@@ -437,262 +502,419 @@ export async function parseJetskiTrajectory(dirPath: string, serving: string): P
                 params
               },
               outcome: {
-                status: isErr ? 'error' : 'success'
+                status: isErr ? 'error' : 'success',
+                message: isErr ? 'Command failed' : 'Command completed successfully'
               }
             });
-          } else if (obj.AbsolutePath) {
+          } else if (obj.AbsolutePath || obj.DirectoryPath) {
             steps.push({
-              stepNumber: stepCounter++,
-              thought: obj.toolSummary || obj.toolAction || 'Reading file contents',
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
               action: {
                 type: 'read_file',
-                name: 'view_file',
-                params: { targetFile: truncateMessage(obj.AbsolutePath, 150) }
+                name: obj.DirectoryPath ? 'list_dir' : 'view_file',
+                params: { path: truncateMessage(obj.AbsolutePath || obj.DirectoryPath, 150) }
               },
               outcome: {
-                status: isErr ? 'error' : 'success'
-              }
-            });
-          } else if (obj.DirectoryPath) {
-            steps.push({
-              stepNumber: stepCounter++,
-              thought: obj.toolSummary || obj.toolAction || 'Listing directory',
-              action: {
-                type: 'read_file',
-                name: 'list_dir',
-                params: { directoryPath: truncateMessage(obj.DirectoryPath, 150) }
-              },
-              outcome: {
-                status: isErr ? 'error' : 'success'
+                status: isErr ? 'error' : 'success',
+                message: isErr ? 'Inspection failed' : 'Inspection completed'
               }
             });
           }
         }
       }
+      db.close();
     } catch (e: any) {
-      console.warn(`[TrajectoryParser] Note: Could not parse Jetski .db file with node:sqlite (${e.message}). Falling back to log files.`);
+      console.warn(`[TrajectoryParser] Note: Could not parse Jetski .db file (${e.message}).`);
     }
   }
 
   // 2. Process modern-web.log for guide searches/retrievals and attach actual results
   const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
-  if (fs.existsSync(logPath)) {
-    try {
-      const logContent = fs.readFileSync(logPath, 'utf8').trim();
-      if (logContent) {
-        const lines = logContent.split('\n');
-        const logCalls: any[] = [];
-        for (const line of lines) {
-          if (line.trim().startsWith('{')) {
-            try { logCalls.push(JSON.parse(line)); } catch {}
-          }
+  let logContent = '';
+  try {
+    logContent = fs.readFileSync(logPath, 'utf8').trim();
+  } catch (err) {
+    if (!isEnoent(err)) {
+      console.error(`[TrajectoryParser] Error reading modern-web.log:`, err);
+    }
+  }
+  if (logContent) {
+    const lines = logContent.split('\n');
+    const logCalls: any[] = [];
+    for (const line of lines) {
+      if (line.trim().startsWith('{')) {
+        try { logCalls.push(JSON.parse(line)); } catch {}
+      }
+    }
+    if (steps.length === 0) {
+      for (const call of logCalls) {
+        if (call.tool === 'get_best_practices' || call.tool === 'search_use_cases') {
+          steps.push({
+            stepNumber: 0,
+            thought: call.tool === 'search_use_cases' ? 'Searching for relevant web guidance patterns' : 'Retrieving guidance best practices',
+            action: {
+              type: 'web_search',
+              name: call.tool,
+              params: { query: call.query }
+            },
+            outcome: {
+              status: 'success',
+              message: `Retrieved ${call.result?.length || 0} items`,
+              output: call.result
+            }
+          });
         }
-        if (steps.length === 0) {
-          for (const call of logCalls) {
-            if (call.tool === 'get_best_practices' || call.tool === 'search_use_cases') {
-              steps.push({
-                stepNumber: stepCounter++,
-                thought: call.tool === 'search_use_cases' ? 'Searching for relevant web guidance patterns' : 'Retrieving guidance best practices',
-                action: {
-                  type: 'web_search',
-                  name: call.tool,
-                  params: { query: call.query }
-                },
-                outcome: {
-                  status: 'success',
-                  message: `Retrieved ${call.result?.length || 0} items`,
-                  output: call.result
-                }
-              });
-            }
-          }
-        } else {
-          let logIdx = 0;
-          for (const step of steps) {
-            if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
-              if (logCalls[logIdx]) {
-                if (!step.outcome) step.outcome = { status: 'success' };
-                step.outcome.output = logCalls[logIdx].result;
-                if (!step.outcome.message) step.outcome.message = `Retrieved ${logCalls[logIdx].result?.length || 0} items`;
-                logIdx++;
-              }
-            }
+      }
+    } else {
+      let logIdx = 0;
+      for (const step of steps) {
+        if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
+          if (logCalls[logIdx]) {
+            if (!step.outcome) step.outcome = { status: 'success' };
+            step.outcome.output = logCalls[logIdx].result;
+            if (!step.outcome.message) step.outcome.message = `Retrieved ${logCalls[logIdx].result?.length || 0} items`;
+            logIdx++;
           }
         }
       }
-    } catch (e) {
-      console.error(`[TrajectoryParser] Error reading modern-web.log:`, e);
     }
   }
 
   // 3. Process chat_log.txt for final response / high-level actions
   let chatText = '';
   const chatLogPath = path.join(dirPath, 'chat_log.txt');
-  if (fs.existsSync(chatLogPath)) {
-    try {
-      chatText = fs.readFileSync(chatLogPath, 'utf8').trim();
-      if (chatText && (steps.length === 0 || steps[steps.length - 1].action?.name !== 'respond_to_user')) {
-        steps.push({
-          stepNumber: stepCounter++,
-          thought: 'Completed task implementation and summarized changes',
-          action: {
-            type: 'other',
-            name: 'respond_to_user',
-            params: { response: truncateMessage(chatText, 300) }
-          },
-          outcome: { status: 'success' }
-        });
-      }
-    } catch (e) {
-      console.error(`[TrajectoryParser] Error reading chat_log.txt:`, e);
+  try {
+    chatText = fs.readFileSync(chatLogPath, 'utf8').trim();
+  } catch (err) {
+    if (!isEnoent(err)) {
+      console.error(`[TrajectoryParser] Error reading chat_log.txt:`, err);
     }
   }
+  if (chatText && (steps.length === 0 || steps[steps.length - 1].action?.name !== 'respond_to_user')) {
+    steps.push({
+      stepNumber: 0,
+      thought: 'Completed task implementation and summarized changes',
+      action: {
+        type: 'other',
+        name: 'respond_to_user',
+        params: { response: truncateMessage(chatText, 300) }
+      },
+      outcome: { status: 'success' }
+    });
+  }
 
+  const legacy = parseJetskiCliSession(dirPath);
   return finalizeTrajectorySummary({
-    agent: Agents.JETSKI,
-    serving,
+    agent: agentName,
     steps,
-    initialPrompt: extractInitialPromptFromLogs(steps, chatText)
+    model: legacy.model,
+    tokenUsage: legacy.tokenUsage,
+    retrievedGuides: legacy.retrievedGuides,
+    fileReadGuides: legacy.fileReadGuides,
+    toolsUsed: legacy.toolsUsed
   });
 }
 
-/**
- * Parses Codex / OpenAI CLI session JSONL files into a normalized TrajectorySummary.
- */
-export function parseCodexTrajectory(logData: any[], serving: string): TrajectorySummary {
+export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
-  let stepCounter = 1;
   let currentThought = '';
   const callMap = new Map<string, StandardizedStep>();
 
-  for (const entry of logData) {
-    if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'commentary') {
-      const msg = entry.payload;
-      currentThought = currentThought ? `${currentThought}\n${msg.message}` : msg.message;
-    } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call' || entry.payload?.type === 'custom_tool_call')) {
-      const fc = entry.payload;
-      let cmdName = fc.name;
-      let params: Record<string, any> = {};
-      try {
-        params = typeof fc.arguments === 'string' ? JSON.parse(fc.arguments) : (fc.arguments || {});
-      } catch {}
+  const processEntries = (entries: any[], subagentId?: string) => {
+    for (const entry of entries) {
+      const timestamp = extractTimestamp(entry);
+      if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'commentary') {
+        const msg = entry.payload;
+        currentThought = currentThought ? `${currentThought}\n${msg.message}` : msg.message;
+      } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call' || entry.payload?.type === 'custom_tool_call')) {
+        const fc = entry.payload;
+        let cmdName = fc.name;
+        let params: Record<string, any> = {};
+        try {
+          params = typeof fc.arguments === 'string' ? JSON.parse(fc.arguments) : (fc.arguments || {});
+        } catch {}
 
-      if (cmdName === 'exec_command' && params.cmd) {
-        cmdName = params.cmd.split(' ')[0] || 'exec_command';
-      }
-
-      const step: StandardizedStep = {
-        stepNumber: stepCounter++,
-        thought: currentThought || `Executing ${cmdName}`,
-        action: {
-          type: mapToolType(cmdName),
-          name: fc.name === 'exec_command' ? (params.cmd || 'exec_command') : fc.name,
-          params
+        if (cmdName === 'exec_command' && params.cmd) {
+          cmdName = params.cmd.split(' ')[0] || 'exec_command';
         }
-      };
-      steps.push(step);
-      currentThought = '';
-      if (fc.call_id) {
-        callMap.set(fc.call_id, step);
-      }
-    } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
-      const fco = entry.payload;
-      const step = callMap.get(fco.call_id);
-      if (step) {
-        const out = typeof fco.output === 'string' ? fco.output : JSON.stringify(fco.output || '');
-        const isErr = out.includes('Process exited with code') && !out.includes('code 0');
-        step.outcome = {
-          status: isErr ? 'error' : 'success',
-          message: truncateMessage(out, 500)
+
+        const step: StandardizedStep = {
+          stepNumber: 0,
+          timestamp,
+          subagentId,
+          thought: currentThought || `Executing ${cmdName}`,
+          action: {
+            type: mapToolType(cmdName),
+            name: fc.name === 'exec_command' ? (params.cmd || 'exec_command') : fc.name,
+            params
+          }
         };
+        steps.push(step);
+        currentThought = '';
+        if (fc.call_id) {
+          callMap.set(fc.call_id, step);
+        }
+      } else if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
+        const fco = entry.payload;
+        const step = callMap.get(fco.call_id);
+        if (step) {
+          const out = typeof fco.output === 'string' ? fco.output : JSON.stringify(fco.output || '');
+          const isErr = out.includes('Process exited with code') && !out.includes('code 0');
+          step.outcome = {
+            status: isErr ? 'error' : 'success',
+            message: truncateMessage(out, 500)
+          };
+        }
+      } else if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'final_answer') {
+        steps.push({
+          stepNumber: 0,
+          timestamp,
+          subagentId,
+          thought: currentThought || 'Finalizing response to user',
+          action: {
+            type: 'other',
+            name: 'respond_to_user',
+            params: { response: entry.payload.message }
+          },
+          outcome: { status: 'success' }
+        });
+        currentThought = '';
       }
-    } else if (entry.type === 'event_msg' && entry.payload?.type === 'agent_message' && entry.payload.phase === 'final_answer') {
-      steps.push({
-        stepNumber: stepCounter++,
-        thought: currentThought || 'Finalizing response to user',
-        action: {
-          type: 'other',
-          name: 'respond_to_user',
-          params: { response: entry.payload.message }
-        },
-        outcome: { status: 'success' }
-      });
-      currentThought = '';
     }
+  };
+
+  processEntries(logData);
+
+  for (const [subId, subLogs] of Object.entries(subagentsMap)) {
+    processEntries(subLogs, subId);
+  }
+
+  const subagentsMeta: Record<string, SubagentMetadata> = {};
+  for (const subId of Object.keys(subagentsMap)) {
+    const subStepsCount = steps.filter(s => s.subagentId === subId).length;
+    subagentsMeta[subId] = {
+      id: subId,
+      agent: Agents.CODEX_CLI,
+      totalSteps: subStepsCount
+    };
   }
 
   return finalizeTrajectorySummary({
     agent: Agents.CODEX_CLI,
-    serving,
     steps,
-    initialPrompt: extractInitialPromptFromLogs(logData)
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
   });
 }
 
 /**
- * Generates and saves 'trajectory_summary.json' in the target directory.
+ * Parses Pi CLI session JSONL files into a normalized TrajectorySummary.
  */
-export async function generateNormalizedTrajectory(targetDir: string, agentName: string, serving: string): Promise<void> {
+export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+  const steps: StandardizedStep[] = [];
+
+  const processEntries = (entries: any[], subagentId?: string) => {
+    for (const entry of entries) {
+      const timestamp = extractTimestamp(entry);
+      const msg = entry.type === 'message' ? entry.message : entry;
+      if (!msg) continue;
+
+      if (msg.role === 'assistant') {
+        let thought = '';
+        if (typeof msg.content === 'string') {
+          thought = msg.content;
+        } else if (Array.isArray(msg.content)) {
+          const textBlock = msg.content.find((c: any) => c.type === 'text');
+          if (textBlock) thought = textBlock.text || '';
+        }
+
+        const toolCalls: any[] = [];
+        if (Array.isArray(msg.content)) {
+          toolCalls.push(...msg.content.filter((c: any) => c.type === 'toolCall'));
+        }
+        if (Array.isArray(msg.tool_calls)) {
+          toolCalls.push(...msg.tool_calls);
+        }
+
+        if (toolCalls.length === 0) {
+          if (thought) {
+            steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought,
+              action: {
+                type: 'other',
+                name: 'respond_to_user',
+                params: { response: truncateMessage(thought, 150) }
+              },
+              outcome: { status: 'success' }
+            });
+          }
+        } else {
+          for (const tc of toolCalls) {
+            const toolName = tc.function?.name || tc.name || 'tool_call';
+            const args = tc.arguments || tc.function?.arguments || {};
+            steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought: thought || `Executing ${toolName}`,
+              action: {
+                type: mapToolType(toolName),
+                name: toolName,
+                params: typeof args === 'string' ? (() => { try { return JSON.parse(args); } catch { return { raw: args }; } })() : args
+              },
+              outcome: { status: 'success' }
+            });
+          }
+        }
+      }
+    }
+  };
+
+  processEntries(logData);
+  for (const [subId, subLogs] of Object.entries(subagentsMap)) {
+    processEntries(subLogs, subId);
+  }
+
+  const subagentsMeta: Record<string, SubagentMetadata> = {};
+  for (const subId of Object.keys(subagentsMap)) {
+    const subStepsCount = steps.filter(s => s.subagentId === subId).length;
+    subagentsMeta[subId] = {
+      id: subId,
+      agent: Agents.PI,
+      totalSteps: subStepsCount
+    };
+  }
+
+  return finalizeTrajectorySummary({
+    agent: Agents.PI,
+    steps,
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
+  });
+}
+
+export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
   try {
     let summary: TrajectorySummary | null = null;
 
-    const allSessionFiles = fs.existsSync(targetDir) ? fs.readdirSync(targetDir).filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) : [];
-    const sessionFiles = allSessionFiles.sort((a, b) => {
-      const aSub = a.includes('-subagents-');
-      const bSub = b.includes('-subagents-');
-      if (aSub && !bSub) return 1;
-      if (!aSub && bSub) return -1;
-      return a.localeCompare(b);
-    });
+    let allFiles: string[] = [];
+    try {
+      allFiles = fs.readdirSync(targetDir);
+    } catch (err) {
+      if (!isEnoent(err)) throw err;
+    }
 
-    // To add another agent in the future, check agentName or session files here and invoke the corresponding parser.
-    if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI || agentName.toLowerCase().includes('jetski') || (!sessionFiles[0] && fs.existsSync(targetDir) && fs.readdirSync(targetDir).some(f => f.endsWith('.db')))) {
-      summary = await parseJetskiTrajectory(targetDir, serving);
-    } else if (sessionFiles[0]) {
-      const filePath = path.join(targetDir, sessionFiles[0]);
+    const mainSessionFiles = allFiles
+      .filter(f => f.startsWith('session-') && !f.includes('-subagents-') && (f.endsWith('.json') || f.endsWith('.jsonl')))
+      .sort((a, b) => a.localeCompare(b));
+
+    const subagentFiles = allFiles
+      .filter(f => (f.startsWith('subagent-') || f.includes('-subagents-')) && (f.endsWith('.json') || f.endsWith('.jsonl')))
+      .sort((a, b) => a.localeCompare(b));
+
+    const subagentsMap: Record<string, any[]> = {};
+    for (const file of subagentFiles) {
+      const filePath = path.join(targetDir, file);
+      try {
+        const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const stripped = file.replace(/\.jsonl?$/, '');
+        const parts = stripped.split(/agent[-_]/);
+        const key = parts.length > 1 ? parts[parts.length - 1] : stripped.replace(/^(?:subagent-|session-)/, '');
+        subagentsMap[key] = Array.isArray(logData) ? logData : ((logData as any)?.messages || []);
+      } catch (e) {
+        console.warn(`[TrajectoryParser] Failed to parse subagent file ${file}:`, e);
+      }
+    }
+
+    if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI) {
+      summary = await parseJetskiTrajectory(targetDir, agentName);
+    } else if (mainSessionFiles[0] || subagentFiles[0]) {
+      const primaryFile = mainSessionFiles[0] || subagentFiles[0];
+      const filePath = path.join(targetDir, primaryFile);
       const isJsonl = filePath.endsWith('.jsonl');
       const logData = isJsonl ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
-      if (agentName === Agents.CLAUDE_CODE || agentName.toLowerCase().includes('claude')) {
-        summary = parseClaudeTrajectory(logData, serving);
-      } else if (agentName === Agents.GEMINI_CLI || agentName.toLowerCase().includes('gemini')) {
-        summary = parseGeminiTrajectory(logData, serving);
-      } else if (agentName === Agents.CODEX_CLI || agentName.toLowerCase().includes('codex')) {
-        summary = parseCodexTrajectory(logData, serving);
+      if (agentName === Agents.CLAUDE_CODE) {
+        summary = parseClaudeTrajectory(logData, subagentsMap);
+        const [guides, tools, model, tokenUsage] = await Promise.all([
+          collectClaudeGuidesFromTrajectory(targetDir),
+          Promise.resolve(collectClaudeToolsFromTrajectory(targetDir)),
+          Promise.resolve(extractClaudeCodeModel(targetDir)),
+          Promise.resolve(extractClaudeCodeTokenUsage(targetDir))
+        ]);
+        summary.retrievedGuides = guides.retrievedGuides;
+        summary.fileReadGuides = guides.fileReadGuides;
+        summary.toolsUsed = tools;
+        summary.model = model;
+        summary.tokenUsage = tokenUsage;
+      } else if (agentName === Agents.GEMINI_CLI) {
+        summary = parseGeminiTrajectory(logData, subagentsMap);
+        const [guides, tools, model, tokenUsage] = await Promise.all([
+          collectGeminiGuidesFromTrajectory(targetDir),
+          Promise.resolve(collectGeminiToolsFromTrajectory(targetDir)),
+          Promise.resolve(extractGeminiCliModel(targetDir)),
+          Promise.resolve(extractGeminiCliTokenUsage(targetDir))
+        ]);
+        summary.retrievedGuides = guides.retrievedGuides;
+        summary.fileReadGuides = guides.fileReadGuides;
+        summary.toolsUsed = tools;
+        summary.model = model;
+        summary.tokenUsage = tokenUsage;
+      } else if (agentName === Agents.CODEX_CLI) {
+        summary = parseCodexTrajectory(logData, subagentsMap);
+        const [guides, tools, model, tokenUsage] = await Promise.all([
+          collectCodexGuidesFromTrajectory(targetDir),
+          Promise.resolve(collectCodexToolsFromTrajectory(targetDir)),
+          Promise.resolve(extractCodexCliModel(targetDir)),
+          Promise.resolve(extractCodexCliTokenUsage(targetDir))
+        ]);
+        summary.retrievedGuides = guides.retrievedGuides;
+        summary.fileReadGuides = guides.fileReadGuides;
+        summary.toolsUsed = tools;
+        summary.model = model;
+        summary.tokenUsage = tokenUsage;
+      } else if (agentName === Agents.PI) {
+        summary = parsePiTrajectory(logData, subagentsMap);
+        const [guides, tools, model, tokenUsage] = await Promise.all([
+          collectPiGuidesFromTrajectory(targetDir),
+          Promise.resolve(collectPiToolsFromTrajectory(targetDir)),
+          Promise.resolve(extractPiModel(targetDir)),
+          Promise.resolve(extractPiTokenUsage(targetDir))
+        ]);
+        summary.retrievedGuides = guides.retrievedGuides;
+        summary.fileReadGuides = guides.fileReadGuides;
+        summary.toolsUsed = tools;
+        summary.model = model;
+        summary.tokenUsage = tokenUsage;
       } else {
         console.warn(`[TrajectoryParser] Warning: Unknown agent "${agentName}". Attempting generic Codex/standard trajectory parsing. To add another agent, register a parser in generateNormalizedTrajectory.`);
-        summary = parseCodexTrajectory(logData, serving);
+        summary = parseCodexTrajectory(logData, subagentsMap);
       }
     } else {
-      summary = await parseJetskiTrajectory(targetDir, serving);
+      console.warn(`[TrajectoryParser] Warning: No session files found for non-Jetski agent "${agentName}". Cannot parse trajectory.`);
     }
 
-      if (summary) {
-        finalizeTrajectorySummary(summary);
-        // Inject token usage if available
-        const runtimePath = path.join(targetDir, 'runtime.json');
-        if (fs.existsSync(runtimePath)) {
-          try {
-            const runJson = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
-            if (runJson.tokenUsage) {
-              summary.tokenUsage = runJson.tokenUsage;
-            }
-          } catch {}
-        }
+    if (summary) {
+      finalizeTrajectorySummary(summary);
 
-        if (!summary.initialPrompt) {
-          const chatLogPath = path.join(targetDir, 'chat_log.txt');
-          const chatText = fs.existsSync(chatLogPath) ? fs.readFileSync(chatLogPath, 'utf8') : '';
-          const filePath = sessionFiles[0] ? path.join(targetDir, sessionFiles[0]) : '';
-          let logData: any[] = [];
-          if (filePath && fs.existsSync(filePath)) {
-            try {
-              logData = filePath.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            } catch {}
-          }
-          const promptFound = extractInitialPromptFromLogs(Array.isArray(logData) ? logData : [], chatText);
-          if (promptFound) summary.initialPrompt = truncateMessage(promptFound, 1000);
+      if (initialPrompt) {
+        summary.initialPrompt = initialPrompt;
+      }
+
+      // Merge MCP logs if it is desktop Jetski
+      if (agentName === Agents.JETSKI) {
+        const mcpGuides = extractGuidesFromMcpLog(targetDir);
+        summary.retrievedGuides = [...new Set([...(summary.retrievedGuides || []), ...mcpGuides])];
+        if (!summary.toolsUsed) {
+          summary.toolsUsed = ['modern-web-guidance'];
+        } else if (!summary.toolsUsed.includes('modern-web-guidance')) {
+          summary.toolsUsed.push('modern-web-guidance');
         }
+      }
 
       const outPath = path.join(targetDir, 'trajectory_summary.json');
       fs.writeFileSync(outPath, JSON.stringify(summary, null, 2), 'utf8');
@@ -701,14 +923,10 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       console.warn(`[TrajectoryParser] No trajectory files found in ${targetDir} to summarize.`);
     }
   } catch (err: any) {
-    // Graceful failure constraint! Ensure it never crashes the run.
     console.error(`[TrajectoryParser] Robustness warning: Failed to generate trajectory summary: ${err.message}`);
-    
-    // Write a placeholder file so the UI knows it failed but remains robust
     try {
       const placeholder: TrajectorySummary = finalizeTrajectorySummary({
         agent: agentName,
-        serving,
         steps: [{
           stepNumber: 1,
           thought: "Failed to parse trajectory logs during execution.",
@@ -718,4 +936,30 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), JSON.stringify(placeholder, null, 2), 'utf8');
     } catch {}
   }
+}
+
+function extractGuidesFromMcpLog(dirPath: string): string[] {
+  const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
+  let logContent = '';
+  try {
+    logContent = fs.readFileSync(logPath, 'utf8').trim();
+  } catch (err) {
+    if (isEnoent(err)) return [];
+    console.error(`Error reading MCP log:`, err);
+    return [];
+  }
+  if (!logContent) return [];
+  const lines = logContent.split('\n');
+  const toolCalls: any[] = [];
+  for (const line of lines) {
+    if (line.trim().startsWith('{')) {
+      try {
+        toolCalls.push(JSON.parse(line));
+      } catch {}
+    }
+  }
+  return toolCalls
+    .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+    .flatMap(call => call.result.map((r: any) => r.id || ''))
+    .filter(Boolean);
 }

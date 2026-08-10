@@ -20,6 +20,7 @@ test-app-results/
 guides/**/test-results/
 guides/**/test-app-results/
 guides/**/.last-run.json
+tmp-eval-fixtures/
 
 # legacy paths (any content here should be deleted)
 serving/.mcp-data/

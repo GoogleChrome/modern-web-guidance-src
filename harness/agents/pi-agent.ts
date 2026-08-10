@@ -7,6 +7,7 @@ import config, { Agents } from '../config.ts';
 import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
 const TRAJECTORY_GLOB = '*.jsonl';
 
@@ -100,6 +101,8 @@ async function run() {
     exportTrajectories(sessionsDir, '*.jsonl', targetDir);
 
     console.log("Pi agent finished successfully.");
+
+    await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
 
   } catch (err) {
     console.error("Error during Pi execution:", err);
@@ -217,7 +220,7 @@ export function collectPiToolsFromTrajectory(dir: string): string[] {
 }
 
 
-export async function collectPiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
+export async function collectPiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {

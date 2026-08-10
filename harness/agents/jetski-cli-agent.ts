@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
 import config, { Agents } from '../config.ts';
-import { getSuiteConfig, cleanupIsolatedHome, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, createTrustedFolders, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, createTrustedFolders, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
@@ -104,11 +104,7 @@ async function run() {
     exportTrajectories(conversationsDir, '*.pb', targetDir);
     exportTrajectories(conversationsDir, '*.db', targetDir);
 
-    try {
-      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, getSuiteConfig().serving);
-    } catch (e: any) {
-      console.warn("Failed to generate normalized trajectory:", e.message);
-    }
+    await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
 
     console.log("Jetski CLI agent finished successfully.");
 

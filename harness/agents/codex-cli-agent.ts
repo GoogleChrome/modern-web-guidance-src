@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getSuiteConfig, cleanupIsolatedHome, parseAgentArgs, watchLogFile, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
@@ -112,7 +112,7 @@ async function run() {
     }
 
     exportCodexTrajectories(workDir, targetDir);
-    await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, getSuiteConfig().serving);
+    await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, userPrompt);
 
     console.log("Codex agent finished successfully.");
   } catch (err) {
@@ -123,7 +123,7 @@ async function run() {
   }
 }
 
-export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<GuideUsage> {
+export async function collectCodexGuidesFromTrajectory(dirPath: string, serving?: string): Promise<GuideUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
 

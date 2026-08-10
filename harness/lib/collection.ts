@@ -15,7 +15,26 @@ function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPat
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
 }
 
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}
+
 export function extractModelFromResults(resultsDir: string, agent: string): string {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    if (summary.model && summary.model !== 'unknown') {
+      return summary.model;
+    }
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
+  }
+
+  // Legacy Fallback
   if (agent === Agents.GEMINI_CLI) {
     return extractGeminiCliModel(resultsDir);
   } else if (agent === Agents.JETSKI_CLI) {
@@ -31,6 +50,17 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
 }
 
 export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | null {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    if (summary.tokenUsage) {
+      return summary.tokenUsage;
+    }
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
+  }
+
+  // Legacy Fallback
   if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir) ?? null;
   if (agent === Agents.JETSKI_CLI) return extractJetskiCliTokenUsage(resultsDir) ?? null;
   if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;
