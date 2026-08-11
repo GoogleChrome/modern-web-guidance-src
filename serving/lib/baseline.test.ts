@@ -105,7 +105,7 @@ describe('baseline data', () => {
       assert.deepStrictEqual(result, {
         isValid: false,
         error: 'unregistered_temp_feature',
-        errorMessage: 'Temporary web feature ID "tmp-pending-feature-xyz" is not registered in lib/pending-web-features.json. Please register it with an upstream issue link.'
+        errorMessage: 'Temporary web feature ID "tmp-pending-feature-xyz" is not registered in features/pending-web-features.json. Please register it with an upstream issue link.'
       });
     });
 

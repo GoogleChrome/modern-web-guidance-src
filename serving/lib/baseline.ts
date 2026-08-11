@@ -1,7 +1,7 @@
 import { features, groups } from 'web-features';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import type { Browsers, BrowserName } from '@mdn/browser-compat-data';
-import pendingWebFeatures from '../../lib/pending-web-features.json' with { type: 'json' };
+import pendingWebFeatures from '../../features/pending-web-features.json' with { type: 'json' };
 
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 
@@ -248,7 +248,7 @@ export function validateFeature(id: string): FeatureValidationResult {
       return {
         isValid: false,
         error: 'unregistered_temp_feature',
-        errorMessage: `Temporary web feature ID "${id}" is not registered in lib/pending-web-features.json. Please register it with an upstream issue link.`
+        errorMessage: `Temporary web feature ID "${id}" is not registered in features/pending-web-features.json. Please register it with an upstream issue link.`
       };
     }
     return { isValid: true };
