@@ -41,8 +41,8 @@ importers:
         specifier: ^0.4.17
         version: 0.4.17
       web-features:
-        specifier: ^3.34.0
-        version: 3.34.0
+        specifier: ^3.34.3
+        version: 3.34.3
     devDependencies:
       '@types/node':
         specifier: ^25.6.0
@@ -3286,6 +3286,9 @@ packages:
 
   web-features@3.34.0:
     resolution: {integrity: sha512-hvIf75+7/1tlf1AAJHg64kMsvXDnx6gVRGWD6Q1uMjTNAQc0H1kPTra1VW0fGnm28gfudk89KY+14KiWC20EYQ==}
+
+  web-features@3.34.3:
+    resolution: {integrity: sha512-eXdaGO8JSiLLC5/tLOeDiH0EVIbuD8NExMDAziU0frr9JRdiEKqyOsTeEZDtmCXbazEI3mB+plYO4oMYOj1/Dg==}
 
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
@@ -6658,6 +6661,8 @@ snapshots:
   vary@1.1.2: {}
 
   web-features@3.34.0: {}
+
+  web-features@3.34.3: {}
 
   web-streams-polyfill@3.3.3: {}
 
