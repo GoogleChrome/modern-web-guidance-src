@@ -281,7 +281,7 @@ const server = http.createServer(async (req, res) => {
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
       
-      for (const [key, info] of taskMap.entries()) {
+      for (const key of taskMap.keys()) {
         const [guide, task] = key.split('/');
         const useCase = USE_CASES.find(u => u.id === guide);
         const category = useCase ? useCase.category : 'Uncategorized';
