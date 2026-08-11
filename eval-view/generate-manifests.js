@@ -115,32 +115,23 @@ export async function generateSuitesManifest(outputDir = '.', resultsSourceDir =
  * Generates grouped-tasks.gen.json by scanning guides.
  */
 export async function generateGroupedTasksManifest(outputDir = '.') {
-    const { getTaskMap, isDisciplineSkillDir } = await import('../lib/guide-validation.ts');
+    const { getTaskMap } = await import('../lib/guide-validation.ts');
     const { USE_CASES } = await import('../serving/lib/practices.ts');
     const taskMap = getTaskMap();
     /** @type {Record<string, Record<string, string[]>>} */
     const grouped = {};
-    /** @type {Record<string, string[]>} */
-    const disciplines = {};
     
     for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
-        const isDisciplineSkill = isDisciplineSkillDir(info.guideDir);
-        
-        if (isDisciplineSkill) {
-            if (!disciplines[guide]) disciplines[guide] = [];
-            disciplines[guide].push(task);
-        } else {
-            const useCase = USE_CASES.find(u => u.id === guide);
-            const category = useCase ? useCase.category : 'Uncategorized';
-            if (!grouped[category]) grouped[category] = {};
-            if (!grouped[category][guide]) grouped[category][guide] = [];
-            grouped[category][guide].push(task);
-        }
+        const useCase = USE_CASES.find(u => u.id === guide);
+        const category = useCase ? useCase.category : 'Uncategorized';
+        if (!grouped[category]) grouped[category] = {};
+        if (!grouped[category][guide]) grouped[category][guide] = [];
+        grouped[category][guide].push(task);
     }
     
     const outputPath = path.join(outputDir, 'grouped-tasks.gen.json');
-    fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped, disciplines: disciplines }, null, 2));
+    fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped }, null, 2));
 }
 
 /**
