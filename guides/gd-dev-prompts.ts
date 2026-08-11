@@ -153,8 +153,8 @@ export interface TaskPromptOptions {
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   return `# GOAL
-Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the overall feature.
-Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a developer would send to an AI coding assistant to request the overall feature inside the application.
+Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the use case.
+Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to request the overall use case inside the application.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
