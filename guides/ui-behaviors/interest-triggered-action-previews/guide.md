@@ -76,9 +76,9 @@ When using the polyfill the CSS API changes slightly for the `:interest-source` 
 
 /* Adjust the start and end delay for interest invokers */
 [interestfor] {
-  --interest-delay-start: 0.2ms;
+  --interest-delay-start: 0.2s;
   interest-delay-start: var(--interest-delay-start);
-  --interest-delay-end: 0.1ms;
+  --interest-delay-end: 0.1s;
   interest-delay-end: var(--interest-delay-end);
 }
 ```
