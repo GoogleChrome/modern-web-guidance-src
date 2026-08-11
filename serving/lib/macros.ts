@@ -2,47 +2,14 @@ import path from "node:path";
 import { validateFeature, getStatusMessage, getFeatureName } from "./baseline.ts";
 import { getGuidesMap, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
 import { resolveInclude } from "./include.ts";
+import { MACRO_PATTERN, parseArguments, getTranscludedFeatureIds } from "./macro-parsing.ts";
 
-/**
- * Parses macro arguments, respecting quotes and handling commas.
- * Robust against varied whitespace and different quote types.
- */
-export function parseArguments(argsString: string): string[] {
-  const args: string[] = [];
-  let current = "";
-  let inQuotes: string | null = null;
-
-  for (let i = 0; i < argsString.length; i++) {
-    const char = argsString[i];
-
-    if ((char === "'" || char === '"') && (i === 0 || argsString[i - 1] !== "\\")) {
-      if (inQuotes === char) {
-        inQuotes = null;
-      } else if (!inQuotes) {
-        inQuotes = char;
-      } else {
-        current += char;
-      }
-    } else if (char === "," && !inQuotes) {
-      args.push(current.trim().replace(/^['"]|['"]$/g, ""));
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-
-  if (current.trim()) {
-    args.push(current.trim().replace(/^['"]|['"]$/g, ""));
-  }
-
-  return args;
-}
+// Re-exported for convenience; the implementations live in the dependency-free ./macro-parsing.ts
+export { MACRO_PATTERN, parseArguments, getTranscludedFeatureIds };
 
 export type BuildTarget = 'skills-cli' | 'mcp-server' | 'megaskill' | 'local-dev';
 
 type MacroHandler = (args: string[], filePath: string, options?: { target?: BuildTarget }) => string;
-
-
 
 export class MacroError extends Error {
   constructor(message: string) {
@@ -50,11 +17,6 @@ export class MacroError extends Error {
     this.name = "MacroError";
   }
 }
-
-// Matches {{ NAME(ARGS) }} where NAME is uppercase and ARGS can be anything
-export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
-
-
 
 const MACRO_HANDLERS: Record<string, MacroHandler> = {
   INCLUDE: (args, filePath) => {
