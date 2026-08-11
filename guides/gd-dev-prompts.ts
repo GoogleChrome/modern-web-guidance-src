@@ -63,6 +63,7 @@ export interface GraderPromptOptions {
   graderFile: string;
   baseApp: string;
   templateFile: string;
+  testFixtureReferencePath?: string;
   parserPatternLibraryPath?: string;
   playwrightPatternLibraryPath?: string;
   tsMorphDtsPath?: string;
@@ -122,6 +123,7 @@ Base your grader's imports, workspace setup, helper function usage, and test str
 - **Static Analysis First**: Prioritize static analysis over browser execution for structural assertions.
 - **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary (for requirements that cannot be verified statically, such as runtime click events or dynamic state updates). Omit browser test blocks entirely if static checks are sufficient.
 - **Reference Examples & API Definitions**: Before writing tests, use your file-viewing tools to inspect these reference pattern libraries and API type definitions for implementation patterns:
+  - **Test Fixture Helper Signatures (Reference Only)**: [test-fixture.reference.ts](file://${opts.testFixtureReferencePath})
   - **Static Analysis Patterns (Linkedom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
   - **Browser Analysis Patterns (Playwright)**: [playwright-pattern-library.grader.ts](file://${opts.playwrightPatternLibraryPath})
   - **TS Morph Type Definitions**: [ts-morph.d.ts](file://${opts.tsMorphDtsPath})
