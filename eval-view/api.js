@@ -158,7 +158,7 @@ export class ApiClient {
         const { task: taskName, guide: guideName, runType } = parsed;
         const actualBaseApp = run.baseApp;
         let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
-        let entryPointPath = await this._findBestEntryPoint(logicalBasePath);
+        let entryPointPath = run.targetFile ? `${logicalBasePath}/${run.targetFile}` : await this._findBestEntryPoint(logicalBasePath);
 
         // Fallback for older results stored in a depth-2 folder structure (runDir/taskName/runType)
         if (!entryPointPath) {
@@ -256,7 +256,7 @@ export class ApiClient {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.items) {
-                        files = data.items.map(item => item.name.split('/').pop());
+                        files = data.items.map(item => item.name.startsWith(gcsPrefix) ? item.name.substring(gcsPrefix.length) : item.name.split('/').pop());
                     }
                 }
             }
@@ -293,6 +293,10 @@ export class ApiClient {
     getAbsoluteUrl(path) {
         if (this.source === 'remote') {
             let fixedPath = path.split('?')[0];
+            const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (isLocalServer) {
+                return `/gcs-proxy/${fixedPath}`;
+            }
             return `${this.gcsPrefix}${encodeURIComponent(fixedPath)}?alt=media`;
         }
         return this._formatUrl(path);

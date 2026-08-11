@@ -1,4 +1,4 @@
-#!/usr/bin/env node --experimental-strip-types
+#!/usr/bin/env -S node --experimental-strip-types
 
 import { parseArgs } from 'util';
 import path from 'path';

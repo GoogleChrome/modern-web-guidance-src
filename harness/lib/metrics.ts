@@ -16,6 +16,7 @@ export interface RunResult {
   taskName?: string;
   baseApp?: string;
   prompt?: string;
+  targetFile?: string;
   tokenUsage?: { total: number; cached: number };
 }
 
@@ -77,6 +78,8 @@ export interface EvalsReport {
   serving: string;
   model: string;
   totalRuntime?: number;
+  skillVersion?: string;
+  cliVersion?: string;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {

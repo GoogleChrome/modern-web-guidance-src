@@ -4,7 +4,7 @@
 
 This document describes the goals, architecture, contributor workflow, and current state of the Modern Web Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
 
-Last updated: 2026-03-06.
+Last updated: 2026-07-10.
 
 ---
 
@@ -26,7 +26,8 @@ Last updated: 2026-03-06.
 modern-web-guidance-src/
   guides/                     # All guide content, organized by discipline
     performance/              # e.g. batch-analytics-events, optimize-image-priority
-    user-experience/          # e.g. light-dismiss-dialog, animate-to-intrinsic-sizes
+    overlays/                 # e.g. light-dismiss-dialog, declarative-dialog-popover-control
+    css-layout/               # e.g. animate-to-intrinsic-sizes
     accessibility/            # (empty so far)
     security/                 # (empty so far)
     AGENTS.md                 # Instructions for AI agents working in this repo
@@ -82,17 +83,17 @@ The task file connects a base application the agent will modify, and the prompt 
 
 A guide progresses through three main stages:
 
-1. **Stage 1: Identifying use cases (Stub state)**
+1. **Stage 1: Identifying use cases (Needs use cases)**
    - **Goal**: Translate a web platform feature into distinct use cases.
    - **Artifacts**: Directory structure, `guide.md` with only YAML frontmatter (stub), and a basic `demo.html`.
    - SME contributes via PR for review.
 
-2. **Stage 2: Authoring guidance (Needs calibration state)**
+2. **Stage 2: Authoring guidance (Needs guidance)**
    - **Goal**: Flesh out the guidance and define testable expectations.
    - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
    - SME creates these files after use case approval.
 
-3. **Stage 3: Evaluating guidance (Eval-ready state)**
+3. **Stage 3: Evaluating guidance (Needs evals)**
    - **Goal**: Generate evaluation artifacts and prove the guidance works.
    - **Artifacts**: `negative-demo.html`, `grader.ts`, `tasks/task.md`.
    - Handled by `gd dev` pipeline for auto-generation and calibration.
@@ -226,7 +227,7 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 ---
 
-## 7. Current State (as of 2026-03-06)
+## 7. Current State (as of 2026-07-10)
 
 ### Guide inventory
 
@@ -234,12 +235,14 @@ An evolving list of guides organized across multiple categories.
 
 | Stage | Status | Count | Description |
 |---|---|---|---|
-| **Stage 3** | Eval-ready | 4 | All artifacts exist, included in suite runs |
-| **Stage 3** | Needs test | 1 | Grader calibrated, missing prompts/task |
-| **Stage 2** | Needs calibration | 3 | Has guide + demo + expectations, needs `gd dev` |
-| **Stage 1** | Stub | 36 | YAML frontmatter only, no guide content yet |
+| **Stage 3** | Eval-ready (Complete) | 129 | All artifacts exist, included in suite runs |
+| **Stage 3** | Needs evals (needs agent test) | 0 | Grader calibrated, missing prompts/task |
+| **Stage 3** | Needs evals (needs calibration) | 0 | Has guide + demo + expectations, needs `gd dev` |
+| **Stage 2** | Needs guidance (missing expectations) | 8 | Has guide + demo, needs expectations.md |
+| **Stage 2** | Needs guidance (stub) | 4 | YAML frontmatter only, no guide content yet |
+| **Stage 1** | Needs use cases (incomplete) | 0 | Missing guide.md or demo.html |
 
-The 4 eval-ready guides: `batch-analytics-events`, `full-session-analytics`, `adapt-scrollbar-to-contrast-preferences`, `customize-scrollbar-color-and-thickness`.
+See `gd audit` for the full list of eval-ready guides covering performance, css-layout, overlays, accessibility, and security features.
 
 ### Open PRs (representative)
 
