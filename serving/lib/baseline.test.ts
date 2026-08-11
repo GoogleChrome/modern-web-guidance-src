@@ -96,8 +96,17 @@ describe('baseline data', () => {
       assert.ok(result.errorMessage!.includes('is a split record, not a primary feature'));
     });
 
-    it('returns valid for a pending temporary feature ID', () => {
-      assert.deepStrictEqual(validateFeature('tmp-pending-feature-xyz'), { isValid: true });
+    it('returns valid for a registered pending temporary feature ID', () => {
+      assert.deepStrictEqual(validateFeature('tmp-streaming-api'), { isValid: true });
+    });
+
+    it('returns error for an unregistered temporary feature ID', () => {
+      const result = validateFeature('tmp-pending-feature-xyz');
+      assert.deepStrictEqual(result, {
+        isValid: false,
+        error: 'unregistered_temp_feature',
+        errorMessage: 'Temporary web feature ID "tmp-pending-feature-xyz" is not registered in lib/pending-web-features.json. Please register it with an upstream issue link.'
+      });
     });
 
     it('returns error when a temporary feature ID is now available upstream', () => {
