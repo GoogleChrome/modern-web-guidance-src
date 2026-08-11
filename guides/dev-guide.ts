@@ -325,7 +325,6 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
         outputDir: testOutputDir,
         tasks: [taskKey],
         numRuns: 1,
-        skipEval: true,
         guidedOnly,
         suiteConfig: {
           ...suiteConfig,
