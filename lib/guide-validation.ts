@@ -55,6 +55,51 @@ export interface PreparedGuide {
   featureIds: string[];
   relativeSubdir: string;
   statusName: ProjectStatus | null;
+  originTrials?: OriginTrialMetadata[];
+}
+
+export interface OriginTrialMetadata {
+  name?: string;
+  chromestatus_url?: string;
+  milestones?: {
+    chrome_first?: number;
+    chrome_last?: number;
+  };
+}
+
+const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
+let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
+
+export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
+  if (!cachedOriginTrials) {
+    if (fs.existsSync(ORIGIN_TRIALS_FILE)) {
+      try {
+        const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
+        cachedOriginTrials = JSON.parse(raw);
+      } catch (e) {
+        cachedOriginTrials = {};
+      }
+    } else {
+      cachedOriginTrials = {};
+    }
+  }
+  return cachedOriginTrials!;
+}
+
+export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
+  const registry = getOriginTrialsRegistry();
+  return registry[featureId];
+}
+
+export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
+  const registry = getOriginTrialsRegistry();
+  const found: OriginTrialMetadata[] = [];
+  for (const id of featureIds) {
+    if (registry[id]) {
+      found.push(registry[id]);
+    }
+  }
+  return found;
 }
 
 export interface GuideInventoryResult {
@@ -296,6 +341,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       featureIds,
       relativeSubdir,
       statusName,
+      originTrials: getGuideOriginTrials(featureIds),
     });
   }
 
