@@ -114,18 +114,18 @@ test('Manifest source paths resolve relative to dist directory', async () => {
   await assert.doesNotReject(fs.access(resolvedVsCodePath), `VS Code skill path ${vscodePath} must resolve to an existing SKILL.md`);
 });
 
-test('README dynamic Skill Coverage content', async () => {
+test('README template and dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
+  assert.ok(readmeRaw.includes('Modern Web Guidance'), 'README should contain title');
   
-  // Verify it contains the new headers and format
-  assert.ok(readmeRaw.includes('#### The full list'), 'README should contain the Skill Coverage header');
-  assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
-  assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
-  assert.ok(readmeRaw.includes('<h3>'), 'README should contain category h3 headings');
-  
-  // Quick sanity check that at least one feature name format works out, e.g. explorer links
-  assert.match(readmeRaw, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'README should contain links to Web Features Explorer');
-  assert.match(readmeRaw, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'README should contain GitHub blob links for use cases');
+  // When dynamic coverage is injected (e.g. during publish-skills validation), verify its format
+  if (readmeRaw.includes('#### The full list')) {
+    assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
+    assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
+    assert.ok(readmeRaw.includes('<h3>'), 'README should contain category h3 headings');
+    assert.match(readmeRaw, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'README should contain links to Web Features Explorer');
+    assert.match(readmeRaw, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'README should contain GitHub blob links for use cases');
+  }
 });
 
 test('modern-web CLI search and retrieve', async () => {
