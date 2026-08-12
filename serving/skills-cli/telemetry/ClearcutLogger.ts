@@ -68,7 +68,7 @@ export class ClearcutLogger {
 
     const payload: ChromeModernWebGuidance = {
       search_result: {
-        // query,
+        query,
         search_items: searchItems,
       },
       os: detectOS(),
@@ -113,7 +113,7 @@ export class ClearcutLogger {
 
     if (commandType == CommandType.INSTALL || commandType == CommandType.INSTALL_CHOOSE) {
       console.warn(
-        "Google collects anonymous usage statistics to improve the reliability, relevance, and performance of the Modern Web Guidance tool. " +
+        "Google collects anonymous usage information to improve the reliability, relevance, and performance of the Modern Web Guidance tool. " +
         "You can opt-out completely at any time by setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. " +
         "See https://github.com/GoogleChrome/modern-web-guidance#-telemetry--privacy for more details."
       );
