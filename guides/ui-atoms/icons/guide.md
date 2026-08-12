@@ -7,7 +7,7 @@ web-feature-ids:
   - svg
   - container-style-queries
   - registered-custom-properties
-# - linked-parameters
+  - tmp-linked-parameters
 guides:
   - precise-text-alignment
 ---

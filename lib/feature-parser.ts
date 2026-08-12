@@ -44,7 +44,7 @@ export function extractFeatureIds(description: string): string[] {
         cleanedFeatures.add(id);
       }
     } else {
-      const clean = id.replace(/[`*_\u00a0]/g, '').trim();
+      const clean = id.replace(/^[`*_\u00a0]+|[`*_\u00a0]+$/g, '').trim();
       if (clean) {
         cleanedFeatures.add(clean);
       }
