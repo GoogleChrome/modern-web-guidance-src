@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
 import { buildDist } from './build-dist.ts';
+import { updateReadmeWithFeaturesAndUseCases } from './build-readme.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 
@@ -145,10 +146,8 @@ async function main() {
     newVersion = incrementVersion(newVersion);
   }
 
-  const result = await validate(newVersion);
+  const { skillsCount, skillNames } = await validate(newVersion);
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
-
-  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
 
   if (isDryRun) {
     const files = await fs.readdir(publishCliDir, {recursive: true, withFileTypes: true});
@@ -167,17 +166,15 @@ async function main() {
 
     console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${filteredFiles.join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
-
-    console.log(`\n[Dry Run] Summary:`);
-    console.log(` - Use cases: ${useCasesCount}`);
-    console.log(` - Features: ${featuresCount}`);
-    console.log(` - Skills: ${skillsCount} (${skillNames.join(', ')})`);
+    console.log(`\n[Dry Run] Skills: ${skillsCount} (${skillNames.join(', ')})`);
 
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
   } else {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
+
+    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishCliDir);
 
     const releaseNotes = `### Summary
 - Use cases: ${useCasesCount}
