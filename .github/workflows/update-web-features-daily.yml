@@ -13,7 +13,42 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  update:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_proceed: ${{ steps.detect.outputs.should_proceed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check open PRs and package updates
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            EXISTING_PR=$(gh pr list --head auto/daily-web-features --state open --json number --jq '.[0].number')
+            if [ -n "$EXISTING_PR" ]; then
+              echo "::notice::An open daily update PR (#$EXISTING_PR) already exists. Skipping scheduled run."
+              echo "should_proceed=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          corepack enable pnpm
+          pnpm update --recursive web-features
+
+          if git diff --quiet; then
+            echo "::notice::No new web-features package updates available. Workspaces are already on the latest version."
+            echo "should_proceed=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_proceed=true" >> $GITHUB_OUTPUT
+          fi
+
+  validate-and-pr:
+    needs: check
+    if: ${{ needs.check.outputs.should_proceed == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,6 +68,11 @@ jobs:
         run: |
           pnpm update --recursive web-features
 
+      - name: Validate repository guide impact after web-features bump
+        id: validate-web-feature-update
+        continue-on-error: true
+        run: node --experimental-strip-types guides/validate-after-web-feature-update.ts
+
       - name: Generate GitHub App token
         if: ${{ vars.GH_APP_ID != '' }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -47,6 +87,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Create Pull Request if web-features changed
+        id: cpr
         uses: peter-evans/create-pull-request@c5a2204359f14352f2f4c9c1b3f94a8c3d8e578c # v7.0.5
         with:
           token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
@@ -58,3 +99,12 @@ jobs:
             CI workflow checks will automatically run on this PR to report if any guidance macros, tests, or features require updates.
           branch: "auto/daily-web-features"
           delete-branch: true
+
+      - name: Comment on PR if validation identified post-update action items
+        if: ${{ steps.cpr.outputs.pull-request-number != '' && steps.validate-web-feature-update.outputs.comment_body != '' }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+          COMMENT_BODY: ${{ steps.validate-web-feature-update.outputs.comment_body }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "$COMMENT_BODY"
