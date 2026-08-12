@@ -196,4 +196,7 @@ export async function runDevReport(targetDir: string): Promise<void> {
     console.log(`  ${icon} ${cBold(s.baseApp)}: ${flagColor(s.flag)} (${unguidedStr}guided: ${s.guidedPassRate}%)`);
   }
   console.log(`\n  ${cGreen('📄 Full Evaluation Report:')} ${path.relative(process.cwd(), finalReportPath)}`);
+  const relativeGuideDir = path.relative(process.cwd(), targetDir);
+  console.log(`\n  ${cCyan('💡 Next step:')} Create a PR with this evaluation report:`);
+  console.log(`     ${cBold(`gd pr ${relativeGuideDir}`)}`);
 }

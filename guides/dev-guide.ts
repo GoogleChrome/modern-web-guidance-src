@@ -180,14 +180,16 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   // Step 4: Run agent evaluation test (runs by default unless --no-test is passed or calibration failed)
   if (options.test !== false && overallSuccess) {
     await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.suiteConfig);
-
-    // Step 5: Run evaluation report
-    await runDevReport(targetDir);
   }
 
   // Summary
   const defaultAgent = getDefaultSolutionAgent();
   printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
+
+  // Step 5: Run evaluation report (printed last)
+  if (options.test !== false && overallSuccess) {
+    await runDevReport(targetDir);
+  }
 
   return overallSuccess;
 }
