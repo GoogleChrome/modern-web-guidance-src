@@ -290,6 +290,9 @@ window.__featuresMapping = {
   "sequence-distributed-events": [
     "temporal"
   ],
+  "streaming-api": [
+    "tmp-streaming-api"
+  ],
   "privacy": [
     "permissions-policy",
     "partitioned-cookies",
@@ -637,9 +640,6 @@ window.__featuresMapping = {
     "scroll-snap",
     "popover",
     "scroll-buttons"
-  ],
-  "streaming-api": [
-    "tmp-streaming-api"
   ],
   "adapt-scrollbar-to-contrast-preferences": [
     "scrollbar-color",
