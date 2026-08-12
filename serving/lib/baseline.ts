@@ -1,6 +1,7 @@
 import { features, groups } from 'web-features';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import type { Browsers, BrowserName } from '@mdn/browser-compat-data';
+import pendingWebFeatures from '../../features/pending-web-features.json' with { type: 'json' };
 
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 
@@ -11,7 +12,7 @@ type Feature = typeof features[string];
  */
 export interface FeatureValidationResult {
   isValid: boolean;
-  error?: 'not_found' | 'invalid_kind';
+  error?: 'not_found' | 'invalid_kind' | 'temp_feature_now_available' | 'unregistered_temp_feature';
   kind?: string;
   suggestion?: string;
   errorMessage?: string;
@@ -183,7 +184,13 @@ export function resolveFeatureId(featureId: string): string[] {
  * @returns The feature name
  */
 export function getFeatureName(featureId: string): string {
-  const feature = features[featureId] as Feature;
+  const feature = features[featureId] as Feature | undefined;
+  if (!feature) {
+    if (featureId.startsWith('tmp-')) {
+      return featureId.slice(4);
+    }
+    return featureId;
+  }
   return feature.name;
 }
 
@@ -228,6 +235,25 @@ export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string
  * Validates a feature ID.
  */
 export function validateFeature(id: string): FeatureValidationResult {
+  if (id.startsWith('tmp-')) {
+    const realId = id.slice(4);
+    if (features[realId]) {
+      return {
+        isValid: false,
+        error: 'temp_feature_now_available',
+        errorMessage: `Temporary web feature ID "${id}" is now available in web-features package as "${realId}". Please update guide frontmatter to use "${realId}".`
+      };
+    }
+    if (!(id in pendingWebFeatures)) {
+      return {
+        isValid: false,
+        error: 'unregistered_temp_feature',
+        errorMessage: `Temporary web feature ID "${id}" is not registered in features/pending-web-features.json. Please register it with an upstream issue link.`
+      };
+    }
+    return { isValid: true };
+  }
+
   const feature = features[id] as Feature | undefined;
   if (!feature) {
     return {

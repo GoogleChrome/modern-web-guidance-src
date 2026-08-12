@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { parseExpectations, validateHtmlTags, inventoryGuide, classifyGuide, getSupportedBaseApps } from './guide-validation.ts';
+import { extractFeatureIds } from './feature-parser.ts';
 
 describe('parseExpectations', () => {
   test('legacy flat format: all bullets treated as mustPass', () => {
@@ -230,3 +231,22 @@ describe('getSupportedBaseApps', () => {
     assert.deepStrictEqual(apps, ['daily-grind', 'devtools-times']);
   });
 });
+
+describe('extractFeatureIds', () => {
+  test('extracts tmp- feature IDs while removing outer formatting', () => {
+    const body = `
+### web-feature-id
+
+tmp-streaming-api
+
+**Web Feature ID**: \`tmp-streaming-api\`
+Feature ID: *tmp-fetch-body*
+https://webstatus.dev/features/tmp-custom-feature
+`;
+    const fids = extractFeatureIds(body);
+    assert.ok(fids.includes('tmp-streaming-api'));
+    assert.ok(fids.includes('tmp-fetch-body'));
+    assert.ok(fids.includes('tmp-custom-feature'));
+  });
+});
+

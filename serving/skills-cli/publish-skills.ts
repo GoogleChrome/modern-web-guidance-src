@@ -81,13 +81,25 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
   console.log(`Creating GitHub release v${newVersion} on GoogleChrome/modern-web-guidance...`);
   console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
 
-  await ghpages.publish(publishCliDir, {
-    branch: 'main',
-    repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
-    dotfiles: true,
-    message: `Release v${newVersion}`,
-    tag: `v${newVersion}`,
-    src: GH_PUBLISH_PATTERNS,
+  await new Promise<void>((resolve, reject) => {
+    ghpages.publish(
+      publishCliDir,
+      {
+        branch: 'main',
+        repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
+        dotfiles: true,
+        message: `Release v${newVersion}`,
+        tag: `v${newVersion}`,
+        src: GH_PUBLISH_PATTERNS,
+      },
+      (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      },
+    );
   });
 
   // TODO: not working. Think we need a GH API key from the modern-web-guidance repo.
