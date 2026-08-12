@@ -77,7 +77,7 @@ For browsers that support it, RCS provides the most robust automated fallback fo
   .badge {
     /* Highest threshold that passes WCAG. Higher values may be more legible. */
     --threshold: 0.623;
-    --l: clamp(0, (l / var(--threshold) - 1) * -infinity, 1);
+    --l: max(0, sign(var(--threshold) - l));
     color: oklch(from var(--badge-bg) var(--l) 0 h);
   }
 }
