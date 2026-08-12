@@ -337,7 +337,8 @@ window.__featuresMapping = {
     "image-set",
     "svg",
     "container-style-queries",
-    "registered-custom-properties"
+    "registered-custom-properties",
+    "tmp-linked-parameters"
   ],
   "position-aware-tooltips": [
     "container-anchor-position-queries",
@@ -636,6 +637,9 @@ window.__featuresMapping = {
     "scroll-snap",
     "popover",
     "scroll-buttons"
+  ],
+  "streaming-api": [
+    "tmp-streaming-api"
   ],
   "adapt-scrollbar-to-contrast-preferences": [
     "scrollbar-color",
