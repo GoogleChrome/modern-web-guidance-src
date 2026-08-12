@@ -8,6 +8,7 @@ import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../lib/patch-utils.ts';
 import { getGraderScriptContent } from './lib/agent-shared.ts';
+import { copyBaseAppToWorkspace } from '../guides/lib/utils.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -17,7 +18,7 @@ let logStream: fs.WriteStream | null = null;
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-export async function runAgent(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
+export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
   const agent = suiteConfig.agent;
   let templateDir = templateDirRaw;
@@ -52,7 +53,8 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string,
         agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
           agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
             agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-              'jetski-agent.ts'
+              agent === Agents.PI ? 'pi-agent.ts' :
+                'jetski-agent.ts'
     );
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
@@ -350,16 +352,11 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
   }
 
   const refBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
-  if (fs.existsSync(refBaseAppDir)) {
-    fs.cpSync(refBaseAppDir, workspaceBaseAppDir, { recursive: true });
-  } else {
+  if (!fs.existsSync(refBaseAppDir)) {
     console.warn(`Source base app not found at ${refBaseAppDir}`);
     return null;
   }
-  if (!fs.existsSync(path.join(workspaceBaseAppDir, '.git'))) {
-    initGitRepo(workspaceBaseAppDir);
-  }
-
+  await copyBaseAppToWorkspace(taskInfo.baseApp, workspaceBaseAppDir);
   const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
   if (fs.existsSync(pkgJsonPath)) {
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
@@ -368,7 +365,7 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
     }
   }
 
-  // If this is a target-based task and zero-passrate.patch exists, apply it before agent execution
+  // If this is a target-based task and zero-passrate.patch exists, apply it before git init & agent execution
   const targetZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskName, ZERO_PASSRATE_PATCH_FILE);
   const baseAppZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskInfo.baseApp, ZERO_PASSRATE_PATCH_FILE);
   const zeroPassratePath = fs.existsSync(targetZeroPassrate)
@@ -382,6 +379,10 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
     } else {
       console.log(`Applied zero-passrate.patch to ${workspaceBaseAppDir}`);
     }
+  }
+
+  if (!fs.existsSync(path.join(workspaceBaseAppDir, '.git'))) {
+    initGitRepo(workspaceBaseAppDir);
   }
 
   return workspaceBaseAppDir;
@@ -529,6 +530,7 @@ function getAgentScript(agent: string): string {
     agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
     agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
     agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+    agent === Agents.PI ? 'pi-agent.ts' :
       'jetski-agent.ts');
 }
 

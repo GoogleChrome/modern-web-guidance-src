@@ -1,7 +1,39 @@
 import { describe, it, mock, before, after } from 'node:test';
 import assert from 'node:assert';
 import child_process from 'node:child_process';
-import { normalizeLabel, handleIssue, handlePR } from './atl-triage.ts';
+import {
+  normalizeLabel,
+  handleIssue,
+  handlePR,
+  findGuidesTranscludingFeature
+} from './atl-triage.ts';
+import { getTranscludedFeatureIds, parseArguments } from '../serving/lib/macro-parsing.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
+describe('parseArguments', () => {
+  it('parses single arguments unquoted and quoted', () => {
+    assert.deepStrictEqual(parseArguments('"popover"'), ['popover']);
+    assert.deepStrictEqual(parseArguments("'popover'"), ['popover']);
+    assert.deepStrictEqual(parseArguments('popover'), ['popover']);
+  });
+
+  it('parses multiple arguments with mixed quotes and whitespace', () => {
+    assert.deepStrictEqual(
+      parseArguments('"customizable-select", "usage"'),
+      ['customizable-select', 'usage']
+    );
+    assert.deepStrictEqual(
+      parseArguments("'user-pseudos', 'aria-invalid'"),
+      ['user-pseudos', 'aria-invalid']
+    );
+    assert.deepStrictEqual(
+      parseArguments('user-pseudos, "aria-invalid"'),
+      ['user-pseudos', 'aria-invalid']
+    );
+  });
+});
 
 describe('normalizeLabel', () => {
   it('normalizes category prefixes', () => {
@@ -17,6 +49,93 @@ describe('normalizeLabel', () => {
 
   it('preserves other text but lowercases and trims', () => {
     assert.strictEqual(normalizeLabel('  Some Label  '), 'some label');
+  });
+});
+
+describe('getTranscludedFeatureIds', () => {
+  it('extracts feature IDs from FEATURE macro', () => {
+    const content = `
+# Some Guide
+{{ FEATURE("customizable-select", "usage") }}
+{{ FEATURE('popover') }}
+{{ FEATURE(user-pseudos, "aria-invalid") }}
+`;
+    const result = getTranscludedFeatureIds(content);
+    assert.deepStrictEqual(result.sort(), ['customizable-select', 'popover', 'user-pseudos'].sort());
+  });
+
+  it('extracts feature IDs from FEATURE_FALLBACKS macro', () => {
+    const content = `
+{{ FEATURE_FALLBACKS("scrollbar-color") }}
+{{ FEATURE_FALLBACKS('light-dark') }}
+{{ FEATURE_FALLBACKS(color-scheme) }}
+`;
+    const result = getTranscludedFeatureIds(content);
+    assert.deepStrictEqual(result.sort(), ['scrollbar-color', 'light-dark', 'color-scheme'].sort());
+  });
+
+  it('extracts feature IDs from FEATURE_ISSUES macro', () => {
+    const content = `
+{{ FEATURE_ISSUES("color-scheme") }}
+{{ FEATURE_ISSUES('accent-color') }}
+`;
+    const result = getTranscludedFeatureIds(content);
+    assert.deepStrictEqual(result.sort(), ['color-scheme', 'accent-color'].sort());
+  });
+
+  it('extracts feature IDs from INCLUDE macros referencing features/*.md', () => {
+    const content = `
+{{ INCLUDE("features/popover.md#fallbacks") }}
+{{ INCLUDE("../features/customizable-select.md") }}
+{{ INCLUDE("../../features/light-dark.md#issues") }}
+{{ INCLUDE('features/accent-color.md') }}
+`;
+    const result = getTranscludedFeatureIds(content);
+    assert.deepStrictEqual(result.sort(), ['popover', 'customizable-select', 'light-dark', 'accent-color'].sort());
+  });
+
+  it('returns empty array when no transclusion macros are present', () => {
+    const content = `
+# Plain Guide
+This guide has no feature transclusions.
+{{ BASELINE_STATUS("popover") }}
+{{ GUIDE_REF("forms") }}
+`;
+    const result = getTranscludedFeatureIds(content);
+    assert.deepStrictEqual(result, []);
+  });
+
+  it('handles empty or falsy content gracefully', () => {
+    assert.deepStrictEqual(getTranscludedFeatureIds(''), []);
+  });
+});
+
+describe('findGuidesTranscludingFeature', () => {
+  it('finds guides that transclude a feature in a mock directory structure', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guidance-triage-test-'));
+    try {
+      // Create mock guide directories
+      const formsGuideDir = path.join(tmpDir, 'forms', 'rich-picker');
+      fs.mkdirSync(formsGuideDir, { recursive: true });
+      fs.writeFileSync(path.join(formsGuideDir, 'guide.md'), '{{ FEATURE("customizable-select", "usage") }}', 'utf8');
+
+      const visualGuideDir = path.join(tmpDir, 'visual-design', 'scroll-colors');
+      fs.mkdirSync(visualGuideDir, { recursive: true });
+      fs.writeFileSync(path.join(visualGuideDir, 'guide.md'), '{{ FEATURE_FALLBACKS("scrollbar-color") }}', 'utf8');
+
+      const matches = findGuidesTranscludingFeature('customizable-select', tmpDir);
+      assert.strictEqual(matches.length, 1);
+      assert.strictEqual(matches[0].category, 'forms');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('finds real repository guides that transclude scrollbar-color', () => {
+    const matches = findGuidesTranscludingFeature('scrollbar-color');
+    assert.ok(matches.length >= 1);
+    const categories = matches.map(m => m.category);
+    assert.ok(categories.includes('visual-design'));
   });
 });
 
@@ -144,6 +263,20 @@ Web Feature ID: user-action-pseudos
     const result = handleIssue(123, [], description, mockConfig);
     assert.deepStrictEqual(result, ['user-action-reviewer']);
   });
+  it('assigns the category ATL if the issue is a use case under that category', () => {
+    const description = `Use case subdir: [guides/css-layout/some-use-case](https://github.com/...)`;
+    const result = handleIssue(123, [], description, mockConfig);
+    assert.deepStrictEqual(result, ['malchata']);
+  });
+
+  it('assigns both the category ATL and feature override ATL for use case issues', () => {
+    const description = `
+Use case subdir: [guides/css-layout/some-use-case](https://github.com/...)
+Affected web-feature IDs: [canvas-html](...)
+`;
+    const result = handleIssue(123, [], description, mockConfig);
+    assert.deepStrictEqual(result.sort(), ['malchata', 'override-issue-reviewer'].sort());
+  });
 });
 
 describe('handlePR', () => {
@@ -169,10 +302,10 @@ describe('handlePR', () => {
     ];
 
     const result = handlePR(456, 'some-contributor', mockConfig, mockFiles);
-    // 'deliver-optimized-decorative-images' resolves to 'override-pr-reviewer' (via feature 'image-set' override)
+    // 'deliver-optimized-decorative-images' resolves to 'override-pr-reviewer' (via feature 'image-set' override) + 'rviscomi', 'paulirish' (default performance)
     // 'carousel-slide-effects' resolves to 'philipwalton' (default motion)
     // 'grid-layout' resolves to 'malchata' (default css-layout)
-    assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'philipwalton', 'malchata'].sort());
+    assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'rviscomi', 'paulirish', 'philipwalton', 'malchata'].sort());
   });
 
   it('does not request review from the PR author', () => {
@@ -181,9 +314,9 @@ describe('handlePR', () => {
       'guides/motion/carousel-slide-effects/expectations.md'
     ];
 
-    // Author is override-pr-reviewer, so only philipwalton should be requested
+    // Author is override-pr-reviewer, so only rviscomi, paulirish, and philipwalton should be requested
     const result = handlePR(456, 'override-pr-reviewer', mockConfig, mockFiles);
-    assert.deepStrictEqual(result.sort(), ['philipwalton'].sort());
+    assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton'].sort());
   });
 
   it('returns empty array when no content files are touched', () => {
@@ -208,7 +341,9 @@ describe('handlePR', () => {
         // Return active requested / reviewed ATLs with mixed case to test case-insensitivity
         return JSON.stringify({
           reviewRequests: [
-            { login: 'Override-Pr-Reviewer' }
+            { login: 'Override-Pr-Reviewer' },
+            { login: 'rviscomi' },
+            { login: 'paulirish' }
           ],
           reviews: [
             { author: { login: 'PhilipWalton' }, state: 'APPROVED' }
@@ -222,8 +357,8 @@ describe('handlePR', () => {
     });
 
     try {
-      // both 'override-pr-reviewer' (via feature 'image-set' override) and 'philipwalton' (default motion)
-      // are resolved, but they are excluded because they are in reviewRequests/reviews.
+      // 'override-pr-reviewer' (via feature 'image-set' override), 'rviscomi', 'paulirish' (default performance),
+      // and 'philipwalton' (default motion) are resolved, but they are excluded because they are in reviewRequests/reviews.
       // So no additional review request is made.
       const result = handlePR(456, 'some-contributor', mockConfig);
       assert.deepStrictEqual(result, []);
@@ -236,5 +371,110 @@ describe('handlePR', () => {
       execMock.mock.restore();
     }
   });
+
+  it('auto-assigns feature-level owners and transcluding guide category owners when features/*.md is modified', () => {
+    const config = {
+      default: {
+        'visual-design': 'visual-owner',
+        forms: 'forms-owner'
+      },
+      web_features: {
+        'scrollbar-color': 'feature-scrollbar-owner'
+      },
+      web_features_groups: {}
+    };
+
+    const mockFiles = ['features/scrollbar-color.md'];
+    const result = handlePR(456, 'some-contributor', config, mockFiles);
+    // 'scrollbar-color' has feature owner 'feature-scrollbar-owner'
+    // and is transcluded in 'visual-design' guides -> category owner 'visual-owner'
+    assert.deepStrictEqual(result.sort(), ['feature-scrollbar-owner', 'visual-owner'].sort());
+  });
+
+  it('auto-assigns feature group owners and transcluding guide category owners for feature files', () => {
+    const config = {
+      default: {
+        'visual-design': 'visual-owner'
+      },
+      web_features: {},
+      web_features_groups: {
+        scrolling: 'scrolling-group-owner'
+      }
+    };
+
+    const mockFiles = ['features/scrollbar-color.md'];
+    const result = handlePR(456, 'some-contributor', config, mockFiles);
+    // 'scrollbar-color' belongs to group 'scrolling' -> 'scrolling-group-owner'
+    // and is transcluded in 'visual-design' -> 'visual-owner'
+    assert.deepStrictEqual(result.sort(), ['scrolling-group-owner', 'visual-owner'].sort());
+  });
+
+  it('auto-assigns category owners across multiple categories where a feature is transcluded', () => {
+    const config = {
+      default: {
+        css: 'css-owner',
+        forms: 'forms-owner'
+      },
+      web_features: {
+        'user-pseudos': 'user-pseudos-owner'
+      },
+      web_features_groups: {}
+    };
+
+    const mockFiles = ['features/user-pseudos.md'];
+    const result = handlePR(456, 'some-contributor', config, mockFiles);
+    // 'user-pseudos' is transcluded in css/style-parent-with-has and forms/* guides
+    assert.deepStrictEqual(result.sort(), ['user-pseudos-owner', 'css-owner', 'forms-owner'].sort());
+  });
+
+  it('excludes author when author is the feature owner or category owner of modified feature file', () => {
+    const config = {
+      default: {
+        css: 'css-owner',
+        forms: 'forms-owner'
+      },
+      web_features: {
+        'user-pseudos': 'user-pseudos-owner'
+      },
+      web_features_groups: {}
+    };
+
+    // Author is user-pseudos-owner
+    const result1 = handlePR(456, 'user-pseudos-owner', config, ['features/user-pseudos.md']);
+    assert.deepStrictEqual(result1.sort(), ['css-owner', 'forms-owner'].sort());
+
+    // Author is forms-owner
+    const result2 = handlePR(456, 'forms-owner', config, ['features/user-pseudos.md']);
+    assert.deepStrictEqual(result2.sort(), ['user-pseudos-owner', 'css-owner'].sort());
+  });
+
+  it('supports custom guides directory for testing transclusion matching in handlePR', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guidance-triage-pr-test-'));
+    try {
+      const customCategoryDir = path.join(tmpDir, 'custom-category', 'my-guide');
+      fs.mkdirSync(customCategoryDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(customCategoryDir, 'guide.md'),
+        '{{ FEATURE("my-feature") }}',
+        'utf8'
+      );
+
+      const config = {
+        default: {
+          'custom-category': 'custom-cat-owner'
+        },
+        web_features: {
+          'my-feature': 'my-feature-owner'
+        },
+        web_features_groups: {}
+      };
+
+      const result = handlePR(456, 'some-contributor', config, ['features/my-feature.md'], tmpDir);
+      assert.deepStrictEqual(result.sort(), ['my-feature-owner', 'custom-cat-owner'].sort());
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
+
 

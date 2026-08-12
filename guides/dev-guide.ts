@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { rootDir, baseAppsDir } from '../lib/paths.ts';
+import { rootDir } from '../lib/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import { generateTargetGrader } from './grader-gen.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
 import { defaultSuiteConfig, Serving, Agents, type SuiteConfig } from '../harness/config.ts';
 import { collectGuidesUsed } from '../harness/lib/guidance_validation.ts';
-import { setupIsolatedWorkDir, runAgent, stageBaseAppWorkspace } from './lib/utils.ts';
+import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from './lib/utils.ts';
 import {
   buildSolutionPrompt,
   buildZeroPassratePrompt,
@@ -26,7 +26,10 @@ import {
   TASK_FILE,
   TARGETS_DIR,
   SUPPORTED_BASE_APPS,
-  SOLUTION_PATCH_FILE,
+  getDefaultSolutionAgent,
+  getActiveSolutionAgents,
+  SOLUTION_PATCH_FILES,
+  type SolutionAgent,
   ZERO_PASSRATE_PATCH_FILE,
   getTaskMap,
   resetGuidesMap,
@@ -65,7 +68,7 @@ function printInventory(inv: GuideInventory): void {
     console.log(`\n   ${cDim('Targets:')}`);
     for (const target of inv.targets) {
       console.log(`     ${cBold(target.name)}`);
-      console.log(`       ${'solution.patch'.padEnd(18)} ${target.hasSolution ? icon(true) : icon(false, true) + ' will generate'}`);
+      console.log(`       ${'solutions/*.patch'.padEnd(18)} ${target.hasSolution ? icon(true) : icon(false, true) + ' will generate'}`);
       console.log(`       ${'zero-passrate.patch'.padEnd(18)} ${target.hasZeroPassrate ? icon(true) : icon(false, true) + ' will generate'}`);
       console.log(`       ${'grader.ts'.padEnd(18)} ${target.hasGrader ? icon(true) : icon(false, true) + ' will generate'}`);
       console.log(`       ${'task.md'.padEnd(18)} ${target.hasTask ? icon(true) : icon(false, true) + ' will generate'}`);
@@ -104,59 +107,73 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 2: Sequential target generation across SUPPORTED_BASE_APPS
-  for (const baseApp of SUPPORTED_BASE_APPS) {
-    const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, baseApp);
-    fs.mkdirSync(targetCapsuleDir, { recursive: true });
+  // Step 2: Parallel target generation across SUPPORTED_BASE_APPS
+  await Promise.all(
+    SUPPORTED_BASE_APPS.map(async (baseApp) => {
+      const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, baseApp);
+      fs.mkdirSync(targetCapsuleDir, { recursive: true });
 
-    const solutionPatch = path.join(targetCapsuleDir, SOLUTION_PATCH_FILE);
-    if (!fs.existsSync(solutionPatch)) {
-      console.log(cCyan(`\n--- Generating ${SOLUTION_PATCH_FILE} for ${baseApp} ---`));
-      await generateTargetPatch(targetDir, baseApp, 'solution');
-    }
+      const solutionAgents = getActiveSolutionAgents(targetCapsuleDir);
+      const patchTasks = solutionAgents.map(async (agent) => {
+        const solPatchFile = SOLUTION_PATCH_FILES[agent];
+        const solutionPatch = path.join(targetCapsuleDir, solPatchFile);
+        if (!fs.existsSync(solutionPatch)) {
+          console.log(cCyan(`\n--- Generating ${solPatchFile} for ${baseApp} (${agent}) ---`));
+          await generateTargetPatch(targetDir, baseApp, agent);
+        }
+      });
 
-    const zeroPassratePatch = path.join(targetCapsuleDir, ZERO_PASSRATE_PATCH_FILE);
-    if (!fs.existsSync(zeroPassratePatch)) {
-      console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
-      await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
-    }
+      const zeroPassrateTask = (async () => {
+        const zeroPassratePatch = path.join(targetCapsuleDir, ZERO_PASSRATE_PATCH_FILE);
+        if (!fs.existsSync(zeroPassratePatch)) {
+          console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
+          await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
+        }
+      })();
 
-    const graderFile = path.join(targetCapsuleDir, GRADER_FILE);
-    if (!fs.existsSync(graderFile)) {
-      console.log(cCyan(`\n--- Generating ${GRADER_FILE} for ${baseApp} ---`));
-      await generateTargetGrader(targetDir, baseApp);
-    }
+      const taskTask = (async () => {
+        const taskFile = path.join(targetCapsuleDir, TASK_FILE);
+        if (!fs.existsSync(taskFile)) {
+          console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
+          await generateTargetTask(targetDir, baseApp);
+        }
+      })();
 
-    const taskFile = path.join(targetCapsuleDir, TASK_FILE);
-    if (!fs.existsSync(taskFile)) {
-      console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
-      await generateTargetTask(targetDir, baseApp);
-    }
-  }
+      // Wait for solution patches, zero-passrate patch, and task.md to finish
+      await Promise.all([...patchTasks, zeroPassrateTask, taskTask]);
 
-  // Step 3: Calibrate targets and retry grader if calibration fails
-  let overallSuccess = true;
-  for (const baseApp of SUPPORTED_BASE_APPS) {
-    console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
-    let success = false;
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      const res = await testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp));
-      if (res.success) {
-        console.log(cGreen(`✅ ${baseApp} calibrated successfully on attempt ${attempt}!`));
-        success = true;
-        break;
+      // Grader generation depends on the generated solution patches in patches/
+      const graderFile = path.join(targetCapsuleDir, GRADER_FILE);
+      if (!fs.existsSync(graderFile)) {
+        console.log(cCyan(`\n--- Generating ${GRADER_FILE} for ${baseApp} ---`));
+        await generateTargetGrader(targetDir, baseApp);
       }
+    })
+  );
 
-      if (attempt <= maxRetries) {
-        console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
-        await generateTargetGrader(targetDir, baseApp, res.errorDetails);
-      } else {
-        console.error(cRed(`❌ ${baseApp} failed calibration after ${attempt} attempt(s): ${res.errorDetails || 'Unknown error'}`));
-        break;
+  // Step 3: Calibrate targets in parallel and retry grader if calibration fails
+  const calibrationResults = await Promise.all(
+    SUPPORTED_BASE_APPS.map(async (baseApp) => {
+      console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
+      for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        const res = await testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp));
+        if (res.success) {
+          console.log(cGreen(`✅ ${baseApp} calibrated successfully on attempt ${attempt}!`));
+          return true;
+        }
+
+        if (attempt <= maxRetries) {
+          console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
+          await generateTargetGrader(targetDir, baseApp, res.errorDetails);
+        } else {
+          console.error(cRed(`❌ ${baseApp} failed calibration after ${attempt} attempt(s): ${res.errorDetails || 'Unknown error'}`));
+          return false;
+        }
       }
-    }
-    if (!success) overallSuccess = false;
-  }
+      return false;
+    })
+  );
+  const overallSuccess = calibrationResults.every(Boolean);
 
   // Step 4: Run agent evaluation test (runs by default unless --no-test is passed or calibration failed)
   if (options.test !== false && overallSuccess) {
@@ -164,18 +181,17 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Summary
-  printSummary(targetDir, currentInv, { success: overallSuccess, solution: { passed: 0, failed: 0, failingTests: [] }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
+  const defaultAgent = getDefaultSolutionAgent();
+  printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
 
   return overallSuccess;
 }
 
-async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: 'solution' | 'zero-passrate'): Promise<void> {
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-${patchType}`);
+async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
+  const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
+  const workDir = setupGuideDevWorkDir(`${baseApp}-${patchType}`, undefined, agent);
   try {
-    fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
-      recursive: true,
-      filter: (src) => !src.includes('node_modules')
-    });
+    await copyBaseAppToWorkspace(baseApp, workDir);
 
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
@@ -183,32 +199,34 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
     // Git init is required for capturePatchFromGit to extract git diffs
     initGitRepo(workDir);
 
-    const prompt = patchType === 'solution'
-      ? buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
-      : buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
+    const prompt = patchType === 'zero-passrate'
+      ? buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
+      : buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
 
-    await runAgent(prompt, workDir);
+    await runAgent(agent, prompt, workDir);
 
-    const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchType === 'solution' ? SOLUTION_PATCH_FILE : ZERO_PASSRATE_PATCH_FILE);
+    const patchRelFile = patchType === 'zero-passrate' ? ZERO_PASSRATE_PATCH_FILE : SOLUTION_PATCH_FILES[patchType];
+    const destPatch = path.join(guideDirAbs, TARGETS_DIR, baseApp, patchRelFile);
     fs.mkdirSync(path.dirname(destPatch), { recursive: true });
     capturePatchFromGit(workDir, destPatch);
     if (!fs.existsSync(destPatch)) {
       fs.writeFileSync(destPatch, '');
     }
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    try {
+      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    } catch (e) {
+      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+    }
   }
 }
 
 async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise<void> {
-  const workDir = setupIsolatedWorkDir(`gd-gen-${baseApp}-task`);
+  const workDir = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
-    const sourceBaseAppDir = path.join(baseAppsDir, baseApp);
-    if (fs.existsSync(sourceBaseAppDir)) {
-      await fs.promises.cp(sourceBaseAppDir, workDir, { recursive: true });
-    }
+    await copyBaseAppToWorkspace(baseApp, workDir);
 
     const prompt = buildTargetTaskPrompt({
       guideFile: GUIDE_FILE,
@@ -216,7 +234,7 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       baseApp,
     });
 
-    await runAgent(prompt, workDir);
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
 
     const generatedTask = path.join(workDir, TASK_FILE);
     if (fs.existsSync(generatedTask)) {
@@ -225,7 +243,11 @@ async function generateTargetTask(guideDirAbs: string, baseApp: string): Promise
       fs.copyFileSync(generatedTask, destTask);
     }
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    try {
+      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    } catch (e) {
+      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+    }
   }
 }
 
@@ -266,83 +288,94 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   resetGuidesMap();
   const taskMap = getTaskMap();
 
-  for (const baseApp of baseApps) {
-    console.log(cCyan(`\nRunning agent test for target: ${baseApp}`));
-    const taskKey = `${guideName}/${baseApp}`;
-    const taskInfo = taskMap.get(taskKey);
-    if (!taskInfo) {
-      console.error(cRed(`Task info not found for ${taskKey}, cannot run agent test.`));
-      continue;
-    }
+  await Promise.all(
+    baseApps.map(async (baseApp) => {
+      console.log(cCyan(`\nRunning agent test for target: ${baseApp}`));
+      const taskKey = `${guideName}/${baseApp}`;
+      const taskInfo = taskMap.get(taskKey);
+      if (!taskInfo) {
+        console.error(cRed(`Task info not found for ${taskKey}, cannot run agent test.`));
+        return;
+      }
 
-    const targetGraderPath = path.join(targetsDir, baseApp, 'grader.ts');
-    if (!fs.existsSync(targetGraderPath)) {
-      console.error(cRed(`Could not find grader.ts for ${baseApp} at ${targetGraderPath}`));
-      continue;
-    }
+      const targetGraderPath = path.join(targetsDir, baseApp, 'grader.ts');
+      if (!fs.existsSync(targetGraderPath)) {
+        console.error(cRed(`Could not find grader.ts for ${baseApp} at ${targetGraderPath}`));
+        return;
+      }
 
-    const results: Record<string, { passed: number; total: number }> = {};
+      const results: Record<string, { passed: number; total: number }> = {};
 
-    // 1. Grade base app (with zero-passrate baseline applied)
-    const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
-    const patchToApply = fs.existsSync(zeroPassratePatch) ? zeroPassratePatch : undefined;
-
-    const { workDir: stagingDir, cleanup } = stageBaseAppWorkspace(baseApp, patchToApply, `gd-pre-grade-${baseApp}`);
-    try {
-      const preResults = await gradeOutput(stagingDir, targetGraderPath, path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'));
-      if (preResults) results['pre'] = preResults;
-    } finally {
-      cleanup();
-    }
-
-    // 2. Run agent suite
-    const { runSuite } = await import('../harness/run_suite.ts');
-    const testOutputDir = path.join(targetDir, 'test-app-results', baseApp);
-    const agentOverride = process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : undefined;
-    await runSuite({
-      name: `${guideName}-${baseApp}`,
-      outputDir: testOutputDir,
-      tasks: [taskKey],
-      numRuns: 1,
-      skipEval: true,
-      guidedOnly,
-      suiteConfig: agentOverride ? { agent: agentOverride } : undefined,
-    });
-
-    // 3. Grade agent output (unguided + guided)
-    const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
-    for (const runType of runTypes) {
-      const resultDir = path.join(testOutputDir, '1', guideName, baseApp, runType);
-      if (!fs.existsSync(resultDir)) continue;
-
-      const gradeResults = await gradeOutput(
-        resultDir,
+      // 1. Grade base app (with zero-passrate baseline applied)
+      const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
+      const preResults = await gradeOutput(
+        targetsDir,
         targetGraderPath,
-        path.join(resultDir, 'grade-report')
+        path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'),
+        zeroPassratePatch
       );
-      if (gradeResults) results[runType] = gradeResults;
-    }
+      if (preResults) results['pre'] = preResults;
 
-    let guidesConsumed: string[] = [];
-    const guidedDir = path.join(testOutputDir, '1', guideName, baseApp, 'guided');
-    if (fs.existsSync(guidedDir)) {
-      const suiteConfig = defaultSuiteConfig;
-      const servingMode = suiteConfig.serving as any;
-      const activeAgent = agentOverride || suiteConfig.agent;
-      const usage = await collectGuidesUsed(guidedDir, servingMode, activeAgent);
-      guidesConsumed = [...new Set([...usage.retrievedGuides, ...usage.fileReadGuides])];
-    }
+      // 2. Run agent suite
+      const { runSuite } = await import('../harness/run_suite.ts');
+      const testOutputDir = path.join(targetDir, 'test-app-results', baseApp);
+      const agent = getDefaultSolutionAgent();
+      await runSuite({
+        name: `${guideName}-${baseApp}`,
+        outputDir: testOutputDir,
+        tasks: [taskKey],
+        numRuns: 1,
+        skipEval: true,
+        guidedOnly,
+        suiteConfig: {
+          ...suiteConfig,
+          agent,
+        },
+      });
 
-    printTestComparison(results, guidesConsumed);
-  }
+      // 3. Grade agent output (unguided + guided)
+      const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
+      for (const runType of runTypes) {
+        const resultDir = path.join(testOutputDir, '1', guideName, baseApp, runType);
+        if (!fs.existsSync(resultDir)) continue;
+        const patchFile = path.join(resultDir, 'agent.patch');
+        const gradeResults = await gradeOutput(
+          resultDir,
+          targetGraderPath,
+          path.join(resultDir, 'grade-report'),
+          patchFile,
+          zeroPassratePatch
+        );
+        if (gradeResults) results[runType] = gradeResults;
+      }
+
+      let guidesConsumed: string[] = [];
+      const guidedDir = path.join(testOutputDir, '1', guideName, baseApp, 'guided');
+      if (fs.existsSync(guidedDir)) {
+        const suiteConfig = defaultSuiteConfig;
+        const servingMode = suiteConfig.serving as any;
+        const activeAgent = agent;
+        const usage = await collectGuidesUsed(guidedDir, servingMode, activeAgent);
+        guidesConsumed = [...new Set([...usage.retrievedGuides, ...usage.fileReadGuides])];
+      }
+
+      printTestComparison(results, guidesConsumed, baseApp);
+    })
+  );
 }
 
-async function gradeOutput(appDir: string, graderPath: string, outputDir: string): Promise<{ passed: number; total: number } | null> {
+async function gradeOutput(
+  appDir: string,
+  graderPath: string,
+  outputDir: string,
+  patchFile?: string,
+  zeroPassrateFile?: string
+): Promise<{ passed: number; total: number } | null> {
   const label = path.basename(path.dirname(outputDir));
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {
-    const gradeResults = await runPlaywright(appDir, graderPath, outputDir, 'pipe');
+    const gradeResults = await runPlaywright(appDir, graderPath, outputDir, 'pipe', patchFile, zeroPassrateFile);
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;
@@ -359,7 +392,8 @@ async function gradeOutput(appDir: string, graderPath: string, outputDir: string
 
 export function printTestComparison(
   results: Record<string, { passed: number; total: number }>,
-  guidesConsumed?: string[]
+  guidesConsumed: string[] | undefined,
+  baseApp: string
 ): void {
   const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;
   if (total === 0) return;
@@ -370,7 +404,7 @@ export function printTestComparison(
     return `  ${label.padEnd(pad)} ${r.passed}/${r.total} checks passed (${pct}%)`;
   };
 
-  console.log(cBold(`\nAgent test results:`));
+  console.log(cBold(`\nAgent test results (${baseApp}):`));
   console.log(fmt('Base app (zero-passrate):', results.pre, 25));
   console.log(fmt('Unguided:', results.unguided, 25));
   console.log(fmt('Guided:', results.guided, 25));
@@ -415,7 +449,6 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
       console.log(`\n   ${cBold(`Target Base App: ${baseApp}`)}`);
       const appTargetDir = path.join(targetsDir, baseApp);
       
-      const solutionPatchPath = path.join(appTargetDir, SOLUTION_PATCH_FILE);
       const zeroPassratePatchPath = path.join(appTargetDir, ZERO_PASSRATE_PATCH_FILE);
       const graderPath = path.join(appTargetDir, GRADER_FILE);
       const taskPath = path.join(appTargetDir, TASK_FILE);
@@ -425,7 +458,13 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
         console.log(`     ${label.padEnd(28)} ${exists ? cGreen('✅') : cRed('❌')} ${exists ? existsMsg : missingMsg}`);
       };
 
-      printFileStatus(SOLUTION_PATCH_FILE, solutionPatchPath, 'generated', 'not generated');
+      const activeAgents = getActiveSolutionAgents(appTargetDir);
+      for (const agent of activeAgents) {
+        const solPatchFile = SOLUTION_PATCH_FILES[agent];
+        const solutionPatchPath = path.join(appTargetDir, solPatchFile);
+        printFileStatus(solPatchFile, solutionPatchPath, 'generated', 'not generated');
+      }
+
       printFileStatus(ZERO_PASSRATE_PATCH_FILE, zeroPassratePatchPath, 'generated', 'not generated');
       
       if (result?.success) {
