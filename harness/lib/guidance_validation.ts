@@ -3,11 +3,18 @@ import path from 'path';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { Agents, Serving } from '../config.ts';
 import type { GuideUsage } from './agent-shared.ts';
-import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory } from '../agents/gemini-cli-agent.ts';
-import { collectJetskiCliGuidesFromTrajectory, collectJetskiCliToolsFromTrajectory } from '../agents/jetski-cli-agent.ts';
-import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory } from '../agents/claude-code-agent.ts';
-import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } from '../agents/codex-cli-agent.ts';
-import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory } from '../agents/pi-agent.ts';
+import {
+  collectGeminiGuidesFromTrajectory,
+  collectGeminiToolsFromTrajectory,
+  collectJetskiCliGuidesFromTrajectory,
+  collectJetskiCliToolsFromTrajectory,
+  collectClaudeGuidesFromTrajectory,
+  collectClaudeToolsFromTrajectory,
+  collectCodexGuidesFromTrajectory,
+  collectCodexToolsFromTrajectory,
+  collectPiGuidesFromTrajectory,
+  collectPiToolsFromTrajectory
+} from './trajectory-parser.ts';
 
 function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return err instanceof Error && 'code' in err;

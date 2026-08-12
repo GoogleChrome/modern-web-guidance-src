@@ -4,11 +4,18 @@ import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
 import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
-import { extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gemini-cli-agent.ts';
-import { extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
-import { extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
-import { extractJetskiCliModel, extractJetskiCliTokenUsage } from '../agents/jetski-cli-agent.ts';
-import { extractPiModel, extractPiTokenUsage } from '../agents/pi-agent.ts';
+import {
+  extractGeminiCliModel,
+  extractGeminiCliTokenUsage,
+  extractClaudeCodeModel,
+  extractClaudeCodeTokenUsage,
+  extractCodexCliModel,
+  extractCodexCliTokenUsage,
+  extractJetskiCliModel,
+  extractJetskiCliTokenUsage,
+  extractPiModel,
+  extractPiTokenUsage
+} from './trajectory-parser.ts';
 import { getGraderScriptContent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {

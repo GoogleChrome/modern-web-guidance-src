@@ -5,10 +5,16 @@ import path from 'path';
 import os from 'os';
 import { Agents } from '../config.ts';
 import { extractTokenUsageFromResults, extractModelFromResults } from '../lib/collection.ts';
-import { collectGeminiToolsFromTrajectory, collectGeminiGuidesFromTrajectory } from '../agents/gemini-cli-agent.ts';
-import { collectClaudeToolsFromTrajectory, collectClaudeGuidesFromTrajectory } from '../agents/claude-code-agent.ts';
-import { collectCodexToolsFromTrajectory, collectCodexGuidesFromTrajectory } from '../agents/codex-cli-agent.ts';
-import { collectJetskiCliToolsFromTrajectory, collectJetskiCliGuidesFromTrajectory } from '../agents/jetski-cli-agent.ts';
+import {
+  collectGeminiToolsFromTrajectory,
+  collectGeminiGuidesFromTrajectory,
+  collectClaudeToolsFromTrajectory,
+  collectClaudeGuidesFromTrajectory,
+  collectCodexToolsFromTrajectory,
+  collectCodexGuidesFromTrajectory,
+  collectJetskiCliToolsFromTrajectory,
+  collectJetskiCliGuidesFromTrajectory
+} from '../lib/trajectory-parser.ts';
 
 function getMostRecentFiles(baseDir: string, pattern: string, count = 5): string[] {
   if (!fs.existsSync(baseDir)) return [];

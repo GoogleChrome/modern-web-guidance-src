@@ -4,9 +4,17 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DatabaseSync } from 'node:sqlite';
-import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory } from '../agents/gemini-cli-agent.ts';
-import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory } from '../agents/claude-code-agent.ts';
-import { collectJetskiCliGuidesFromTrajectory, collectJetskiCliToolsFromTrajectory, writeTrajectorySummary, readTrajectorySummary, parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
+import {
+  collectGeminiGuidesFromTrajectory,
+  collectGeminiToolsFromTrajectory,
+  collectClaudeGuidesFromTrajectory,
+  collectClaudeToolsFromTrajectory,
+  collectJetskiCliGuidesFromTrajectory,
+  collectJetskiCliToolsFromTrajectory,
+  writeTrajectorySummary,
+  readTrajectorySummary,
+  parseJetskiCliSession
+} from '../lib/trajectory-parser.ts';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from '../lib/guidance_validation.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from '../lib/collection.ts';
 import { Agents, Serving } from '../config.ts';

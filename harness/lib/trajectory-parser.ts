@@ -1,15 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { parseJsonlFile } from './agent-shared.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { parseJsonlFile, type GuideUsage } from './agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { Agents } from '../config.ts';
-
-// Import agent-specific extractors (accepting circular dependency for runtime execution)
-import { parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
-import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory, extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gemini-cli-agent.ts';
-import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory, extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
-import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory, extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
-import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory, extractPiModel, extractPiTokenUsage } from '../agents/pi-agent.ts';
 
 function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return err instanceof Error && 'code' in err;
@@ -17,6 +11,11 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
 
 function isEnoent(err: unknown): boolean {
   return isNodeError(err) && err.code === 'ENOENT';
+}
+
+function getSessionFiles(dir: string, globPattern: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+  return fs.globSync(globPattern, { cwd: dir });
 }
 
 /**
@@ -325,6 +324,159 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
   });
 }
 
+export function extractClaudeMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
+  model: string;
+  tokenUsage?: { total: number; cached: number };
+  toolsUsed: string[];
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+} {
+  const modelCounts: Record<string, number> = {};
+  let totalTokens = 0;
+  let cachedTokens = 0;
+  let hasTokenData = false;
+  const toolsUsed = new Set<string>();
+  const retrievedGuides = new Set<string>();
+  const fileReadGuides = new Set<string>();
+
+  const processEntries = (entries: any[]) => {
+    for (const entry of entries) {
+      if (entry.message?.model) {
+        modelCounts[entry.message.model] = (modelCounts[entry.message.model] || 0) + 1;
+      }
+      if (entry.message?.usage) {
+        const u = entry.message.usage;
+        totalTokens += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0);
+        cachedTokens += u.cache_read_input_tokens || 0;
+        hasTokenData = true;
+      }
+
+      const content = entry.message?.content || entry.content || entry;
+      const contentList = Array.isArray(content) ? content : [content];
+      for (const item of contentList) {
+        if (item && typeof item === 'object' && item.type === 'tool_use') {
+          if (item.name === 'Skill' && item.input?.skill) {
+            toolsUsed.add(item.input.skill);
+          } else if (item.name === 'activate_skill' && item.input?.name) {
+            toolsUsed.add(item.input.name);
+          } else if (item.name === 'Bash' && item.input?.command) {
+            const command = item.input.command;
+            if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+              const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+              if (match) {
+                match[1].split(',').map((s: string) => s.trim()).forEach((g: string) => retrievedGuides.add(g));
+              }
+            }
+          } else if (item.name === 'Read' && item.input?.file_path) {
+            const filePath = item.input.file_path;
+            if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+              const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+              if (match) {
+                fileReadGuides.add(match[1]);
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  processEntries(logData);
+  for (const subLogs of Object.values(subagentsMap)) {
+    processEntries(subLogs);
+  }
+
+  const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    model: topModel ? topModel[0] : 'unknown',
+    tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
+    toolsUsed: [...toolsUsed],
+    retrievedGuides: [...retrievedGuides],
+    fileReadGuides: [...fileReadGuides]
+  };
+}
+
+function loadClaudeLogs(dirPath: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
+  const allFiles = getSessionFiles(dirPath, '**/*.jsonl');
+  const logData: any[] = [];
+  const subagentsMap: Record<string, any[]> = {};
+
+  for (const relativePath of allFiles) {
+    const src = path.join(dirPath, relativePath);
+    let linesList: any[] = [];
+    try {
+      linesList = parseJsonlFile(src);
+    } catch {}
+
+    const isSubagent = relativePath.includes('subagents/');
+    if (!isSubagent) {
+      logData.push(...linesList);
+    }
+
+    const match = relativePath.match(/subagents[/\\]agent-([a-zA-Z0-9_-]+)\.jsonl$/);
+    if (match && match[1]) {
+      subagentsMap[match[1]] = linesList;
+    }
+  }
+
+  return { logData, subagentsMap };
+}
+
+export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+  const summaryPath = path.join(dirPath, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.retrievedGuides || summary.fileReadGuides) {
+        return {
+          retrievedGuides: summary.retrievedGuides || [],
+          fileReadGuides: summary.fileReadGuides || []
+        };
+      }
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadClaudeLogs(dirPath);
+  const meta = extractClaudeMetadata(logData, subagentsMap);
+  return { retrievedGuides: meta.retrievedGuides, fileReadGuides: meta.fileReadGuides };
+}
+
+export function extractClaudeCodeModel(resultsDir: string): string {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.model && summary.model !== 'unknown') return summary.model;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadClaudeLogs(resultsDir);
+  return extractClaudeMetadata(logData, subagentsMap).model;
+}
+
+export function extractClaudeCodeTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.tokenUsage) return summary.tokenUsage;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadClaudeLogs(dir);
+  return extractClaudeMetadata(logData, subagentsMap).tokenUsage;
+}
+
+export function collectClaudeToolsFromTrajectory(dir: string): string[] {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.toolsUsed) return summary.toolsUsed;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadClaudeLogs(dir);
+  return extractClaudeMetadata(logData, subagentsMap).toolsUsed;
+}
+
 export function parseGeminiTrajectory(session: any, subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   const messages = Array.isArray(session) ? session : (session.messages || []);
@@ -403,6 +555,166 @@ export function parseGeminiTrajectory(session: any, subagentsMap: Record<string,
   });
 }
 
+export function extractGeminiMetadata(session: any, subagentsMap: Record<string, any[]> = {}): {
+  model: string;
+  tokenUsage?: { total: number; cached: number };
+  toolsUsed: string[];
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+} {
+  const modelCounts: Record<string, number> = {};
+  let totalTokens = 0;
+  let cachedTokens = 0;
+  let hasTokenData = false;
+  const toolsUsed = new Set<string>();
+  const retrievedGuides = new Set<string>();
+  const fileReadGuides = new Set<string>();
+
+  const messages = Array.isArray(session) ? session : (session.messages || []);
+  const processMessages = (msgList: any[]) => {
+    const messagesWithTokens = msgList.filter(m => m && typeof m === 'object' && 'tokens' in m);
+    const lastMsg = messagesWithTokens[messagesWithTokens.length - 1];
+    if (lastMsg) {
+      totalTokens += lastMsg.tokens.total || 0;
+      cachedTokens += lastMsg.tokens.cached || 0;
+      hasTokenData = true;
+    }
+
+    for (const msg of msgList) {
+      if (msg.type === 'gemini' && msg.model) {
+        modelCounts[msg.model] = (modelCounts[msg.model] || 0) + 1;
+      }
+      if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
+        for (const tc of msg.toolCalls) {
+          if (tc.name && tc.name.includes('get_best_practices')) {
+            toolsUsed.add('modern-web-guidance');
+            if (tc.args?.use_case_id) {
+              retrievedGuides.add(tc.args.use_case_id);
+            }
+          } else if (tc.name === 'activate_skill' && tc.args?.name) {
+            toolsUsed.add(tc.args.name);
+          } else if (tc.name === 'read_file' && tc.args?.file_path) {
+            const filePath = tc.args.file_path;
+            if (filePath.includes('/skills/')) {
+              const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/) ||
+                            filePath.match(/\/skills\/[^/]+\/(?:references\/)?(?:[^/]+\/)*([^/]+)\.md$/);
+              if (match) {
+                fileReadGuides.add(match[1]);
+              }
+            }
+          } else if (tc.name === 'run_shell_command' && tc.args?.command) {
+            const command = tc.args.command;
+            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+            if (match) {
+              match[1].split(',').map((s: string) => s.trim()).forEach((g: string) => retrievedGuides.add(g));
+            }
+          }
+        }
+      }
+    }
+  };
+
+  processMessages(messages);
+  for (const subSession of Object.values(subagentsMap)) {
+    const subList = Array.isArray(subSession) ? subSession : ((subSession as any).messages || []);
+    processMessages(subList);
+  }
+
+  const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    model: topModel ? topModel[0] : 'unknown',
+    tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
+    toolsUsed: [...toolsUsed],
+    retrievedGuides: [...retrievedGuides],
+    fileReadGuides: [...fileReadGuides]
+  };
+}
+
+function loadGeminiLogs(dirPath: string): { session: any; subagentsMap: Record<string, any[]> } {
+  const sessionFiles = getSessionFiles(dirPath, 'session-*.{json,jsonl}');
+  const session: any = { messages: [] };
+  const subagentsMap: Record<string, any[]> = {};
+
+  for (const file of sessionFiles) {
+    const sessionPath = path.join(dirPath, file);
+    let logData: any[] = [];
+    try {
+      logData = file.endsWith('.jsonl') ? parseJsonlFile(sessionPath) : JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+    } catch {}
+
+    const parts = file.replace(/\.jsonl?$/, '').split(/agent[-_]/);
+    const key = parts.length > 1 ? parts[parts.length - 1] : file.replace(/\.jsonl?$/, '').replace(/^(?:subagent-|session-)/, '');
+    const isSubagent = file.startsWith('subagent-') || file.includes('-subagents-');
+
+    if (isSubagent) {
+      subagentsMap[key] = Array.isArray(logData) ? logData : ((logData as any)?.messages || []);
+    } else {
+      if (Array.isArray(logData)) {
+        session.messages.push(...logData);
+      } else if (logData?.messages) {
+        session.messages.push(...logData.messages);
+      }
+    }
+  }
+
+  return { session, subagentsMap };
+}
+
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+  const summaryPath = path.join(dirPath, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.retrievedGuides || summary.fileReadGuides) {
+        return {
+          retrievedGuides: summary.retrievedGuides || [],
+          fileReadGuides: summary.fileReadGuides || []
+        };
+      }
+    } catch {}
+  }
+  const { session, subagentsMap } = loadGeminiLogs(dirPath);
+  const meta = extractGeminiMetadata(session, subagentsMap);
+  return { retrievedGuides: meta.retrievedGuides, fileReadGuides: meta.fileReadGuides };
+}
+
+export function extractGeminiCliModel(resultsDir: string): string {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.model && summary.model !== 'unknown') return summary.model;
+    } catch {}
+  }
+  const { session, subagentsMap } = loadGeminiLogs(resultsDir);
+  return extractGeminiMetadata(session, subagentsMap).model;
+}
+
+export function extractGeminiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.tokenUsage) return summary.tokenUsage;
+    } catch {}
+  }
+  const { session, subagentsMap } = loadGeminiLogs(dir);
+  return extractGeminiMetadata(session, subagentsMap).tokenUsage;
+}
+
+export function collectGeminiToolsFromTrajectory(dir: string): string[] {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.toolsUsed) return summary.toolsUsed;
+    } catch {}
+  }
+  const { session, subagentsMap } = loadGeminiLogs(dir);
+  return extractGeminiMetadata(session, subagentsMap).toolsUsed;
+}
+
 function findJsonObjectsInString(str: string): any[] {
   const results: any[] = [];
   for (let i = 0; i < str.length; i++) {
@@ -433,6 +745,238 @@ function findJsonObjectsInString(str: string): any[] {
     }
   }
   return results;
+}
+
+function parseProtobuf(buffer: Buffer): Record<number, any[]> {
+  let pos = 0;
+  const fields: Record<number, any[]> = {};
+
+  while (pos < buffer.length) {
+    let tagHeader = 0;
+    let shift = 0;
+    while (pos < buffer.length) {
+      const b = buffer[pos++];
+      tagHeader |= (b & 0x7f) << shift;
+      shift += 7;
+      if ((b & 0x80) === 0) break;
+    }
+    const wireType = tagHeader & 0x07;
+    const fieldNum = tagHeader >> 3;
+    if (fieldNum === 0) break;
+
+    let value: any;
+    if (wireType === 0) { // Varint
+      let val = 0;
+      let valShift = 0;
+      while (pos < buffer.length) {
+        const b = buffer[pos++];
+        val += (b & 0x7f) * Math.pow(2, valShift);
+        valShift += 7;
+        if ((b & 0x80) === 0) break;
+      }
+      value = val;
+    } else if (wireType === 2) { // Length-delimited
+      let len = 0;
+      let lenShift = 0;
+      while (pos < buffer.length) {
+        const b = buffer[pos++];
+        len += (b & 0x7f) * Math.pow(2, lenShift);
+        lenShift += 7;
+        if ((b & 0x80) === 0) break;
+      }
+      const data = buffer.subarray(pos, pos + len);
+      pos += len;
+
+      let nested: Record<number, any[]> | null = null;
+      try {
+        nested = parseProtobuf(data);
+        if (Object.keys(nested).length === 0) nested = null;
+      } catch {}
+
+      const str = data.toString('utf8');
+      const isClean = /^[\x20-\x7E\t\r\n]+$/.test(str) && str.length > 0;
+      value = nested || (isClean ? str : data);
+    } else if (wireType === 1) {
+      pos += 8;
+    } else if (wireType === 5) {
+      pos += 4;
+    } else {
+      break;
+    }
+
+    if (!fields[fieldNum]) fields[fieldNum] = [];
+    fields[fieldNum].push(value);
+  }
+  return fields;
+}
+
+function getProtoStrings(node: any, results: string[] = []): string[] {
+  if (!node) return results;
+  if (typeof node === 'string') {
+    results.push(node);
+  } else if (Array.isArray(node)) {
+    for (const item of node) getProtoStrings(item, results);
+  } else if (typeof node === 'object' && !(node instanceof Uint8Array)) {
+    for (const k of Object.keys(node)) {
+      getProtoStrings(node[k], results);
+    }
+  }
+  return results;
+}
+
+export function parseJetskiCliSession(dirPath: string): {
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+  toolsUsed: string[];
+  model?: string;
+  tokenUsage?: { total: number; cached: number };
+} {
+  const retrievedGuides: string[] = [];
+  const fileReadGuides: string[] = [];
+  const toolsUsed: string[] = [];
+  let modelName = 'unknown';
+  let totalTokens = 0;
+  let totalCached = 0;
+  let hasTokens = false;
+
+  const files = getSessionFiles(dirPath, '*.db').filter(f => !f.endsWith('-shm') && !f.endsWith('-wal'));
+  for (const file of files) {
+    const fullPath = path.join(dirPath, file);
+    try {
+      const db = new DatabaseSync(fullPath, { readOnly: true });
+      const rows = db.prepare('SELECT step_type, metadata, step_payload FROM steps').all() as Array<{ step_type?: number; metadata?: Uint8Array; step_payload?: Uint8Array }>;
+      let fileInput = 0;
+      let fileLastCached = 0;
+      let fileOutput = 0;
+      let fileHasTokens = false;
+
+      for (const row of rows) {
+        if (row.step_payload) {
+          const proto = parseProtobuf(Buffer.from(row.step_payload));
+          const strings = getProtoStrings(proto);
+
+          for (const text of strings) {
+            if (text.includes('retrieve')) {
+              const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
+              if (match && match[1]) {
+                const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
+                retrievedGuides.push(...parts);
+              }
+            }
+
+            if (text.includes('/skills/') && text.endsWith('/guide.md')) {
+              const match = text.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+              if (match) {
+                fileReadGuides.push(match[1]);
+              }
+            }
+            if (text.includes('/skills/') && text.endsWith('/SKILL.md')) {
+              const match = text.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+              if (match) {
+                toolsUsed.push(match[1]);
+              }
+            }
+          }
+        }
+
+        if (row.metadata) {
+          const proto = parseProtobuf(Buffer.from(row.metadata));
+          const usageNode = proto[9]?.[0];
+          if (usageNode && typeof usageNode === 'object') {
+            const input = (usageNode[2] && typeof usageNode[2][0] === 'number') ? usageNode[2][0] : 0;
+            const output = (usageNode[3] && typeof usageNode[3][0] === 'number') ? usageNode[3][0] : 0;
+            const cached = (usageNode[5] && typeof usageNode[5][0] === 'number') ? usageNode[5][0] : 0;
+            if (input > 0 || output > 0 || cached > 0) {
+              fileInput += input;
+              fileLastCached = Math.max(fileLastCached, cached);
+              fileOutput += output;
+              fileHasTokens = true;
+            }
+          }
+        }
+      }
+
+      if (fileHasTokens) {
+        totalTokens += (fileInput + fileLastCached + fileOutput);
+        totalCached += fileLastCached;
+        hasTokens = true;
+      }
+
+      try {
+        const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
+        for (const row of genRows) {
+          if (!row.data) continue;
+          const proto = parseProtobuf(Buffer.from(row.data));
+          const strings = getProtoStrings(proto);
+          const modelCandidate = strings.find(s => /^gemini/i.test(s));
+          if (modelCandidate) {
+            modelName = modelCandidate;
+            break;
+          }
+        }
+      } catch {}
+
+      db.close();
+    } catch {}
+  }
+
+  return {
+    retrievedGuides: [...new Set(retrievedGuides)],
+    fileReadGuides: [...new Set(fileReadGuides)],
+    toolsUsed: [...new Set(toolsUsed)],
+    model: modelName,
+    tokenUsage: hasTokens ? { total: totalTokens, cached: totalCached } : undefined
+  };
+}
+
+export function writeTrajectorySummary(targetDir: string, summary: any): void {
+  fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), JSON.stringify(summary, null, 2), 'utf8');
+}
+
+export function readTrajectorySummary(dir: string): any | null {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    } catch {}
+  }
+  return null;
+}
+
+export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
+  const summary = readTrajectorySummary(dirPath);
+  if (summary?.retrievedGuides || summary?.fileReadGuides) {
+    return {
+      retrievedGuides: summary.retrievedGuides || [],
+      fileReadGuides: summary.fileReadGuides || []
+    };
+  }
+  const legacy = parseJetskiCliSession(dirPath);
+  return {
+    retrievedGuides: legacy.retrievedGuides,
+    fileReadGuides: legacy.fileReadGuides
+  };
+}
+
+export function extractJetskiCliModel(resultsDir: string): string {
+  const summary = readTrajectorySummary(resultsDir);
+  if (summary?.model && summary.model !== 'unknown') return summary.model;
+  const legacy = parseJetskiCliSession(resultsDir);
+  return legacy.model || 'unknown';
+}
+
+export function extractJetskiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  const summary = readTrajectorySummary(dir);
+  if (summary?.tokenUsage) return summary.tokenUsage;
+  const legacy = parseJetskiCliSession(dir);
+  return legacy.tokenUsage;
+}
+
+export function collectJetskiCliToolsFromTrajectory(dir: string): string[] {
+  const summary = readTrajectorySummary(dir);
+  if (summary?.toolsUsed) return summary.toolsUsed;
+  const legacy = parseJetskiCliSession(dir);
+  return legacy.toolsUsed;
 }
 
 export async function parseJetskiTrajectory(dirPath: string, agentName: string): Promise<TrajectorySummary> {
@@ -709,6 +1253,167 @@ export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string
   });
 }
 
+export function extractCodexMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
+  model: string;
+  tokenUsage?: { total: number; cached: number };
+  toolsUsed: string[];
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+} {
+  const modelCounts: Record<string, number> = {};
+  let totalTokens = 0;
+  let cachedTokens = 0;
+  let hasTokenData = false;
+  const toolsUsed = new Set<string>();
+  const retrievedGuides = new Set<string>();
+  const fileReadGuides = new Set<string>();
+
+  const processEntries = (entries: any[]) => {
+    let lastTotal = 0;
+    let lastCached = 0;
+    let fileHasTokens = false;
+
+    for (const obj of entries) {
+      if (typeof obj.payload?.model === 'string') {
+        modelCounts[obj.payload.model] = (modelCounts[obj.payload.model] || 0) + 1;
+      }
+
+      const info = (obj.type === 'token_count' ? obj : obj.payload)?.info?.total_token_usage;
+      if (info) {
+        lastTotal = info.total_tokens || 0;
+        lastCached = info.cached_input_tokens || 0;
+        fileHasTokens = true;
+      }
+
+      const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
+      if (functionCall?.name === 'exec_command' && functionCall.arguments) {
+        try {
+          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+          const command = args.cmd || '';
+          if (command.includes('/skills/') && command.includes('SKILL.md')) {
+            const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
+            if (match) {
+              toolsUsed.add(match[1]);
+            }
+          }
+          if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+            if (match) {
+              match[1].split(',').map((s: string) => s.trim()).forEach((g: string) => retrievedGuides.add(g));
+            }
+          } else if (command.includes('.agents/skills/') && command.includes('guide.md')) {
+            const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
+            if (match) {
+              retrievedGuides.add(match[1]);
+            }
+          }
+        } catch {}
+      }
+    }
+
+    if (fileHasTokens) {
+      totalTokens += lastTotal;
+      cachedTokens += lastCached;
+      hasTokenData = true;
+    }
+  };
+
+  processEntries(logData);
+  for (const subLogs of Object.values(subagentsMap)) {
+    processEntries(subLogs);
+  }
+
+  const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    model: topModel ? topModel[0] : 'unknown',
+    tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
+    toolsUsed: [...toolsUsed],
+    retrievedGuides: [...retrievedGuides],
+    fileReadGuides: [...fileReadGuides]
+  };
+}
+
+function loadCodexLogs(dirPath: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
+  const sessionFiles = getSessionFiles(dirPath, 'session-*.jsonl');
+  const logData: any[] = [];
+  const subagentsMap: Record<string, any[]> = {};
+
+  for (const file of sessionFiles) {
+    const sessionPath = path.join(dirPath, file);
+    let parsedLines: any[] = [];
+    try {
+      parsedLines = parseJsonlFile(sessionPath);
+    } catch {}
+
+    const parts = file.replace(/\.jsonl$/, '').split(/agent[-_]/);
+    const key = parts.length > 1 ? parts[parts.length - 1] : file.replace(/\.jsonl$/, '').replace(/^(?:subagent-|session-)/, '');
+    const isSubagent = file.startsWith('subagent-') || file.includes('-subagents-');
+
+    if (isSubagent) {
+      subagentsMap[key] = parsedLines;
+    } else {
+      logData.push(...parsedLines);
+    }
+  }
+
+  return { logData, subagentsMap };
+}
+
+export async function collectCodexGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+  const summaryPath = path.join(dirPath, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.retrievedGuides || summary.fileReadGuides) {
+        return {
+          retrievedGuides: summary.retrievedGuides || [],
+          fileReadGuides: summary.fileReadGuides || []
+        };
+      }
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadCodexLogs(dirPath);
+  const meta = extractCodexMetadata(logData, subagentsMap);
+  return { retrievedGuides: meta.retrievedGuides, fileReadGuides: meta.fileReadGuides };
+}
+
+export function extractCodexCliModel(resultsDir: string): string {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.model && summary.model !== 'unknown') return summary.model;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadCodexLogs(resultsDir);
+  return extractCodexMetadata(logData, subagentsMap).model;
+}
+
+export function extractCodexCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.tokenUsage) return summary.tokenUsage;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadCodexLogs(dir);
+  return extractCodexMetadata(logData, subagentsMap).tokenUsage;
+}
+
+export function collectCodexToolsFromTrajectory(dir: string): string[] {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.toolsUsed) return summary.toolsUsed;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadCodexLogs(dir);
+  return extractCodexMetadata(logData, subagentsMap).toolsUsed;
+}
+
 /**
  * Parses Pi CLI session JSONL files into a normalized TrajectorySummary.
  */
@@ -797,6 +1502,181 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
   });
 }
 
+export function extractPiMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
+  model: string;
+  tokenUsage?: { total: number; cached: number };
+  toolsUsed: string[];
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+} {
+  const modelCounts: Record<string, number> = {};
+  let totalTokens = 0;
+  let cachedTokens = 0;
+  let hasTokenData = false;
+  const toolsUsed = new Set<string>();
+  const retrievedGuides = new Set<string>();
+  const fileReadGuides = new Set<string>();
+
+  const processEntries = (entries: any[]) => {
+    for (const msg of entries) {
+      let model: string | undefined;
+      if (msg.type === 'message' && msg.message?.model) {
+        model = msg.message.model;
+      } else if (msg.type === 'model_change' && msg.modelId) {
+        model = msg.modelId;
+      }
+      if (!model && msg.metadata?.model) {
+        model = msg.metadata.model;
+      }
+      if (model) {
+        modelCounts[model] = (modelCounts[model] || 0) + 1;
+      }
+
+      const usage = msg.message?.usage || msg.metadata?.usage || msg.usage;
+      if (usage) {
+        totalTokens += usage.totalTokens || 0;
+        if (usage.cacheRead !== undefined) {
+          cachedTokens += usage.cacheRead;
+        }
+        hasTokenData = true;
+      }
+
+      const assistantMsg = msg.type === 'message' ? msg.message : msg;
+      if (assistantMsg?.role === 'assistant') {
+        const toolCalls = assistantMsg.content?.filter((c: any) => c.type === 'toolCall') || [];
+        if (assistantMsg.tool_calls) {
+          toolCalls.push(...assistantMsg.tool_calls);
+        }
+
+        for (const tc of toolCalls) {
+          const toolName = tc.function?.name || tc.name;
+          if (toolName && toolName !== 'read' && toolName !== 'write' && toolName !== 'edit' && toolName !== 'bash') {
+            if (toolName === 'modern-web-guidance' || toolName.includes('get_best_practices')) {
+              toolsUsed.add('modern-web-guidance');
+            } else {
+              toolsUsed.add(toolName);
+            }
+          }
+
+          const args = tc.arguments || {};
+          if (toolName === 'read' && (args.path || args.file_path)) {
+            const filePath = (args.path || args.file_path) as string;
+            if (filePath.includes('/skills/') || filePath.includes('.agents/skills/')) {
+              const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
+                            filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
+                            filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
+              if (match && match[1] !== 'guide') {
+                fileReadGuides.add(match[1]);
+              }
+            }
+          } else if (toolName === 'bash' && args.command) {
+            const command = args.command as string;
+            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+            if (match) {
+              match[1].split(',').map((s: string) => s.trim()).forEach((g: string) => retrievedGuides.add(g));
+            }
+          }
+        }
+      }
+    }
+  };
+
+  processEntries(logData);
+  for (const subLogs of Object.values(subagentsMap)) {
+    processEntries(subLogs);
+  }
+
+  const topModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    model: topModel ? topModel[0] : 'unknown',
+    tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
+    toolsUsed: [...toolsUsed],
+    retrievedGuides: [...retrievedGuides],
+    fileReadGuides: [...fileReadGuides]
+  };
+}
+
+function loadPiLogs(dirPath: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
+  const sessionFiles = getSessionFiles(dirPath, '*.jsonl');
+  const logData: any[] = [];
+  const subagentsMap: Record<string, any[]> = {};
+
+  for (const file of sessionFiles) {
+    const sessionPath = path.join(dirPath, file);
+    let parsedLines: any[] = [];
+    try {
+      parsedLines = parseJsonlFile(sessionPath);
+    } catch {}
+
+    const parts = file.replace(/\.jsonl$/, '').split(/agent[-_]/);
+    const key = parts.length > 1 ? parts[parts.length - 1] : file.replace(/\.jsonl$/, '').replace(/^(?:subagent-|session-)/, '');
+    const isSubagent = file.startsWith('subagent-') || file.includes('-subagents-');
+
+    if (isSubagent) {
+      subagentsMap[key] = parsedLines;
+    } else {
+      logData.push(...parsedLines);
+    }
+  }
+
+  return { logData, subagentsMap };
+}
+
+export async function collectPiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+  const summaryPath = path.join(dirPath, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.retrievedGuides || summary.fileReadGuides) {
+        return {
+          retrievedGuides: summary.retrievedGuides || [],
+          fileReadGuides: summary.fileReadGuides || []
+        };
+      }
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadPiLogs(dirPath);
+  const meta = extractPiMetadata(logData, subagentsMap);
+  return { retrievedGuides: meta.retrievedGuides, fileReadGuides: meta.fileReadGuides };
+}
+
+export function extractPiModel(resultsDir: string): string {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.model && summary.model !== 'unknown') return summary.model;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadPiLogs(resultsDir);
+  return extractPiMetadata(logData, subagentsMap).model;
+}
+
+export function extractPiTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.tokenUsage) return summary.tokenUsage;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadPiLogs(dir);
+  return extractPiMetadata(logData, subagentsMap).tokenUsage;
+}
+
+export function collectPiToolsFromTrajectory(dir: string): string[] {
+  const summaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+      if (summary.toolsUsed) return summary.toolsUsed;
+    } catch {}
+  }
+  const { logData, subagentsMap } = loadPiLogs(dir);
+  return extractPiMetadata(logData, subagentsMap).toolsUsed;
+}
+
 export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
   try {
     let summary: TrajectorySummary | null = null;
@@ -840,56 +1720,36 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
 
       if (agentName === Agents.CLAUDE_CODE) {
         summary = parseClaudeTrajectory(logData, subagentsMap);
-        const [guides, tools, model, tokenUsage] = await Promise.all([
-          collectClaudeGuidesFromTrajectory(targetDir),
-          Promise.resolve(collectClaudeToolsFromTrajectory(targetDir)),
-          Promise.resolve(extractClaudeCodeModel(targetDir)),
-          Promise.resolve(extractClaudeCodeTokenUsage(targetDir))
-        ]);
-        summary.retrievedGuides = guides.retrievedGuides;
-        summary.fileReadGuides = guides.fileReadGuides;
-        summary.toolsUsed = tools;
-        summary.model = model;
-        summary.tokenUsage = tokenUsage;
+        const meta = extractClaudeMetadata(logData, subagentsMap);
+        summary.retrievedGuides = meta.retrievedGuides;
+        summary.fileReadGuides = meta.fileReadGuides;
+        summary.toolsUsed = meta.toolsUsed;
+        summary.model = meta.model;
+        summary.tokenUsage = meta.tokenUsage;
       } else if (agentName === Agents.GEMINI_CLI) {
         summary = parseGeminiTrajectory(logData, subagentsMap);
-        const [guides, tools, model, tokenUsage] = await Promise.all([
-          collectGeminiGuidesFromTrajectory(targetDir),
-          Promise.resolve(collectGeminiToolsFromTrajectory(targetDir)),
-          Promise.resolve(extractGeminiCliModel(targetDir)),
-          Promise.resolve(extractGeminiCliTokenUsage(targetDir))
-        ]);
-        summary.retrievedGuides = guides.retrievedGuides;
-        summary.fileReadGuides = guides.fileReadGuides;
-        summary.toolsUsed = tools;
-        summary.model = model;
-        summary.tokenUsage = tokenUsage;
+        const meta = extractGeminiMetadata(logData, subagentsMap);
+        summary.retrievedGuides = meta.retrievedGuides;
+        summary.fileReadGuides = meta.fileReadGuides;
+        summary.toolsUsed = meta.toolsUsed;
+        summary.model = meta.model;
+        summary.tokenUsage = meta.tokenUsage;
       } else if (agentName === Agents.CODEX_CLI) {
         summary = parseCodexTrajectory(logData, subagentsMap);
-        const [guides, tools, model, tokenUsage] = await Promise.all([
-          collectCodexGuidesFromTrajectory(targetDir),
-          Promise.resolve(collectCodexToolsFromTrajectory(targetDir)),
-          Promise.resolve(extractCodexCliModel(targetDir)),
-          Promise.resolve(extractCodexCliTokenUsage(targetDir))
-        ]);
-        summary.retrievedGuides = guides.retrievedGuides;
-        summary.fileReadGuides = guides.fileReadGuides;
-        summary.toolsUsed = tools;
-        summary.model = model;
-        summary.tokenUsage = tokenUsage;
+        const meta = extractCodexMetadata(logData, subagentsMap);
+        summary.retrievedGuides = meta.retrievedGuides;
+        summary.fileReadGuides = meta.fileReadGuides;
+        summary.toolsUsed = meta.toolsUsed;
+        summary.model = meta.model;
+        summary.tokenUsage = meta.tokenUsage;
       } else if (agentName === Agents.PI) {
         summary = parsePiTrajectory(logData, subagentsMap);
-        const [guides, tools, model, tokenUsage] = await Promise.all([
-          collectPiGuidesFromTrajectory(targetDir),
-          Promise.resolve(collectPiToolsFromTrajectory(targetDir)),
-          Promise.resolve(extractPiModel(targetDir)),
-          Promise.resolve(extractPiTokenUsage(targetDir))
-        ]);
-        summary.retrievedGuides = guides.retrievedGuides;
-        summary.fileReadGuides = guides.fileReadGuides;
-        summary.toolsUsed = tools;
-        summary.model = model;
-        summary.tokenUsage = tokenUsage;
+        const meta = extractPiMetadata(logData, subagentsMap);
+        summary.retrievedGuides = meta.retrievedGuides;
+        summary.fileReadGuides = meta.fileReadGuides;
+        summary.toolsUsed = meta.toolsUsed;
+        summary.model = meta.model;
+        summary.tokenUsage = meta.tokenUsage;
       } else {
         console.warn(`[TrajectoryParser] Warning: Unknown agent "${agentName}". Attempting generic Codex/standard trajectory parsing. To add another agent, register a parser in generateNormalizedTrajectory.`);
         summary = parseCodexTrajectory(logData, subagentsMap);
