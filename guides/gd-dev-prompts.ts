@@ -183,7 +183,7 @@ export interface DevReportPromptOptions {
 export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
   const targetSections = opts.targets.map(t => {
     return `### Target: \`${t.baseApp}\`
-- **Assigned Primary Flag**: \`${t.flag}\`
+- **Issue Flagged**: \`${t.flag}\`
 - **Flag Details**: ${t.flagDetails}`;
   }).join('\n\n');
 
@@ -234,11 +234,14 @@ Diagnose each target according to its assigned flag:
 4. **\`LOW_GUIDED_PASS_RATE\`**:
    - The guided agent pass rate is under 90%.
    - **Root Cause Investigation**: Review the failed assertions in \`${REPORT_FILE}\` and examine \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, \`targets/<target>/grader.ts\`, and \`targets/<target>/task.md\` to understand why the agent fell short. Consider:
-     - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide lack essential modern web practices, clear syntax examples, fallback patterns, or common pitfalls? (Gaps here will cause any AI agent to make mistakes).
-     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader testing rigid implementation details, arbitrary markup, or unstated assumptions rather than outcome-based modern web requirements?
+     - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide lack essential modern web practices, clear syntax examples, fallback patterns, or common pitfalls?
      - **Expectations Alignment (\`${EXPECTATIONS_FILE}\`)**: Are the must-pass expectations ambiguous, conflicting, or missing key constraints?
+     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader testing rigid implementation details, arbitrary markup, or unstated assumptions rather than outcome-based requirements?
      - **Task Prompt Framing (\`targets/<target>/task.md\`)**: Is the prompt misleading, conflicting, or underspecified?
-   - **Recommendations & Alternatives**: Recommend solutions that best reflect modern web development best practices. Identify which file(s) should be modified, present alternative options or tradeoffs when viable, and recommend the approach that makes the guide most effective for developers and AI assistants.
+   - **Recommendation Rules (Mutually Exclusive)**:
+     - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
+       \`*(Note: After modifying source files, delete the targets/ directory and re-run gd dev to regenerate all target artifacts)*\`
+     - **Target-Isolated Fixes**: Only recommend direct edits to \`targets/<target>/grader.ts\` or \`targets/<target>/task.md\` if \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` require **NO** changes.
 
 5. **\`HEALTHY\`**:
    - The target achieved ≥ 90% guided pass rate with all guidance tools and guides correctly consumed.
@@ -253,10 +256,12 @@ For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching 
 ### Diagnostic Analysis & Actionable Recommendations
 
 #### Root Cause Analysis:
-[Detailed diagnostic reasoning analyzing grader, expectations, guide, and task prompt alignment based on the failed assertions and flags in evals.md.]
+- **Issue Flagged**: \`[FLAG]\` ([Flag Details])
+- [Diagnostic explanation]
 
 #### Actionable Recommendations:
-- [ ] **[relative_path_to_file]**: [Specific actionable recommendation for what to modify in this file]
+- \`[relative_path_to_file]\`: [Actionable recommendation]
+*(Note: After modifying source files, delete the targets/ directory and run gd dev to regenerate all target artifacts)*
 \`\`\`
 
 # INSTRUCTION
