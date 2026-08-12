@@ -114,7 +114,7 @@ importers:
         specifier: ^27.0.2
         version: 27.0.2
       web-features:
-        specifier: latest
+        specifier: ^3.34.0
         version: 3.34.0
 
   harness:
@@ -187,7 +187,7 @@ importers:
         specifier: ^1.25.1
         version: 1.25.1
       web-features:
-        specifier: latest
+        specifier: ^3.34.0
         version: 3.34.0
       zod:
         specifier: ^4.4.3

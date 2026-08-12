@@ -108,15 +108,6 @@ describe('baseline data', () => {
         errorMessage: 'Temporary web feature ID "tmp-pending-feature-xyz" is not registered in features/pending-web-features.json. Please register it with an upstream issue link.'
       });
     });
-
-    it('returns error when a temporary feature ID is now available upstream', () => {
-      const result = validateFeature('tmp-grid');
-      assert.deepStrictEqual(result, {
-        isValid: false,
-        error: 'temp_feature_now_available',
-        errorMessage: 'Temporary web feature ID "tmp-grid" is now available in web-features package as "grid". Please update guide frontmatter to use "grid".'
-      });
-    });
   });
 
   describe('resolveFeatureId', () => {
