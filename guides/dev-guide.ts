@@ -24,6 +24,7 @@ import {
   NEGATIVE_DEMO_FILE,
   GRADER_FILE,
   TASK_FILE,
+  REPORT_FILE,
   TARGETS_DIR,
   SUPPORTED_BASE_APPS,
   getDefaultSolutionAgent,
@@ -37,6 +38,7 @@ import {
   classifyGuide,
   scanAllGuides
 } from '../lib/guide-validation.ts';
+import { runDevReport } from './lib/dev-report.ts';
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
@@ -178,6 +180,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   // Step 4: Run agent evaluation test (runs by default unless --no-test is passed or calibration failed)
   if (options.test !== false && overallSuccess) {
     await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.suiteConfig);
+
+    // Step 5: Run evaluation report
+    await runDevReport(targetDir);
   }
 
   // Summary
@@ -474,6 +479,12 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
       
       printFileStatus(TASK_FILE, taskPath, 'generated', 'not generated');
     }
+  }
+
+  const evalReportPath = path.join(targetDir, 'test-app-results', REPORT_FILE);
+  if (fs.existsSync(evalReportPath)) {
+    console.log(`\n   ${cBold('Evaluation Report:')}`);
+    console.log(`     ${REPORT_FILE.padEnd(28)} ${cGreen('✅')} generated`);
   }
 
   console.log(`\nAll generated files are in ${relDir}/`);

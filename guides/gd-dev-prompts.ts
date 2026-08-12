@@ -6,8 +6,9 @@
  * type-safe parameter interpolation.
  */
 
-import { type SolutionAgent } from '../lib/guide-validation.ts';
+import { type SolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, REPORT_FILE } from '../lib/guide-validation.ts';
 import { Agents } from '../harness/config.ts';
+import type { TargetEvalSummary } from './lib/dev-report.ts';
 
 export interface PatchPromptOptions {
   guideFile: string;
@@ -172,4 +173,92 @@ Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-leve
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
+}
+
+export interface DevReportPromptOptions {
+  guideName: string;
+  targets: TargetEvalSummary[];
+}
+
+export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
+  const targetSections = opts.targets.map(t => {
+    return `### Target: \`${t.baseApp}\`
+- **Assigned Primary Flag**: \`${t.flag}\`
+- **Flag Details**: ${t.flagDetails}`;
+  }).join('\n\n');
+
+  return `# GOAL
+The primary objective is to make the guide \`${opts.guideName}\` work effectively for modern web development, ensuring it empowers AI coding assistants and developers to build high-quality, modern web applications.
+Analyze the evaluation test results across all targets, conduct a thorough root-cause investigation for each target, and complete the \`### Diagnostic Analysis & Actionable Recommendations\` section under each target in \`${REPORT_FILE}\`.
+
+# INPUTS
+1. **Guide**: \`${GUIDE_FILE}\`
+2. **Expectations**: \`${EXPECTATIONS_FILE}\`
+3. **Target Capsule Directories**: For each target, inspect the artifacts in \`targets/<target>/\`:
+   - \`task.md\` (developer test prompt)
+   - \`grader.ts\` (Playwright validation suite)
+   - \`patches/zero-passrate.patch\` (anti-pattern baseline)
+   - \`patches/*-solution.patch\` (golden solution diffs)
+4. **Target Evaluation Reports & Flags**:
+${targetSections}
+
+Note: \`${REPORT_FILE}\` is already seeded with each target's \`### Evaluation Results\` (copied directly from \`evals.md\`). Your task is to investigate the artifacts and fill in \`### Diagnostic Analysis & Actionable Recommendations\` under each target.
+
+# SYSTEM WORKFLOW CONTEXT
+To accurately diagnose failures, understand how \`gd dev\` generates and executes these components:
+1. **Ground Truth**: \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` define the canonical implementation and must-pass requirements.
+2. **Patches**: Golden solution diffs and the zero-passrate baseline are generated from \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`.
+3. **Task Prompt**: \`task.md\` is generated from the \`description\` frontmatter of \`${GUIDE_FILE}\` and the target app's codebase.
+4. **Grader**: \`grader.ts\` validates the requirements in \`${EXPECTATIONS_FILE}\` against the application workspace and is calibrated against the golden patches (must pass 100%) and zero-passrate patch (must fail 100%).
+5. **Agent Evaluation Run**: The agent executes the \`task.md\` prompt against each target app without guidance (\`unguided\`) and with guidance (\`guided\`), and results are verified with \`grader.ts\`.
+
+# ROOT-CAUSE DIAGNOSIS RULES (BY PRIMARY FLAG)
+
+Diagnose each target according to its assigned flag:
+
+1. **\`INFRASTRUCTURE_ERROR\`**:
+   - The test run failed due to execution timeouts, agent CLI process crashes, rate limits (429), or missing setup files.
+   - Explain the error context. No code file modifications are needed unless the issue stems from an invalid build/package configuration.
+
+2. **\`MISSING_GUIDANCE_TOOL\`**:
+   - The guided agent did not invoke \`modern-web-guidance\`.
+   - **Diagnosis**: State that the test prompt in \`task.md\` failed to activate modern web guidance during the agent's run.
+   - **Recommendation**: Recommend that the prompt in \`targets/<target>/task.md\` be revised so that the request more clearly prompts an agent to look up modern web platform guidance.
+
+3. **\`MISSING_EXPECTED_GUIDE\`**:
+   - The guided agent invoked guidance tools, but \`${opts.guideName}\` was not among the consumed guides.
+   - **Culprit**: \`targets/<target>/task.md\` or the \`description\` in \`${GUIDE_FILE}\`.
+   - **Root Cause**: The prompt keywords failed to match the guide's indexing keywords or description frontmatter.
+   - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` or the frontmatter \`description\` in \`${GUIDE_FILE}\`.
+
+4. **\`LOW_GUIDED_PASS_RATE\`**:
+   - The guided agent pass rate is under 90%.
+   - **Root Cause Investigation**: Review the failed assertions in \`${REPORT_FILE}\` and examine \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, \`targets/<target>/grader.ts\`, and \`targets/<target>/task.md\` to understand why the agent fell short. Consider:
+     - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide lack essential modern web practices, clear syntax examples, fallback patterns, or common pitfalls? (Gaps here will cause any AI agent to make mistakes).
+     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader testing rigid implementation details, arbitrary markup, or unstated assumptions rather than outcome-based modern web requirements?
+     - **Expectations Alignment (\`${EXPECTATIONS_FILE}\`)**: Are the must-pass expectations ambiguous, conflicting, or missing key constraints?
+     - **Task Prompt Framing (\`targets/<target>/task.md\`)**: Is the prompt misleading, conflicting, or underspecified?
+   - **Recommendations & Alternatives**: Recommend solutions that best reflect modern web development best practices. Identify which file(s) should be modified, present alternative options or tradeoffs when viable, and recommend the approach that makes the guide most effective for developers and AI assistants.
+
+5. **\`HEALTHY\`**:
+   - The target achieved ≥ 90% guided pass rate with all guidance tools and guides correctly consumed.
+   - **No investigation or fixes needed**: State that the target is healthy, guidance was consumed as expected, and all assertions passed.
+   - **Actionable Recommendations**: Output \`- None (target is healthy and verified).\`
+
+# REPORT OUTPUT REQUIREMENTS
+
+For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching this structure:
+
+\`\`\`markdown
+### Diagnostic Analysis & Actionable Recommendations
+
+#### Root Cause Analysis:
+[Detailed diagnostic reasoning analyzing grader, expectations, guide, and task prompt alignment based on the failed assertions and flags in evals.md.]
+
+#### Actionable Recommendations:
+- [ ] **[relative_path_to_file]**: [Specific actionable recommendation for what to modify in this file]
+\`\`\`
+
+# INSTRUCTION
+When editing the report, you MUST use your built-in structured file editing tools (e.g., replace or write_file) to update \`${REPORT_FILE}\`.`;
 }

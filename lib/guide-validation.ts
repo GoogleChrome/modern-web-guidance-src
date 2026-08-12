@@ -275,6 +275,7 @@ export const EXPECTATIONS_FILE = 'expectations.md';
 export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const TASK_FILE = 'task.md';
+export const REPORT_FILE = 'report.md';
 
 export const SUPPORTED_BASE_APPS = ['daily-grind', 'devtools-times'] as const;
 export type SupportedBaseApp = (typeof SUPPORTED_BASE_APPS)[number];
