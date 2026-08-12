@@ -75,11 +75,24 @@ Note that the "safe" HTML sanitization methods (`element.setHTML()` and `documen
 
 ### 4. Enforcing Trusted Types with CSP
 
-Trusted Types must be enforced by a Content Security Policy (CSP). Require Trusted Types for all script-related sinks using the `require-trusted-types-for` directive in your server's response headers.
+Trusted Types should be rolled out incrementally to avoid breaking your application. While full enforcement provides the strongest protection, it carries a risk of site breakage if every sink write hasn't been migrated.
 
-```http
-Content-Security-Policy: require-trusted-types-for 'script';
-```
+#### Prerequisites
+
+- **Framework cooperation**: If your application's framework (or any third-party library that writes to DOM sinks) does not produce `TrustedHTML` or `TrustedScript` values, you cannot enforce Trusted Types without breaking that code. Audit framework support before starting the rollout.
+- **Sink refactoring**: Ensure you have identified and refactored dangerous sinks to use your Trusted Types policies.
+
+#### Rollout Strategy
+
+1.  **Report-Only**: First, roll out using the `Content-Security-Policy-Report-Only` header. This will log violations to your reporting endpoint without actually blocking the writes.
+    ```http
+    Content-Security-Policy-Report-Only: require-trusted-types-for 'script';
+    ```
+2.  **Enforcement**: Once you have integrated your policies and violation reports drop to zero, move to full enforcement.
+
+    ```http
+    Content-Security-Policy: require-trusted-types-for 'script';
+    ```
 
 You can also restrict which policies are allowed to be created:
 
