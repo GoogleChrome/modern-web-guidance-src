@@ -190,7 +190,7 @@ if (changedRegularFeatures.length > 0) {
 // Write structured Markdown comment body to GITHUB_OUTPUT if any items were flagged
 if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatures.length > 0)) {
   const sections: string[] = [
-    '⚠️ **Action Required**: This daily `@web-platform-dx/web-features` update introduced official feature IDs or platform record shifts (`moved` / `split`) affecting guidance in this repository.\n'
+    '⚠️ **Action Required**: This automated `web-features` update introduced official feature IDs or platform record shifts (`moved` / `split`) affecting guidance in this repository.\n'
   ];
 
   if (expiredTemps.length > 0) {

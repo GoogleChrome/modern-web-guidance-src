@@ -1,8 +1,9 @@
-name: Daily web-features Update
+name: Update web-features
 
 on:
   schedule:
-    - cron: '0 5 * * *'
+    # 05:00 UTC on Monday and Thursday
+    - cron: '0 5 * * 1,4'
   workflow_dispatch:
 
 permissions:
@@ -30,9 +31,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            EXISTING_PR=$(gh pr list --head auto/daily-web-features --state open --json number --jq '.[0].number')
+            EXISTING_PR=$(gh pr list --head auto/web-features-update --state open --json number --jq '.[0].number')
             if [ -n "$EXISTING_PR" ]; then
-              echo "::notice::An open daily update PR (#$EXISTING_PR) already exists. Skipping scheduled run."
+              echo "::notice::An open update PR (#$EXISTING_PR) already exists. Skipping scheduled run."
               echo "should_proceed=false" >> $GITHUB_OUTPUT
               exit 0
             fi
@@ -96,13 +97,13 @@ jobs:
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
         with:
           token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
-          commit-message: "chore(deps): bump web-features package daily"
+          commit-message: "chore(deps): bump web-features package"
           title: "chore(deps): bump web-features package"
           body: |
-            Daily automated check for `@web-platform-dx/web-features` updates across `/`, `/serving`, and `/guides`.
+            Automated check for `web-features` updates across `/`, `/serving`, and `/guides`.
             
             CI workflow checks will automatically run on this PR to report if any guidance macros, tests, or features require updates.
-          branch: "auto/daily-web-features"
+          branch: "auto/web-features-update"
           delete-branch: true
 
       - name: Comment on PR if validation identified post-update action items
