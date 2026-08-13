@@ -261,7 +261,6 @@ For each target in \`${REPORT_FILE}\`, complete the diagnostic section matching 
 
 #### Actionable Recommendations:
 - \`[relative_path_to_file]\`: [Actionable recommendation]
-*(Note: After modifying source files, delete the targets/ directory and run gd dev to regenerate all target artifacts)*
 \`\`\`
 
 # INSTRUCTION

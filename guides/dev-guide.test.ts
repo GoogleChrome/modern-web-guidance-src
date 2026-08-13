@@ -76,7 +76,7 @@ Agent test results:
   });
 });
 
-test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_JETSKI', async (t) => {
+test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_GEMINI', async (t) => {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
@@ -84,7 +84,7 @@ test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_
   const { cleanupIsolatedHome } = await import('../harness/lib/agent-shared.ts');
 
   const originalHome = process.env.HOME;
-  const originalGdUseJetski = process.env.GD_DEV_USE_JETSKI;
+  const originalGdUseGemini = process.env.GD_DEV_USE_GEMINI;
   const originalJetskiDir = process.env.JETSKI_DIR;
 
   const mockHome = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-home-'));
@@ -99,10 +99,10 @@ test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_
 
   t.after(() => {
     process.env.HOME = originalHome;
-    if (originalGdUseJetski === undefined) {
-      delete process.env.GD_DEV_USE_JETSKI;
+    if (originalGdUseGemini === undefined) {
+      delete process.env.GD_DEV_USE_GEMINI;
     } else {
-      process.env.GD_DEV_USE_JETSKI = originalGdUseJetski;
+      process.env.GD_DEV_USE_GEMINI = originalGdUseGemini;
     }
     if (originalJetskiDir === undefined) {
       delete process.env.JETSKI_DIR;
@@ -112,23 +112,9 @@ test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_
     fs.rmSync(mockHome, { recursive: true, force: true });
   });
 
-  // 1. Without GD_DEV_USE_JETSKI (Gemini CLI mode)
-  delete process.env.GD_DEV_USE_JETSKI;
+  // 1. Without GD_DEV_USE_GEMINI (default Jetski CLI mode)
+  delete process.env.GD_DEV_USE_GEMINI;
   delete process.env.JETSKI_DIR;
-  const geminiWorkDir = setupGuideDevWorkDir('test-dev-gemini');
-  const geminiTempHome = path.dirname(geminiWorkDir);
-  
-  assert.ok(fs.existsSync(path.join(geminiTempHome, '.gemini', 'oauth_creds.json')), 'Gemini credentials should be copied');
-  assert.strictEqual(fs.existsSync(path.join(geminiTempHome, '.gemini', 'jetski', 'installation_id')), false, 'Jetski credentials should not be copied');
-  assert.strictEqual(process.env.JETSKI_DIR, undefined, 'JETSKI_DIR should not be set');
-
-  cleanupIsolatedHome(geminiTempHome);
-
-  // Restore HOME to mockHome before second run
-  process.env.HOME = mockHome;
-
-  // 2. With GD_DEV_USE_JETSKI=1 (Jetski CLI mode)
-  process.env.GD_DEV_USE_JETSKI = '1';
   const jetskiWorkDir = setupGuideDevWorkDir('test-dev-jetski');
   const jetskiTempHome = path.dirname(jetskiWorkDir);
 
@@ -137,6 +123,21 @@ test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_
   assert.strictEqual(process.env.JETSKI_DIR, path.join(jetskiTempHome, '.gemini', 'jetski'), 'JETSKI_DIR should be set');
 
   cleanupIsolatedHome(jetskiTempHome);
+
+  // Restore HOME to mockHome before second run
+  process.env.HOME = mockHome;
+
+  // 2. With GD_DEV_USE_GEMINI=1 (Gemini CLI mode)
+  process.env.GD_DEV_USE_GEMINI = '1';
+  delete process.env.JETSKI_DIR;
+  const geminiWorkDir = setupGuideDevWorkDir('test-dev-gemini');
+  const geminiTempHome = path.dirname(geminiWorkDir);
+
+  assert.ok(fs.existsSync(path.join(geminiTempHome, '.gemini', 'oauth_creds.json')), 'Gemini credentials should be copied');
+  assert.strictEqual(fs.existsSync(path.join(geminiTempHome, '.gemini', 'jetski', 'installation_id')), false, 'Jetski credentials should not be copied');
+  assert.strictEqual(process.env.JETSKI_DIR, undefined, 'JETSKI_DIR should not be set');
+
+  cleanupIsolatedHome(geminiTempHome);
 });
 
 test('collectPlaywrightErrors correctly parses nested suites, deduplicates errors, and ignores passing tests', async () => {

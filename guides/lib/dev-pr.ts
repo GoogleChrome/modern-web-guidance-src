@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { cGreen, cCyan, cRed, cDim } from '../../lib/colors.ts';
-import { REPORT_FILE } from '../../lib/guide-validation.ts';
+import { REPORT_FILE, TEST_APP_RESULTS_DIR } from '../../lib/guide-validation.ts';
 
 export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
 
@@ -43,7 +43,7 @@ export function determinePrLabels(reportContent: string): DevPrLabel[] {
  */
 export async function runDevPr(guideDir: string): Promise<void> {
   const resolvedGuideDir = path.resolve(guideDir);
-  const reportPath = path.join(resolvedGuideDir, 'test-app-results', REPORT_FILE);
+  const reportPath = path.join(resolvedGuideDir, TEST_APP_RESULTS_DIR, REPORT_FILE);
 
   if (!fs.existsSync(reportPath)) {
     console.error(cRed(`❌ No evaluation report found at ${path.relative(process.cwd(), reportPath)}.`));

@@ -26,6 +26,7 @@ import {
   TASK_FILE,
   REPORT_FILE,
   TARGETS_DIR,
+  TEST_APP_RESULTS_DIR,
   SUPPORTED_BASE_APPS,
   getDefaultSolutionAgent,
   getActiveSolutionAgents,
@@ -318,14 +319,14 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       const preResults = await gradeOutput(
         targetsDir,
         targetGraderPath,
-        path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'),
+        path.join(targetDir, TEST_APP_RESULTS_DIR, baseApp, 'pre-grade-report'),
         zeroPassratePatch
       );
       if (preResults) results['pre'] = preResults;
 
       // 2. Run agent suite
       const { runSuite } = await import('../harness/run_suite.ts');
-      const testOutputDir = path.join(targetDir, 'test-app-results', baseApp);
+      const testOutputDir = path.join(targetDir, TEST_APP_RESULTS_DIR, baseApp);
       const agent = getDefaultSolutionAgent();
       await runSuite({
         name: `${guideName}-${baseApp}`,
@@ -483,7 +484,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
     }
   }
 
-  const evalReportPath = path.join(targetDir, 'test-app-results', REPORT_FILE);
+  const evalReportPath = path.join(targetDir, TEST_APP_RESULTS_DIR, REPORT_FILE);
   if (fs.existsSync(evalReportPath)) {
     console.log(`\n   ${cBold('Evaluation Report:')}`);
     console.log(`     ${REPORT_FILE.padEnd(28)} ${cGreen('✅')} generated`);

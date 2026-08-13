@@ -28,7 +28,7 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 
 ### Use Existing Abstractions & CLI Runners
 - **Reuse repository tooling:** When interacting with LLMs or executing agent workflows, use the shared repository abstractions in `config.environment` (such as `config.environment.jetskiCliBin` or `config.environment.geminiCliBin`) instead of writing custom REST API clients, bespoke fetch loops, or ad-hoc token validators.
-- **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_JETSKI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
+- **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_GEMINI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
 
 ### Single Source of Truth & Canonical Enums
 - **Never hardcode string constants for agents or serving modes:**

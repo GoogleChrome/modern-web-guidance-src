@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { cGreen, cYellow, cCyan, cBold } from '../../lib/colors.ts';
-import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE } from '../../lib/guide-validation.ts';
+import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE, TEST_APP_RESULTS_DIR } from '../../lib/guide-validation.ts';
 import { setupGuideDevWorkDir, runAgent } from './utils.ts';
 import { buildDevReportPrompt } from '../gd-dev-prompts.ts';
 
@@ -74,7 +74,7 @@ export function computeDevReportFlag(input: {
  * Extracts and parses evaluation summary for a specific target base app.
  */
 export function computeTargetSummary(targetDir: string, baseApp: string): TargetEvalSummary | null {
-  const evalsJsonPath = path.join(targetDir, 'test-app-results', baseApp, 'evals.json');
+  const evalsJsonPath = path.join(targetDir, TEST_APP_RESULTS_DIR, baseApp, 'evals.json');
   if (!fs.existsSync(evalsJsonPath)) {
     return null;
   }
@@ -118,7 +118,7 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
   for (const s of summaries) {
     content += `## Target: \`${s.baseApp}\` (Status: \`${s.flag}\`)\n\n`;
     content += `### Evaluation Results\n\n`;
-    const evalsMdPath = path.join(targetDir, 'test-app-results', s.baseApp, 'evals.md');
+    const evalsMdPath = path.join(targetDir, TEST_APP_RESULTS_DIR, s.baseApp, 'evals.md');
     const rawEvals = fs.existsSync(evalsMdPath) ? fs.readFileSync(evalsMdPath, 'utf8').trim() : '';
     const nestedEvals = rawEvals.replaceAll(/^## /gm, '#### ').replaceAll(/^### /gm, '##### ');
     content += nestedEvals + '\n\n';
@@ -141,11 +141,11 @@ export async function runDevReport(targetDir: string): Promise<void> {
     .filter((s): s is TargetEvalSummary => s !== null);
 
   if (summaries.length === 0) {
-    console.log(cYellow(`No evaluation results found in ${path.join(targetDir, 'test-app-results')}. Skipping report.`));
+    console.log(cYellow(`No evaluation results found in ${path.join(targetDir, TEST_APP_RESULTS_DIR)}. Skipping report.`));
     return;
   }
 
-  const targetAppResultsDir = path.join(targetDir, 'test-app-results');
+  const targetAppResultsDir = path.join(targetDir, TEST_APP_RESULTS_DIR);
   const finalReportPath = path.join(targetAppResultsDir, REPORT_FILE);
 
   const initialReportContent = buildInitialDevReport(targetDir, summaries);
@@ -165,7 +165,7 @@ export async function runDevReport(targetDir: string): Promise<void> {
       fs.cpSync(path.join(targetDir, TARGETS_DIR), path.join(workDir, 'targets'), { recursive: true });
     }
     if (fs.existsSync(targetAppResultsDir)) {
-      fs.cpSync(targetAppResultsDir, path.join(workDir, 'test-app-results'), { recursive: true });
+      fs.cpSync(targetAppResultsDir, path.join(workDir, TEST_APP_RESULTS_DIR), { recursive: true });
     }
 
     // Seed report.md with initial interleaved content

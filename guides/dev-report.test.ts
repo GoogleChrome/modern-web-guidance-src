@@ -9,6 +9,7 @@ import {
   buildInitialDevReport,
   type TargetEvalSummary,
 } from './lib/dev-report.ts';
+import { TEST_APP_RESULTS_DIR } from '../lib/guide-validation.ts';
 
 test('computeDevReportFlag enforces strict priority ordering', () => {
   // 1. Infrastructure error takes top priority
@@ -71,7 +72,7 @@ test('computeDevReportFlag enforces strict priority ordering', () => {
 test('computeTargetSummary extracts metrics and flags from evals.json correctly', (t) => {
   const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-dev-report-'));
   const tmpDir = path.join(rootTmp, 'size-aware-styling');
-  const testResultsDir = path.join(tmpDir, 'test-app-results', 'daily-grind');
+  const testResultsDir = path.join(tmpDir, TEST_APP_RESULTS_DIR, 'daily-grind');
   fs.mkdirSync(testResultsDir, { recursive: true });
 
   const mockEvalsJson = {
@@ -124,8 +125,8 @@ test('computeTargetSummary extracts metrics and flags from evals.json correctly'
 test('buildInitialDevReport builds interleaved report with evals and diagnostic placeholders', (t) => {
   const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-evals-interleaved-'));
   const tmpDir = path.join(rootTmp, 'size-aware-styling');
-  const dgDir = path.join(tmpDir, 'test-app-results', 'daily-grind');
-  const dtDir = path.join(tmpDir, 'test-app-results', 'devtools-times');
+  const dgDir = path.join(tmpDir, TEST_APP_RESULTS_DIR, 'daily-grind');
+  const dtDir = path.join(tmpDir, TEST_APP_RESULTS_DIR, 'devtools-times');
   fs.mkdirSync(dgDir, { recursive: true });
   fs.mkdirSync(dtDir, { recursive: true });
 
