@@ -84,6 +84,21 @@ function printInventory(inv: GuideInventory): void {
   }
 }
 
+export function exciseOldEvalArtifacts(guideDir: string): void {
+  const oldArtifacts = [
+    path.join(guideDir, 'tasks'),
+    path.join(guideDir, GRADER_FILE),
+    path.join(guideDir, DEMO_FILE),
+    path.join(guideDir, NEGATIVE_DEMO_FILE),
+  ];
+
+  for (const artifactPath of oldArtifacts) {
+    if (fs.existsSync(artifactPath)) {
+      fs.rmSync(artifactPath, { recursive: true, force: true });
+    }
+  }
+}
+
 export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
   const maxRetries = options.maxRetries ?? 4;
   const targetDir = path.resolve(process.cwd(), targetDirRaw);
@@ -92,6 +107,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     console.error(`Error: Directory not found: ${targetDir}`);
     return false;
   }
+
+  // Step 0: Excise old eval artifacts if they exist
+  exciseOldEvalArtifacts(targetDir);
 
   // Step 1: Validate guide inventory
   const currentInv = inv || inventoryGuide(targetDir, { useTargetEvals: true });

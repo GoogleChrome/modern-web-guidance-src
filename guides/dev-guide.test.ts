@@ -186,4 +186,64 @@ test('collectPlaywrightErrors correctly parses nested suites, deduplicates error
   assert.strictEqual(collectPlaywrightErrors({}), '');
 });
 
+test('exciseOldEvalArtifacts removes tasks folder, grader.ts, demo.html, and negative-demo.html when they exist', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { exciseOldEvalArtifacts } = await import('./dev-guide.ts');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gd-dev-excision-test-'));
+
+  t.after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // Create old artifacts
+  const tasksDir = path.join(tmpDir, 'tasks');
+  fs.mkdirSync(tasksDir, { recursive: true });
+  fs.writeFileSync(path.join(tasksDir, 'task.md'), '# Task');
+  fs.writeFileSync(path.join(tmpDir, 'grader.ts'), 'export const grader = true;');
+  fs.writeFileSync(path.join(tmpDir, 'demo.html'), '<html><body>Demo</body></html>');
+  fs.writeFileSync(path.join(tmpDir, 'negative-demo.html'), '<html><body>Negative Demo</body></html>');
+
+  // Create non-old artifacts that should NOT be excised
+  fs.writeFileSync(path.join(tmpDir, 'guide.md'), '# Guide');
+  fs.writeFileSync(path.join(tmpDir, 'expectations.md'), '# Expectations');
+
+  // Run excision
+  exciseOldEvalArtifacts(tmpDir);
+
+  // Assert old artifacts were deleted
+  assert.strictEqual(fs.existsSync(tasksDir), false, 'tasks directory should be excised');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'grader.ts')), false, 'grader.ts should be excised');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'demo.html')), false, 'demo.html should be excised');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'negative-demo.html')), false, 'negative-demo.html should be excised');
+
+  // Assert non-old artifacts remain intact
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'guide.md')), true, 'guide.md should remain');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'expectations.md')), true, 'expectations.md should remain');
+});
+
+test('exciseOldEvalArtifacts handles directory when old artifacts do not exist', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { exciseOldEvalArtifacts } = await import('./dev-guide.ts');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gd-dev-excision-empty-test-'));
+
+  t.after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  fs.writeFileSync(path.join(tmpDir, 'guide.md'), '# Guide');
+
+  // Should not throw
+  assert.doesNotThrow(() => {
+    exciseOldEvalArtifacts(tmpDir);
+  });
+
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'guide.md')), true);
+});
+
 
