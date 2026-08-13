@@ -392,7 +392,6 @@ export function getTaskMap(): Map<string, TaskInfo> {
   }
 
   function processBaseAppTasks(guideName: string, targetsDir: string, guideDir: string) {
-    let firstBaseAppInfo: TaskInfo | null = null;
     const supportedBaseApps = getSupportedBaseApps();
 
     for (const entry of fs.readdirSync(targetsDir, { withFileTypes: true })) {
@@ -413,15 +412,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         guideDir: guideDir,
       };
 
-      if (!firstBaseAppInfo) {
-        firstBaseAppInfo = info;
-      }
-
       taskMap.set(`${guideName}/${baseAppName}`, info);
-    }
-
-    if (firstBaseAppInfo) {
-      taskMap.set(`${guideName}/task`, firstBaseAppInfo);
     }
   }
 
@@ -432,16 +423,6 @@ export function getTaskMap(): Map<string, TaskInfo> {
   for (const discipline of disciplines) {
     const disciplineDir = path.join(guidesDir, discipline);
     if (!fs.existsSync(disciplineDir)) continue;
-
-    // Check if the discipline itself is a skill with tasks
-    const disciplineTargetsDir = path.join(disciplineDir, TARGETS_DIR);
-    const disciplineTasksDir = path.join(disciplineDir, 'tasks');
-    if (fs.existsSync(disciplineTargetsDir)) {
-      processBaseAppTasks(discipline, disciplineTargetsDir, disciplineDir);
-    }
-    if (fs.existsSync(disciplineTasksDir)) {
-      processTasks(discipline, disciplineTasksDir, disciplineDir);
-    }
 
     // Check subdirectories (guides)
     for (const entry of fs.readdirSync(disciplineDir, { withFileTypes: true })) {
