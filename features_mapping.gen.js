@@ -208,6 +208,9 @@ window.__featuresMapping = {
   "support-global-calendar-systems": [
     "temporal"
   ],
+  "avoid-redundant-large-asset-downloads": [
+    "tmp-cross-origin-storage"
+  ],
   "batch-analytics-events": [
     "fetchlater",
     "aborting"
@@ -267,6 +270,9 @@ window.__featuresMapping = {
   "interactions-in-complex-layouts": [
     "content-visibility"
   ],
+  "load-shared-resources-declaratively": [
+    "tmp-cross-origin-storage"
+  ],
   "optimize-image-priority": [
     "fetch-priority",
     "loading-lazy"
@@ -289,6 +295,9 @@ window.__featuresMapping = {
   ],
   "sequence-distributed-events": [
     "temporal"
+  ],
+  "share-web-fonts-across-origins": [
+    "tmp-cross-origin-storage"
   ],
   "streaming-api": [
     "tmp-streaming-api"
