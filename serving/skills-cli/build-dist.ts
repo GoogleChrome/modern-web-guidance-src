@@ -7,14 +7,11 @@ import { config } from "../../lib/skills-config.ts";
 import { rootDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
 import { replaceMacros } from "../lib/macros.ts";
-import { updateReadmeWithFeaturesAndUseCases } from "./build-readme.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
 
 interface BuildResult {
-  featuresCount: number;
-  useCasesCount: number;
   skillsCount: number;
   skillNames: string[];
 }
@@ -168,8 +165,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
     fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
-
-
     if (version) {
       updateVersionsInDir(publishRoot, version);
     }
@@ -280,10 +275,9 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     }
 
     const { skillsCount, skillNames } = processSkills(publishRoot);
-    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
-    return { featuresCount, useCasesCount, skillsCount, skillNames };
+    return { skillsCount, skillNames };
   } finally {
     if (fs.existsSync(lockFilePath)) {
       fs.unlinkSync(lockFilePath);
