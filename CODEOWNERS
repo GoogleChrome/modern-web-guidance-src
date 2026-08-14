@@ -1,3 +1,18 @@
+# Default owners for implementation and infra
+* @paulirish @micahjo7
+
+# Blanket ownerless overrides for content (rely entirely on atl-triage bot instead)
+guides/
+features/
+
+# CODEOWNERS config
+CODEOWNERS @paulirish @rviscomi @micahjo7
+
+# Critical infra & workflow files (redundant but the explicitness is nice)
+.github/ @paulirish @micahjo7
+package.json @paulirish @micahjo7
+pnpm-lock.yaml @paulirish @micahjo7
+pnpm-workspace.yaml @paulirish @micahjo7
 
 # Eval files
 **/grader.ts @paulirish @micahjo7
