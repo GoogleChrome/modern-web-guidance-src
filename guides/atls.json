@@ -22,7 +22,7 @@
   "web_features": {
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
-    "cross-origin-storage": "tomayac",
+    "tmp-cross-origin-storage": "tomayac",
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {
