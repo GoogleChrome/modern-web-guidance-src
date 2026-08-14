@@ -75,6 +75,13 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   const kimiPluginData = JSON.parse(fs.readFileSync(kimiPluginPath, 'utf8'));
   kimiPluginData.version = newVersion;
   fs.writeFileSync(kimiPluginPath, JSON.stringify(kimiPluginData, null, 2) + '\n');
+
+  // Grok Marketplace
+  const grokMarketplacePath = path.join(publishCliDir, ".grok-plugin/marketplace.json");
+  const grokMarketplaceData = JSON.parse(fs.readFileSync(grokMarketplacePath, 'utf8'));
+  grokMarketplaceData.plugins[0].version = newVersion;
+  fs.writeFileSync(grokMarketplacePath, JSON.stringify(grokMarketplaceData, null, 2) + '\n');
+
 }
 
 export function processSkills(publishRoot: string) {

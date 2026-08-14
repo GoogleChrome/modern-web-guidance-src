@@ -42,6 +42,17 @@ test('Claude Plugin Config in Dist', async () => {
   assert.strictEqual(pluginJson.author.name, 'Google Chrome', 'plugin.json author should be Google Chrome');
 });
 
+test('Grok Plugin Config in Dist', async () => {
+  const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.grok-plugin/marketplace.json'), 'utf8');
+  const marketplaceJson = JSON.parse(marketplaceJsonRaw);
+  assert.strictEqual(marketplaceJson.name, 'googlechrome', 'marketplace.json name should be googlechrome');
+  assert.strictEqual(marketplaceJson.owner.name, 'Google Chrome', 'marketplace.json owner should be Google Chrome');
+  
+  assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'should have plugins');
+  assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
+  assert.strictEqual(marketplaceJson.plugins[0].source, './');
+});
+
 test('Gemini and VS Code manifests', async () => {
   const geminiJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'gemini-extension.json'), 'utf8'));
   assert.strictEqual(geminiJson.name, 'modern-web-guidance');
