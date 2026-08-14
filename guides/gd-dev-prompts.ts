@@ -188,8 +188,7 @@ export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
   }).join('\n\n');
 
   return `# GOAL
-The primary objective is to make the guide \`${opts.guideName}\` work effectively for modern web development, ensuring it empowers AI coding assistants and developers to build high-quality, modern web applications.
-Analyze the evaluation test results across all targets, conduct a thorough root-cause investigation for each target, and complete the \`### Diagnostic Analysis & Actionable Recommendations\` section under each target in \`${REPORT_FILE}\`.
+Analyze the evaluation test results across all target applications for the guide \`${opts.guideName}\`, conduct a thorough root-cause investigation for each target based on its flagged status, and complete the \`### Diagnostic Analysis & Actionable Recommendations\` section under each target in \`${REPORT_FILE}\`.
 
 # INPUTS
 1. **Guide**: \`${GUIDE_FILE}\`

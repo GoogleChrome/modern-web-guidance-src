@@ -93,10 +93,10 @@ export async function runDevPr(guideDir: string): Promise<void> {
   const reportContent = fs.readFileSync(reportPath, 'utf-8');
   const labels = determinePrLabels(reportContent);
 
-  // 5. Create Pull Request
+  // 5. Create Pull Request (in draft mode)
   const prTitle = `gd dev output for ${guideName}`;
   const labelFlags = labels.map(l => `--label "${l}"`).join(' ');
-  const prCmd = `gh pr create --title "${prTitle}" --body-file "${reportPath}" ${labelFlags}`.trim();
+  const prCmd = `gh pr create --draft --title "${prTitle}" --body-file "${reportPath}" ${labelFlags}`.trim();
 
   try {
     const prUrl = execSync(prCmd, { encoding: 'utf-8' }).trim();
