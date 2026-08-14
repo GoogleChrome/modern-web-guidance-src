@@ -31,12 +31,6 @@ export function getCodexCliCommandAndArgs(prompt: string): { command: string; co
   return { command, commandArgs };
 }
 
-const TRAJECTORY_GLOB = 'session-*.jsonl';
-
-function getSessionFiles(dir: string, recursive = false): string[] {
-  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
-}
-
 function exportCodexTrajectories(workDir: string, targetDir: string): void {
   const tempHome = path.dirname(workDir);
   const codexLogDir = path.join(tempHome, '.codex', 'sessions');
@@ -109,10 +103,9 @@ async function run() {
       );
     } finally {
       stopWatchingMcpLog();
+      exportCodexTrajectories(workDir, targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, userPrompt);
     }
-
-    exportCodexTrajectories(workDir, targetDir);
-    await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, userPrompt);
 
     console.log("Codex agent finished successfully.");
   } catch (err) {

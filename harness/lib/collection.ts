@@ -2,35 +2,15 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import { Agents, type SuiteConfig } from '../config.ts';
+import { type SuiteConfig } from '../config.ts';
 import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
-import {
-  extractGeminiCliModel,
-  extractGeminiCliTokenUsage,
-  extractClaudeCodeModel,
-  extractClaudeCodeTokenUsage,
-  extractCodexCliModel,
-  extractCodexCliTokenUsage,
-  extractJetskiCliModel,
-  extractJetskiCliTokenUsage,
-  extractPiModel,
-  extractPiTokenUsage
-} from './trajectory-parser.ts';
-import { getGraderScriptContent } from './agent-shared.ts';
+import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
 }
 
-function isNodeError(err: unknown): err is NodeJS.ErrnoException {
-  return err instanceof Error && 'code' in err;
-}
-
-function isEnoent(err: unknown): boolean {
-  return isNodeError(err) && err.code === 'ENOENT';
-}
-
-export function extractModelFromResults(resultsDir: string, agent: string): string {
+export function extractModelFromResults(resultsDir: string, _agent: string): string {
   const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
   try {
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
@@ -40,23 +20,10 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   } catch (err) {
     if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
-
-  // Legacy Fallback
-  if (agent === Agents.GEMINI_CLI) {
-    return extractGeminiCliModel(resultsDir);
-  } else if (agent === Agents.JETSKI_CLI) {
-    return extractJetskiCliModel(resultsDir);
-  } else if (agent === Agents.CLAUDE_CODE) {
-    return extractClaudeCodeModel(resultsDir);
-  } else if (agent === Agents.CODEX_CLI) {
-    return extractCodexCliModel(resultsDir);
-  } else if (agent === Agents.PI) {
-    return extractPiModel(resultsDir);
-  }
   return 'unknown';
 }
 
-export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | null {
+export function extractTokenUsageFromResults(resultsDir: string, _agent: string): { total: number; cached: number } | null {
   const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
   try {
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
@@ -66,13 +33,6 @@ export function extractTokenUsageFromResults(resultsDir: string, agent: string):
   } catch (err) {
     if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
-
-  // Legacy Fallback
-  if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir) ?? null;
-  if (agent === Agents.JETSKI_CLI) return extractJetskiCliTokenUsage(resultsDir) ?? null;
-  if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;
-  if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir) ?? null;
-  if (agent === Agents.PI) return extractPiTokenUsage(resultsDir) ?? null;
   return null;
 }
 

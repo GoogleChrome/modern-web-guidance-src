@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { defaultSuiteConfig, Agents } from '../config.ts';
 import { collectResults } from '../lib/collection.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 import { guidesDir } from '../../lib/paths.ts';
 
 const testDir = import.meta.dirname;
@@ -123,6 +124,8 @@ base_app: test-app
             JSON.stringify({ message: { usage: { input_tokens: 6, cache_creation_input_tokens: 841, cache_read_input_tokens: 36344, output_tokens: 248 } } })
         ].join('\n');
         fs.writeFileSync(path.join(targetDir, 'session-mock.jsonl'), sessionLines);
+
+        await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE);
 
         // Execute SUT
         const { allResults } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });

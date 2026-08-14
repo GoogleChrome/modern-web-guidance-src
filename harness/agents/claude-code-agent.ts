@@ -25,15 +25,6 @@ export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] 
   return { command, commandArgs };
 }
 
-// NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
-// However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
-// into the test output directory to ensure uniform matching across the dashboard and metrics engine.
-const TRAJECTORY_GLOB = '*.jsonl';
-
-function getSessionFiles(dir: string, recursive = false): string[] {
-  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
-}
-
 function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void {
   const tempHome = path.dirname(workDir);
   const claudeLogDir = path.join(tempHome, '.claude', 'projects');
@@ -119,10 +110,9 @@ async function run() {
       );
     } finally {
       stopWatchingMcpLog();
+      exportClaudeCodeTrajectories(workDir, targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, userPrompt);
     }
-
-    exportClaudeCodeTrajectories(workDir, targetDir);
-    await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, userPrompt);
 
     console.log("Claude Code agent finished successfully.");
 

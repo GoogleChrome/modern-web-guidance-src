@@ -1,17 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { DatabaseSync } from 'node:sqlite';
-import { parseJsonlFile, type GuideUsage } from './agent-shared.ts';
+import { parseJsonlFile, isEnoent, type GuideUsage } from './agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { Agents } from '../config.ts';
-
-function isNodeError(err: unknown): err is NodeJS.ErrnoException {
-  return err instanceof Error && 'code' in err;
-}
-
-function isEnoent(err: unknown): boolean {
-  return isNodeError(err) && err.code === 'ENOENT';
-}
 
 function getSessionFiles(dir: string, globPattern: string): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -31,7 +23,7 @@ export interface StandardizedStep {
   subagentId?: string;
   thought?: string;
   action?: {
-    type: 'tool_call' | 'api_call' | 'web_search' | 'read_file' | 'write_file' | 'run_command' | 'other';
+    type: 'web_search' | 'read_file' | 'write_file' | 'run_command' | 'other';
     canonicalCategory?: 'guide_retrieval' | 'skill_search' | 'code_mutation' | 'mandatory_rule_thought' | 'incidental_noise' | 'other';
     name: string;
     params?: Record<string, any>;
@@ -88,20 +80,20 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
     return 'other';
   }
 
-  if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
-    return 'guide_retrieval';
-  }
-
-  if (actionName.includes('search') || actionName.includes('get_best_practices') || actionName.includes('query_guidance') || actionParamsStr.includes('search')) {
-    return 'skill_search';
-  }
-
   if (
     actionName.includes('write') || actionName.includes('replace') || actionName.includes('edit') || actionName.includes('touch') ||
     actionParamsStr.includes('write_to_file') || actionParamsStr.includes('replace_file_content') ||
     actionParamsStr.includes('index.html') || actionParamsStr.includes('app.jsx') || actionParamsStr.includes('style.css')
   ) {
     return 'code_mutation';
+  }
+
+  if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
+    return 'guide_retrieval';
+  }
+
+  if (actionName.includes('search') || actionName.includes('get_best_practices') || actionName.includes('query_guidance') || actionParamsStr.includes('search')) {
+    return 'skill_search';
   }
 
   if (
@@ -159,7 +151,7 @@ function mapToolType(toolName: string): NonNullable<StandardizedStep['action']>[
   if (['write', 'write_file', 'replace', 'str_replace_editor', 'edit', 'edit_file', 'save'].some(k => name.includes(k))) {
     return 'write_file';
   }
-  if (['bash', 'execute_bash', 'run_command', 'run_shell_command', 'terminal', 'shell'].some(k => name.includes(k))) {
+  if (['bash', 'execute_bash', 'run_command', 'run_shell_command', 'terminal', 'shell', 'exec_command', 'exec'].some(k => name.includes(k))) {
     return 'run_command';
   }
   if (['search', 'get_best_practices', 'retrieve', 'query_guidance'].some(k => name.includes(k))) {
@@ -278,7 +270,7 @@ function parseClaudeLogEntries(
               message: truncateMessage(outText)
             };
 
-            const match = typeof block.content === 'string' ? block.content.match(/agentId:\s*([a-zA-Z0-9_-]+)/) : null;
+            const match = outText.match(/agentId:\s*([a-zA-Z0-9_-]+)/);
             if (match && match[1] && subagentsMap[match[1]] && !consumedSubagents.has(match[1])) {
               const matchedId = match[1];
               consumedSubagents.add(matchedId);
@@ -638,13 +630,12 @@ function loadGeminiLogs(dirPath: string): { session: any; subagentsMap: Record<s
 
   for (const file of sessionFiles) {
     const sessionPath = path.join(dirPath, file);
-    let logData: any[] = [];
+    let logData: any = null;
     try {
       logData = file.endsWith('.jsonl') ? parseJsonlFile(sessionPath) : JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
     } catch {}
 
-    const parts = file.replace(/\.jsonl?$/, '').split(/agent[-_]/);
-    const key = parts.length > 1 ? parts[parts.length - 1] : file.replace(/\.jsonl?$/, '').replace(/^(?:subagent-|session-)/, '');
+    const key = file.replace(/\.jsonl?$/, '').replace(/^(?:subagent-|session-)+(?:subagents-)*(?:agent[-_])?/, '');
     const isSubagent = file.startsWith('subagent-') || file.includes('-subagents-');
 
     if (isSubagent) {
@@ -979,7 +970,7 @@ export function collectJetskiCliToolsFromTrajectory(dir: string): string[] {
   return legacy.toolsUsed;
 }
 
-export async function parseJetskiTrajectory(dirPath: string, agentName: string): Promise<TrajectorySummary> {
+export async function parseJetskiTrajectory(dirPath: string): Promise<TrajectorySummary> {
   const steps: StandardizedStep[] = [];
   const seenJsonHashes = new Set<string>();
 
@@ -1152,7 +1143,7 @@ export async function parseJetskiTrajectory(dirPath: string, agentName: string):
 
   const legacy = parseJetskiCliSession(dirPath);
   return finalizeTrajectorySummary({
-    agent: agentName,
+    agent: Agents.JETSKI_CLI,
     steps,
     model: legacy.model,
     tokenUsage: legacy.tokenUsage,
@@ -1191,7 +1182,7 @@ export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string
           subagentId,
           thought: currentThought || `Executing ${cmdName}`,
           action: {
-            type: mapToolType(cmdName),
+            type: mapToolType(fc.name),
             name: fc.name === 'exec_command' ? (params.cmd || 'exec_command') : fc.name,
             params
           }
@@ -1335,7 +1326,7 @@ export function extractCodexMetadata(logData: any[], subagentsMap: Record<string
 }
 
 function loadCodexLogs(dirPath: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
-  const sessionFiles = getSessionFiles(dirPath, 'session-*.jsonl');
+  const sessionFiles = getSessionFiles(dirPath, '*.jsonl');
   const logData: any[] = [];
   const subagentsMap: Record<string, any[]> = {};
 
@@ -1346,8 +1337,7 @@ function loadCodexLogs(dirPath: string): { logData: any[]; subagentsMap: Record<
       parsedLines = parseJsonlFile(sessionPath);
     } catch {}
 
-    const parts = file.replace(/\.jsonl$/, '').split(/agent[-_]/);
-    const key = parts.length > 1 ? parts[parts.length - 1] : file.replace(/\.jsonl$/, '').replace(/^(?:subagent-|session-)/, '');
+    const key = file.replace(/\.jsonl$/, '').replace(/^(?:subagent-|session-)+(?:subagents-)*(?:agent[-_])?/, '');
     const isSubagent = file.startsWith('subagent-') || file.includes('-subagents-');
 
     if (isSubagent) {
@@ -1609,8 +1599,7 @@ function loadPiLogs(dirPath: string): { logData: any[]; subagentsMap: Record<str
       parsedLines = parseJsonlFile(sessionPath);
     } catch {}
 
-    const parts = file.replace(/\.jsonl$/, '').split(/agent[-_]/);
-    const key = parts.length > 1 ? parts[parts.length - 1] : file.replace(/\.jsonl$/, '').replace(/^(?:subagent-|session-)/, '');
+    const key = file.replace(/\.jsonl$/, '').replace(/^(?:subagent-|session-)+(?:subagents-)*(?:agent[-_])?/, '');
     const isSubagent = file.startsWith('subagent-') || file.includes('-subagents-');
 
     if (isSubagent) {
@@ -1702,8 +1691,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       try {
         const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
         const stripped = file.replace(/\.jsonl?$/, '');
-        const parts = stripped.split(/agent[-_]/);
-        const key = parts.length > 1 ? parts[parts.length - 1] : stripped.replace(/^(?:subagent-|session-)/, '');
+        const key = stripped.replace(/^(?:subagent-|session-)+(?:subagents-)*(?:agent[-_])?/, '');
         subagentsMap[key] = Array.isArray(logData) ? logData : ((logData as any)?.messages || []);
       } catch (e) {
         console.warn(`[TrajectoryParser] Failed to parse subagent file ${file}:`, e);
@@ -1711,7 +1699,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
     }
 
     if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI) {
-      summary = await parseJetskiTrajectory(targetDir, agentName);
+      summary = await parseJetskiTrajectory(targetDir);
     } else if (mainSessionFiles[0] || subagentFiles[0]) {
       const primaryFile = mainSessionFiles[0] || subagentFiles[0];
       const filePath = path.join(targetDir, primaryFile);
@@ -1751,11 +1739,8 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         summary.model = meta.model;
         summary.tokenUsage = meta.tokenUsage;
       } else {
-        console.warn(`[TrajectoryParser] Warning: Unknown agent "${agentName}". Attempting generic Codex/standard trajectory parsing. To add another agent, register a parser in generateNormalizedTrajectory.`);
         summary = parseCodexTrajectory(logData, subagentsMap);
       }
-    } else {
-      console.warn(`[TrajectoryParser] Warning: No session files found for non-Jetski agent "${agentName}". Cannot parse trajectory.`);
     }
 
     if (summary) {
@@ -1763,17 +1748,6 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
 
       if (initialPrompt) {
         summary.initialPrompt = initialPrompt;
-      }
-
-      // Merge MCP logs if it is desktop Jetski
-      if (agentName === Agents.JETSKI) {
-        const mcpGuides = extractGuidesFromMcpLog(targetDir);
-        summary.retrievedGuides = [...new Set([...(summary.retrievedGuides || []), ...mcpGuides])];
-        if (!summary.toolsUsed) {
-          summary.toolsUsed = ['modern-web-guidance'];
-        } else if (!summary.toolsUsed.includes('modern-web-guidance')) {
-          summary.toolsUsed.push('modern-web-guidance');
-        }
       }
 
       const outPath = path.join(targetDir, 'trajectory_summary.json');
@@ -1796,30 +1770,4 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), JSON.stringify(placeholder, null, 2), 'utf8');
     } catch {}
   }
-}
-
-function extractGuidesFromMcpLog(dirPath: string): string[] {
-  const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
-  let logContent = '';
-  try {
-    logContent = fs.readFileSync(logPath, 'utf8').trim();
-  } catch (err) {
-    if (isEnoent(err)) return [];
-    console.error(`Error reading MCP log:`, err);
-    return [];
-  }
-  if (!logContent) return [];
-  const lines = logContent.split('\n');
-  const toolCalls: any[] = [];
-  for (const line of lines) {
-    if (line.trim().startsWith('{')) {
-      try {
-        toolCalls.push(JSON.parse(line));
-      } catch {}
-    }
-  }
-  return toolCalls
-    .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
-    .flatMap(call => call.result.map((r: any) => r.id || ''))
-    .filter(Boolean);
 }

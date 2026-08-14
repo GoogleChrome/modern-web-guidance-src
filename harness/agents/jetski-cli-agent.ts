@@ -74,14 +74,12 @@ async function run() {
       );
     } finally {
       stopWatchingMcpLog();
+      // Capture trajectory
+      const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
+      exportTrajectories(conversationsDir, '*.pb', targetDir);
+      exportTrajectories(conversationsDir, '*.db', targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
     }
-
-    // Capture trajectory
-    const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
-    exportTrajectories(conversationsDir, '*.pb', targetDir);
-    exportTrajectories(conversationsDir, '*.db', targetDir);
-
-    await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
 
     console.log("Jetski CLI agent finished successfully.");
 

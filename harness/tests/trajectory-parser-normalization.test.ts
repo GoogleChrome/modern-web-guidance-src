@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DatabaseSync } from 'node:sqlite';
-import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
+import { generateNormalizedTrajectory, categorizeAction } from '../lib/trajectory-parser.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -483,6 +483,274 @@ test('Parser: Pi CLI normalization', async () => {
     assert.strictEqual(summary.steps[1].action?.name, 'write');
     assert.strictEqual(summary.steps[1].action?.type, 'write_file');
     assert.strictEqual(summary.steps[1].action?.canonicalCategory, 'code_mutation');
+
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('Parser: categorizeAction avoids false-positives from code mutation content', () => {
+  // Test 1: replace_file_content with "retrieve" in content should be code_mutation, NOT guide_retrieval
+  const cat1 = categorizeAction('replace_file_content', {
+    TargetFile: 'src/user.ts',
+    TargetContent: 'function retrieveUserData() { return null; }',
+    ReplacementContent: 'function retrieveUserData() { return { id: 1 }; }'
+  });
+  assert.strictEqual(cat1, 'code_mutation');
+
+  // Test 2: replace_file_content with "search" in content should be code_mutation, NOT skill_search
+  const cat2 = categorizeAction('replace_file_content', {
+    TargetFile: 'src/search-bar.ts',
+    TargetContent: 'const search = () => {};',
+    ReplacementContent: 'const search = (q) => performSearch(q);'
+  });
+  assert.strictEqual(cat2, 'code_mutation');
+
+  // Test 3: write_to_file with "retrieve" and "search" in content
+  const cat3 = categorizeAction('write_to_file', {
+    TargetFile: 'src/api.ts',
+    CodeContent: 'export async function retrieveAndSearch() {}'
+  });
+  assert.strictEqual(cat3, 'code_mutation');
+
+  // Test 4: edit / str_replace_editor tools
+  const cat4 = categorizeAction('str_replace_editor', {
+    command: 'str_replace',
+    path: 'index.html',
+    new_str: '<button onclick="search()">Search</button>'
+  });
+  assert.strictEqual(cat4, 'code_mutation');
+
+  // Test 5: Real guide retrieval / search tool calls are still classified correctly
+  const guideCat = categorizeAction('get_best_practices', { query: 'accessible-forms' });
+  assert.strictEqual(guideCat, 'skill_search');
+
+  const retrieveCat = categorizeAction('retrieve_guidance', { id: 'dialog' });
+  assert.strictEqual(retrieveCat, 'guide_retrieval');
+});
+
+test('Parser: Claude Code subagent agentId extraction from array or object content', async () => {
+  const tempDir = createTempDir();
+  try {
+    // Main session where tool_result has content as an array with text block containing agentId
+    const mainLines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T20:00:00.000Z',
+        message: {
+          content: [
+            {
+              type: 'thinking',
+              thinking: 'Dispatching worker subagent via array tool_result'
+            },
+            {
+              type: 'tool_use',
+              id: 'task_call_arr',
+              name: 'Task',
+              input: { prompt: 'Add responsive navigation' }
+            }
+          ]
+        }
+      }),
+      JSON.stringify({
+        role: 'user',
+        timestamp: '2026-08-09T20:00:05.000Z',
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'task_call_arr',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Subagent completed task. agentId: subagent-array-456'
+                }
+              ]
+            }
+          ]
+        }
+      })
+    ];
+
+    // Subagent session log
+    const subagentLines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T20:00:02.000Z',
+        message: {
+          content: [
+            {
+              type: 'thinking',
+              thinking: 'Subagent writing nav.css'
+            },
+            {
+              type: 'tool_use',
+              id: 'edit_call_sub',
+              name: 'write_file',
+              input: { file_path: 'nav.css', content: 'nav { display: flex; }' }
+            }
+          ]
+        }
+      }),
+      JSON.stringify({
+        role: 'user',
+        timestamp: '2026-08-09T20:00:03.000Z',
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'edit_call_sub',
+              content: 'Saved nav.css'
+            }
+          ]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-main.jsonl'), mainLines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'subagent-subagents-agent-subagent-array-456.jsonl'), subagentLines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Build navigation');
+
+    const summaryPath = path.join(tempDir, 'trajectory_summary.json');
+    assert.ok(fs.existsSync(summaryPath));
+
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    assert.strictEqual(summary.agent, Agents.CLAUDE_CODE);
+    assert.ok(summary.subagents, 'subagents metadata should be populated');
+    assert.ok(summary.subagents['subagent-array-456'], 'subagent-array-456 should be present in subagents metadata');
+    assert.strictEqual(summary.subagents['subagent-array-456'].totalSteps, 1);
+
+    // Total steps: 1 (main dispatch) + 1 (subagent write) = 2 steps
+    assert.strictEqual(summary.steps.length, 2);
+    assert.strictEqual(summary.steps[0].action?.name, 'Task');
+    assert.strictEqual(summary.steps[1].subagentId, 'subagent-array-456');
+    assert.strictEqual(summary.steps[1].action?.name, 'write_file');
+    assert.strictEqual(summary.steps[1].action?.type, 'write_file');
+    assert.strictEqual(summary.steps[1].outcome?.status, 'success');
+
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('Parser: Codex CLI normalization with commentary, response items, and subagent inlining', async () => {
+  const tempDir = createTempDir();
+  try {
+    // 1. Primary Codex session with commentary phase thoughts, response_item tool calls & outputs, and final_answer
+    const mainLines = [
+      JSON.stringify({
+        type: 'event_msg',
+        timestamp: '2026-08-09T20:30:00.000Z',
+        payload: {
+          type: 'agent_message',
+          phase: 'commentary',
+          message: 'Inspecting existing html structure'
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        timestamp: '2026-08-09T20:30:01.000Z',
+        payload: {
+          type: 'function_call',
+          call_id: 'call_codex_1',
+          name: 'exec_command',
+          arguments: JSON.stringify({ cmd: 'cat index.html' })
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        timestamp: '2026-08-09T20:30:02.000Z',
+        payload: {
+          type: 'function_call_output',
+          call_id: 'call_codex_1',
+          output: '<html><body>Hello</body></html>\nProcess exited with code 0'
+        }
+      }),
+      JSON.stringify({
+        type: 'event_msg',
+        timestamp: '2026-08-09T20:30:10.000Z',
+        payload: {
+          type: 'agent_message',
+          phase: 'final_answer',
+          message: 'Updated index.html with new structure'
+        }
+      })
+    ];
+
+    // 2. Subagent session log for Codex
+    const subagentLines = [
+      JSON.stringify({
+        type: 'event_msg',
+        timestamp: '2026-08-09T20:30:04.000Z',
+        payload: {
+          type: 'agent_message',
+          phase: 'commentary',
+          message: 'Subagent running tests'
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        timestamp: '2026-08-09T20:30:05.000Z',
+        payload: {
+          type: 'function_call',
+          call_id: 'call_codex_sub_1',
+          name: 'exec_command',
+          arguments: JSON.stringify({ cmd: 'npm test' })
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        timestamp: '2026-08-09T20:30:06.000Z',
+        payload: {
+          type: 'function_call_output',
+          call_id: 'call_codex_sub_1',
+          output: 'All tests passed\nProcess exited with code 0'
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-codex-main.jsonl'), mainLines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'subagent-agent-worker-cdx.jsonl'), subagentLines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.CODEX_CLI, 'Inspect and test');
+
+    const summaryPath = path.join(tempDir, 'trajectory_summary.json');
+    assert.ok(fs.existsSync(summaryPath), 'trajectory_summary.json should be created');
+
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    assert.strictEqual(summary.agent, Agents.CODEX_CLI);
+    assert.strictEqual(summary.initialPrompt, 'Inspect and test');
+    assert.ok(summary.subagents, 'subagents metadata should be populated');
+    assert.ok(summary.subagents['worker-cdx'], 'worker-cdx should be in subagents metadata');
+    assert.strictEqual(summary.subagents['worker-cdx'].totalSteps, 1);
+
+    // Total steps: 1 (main cat) + 1 (subagent test) + 1 (main final answer) = 3 steps
+    assert.strictEqual(summary.steps.length, 3);
+
+    // Step 1: main cat index.html (20:30:01)
+    assert.strictEqual(summary.steps[0].stepNumber, 1);
+    assert.strictEqual(summary.steps[0].timestamp, '2026-08-09T20:30:01.000Z');
+    assert.strictEqual(summary.steps[0].thought, 'Inspecting existing html structure');
+    assert.strictEqual(summary.steps[0].action?.name, 'cat index.html');
+    assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+
+    // Step 2: subagent npm test (20:30:05)
+    assert.strictEqual(summary.steps[1].stepNumber, 2);
+    assert.strictEqual(summary.steps[1].timestamp, '2026-08-09T20:30:05.000Z');
+    assert.strictEqual(summary.steps[1].subagentId, 'worker-cdx');
+    assert.strictEqual(summary.steps[1].thought, 'Subagent running tests');
+    assert.strictEqual(summary.steps[1].action?.name, 'npm test');
+    assert.strictEqual(summary.steps[1].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[1].outcome?.status, 'success');
+
+    // Step 3: main final_answer (20:30:10)
+    assert.strictEqual(summary.steps[2].stepNumber, 3);
+    assert.strictEqual(summary.steps[2].timestamp, '2026-08-09T20:30:10.000Z');
+    assert.strictEqual(summary.steps[2].action?.name, 'respond_to_user');
+    assert.strictEqual(summary.steps[2].action?.type, 'other');
+    assert.strictEqual(summary.steps[2].outcome?.status, 'success');
 
   } finally {
     removeTempDir(tempDir);

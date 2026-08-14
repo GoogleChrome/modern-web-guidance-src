@@ -34,12 +34,6 @@ export function getGeminiCliCommandAndArgs(prompt: string, extraArgs: string[] =
   return { command, commandArgs };
 }
 
-const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
-
-function getSessionFiles(dir: string, recursive = false): string[] {
-  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
-}
-
 /**
  * Executes the Gemini CLI command and captures output.
  */
@@ -73,13 +67,11 @@ async function run() {
       );
     } finally {
       stopWatchingMcpLog();
+      const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
+      exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
+      exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, userPrompt);
     }
-
-    const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
-    exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
-    exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
-
-    await generateNormalizedTrajectory(targetDir, Agents.GEMINI_CLI, userPrompt);
 
     console.log("Gemini CLI agent finished successfully.");
 

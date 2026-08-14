@@ -9,14 +9,6 @@ import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, watchLogFile, ex
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateNormalizedTrajectory } from '../lib/trajectory-parser.ts';
 
-const TRAJECTORY_GLOB = '*.jsonl';
-
-function getSessionFiles(dir: string, recursive = false): string[] {
-  if (!fs.existsSync(dir)) return [];
-  const pattern = recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB;
-  return fs.globSync(pattern, { cwd: dir });
-}
-
 export function setupPiCredentials(tempHome: string): void {
   const piSource = path.join(os.homedir(), '.pi');
   const piDest = path.join(tempHome, '.pi');
@@ -94,15 +86,13 @@ async function run() {
       );
     } finally {
       stopWatchingMcpLog();
+      // Capture trajectory from pi session directory
+      const sessionsDir = path.join(path.dirname(workDir), '.pi', 'agent', 'sessions');
+      exportTrajectories(sessionsDir, '*.jsonl', targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
     }
 
-    // Capture trajectory from pi session directory
-    const sessionsDir = path.join(path.dirname(workDir), '.pi', 'agent', 'sessions');
-    exportTrajectories(sessionsDir, '*.jsonl', targetDir);
-
     console.log("Pi agent finished successfully.");
-
-    await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
 
   } catch (err) {
     console.error("Error during Pi execution:", err);
