@@ -8,7 +8,7 @@ import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
 import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from './compare-prompts.ts';
 import { generateUnifiedDiff } from '../../lib/patch-utils.ts';
-import { categorizeAction, type StandardizedStep, type TrajectorySummary } from './trajectory-parser.ts';
+import { categorizeAction, type StandardizedStep, type TrajectorySummary } from './trajectory-normalizer.ts';
 import { parseResultPath } from './collection.ts';
 import { GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE } from '../../lib/guide-validation.ts';
 
