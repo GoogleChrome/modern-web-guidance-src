@@ -717,11 +717,11 @@ const server = http.createServer(async (req, res) => {
             const runDir = path.dirname(filePath);
             if (fs.existsSync(runDir)) {
               try {
-                const { generateNormalizedTrajectory } = await import('../harness/lib/trajectory-parser.ts');
+                const { generateNormalizedTrajectory } = await import('../harness/lib/trajectory-normalizer.ts');
                 const { agentName, isKnown } = detectAgentFromPath(filePath);
                 const resolvedAgent = getAgentFromEvalsJson(runDir, agentName);
                 if (!isKnown && resolvedAgent === agentName) {
-                  console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`);
+                  console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-normalizer.ts.`);
                 }
                 await generateNormalizedTrajectory(runDir, resolvedAgent, 'local');
               } catch (e) {
@@ -786,11 +786,11 @@ const server = http.createServer(async (req, res) => {
         if (path.basename(filePath) === 'trajectory_summary.json') {
           const runDir = path.dirname(filePath);
           if (fs.existsSync(runDir)) {
-            import('../harness/lib/trajectory-parser.ts').then(async ({ generateNormalizedTrajectory }) => {
+            import('../harness/lib/trajectory-normalizer.ts').then(async ({ generateNormalizedTrajectory }) => {
               const { agentName, isKnown } = detectAgentFromPath(filePath);
               const resolvedAgent = getAgentFromEvalsJson(runDir, agentName);
               if (!isKnown && resolvedAgent === agentName) {
-                console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`);
+                console.warn(`[Server] Warning: Could not detect known agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add a new agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-normalizer.ts.`);
               }
               await generateNormalizedTrajectory(runDir, resolvedAgent, 'local');
               if (fs.existsSync(filePath)) {
@@ -799,14 +799,14 @@ const server = http.createServer(async (req, res) => {
                 return;
               }
               const errMsg = !isKnown
-                ? `404 Not Found: Trajectory summary generation failed because an unknown agent was used for path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add another agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`
+                ? `404 Not Found: Trajectory summary generation failed because an unknown agent was used for path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add another agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-normalizer.ts.`
                 : `404 Not Found: Trajectory summary generation failed for agent "${agentName}" in path "${filePath}".`;
               res.writeHead(404);
               res.end(errMsg);
             }).catch(e => {
               const { agentName, isKnown } = detectAgentFromPath(filePath);
               const errMsg = !isKnown
-                ? `Failed to auto-generate trajectory summary for unknown agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add another agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-parser.ts.`
+                ? `Failed to auto-generate trajectory summary for unknown agent in path "${filePath}". Supported identifiers: ${SUPPORTED_AGENTS.map(a => a.match).join(', ')}. To add another agent, update SUPPORTED_AGENTS in eval-view/server.js and generateNormalizedTrajectory in harness/lib/trajectory-normalizer.ts.`
                 : `Failed to auto-generate trajectory summary for agent "${agentName}": ${e.message}`;
               console.error(errMsg, e);
               res.writeHead(404);
