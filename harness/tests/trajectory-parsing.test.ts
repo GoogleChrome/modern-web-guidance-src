@@ -269,6 +269,8 @@ test('trajectory_summary.json generation and priority read', async () => {
   const tempDir = createTempDir();
   try {
     writeTrajectorySummary(tempDir, {
+      agent: Agents.JETSKI_CLI,
+      steps: [],
       retrievedGuides: ['summary-guide-1'],
       fileReadGuides: ['summary-read-1'],
       toolsUsed: ['modern-web-guidance'],

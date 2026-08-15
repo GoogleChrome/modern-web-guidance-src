@@ -1,98 +1,74 @@
 import fs from 'fs';
 import path from 'path';
-import { parseJsonlFile, isEnoent } from './agent-shared.ts';
+import { parseJsonlFile } from './agent-shared.ts';
 import { Agents } from '../config.ts';
 
-import {
-  parseClaudeTrajectory,
-  extractClaudeMetadata,
-  collectClaudeGuidesFromTrajectory,
-  extractClaudeCodeModel,
-  extractClaudeCodeTokenUsage,
-  collectClaudeToolsFromTrajectory
-} from '../agents/claude-code-agent.ts';
+// Colocated agent parsers
+import { parseClaudeTrajectory } from '../agents/claude-code-agent.ts';
+import { parseGeminiTrajectory } from '../agents/gemini-cli-agent.ts';
+import { parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
+import { parseJetskiTrajectory } from '../agents/jetski-cli-agent.ts';
+import { parsePiTrajectory } from '../agents/pi-agent.ts';
 
-import {
-  parseGeminiTrajectory,
-  extractGeminiMetadata,
-  collectGeminiGuidesFromTrajectory,
-  extractGeminiCliModel,
-  extractGeminiCliTokenUsage,
-  collectGeminiToolsFromTrajectory
-} from '../agents/gemini-cli-agent.ts';
-
-import {
-  parseCodexTrajectory,
-  extractCodexMetadata,
-  collectCodexGuidesFromTrajectory,
-  extractCodexCliModel,
-  extractCodexCliTokenUsage,
-  collectCodexToolsFromTrajectory
-} from '../agents/codex-cli-agent.ts';
-
-import {
-  parseJetskiTrajectory,
-  parseJetskiCliSession,
-  collectJetskiCliGuidesFromTrajectory,
-  extractJetskiCliModel,
-  extractJetskiCliTokenUsage,
-  collectJetskiCliToolsFromTrajectory
-} from '../agents/jetski-cli-agent.ts';
-
-import {
-  parsePiTrajectory,
-  extractPiMetadata,
-  collectPiGuidesFromTrajectory,
-  extractPiModel,
-  extractPiTokenUsage,
-  collectPiToolsFromTrajectory
-} from '../agents/pi-agent.ts';
-
+// Re-export for test compatibility and legacy callers
 export {
   parseClaudeTrajectory,
-  extractClaudeMetadata,
   collectClaudeGuidesFromTrajectory,
+  collectClaudeToolsFromTrajectory,
   extractClaudeCodeModel,
   extractClaudeCodeTokenUsage,
-  collectClaudeToolsFromTrajectory,
+  loadClaudeLogs,
+  extractClaudeMetadata
+} from '../agents/claude-code-agent.ts';
+
+export {
   parseGeminiTrajectory,
-  extractGeminiMetadata,
   collectGeminiGuidesFromTrajectory,
+  collectGeminiToolsFromTrajectory,
   extractGeminiCliModel,
   extractGeminiCliTokenUsage,
-  collectGeminiToolsFromTrajectory,
+  loadGeminiLogs,
+  extractGeminiMetadata
+} from '../agents/gemini-cli-agent.ts';
+
+export {
   parseCodexTrajectory,
-  extractCodexMetadata,
   collectCodexGuidesFromTrajectory,
+  collectCodexToolsFromTrajectory,
   extractCodexCliModel,
   extractCodexCliTokenUsage,
-  collectCodexToolsFromTrajectory,
+  loadCodexLogs,
+  extractCodexMetadata
+} from '../agents/codex-cli-agent.ts';
+
+export {
   parseJetskiTrajectory,
   parseJetskiCliSession,
   collectJetskiCliGuidesFromTrajectory,
-  extractJetskiCliModel,
-  extractJetskiCliTokenUsage,
   collectJetskiCliToolsFromTrajectory,
-  parsePiTrajectory,
-  extractPiMetadata,
-  collectPiGuidesFromTrajectory,
-  extractPiModel,
-  extractPiTokenUsage,
-  collectPiToolsFromTrajectory
-};
+  extractJetskiCliModel,
+  extractJetskiCliTokenUsage
+} from '../agents/jetski-cli-agent.ts';
 
-export function getSessionFiles(dir: string, globPattern: string): string[] {
+export {
+  parsePiTrajectory,
+  collectPiGuidesFromTrajectory,
+  collectPiToolsFromTrajectory,
+  extractPiModel,
+  extractPiTokenUsage
+} from '../agents/pi-agent.ts';
+
+
+export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
+
+const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
+
+export function getSessionFiles(dir: string, recursive = false): string[] {
   if (!fs.existsSync(dir)) return [];
-  return fs.globSync(globPattern, { cwd: dir });
+  const pattern = recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB;
+  return fs.globSync(pattern, { cwd: dir });
 }
 
-/**
- * Represents a single normalized action step in an agent's execution trajectory.
- * 
- * Note: Tool outputs (`outcome.message`) and large parameter payloads are intentionally
- * truncated during normalization to keep `trajectory_summary.json` lightweight for fast
- * UI timeline rendering and prompt budgeting in downstream comparison tools.
- */
 export interface StandardizedStep {
   stepNumber: number;
   timestamp?: string;
@@ -121,6 +97,7 @@ export interface SubagentMetadata {
 
 export interface TrajectorySummary {
   agent: string;
+  serving?: string;
   steps: StandardizedStep[];
   subagents?: Record<string, SubagentMetadata>;
   tokenUsage?: { total: number; cached: number };
@@ -156,6 +133,7 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
     return 'other';
   }
 
+  // 1. Code mutation takes highest priority to prevent false positives from code containing words like "search" or "retrieve"
   if (
     actionName.includes('write') || actionName.includes('replace') || actionName.includes('edit') || actionName.includes('touch') ||
     actionParamsStr.includes('write_to_file') || actionParamsStr.includes('replace_file_content') ||
@@ -164,14 +142,17 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
     return 'code_mutation';
   }
 
+  // 2. Guide retrieval
   if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
     return 'guide_retrieval';
   }
 
+  // 3. Skill search
   if (actionName.includes('search') || actionName.includes('get_best_practices') || actionName.includes('query_guidance') || actionParamsStr.includes('search')) {
     return 'skill_search';
   }
 
+  // 4. Mandatory rule thought
   if (
     thoughtStr.includes('mandatory') || thoughtStr.includes('fallback') ||
     thoughtStr.includes('css') || thoughtStr.includes('baseline') ||
@@ -185,26 +166,14 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
 
 export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
   if (Array.isArray(summary.steps)) {
-    let missingTimestampCount = 0;
-    for (const step of summary.steps) {
-      if (!step.timestamp) missingTimestampCount++;
-    }
-    if (missingTimestampCount > 0 && missingTimestampCount < summary.steps.length) {
-      console.warn(`[TrajectoryParser] Warning: ${missingTimestampCount} of ${summary.steps.length} steps in ${summary.agent} trajectory are missing timestamps. Sequence ordering will fallback to insertion order for untimestamped steps.`);
-    }
-
-    // Sort steps monotonically by timestamp when available, preserving stable order otherwise
     summary.steps.sort((a, b) => {
       if (a.timestamp && b.timestamp) {
         const timeDiff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
         if (timeDiff !== 0) return timeDiff;
       }
-      if (a.timestamp && !b.timestamp) return -1;
-      if (!a.timestamp && b.timestamp) return 1;
       return 0;
     });
 
-    // Re-index step numbers strictly 1..N and populate canonicalCategory
     for (let i = 0; i < summary.steps.length; i++) {
       const step = summary.steps[i];
       step.stepNumber = i + 1;
@@ -216,9 +185,6 @@ export function finalizeTrajectorySummary(summary: TrajectorySummary): Trajector
   return summary;
 }
 
-/**
- * Maps a tool name to a standardized action type.
- */
 export function mapToolType(toolName: string): NonNullable<StandardizedStep['action']>['type'] {
   const name = toolName.toLowerCase();
   if (['read', 'read_file', 'view_file', 'view'].some(k => name.includes(k))) {
@@ -227,7 +193,7 @@ export function mapToolType(toolName: string): NonNullable<StandardizedStep['act
   if (['write', 'write_file', 'replace', 'str_replace_editor', 'edit', 'edit_file', 'save'].some(k => name.includes(k))) {
     return 'write_file';
   }
-  if (['bash', 'execute_bash', 'run_command', 'run_shell_command', 'terminal', 'shell', 'exec_command', 'exec'].some(k => name.includes(k))) {
+  if (['bash', 'execute_bash', 'run_command', 'run_shell_command', 'terminal', 'shell'].some(k => name.includes(k))) {
     return 'run_command';
   }
   if (['search', 'get_best_practices', 'retrieve', 'query_guidance'].some(k => name.includes(k))) {
@@ -236,9 +202,6 @@ export function mapToolType(toolName: string): NonNullable<StandardizedStep['act
   return 'other';
 }
 
-/**
- * Truncates long tool outputs or messages to keep the summary lightweight.
- */
 export function truncateMessage(msg: any, maxLen = 300): string {
   if (!msg) return '';
   const str = typeof msg === 'object' ? JSON.stringify(msg) : String(msg);
@@ -248,123 +211,91 @@ export function truncateMessage(msg: any, maxLen = 300): string {
   return str;
 }
 
-export function writeTrajectorySummary(targetDir: string, summary: any): void {
-  fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), JSON.stringify(summary, null, 2), 'utf8');
+export function writeTrajectorySummary(targetDir: string, summary: TrajectorySummary): void {
+  fs.writeFileSync(path.join(targetDir, TRAJECTORY_SUMMARY_FILE), JSON.stringify(summary, null, 2), 'utf8');
 }
 
-export function readTrajectorySummary(dir: string): any | null {
-  const summaryPath = path.join(dir, 'trajectory_summary.json');
-  if (fs.existsSync(summaryPath)) {
-    try {
-      return JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-    } catch {}
+export function readTrajectorySummary(targetDir: string): TrajectorySummary | null {
+  const summaryPath = path.join(targetDir, TRAJECTORY_SUMMARY_FILE);
+  if (!fs.existsSync(summaryPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+  } catch {
+    return null;
   }
-  return null;
 }
 
 export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
   try {
     let summary: TrajectorySummary | null = null;
 
-    let allFiles: string[] = [];
-    try {
-      allFiles = fs.readdirSync(targetDir);
-    } catch (err) {
-      if (!isEnoent(err)) throw err;
-    }
-
-    const mainSessionFiles = allFiles
-      .filter(f => f.startsWith('session-') && !f.includes('-subagents-') && (f.endsWith('.json') || f.endsWith('.jsonl')))
-      .sort((a, b) => a.localeCompare(b));
-
-    const subagentFiles = allFiles
-      .filter(f => (f.startsWith('subagent-') || f.includes('-subagents-')) && (f.endsWith('.json') || f.endsWith('.jsonl')))
-      .sort((a, b) => a.localeCompare(b));
-
-    const subagentsMap: Record<string, any[]> = {};
-    for (const file of subagentFiles) {
-      const filePath = path.join(targetDir, file);
-      try {
-        const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        const stripped = file.replace(/\.jsonl?$/, '');
-        const key = stripped.replace(/^(?:subagent-|session-)+(?:subagents-)*(?:agent[-_])?/, '');
-        subagentsMap[key] = Array.isArray(logData) ? logData : ((logData as any)?.messages || []);
-      } catch (e) {
-        console.warn(`[TrajectoryParser] Failed to parse subagent file ${file}:`, e);
-      }
-    }
-
     if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI) {
       summary = await parseJetskiTrajectory(targetDir);
-    } else if (mainSessionFiles[0] || subagentFiles[0]) {
-      const primaryFile = mainSessionFiles[0] || subagentFiles[0];
-      const filePath = path.join(targetDir, primaryFile);
-      const isJsonl = filePath.endsWith('.jsonl');
-      const logData = isJsonl ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } else {
+      let allFiles: string[] = [];
+      try {
+        allFiles = fs.readdirSync(targetDir);
+      } catch (err) {
+        if (!isEnoent(err)) throw err;
+      }
 
-      if (agentName === Agents.CLAUDE_CODE) {
-        summary = parseClaudeTrajectory(logData, subagentsMap);
-        const meta = extractClaudeMetadata(logData, subagentsMap);
-        summary.retrievedGuides = meta.retrievedGuides;
-        summary.fileReadGuides = meta.fileReadGuides;
-        summary.toolsUsed = meta.toolsUsed;
-        summary.model = meta.model;
-        summary.tokenUsage = meta.tokenUsage;
-      } else if (agentName === Agents.GEMINI_CLI) {
-        summary = parseGeminiTrajectory(logData, subagentsMap);
-        const meta = extractGeminiMetadata(logData, subagentsMap);
-        summary.retrievedGuides = meta.retrievedGuides;
-        summary.fileReadGuides = meta.fileReadGuides;
-        summary.toolsUsed = meta.toolsUsed;
-        summary.model = meta.model;
-        summary.tokenUsage = meta.tokenUsage;
-      } else if (agentName === Agents.CODEX_CLI) {
-        summary = parseCodexTrajectory(logData, subagentsMap);
-        const meta = extractCodexMetadata(logData, subagentsMap);
-        summary.retrievedGuides = meta.retrievedGuides;
-        summary.fileReadGuides = meta.fileReadGuides;
-        summary.toolsUsed = meta.toolsUsed;
-        summary.model = meta.model;
-        summary.tokenUsage = meta.tokenUsage;
-      } else if (agentName === Agents.PI) {
-        summary = parsePiTrajectory(logData, subagentsMap);
-        const meta = extractPiMetadata(logData, subagentsMap);
-        summary.retrievedGuides = meta.retrievedGuides;
-        summary.fileReadGuides = meta.fileReadGuides;
-        summary.toolsUsed = meta.toolsUsed;
-        summary.model = meta.model;
-        summary.tokenUsage = meta.tokenUsage;
-      } else {
-        summary = parseCodexTrajectory(logData, subagentsMap);
+      const mainSessionFiles = allFiles
+        .filter(f => f.startsWith('session-') && !f.includes('-subagents-') && (f.endsWith('.json') || f.endsWith('.jsonl')))
+        .sort((a, b) => a.localeCompare(b));
+
+      const subagentFiles = allFiles
+        .filter(f => (f.startsWith('subagent-') || f.includes('-subagents-')) && (f.endsWith('.json') || f.endsWith('.jsonl')))
+        .sort((a, b) => a.localeCompare(b));
+
+      const subagentsMap: Record<string, any[]> = {};
+      for (const file of subagentFiles) {
+        const filePath = path.join(targetDir, file);
+        try {
+          const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          let key = file.replace(/\.jsonl?$/, '');
+          const agentMatch = key.match(/(?:^|[-_])agent[-_]([a-zA-Z0-9_-]+)$/);
+          if (agentMatch) {
+            key = agentMatch[1];
+          } else {
+            key = key.replace(/^(?:subagent-|session-)/, '');
+          }
+          subagentsMap[key] = Array.isArray(logData) ? logData : ((logData as any)?.messages || []);
+        } catch (e) {
+          console.warn(`[TrajectoryParser] Failed to parse subagent file ${file}:`, e);
+        }
+      }
+
+      if (mainSessionFiles[0] || subagentFiles[0]) {
+        const primaryFile = mainSessionFiles[0] || subagentFiles[0];
+        const filePath = path.join(targetDir, primaryFile);
+        const logData = primaryFile.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+        if (agentName === Agents.CLAUDE_CODE) {
+          summary = parseClaudeTrajectory(logData, subagentsMap);
+        } else if (agentName === Agents.GEMINI_CLI) {
+          summary = parseGeminiTrajectory(logData, subagentsMap);
+        } else if (agentName === Agents.CODEX_CLI) {
+          summary = parseCodexTrajectory(logData, subagentsMap);
+        } else if (agentName === Agents.PI) {
+          summary = parsePiTrajectory(logData, subagentsMap);
+        }
       }
     }
 
     if (summary) {
+      summary.initialPrompt = initialPrompt;
       finalizeTrajectorySummary(summary);
-
-      if (initialPrompt) {
-        summary.initialPrompt = initialPrompt;
-      }
-
-      const outPath = path.join(targetDir, 'trajectory_summary.json');
-      fs.writeFileSync(outPath, JSON.stringify(summary, null, 2), 'utf8');
-      console.log(`[TrajectoryParser] Generated trajectory summary: ${outPath}`);
-    } else {
-      console.warn(`[TrajectoryParser] No trajectory files found in ${targetDir} to summarize.`);
+      writeTrajectorySummary(targetDir, summary);
     }
-  } catch (err: any) {
-    console.error(`[TrajectoryParser] Robustness warning: Failed to generate trajectory summary: ${err.message}`);
-    try {
-      const placeholder: TrajectorySummary = finalizeTrajectorySummary({
-        agent: agentName,
-        steps: [{
-          stepNumber: 1,
-          thought: "Failed to parse trajectory logs during execution.",
-          outcome: { status: 'error', message: `Telemetry unparseable: ${err.message}` }
-        }]
-      });
-      fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), JSON.stringify(placeholder, null, 2), 'utf8');
-    } catch {}
+  } catch (err) {
+    console.error(`[TrajectoryParser] Failed to generate normalized trajectory for ${agentName}:`, err);
   }
 }
 
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}

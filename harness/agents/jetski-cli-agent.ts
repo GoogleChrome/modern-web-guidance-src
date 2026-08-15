@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
 import config, { Agents } from '../config.ts';
-import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, createTrustedFolders, copyFileIfExists, setupIsolatedWorkDir, isEnoent, type GuideUsage } from '../lib/agent-shared.ts';
+import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, createTrustedFolders, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import {
   type StandardizedStep,
@@ -11,8 +11,6 @@ import {
   extractTimestamp,
   truncateMessage,
   finalizeTrajectorySummary,
-  readTrajectorySummary,
-  getSessionFiles,
   generateNormalizedTrajectory
 } from '../lib/trajectory-parser.ts';
 
@@ -49,39 +47,119 @@ export function getJetskiCliCommandAndArgs(prompt: string): { command: string; c
   return { command, commandArgs };
 }
 
-function findJsonObjectsInString(str: string): any[] {
+export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
+
+export function writeTrajectorySummary(targetDir: string, summary: TrajectorySummary): void {
+  fs.writeFileSync(path.join(targetDir, TRAJECTORY_SUMMARY_FILE), JSON.stringify(summary, null, 2), 'utf8');
+}
+
+export function readTrajectorySummary(dir: string): TrajectorySummary | null {
+  const summaryPath = path.join(dir, TRAJECTORY_SUMMARY_FILE);
+  if (fs.existsSync(summaryPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    } catch {}
+  }
+  return null;
+}
+
+/**
+ * Executes the Jetski CLI command and captures output.
+ */
+async function run() {
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
+  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType, targetDir);
+
+  if (!workDir || !fs.existsSync(workDir)) {
+    throw new Error(`Failed to initialize working directory: ${workDir}`);
+  }
+
+  try {
+    console.log(`Starting Jetski CLI agent in: ${workDir}`);
+
+    const { command, commandArgs } = getJetskiCliCommandAndArgs(userPrompt);
+
+    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
+
+    process.env.MODERN_WEB_LOG_DIR = targetDir;
+    let stopWatchingMcpLog = () => { };
+
+    try {
+      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
+
+      await runCliAgentCommand(
+        command,
+        commandArgs,
+        workDir,
+        targetDir,
+        'Jetski CLI'
+      );
+    } finally {
+      stopWatchingMcpLog();
+      const jetskiLogDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'brain');
+      exportTrajectories(jetskiLogDir, '**/*.db', targetDir);
+      exportTrajectories(jetskiLogDir, '**/modern-web.log', targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
+    }
+
+    console.log("Jetski CLI agent finished successfully.");
+
+  } catch (err) {
+    console.error("Error during Jetski CLI execution:", err);
+    process.exitCode = 1;
+  } finally {
+    cleanupIsolatedHome(path.dirname(workDir));
+  }
+}
+
+export function findJsonObjectsInString(str: string): any[] {
   const results: any[] = [];
   for (let i = 0; i < str.length; i++) {
     if (str[i] === '{') {
-      let balance = 0;
+      let openBraces = 0;
       let inString = false;
       let escape = false;
+      let end = -1;
+
       for (let j = i; j < str.length; j++) {
-        const c = str[j];
-        if (escape) { escape = false; continue; }
-        if (c === '\\') { escape = true; continue; }
-        if (c === '"') { inString = !inString; continue; }
+        const char = str[j];
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        if (char === '\\') {
+          escape = true;
+          continue;
+        }
+        if (char === '"') {
+          inString = !inString;
+          continue;
+        }
         if (!inString) {
-          if (c === '{') balance++;
-          else if (c === '}') {
-            balance--;
-            if (balance === 0) {
-              const candidate = str.slice(i, j + 1);
-              try {
-                const obj = JSON.parse(candidate);
-                if (obj && typeof obj === 'object') results.push(obj);
-              } catch (e) {}
+          if (char === '{') openBraces++;
+          else if (char === '}') {
+            openBraces--;
+            if (openBraces === 0) {
+              end = j + 1;
               break;
             }
           }
         }
+      }
+
+      if (end !== -1) {
+        const candidate = str.substring(i, end);
+        try {
+          results.push(JSON.parse(candidate));
+          i = end - 1;
+        } catch {}
       }
     }
   }
   return results;
 }
 
-function parseProtobuf(buffer: Buffer): Record<number, any[]> {
+export function parseProtobuf(buffer: Buffer): Record<number, any[]> {
   let pos = 0;
   const fields: Record<number, any[]> = {};
 
@@ -144,7 +222,16 @@ function parseProtobuf(buffer: Buffer): Record<number, any[]> {
   return fields;
 }
 
-function getProtoStrings(node: any, results: string[] = []): string[] {
+const TRAJECTORY_GLOB = '*.db';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  if (!fs.existsSync(dir)) return [];
+  const pattern = recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB;
+  const files = fs.globSync(pattern, { cwd: dir });
+  return (files as string[]).filter(f => !f.endsWith('-shm') && !f.endsWith('-wal'));
+}
+
+export function getProtoStrings(node: any, results: string[] = []): string[] {
   if (!node) return results;
   if (typeof node === 'string') {
     results.push(node);
@@ -158,13 +245,118 @@ function getProtoStrings(node: any, results: string[] = []): string[] {
   return results;
 }
 
-export function parseJetskiCliSession(dirPath: string): {
-  retrievedGuides: string[];
-  fileReadGuides: string[];
-  toolsUsed: string[];
-  model?: string;
-  tokenUsage?: { total: number; cached: number };
-} {
+export async function parseJetskiTrajectory(dirPath: string): Promise<TrajectorySummary> {
+  const steps: StandardizedStep[] = [];
+  const seenJsonHashes = new Set<string>();
+
+  const dbFiles = getSessionFiles(dirPath);
+  if (dbFiles.length > 0) {
+    try {
+      const db = new DatabaseSync(path.join(dirPath, dbFiles[0]));
+      const rows = db.prepare('SELECT * FROM steps ORDER BY idx').all() as any[];
+      for (const r of rows) {
+        if (!r.step_payload) continue;
+        const objs = findJsonObjectsInString(Buffer.from(r.step_payload).toString('utf8'));
+        const isErr = [2, 4, 5].includes(r.status);
+        for (const obj of objs) {
+          if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
+          const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
+          if (seenJsonHashes.has(key)) continue;
+          seenJsonHashes.add(key);
+          const timestamp = extractTimestamp(obj) || (r.timestamp ? new Date(r.timestamp).toISOString() : undefined);
+          const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
+
+          if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
+            const targetFile = obj.TargetFile || 'target_file';
+            const toolName = obj.ReplacementChunks ? 'multi_replace_file_content' : (obj.CodeContent ? 'write_to_file' : 'replace_file_content');
+            steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
+              action: {
+                type: 'write_file',
+                name: toolName,
+                params: {
+                  targetFile,
+                  content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', 200)
+                }
+              },
+              outcome: { status: isErr ? 'error' : 'success' }
+            });
+          } else if (obj.CommandLine || (obj.toolAction && obj.toolAction.includes('Running command'))) {
+            let actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
+            let actName = obj.CommandLine ? obj.CommandLine.split(' ')[0] : 'terminal_command';
+            const params: Record<string, any> = { command: obj.CommandLine || obj.toolAction };
+
+            if (/(?:modern-web-guidance|modern-web|\bgd\b)/.test(obj.CommandLine) && (obj.CommandLine.includes('search') || obj.CommandLine.includes('retrieve'))) {
+              actType = 'web_search';
+              actName = 'get_best_practices';
+              const qMatch = obj.CommandLine.match(/(?:search|retrieve)\s+["']?([^"'\n]+)["']?/i);
+              if (qMatch) {
+                params.query = qMatch[1];
+              }
+            }
+
+            steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought: obj.toolSummary || obj.toolAction || 'Running terminal command',
+              action: {
+                type: actType,
+                name: actName,
+                params
+              },
+              outcome: { status: isErr ? 'error' : 'success' }
+            });
+          } else if (obj.AbsolutePath || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading')))) {
+            steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
+              action: {
+                type: 'read_file',
+                name: 'view_file',
+                params: { path: obj.AbsolutePath || obj.toolSummary }
+              },
+              outcome: { status: isErr ? 'error' : 'success' }
+            });
+          } else if (obj.DirectoryPath || (obj.toolAction && obj.toolAction.includes('Listing'))) {
+            steps.push({
+              stepNumber: 0,
+              timestamp,
+              subagentId,
+              thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
+              action: {
+                type: 'read_file',
+                name: 'list_dir',
+                params: { path: obj.DirectoryPath }
+              },
+              outcome: { status: isErr ? 'error' : 'success' }
+            });
+          }
+        }
+      }
+      db.close();
+    } catch {}
+  }
+
+  const legacy = parseJetskiCliSession(dirPath);
+
+  return finalizeTrajectorySummary({
+    agent: Agents.JETSKI_CLI,
+    steps,
+    model: legacy.model,
+    tokenUsage: legacy.tokenUsage,
+    toolsUsed: legacy.toolsUsed,
+    retrievedGuides: legacy.retrievedGuides,
+    fileReadGuides: legacy.fileReadGuides
+  });
+}
+
+export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   const toolsUsed: string[] = [];
@@ -173,7 +365,7 @@ export function parseJetskiCliSession(dirPath: string): {
   let totalCached = 0;
   let hasTokens = false;
 
-  const files = getSessionFiles(dirPath, '*.db').filter(f => !f.endsWith('-shm') && !f.endsWith('-wal'));
+  const files = getSessionFiles(dirPath);
   for (const file of files) {
     const fullPath = path.join(dirPath, file);
     try {
@@ -255,6 +447,8 @@ export function parseJetskiCliSession(dirPath: string): {
   }
 
   return {
+    agent: Agents.JETSKI_CLI,
+    steps: [],
     retrievedGuides: [...new Set(retrievedGuides)],
     fileReadGuides: [...new Set(fileReadGuides)],
     toolsUsed: [...new Set(toolsUsed)],
@@ -263,277 +457,30 @@ export function parseJetskiCliSession(dirPath: string): {
   };
 }
 
-export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
-  const summary = readTrajectorySummary(dirPath);
-  if (summary?.retrievedGuides || summary?.fileReadGuides) {
-    return {
-      retrievedGuides: summary.retrievedGuides || [],
-      fileReadGuides: summary.fileReadGuides || []
-    };
-  }
-  const legacy = parseJetskiCliSession(dirPath);
+export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+  const summary = parseJetskiCliSession(dirPath);
   return {
-    retrievedGuides: legacy.retrievedGuides,
-    fileReadGuides: legacy.fileReadGuides
+    retrievedGuides: summary?.retrievedGuides || [],
+    fileReadGuides: summary?.fileReadGuides || []
   };
 }
 
 export function extractJetskiCliModel(resultsDir: string): string {
-  const summary = readTrajectorySummary(resultsDir);
-  if (summary?.model && summary.model !== 'unknown') return summary.model;
-  const legacy = parseJetskiCliSession(resultsDir);
-  return legacy.model || 'unknown';
+  const summary = parseJetskiCliSession(resultsDir);
+  return summary.model || 'unknown';
 }
 
 export function extractJetskiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  const summary = readTrajectorySummary(dir);
-  if (summary?.tokenUsage) return summary.tokenUsage;
-  const legacy = parseJetskiCliSession(dir);
-  return legacy.tokenUsage;
+  const summary = parseJetskiCliSession(dir);
+  return summary?.tokenUsage;
 }
 
 export function collectJetskiCliToolsFromTrajectory(dir: string): string[] {
-  const summary = readTrajectorySummary(dir);
-  if (summary?.toolsUsed) return summary.toolsUsed;
-  const legacy = parseJetskiCliSession(dir);
-  return legacy.toolsUsed;
-}
-
-export async function parseJetskiTrajectory(dirPath: string): Promise<TrajectorySummary> {
-  const steps: StandardizedStep[] = [];
-  const seenJsonHashes = new Set<string>();
-
-  // 1. Check for Jetski SQLite .db database files to extract real tool calls and step mutations
-  let dbFiles: string[] = [];
-  try {
-    dbFiles = fs.readdirSync(dirPath).filter(f => f.endsWith('.db'));
-  } catch (err) {
-    if (!isEnoent(err)) throw err;
-  }
-  if (dbFiles.length > 0) {
-    try {
-      const { DatabaseSync } = await import('node:sqlite');
-      const db = new DatabaseSync(path.join(dirPath, dbFiles[0]));
-      const rows = db.prepare('SELECT * FROM steps ORDER BY idx').all() as any[];
-      for (const r of rows) {
-        if (!r.step_payload) continue;
-        const objs = findJsonObjectsInString(Buffer.from(r.step_payload).toString('utf8'));
-        const isErr = [2, 4, 5].includes(r.status);
-        for (const obj of objs) {
-          if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
-          const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
-          if (seenJsonHashes.has(key)) continue;
-          seenJsonHashes.add(key);
-          const timestamp = extractTimestamp(obj) || extractTimestamp(r);
-          const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
-
-          if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
-            const targetFile = obj.TargetFile || 'target_file';
-            const toolName = obj.ReplacementChunks ? 'multi_replace_file_content' : (obj.CodeContent ? 'write_to_file' : 'replace_file_content');
-            steps.push({
-              stepNumber: 0,
-              timestamp,
-              subagentId,
-              thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
-              action: {
-                type: 'write_file',
-                name: toolName,
-                params: { targetFile: truncateMessage(targetFile, 150) }
-              },
-              outcome: {
-                status: isErr ? 'error' : 'success',
-                message: isErr ? 'File modification failed' : 'File modified successfully'
-              }
-            });
-          } else if (obj.CommandLine) {
-            let actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
-            let actName = 'run_command';
-            let params: any = { command: truncateMessage(obj.CommandLine, 150) };
-            if (/(?:modern-web-guidance|modern-web|\bgd\b)/.test(obj.CommandLine) && (obj.CommandLine.includes('search') || obj.CommandLine.includes('retrieve'))) {
-              actType = 'web_search';
-              actName = 'get_best_practices';
-              const qMatch = obj.CommandLine.match(/(?:search|retrieve)\s+["']?([^"'\n]+)["']?/i);
-              params = { query: qMatch ? truncateMessage(qMatch[1], 150) : truncateMessage(obj.CommandLine, 150), command: truncateMessage(obj.CommandLine, 150) };
-            }
-            steps.push({
-              stepNumber: 0,
-              timestamp,
-              subagentId,
-              thought: obj.toolSummary || obj.toolAction || 'Running terminal command',
-              action: {
-                type: actType,
-                name: actName,
-                params
-              },
-              outcome: {
-                status: isErr ? 'error' : 'success',
-                message: isErr ? 'Command failed' : 'Command completed successfully'
-              }
-            });
-          } else if (obj.AbsolutePath || obj.DirectoryPath) {
-            steps.push({
-              stepNumber: 0,
-              timestamp,
-              subagentId,
-              thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
-              action: {
-                type: 'read_file',
-                name: obj.DirectoryPath ? 'list_dir' : 'view_file',
-                params: { path: truncateMessage(obj.AbsolutePath || obj.DirectoryPath, 150) }
-              },
-              outcome: {
-                status: isErr ? 'error' : 'success',
-                message: isErr ? 'Inspection failed' : 'Inspection completed'
-              }
-            });
-          }
-        }
-      }
-      db.close();
-    } catch (e: any) {
-      console.warn(`[TrajectoryParser] Note: Could not parse Jetski .db file (${e.message}).`);
-    }
-  }
-
-  // 2. Process modern-web.log for guide searches/retrievals and attach actual results
-  const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
-  let logContent = '';
-  try {
-    logContent = fs.readFileSync(logPath, 'utf8').trim();
-  } catch (err) {
-    if (!isEnoent(err)) {
-      console.error(`[TrajectoryParser] Error reading modern-web.log:`, err);
-    }
-  }
-  if (logContent) {
-    const lines = logContent.split('\n');
-    const logCalls: any[] = [];
-    for (const line of lines) {
-      if (line.trim().startsWith('{')) {
-        try { logCalls.push(JSON.parse(line)); } catch {}
-      }
-    }
-    if (steps.length === 0) {
-      for (const call of logCalls) {
-        if (call.tool === 'get_best_practices' || call.tool === 'search_use_cases') {
-          steps.push({
-            stepNumber: 0,
-            thought: call.tool === 'search_use_cases' ? 'Searching for relevant web guidance patterns' : 'Retrieving guidance best practices',
-            action: {
-              type: 'web_search',
-              name: call.tool,
-              params: { query: call.query }
-            },
-            outcome: {
-              status: 'success',
-              message: `Retrieved ${call.result?.length || 0} items`,
-              output: call.result
-            }
-          });
-        }
-      }
-    } else {
-      let logIdx = 0;
-      for (const step of steps) {
-        if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
-          if (logCalls[logIdx]) {
-            if (!step.outcome) step.outcome = { status: 'success' };
-            step.outcome.output = logCalls[logIdx].result;
-            if (!step.outcome.message) step.outcome.message = `Retrieved ${logCalls[logIdx].result?.length || 0} items`;
-            logIdx++;
-          }
-        }
-      }
-    }
-  }
-
-  // 3. Process chat_log.txt for final response / high-level actions
-  let chatText = '';
-  const chatLogPath = path.join(dirPath, 'chat_log.txt');
-  try {
-    chatText = fs.readFileSync(chatLogPath, 'utf8').trim();
-  } catch (err) {
-    if (!isEnoent(err)) {
-      console.error(`[TrajectoryParser] Error reading chat_log.txt:`, err);
-    }
-  }
-  if (chatText && (steps.length === 0 || steps[steps.length - 1].action?.name !== 'respond_to_user')) {
-    steps.push({
-      stepNumber: 0,
-      thought: 'Completed task implementation and summarized changes',
-      action: {
-        type: 'other',
-        name: 'respond_to_user',
-        params: { response: truncateMessage(chatText, 300) }
-      },
-      outcome: { status: 'success' }
-    });
-  }
-
-  const legacy = parseJetskiCliSession(dirPath);
-  return finalizeTrajectorySummary({
-    agent: Agents.JETSKI_CLI,
-    steps,
-    model: legacy.model,
-    tokenUsage: legacy.tokenUsage,
-    retrievedGuides: legacy.retrievedGuides,
-    fileReadGuides: legacy.fileReadGuides,
-    toolsUsed: legacy.toolsUsed
-  });
-}
-
-/**
- * Executes the Jetski CLI command and captures output.
- */
-async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType, targetDir);
-
-  if (!workDir || !fs.existsSync(workDir)) {
-    throw new Error(`Failed to initialize working directory: ${workDir}`);
-  }
-
-  try {
-    console.log(`Starting Jetski CLI agent in ${workDir}`);
-
-    const { command, commandArgs } = getJetskiCliCommandAndArgs(userPrompt);
-
-    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
-
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
-    try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
-      await runCliAgentCommand(
-        command,
-        commandArgs,
-        workDir,
-        targetDir,
-        'Jetski CLI'
-      );
-    } finally {
-      stopWatchingMcpLog();
-      // Capture trajectory
-      const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
-      exportTrajectories(conversationsDir, '*.pb', targetDir);
-      exportTrajectories(conversationsDir, '*.db', targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
-    }
-
-    console.log("Jetski CLI agent finished successfully.");
-
-  } catch (err) {
-    console.error("Error during Jetski CLI execution:", err);
-    process.exitCode = 1;
-  } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
-  }
+  const summary = parseJetskiCliSession(dir);
+  return summary?.toolsUsed || [];
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
   run();
 }
-

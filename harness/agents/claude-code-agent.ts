@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, runCliAgentCommand, copyFileIfExists, setupIsolatedWorkDir, parseJsonlFile, type GuideUsage } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
+import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, runCliAgentCommand, parseJsonlFile, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 import {
@@ -13,7 +13,6 @@ import {
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  getSessionFiles,
   generateNormalizedTrajectory
 } from '../lib/trajectory-parser.ts';
 import type { ClaudeLogEntry } from './claude.d.ts';
@@ -34,6 +33,15 @@ export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] 
     ...(model ? ['--model', model] : [])
   ];
   return { command, commandArgs };
+}
+
+// NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
+// However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
+// into the test output directory to ensure uniform matching across the dashboard and metrics engine.
+const TRAJECTORY_GLOB = '*.jsonl';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
 }
 
 function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void {
@@ -71,7 +79,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
     parsedSessions.push({ relativePath, baseName, logData });
 
     // Match subagent ID if this is a subagent file
-    const match = relativePath.match(/subagents[/\\]agent-([a-zA-Z0-9_-]+)\.jsonl$/);
+    const match = relativePath.match(/subagents[\\/]agent-([a-zA-Z0-9_-]+)\.jsonl$/);
     if (match && match[1]) {
       subagentsMap[match[1]] = logData;
     }
@@ -85,6 +93,53 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
       const dest = path.join(targetDir, destName);
       fs.writeFileSync(dest, htmlContent, 'utf8');
     }
+  }
+}
+
+/**
+ * Executes the Claude CLI command and captures output.
+ */
+async function run() {
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
+  const workDir = setupIsolatedWorkDir(Agents.CLAUDE_CODE, templateDir, runType, targetDir);
+
+  if (!workDir || !fs.existsSync(workDir)) {
+    throw new Error(`Failed to initialize working directory: ${workDir}`);
+  }
+
+  try {
+    console.log(`Starting Claude Code agent in: ${workDir}`);
+
+    const { command, commandArgs } = getClaudeCodeCommandAndArgs(userPrompt, ['--verbose', '--output-format', 'stream-json']);
+
+    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
+
+    process.env.MODERN_WEB_LOG_DIR = targetDir;
+    let stopWatchingMcpLog = () => { };
+
+    try {
+      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
+
+      await runCliAgentCommand(
+        command,
+        commandArgs,
+        workDir,
+        targetDir,
+        'Claude Code'
+      );
+    } finally {
+      stopWatchingMcpLog();
+      exportClaudeCodeTrajectories(workDir, targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, userPrompt);
+    }
+
+    console.log("Claude Code agent finished successfully.");
+
+  } catch (err) {
+    console.error("Error during Claude Code execution:", err);
+    process.exitCode = 1;
+  } finally {
+    cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
@@ -199,7 +254,7 @@ function parseClaudeLogEntries(
   return steps;
 }
 
-export function parseClaudeTrajectory(logData: ClaudeLogEntry[], subagentsMap: Record<string, ClaudeLogEntry[]> = {}): TrajectorySummary {
+export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
   const consumedSubagents = new Set<string>();
   const steps = parseClaudeLogEntries(logData, undefined, subagentsMap, consumedSubagents);
 
@@ -223,14 +278,21 @@ export function parseClaudeTrajectory(logData: ClaudeLogEntry[], subagentsMap: R
     }
   }
 
+  const meta = extractClaudeMetadata(logData, subagentsMap);
+
   return finalizeTrajectorySummary({
     agent: Agents.CLAUDE_CODE,
     steps,
-    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined
+    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
+    model: meta.model,
+    tokenUsage: meta.tokenUsage,
+    toolsUsed: meta.toolsUsed,
+    retrievedGuides: meta.retrievedGuides,
+    fileReadGuides: meta.fileReadGuides
   });
 }
 
-export function extractClaudeMetadata(logData: ClaudeLogEntry[], subagentsMap: Record<string, ClaudeLogEntry[]> = {}): {
+export function extractClaudeMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
   model: string;
   tokenUsage?: { total: number; cached: number };
   toolsUsed: string[];
@@ -245,23 +307,20 @@ export function extractClaudeMetadata(logData: ClaudeLogEntry[], subagentsMap: R
   const retrievedGuides = new Set<string>();
   const fileReadGuides = new Set<string>();
 
-  const processEntries = (entries: ClaudeLogEntry[]) => {
-    for (const entry of entries) {
-      const rawEntry = entry as Record<string, any>;
-      if (rawEntry.message?.model) {
-        modelCounts[rawEntry.message.model] = (modelCounts[rawEntry.message.model] || 0) + 1;
+  const processEntries = (entries: any[]) => {
+    for (const obj of entries) {
+      if (obj.message?.model) {
+        modelCounts[obj.message.model] = (modelCounts[obj.message.model] || 0) + 1;
       }
-      if (rawEntry.message?.usage) {
-        const u = rawEntry.message.usage;
+      if (obj.message?.usage) {
+        const u = obj.message.usage;
         totalTokens += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0);
         cachedTokens += u.cache_read_input_tokens || 0;
         hasTokenData = true;
       }
-
-      const content = rawEntry.message?.content || rawEntry.content || rawEntry;
-      const contentList = Array.isArray(content) ? content : [content];
-      for (const item of contentList) {
-        if (item && typeof item === 'object' && item.type === 'tool_use') {
+      const content = obj.message?.content;
+      for (const item of Array.isArray(content) ? content : []) {
+        if (item.type === 'tool_use') {
           if (item.name === 'Skill' && item.input?.skill) {
             toolsUsed.add(item.input.skill);
           } else if (item.name === 'activate_skill' && item.input?.name) {
@@ -271,7 +330,9 @@ export function extractClaudeMetadata(logData: ClaudeLogEntry[], subagentsMap: R
             if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
               const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
               if (match) {
-                match[1].split(',').map((s: string) => s.trim()).forEach((g: string) => retrievedGuides.add(g));
+                for (const g of match[1].split(',').map((s: string) => s.trim())) {
+                  retrievedGuides.add(g);
+                }
               }
             }
           } else if (item.name === 'Read' && item.input?.file_path) {
@@ -298,137 +359,121 @@ export function extractClaudeMetadata(logData: ClaudeLogEntry[], subagentsMap: R
   return {
     model: topModel ? topModel[0] : 'unknown',
     tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
-    toolsUsed: [...toolsUsed],
-    retrievedGuides: [...retrievedGuides],
-    fileReadGuides: [...fileReadGuides]
+    toolsUsed: Array.from(toolsUsed),
+    retrievedGuides: Array.from(retrievedGuides),
+    fileReadGuides: Array.from(fileReadGuides)
   };
 }
 
-function loadClaudeLogs(dirPath: string): { logData: ClaudeLogEntry[]; subagentsMap: Record<string, ClaudeLogEntry[]> } {
-  const allFiles = getSessionFiles(dirPath, '**/*.jsonl');
-  const logData: ClaudeLogEntry[] = [];
-  const subagentsMap: Record<string, ClaudeLogEntry[]> = {};
+export function loadClaudeLogs(dir: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
+  let logData: any[] = [];
+  const subagentsMap: Record<string, any[]> = {};
+  const files = getSessionFiles(dir);
 
-  for (const relativePath of allFiles) {
-    const src = path.join(dirPath, relativePath);
-    let linesList: any[] = [];
-    try {
-      linesList = parseJsonlFile(src);
-    } catch {}
+  const mainFiles = files.filter(f => !f.startsWith('subagent-')).sort();
+  const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
 
-    const isSubagent = relativePath.includes('subagents/');
-    if (!isSubagent) {
-      logData.push(...linesList);
-    }
+  if (mainFiles.length > 0) {
+    logData = parseJsonlFile(path.join(dir, mainFiles[0]));
+  }
 
-    const match = relativePath.match(/subagents[/\\]agent-([a-zA-Z0-9_-]+)\.jsonl$/);
-    if (match && match[1]) {
-      subagentsMap[match[1]] = linesList;
-    }
+  for (const file of subFiles) {
+    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+    subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
   }
 
   return { logData, subagentsMap };
 }
 
 export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
-  const summaryPath = path.join(dirPath, 'trajectory_summary.json');
-  if (fs.existsSync(summaryPath)) {
-    try {
-      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-      if (summary.retrievedGuides || summary.fileReadGuides) {
-        return {
-          retrievedGuides: summary.retrievedGuides || [],
-          fileReadGuides: summary.fileReadGuides || []
-        };
+  const retrievedGuides: string[] = [];
+  const fileReadGuides: string[] = [];
+
+  for (const file of getSessionFiles(dirPath)) {
+    const items = parseJsonlFile(path.join(dirPath, file));
+    for (const obj of items) {
+      const content = obj.message?.content;
+      for (const contentItem of Array.isArray(content) ? content : []) {
+        if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input?.command) {
+          const command = contentItem.input.command;
+          if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+            if (match) {
+              retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
+            }
+          }
+        } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input?.file_path) {
+          const filePath = contentItem.input.file_path;
+          if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+            const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+            if (match) {
+              fileReadGuides.push(match[1]);
+            }
+          }
+        }
       }
-    } catch {}
+    }
   }
-  const { logData, subagentsMap } = loadClaudeLogs(dirPath);
-  const meta = extractClaudeMetadata(logData, subagentsMap);
-  return { retrievedGuides: meta.retrievedGuides, fileReadGuides: meta.fileReadGuides };
+  return {
+    retrievedGuides: [...new Set(retrievedGuides)],
+    fileReadGuides: [...new Set(fileReadGuides)]
+  };
 }
 
 export function extractClaudeCodeModel(resultsDir: string): string {
-  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
-  if (fs.existsSync(summaryPath)) {
-    try {
-      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-      if (summary.model && summary.model !== 'unknown') return summary.model;
-    } catch {}
+  const counts: Record<string, number> = {};
+  for (const file of getSessionFiles(resultsDir, true)) {
+    const items = parseJsonlFile(path.join(resultsDir, file));
+    for (const obj of items) {
+      if (obj.message?.model) {
+        counts[obj.message.model] = (counts[obj.message.model] || 0) + 1;
+      }
+    }
   }
-  const { logData, subagentsMap } = loadClaudeLogs(resultsDir);
-  return extractClaudeMetadata(logData, subagentsMap).model;
+  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return topModel ? topModel[0] : 'unknown';
 }
 
 export function extractClaudeCodeTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  const summaryPath = path.join(dir, 'trajectory_summary.json');
-  if (fs.existsSync(summaryPath)) {
-    try {
-      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-      if (summary.tokenUsage) return summary.tokenUsage;
-    } catch {}
+  let total = 0;
+  let cached = 0;
+  let hasData = false;
+
+  for (const file of getSessionFiles(dir)) {
+    const items = parseJsonlFile(path.join(dir, file));
+    for (const obj of items) {
+      if (obj.message?.usage) {
+        const u = obj.message.usage;
+        total += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0);
+        cached += u.cache_read_input_tokens || 0;
+        hasData = true;
+      }
+    }
   }
-  const { logData, subagentsMap } = loadClaudeLogs(dir);
-  return extractClaudeMetadata(logData, subagentsMap).tokenUsage;
+  return hasData ? { total, cached } : undefined;
 }
 
 export function collectClaudeToolsFromTrajectory(dir: string): string[] {
-  const summaryPath = path.join(dir, 'trajectory_summary.json');
-  if (fs.existsSync(summaryPath)) {
-    try {
-      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-      if (summary.toolsUsed) return summary.toolsUsed;
-    } catch {}
-  }
-  const { logData, subagentsMap } = loadClaudeLogs(dir);
-  return extractClaudeMetadata(logData, subagentsMap).toolsUsed;
-}
+  const toolsUsed: string[] = [];
+  const sessionFiles = getSessionFiles(dir);
+  if (sessionFiles.length === 0) return toolsUsed;
 
-/**
- * Executes the Claude CLI command and captures output.
- */
-async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.CLAUDE_CODE, templateDir, runType, targetDir);
-
-  if (!workDir || !fs.existsSync(workDir)) {
-    throw new Error(`Failed to initialize working directory: ${workDir}`);
-  }
-
-  try {
-    console.log(`Starting Claude Code agent in: ${workDir}`);
-
-    const { command, commandArgs } = getClaudeCodeCommandAndArgs(userPrompt, ['--verbose', '--output-format', 'stream-json']);
-
-    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
-
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
-    try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
-      await runCliAgentCommand(
-        command,
-        commandArgs,
-        workDir,
-        targetDir,
-        'Claude Code'
-      );
-    } finally {
-      stopWatchingMcpLog();
-      exportClaudeCodeTrajectories(workDir, targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, userPrompt);
+  for (const file of sessionFiles) {
+    const items = parseJsonlFile(path.join(dir, file));
+    for (const obj of items) {
+      const content = obj.message?.content;
+      for (const item of Array.isArray(content) ? content : []) {
+        if (item.type === 'tool_use') {
+          if (item.name === 'Skill' && item.input?.skill) {
+            toolsUsed.push(item.input.skill);
+          } else if (item.name === 'activate_skill' && item.input?.name) {
+            toolsUsed.push(item.input.name);
+          }
+        }
+      }
     }
-
-    console.log("Claude Code agent finished successfully.");
-
-  } catch (err) {
-    console.error("Error during Claude Code execution:", err);
-    process.exitCode = 1;
-  } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
   }
+  return Array.from(new Set(toolsUsed));
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
