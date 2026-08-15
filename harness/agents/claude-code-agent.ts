@@ -14,7 +14,7 @@ import {
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory
-} from '../lib/trajectory-parser.ts';
+} from '../lib/trajectory-normalizer.ts';
 import type { ClaudeLogEntry } from './claude.d.ts';
 
 export function setupClaudeCodeCredentials(tempHome: string): void {

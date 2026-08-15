@@ -14,7 +14,7 @@ import {
   collectCodexGuidesFromTrajectory,
   collectJetskiCliToolsFromTrajectory,
   collectJetskiCliGuidesFromTrajectory
-} from '../lib/trajectory-parser.ts';
+} from '../lib/trajectory-normalizer.ts';
 
 function getMostRecentFiles(baseDir: string, pattern: string, count = 5): string[] {
   if (!fs.existsSync(baseDir)) return [];

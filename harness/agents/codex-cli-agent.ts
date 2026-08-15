@@ -15,7 +15,7 @@ import {
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory
-} from '../lib/trajectory-parser.ts';
+} from '../lib/trajectory-normalizer.ts';
 
 export function setupCodexCliCredentials(tempHome: string): void {
   const codexGlobalDir = path.join(os.homedir(), '.codex');

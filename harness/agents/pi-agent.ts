@@ -16,7 +16,7 @@ import {
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory
-} from '../lib/trajectory-parser.ts';
+} from '../lib/trajectory-normalizer.ts';
 
 const TRAJECTORY_GLOB = '*.jsonl';
 

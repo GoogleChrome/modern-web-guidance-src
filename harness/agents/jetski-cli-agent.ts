@@ -12,7 +12,7 @@ import {
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory
-} from '../lib/trajectory-parser.ts';
+} from '../lib/trajectory-normalizer.ts';
 
 export function setupJetskiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
