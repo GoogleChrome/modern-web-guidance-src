@@ -37,7 +37,7 @@ async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: s
     }
     
     try {
-      const { generateNormalizedTrajectory } = await import('./trajectory-parser.ts');
+      const { generateNormalizedTrajectory } = await import('./trajectory-normalizer.ts');
       await generateNormalizedTrajectory(absoluteRunDir, detectedAgent, Serving.MCP);
     } catch (err: any) {
       console.warn(`[GCS Downloader] Warning: Failed to generate trajectory on the fly: ${err.message}`);
