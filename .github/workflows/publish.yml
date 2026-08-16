@@ -53,6 +53,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          credentials_json: ${{ secrets.GCP_EVALS_COLLECTOR_SA_KEY }}
+
+      - name: Collect latest evaluation results from GCS
+        id: collect-evals
+        continue-on-error: true
+        run: pnpm --filter serving run collect-evals
+
+      - name: Handle eval collection fallback on failure
+        if: steps.collect-evals.outcome != 'success'
+        run: |
+          echo "::warning title=Eval Collection Skipped::Evaluation collection or regression test failed. Discarding uncommitted summary and proceeding with previous stable eval data."
+          echo "### ⚠️ Evaluation Collection Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "Evaluation collection or regression tests encountered an issue. Discarding changes to \`eval-results-summary.json\` and proceeding with publish using previous data." >> $GITHUB_STEP_SUMMARY
+          git checkout -- serving/skills-cli/eval-results-summary.json || true
+
       - name: Build distribution
         run: pnpm --filter serving run build
 
@@ -79,16 +97,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
 
-      - name: Commit and push README.md to source repo
+      - name: Commit and push updated evals and README to source repo
         env:
           GITHUB_REF: ${{ github.ref }}
         run: |
-          if ! git diff --quiet README.md; then
-            git add README.md
+          if ! git diff --quiet README.md serving/skills-cli/eval-results-summary.json; then
+            git add README.md serving/skills-cli/eval-results-summary.json
             git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"
             git push origin HEAD:"$GITHUB_REF"
           else
-            echo "No changes in README.md to commit."
+            echo "No changes in README.md or eval-results-summary.json to commit."
           fi
 
       - name: Publish to npm via OIDC Provenance

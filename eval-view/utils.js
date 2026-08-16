@@ -17,15 +17,6 @@ export function getRunStats(checks) {
 }
 
 /**
- * @param {{ isDisciplineSkill?: boolean; isSkill?: boolean } | null | undefined} run
- * @returns {boolean}
- */
-export function isDisciplineSkillRun(run) {
-    if (!run) return false;
-    return (run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill) || false;
-}
-
-/**
  * @param {number} percentage
  * @returns {string}
  */
@@ -246,33 +237,19 @@ export function calculateChartData(results) {
 
 /**
  * @param {string} name
- * @param {boolean} [isDisciplineSkill=false]
  * @returns {string}
  */
-export function formatTestName(name, isDisciplineSkill = false) {
+export function formatTestName(name) {
     if (!name) return name;
     const parsedKey = parseResultKey(name);
     if (parsedKey) {
-        const { task: appName, guide: guideName } = parsedKey;
+        const { task: taskName, guide: guideName } = parsedKey;
         
         const featuresMap = window.__featuresMapping || {};
-        let featureId = '';
-        
-        if (isDisciplineSkill) {
-            // For skills, the first part is the discipline (e.g. performance)
-            return `${appName}: ${guideName}`; // discipline: task
-        }
-        
-        // For normal tasks, the second part is the guide name
-        if (featuresMap[guideName] && featuresMap[guideName].length > 0) {
-            featureId = featuresMap[guideName][0]; // take primary feature
-        }
-        
-        if (featureId) {
-            return `${featureId}: ${guideName}`;
-        }
-        
-        return `${appName}: ${guideName}`; // fallback
+        const featureId = (featuresMap[guideName] && featuresMap[guideName][0]) || 'uncategorized';
+        const displayName = `${guideName} (${taskName})`;
+
+        return `${featureId}: ${displayName}`;
     }
     return name.split(' - ').join(' / ');
 }

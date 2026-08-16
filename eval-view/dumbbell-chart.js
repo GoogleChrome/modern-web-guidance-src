@@ -16,6 +16,7 @@
 /**
  * @typedef {Object} ChartGroupItem
  * @property {string} useCaseId
+ * @property {string} [taskName]
  * @property {number} uVal
  * @property {number} gVal
  * @property {number} uTokens
@@ -139,6 +140,7 @@ export class DumbbellChart {
 
         if (!groups[featureName]) groups[featureName] = [];
         groups[featureName].push({
+            taskName,
             useCaseId,
             uVal,
             gVal,
@@ -432,7 +434,7 @@ export class DumbbellChart {
                 <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px; color: var(--color-on-surface);">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId || "Default"}</div>
+                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap; color: ${item.uFailed || item.gFailed ? 'var(--color-accent-failure, #da3633)' : 'inherit'};">${item.useCaseId} (${item.taskName})</div>
                           <div style="font-size: 11px; color: var(--color-outline);">feature: ${featureName}</div>
                          ${uTokens > 0 || gTokens > 0 ? `
                          <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
