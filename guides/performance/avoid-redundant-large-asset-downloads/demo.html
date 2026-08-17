@@ -34,57 +34,63 @@
     });
 
     async function loadModule() {
-      // MANDATORY: Call navigator.crossOriginStorage directly, rather than
-      // feature-detecting its presence up front, and handle every outcome
-      // defensively with try/catch. This is deliberate, not an oversight:
-      // storing files, applying an origins scope, and treating NotFoundError
-      // as an ordinary cache miss all still require defensive handling even
-      // once the API is implemented, since availability gating and
-      // GREASE'ing mean a call can legitimately fail even when the file is
-      // physically present.
-      try {
-        const handle = await navigator.crossOriginStorage.requestFileHandle(hash);
-        statusEl.textContent = 'Found in Cross-Origin Storage -- no download needed.';
-        return await handle.getFile();
-      } catch (err) {
-        // A NotFoundError does not prove the file is absent from COS --
-        // the user agent may be withholding it for privacy reasons. Either
-        // way, fall back to the network; never treat this as fatal.
-        //
-        // NotAllowedError means Permissions Policy blocks COS in this
-        // context -- distinct from a cache miss, but the fallback is the
-        // same: load over the network instead.
-        statusEl.textContent = err?.name === 'NotFoundError'
-          ? 'Not found in Cross-Origin Storage -- downloading instead.'
-          : 'Cross-Origin Storage unavailable -- downloading instead.';
+      // MANDATORY: Feature-detect navigator.crossOriginStorage first and
+      // fall back to the network immediately if it's absent -- COS is not
+      // implemented in every browser yet. Once support is confirmed, still
+      // wrap every call in try/catch: even a fully implemented COS can
+      // legitimately reject a call, for example due to availability
+      // gating or a Permissions Policy restriction.
+      const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
+
+      if (supportsCOS) {
+        try {
+          // Check COS first. If another origin already stored this exact
+          // hash, this resolves with no network request at all.
+          const handle = await navigator.crossOriginStorage.requestFileHandle(hash);
+          statusEl.textContent = 'Found in Cross-Origin Storage -- no download needed.';
+          return await handle.getFile();
+        } catch (err) {
+          // A NotFoundError does not prove the file is absent from COS --
+          // the user agent may be withholding it for privacy reasons. Either
+          // way, fall back to the network; never treat this as fatal.
+          //
+          // NotAllowedError means Permissions Policy blocks COS in this
+          // context -- distinct from a cache miss, but the fallback is the
+          // same: load over the network instead.
+          statusEl.textContent = err.name === 'NotFoundError'
+            ? 'Not found in Cross-Origin Storage -- downloading instead.'
+            : `Cross-Origin Storage unavailable (${err.name}) -- downloading instead.`;
+        }
       }
 
       const response = await fetch('/assets/ffmpeg-core.wasm');
       const fileBlob = await response.blob();
 
-      // Storing is a nice-to-have for future visitors, not required for
-      // this page to work -- the file is already loaded and usable, so a
-      // failure here must never surface to the person using the page.
-      try {
-        // MANDATORY: origins: '*' is only appropriate for genuinely popular,
-        // non-proprietary resources -- this stands in for a widely-shared
-        // public Wasm module. A proprietary asset should instead use an
-        // explicit origins list, or omit origins for same-site-only sharing.
-        const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
-          create: true,
-          origins: '*',
-        });
-        const writable = await handle.createWritable();
-        // Always write the complete file, even if it might already exist
-        // in COS -- this is what lets the user agent verify the hash and
-        // is what prevents a write from being used to probe prior presence.
-        await writable.write(fileBlob);
-        await writable.close();
-        // Never call getFile() on this handle -- it would reject with
-        // NotAllowedError until this very write()/close() has resolved,
-        // which it just did. The blob already in hand is what's used below.
-      } catch {
-        // Ignore write failures; the caller already has the file.
+      if (supportsCOS) {
+        // Storing is a nice-to-have for future visitors, not required for
+        // this page to work -- the file is already loaded and usable, so a
+        // failure here must never surface to the person using the page.
+        try {
+          // MANDATORY: origins: '*' is only appropriate for genuinely popular,
+          // non-proprietary resources -- this stands in for a widely-shared
+          // public Wasm module. A proprietary asset should instead use an
+          // explicit origins list, or omit origins for same-site-only sharing.
+          const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
+            create: true,
+            origins: '*',
+          });
+          const writable = await handle.createWritable();
+          // Always write the complete file, even if it might already exist
+          // in COS -- this is what lets the user agent verify the hash and
+          // is what prevents a write from being used to probe prior presence.
+          await writable.write(fileBlob);
+          await writable.close();
+          // Never call getFile() on this handle -- it would reject with
+          // NotAllowedError until this very write()/close() has resolved,
+          // which it just did. The blob already in hand is what's used below.
+        } catch {
+          // Ignore write failures; the caller already has the file.
+        }
       }
 
       return fileBlob;

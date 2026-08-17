@@ -131,6 +131,14 @@ test.describe(`Avoid Redundant Large Asset Downloads Expectations: ${demoName}`,
     expect(fetchedAssetAgain).toBe(false);
   });
 
+  test(`The page feature-detects navigator.crossOriginStorage before calling it`, async ({ page }) => {
+    const html = await page.content();
+    const featureDetects = /navigator\.crossOriginStorage\s*\?\.\s*requestFileHandle/.test(html)
+      || /navigator\.crossOriginStorage\s*&&/.test(html)
+      || /['"]crossOriginStorage['"]\s*in\s*navigator/.test(html);
+    expect(featureDetects).toBe(true);
+  });
+
   test(`Errors from requestFileHandle() are handled defensively and never surface as an unhandled rejection`, async ({ page }) => {
     const pageErrors: string[] = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));
