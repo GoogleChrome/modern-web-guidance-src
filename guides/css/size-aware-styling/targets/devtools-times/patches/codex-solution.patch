@@ -1,0 +1,103 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..d90f3cd 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -16,6 +16,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
++<div class="article-teaser-container">
+ {large ? (
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+@@ -52,8 +53,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++    <article class="standard-teaser h-full group">
++        <a class="teaser-media" href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+             <Image 
+                 src={image} 
+                 alt={article.data.title} 
+@@ -63,7 +64,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+             />
+         </a>
+-        <div class="flex flex-col flex-grow mt-3">
++        <div class="teaser-content flex flex-col flex-grow">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+                 <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+@@ -80,4 +81,68 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
++</div>
++
++<style>
++    /* Each teaser responds to the space it is given, independently of the page. */
++    .article-teaser-container {
++        container-name: article-teaser;
++        container-type: inline-size;
++        height: 100%;
++    }
++
++    /* Safe default for small containers and browsers without container queries. */
++    .standard-teaser {
++        display: flex;
++        flex-direction: column;
++        gap: 0.75rem;
++    }
++
++    .teaser-media {
++        display: block;
++        flex: 0 0 auto;
++        width: 100%;
++    }
++
++    /* Viewport-based enhancement for browsers without container-query support. */
++    @media (min-width: 768px) {
++        .standard-teaser {
++            flex-direction: row;
++            align-items: stretch;
++        }
++
++        .teaser-media {
++            width: 40%;
++        }
++    }
++
++    @supports (container-type: inline-size) {
++        /* Remove the viewport fallback when the component can measure itself. */
++        @media (min-width: 768px) {
++            .standard-teaser {
++                flex-direction: column;
++            }
++
++            .teaser-media {
++                width: 100%;
++            }
++        }
++
++        @container article-teaser (min-width: 400px) {
++            .standard-teaser {
++                flex-direction: row;
++                align-items: stretch;
++                gap: 1rem;
++            }
++
++            .teaser-media {
++                width: 40%;
++            }
++
++            .teaser-content {
++                min-width: 0;
++            }
++        }
++    }
++</style>
