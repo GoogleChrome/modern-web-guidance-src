@@ -1,0 +1,6 @@
+---
+base_app: empty-app
+---
+- Create an extremely minimal web page for a demo that loads a large shared AI model file identified by a known SHA-256 hash. Add a button with id "load-btn" and a status div with id "status". Before fetching the model from '/assets/shared-library.js', check whether it is already available locally by hash, and only hit the network if it isn't. After a network fetch, store the file locally by the same hash so a future visit can skip the download, making the resource globally available since it's a common public asset. Update #status to show "Library ready (N bytes)." when done. Write the page to index.html.
+- Add a "load shared library" button and a status area to the page so that clicking it loads a big JavaScript library that lots of other unrelated sites also use, without downloading a fresh copy if the browser already has it stored from visiting one of those other sites. Use a hardcoded hash object for the library.
+- I want a minimal test page that demonstrates loading a big Wasm module efficiently. It should have a button (id "load-btn") and a status element (id "status"). Only fetch the module over the network as a last resort, and make sure whatever gets fetched is saved so it doesn't need to be re-fetched next time.

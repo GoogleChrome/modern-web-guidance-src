@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Avoid Redundant Large Asset Downloads Demo</title>
+</head>
+
+<body>
+  <h1>Load a shared library</h1>
+  <p>This loads a large, popular library over the network every time, even though many unrelated sites already
+    share an identical copy.</p>
+  <button id="load-btn">Load shared library</button>
+  <div id="status"></div>
+
+  <script type="module">
+    const statusEl = document.getElementById('status');
+    const loadBtn = document.getElementById('load-btn');
+
+    loadBtn.addEventListener('click', async () => {
+      loadBtn.disabled = true;
+      const fileBlob = await loadLibrary();
+      statusEl.textContent = `Library ready (${fileBlob.size} bytes).`;
+      loadBtn.disabled = false;
+    });
+
+    async function loadLibrary() {
+      // Never checks Cross-Origin Storage first, so every origin downloads
+      // and stores its own copy of the same bytes.
+      const response = await fetch('/assets/shared-library.js');
+      return await response.blob();
+    }
+  </script>
+</body>
+
+</html>

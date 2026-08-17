@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Load Shared Resources Declaratively Demo</title>
+
+  <!--
+    integrity is present, but there is no crossoriginstorage attribute, so
+    this resource is fetched and verified on every visit and never
+    consulted against or stored in Cross-Origin Storage.
+  -->
+  <link
+    rel="stylesheet"
+    href="/assets/shared-widget.css"
+    integrity="sha256-mXPhVm4mG5NhYQge+hY7V7c9Uy2mejppXiKq24un6AA="
+    crossorigin="anonymous"
+  />
+  <script
+    src="/assets/shared-widget.js"
+    integrity="sha256-NDFkFtKeZCKtK3XKGa58d0kJVjCIrfdQGvPCW9HXt4s="
+    crossorigin="anonymous"
+    defer
+  ></script>
+</head>
+
+<body>
+  <h1>Load a shared widget via markup</h1>
+  <p>The stylesheet and script above load a popular, unmodified widget, but never opt into Cross-Origin Storage.</p>
+
+  <div id="module-status">Loading configuration module...</div>
+
+  <script type="module">
+    // No crossOriginStorage import attribute, so this module is always
+    // fetched from the network, never shared across origins.
+    const statusEl = document.getElementById('module-status');
+
+    try {
+      const mod = await import('/assets/shared-config.js', {
+        with: {
+          integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
+        },
+      });
+      statusEl.textContent = `Configuration module ready: ${JSON.stringify(mod.default)}`;
+    } catch (err) {
+      statusEl.textContent = `Could not load the configuration module: ${err.message}`;
+    }
+  </script>
+</body>
+
+</html>

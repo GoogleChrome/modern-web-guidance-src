@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Share Web Fonts Across Origins Demo</title>
+  <style>
+    /*
+      Plain url(), with no integrity() or cross-origin-storage() modifier.
+      Every site that references this font re-downloads it from the CDN,
+      even though many unrelated sites already share an identical copy.
+    */
+    @font-face {
+      font-family: 'Shared Emoji Font';
+      src: url('/fonts/shared-emoji.woff2') format('woff2');
+    }
+
+    .sample {
+      font-family: 'Shared Emoji Font', sans-serif;
+      font-size: 3rem;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Load a popular web font</h1>
+  <p>This page requests a large, popular emoji font directly from the network on every visit, without ever
+    checking Cross-Origin Storage for a copy another site may have already shared.</p>
+  <p class="sample">Sample text 🎨🌴🐢</p>
+</body>
+
+</html>
