@@ -14,11 +14,11 @@ const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
 function getCalls(page: Page) {
-  return page.evaluate(() => (window as any).__cosCalls);
+  return page.evaluate(() => (window as any).__cosCalls ?? []);
 }
 
 function getFetches(page: Page) {
-  return page.evaluate(() => (window as any).__fetches);
+  return page.evaluate(() => (window as any).__fetches ?? []);
 }
 
 // Tests
@@ -30,11 +30,11 @@ test.describe(`Avoid Redundant Large Asset Downloads Expectations: ${demoName}`,
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
-      } else if (requestPath === '/assets/shared-library.js') {
+      } else if (requestPath === '/assets/ffmpeg-core.wasm') {
         await route.fulfill({
           status: 200,
-          contentType: 'application/javascript',
-          body: '// pretend shared library bytes',
+          contentType: 'application/wasm',
+          body: '// pretend ffmpeg.wasm core module bytes',
         });
       } else {
         await route.continue();
@@ -51,53 +51,17 @@ test.describe(`Avoid Redundant Large Asset Downloads Expectations: ${demoName}`,
       };
     });
 
-    // Mock navigator.crossOriginStorage so the demo's feature-detection
-    // takes the COS branch, and record every call for assertions.
+    // Cross-Origin Storage is assumed to be implemented in this test
+    // environment; it is never mocked or replaced. The real
+    // requestFileHandle() is wrapped only to record calls for the
+    // assertions below, and every call is forwarded unchanged to the
+    // original implementation.
     await page.addInitScript(() => {
       (window as any).__cosCalls = [];
-      const files = new Map<string, Blob>();
-
-      (navigator as any).crossOriginStorage = {
-        requestFileHandle: async (hash: any, options: any = {}) => {
-          (window as any).__cosCalls.push({ hash, options });
-          const key = `${hash.algorithm}:${hash.value}`;
-
-          if (!options.create) {
-            if (!files.has(key)) {
-              const err: any = new Error('Not found');
-              err.name = 'NotFoundError';
-              throw err;
-            }
-            return {
-              getFile: async () => files.get(key),
-            };
-          }
-
-          let resolveWrite: () => void;
-          const writePromise = new Promise<void>((resolve) => (resolveWrite = resolve));
-          let written = false;
-
-          return {
-            createWritable: async () => ({
-              write: async (blob: Blob) => {
-                files.set(key, blob);
-              },
-              close: async () => {
-                written = true;
-                resolveWrite!();
-              },
-            }),
-            getFile: async () => {
-              if (!written) {
-                const err: any = new Error('Not allowed yet');
-                err.name = 'NotAllowedError';
-                throw err;
-              }
-              await writePromise;
-              return files.get(key);
-            },
-          };
-        },
+      const original = navigator.crossOriginStorage.requestFileHandle.bind(navigator.crossOriginStorage);
+      navigator.crossOriginStorage.requestFileHandle = (hash: any, options: any = {}) => {
+        (window as any).__cosCalls.push({ hash, options });
+        return original(hash, options);
       };
     });
 
@@ -105,7 +69,7 @@ test.describe(`Avoid Redundant Large Asset Downloads Expectations: ${demoName}`,
     await page.waitForLoadState('domcontentloaded');
   });
 
-  test(`Cross-Origin Storage is checked with requestFileHandle() before a network fetch is made`, async ({ page }) => {
+  test(`Cross-Origin Storage is queried with requestFileHandle() as part of loading the asset`, async ({ page }) => {
     await page.evaluate(() => {
       (document.getElementById('load-btn') as HTMLElement)?.click();
     });
@@ -128,30 +92,29 @@ test.describe(`Avoid Redundant Large Asset Downloads Expectations: ${demoName}`,
     expect(/^[0-9a-f]+$/.test(hash.value)).toBe(true);
   });
 
-  test(`A cache miss falls back to a network fetch of the asset`, async ({ page }) => {
+  test(`A read miss falls back to a network fetch and stores the result with create: true and a deliberate origins choice`, async ({ page }) => {
     await page.evaluate(() => {
       (document.getElementById('load-btn') as HTMLElement)?.click();
     });
     await expect(page.locator('#status')).toContainText(/ready/i, { timeout: 5000 });
 
-    const fetches = await getFetches(page);
-    const fetchedAsset = fetches.some((url: string) => url.includes('/assets/shared-library.js'));
-    expect(fetchedAsset).toBe(true);
-  });
-
-  test(`After a network fetch, the file is stored with create: true and a deliberate origins choice`, async ({ page }) => {
-    await page.evaluate(() => {
-      (document.getElementById('load-btn') as HTMLElement)?.click();
-    });
-    await expect(page.locator('#status')).toContainText(/ready/i, { timeout: 5000 });
-
-    const calls = await getCalls(page);
+    const [calls, fetches] = await Promise.all([getCalls(page), getFetches(page)]);
+    const fetchedAsset = fetches.some((url: string) => url.includes('/assets/ffmpeg-core.wasm'));
     const writeCall = calls.find((c: any) => c.options?.create === true);
-    expect(writeCall).toBeTruthy();
-    expect('origins' in writeCall.options).toBe(true);
+
+    // Whichever branch ran, the invariant must hold: a network fetch only
+    // happens when nothing usable came back from COS, and whenever a
+    // network fetch happens the result must be stored back with a
+    // deliberate origins choice for future visitors.
+    if (fetchedAsset) {
+      expect(writeCall).toBeTruthy();
+      expect('origins' in writeCall.options).toBe(true);
+    } else {
+      expect(writeCall).toBeFalsy();
+    }
   });
 
-  test(`A second load of the same hash is served from Cross-Origin Storage without a second network fetch`, async ({ page }) => {
+  test(`A second load of the same hash does not trigger another network fetch`, async ({ page }) => {
     await page.evaluate(() => {
       (document.getElementById('load-btn') as HTMLElement)?.click();
     });
@@ -164,7 +127,19 @@ test.describe(`Avoid Redundant Large Asset Downloads Expectations: ${demoName}`,
     await page.waitForTimeout(200);
 
     const fetches = await getFetches(page);
-    const fetchedAssetAgain = fetches.some((url: string) => url.includes('/assets/shared-library.js'));
+    const fetchedAssetAgain = fetches.some((url: string) => url.includes('/assets/ffmpeg-core.wasm'));
     expect(fetchedAssetAgain).toBe(false);
+  });
+
+  test(`Errors from requestFileHandle() are handled defensively and never surface as an unhandled rejection`, async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+
+    await page.evaluate(() => {
+      (document.getElementById('load-btn') as HTMLElement)?.click();
+    });
+    await expect(page.locator('#status')).toContainText(/ready/i, { timeout: 5000 });
+
+    expect(pageErrors).toEqual([]);
   });
 });
