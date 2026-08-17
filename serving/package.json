@@ -40,7 +40,7 @@
     "apache-arrow": "21.1.0",
     "marked": "^18.0.3",
     "onnxruntime-node": "^1.25.1",
-    "web-features": "^3.34.0",
+    "web-features": "^3.34.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {

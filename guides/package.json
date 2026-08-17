@@ -12,8 +12,8 @@
     "gray-matter": "^4.0.3",
     "linkedom": "^0.18.12",
     "marked": "^18.0.3",
-    "ts-morph": "^27.0.2",
     "serving": "workspace:*",
-    "web-features": "^3.34.0"
+    "ts-morph": "^27.0.2",
+    "web-features": "^3.34.3"
   }
 }
