@@ -2,40 +2,37 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import { Agents, type SuiteConfig } from '../config.ts';
+import { type SuiteConfig } from '../config.ts';
 import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
-import { extractGeminiCliModel, extractGeminiCliTokenUsage } from '../agents/gemini-cli-agent.ts';
-import { extractClaudeCodeModel, extractClaudeCodeTokenUsage } from '../agents/claude-code-agent.ts';
-import { extractCodexCliModel, extractCodexCliTokenUsage } from '../agents/codex-cli-agent.ts';
-import { extractJetskiCliModel, extractJetskiCliTokenUsage } from '../agents/jetski-cli-agent.ts';
-import { extractPiModel, extractPiTokenUsage } from '../agents/pi-agent.ts';
-import { getGraderScriptContent } from './agent-shared.ts';
+import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
 }
 
-export function extractModelFromResults(resultsDir: string, agent: string): string {
-  if (agent === Agents.GEMINI_CLI) {
-    return extractGeminiCliModel(resultsDir);
-  } else if (agent === Agents.JETSKI_CLI) {
-    return extractJetskiCliModel(resultsDir);
-  } else if (agent === Agents.CLAUDE_CODE) {
-    return extractClaudeCodeModel(resultsDir);
-  } else if (agent === Agents.CODEX_CLI) {
-    return extractCodexCliModel(resultsDir);
-  } else if (agent === Agents.PI) {
-    return extractPiModel(resultsDir);
+export function extractModelFromResults(resultsDir: string, _agent: string): string {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    if (summary.model && summary.model !== 'unknown') {
+      return summary.model;
+    }
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
   return 'unknown';
 }
 
-export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | null {
-  if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir) ?? null;
-  if (agent === Agents.JETSKI_CLI) return extractJetskiCliTokenUsage(resultsDir) ?? null;
-  if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir) ?? null;
-  if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir) ?? null;
-  if (agent === Agents.PI) return extractPiTokenUsage(resultsDir) ?? null;
+export function extractTokenUsageFromResults(resultsDir: string, _agent: string): { total: number; cached: number } | null {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    if (summary.tokenUsage) {
+      return summary.tokenUsage;
+    }
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
+  }
   return null;
 }
 

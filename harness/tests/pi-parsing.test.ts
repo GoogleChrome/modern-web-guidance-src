@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory } from '../agents/pi-agent.ts';
+import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory } from '../lib/trajectory-parser.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'pi-trajectory-test-'));
