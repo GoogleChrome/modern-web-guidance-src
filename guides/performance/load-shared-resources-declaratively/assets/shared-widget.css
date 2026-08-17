@@ -1,0 +1,10 @@
+/* A small stand-in for a popular, unmodified CSS framework or widget
+   stylesheet that many unrelated sites reference identically. */
+.shared-widget {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-family: system-ui, sans-serif;
+}

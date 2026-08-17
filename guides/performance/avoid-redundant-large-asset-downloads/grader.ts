@@ -29,13 +29,10 @@ test.describe(`Avoid Redundant Large Asset Downloads Expectations: ${demoName}`,
       const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
       if (fs.existsSync(localFilePath)) {
+        // Serves the real /assets/ffmpeg-core.wasm shipped alongside this
+        // guide, whose bytes match the hash hardcoded in demo.html, so a
+        // real Cross-Origin Storage implementation can verify it on write.
         await route.fulfill({ path: localFilePath });
-      } else if (requestPath === '/assets/ffmpeg-core.wasm') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/wasm',
-          body: '// pretend ffmpeg.wasm core module bytes',
-        });
       } else {
         await route.continue();
       }

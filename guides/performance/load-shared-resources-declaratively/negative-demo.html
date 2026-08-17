@@ -13,12 +13,12 @@
   <link
     rel="stylesheet"
     href="/assets/shared-widget.css"
-    integrity="sha256-mXPhVm4mG5NhYQge+hY7V7c9Uy2mejppXiKq24un6AA="
+    integrity="sha256-weEls3ieuAOdZqOgF+wzQ0QOq0UsCc/CVwsHZuAuOHQ="
     crossorigin="anonymous"
   />
   <script
     src="/assets/shared-widget.js"
-    integrity="sha256-NDFkFtKeZCKtK3XKGa58d0kJVjCIrfdQGvPCW9HXt4s="
+    integrity="sha256-DUaXcac0kQE8UUAj0fd0KXLJ2OAEYByq1gaWjnOG3Do="
     crossorigin="anonymous"
     defer
   ></script>
@@ -38,7 +38,7 @@
     try {
       const mod = await import('/assets/shared-config.js', {
         with: {
-          integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
+          integrity: 'sha256-/HriZgQoB51h9br04HIpeiJWX0ephs2au4oCPqxQNKU=',
         },
       });
       statusEl.textContent = `Configuration module ready: ${JSON.stringify(mod.default)}`;

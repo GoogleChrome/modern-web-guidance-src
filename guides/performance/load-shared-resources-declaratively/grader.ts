@@ -22,10 +22,19 @@ test.describe(`Load Shared Resources Declaratively Expectations: ${demoName}`, (
       const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
       if (fs.existsSync(localFilePath)) {
+        // Serves the real assets shipped alongside this guide (e.g.
+        // /assets/shared-widget.css, /assets/shared-widget.js,
+        // /assets/shared-config.js), whose bytes match the integrity
+        // hashes hardcoded in demo.html, so both SRI and a real
+        // Cross-Origin Storage implementation can verify them. Also
+        // covers any equivalently-named asset an agent-submitted page
+        // under test happens to ship alongside itself.
         await route.fulfill({ path: localFilePath });
       } else {
-        // Fulfill any referenced asset that isn't on disk with a minimal
-        // stand-in so the page's own script can run to completion.
+        // Fulfill any other referenced asset that isn't on disk with a
+        // minimal stand-in so the page's own script can still run to
+        // completion, for pages under test that reference assets we
+        // didn't anticipate.
         if (requestPath.endsWith('.js')) {
           await route.fulfill({
             status: 200,

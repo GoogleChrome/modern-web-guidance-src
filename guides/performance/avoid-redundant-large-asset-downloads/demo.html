@@ -17,10 +17,12 @@
     // The hash a real deployment would compute once, ahead of time, from
     // the exact bytes of the shared Wasm module (e.g. via crypto.subtle.digest()).
     // Recomputing it on every page load would defeat the point of a
-    // content-addressable cache.
+    // content-addressable cache. This value matches the bytes actually
+    // shipped at /assets/ffmpeg-core.wasm alongside this demo, so a
+    // real Cross-Origin Storage implementation can verify it on write.
     const hash = {
       algorithm: 'SHA-256',
-      value: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
+      value: 'b3b40838eab24e608ff15f6c24e59911719c75b88e7229cb288ad09447bcdb72',
     };
 
     const statusEl = document.getElementById('status');
