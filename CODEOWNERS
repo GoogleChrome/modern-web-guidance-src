@@ -15,6 +15,7 @@ pnpm-lock.yaml @paulirish @micahjo7
 pnpm-workspace.yaml @paulirish @micahjo7
 
 # Eval files
+**/targets/ @paulirish @micahjo7
 **/grader.ts @paulirish @micahjo7
 **/tasks/task.md @paulirish @micahjo7
 **/negative-demo.html @paulirish @micahjo7

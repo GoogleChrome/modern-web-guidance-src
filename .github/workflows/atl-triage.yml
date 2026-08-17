@@ -9,7 +9,7 @@ on:
   # switch to `pull_request_target` (read-write token) and fetch changed-file
   # contents via the API rather than the base checkout.
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, labeled]
 
 permissions:
   issues: write
