@@ -55,6 +55,17 @@ describe('baseline data', () => {
       );
     });
 
+    it('returns status message for a registered pending temporary feature ID', () => {
+      assert.strictEqual(
+        getStatusMessage('tmp-streaming-api'),
+        "streaming-api is not natively supported by any major browser yet.\nTracked upstream at https://github.com/web-platform-dx/web-features/issues/4117."
+      );
+    });
+
+    it('returns undefined for an unregistered temporary feature ID', () => {
+      assert.strictEqual(getStatusMessage('tmp-pending-feature-xyz'), undefined);
+    });
+
     it('returns undefined for unknown features or keys', () => {
       assert.strictEqual(getStatusMessage('non-existent'), undefined);
       assert.strictEqual(getStatusMessage('grid', 'unknown.key'), undefined);
