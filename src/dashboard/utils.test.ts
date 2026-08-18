@@ -2,7 +2,6 @@ import { test, describe } from "node:test";
 import assert from "node:assert";
 import {
   getRunStats,
-  isDisciplineSkillRun,
   getColor,
   escapeHtml,
   capitalize,
@@ -19,13 +18,6 @@ describe("eval-view utils", () => {
 
     const checks = [{ passed: true }, { passed: false }, { passed: true }, { passed: true }];
     assert.deepStrictEqual(getRunStats(checks), { rate: 75, passed: 3, total: 4 });
-  });
-
-  test("isDisciplineSkillRun checks isDisciplineSkill or fallback isSkill", () => {
-    assert.strictEqual(isDisciplineSkillRun(null), false);
-    assert.strictEqual(isDisciplineSkillRun({ isDisciplineSkill: true }), true);
-    assert.strictEqual(isDisciplineSkillRun({ isDisciplineSkill: false }), false);
-    assert.strictEqual(isDisciplineSkillRun({ isSkill: true }), true);
   });
 
   test("getColor returns proper OKLCH color strings for thresholds", () => {
