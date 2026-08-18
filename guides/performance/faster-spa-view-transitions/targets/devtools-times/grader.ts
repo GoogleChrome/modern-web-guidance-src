@@ -23,8 +23,9 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
 
   test('Active view element does not have content-visibility: hidden applied (CSS)', () => {
     const cleanCss = extractAllCss(targetFiles);
-    const hasActiveContentVisibility = /\bcontent-visibility\s*:\s*(?:visible|auto)\b/i.test(cleanCss);
-    expect(hasActiveContentVisibility).toBe(true);
+    const hasContentVisibility = /\bcontent-visibility\s*:\s*hidden\b/i.test(cleanCss);
+    const isBareOrActiveViewHidden = /(?:\.spa-view(?!\s*(?:\.inactive|\[aria-hidden|:not\(\.active\)))|\.spa-view\.active|\.active)\s*\{[^}]*\bcontent-visibility\s*:\s*hidden\b/i.test(cleanCss);
+    expect(hasContentVisibility && !isBareOrActiveViewHidden).toBe(true);
   });
 
   test('Implementation toggles view state when switching between views (ts-morph)', () => {
