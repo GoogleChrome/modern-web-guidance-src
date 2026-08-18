@@ -1,0 +1,132 @@
+{
+  "_comment": "Baseline snapshot of guides exceeding limits (8,192 chars or 256 lines).",
+  "_date": "2026-08-18",
+  "guides/accessibility/accessibility/guide.md": {
+    "chars": 24864,
+    "lines": 469
+  },
+  "guides/built-in-ai/language-model/guide.md": {
+    "chars": 16823,
+    "lines": 372
+  },
+  "guides/css/calculate-with-intrinsic-sizes/guide.md": {
+    "chars": 9900,
+    "lines": 201
+  },
+  "guides/css/css-layout/guide.md": {
+    "chars": 18260,
+    "lines": 305
+  },
+  "guides/css/css/guide.md": {
+    "chars": 27456,
+    "lines": 533
+  },
+  "guides/css/overflow-clipping-control/guide.md": {
+    "chars": 8318,
+    "lines": 185
+  },
+  "guides/forms/autofill-payment-form/guide.md": {
+    "chars": 8332,
+    "lines": 132
+  },
+  "guides/forms/autofill-sign-in-form/guide.md": {
+    "chars": 9874,
+    "lines": 142
+  },
+  "guides/forms/autofill-sign-up-form/guide.md": {
+    "chars": 11072,
+    "lines": 152
+  },
+  "guides/forms/brand-consistent-forms/guide.md": {
+    "chars": 8613,
+    "lines": 262
+  },
+  "guides/forms/forms/guide.md": {
+    "chars": 14269,
+    "lines": 378
+  },
+  "guides/html/html/guide.md": {
+    "chars": 18123,
+    "lines": 413
+  },
+  "guides/performance/flicker-free-client-side-ab-testing/guide.md": {
+    "chars": 8888,
+    "lines": 174
+  },
+  "guides/performance/performance/guide.md": {
+    "chars": 20075,
+    "lines": 374
+  },
+  "guides/privacy/privacy/guide.md": {
+    "chars": 11615,
+    "lines": 258
+  },
+  "guides/security/passkey-authentication/guide.md": {
+    "chars": 9608,
+    "lines": 210
+  },
+  "guides/security/passkey-management/guide.md": {
+    "chars": 9388,
+    "lines": 217
+  },
+  "guides/security/passkey-registration/guide.md": {
+    "chars": 9380,
+    "lines": 187
+  },
+  "guides/security/security/guide.md": {
+    "chars": 26000,
+    "lines": 356
+  },
+  "guides/ui-atoms/carousel-slide-effects/guide.md": {
+    "chars": 8525,
+    "lines": 194
+  },
+  "guides/ui-behaviors/consistent-cross-document-transitions/guide.md": {
+    "chars": 12424,
+    "lines": 234
+  },
+  "guides/ui-behaviors/parallax-scroll-effects/guide.md": {
+    "chars": 9187,
+    "lines": 236
+  },
+  "guides/ui-behaviors/same-document-transitions/guide.md": {
+    "chars": 8680,
+    "lines": 184
+  },
+  "guides/ui-behaviors/scrollytelling/guide.md": {
+    "chars": 8668,
+    "lines": 186
+  },
+  "guides/ui-behaviors/swipe-to-remove/guide.md": {
+    "chars": 26881,
+    "lines": 537
+  },
+  "guides/ui-components/navigation-drawer/guide.md": {
+    "chars": 15790,
+    "lines": 362
+  },
+  "guides/ui-components/stack-drill-down/guide.md": {
+    "chars": 33707,
+    "lines": 688
+  },
+  "guides/visual-design/apply-webgl-shaders/guide.md": {
+    "chars": 10310,
+    "lines": 247
+  },
+  "guides/visual-design/dark-mode/guide.md": {
+    "chars": 9485,
+    "lines": 190
+  },
+  "guides/visual-design/export-html-media-from-canvas/guide.md": {
+    "chars": 11909,
+    "lines": 263
+  },
+  "guides/visual-design/expose-canvas-content-to-browser-features/guide.md": {
+    "chars": 15245,
+    "lines": 409
+  },
+  "guides/visual-design/interactive-content-in-3d-scenes/guide.md": {
+    "chars": 14343,
+    "lines": 391
+  }
+}

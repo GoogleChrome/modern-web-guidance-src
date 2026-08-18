@@ -41,7 +41,7 @@ describe('Guides Validation (Single Source of Truth)', () => {
 
     it(`validates ${relativeDir}`, () => {
       const result = processGuideInventory([guide]);
-      
+
       if (result.hasError) {
         assert.fail(`Validation errors found in ${relativeDir}:\n${result.errors.join('\n')}`);
       }
@@ -173,6 +173,77 @@ describe('Guides Validation (Single Source of Truth)', () => {
           assert.fail(`Feature snippet file "features/${file}" uses unregistered feature ID: ${res.errorMessage}`);
         }
       }
+    }
+  });
+
+  // This test enforces character and line limits based on the minimum allowed character and line limits of the current Guidance agent harnesses
+  // AGY CLI Character limit: 8,192 Characters
+  // Codex Cli line limit: 256 lines
+  it('enforces character limits on guides', () => {
+    const MAX_RECOMMENDED_CHARS = 8192; // AGY's terminal stdout limit
+    const MAX_RECOMMENDED_LINES = 256; // Codex Cli line limit
+    const baselinePath = path.join(REPO_ROOT, 'guides/oversized-guides-baseline.json');
+    interface BaselineEntry {
+      chars?: number;
+      lines?: number;
+    }
+    let baseline: Record<string, BaselineEntry | number | string> = {};
+    if (fs.existsSync(baselinePath)) {
+      try {
+        baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+      } catch (e) {
+        assert.fail(`Failed to parse guides/oversized-guides-baseline.json: ${e}`);
+      }
+    }
+
+    const errors: string[] = [];
+    const cleanupHints: string[] = [];
+
+    for (const guide of guides) {
+      const guidePath = path.join(guide.dir, 'guide.md');
+      if (!fs.existsSync(guidePath)) continue;
+
+      const rel = path.relative(REPO_ROOT, guidePath).replace(/\\/g, '/');
+      const content = fs.readFileSync(guidePath, 'utf8');
+      const currentLength = content.length;
+      const currentLines = content.split(/\r?\n/).length;
+
+      const exceedsChars = currentLength > MAX_RECOMMENDED_CHARS;
+      const exceedsLines = currentLines > MAX_RECOMMENDED_LINES;
+
+      if (exceedsChars || exceedsLines) {
+        if (rel in baseline) {
+          const entry = baseline[rel];
+          const maxAllowedChars = typeof entry === 'number'
+            ? entry
+            : (typeof entry === 'object' && entry !== null ? (entry.chars ?? MAX_RECOMMENDED_CHARS) : MAX_RECOMMENDED_CHARS);
+          const maxAllowedLines = typeof entry === 'number'
+            ? MAX_RECOMMENDED_LINES
+            : (typeof entry === 'object' && entry !== null ? (entry.lines ?? MAX_RECOMMENDED_LINES) : MAX_RECOMMENDED_LINES);
+
+          if (currentLength > maxAllowedChars) {
+            errors.push(`Guide "${rel}" grew beyond its character budget: ${currentLength} chars (max allowed: ${maxAllowedChars}).`);
+          }
+          if (currentLines > maxAllowedLines) {
+            errors.push(`Guide "${rel}" grew beyond its line count budget: ${currentLines} lines (max allowed: ${maxAllowedLines}).`);
+          }
+        } else {
+          const reasons: string[] = [];
+          if (exceedsChars) reasons.push(`${currentLength} chars > ${MAX_RECOMMENDED_CHARS}`);
+          if (exceedsLines) reasons.push(`${currentLines} lines > ${MAX_RECOMMENDED_LINES}`);
+          errors.push(`New or unbudgeted oversized guide "${rel}" (${reasons.join(', ')}). Please trim the guide or record it in guides/oversized-guides-baseline.json.`);
+        }
+      } else if (rel in baseline) {
+        cleanupHints.push(`"${rel}" is now ${currentLength} chars and ${currentLines} lines (<= ${MAX_RECOMMENDED_CHARS} chars, <= ${MAX_RECOMMENDED_LINES} lines)`);
+      }
+    }
+
+    if (cleanupHints.length > 0) {
+      console.warn(`\nInfo: The following guides are below limit (${MAX_RECOMMENDED_CHARS} chars, ${MAX_RECOMMENDED_LINES} lines) and can be removed from guides/oversized-guides-baseline.json:\n` + cleanupHints.map(h => `   - ${h}`).join('\n'));
+    }
+
+    if (errors.length > 0) {
+      assert.fail(`Guide character/line limit enforcement failed:\n${errors.map(e => `   - ${e}`).join('\n')}`);
     }
   });
 });
