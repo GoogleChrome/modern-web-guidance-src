@@ -97,6 +97,8 @@ jobs:
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
         with:
           token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          author: "Modern Web Guidance Bot <modern-web-guidance-bot@google.com>"
+          committer: "Modern Web Guidance Bot <modern-web-guidance-bot@google.com>"
           commit-message: "chore(deps): bump web-features package"
           title: "chore(deps): bump web-features package"
           body: |

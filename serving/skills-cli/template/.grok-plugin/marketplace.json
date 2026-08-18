@@ -1,0 +1,14 @@
+{
+  "name": "googlechrome",
+  "owner": {
+    "name": "Google Chrome"
+  },
+  "plugins": [
+    {
+      "name": "modern-web-guidance",
+      "source": "./",
+      "description": "Keep your coding agent up to date with the latest web best practices",
+      "version": "0.0.26"
+    }
+  ]
+}
