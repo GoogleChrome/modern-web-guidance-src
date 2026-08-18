@@ -155,14 +155,14 @@ export interface TaskPromptOptions {
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   return `# GOAL
 Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the use case.
-Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to request the overall use case inside the application.
+Generate a \`${opts.taskFile}\` file containing a single realistic test prompt that a web developer would send to an AI coding assistant to request the overall use case inside the application.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Target File Name**: \`${opts.taskFile}\`
 
 # RULES
-1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based specifically on the **description** in the frontmatter of \`${opts.guideFile}\`, keeping the request simple, high-level, and generic.
+1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based on the **description** in the frontmatter of \`${opts.guideFile}\`, phrased as a practical web development task in the application.
 2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
 3. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
 4. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
