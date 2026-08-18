@@ -14,16 +14,11 @@
       *prioritized* list, and a browser uses the first alternative it CAN
       parse and load. Listing the plain fallback first would mean it's
       always used, and the COS-enhanced source would never even be tried.
-
-      The integrity hash below matches the actual bytes shipped at
-      /fonts/shared-emoji.woff2 alongside this demo, so both plain SRI
-      verification and a real Cross-Origin Storage implementation can
-      verify it.
     */
     @font-face {
       font-family: 'Shared Emoji Font';
       src:
-        url('/fonts/shared-emoji.woff2' integrity('sha256-Y55pT6XGxh5KiQxQyDxRT8ApCpdGytbYIrxmWVoC7R4=') cross-origin-storage(*)) format('woff2'),
+        url('/fonts/shared-emoji.woff2' integrity('sha256-WYtoZ9R5VKyrRu3WqXc9c0uETSIdOpWDTadELV32T5g=') cross-origin-storage(*)) format('woff2'),
         url('/fonts/shared-emoji.woff2') format('woff2');
     }
 

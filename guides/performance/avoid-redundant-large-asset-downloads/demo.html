@@ -7,43 +7,41 @@
 </head>
 
 <body>
-  <h1>Load a shared Wasm module via Cross-Origin Storage</h1>
-  <p>This loads the ffmpeg.wasm core module, a large Wasm file that many unrelated video-editing sites already
-    share in Cross-Origin Storage (COS), instead of downloading a fresh copy on this origin.</p>
+  <h1>Load a shared library via Cross-Origin Storage</h1>
+  <p>This loads a large, popular library that many unrelated sites already share in Cross-Origin Storage (COS),
+    instead of downloading a fresh copy on this origin.</p>
   <button id="load-btn">Load shared library</button>
   <div id="status"></div>
 
   <script type="module">
     // The hash a real deployment would compute once, ahead of time, from
-    // the exact bytes of the shared Wasm module (e.g. via crypto.subtle.digest()).
+    // the exact bytes of the shared library (e.g. via crypto.subtle.digest()).
     // Recomputing it on every page load would defeat the point of a
-    // content-addressable cache. This value matches the bytes actually
-    // shipped at /assets/ffmpeg-core.wasm alongside this demo, so a
-    // real Cross-Origin Storage implementation can verify it on write.
+    // content-addressable cache.
     const hash = {
       algorithm: 'SHA-256',
-      value: 'b3b40838eab24e608ff15f6c24e59911719c75b88e7229cb288ad09447bcdb72',
+      value: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
     };
 
     const statusEl = document.getElementById('status');
     const loadBtn = document.getElementById('load-btn');
 
+    // navigator.crossOriginStorage is undefined in browsers with no COS
+    // implementation. Guard every access with optional chaining so the
+    // page falls back to plain network loading instead of throwing.
+    const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
+    if (!supportsCOS) {
+      statusEl.textContent = 'Cross-Origin Storage is unavailable here -- loading over the network as normal.';
+    }
+
     loadBtn.addEventListener('click', async () => {
       loadBtn.disabled = true;
-      const fileBlob = await loadModule();
+      const fileBlob = await loadLibrary();
       statusEl.textContent = `Library ready (${fileBlob.size} bytes).`;
       loadBtn.disabled = false;
     });
 
-    async function loadModule() {
-      // MANDATORY: Feature-detect navigator.crossOriginStorage first and
-      // fall back to the network immediately if it's absent -- COS is not
-      // implemented in every browser yet. Once support is confirmed, still
-      // wrap every call in try/catch: even a fully implemented COS can
-      // legitimately reject a call, for example due to availability
-      // gating or a Permissions Policy restriction.
-      const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
-
+    async function loadLibrary() {
       if (supportsCOS) {
         try {
           // Check COS first. If another origin already stored this exact
@@ -65,18 +63,16 @@
         }
       }
 
-      const response = await fetch('/assets/ffmpeg-core.wasm');
+      const response = await fetch('/assets/shared-library.js');
       const fileBlob = await response.blob();
 
       if (supportsCOS) {
-        // Storing is a nice-to-have for future visitors, not required for
-        // this page to work -- the file is already loaded and usable, so a
-        // failure here must never surface to the person using the page.
+        // Store the file for the next origin that requests the same hash.
+        // MANDATORY: origins: '*' is only appropriate for genuinely popular,
+        // non-proprietary resources -- this stands in for a widely-shared
+        // public library. A proprietary asset should instead use an
+        // explicit origins list, or omit origins for same-site-only sharing.
         try {
-          // MANDATORY: origins: '*' is only appropriate for genuinely popular,
-          // non-proprietary resources -- this stands in for a widely-shared
-          // public Wasm module. A proprietary asset should instead use an
-          // explicit origins list, or omit origins for same-site-only sharing.
           const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
             create: true,
             origins: '*',
@@ -91,7 +87,8 @@
           // NotAllowedError until this very write()/close() has resolved,
           // which it just did. The blob already in hand is what's used below.
         } catch {
-          // Ignore write failures; the caller already has the file.
+          // Storing is a nice-to-have for future visitors, not required for
+          // this page to work -- the file is already loaded and usable.
         }
       }
 

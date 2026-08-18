@@ -1,6 +1,0 @@
----
-base_app: empty-app
----
-- Create an extremely minimal web page for a demo that loads the ffmpeg.wasm core module, a large Wasm file identified by a known SHA-256 hash, that many unrelated video-editing sites also embed. Add a button with id "load-btn" and a status div with id "status". Before fetching the module from '/assets/ffmpeg-core.wasm', check whether it is already available locally by hash, and only hit the network if it isn't. After a network fetch, store the file locally by the same hash so a future visit can skip the download, making the resource globally available since it's a common public asset. Update #status to show "Library ready (N bytes)." when done. Write the page to index.html.
-- Add a "load shared library" button and a status area to the page so that clicking it loads the ffmpeg.wasm core module, a big Wasm file that lots of other unrelated video-editing sites also use, without downloading a fresh copy if the browser already has it stored from visiting one of those other sites. Use a hardcoded hash object for the module.
-- I want a minimal test page that demonstrates loading ffmpeg.wasm efficiently. It should have a button (id "load-btn") and a status element (id "status"). Only fetch the Wasm module over the network as a last resort, and make sure whatever gets fetched is saved so it doesn't need to be re-fetched next time.
