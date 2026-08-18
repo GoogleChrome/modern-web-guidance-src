@@ -64,7 +64,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'test-fixture.ts'),
-      path.join(workDir, 'test-fixture.ts')
+      path.join(workDir, 'test-fixture.reference.ts')
     );
     fs.copyFileSync(
       path.resolve(repoRoot, 'guides', 'parser-pattern-library.test.ts'),
@@ -103,6 +103,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       graderFile: GRADER_FILE,
       baseApp,
       templateFile: 'template.grader.ts',
+      testFixtureReferencePath: path.join(workDir, 'test-fixture.reference.ts'),
       parserPatternLibraryPath: path.join(workDir, 'parser-pattern-library.test.ts'),
       playwrightPatternLibraryPath: path.join(workDir, 'playwright-pattern-library.grader.ts'),
       tsMorphDtsPath: path.join(workDir, 'ts-morph.d.ts'),

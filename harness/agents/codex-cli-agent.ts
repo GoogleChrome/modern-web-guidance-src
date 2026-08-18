@@ -66,17 +66,7 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
     fs.copyFileSync(src, path.join(targetDir, rawDestName));
 
     // 2. Read and parse JSONL
-    const logContent = fs.readFileSync(src, 'utf8');
-    const jsonLines = logContent.split(/\r?\n/).filter(Boolean);
-
-    const logData = jsonLines.map(line => {
-      try {
-        return JSON.parse(line);
-      } catch (e) {
-        console.error("Failed to parse JSONL line:", e);
-        return { error: "Failed to parse line", raw: line };
-      }
-    });
+    const logData = parseJsonlFile(src);
 
     // 3. Generate and save the HTML viewer
     const htmlContent = generateCodexTrajectoryHtml(logData);
@@ -131,6 +121,66 @@ async function run() {
   }
 }
 
+function unescapeString(raw: string, quote: string): string {
+  if (quote === '"') {
+    try {
+      return JSON.parse(`"${raw}"`);
+    } catch {
+      return raw.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+  } else if (quote === "'") {
+    return raw.replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+  } else if (quote === '`') {
+    return raw.replace(/\\`/g, '`').replace(/\\\\/g, '\\');
+  }
+  return raw;
+}
+
+export function extractCommandsFromCodexItem(obj: any): string[] {
+  const commands: string[] = [];
+  const payload = obj?.payload || obj;
+  if (!payload) return commands;
+
+  const itemType = payload.type || obj?.type;
+  if (itemType !== 'function_call' && itemType !== 'custom_tool_call') {
+    return commands;
+  }
+
+  const raw = payload.input ?? payload.arguments ?? obj.input ?? obj.arguments;
+  if (!raw) return commands;
+
+  if (typeof raw === 'object') {
+    if (typeof raw.cmd === 'string') commands.push(raw.cmd);
+    else if (typeof raw.command === 'string') commands.push(raw.command);
+    return commands;
+  }
+
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.cmd === 'string') return [parsed.cmd];
+        if (typeof parsed.command === 'string') return [parsed.command];
+      }
+    } catch {
+      // Not direct JSON
+    }
+
+    const cmdRegex = /["']?(?:cmd|command)["']?\s*:\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
+    let found = false;
+    for (const match of raw.matchAll(cmdRegex)) {
+      commands.push(unescapeString(match[2], match[1]));
+      found = true;
+    }
+
+    if (!found && itemType === 'function_call' && raw.trim()) {
+      commands.push(raw);
+    }
+  }
+
+  return commands;
+}
+
 export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let currentThought = '';
@@ -143,20 +193,30 @@ export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string
         currentThought = entry.payload.message || '';
       }
 
-      if (entry.type === 'response_item' && entry.payload?.type === 'function_call') {
+      const isFunctionCall = entry.type === 'response_item' && entry.payload?.type === 'function_call';
+      const isCustomToolCall = entry.type === 'response_item' && entry.payload?.type === 'custom_tool_call';
+
+      if (isFunctionCall || isCustomToolCall) {
         const p = entry.payload;
         const callId = p.call_id;
         const cmdName = p.name || 'unknown';
-        let params: any = undefined;
-        try {
-          params = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : p.arguments;
-        } catch {
-          params = p.arguments;
-        }
+        const commands = extractCommandsFromCodexItem(entry);
 
-        const isRunCommand = cmdName.toLowerCase() === 'exec_command' || cmdName.toLowerCase() === 'run_command';
-        const actionType = isRunCommand ? 'run_command' : mapToolType(cmdName);
-        const actionName = (isRunCommand && params?.cmd) ? params.cmd : cmdName;
+        let actionType: NonNullable<StandardizedStep['action']>['type'] = mapToolType(cmdName);
+        let actionName = cmdName;
+        let params: any = undefined;
+
+        if (commands.length > 0) {
+          actionType = 'run_command';
+          actionName = commands[0];
+          params = { cmd: commands[0] };
+        } else {
+          try {
+            params = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : (p.arguments || p.input);
+          } catch {
+            params = p.arguments || p.input;
+          }
+        }
 
         const step: StandardizedStep = {
           stepNumber: 0,
@@ -176,7 +236,7 @@ export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string
         currentThought = '';
       }
 
-      if (entry.type === 'response_item' && entry.payload?.type === 'function_call_output') {
+      if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
         const p = entry.payload;
         const callId = p.call_id;
         const out = p.output || '';
@@ -267,31 +327,28 @@ export function extractCodexMetadata(logData: any[], subagentsMap: Record<string
         lastCached = info.cached_input_tokens || 0;
         fileHasTokens = true;
       }
-      const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
-      if (functionCall?.name === 'exec_command' && functionCall.arguments) {
-        try {
-          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
-          const command = args.cmd || '';
-          if (command.includes('/skills/') && command.includes('SKILL.md')) {
-            const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
-            if (match) {
-              toolsUsed.add(match[1]);
+
+      const commands = extractCommandsFromCodexItem(obj);
+      for (const command of commands) {
+        if (command.includes('.agents/skills/') && command.includes('SKILL.md')) {
+          const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
+          if (match) {
+            toolsUsed.add(match[1]);
+          }
+        }
+        if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+          const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+          if (match) {
+            for (const g of match[1].split(',').map((s: string) => s.trim())) {
+              retrievedGuides.add(g);
             }
           }
-          if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
-            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-            if (match) {
-              for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                retrievedGuides.add(g);
-              }
-            }
-          } else if (command.includes('.agents/skills/') && command.includes('guide.md')) {
-            const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
-            if (match) {
-              retrievedGuides.add(match[1]);
-            }
+        } else if (command.includes('.agents/skills/') && command.includes('guide.md')) {
+          const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
+          if (match) {
+            fileReadGuides.add(match[1]);
           }
-        } catch {}
+        }
       }
     }
     if (fileHasTokens) {
@@ -344,25 +401,18 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
   for (const file of getSessionFiles(dirPath)) {
     const items = parseJsonlFile(path.join(dirPath, file));
     for (const obj of items) {
-      const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
-      if (functionCall?.name === 'exec_command' && functionCall.arguments) {
-        try {
-          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
-          const command = args.cmd || '';
-
-          if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
-            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-            if (match) {
-              retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
-            }
-          } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
-            const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
-            if (match) {
-              retrievedGuides.push(match[1]);
-            }
+      const commands = extractCommandsFromCodexItem(obj);
+      for (const command of commands) {
+        if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+          const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+          if (match) {
+            retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
           }
-        } catch {
-          // Ignore
+        } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
+          const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
+          if (match) {
+            fileReadGuides.push(match[1]);
+          }
         }
       }
     }
@@ -423,19 +473,13 @@ export function collectCodexToolsFromTrajectory(dir: string): string[] {
   for (const file of sessionFiles) {
     const items = parseJsonlFile(path.join(dir, file));
     for (const obj of items) {
-      const functionCall = obj.type === 'function_call' ? obj : (obj.payload?.type === 'function_call' ? obj.payload : null);
-      if (functionCall?.name === 'exec_command' && functionCall.arguments) {
-        try {
-          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
-          const command = args.cmd || '';
-          if (command.includes('/skills/') && command.includes('SKILL.md')) {
-            const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
-            if (match) {
-              toolsUsed.push(match[1]);
-            }
+      const commands = extractCommandsFromCodexItem(obj);
+      for (const command of commands) {
+        if (command.includes('.agents/skills/') && command.includes('SKILL.md')) {
+          const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
+          if (match) {
+            toolsUsed.push(match[1]);
           }
-        } catch {
-          // Ignore
         }
       }
     }

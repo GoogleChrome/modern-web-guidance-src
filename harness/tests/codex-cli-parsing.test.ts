@@ -10,6 +10,7 @@ import {
   extractCodexCliModel,
   extractCodexCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
+import { extractCommandsFromCodexItem } from '../agents/codex-cli-agent.ts';
 import { Agents, Serving } from '../config.ts';
 
 function createTempDir(): string {
@@ -19,6 +20,40 @@ function createTempDir(): string {
 function removeTempDir(dir: string) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
+
+test('extractCommandsFromCodexItem handles quotes, backticks, escapes, and parentheses', () => {
+  // 1. JSON object in function_call
+  const cmd1 = extractCommandsFromCodexItem({
+    type: 'function_call',
+    arguments: JSON.stringify({ cmd: 'echo "hello"' })
+  });
+  assert.deepStrictEqual(cmd1, ['echo "hello"']);
+
+  // 2. Custom tool call with double quotes, escapes, and parentheses (e.g. subshell)
+  const cmd2 = extractCommandsFromCodexItem({
+    type: 'custom_tool_call',
+    input: 'const r = await tools.exec_command({"cmd":"echo $(which node) && (true || false)"}); text(r.output);'
+  });
+  assert.deepStrictEqual(cmd2, ['echo $(which node) && (true || false)']);
+
+  // 3. Custom tool call with single quotes
+  const cmd3 = extractCommandsFromCodexItem({
+    payload: {
+      type: 'custom_tool_call',
+      input: "const r = await tools.exec_command({cmd: 'cat index.html && find . ( -name \'*.ts\' )'});"
+    }
+  });
+  assert.deepStrictEqual(cmd3, ["cat index.html && find . ( -name '*.ts' )"]);
+
+  // 4. Custom tool call with backticks
+  const cmd4 = extractCommandsFromCodexItem({
+    payload: {
+      type: 'custom_tool_call',
+      input: 'const r = await tools.exec_command({cmd: `ls -la`});'
+    }
+  });
+  assert.deepStrictEqual(cmd4, ['ls -la']);
+});
 
 test('Codex CLI normalization with commentary, response items, and subagent inlining', async () => {
   const tempDir = createTempDir();
@@ -96,8 +131,10 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
       })
     ];
 
-    fs.writeFileSync(path.join(tempDir, 'session-codex-main.jsonl'), mainLines.join('\n'));
-    fs.writeFileSync(path.join(tempDir, 'subagent-agent-worker-cdx.jsonl'), subagentLines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'session-codex-main.jsonl'), mainLines.join('
+'));
+    fs.writeFileSync(path.join(tempDir, 'subagent-agent-worker-cdx.jsonl'), subagentLines.join('
+'));
 
     await generateNormalizedTrajectory(tempDir, Agents.CODEX_CLI, 'Inspect and test');
 
@@ -143,54 +180,181 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
   }
 });
 
-test('collectCodex metrics and token extraction from trajectory files', async () => {
+test('Codex CLI normalization with modern custom_tool_call exec_command', async () => {
   const tempDir = createTempDir();
   try {
     const lines = [
       JSON.stringify({
+        type: 'event_msg',
+        timestamp: '2026-08-17T18:50:00.000Z',
+        payload: {
+          type: 'agent_message',
+          phase: 'commentary',
+          message: 'Retrieving guideline'
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        timestamp: '2026-08-17T18:50:01.000Z',
+        payload: {
+          type: 'custom_tool_call',
+          call_id: 'call_custom_1',
+          name: 'exec',
+          input: 'const r = await tools.exec_command({"cmd":"npx -y modern-web-guidance@latest retrieve \"dialog-focus-management\""}); text(r.output);'
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        timestamp: '2026-08-17T18:50:02.000Z',
+        payload: {
+          type: 'custom_tool_call_output',
+          call_id: 'call_custom_1',
+          output: 'Retrieved guide dialog-focus-management'
+        }
+      }),
+      JSON.stringify({
         type: 'turn_context',
-        payload: { model: 'gpt-4o' }
+        payload: { model: 'gpt-5.6-sol' }
       }),
       JSON.stringify({
-        type: 'response_item',
+        type: 'event_msg',
         payload: {
-          type: 'function_call',
-          name: 'exec_command',
-          arguments: JSON.stringify({ cmd: 'npx modern-web-guidance retrieve declarative-dialog' })
-        }
-      }),
-      JSON.stringify({
-        type: 'response_item',
-        payload: {
-          type: 'function_call',
-          name: 'exec_command',
-          arguments: JSON.stringify({ cmd: 'cat /path/.agents/skills/modern-web-guidance/SKILL.md' })
-        }
-      }),
-      JSON.stringify({
-        type: 'token_count',
-        info: {
-          total_token_usage: {
-            total_tokens: 650,
-            cached_input_tokens: 250
+          type: 'token_count',
+          info: {
+            total_token_usage: {
+              total_tokens: 1200,
+              cached_input_tokens: 300
+            }
           }
         }
       })
     ];
 
-    fs.writeFileSync(path.join(tempDir, 'session-101.jsonl'), lines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'session-custom.jsonl'), lines.join('
+'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.CODEX_CLI, 'Add focus management');
+
+    const summaryPath = path.join(tempDir, 'trajectory_summary.json');
+    assert.ok(fs.existsSync(summaryPath));
+
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    assert.strictEqual(summary.agent, Agents.CODEX_CLI);
+    assert.strictEqual(summary.model, 'gpt-5.6-sol');
+    assert.deepStrictEqual(summary.tokenUsage, { total: 1200, cached: 300 });
+    assert.deepStrictEqual(summary.retrievedGuides, ['dialog-focus-management']);
+    assert.strictEqual(summary.steps.length, 1);
+    assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[0].action?.canonicalCategory, 'guide_retrieval');
+    assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('collectCodex metrics from legacy function_call trajectory file', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      JSON.stringify({
+        type: 'function_call',
+        name: 'exec_command',
+        arguments: JSON.stringify({ cmd: "sed -n '1,220p' /tmp/env/.agents/skills/modern-web-guidance/SKILL.md" })
+      }),
+      JSON.stringify({
+        type: 'function_call',
+        name: 'exec_command',
+        arguments: JSON.stringify({ cmd: 'npx -y modern-web-guidance@latest retrieve "visually-texture-content,complex-shapes"' })
+      }),
+      JSON.stringify({
+        type: 'function_call',
+        name: 'exec_command',
+        arguments: JSON.stringify({ cmd: 'cat /tmp/env/.agents/skills/css/size-aware-styling/guide.md' })
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('
+'));
 
     const guides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS_CLI);
-    assert.deepStrictEqual(guides.retrievedGuides, ['declarative-dialog']);
+    assert.deepStrictEqual(guides.retrievedGuides, ['visually-texture-content', 'complex-shapes']);
+    assert.deepStrictEqual(guides.fileReadGuides, []);
+
+    const skillGuides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS);
+    assert.deepStrictEqual(skillGuides.fileReadGuides, ['size-aware-styling']);
+
+    const tools = collectCodexToolsFromTrajectory(tempDir);
+    assert.deepStrictEqual(tools, ['modern-web-guidance']);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('collectCodex metrics from modern custom_tool_call trajectory file', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'custom_tool_call',
+          name: 'exec',
+          input: 'const r = await tools.exec_command({"cmd":"sed -n \'1,240p\' /tmp/test/.agents/skills/modern-web-guidance/SKILL.md","workdir":"/tmp/test"}); text(r.output);'
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'custom_tool_call',
+          name: 'exec',
+          input: 'const r = await tools.exec_command({"cmd":"npx -y modern-web-guidance@latest retrieve \\"validate-input-after-interaction,accessible-error-announcement\\"","workdir":"/tmp/test"}); text(r.output);'
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'custom_tool_call',
+          name: 'exec',
+          input: 'const r = await tools.exec_command({"cmd":"cat /tmp/test/.agents/skills/forms/validate-input-after-interaction/guide.md"}); text(r.output);'
+        }
+      }),
+      JSON.stringify({
+        type: 'turn_context',
+        payload: {
+          model: 'gpt-5.6-sol'
+        }
+      }),
+      JSON.stringify({
+        type: 'event_msg',
+        payload: {
+          type: 'token_count',
+          info: {
+            total_token_usage: {
+              total_tokens: 1500,
+              cached_input_tokens: 400
+            }
+          }
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-456.jsonl'), lines.join('
+'));
+
+    const guides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS_CLI);
+    assert.deepStrictEqual(guides.retrievedGuides, ['validate-input-after-interaction', 'accessible-error-announcement']);
+
+    const skillGuides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS);
+    assert.deepStrictEqual(skillGuides.fileReadGuides, ['validate-input-after-interaction']);
 
     const tools = collectCodexToolsFromTrajectory(tempDir);
     assert.deepStrictEqual(tools, ['modern-web-guidance']);
 
     const model = extractCodexCliModel(tempDir);
-    assert.strictEqual(model, 'gpt-4o');
+    assert.strictEqual(model, 'gpt-5.6-sol');
 
-    const tokens = extractCodexCliTokenUsage(tempDir);
-    assert.deepStrictEqual(tokens, { total: 650, cached: 250 });
+    const tokenUsage = extractCodexCliTokenUsage(tempDir);
+    assert.deepStrictEqual(tokenUsage, { total: 1500, cached: 400 });
   } finally {
     removeTempDir(tempDir);
   }
