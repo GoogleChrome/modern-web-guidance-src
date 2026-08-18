@@ -4,7 +4,6 @@ import {
   getTargetFiles,
   extractAllCss,
   getJsProject,
-  getHtmlDocuments,
 } from '../../../../test-fixture.ts';
 import fs from 'node:fs';
 import { SyntaxKind } from 'ts-morph';
