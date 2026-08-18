@@ -233,9 +233,9 @@ Diagnose each target according to its assigned flag:
 4. **\`LOW_GUIDED_PASS_RATE\`**:
    - The guided agent pass rate is under 90%.
    - **Root Cause Investigation**: Review the failed assertions in \`${REPORT_FILE}\` and examine \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, and \`targets/<target>/grader.ts\` to understand why the agent fell short. Consider:
-     - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide lack essential modern web practices, clear syntax examples, fallback patterns, or common pitfalls?
+     - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide have ambiguous instructions, incomplete code snippets, or missing caveats/pitfalls that caused the agent to fail? Keep in mind that guidance should represent framework-agnostic platform standards.
      - **Expectations Alignment (\`${EXPECTATIONS_FILE}\`)**: Are the must-pass expectations ambiguous, conflicting, or missing key constraints?
-     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader failing valid implementations due to brittle regex, rigid file/syntax assumptions, or over-constrained assertions rather than testing observable outcomes?
+     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader failing a valid implementation due to brittle pattern matching, rigid syntax assumptions, missing framework awareness, or over-constrained assertions rather than testing observable outcomes?
    - **Recommendation Rules (Mutually Exclusive)**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
        \`*(Note: After modifying source files, delete the targets/ directory and re-run gd dev to regenerate all target artifacts)*\`
