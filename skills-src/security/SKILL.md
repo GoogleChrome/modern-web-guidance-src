@@ -224,23 +224,13 @@ For static/cached HTML (SPAs) where a per-response nonce is not possible, use ha
 **Avoid**: URL allowlists like `script-src https://cdn.example.com` — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
 
 #### 3.3 Trusted Types Enforcement
-Trusted Types enforces the §1.2 source-level guidance at runtime: once enabled, the browser blocks string assignments to dangerous sinks unless they pass through a named policy.
+Trusted Types enforces source-level guidance at runtime by blocking string assignments to dangerous sinks unless they pass through a named policy.
 
-- **Incremental Rollout Strategy**: While full enforcement carries real breakage risk, you do not need to do everything at once. A highly viable approach is to define and roll out a policy for a small portion of the application under refactoring, and slowly expand its usage as you replace sinks. This simplifies eventual global enforcement without short-term breakage risk.
-- **Prerequisite**: Trusted Types requires framework cooperation. If the app's framework (or any third-party widget that writes to DOM sinks) does not produce `TrustedHTML` / `TrustedScript` values, the policy cannot be enforced without breaking that code. Audit framework support before starting the report-only rollout.
-- **Prerequisite**: The code-level sink refactor from Phase 1 is a prerequisite for complete Trusted Types enforcement. (Standard CSP `script-src` enforcement, by contrast, does not police DOM sinks and can be deployed without refactoring them.)
-- **DO**: Roll out via `Content-Security-Policy-Report-Only: require-trusted-types-for 'script'` first to find every offending sink.
-- **DO**: Define a single named policy that performs sanitization (or escaping) and route all sink writes through it.
-- **DO**: Move to full global `Content-Security-Policy: require-trusted-types-for 'script'` enforcement once the policy has been successfully integrated and violations in report-only logs drop to zero.
+Because deployment involves site-wide enforcement and framework compatibility checks, it should be treated as a major security initiative.
 
-```javascript
-if (window.trustedTypes && trustedTypes.createPolicy) {
-  const policy = trustedTypes.createPolicy('escapePolicy', {
-    createHTML: str => str.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  });
-  el.innerHTML = policy.createHTML(untrustedString);
-}
-```
+- **DO**: Consult the dedicated [Trusted Types Guide](../../guides/security/trusted-types/guide.md) for full implementation details, including policy creation and rollout strategies.
+- **Prerequisite**: Audit framework and third-party widget support before starting. If dependencies write to DOM sinks without producing Trusted Types, enforcement will break that code.
+- **Incremental Rollout**: Always start with `Content-Security-Policy-Report-Only` to identify all offending sinks before moving to full enforcement.
 
 #### 3.4 Cross-Origin Opener Policy (COOP)
 
