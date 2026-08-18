@@ -275,6 +275,7 @@ export const EXPECTATIONS_FILE = 'expectations.md';
 export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const TASK_FILE = 'task.md';
+export const REPORT_FILE = 'report.md';
 
 export const SUPPORTED_BASE_APPS = ['daily-grind', 'devtools-times'] as const;
 export type SupportedBaseApp = (typeof SUPPORTED_BASE_APPS)[number];
@@ -285,6 +286,7 @@ export function getSupportedBaseApps(): string[] {
 
 export const TARGETS_DIR = 'targets';
 export const PATCHES_DIR = 'patches';
+export const TEST_APP_RESULTS_DIR = 'test-app-results';
 
 export type SolutionAgent =
   | typeof Agents.GEMINI_CLI
@@ -293,7 +295,7 @@ export type SolutionAgent =
   | typeof Agents.CODEX_CLI;
 
 export function getDefaultSolutionAgent(): SolutionAgent {
-  return process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.GEMINI_CLI;
+  return process.env.GD_DEV_USE_GEMINI === '1' ? Agents.GEMINI_CLI : Agents.JETSKI_CLI;
 }
 
 export function getActiveSolutionAgents(targetDir?: string): SolutionAgent[] {
@@ -392,7 +394,6 @@ export function getTaskMap(): Map<string, TaskInfo> {
   }
 
   function processBaseAppTasks(guideName: string, targetsDir: string, guideDir: string) {
-    let firstBaseAppInfo: TaskInfo | null = null;
     const supportedBaseApps = getSupportedBaseApps();
 
     for (const entry of fs.readdirSync(targetsDir, { withFileTypes: true })) {
@@ -413,15 +414,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         guideDir: guideDir,
       };
 
-      if (!firstBaseAppInfo) {
-        firstBaseAppInfo = info;
-      }
-
       taskMap.set(`${guideName}/${baseAppName}`, info);
-    }
-
-    if (firstBaseAppInfo) {
-      taskMap.set(`${guideName}/task`, firstBaseAppInfo);
     }
   }
 
@@ -432,16 +425,6 @@ export function getTaskMap(): Map<string, TaskInfo> {
   for (const discipline of disciplines) {
     const disciplineDir = path.join(guidesDir, discipline);
     if (!fs.existsSync(disciplineDir)) continue;
-
-    // Check if the discipline itself is a skill with tasks
-    const disciplineTargetsDir = path.join(disciplineDir, TARGETS_DIR);
-    const disciplineTasksDir = path.join(disciplineDir, 'tasks');
-    if (fs.existsSync(disciplineTargetsDir)) {
-      processBaseAppTasks(discipline, disciplineTargetsDir, disciplineDir);
-    }
-    if (fs.existsSync(disciplineTasksDir)) {
-      processTasks(discipline, disciplineTasksDir, disciplineDir);
-    }
 
     // Check subdirectories (guides)
     for (const entry of fs.readdirSync(disciplineDir, { withFileTypes: true })) {
@@ -600,7 +583,7 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
 
     // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name.startsWith('.') || ['node_modules', 'test-app-results', 'grade-report', 'test-results'].includes(entry.name)) continue;
+      if (!entry.isDirectory() || entry.name.startsWith('.') || ['node_modules', TEST_APP_RESULTS_DIR, 'grade-report', 'test-results'].includes(entry.name)) continue;
       guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
     }
   }

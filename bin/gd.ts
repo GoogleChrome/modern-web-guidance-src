@@ -46,7 +46,7 @@ const COMMAND_METADATA = {
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
-
+  pr: { desc: 'Push branch and create GitHub PR from dev report', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -93,7 +93,7 @@ completion.on('arg1', ({ before, line, reply }) => {
     reply(['grader']);
   } else if (before === 'audit') {
     reply(flags);
-  } else if (['dev', 'test', 'grade'].includes(before)) {
+  } else if (['dev', 'test', 'grade', 'pr'].includes(before)) {
     reply([...listGuideDirs(), ...flags]);
   } else {
     reply(flags);
@@ -166,7 +166,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'audit'],
+      commands: ['dev', 'pr', 'audit'],
     },
 
     {
@@ -196,7 +196,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = cmd === 'dev' ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
@@ -339,6 +339,17 @@ async function main() {
       const args = positionals.slice(1);
       const code = await runNpm(['baselinestatus', ...args]);
       process.exit(code);
+    }
+
+    case 'pr': {
+      const guideDir = positionals[1];
+      if (!guideDir) {
+        console.error(cRed('Usage: gd pr <guide_dir>'));
+        process.exit(1);
+      }
+      const { runDevPr } = await import('../guides/lib/dev-pr.ts');
+      await runDevPr(guideDir);
+      break;
     }
 
 

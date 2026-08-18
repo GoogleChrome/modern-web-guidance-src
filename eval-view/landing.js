@@ -319,19 +319,20 @@ async function loadLocalTests() {
         }
 
         // Load local test data
+        const sourceName = useResultsPrefix ? 'static' : 'local';
         for (const suite of manifest.suites) {
             if (typeof suite === 'object' && suite.testId && suite.guidedStats) {
-                registerSuiteSummary(suite, 'local');
+                registerSuiteSummary(suite, sourceName);
             } else {
                 const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
                 const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
                 if (!testId) continue;
                 try {
                     const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
-                    const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
+                    const response = await fetch(`${fetchPath}?source=${sourceName}&t=${Date.now()}`);
                     if (response.ok) {
                         const parsed = await response.json();
-                        registerTestData(testId, 'local', parsed, suiteTimestamp);
+                        registerTestData(testId, sourceName, parsed, suiteTimestamp);
                     }
                 } catch (e) {
                     console.warn(`Failed to load local test ${testId}:`, e);

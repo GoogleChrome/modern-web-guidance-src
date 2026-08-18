@@ -1,6 +1,6 @@
 {
   "default": {
-    "built-in-ai": "tomac",
+    "built-in-ai": "tomayac",
     "css": "LeaVerou",
     "html": "LeaVerou",
     "forms": "LeaVerou",
@@ -22,6 +22,7 @@
   "web_features": {
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
+    "tmp-cross-origin-storage": "tomayac",
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {

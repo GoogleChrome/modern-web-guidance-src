@@ -5,6 +5,7 @@ import {
   buildZeroPassratePrompt,
   buildTargetGraderPrompt,
   buildTargetTaskPrompt,
+  buildDevReportPrompt,
 } from './gd-dev-prompts.ts';
 import { Agents } from '../harness/config.ts';
 
@@ -82,4 +83,27 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions', () => 
   assert.ok(prompt.includes('codebase files'));
   assert.ok(prompt.includes('Do NOT name the guide itself'));
   assert.ok(prompt.includes('Write the prompt as a developer talking'));
+});
+
+test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags and inputs', () => {
+  const prompt = buildDevReportPrompt({
+    guideName: 'size-aware-styling',
+    targets: [
+      {
+        baseApp: 'daily-grind',
+        flag: 'LOW_GUIDED_PASS_RATE',
+        flagDetails: 'Guided pass rate is 75% (below 90% threshold)',
+        guidedPassRate: 75,
+        unguidedPassRate: 50,
+      },
+    ],
+  });
+
+  assert.ok(prompt.includes('size-aware-styling'));
+  assert.ok(prompt.includes('report.md'));
+  assert.ok(prompt.includes('LOW_GUIDED_PASS_RATE'));
+  assert.ok(prompt.includes('daily-grind'));
+  assert.ok(prompt.includes('Evaluation Results'));
+  assert.ok(prompt.includes('Diagnostic Analysis & Actionable Recommendations'));
+  assert.ok(prompt.includes('ROOT-CAUSE DIAGNOSIS RULES'));
 });

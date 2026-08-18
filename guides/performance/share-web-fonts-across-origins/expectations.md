@@ -1,0 +1,5 @@
+- An `@font-face` rule for a shared, popular web font uses the `cross-origin-storage()` request-url-modifier alongside `integrity()` inside the `src: url(...)` descriptor, rather than a bare CDN URL.
+- `cross-origin-storage()` is called with no arguments for same-site-only sharing, `cross-origin-storage(*)` for global availability, or a comma-separated list of origin strings for a specific set of trusted origins — matching the font's real distribution scope.
+- `cross-origin-storage()` never appears without `integrity()` on the same `url()`, since the integrity hash is what identifies the font file in the shared cache.
+- The `url()` still points at the font's real, working network location, since a cache lookup that doesn't succeed falls back to fetching from that URL exactly like ordinary `integrity`-checked font loads do.
+- `cross-origin-storage()` is not confused with the unrelated CSS `cross-origin()` modifier, which controls CORS request mode rather than shared-cache participation.
