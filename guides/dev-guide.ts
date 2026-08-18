@@ -88,7 +88,6 @@ export function exciseOldEvalArtifacts(guideDir: string): void {
   const oldArtifacts = [
     path.join(guideDir, 'tasks'),
     path.join(guideDir, GRADER_FILE),
-    path.join(guideDir, DEMO_FILE),
     path.join(guideDir, NEGATIVE_DEMO_FILE),
   ];
 

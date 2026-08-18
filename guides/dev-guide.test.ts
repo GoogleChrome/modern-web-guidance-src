@@ -186,7 +186,7 @@ test('collectPlaywrightErrors correctly parses nested suites, deduplicates error
   assert.strictEqual(collectPlaywrightErrors({}), '');
 });
 
-test('exciseOldEvalArtifacts removes tasks folder, grader.ts, demo.html, and negative-demo.html when they exist', async (t) => {
+test('exciseOldEvalArtifacts removes tasks folder, grader.ts, and negative-demo.html when they exist while keeping demo.html', async (t) => {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
@@ -216,10 +216,10 @@ test('exciseOldEvalArtifacts removes tasks folder, grader.ts, demo.html, and neg
   // Assert old artifacts were deleted
   assert.strictEqual(fs.existsSync(tasksDir), false, 'tasks directory should be excised');
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'grader.ts')), false, 'grader.ts should be excised');
-  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'demo.html')), false, 'demo.html should be excised');
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'negative-demo.html')), false, 'negative-demo.html should be excised');
 
-  // Assert non-old artifacts remain intact
+  // Assert demo.html and non-old artifacts remain intact
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'demo.html')), true, 'demo.html should remain intact');
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'guide.md')), true, 'guide.md should remain');
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'expectations.md')), true, 'expectations.md should remain');
 });

@@ -54,10 +54,15 @@ export const devPrCli = {
     }).trim();
   },
   editPr(prNumber: number, bodyPath: string, addLabels: DevPrLabel[], removeLabels: DevPrLabel[]): void {
-    const flags: string[] = [`--body-file "${bodyPath}"`];
-    if (addLabels.length > 0) flags.push(`--add-label "${addLabels.join(',')}"`);
-    if (removeLabels.length > 0) flags.push(`--remove-label "${removeLabels.join(',')}"`);
-    execSync(`gh pr edit ${prNumber} ${flags.join(' ')}`.trim(), { stdio: 'inherit' });
+    execSync(`gh api repos/{owner}/{repo}/pulls/${prNumber} --method PATCH -F body=@"${bodyPath}"`, { stdio: 'ignore' });
+    for (const label of removeLabels) {
+      try {
+        execSync(`gh api repos/{owner}/{repo}/issues/${prNumber}/labels/${encodeURIComponent(label)} --method DELETE`, { stdio: 'ignore' });
+      } catch {}
+    }
+    if (addLabels.length > 0) {
+      execSync(`gh api repos/{owner}/{repo}/issues/${prNumber}/labels -f labels[]="${addLabels.join('" -f labels[]="')}"`, { stdio: 'ignore' });
+    }
   },
 };
 
