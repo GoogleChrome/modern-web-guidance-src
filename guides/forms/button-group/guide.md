@@ -2,7 +2,7 @@
 name: button-group
 description: "Build a button group: a set of options (mutually exclusive or not) laid out horizontally and presented as visually connected buttons."
 web-feature-ids:
-  - base-select
+  - customizable-select
 ---
 
 Button groups (sometimes called segment controls or toggle buttons) are common UI patterns for selecting a single option from a small set, such as choosing a layout view or a text alignment. Traditionally, these were built using complex radio button hacks or entirely custom JavaScript components, which often introduced accessibility gaps.
