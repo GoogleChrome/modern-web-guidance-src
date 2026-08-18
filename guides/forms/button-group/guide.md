@@ -102,6 +102,35 @@ option:focus-visible {
 }
 ```
 
+### 4. Handling Left and Right Arrow Keys
+
+In left-to-right, top-to-bottom writing modes, selects handle Up Arrow and Down Arrow keystrokes, but do not handle Left Arrow and Right Arrow keystrokes. Because the button group is horizontal, users will expect to be able to use the Left and Right Arrow keys to change the focus in the same way as the Up and Down arrows. Use JavaScript to manage this behavior.
+
+```js
+const selects = document.getElementsByTagName("select");
+[...selects].forEach((select) => {
+  select.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") {
+      const options = event.currentTarget.options;
+      const focused = [...options].findIndex(
+        (option) => option === document.activeElement,
+      );
+      if (focused > 0) {
+        options[focused - 1].focus();
+      }
+    } else if (event.key === "ArrowRight") {
+      const options = event.currentTarget.options;
+      const focused = [...options].findIndex(
+        (option) => option === document.activeElement,
+      );
+      if (focused < options.length - 1) {
+        options[focused + 1].focus();
+      }
+    }
+  });
+});
+```
+
 ## Accessibility Benefits
 
 Using a `<select>` for a button group provides several out-of-the-box advantages:

@@ -32,7 +32,8 @@
         background: #eee;
         padding: 4px;
         border-radius: calc(var(--button-radius) + 4px);
-        width: max-content;
+        inline-size: max-content;
+        block-size: min-content;
       }
 
       option {
@@ -103,26 +104,52 @@
       <span class="hint"
         >Select a single option to change the display mode.</span
       >
-      <select id="view-select" size="4" required name="view">
-        <div class="wrapper">
-          <option value="grid" selected>Grid</option>
-          <option value="feed">Feed</option>
-          <option value="stack">Stack</option>
-          <option value="list">List</option>
-        </div>
+      <select id="view-select" size="4" required name="view" class="wrapper">
+        <option value="grid" selected>Grid</option>
+        <option value="feed">Feed</option>
+        <option value="stack">Stack</option>
+        <option value="list">List</option>
       </select>
     </div>
 
     <div class="field">
       <label for="decoration-select">Text Formatting</label>
       <span id="multi-hint" class="hint">Multiple selection allowed.</span>
-      <select id="decoration-select" multiple aria-describedby="multi-hint" name="decoration">
-        <div class="wrapper">
-          <option value="bold">Bold</option>
-          <option value="underline">Underline</option>
-          <option value="strikethrough">Strikethrough</option>
-        </div>
+      <select
+        id="decoration-select"
+        multiple
+        aria-describedby="multi-hint"
+        name="decoration"
+        class="wrapper"
+      >
+        <option value="bold">Bold</option>
+        <option value="underline">Underline</option>
+        <option value="strikethrough">Strikethrough</option>
       </select>
     </div>
+    <script>
+      const selects = document.getElementsByTagName("select");
+      [...selects].forEach((select) => {
+        select.addEventListener("keydown", (event) => {
+          if (event.key === "ArrowLeft") {
+            const options = event.currentTarget.options;
+            const focused = [...options].findIndex(
+              (option) => option === document.activeElement,
+            );
+            if (focused > 0) {
+              options[focused - 1].focus();
+            }
+          } else if (event.key === "ArrowRight") {
+            const options = event.currentTarget.options;
+            const focused = [...options].findIndex(
+              (option) => option === document.activeElement,
+            );
+            if (focused < options.length - 1) {
+              options[focused + 1].focus();
+            }
+          }
+        });
+      });
+    </script>
   </body>
 </html>
