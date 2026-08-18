@@ -40,7 +40,7 @@ test('extractCommandsFromCodexItem handles quotes, backticks, escapes, and paren
   const cmd3 = extractCommandsFromCodexItem({
     payload: {
       type: 'custom_tool_call',
-      input: "const r = await tools.exec_command({cmd: 'cat index.html && find . ( -name \'*.ts\' )'});"
+      input: "const r = await tools.exec_command({cmd: 'cat index.html && find . ( -name \\'*.ts\\' )'});"
     }
   });
   assert.deepStrictEqual(cmd3, ["cat index.html && find . ( -name '*.ts' )"]);
@@ -131,10 +131,8 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
       })
     ];
 
-    fs.writeFileSync(path.join(tempDir, 'session-codex-main.jsonl'), mainLines.join('
-'));
-    fs.writeFileSync(path.join(tempDir, 'subagent-agent-worker-cdx.jsonl'), subagentLines.join('
-'));
+    fs.writeFileSync(path.join(tempDir, 'session-codex-main.jsonl'), mainLines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'subagent-agent-worker-cdx.jsonl'), subagentLines.join('\n'));
 
     await generateNormalizedTrajectory(tempDir, Agents.CODEX_CLI, 'Inspect and test');
 
@@ -200,7 +198,7 @@ test('Codex CLI normalization with modern custom_tool_call exec_command', async 
           type: 'custom_tool_call',
           call_id: 'call_custom_1',
           name: 'exec',
-          input: 'const r = await tools.exec_command({"cmd":"npx -y modern-web-guidance@latest retrieve \"dialog-focus-management\""}); text(r.output);'
+          input: 'const r = await tools.exec_command({"cmd":"npx -y modern-web-guidance@latest retrieve \\"dialog-focus-management\\""}); text(r.output);'
         }
       }),
       JSON.stringify({
@@ -230,8 +228,7 @@ test('Codex CLI normalization with modern custom_tool_call exec_command', async 
       })
     ];
 
-    fs.writeFileSync(path.join(tempDir, 'session-custom.jsonl'), lines.join('
-'));
+    fs.writeFileSync(path.join(tempDir, 'session-custom.jsonl'), lines.join('\n'));
 
     await generateNormalizedTrajectory(tempDir, Agents.CODEX_CLI, 'Add focus management');
 
@@ -273,8 +270,7 @@ test('collectCodex metrics from legacy function_call trajectory file', async () 
       })
     ];
 
-    fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('
-'));
+    fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
 
     const guides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS_CLI);
     assert.deepStrictEqual(guides.retrievedGuides, ['visually-texture-content', 'complex-shapes']);
@@ -338,8 +334,7 @@ test('collectCodex metrics from modern custom_tool_call trajectory file', async 
       })
     ];
 
-    fs.writeFileSync(path.join(tempDir, 'session-456.jsonl'), lines.join('
-'));
+    fs.writeFileSync(path.join(tempDir, 'session-456.jsonl'), lines.join('\n'));
 
     const guides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS_CLI);
     assert.deepStrictEqual(guides.retrievedGuides, ['validate-input-after-interaction', 'accessible-error-announcement']);
