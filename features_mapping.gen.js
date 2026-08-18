@@ -208,6 +208,10 @@ window.__featuresMapping = {
   "support-global-calendar-systems": [
     "temporal"
   ],
+  "scoped-component-transitions": [
+    "view-transitions-element-scoped",
+    "view-transitions"
+  ],
   "avoid-redundant-large-asset-downloads": [
     "tmp-cross-origin-storage"
   ],
