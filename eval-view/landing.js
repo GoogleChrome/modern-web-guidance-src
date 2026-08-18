@@ -2,21 +2,41 @@ import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo
 import { DumbbellChart } from './dumbbell-chart.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
+/**
+ * @typedef {import('./summary-extractor.js').SuiteSummary & {
+ *   source: import('./api.js').DataSource;
+ *   data?: any;
+ * }} LandingSuiteSummary
+ */
+
+/** @typedef {'all' | import('./api.js').DataSource} SourceFilter */
+/** @typedef {'alphabetic' | 'uplift' | 'unguided' | 'guided' | 'variance'} GuideSortKey */
+/** @typedef {'asc' | 'desc'} SortDirection */
+
+/** @type {Record<string, LandingSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
+/** @type {Set<string>} */
 let selectedTestIds = new Set(); // Set of test IDs to show
+/** @type {SourceFilter} */
 let currentSourceFilter = 'all';
+/** @type {string} */
 let currentAgentFilter = 'all';
+/** @type {string} */
 let currentServingFilter = 'all';
+/** @type {string} */
 let currentModelFilter = 'all';
 
 // Guides Pivot Table Sort State
+/** @type {GuideSortKey} */
 let currentGuideSort = 'alphabetic';
+/** @type {SortDirection} */
 let currentGuideSortDir = 'asc';
 
 function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 }
 
+/** @type {Record<string, string>} */
 const servingDisplayNames = {
     'skills': 'Skills',
     'skills_cli': 'Skills (CLI)',
@@ -65,7 +85,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } catch (error) {
         console.error('Error:', error);
-        document.getElementById('empty-state').style.display = 'block';
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState) emptyState.style.display = 'block';
     }
 });
 
@@ -152,8 +173,9 @@ function setupTestFilters() {
 }
 
 function setupTableFilters() {
+    /** @type {Record<string, (val: string) => void>} */
     const filters = {
-        'filter-source': (val) => currentSourceFilter = val,
+        'filter-source': (val) => currentSourceFilter = /** @type {SourceFilter} */ (val),
         'filter-agent': (val) => currentAgentFilter = val,
         'filter-serving': (val) => currentServingFilter = val,
         'filter-model': (val) => currentModelFilter = val
@@ -203,6 +225,9 @@ function setupInsightsTimelineFilters() {
     }
 }
 
+/**
+ * @param {any} el
+ */
 function syncSelectStyles(el) {
     el.classList.toggle('is-filtered', el.value !== 'all');
 }
@@ -315,7 +340,8 @@ async function loadLocalTests() {
         }
 
         if (manifest.suites && manifest.suites.length > 0) {
-            document.getElementById('empty-state').style.display = 'none';
+            const emptyState = document.getElementById('empty-state');
+            if (emptyState) emptyState.style.display = 'none';
         }
 
         // Load local test data
@@ -352,7 +378,8 @@ async function loadRemoteTests() {
 
         const manifest = await response.json();
         if (Array.isArray(manifest) && manifest.length > 0) {
-            document.getElementById('empty-state').style.display = 'none';
+            const emptyState = document.getElementById('empty-state');
+            if (emptyState) emptyState.style.display = 'none';
             for (const item of manifest) {
                 if (item && item.testId) {
                     registerSuiteSummary(item, 'remote');
@@ -374,23 +401,16 @@ async function loadRemoteTests() {
     }
 }
 
+/**
+ * @param {import('./summary-extractor.js').SuiteSummary & { data?: any }} summary
+ * @param {import('./api.js').DataSource} source
+ */
 function registerSuiteSummary(summary, source) {
     const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
-        testId: summary.testId,
-        timestamp: summary.timestamp,
+        ...summary,
         source: source,
-        agent: summary.agent || 'unknown',
-        serving: summary.serving || 'unknown',
-        model: summary.model || 'unknown',
-        taskCount: summary.taskCount || 0,
-        maxRuns: summary.maxRuns || 1,
-        guidedStats: summary.guidedStats || { passed: 0, total: 0 },
-        unguidedStats: summary.unguidedStats || { passed: 0, total: 0 },
-        earlyFailureRate: summary.earlyFailureRate || 0,
-        guides: summary.guides || {},
-        chartData: summary.chartData || { labels: [], guided: [], unguided: [] },
         data: summary.data || null
     };
     
@@ -400,14 +420,23 @@ function registerSuiteSummary(summary, source) {
     updateAgentFilterOptions();
 }
 
+/**
+ * @param {string} testId
+ * @param {import('./api.js').DataSource} source
+ * @param {import('../harness/lib/metrics.ts').EvalsReport} parsed
+ * @param {string} [forcedTimestamp]
+ */
 function registerTestData(testId, source, parsed, forcedTimestamp) {
     const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
     if (summary) {
-        summary.data = parsed;
-        registerSuiteSummary(summary, source);
+        registerSuiteSummary({ ...summary, data: parsed }, source);
     }
 }
 
+/**
+ * @param {string} groupId
+ * @param {keyof LandingSuiteSummary} key
+ */
 function updateFilterOptions(groupId, key) {
     const group = document.getElementById(groupId);
     if (!group) return;
@@ -553,7 +582,7 @@ function renderSuites() {
                 </td>
                 <td>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
-                <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${escapeHtml(testInfo.model).replaceAll('-', '-&shy;')}</td>
+                <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${(escapeHtml(testInfo.model) || '').replaceAll('-', '-&shy;')}</td>
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
                 <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
                     <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
@@ -577,8 +606,11 @@ function renderSuites() {
     renderPivotInsights(); // Refresh insights based on current filters
 }
 
+/** @type {DumbbellChart | null} */
 let tooltipChartInstance = null;
+/** @type {string | null} */
 let currentDumbbellKey = null;
+/** @type {number | null} */
 let hideTimeout = null;
 const tooltipContainer = $('#tooltip-container');
 
@@ -612,6 +644,12 @@ function setupRateCellHovers() {
     });
 }
 
+/**
+ * @param {LandingSuiteSummary} testInfo
+ * @param {number} x
+ * @param {number} y
+ * @param {string} compoundKey
+ */
 function showTooltipChart(testInfo, x, y, compoundKey) {
     if (currentDumbbellKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
         updateTooltipPosition(x, y);
@@ -644,12 +682,16 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
     tooltipChartInstance.render({
         labels,
         datasets: [
-            { label: 'Unguided', data: unguided, backgroundColor: 'rgba(218, 54, 51, 0.2)', borderColor: '#da3633' },
-            { label: 'Guided', data: guided, backgroundColor: 'rgba(35, 134, 54, 0.2)', borderColor: '#238636' }
+            { label: 'Unguided', data: unguided },
+            { label: 'Guided', data: guided }
         ]
     });
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ */
 function updateTooltipPosition(x, y) {
     const offset = 20;
     let finalX = x + offset;
@@ -672,8 +714,8 @@ function updateTooltipPosition(x, y) {
 }
 
 function hideTooltipChart() {
-    if (hideTimeout) clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
+    if (hideTimeout) window.clearTimeout(hideTimeout);
+    hideTimeout = window.setTimeout(() => {
         currentDumbbellKey = null;
         tooltipContainer.classList.add('hidden');
         hideTimeout = null;
@@ -685,6 +727,10 @@ function hideTooltipChart() {
 // HELPERS
 // ==========================================
 
+/**
+ * @param {LandingSuiteSummary} testInfo
+ * @returns {{ label: string, ldap: string }}
+ */
 function formatSuiteLabel(testInfo) {
     const { testId, agent, serving } = testInfo;
     if (!testId) return { label: 'evaluation-run', ldap: '' };
@@ -702,12 +748,13 @@ function formatSuiteLabel(testInfo) {
     
     if (!suffix) return { label, ldap: '' };
     
-    const normalize = s => (s || '').toLowerCase().replace(/[-_]+/g, '');
+    const normalize = (/** @type {string} */ s) => (s || '').toLowerCase().replace(/[-_]+/g, '');
     const normAgent = normalize(agent);
     const normServing = normalize(serving);
     
     const suffixParts = suffix.split('-');
     let ldap = '';
+    /** @type {string[]} */
     const otherTags = [];
     
     suffixParts.forEach(part => {
@@ -718,7 +765,7 @@ function formatSuiteLabel(testInfo) {
     });
     
     if (otherTags.length > 0) {
-        ldap = otherTags.pop();
+        ldap = otherTags.pop() || '';
     }
     
     let finalLabel = label;
@@ -729,6 +776,10 @@ function formatSuiteLabel(testInfo) {
     return { label: finalLabel, ldap };
 }
 
+/**
+ * @param {string} agentName
+ * @returns {string}
+ */
 function getAgentBadge(agentName) {
     const name = (agentName || '').toLowerCase();
     if (name.includes('gemini') || name.includes('jetski')) {
@@ -787,6 +838,12 @@ function renderPivotInsights() {
             return activeDates.has(dateKey);
         });
     }
+    /** @type {{
+     *   agent: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
+     *   serving: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
+     *   model: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
+     *   guide: Record<string, { uplift: number, uRate: number, gRate: number }[]>
+     * }} */
     const grouped = {
         agent: {},
         serving: {},
@@ -825,6 +882,9 @@ function renderPivotInsights() {
         });
     });
 
+    /**
+     * @param {{ uRate: number, gRate: number, uplift: number }[]} arr
+     */
     const getDumbbellMedian = (arr) => {
         if (arr.length === 0) return { uRate: 0, gRate: 0, uplift: 0 };
         const sorted = [...arr].sort((a,b) => a.uplift - b.uplift);
@@ -832,6 +892,9 @@ function renderPivotInsights() {
         return sorted[mid];
     };
 
+    /**
+     * @param {number[]} vals
+     */
     const calculateSD = (vals) => {
         if (vals.length <= 1) return 0;
         const mean = vals.reduce((sum, v) => sum + v, 0) / vals.length;
@@ -839,6 +902,10 @@ function renderPivotInsights() {
         return Math.sqrt(variance);
     };
 
+    /**
+     * @param {Record<string, { uplift: number, uRate: number, gRate: number }[]>} groupObj
+     * @param {string} filterKey
+     */
     const renderPivotTable = (groupObj, filterKey) => {
         let keys = Object.keys(groupObj);
 
@@ -847,27 +914,42 @@ function renderPivotInsights() {
                 const itemA = getDumbbellMedian(groupObj[a]);
                 const itemB = getDumbbellMedian(groupObj[b]);
 
-                let valA, valB;
-                if (currentGuideSort === 'alphabetic') {
-                    valA = a.toLowerCase();
-                    valB = b.toLowerCase();
-                } else if (currentGuideSort === 'uplift') {
-                    valA = itemA.uplift;
-                    valB = itemB.uplift;
-                } else if (currentGuideSort === 'unguided') {
-                    valA = itemA.uRate;
-                    valB = itemB.uRate;
-                } else if (currentGuideSort === 'guided') {
-                    valA = itemA.gRate;
-                    valB = itemB.gRate;
-                } else if (currentGuideSort === 'variance') {
-                    const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
-                    const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
-                    valA = Math.max(sdUA, sdGA);
+                /** @type {string | number} */
+                let valA = 0;
+                /** @type {string | number} */
+                let valB = 0;
+                switch (currentGuideSort) {
+                    case 'alphabetic':
+                        valA = a.toLowerCase();
+                        valB = b.toLowerCase();
+                        break;
+                    case 'uplift':
+                        valA = itemA.uplift;
+                        valB = itemB.uplift;
+                        break;
+                    case 'unguided':
+                        valA = itemA.uRate;
+                        valB = itemB.uRate;
+                        break;
+                    case 'guided':
+                        valA = itemA.gRate;
+                        valB = itemB.gRate;
+                        break;
+                    case 'variance': {
+                        const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
+                        const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
+                        valA = Math.max(sdUA, sdGA);
 
-                    const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
-                    const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
-                    valB = Math.max(sdUB, sdGB);
+                        const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
+                        const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
+                        valB = Math.max(sdUB, sdGB);
+                        break;
+                    }
+                    default: {
+                        /** @type {never} */
+                        const _exhaustive = currentGuideSort;
+                        throw new Error(`Unhandled sort option: ${_exhaustive}`);
+                    }
                 }
 
                 if (valA < valB) return currentGuideSortDir === 'asc' ? -1 : 1;
@@ -984,7 +1066,7 @@ function renderPivotInsights() {
             sortSelect.addEventListener('change', (e) => {
                 const target = e.target;
                 if (target instanceof HTMLSelectElement) {
-                    currentGuideSort = target.value;
+                    currentGuideSort = /** @type {GuideSortKey} */ (target.value);
                     renderPivotInsights();
                 }
             });
@@ -999,15 +1081,20 @@ function renderPivotInsights() {
     }
 }
 
-// @ts-expect-error global export
+/**
+ * @param {'agent' | 'serving' | 'model'} filterKey
+ * @param {string} value
+ */
 window.setInsightFilter = (filterKey, value) => {
+    /** @type {Record<string, HTMLSelectElement | null>} */
     const selects = {
-        agent: document.getElementById('filter-agent'),
-        serving: document.getElementById('filter-serving'),
-        model: document.getElementById('filter-model')
+        agent: /** @type {HTMLSelectElement | null} */ (document.getElementById('filter-agent')),
+        serving: /** @type {HTMLSelectElement | null} */ (document.getElementById('filter-serving')),
+        model: /** @type {HTMLSelectElement | null} */ (document.getElementById('filter-model'))
     };
-    if (selects[filterKey]) {
-        selects[filterKey].value = value;
-        selects[filterKey].dispatchEvent(new Event('change')); // Trigger table refresh!
+    const select = selects[filterKey];
+    if (select) {
+        select.value = value;
+        select.dispatchEvent(new Event('change')); // Trigger table refresh!
     }
 };

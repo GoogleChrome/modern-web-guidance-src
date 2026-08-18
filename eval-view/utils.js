@@ -1,8 +1,13 @@
-// @ts-nocheck
+/// <reference path="./evals.d.ts" />
+
 /**
  * Utility functions shared between Dashboard and Landing pages.
  */
 
+/**
+ * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
+ * @returns {{ rate: number, passed: number, total: number }}
+ */
 export function getRunStats(checks) {
     if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0 };
     const passed = checks.filter(c => c.passed).length;
@@ -11,6 +16,10 @@ export function getRunStats(checks) {
     return { rate, passed, total };
 }
 
+/**
+ * @param {number} percentage
+ * @returns {string}
+ */
 export function getColor(percentage) {
     const p = Math.max(0, Math.min(100, percentage));
     
@@ -30,6 +39,10 @@ export function getColor(percentage) {
     return `color-mix(in oklch, ${YELLOW}, ${GREEN} ${mix}%)`;
 }
 
+/**
+ * @param {string | undefined | null} text
+ * @returns {string | undefined | null}
+ */
 export function escapeHtml(text) {
     if (!text) return text;
     return text
@@ -40,11 +53,19 @@ export function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
+/**
+ * @param {string} s
+ * @returns {string}
+ */
 export function capitalize(s) {
     if (typeof s !== 'string' || s.length === 0) return s;
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/**
+ * @param {number | undefined | null} tokens
+ * @returns {string}
+ */
 export function formatTokens(tokens) {
     if (!tokens) return '0 tok';
     // undefined so it uses the user's locale.
@@ -53,6 +74,10 @@ export function formatTokens(tokens) {
         .toLowerCase() + ' tok';
 }
 
+/**
+ * @param {string | Date | number} date
+ * @returns {string}
+ */
 export function timeAgo(date) {
     const diff = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
@@ -65,6 +90,10 @@ export function timeAgo(date) {
     return rtf.format(-Math.floor(diff / u.s), /** @type {Intl.RelativeTimeFormatUnit} */ (u.name));
 }
 
+/**
+ * @param {string} key
+ * @returns {{ task: string, guide: string, runType: string } | null}
+ */
 export function parseResultKey(key) {
     const parts = key.split(' - ');
     if (parts.length < 2 || parts.length > 3) return null;
@@ -79,10 +108,10 @@ export function parseResultKey(key) {
         if (isTaskValidGuide && !isGuideValid) {
             isFlipped = true;
         } else if (!isGuideValid && !isTaskValidGuide) {
-            isFlipped = guide === 'task' || (guide && guide.endsWith('-task'));
+            isFlipped = guide === 'task' || !!(guide && guide.endsWith('-task'));
         }
     } else {
-        isFlipped = guide === 'task' || (guide && guide.endsWith('-task'));
+        isFlipped = guide === 'task' || !!(guide && guide.endsWith('-task'));
     }
 
     if (isFlipped) {
@@ -94,9 +123,32 @@ export function parseResultKey(key) {
     return { task, guide, runType };
 }
 
+/**
+ * @typedef {Object} ChartAppData
+ * @property {number[]} guided
+ * @property {number[]} unguided
+ * @property {number[]} guided_tokens
+ * @property {number[]} unguided_tokens
+ * @property {boolean} guided_failed
+ * @property {boolean} unguided_failed
+ */
 
+/**
+ * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
+ * @returns {{
+ *   labels: string[],
+ *   guided: number[],
+ *   unguided: number[],
+ *   guided_tokens: number[],
+ *   unguided_tokens: number[],
+ *   guided_failed: boolean[],
+ *   unguided_failed: boolean[]
+ * }}
+ */
 export function calculateChartData(results) {
+    /** @type {Record<string, ChartAppData>} */
     const apps = {};
+    /** @type {Record<string, string>} */
     const taskNames = {};
     
     Object.keys(results).forEach(key => {
@@ -104,9 +156,23 @@ export function calculateChartData(results) {
         if (!parsedKey) return;
         const { task: taskName, guide, runType } = parsedKey;
 
-        if (!['guided', 'unguided'].includes(runType)) return;
+        if (runType !== 'guided' && runType !== 'unguided') return;
+        /** @type {'guided' | 'unguided'} */
+        const rType = runType;
+        const failedKey = rType === 'guided' ? 'guided_failed' : 'unguided_failed';
+        const tokensKey = rType === 'guided' ? 'guided_tokens' : 'unguided_tokens';
+
         const scenario = `${taskName} (${guide})`;
-        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [], guided_tokens: [], unguided_tokens: [], guided_failed: false, unguided_failed: false };
+        if (!apps[scenario]) {
+            apps[scenario] = { 
+                guided: [], 
+                unguided: [], 
+                guided_tokens: [], 
+                unguided_tokens: [], 
+                guided_failed: false, 
+                unguided_failed: false 
+            };
+        }
         
         const runs = results[key];
         if (runs.length > 0 && runs[0].taskName) {
@@ -115,17 +181,19 @@ export function calculateChartData(results) {
         
         const isEarlyFailure = runs.some(r => r.results?.some(c => c.isEarlyFailure));
         if (isEarlyFailure) {
-            apps[scenario][runType + '_failed'] = true;
+            apps[scenario][failedKey] = true;
         }
         
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
-        const total = runs.reduce((acc, r) => acc + r.results.length, 0);
-        apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
+        const total = runs.reduce((acc, r) => acc + (r.results?.length || 0), 0);
+        apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
 
         const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);
         const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
-        if (!apps[scenario][runType + '_tokens']) apps[scenario][runType + '_tokens'] = [];
-        apps[scenario][runType + '_tokens'].push(avgTokens);
+        if (!apps[scenario][tokensKey]) {
+            apps[scenario][tokensKey] = [];
+        }
+        apps[scenario][tokensKey].push(avgTokens);
     });
     
     const labels = Object.keys(apps).sort((a, b) => {
@@ -133,14 +201,28 @@ export function calculateChartData(results) {
         const taskB = taskNames[b] || b;
         return taskA.localeCompare(taskB);
     });
+
+    /**
+     * @param {string} l
+     * @param {'guided' | 'unguided'} type
+     * @returns {number}
+     */
     const getAvg = (l, type) => {
         const s = apps[l][type];
-        return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+        return s && s.length > 0 ? Math.round(s.reduce((/** @type {number} */ acc, /** @type {number} */ b) => acc + b, 0) / s.length) : 0;
     };
+
+    /**
+     * @param {string} l
+     * @param {'guided' | 'unguided'} type
+     * @returns {number}
+     */
     const getAvgTokens = (l, type) => {
-        const s = apps[l][type + '_tokens'];
-        return s && s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+        const tokensKey = type === 'guided' ? 'guided_tokens' : 'unguided_tokens';
+        const s = apps[l][tokensKey];
+        return s && s.length > 0 ? Math.round(s.reduce((/** @type {number} */ acc, /** @type {number} */ b) => acc + b, 0) / s.length) : 0;
     };
+
     return { 
         labels, 
         guided: labels.map(l => getAvg(l, 'guided')), 
@@ -153,6 +235,10 @@ export function calculateChartData(results) {
 }
 
 
+/**
+ * @param {string} name
+ * @returns {string}
+ */
 export function formatTestName(name) {
     if (!name) return name;
     const parsedKey = parseResultKey(name);
@@ -170,12 +256,19 @@ export function formatTestName(name) {
 
 // Google Identity Services (OAuth) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
+/** @type {string | null} */
 let accessToken = typeof localStorage !== 'undefined' ? localStorage.getItem('gcs_access_token') : null;
 
+/**
+ * @returns {string | null}
+ */
 export function getAccessToken() {
     return accessToken;
 }
 
+/**
+ * @param {(() => void) | undefined} [onAuthSuccess]
+ */
 export function initGoogleAuth(onAuthSuccess) {
     const init = () => {
         if (!window.google || !window.google.accounts) {
@@ -195,13 +288,13 @@ export function initGoogleAuth(onAuthSuccess) {
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
             client_id: GOOGLE_CLIENT_ID,
             scope: 'https://www.googleapis.com/auth/devstorage.read_only',
-            callback: (response) => {
+            callback: (/** @type {any} */ response) => {
                 if (response.error !== undefined) {
                     console.error('OAuth Error:', response);
                     return;
                 }
                 accessToken = response.access_token;
-                localStorage.setItem('gcs_access_token', accessToken);
+                localStorage.setItem('gcs_access_token', accessToken || '');
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
                     authBtn.style.display = 'none';
@@ -217,10 +310,17 @@ export function initGoogleAuth(onAuthSuccess) {
     init();
 }
 
+/**
+ * @param {string | URL} url
+ * @param {RequestInit} [options={}]
+ * @returns {Promise<Response>}
+ */
 export async function authenticatedFetch(url, options = {}) {
     if (accessToken) {
-        options.headers = options.headers || {};
-        options.headers['Authorization'] = `Bearer ${accessToken}`;
+        /** @type {Record<string, string>} */
+        const headers = /** @type {any} */ (options.headers || {});
+        headers['Authorization'] = `Bearer ${accessToken}`;
+        options.headers = headers;
     }
     const res = await fetch(url, options);
     if (res.status === 401) {
@@ -244,23 +344,25 @@ export async function authenticatedFetch(url, options = {}) {
 
 /**
  * @template {string} T
- * @typedef {T extends `${infer TagName}#${string}` 
- *   ? TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : TagName extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[TagName] : HTMLElement 
- *   : T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement} ParseSelector
+ * @typedef {T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T]
+ *   : T extends `${infer TagName}#${string}` ? (TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : HTMLElement)
+ *   : T extends `${infer TagName}.${string}` ? (TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : HTMLElement)
+ *   : HTMLElement} ParseSelector
  */
 
 /**
  * Guaranteed querySelector. Always returns an element or throws if nothing matches.
- * @template {string} T
+ * @template {string} [T=string]
+ * @template {Element} [E=ParseSelector<T>]
  * @param {T} query
- * @param {ParentNode=} context
- * @return {ParseSelector<T>}
+ * @param {ParentNode} [context]
+ * @returns {E}
  */
 export function $(query, context) {
   const result = (context || document).querySelector(query);
   if (result === null) {
     throw new Error(`querySelector('${query}') not found`);
   }
-  return /** @type {ParseSelector<T>} */ (result);
+  return /** @type {E} */ (result);
 }
 
