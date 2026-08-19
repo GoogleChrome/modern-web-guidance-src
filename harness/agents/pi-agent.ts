@@ -256,9 +256,11 @@ export async function collectPiGuidesFromTrajectory(dirPath: string, _serving: s
                 }
               } else if (toolName === 'bash' && args.command) {
                 const command = args.command as string;
-                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                if (match) {
-                  retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
+                if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
+                  const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+                  if (match) {
+                    retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
+                  }
                 }
               }
           }

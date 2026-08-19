@@ -234,7 +234,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
 
           for (const text of strings) {
             // Shell commands & guide retrieval
-            if (text.includes('retrieve')) {
+            if (text.includes('modern-web-guidance') && text.includes('retrieve')) {
               const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
               if (match && match[1]) {
                 const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
