@@ -165,6 +165,13 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
     console.warn('Warning: Failed to pre-populate projects.json:', err);
   }
 
+  // Configure default timeouts for curl to prevent hanging on unreachable or stalled sockets
+  try {
+    fs.writeFileSync(path.join(tempHome, '.curlrc'), 'max-time = 15\nconnect-timeout = 5\n', 'utf8');
+  } catch (err) {
+    console.warn('Warning: Failed to create .curlrc in isolated HOME:', err);
+  }
+
   console.log(`Setting up isolated HOME at ${tempHome}...`);
   return tempHome;
 }
