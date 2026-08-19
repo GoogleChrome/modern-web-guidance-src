@@ -174,7 +174,8 @@ async function main() {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
-    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishCliDir);
+    // Update both the distribution bundle README and the source repo README
+    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
 
     const releaseNotes = `### Summary
 - Use cases: ${useCasesCount}
