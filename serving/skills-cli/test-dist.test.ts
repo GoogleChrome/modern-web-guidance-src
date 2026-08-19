@@ -139,6 +139,11 @@ test('README template and dynamic Skill Coverage content', async () => {
   }
 });
 
+test('.github/img assets in Dist', async () => {
+  const logoPath = path.join(STAGING_DIR, '.github/img/modern-web-guidance.svg');
+  await assert.doesNotReject(fs.access(logoPath), '.github/img/modern-web-guidance.svg must exist in dist');
+});
+
 test('modern-web CLI search and retrieve', async () => {
   const binaryPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
   
