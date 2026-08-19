@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { cRed, cGreen, cCyan, cBold } from '../lib/colors.ts';
 import { resultsDir as baseResultsDir } from '../lib/paths.ts';
+import { extractSuiteSummary } from '../eval-view/summary-extractor.js';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
@@ -53,6 +54,88 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string, 
   }
 }
 
+async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string, evalsData: any) {
+  console.log(cCyan('🔄 Reconciling GCS suites manifest...'));
+  
+  let remoteManifest: any[] = [];
+  const manifestFile = bucket.file('suites.gen.json');
+  try {
+    const [exists] = await manifestFile.exists();
+    if (exists) {
+      const [content] = await manifestFile.download();
+      remoteManifest = JSON.parse(content.toString('utf8'));
+    }
+  } catch (e: any) {
+    console.warn(`Could not fetch existing suites.gen.json from GCS: ${e.message}`);
+  }
+
+  // Fast prefix listing with pagination to detect all suites in GCS
+  const gcsPrefixes: string[] = [];
+  let pageToken: string | undefined = undefined;
+  do {
+    const res: [any, any, any] = await bucket.getFiles({ delimiter: '/', autoPaginate: false, pageToken });
+    const nextQuery = res[1];
+    const apiResponse = res[2];
+    if (apiResponse && apiResponse.prefixes) {
+      gcsPrefixes.push(...apiResponse.prefixes);
+    }
+    pageToken = nextQuery?.pageToken;
+  } while (pageToken);
+
+  const activeSuiteIds = new Set<string>(gcsPrefixes.map((p: string) => p.replace(/\/$/, '')));
+  activeSuiteIds.add(uploadedSuiteName);
+
+  const manifestMap = new Map<string, any>();
+  for (const entry of remoteManifest) {
+    const id = typeof entry === 'string' ? entry : entry.testId;
+    if (id && activeSuiteIds.has(id)) {
+      manifestMap.set(id, typeof entry === 'string' ? { testId: id } : entry);
+    }
+  }
+
+  // Update the uploaded suite's summary
+  const uploadedSummary = extractSuiteSummary(uploadedSuiteName, evalsData);
+  if (uploadedSummary) {
+    manifestMap.set(uploadedSuiteName, uploadedSummary);
+  }
+
+  // Backfill missing summaries for any active GCS suites that lack detailed summary
+  const missingSuiteIds = Array.from(activeSuiteIds).filter(id => {
+    const existing = manifestMap.get(id);
+    return !existing || !existing.guidedStats;
+  });
+
+  if (missingSuiteIds.length > 0) {
+    const concurrency = 10;
+    for (let i = 0; i < missingSuiteIds.length; i += concurrency) {
+      const chunk = missingSuiteIds.slice(i, i + concurrency);
+      await Promise.all(chunk.map(async (suiteId) => {
+        try {
+          console.log(`Extracting summary for missing GCS suite: ${suiteId}...`);
+          const evalsFile = bucket.file(`${suiteId}/evals.json`);
+          const [fileContent] = await evalsFile.download();
+          const parsed = JSON.parse(fileContent.toString('utf8'));
+          const summary = extractSuiteSummary(suiteId, parsed);
+          if (summary) {
+            manifestMap.set(suiteId, summary);
+          }
+        } catch (e: any) {
+          console.warn(`Could not fetch evals.json for ${suiteId}: ${e.message}`);
+        }
+      }));
+    }
+  }
+
+  const updatedList = Array.from(manifestMap.values()).sort((a, b) => (a.testId || '').localeCompare(b.testId || ''));
+
+  await manifestFile.save(JSON.stringify(updatedList, null, 2), {
+    contentType: 'application/json',
+    resumable: false,
+  });
+
+  console.log(cBold(cGreen(`✅ Reconciled and updated gs://${BUCKET_NAME}/suites.gen.json (${updatedList.length} suites)`)));
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const summaryOnly = args.includes('--summary-only');
@@ -90,9 +173,10 @@ async function main() {
     process.exit(1);
   }
 
+  let evalsData: any = null;
   try {
     const evalsContent = fs.readFileSync(evalsJsonPath, 'utf8');
-    const evalsData = JSON.parse(evalsContent);
+    evalsData = JSON.parse(evalsContent);
     const results = evalsData.results || {};
     if (Object.keys(results).length === 0) {
       console.warn(cRed(`⚠️ Warning: No evaluation data found in evals.json (0 tasks were run). Sync skipped.`));
@@ -130,6 +214,7 @@ async function main() {
   try {
     await uploadDirectory(bucket, resultsDir, suiteName, summaryOnly);
     console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`)));
+    await reconcileAndUploadManifest(bucket, suiteName, evalsData);
   } catch (error: any) {
     console.error(cRed(`❌ Upload failed: ${error.message}`));
     process.exit(1);

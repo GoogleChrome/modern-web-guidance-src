@@ -25,9 +25,7 @@
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter serving build",
     "build:megaskill": "pnpm --filter serving build:megaskill",
-    "test:mcp": "pnpm --filter serving test",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
-    "generate-negative": "node --env-file=.env --experimental-strip-types guides/negative-gen.ts",
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
     "grade": "node --experimental-strip-types guides/run-grader.ts",
@@ -75,14 +73,14 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@mdn/browser-compat-data": "^7.3.15",
-    "@webref/css": "^8.5.6",
+    "@mdn/browser-compat-data": "^8.0.7",
+    "@webref/css": "^8.7.0",
     "@webref/elements": "^2.7.1",
-    "@webref/idl": "^3.75.3",
-    "caniuse-lite": "^1.0.30001791",
+    "@webref/idl": "^3.82.0",
+    "caniuse-lite": "^1.0.30001806",
     "glob": "^13.0.6",
-    "mdn-data": "^2.28.0",
+    "mdn-data": "^2.29.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.27.0"
+    "web-features": "^3.34.3"
   }
 }

@@ -4,17 +4,12 @@ import type { Metrics, RunResult, ScenarioCheck, EvalsReport } from './metrics.t
 
 export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, RunResult[]>): string {
   const { summary, testStats, sortedKeys } = metrics;
-  let md = '# Evaluation Results\n\n';
-
-  md += `
-| Group | Pass Rate | Test Runs |
+  let md = `| Group | Pass Rate | Test Runs |
 |---|---|---|
 | **Unguided** | ${summary.unguidedPassRate}% (${summary.unguidedPassed}/${summary.unguidedTotal}) | ${summary.runsPerTest} |
 | **Guided** | ${summary.guidedPassRate}% (${summary.guidedPassed}/${summary.guidedTotal}) | ${summary.runsPerTest} |
 
 `;
-
-
 
   // Generate detailed sections for each test
   for (const name of sortedKeys) {
@@ -38,6 +33,13 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
     const groupPass = checks.filter((c: ScenarioCheck) => c.passed).length;
     const groupTotal = checks.length;
 
+    if (displayRun.guidesUsed && displayRun.guidesUsed.length > 0) {
+      md += `**Guides Consumed:** ${displayRun.guidesUsed.join(', ')}\n\n`;
+    }
+    if (displayRun.guidanceToolsUsed && displayRun.guidanceToolsUsed.length > 0) {
+      md += `**Tools Used:** ${displayRun.guidanceToolsUsed.join(', ')}\n\n`;
+    }
+
     md += `### Run ${displayRun.runNumber} Details (${groupPass}/${groupTotal})\n\n`;
 
     const tableHeader = '| Status | Expectation |\n|---|---|\n';
@@ -59,7 +61,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
   return md;
 }
 
-export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string, totalRuntime?: number): EvalsReport {
+export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string, totalRuntime?: number, skillVersion?: string, cliVersion?: string): EvalsReport {
   return {
     summary: metrics.summary,
     results: allResults,
@@ -69,7 +71,9 @@ export function generateJsonReport(metrics: Metrics, allResults: Record<string, 
     agent,
     serving,
     model,
-    totalRuntime
+    totalRuntime,
+    skillVersion,
+    cliVersion
   };
 }
 

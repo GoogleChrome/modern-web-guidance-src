@@ -1,14 +1,21 @@
 # Default owners for implementation and infra
 * @paulirish @micahjo7
 
-# Content reviewers for guide content (anything in category subdirectories)
-# e.g., guides/accessibility/accessible-error-announcement/
-guides/*/*/ @philipwalton @rviscomi @malchata
+# Blanket ownerless overrides for content (rely entirely on atl-triage bot instead)
+guides/
+features/
 
-# Discipline-level skills
-guides/*/SKILL.md @philipwalton @rviscomi @malchata
+# CODEOWNERS config
+CODEOWNERS @paulirish @rviscomi @micahjo7
+
+# Critical infra & workflow files (redundant but the explicitness is nice)
+.github/ @paulirish @micahjo7
+package.json @paulirish @micahjo7
+pnpm-lock.yaml @paulirish @micahjo7
+pnpm-workspace.yaml @paulirish @micahjo7
 
 # Eval files
+**/targets/ @paulirish @micahjo7
 **/grader.ts @paulirish @micahjo7
 **/tasks/task.md @paulirish @micahjo7
 **/negative-demo.html @paulirish @micahjo7

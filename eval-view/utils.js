@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Utility functions shared between Dashboard and Landing pages.
  */
@@ -8,11 +9,6 @@ export function getRunStats(checks) {
     const total = checks.length;
     const rate = Math.round((passed / total) * 100);
     return { rate, passed, total };
-}
-
-export function isDisciplineSkillRun(run) {
-    if (!run) return false;
-    return run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
 }
 
 export function getColor(percentage) {
@@ -69,22 +65,57 @@ export function timeAgo(date) {
     return rtf.format(-Math.floor(diff / u.s), /** @type {Intl.RelativeTimeFormatUnit} */ (u.name));
 }
 
+export function parseResultKey(key) {
+    const parts = key.split(' - ');
+    if (parts.length < 2 || parts.length > 3) return null;
+    let [task, guide, runType] = parts;
+
+    const featuresMap = typeof window !== 'undefined' ? window.__featuresMapping : undefined;
+    let isFlipped = false;
+
+    if (featuresMap) {
+        const isGuideValid = featuresMap[guide] !== undefined;
+        const isTaskValidGuide = featuresMap[task] !== undefined;
+        if (isTaskValidGuide && !isGuideValid) {
+            isFlipped = true;
+        } else if (!isGuideValid && !isTaskValidGuide) {
+            isFlipped = guide === 'task' || (guide && guide.endsWith('-task'));
+        }
+    } else {
+        isFlipped = guide === 'task' || (guide && guide.endsWith('-task'));
+    }
+
+    if (isFlipped) {
+        const temp = task;
+        task = guide;
+        guide = temp;
+    }
+
+    return { task, guide, runType };
+}
+
+
 export function calculateChartData(results) {
     const apps = {};
     const taskNames = {};
     
     Object.keys(results).forEach(key => {
-        const parts = key.split(' - ');
-        if (parts.length < 3) return;
-        const [taskName, guide, runType] = parts;
+        const parsedKey = parseResultKey(key);
+        if (!parsedKey) return;
+        const { task: taskName, guide, runType } = parsedKey;
 
         if (!['guided', 'unguided'].includes(runType)) return;
         const scenario = `${taskName} (${guide})`;
-        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [], guided_tokens: [], unguided_tokens: [] };
+        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [], guided_tokens: [], unguided_tokens: [], guided_failed: false, unguided_failed: false };
         
         const runs = results[key];
         if (runs.length > 0 && runs[0].taskName) {
             taskNames[scenario] = runs[0].taskName;
+        }
+        
+        const isEarlyFailure = runs.some(r => r.results?.some(c => c.isEarlyFailure));
+        if (isEarlyFailure) {
+            apps[scenario][runType + '_failed'] = true;
         }
         
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
@@ -115,43 +146,31 @@ export function calculateChartData(results) {
         guided: labels.map(l => getAvg(l, 'guided')), 
         unguided: labels.map(l => getAvg(l, 'unguided')),
         guided_tokens: labels.map(l => getAvgTokens(l, 'guided')),
-        unguided_tokens: labels.map(l => getAvgTokens(l, 'unguided'))
+        unguided_tokens: labels.map(l => getAvgTokens(l, 'unguided')),
+        guided_failed: labels.map(l => apps[l].guided_failed),
+        unguided_failed: labels.map(l => apps[l].unguided_failed)
     };
 }
 
 
-export function formatTestName(name, isDisciplineSkill = false) {
+export function formatTestName(name) {
     if (!name) return name;
-    const parts = name.split(' - ');
-    if (parts.length >= 2) {
-        const appName = parts[0];
-        const guideName = parts[1];
+    const parsedKey = parseResultKey(name);
+    if (parsedKey) {
+        const { task: taskName, guide: guideName } = parsedKey;
         
         const featuresMap = window.__featuresMapping || {};
-        let featureId = '';
-        
-        if (isDisciplineSkill) {
-            // For skills, the first part is the discipline (e.g. performance)
-            return `${appName}: ${guideName}`; // discipline: task
-        }
-        
-        // For normal tasks, the second part is the guide name
-        if (featuresMap[guideName] && featuresMap[guideName].length > 0) {
-            featureId = featuresMap[guideName][0]; // take primary feature
-        }
-        
-        if (featureId) {
-            return `${featureId}: ${guideName}`;
-        }
-        
-        return `${appName}: ${guideName}`; // fallback
+        const featureId = (featuresMap[guideName] && featuresMap[guideName][0]) || 'uncategorized';
+        const displayName = `${guideName} (${taskName})`;
+
+        return `${featureId}: ${displayName}`;
     }
     return name.split(' - ').join(' / ');
 }
 
 // Google Identity Services (OAuth) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
-let accessToken = localStorage.getItem('gcs_access_token') || null;
+let accessToken = typeof localStorage !== 'undefined' ? localStorage.getItem('gcs_access_token') : null;
 
 export function getAccessToken() {
     return accessToken;

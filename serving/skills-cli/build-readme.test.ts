@@ -22,8 +22,8 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     
     fs.mkdirSync(path.join(mockGuidesDir, 'performance'), { recursive: true });
 
-    fs.mkdirSync(path.join(mockGuidesDir, 'user-experience'), { recursive: true });
-    fs.writeFileSync(path.join(mockGuidesDir, 'user-experience/move-dom-element-without-losing-state.md'), 'content');
+    fs.mkdirSync(path.join(mockGuidesDir, 'ui-behaviors'), { recursive: true });
+    fs.writeFileSync(path.join(mockGuidesDir, 'ui-behaviors/move-dom-element-without-losing-state.md'), 'content');
   });
 
   after(() => {
