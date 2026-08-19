@@ -20,61 +20,63 @@
         line-height: 1.5;
       }
 
-      select {
-        appearance: base-select;
-        border: none;
-        background: transparent;
-        padding: 0;
-      }
+      @supports (appearance: base-select) {
+        select {
+          appearance: base-select;
+          border: none;
+          background: transparent;
+          padding: 0;
+        }
 
-      .wrapper {
-        display: flex;
-        background: #eee;
-        padding: 4px;
-        border-radius: calc(var(--button-radius) + 4px);
-        inline-size: max-content;
-        block-size: min-content;
-      }
+        .wrapper {
+          display: flex;
+          background: #eee;
+          padding: 4px;
+          border-radius: calc(var(--button-radius) + 4px);
+          inline-size: max-content;
+          block-size: min-content;
+        }
 
-      option {
-        appearance: none;
-        padding: 0.6rem 1.2rem;
-        border: 1px solid var(--brand-blue);
-        border-inline-end-width: 0;
-        background: white;
-        color: var(--brand-blue);
-        transition: all 0.2s ease;
-        text-align: center;
-        font-weight: 500;
-      }
+        option {
+          appearance: none;
+          padding: 0.6rem 1.2rem;
+          border: 1px solid var(--brand-blue);
+          border-inline-end-width: 0;
+          background: white;
+          color: var(--brand-blue);
+          transition: all 0.2s ease;
+          text-align: center;
+          font-weight: 500;
+        }
 
-      option::checkmark {
-        display: none;
-      }
+        option::checkmark {
+          display: none;
+        }
 
-      option:first-of-type {
-        border-radius: var(--button-radius) 0 0 var(--button-radius);
-      }
+        option:first-of-type {
+          border-radius: var(--button-radius) 0 0 var(--button-radius);
+        }
 
-      option:last-of-type {
-        border-radius: 0 var(--button-radius) var(--button-radius) 0;
-        border-inline-end-width: 1px;
-      }
+        option:last-of-type {
+          border-radius: 0 var(--button-radius) var(--button-radius) 0;
+          border-inline-end-width: 1px;
+        }
 
-      option:hover {
-        background: var(--brand-hover);
-        color: #004494;
-        text-decoration: underline;
-      }
+        option:hover {
+          background: var(--brand-hover);
+          color: #004494;
+          text-decoration: underline;
+        }
 
-      option:checked {
-        background: var(--brand-blue);
-        color: white;
-      }
+        option:checked {
+          background: var(--brand-blue);
+          color: white;
+        }
 
-      option:focus-visible {
-        outline: 3px solid var(--focus-gold);
-        outline-offset: -3px;
+        option:focus-visible {
+          outline: 3px solid var(--focus-gold);
+          outline-offset: -3px;
+        }
       }
 
       .field {
@@ -104,11 +106,13 @@
       <span class="hint"
         >Select a single option to change the display mode.</span
       >
-      <select id="view-select" size="4" required name="view" class="wrapper">
-        <option value="grid" selected>Grid</option>
-        <option value="feed">Feed</option>
-        <option value="stack">Stack</option>
-        <option value="list">List</option>
+      <select id="view-select" size="4" required name="view">
+        <div class="wrapper">
+          <option value="grid" selected>Grid</option>
+          <option value="feed">Feed</option>
+          <option value="stack">Stack</option>
+          <option value="list">List</option>
+        </div>
       </select>
     </div>
 
@@ -120,16 +124,16 @@
         multiple
         aria-describedby="multi-hint"
         name="decoration"
-        class="wrapper"
       >
-        <option value="bold">Bold</option>
-        <option value="underline">Underline</option>
-        <option value="strikethrough">Strikethrough</option>
+        <div class="wrapper">
+          <option value="bold">Bold</option>
+          <option value="underline">Underline</option>
+          <option value="strikethrough">Strikethrough</option>
+        </div>
       </select>
     </div>
     <script>
-      const selects = document.getElementsByTagName("select");
-      [...selects].forEach((select) => {
+      const addLeftRight = (select) => {
         select.addEventListener("keydown", (event) => {
           if (event.key === "ArrowLeft") {
             const options = event.currentTarget.options;
@@ -149,6 +153,23 @@
             }
           }
         });
+      };
+
+      const removeWrapper = (select) => {
+        const wrapper = select.querySelector(".wrapper");
+        [...wrapper.children].forEach((option) =>
+          select.insertBefore(option, wrapper),
+        );
+        wrapper.remove();
+      };
+
+      const selects = document.getElementsByTagName("select");
+      [...selects].forEach((select) => {
+        if (CSS.supports("appearance: base-select")) {
+          addLeftRight(select);
+        } else {
+          removeWrapper(select);
+        }
       });
     </script>
   </body>

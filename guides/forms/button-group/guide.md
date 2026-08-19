@@ -32,10 +32,9 @@ Add a `size` attribute with any value greater than 1 to a `<select>` element to 
 
 ### 2. Styling with CSS
 
-Disable the default browser styling on a `select` with `appearance: base-select` and apply your own. Using CSS variables ensures consistency across your UI.
+Disable the default browser styling on a `select` with `appearance: base-select` and apply your own.
 
 ```css
-
 select {
   appearance: base-select;
   border: none;
@@ -157,3 +156,24 @@ With `appearance: base-select` applied to a `<select>` element, users don't have
 ### Fallbacks
 
 {{ FEATURE_FALLBACKS("customizable-select") }}
+
+The horizontal orientation of the select view does not fall back cleanly for this use case. Wrap the `select` and `option` styles inside a `@supports` rule.
+
+```css
+@supports (appearance: base-select) {
+  /* Select styles */
+}
+```
+
+You must also remove the wrapper element to ensure backwards compatibility.
+
+```js
+const selects = document.getElementsByTagName("select");
+[...selects].forEach((select) => {
+  const wrapper = select.querySelector(".wrapper");
+  [...wrapper.children].forEach((option) =>
+    select.insertBefore(option, wrapper),
+  );
+  wrapper.remove();
+});
+```
