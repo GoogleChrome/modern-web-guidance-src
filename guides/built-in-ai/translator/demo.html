@@ -40,6 +40,10 @@
           return;
         }
 
+        if (availability === 'downloadable' || availability === 'downloading') {
+          submitBtn.textContent = 'Downloading model...';
+        }
+
         if (!translator) {
           submitBtn.textContent = 'Initializing model...';
           submitBtn.disabled = true;
