@@ -629,6 +629,20 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
       fs.copyFileSync(srcFile, destFile);
       console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
 
+      // Ensure SQLite WAL-mode companion files are copied alongside .db files
+      if (fileName.endsWith('.db')) {
+        const walSrc = `${srcFile}-wal`;
+        const shmSrc = `${srcFile}-shm`;
+        if (fs.existsSync(walSrc)) {
+          fs.copyFileSync(walSrc, `${destFile}-wal`);
+          console.log(`Copied trajectory WAL: ${fileName}-wal to ${targetDir}`);
+        }
+        if (fs.existsSync(shmSrc)) {
+          fs.copyFileSync(shmSrc, `${destFile}-shm`);
+          console.log(`Copied trajectory SHM: ${fileName}-shm to ${targetDir}`);
+        }
+      }
+
       const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);
       const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);

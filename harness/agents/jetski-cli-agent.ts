@@ -299,7 +299,9 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
       } catch {}
 
       db.close();
-    } catch {}
+    } catch (err) {
+      console.warn(`Warning: Failed to parse Jetski CLI session from ${fullPath}:`, err);
+    }
   }
 
   return {
