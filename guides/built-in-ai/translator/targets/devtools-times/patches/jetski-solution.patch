@@ -1,11 +1,11 @@
 diff --git a/global.d.ts b/global.d.ts
-index 22f7b64..835da61 100644
+index 22f7b64..c2cda8d 100644
 --- a/global.d.ts
 +++ b/global.d.ts
 @@ -1,7 +1,53 @@
 +export interface TranslationDownloadProgressEvent extends Event {
 +  readonly loaded: number;
-+  readonly total: number;
++  readonly total?: number;
 +}
 +
 +export interface TranslationDownloadMonitor extends EventTarget {
@@ -23,27 +23,26 @@ index 22f7b64..835da61 100644
 +
 +export type TranslatorAvailability = 'available' | 'downloadable' | 'downloading' | 'unavailable';
 +
-+export interface TranslatorLanguageOptions {
++export interface TranslatorOptions {
 +  sourceLanguage: string;
 +  targetLanguage: string;
 +}
 +
-+export interface TranslatorCreateOptions extends TranslatorLanguageOptions {
++export interface TranslatorCreateOptions extends TranslatorOptions {
 +  monitor?: (monitor: TranslationDownloadMonitor) => void;
 +  signal?: AbortSignal;
 +}
 +
 +export interface TranslatorInstance {
++  readonly sourceLanguage: string;
++  readonly targetLanguage: string;
 +  translate(input: string): Promise<string>;
-+  translateStreaming(input: string): AsyncIterable<string>;
++  translateStreaming(input: string): AsyncIterable<string> | ReadableStream<string>;
 +  destroy(): void;
-+  readonly sourceLanguage?: string;
-+  readonly targetLanguage?: string;
-+  readonly ready?: Promise<void>;
 +}
 +
 +export interface TranslatorFactory {
-+  availability(options: TranslatorLanguageOptions): Promise<TranslatorAvailability>;
++  availability(options: TranslatorOptions): Promise<TranslatorAvailability>;
 +  create(options: TranslatorCreateOptions): Promise<TranslatorInstance>;
 +}
 +
@@ -53,432 +52,363 @@ index 22f7b64..835da61 100644
 +    adNetwork: any;
 +    Translator?: TranslatorFactory;
    }
-+  const Translator: TranslatorFactory | undefined;
++
++  var Translator: TranslatorFactory | undefined;
  }
  
  export {};
 \ No newline at end of file
 diff --git a/src/components/ArticleTranslator.tsx b/src/components/ArticleTranslator.tsx
 new file mode 100644
-index 0000000..b94c4c3
+index 0000000..9a46f69
 --- /dev/null
 +++ b/src/components/ArticleTranslator.tsx
-@@ -0,0 +1,413 @@
-+import React, { useState, useEffect, useRef, useId } from 'react';
+@@ -0,0 +1,343 @@
++import React, { useState, useEffect, useCallback, useRef } from 'react';
 +import {
-+  SUPPORTED_LANGUAGES,
 +  isTranslatorSupported,
 +  checkAvailability,
 +  createTranslator,
-+  translateStreamingWithInstance,
++  SUPPORTED_LANGUAGES,
++  type TranslatorAvailability,
++  type TranslatorOptions,
++  type TranslatorInstance,
++  type TranslationDownloadProgressEvent,
 +} from '../utils/translator';
-+import type { TranslatorAvailability } from '../../global';
 +import {
 +  LanguageIcon,
 +  ArrowPathIcon,
-+  CheckCircleIcon,
 +  ArrowDownTrayIcon,
++  CheckIcon,
 +  ExclamationCircleIcon,
-+  InformationCircleIcon,
 +} from '@heroicons/react/24/outline';
 +
 +interface Props {
 +  sourceLanguage?: string;
-+  articleTitle?: string;
-+  articleSummary?: string;
-+  contentContainerId?: string;
-+  headlineId?: string;
-+  summaryId?: string;
-+}
-+
-+interface StoredElement {
-+  el: HTMLElement;
-+  text: string;
++  articleSelector?: string;
++  headlineSelector?: string;
++  summarySelector?: string;
 +}
 +
 +export default function ArticleTranslator({
 +  sourceLanguage = 'en',
-+  articleTitle = '',
-+  articleSummary = '',
-+  contentContainerId = 'article-content',
-+  headlineId = 'article-headline',
-+  summaryId = 'article-summary',
++  articleSelector = '#article-body',
++  headlineSelector = '#article-headline',
++  summarySelector = '#article-summary',
 +}: Props) {
-+  const selectId = useId();
-+  const [targetLanguage, setTargetLanguage] = useState<string>('es');
-+  const [availability, setAvailability] = useState<TranslatorAvailability | null>(null);
 +  const [isSupported, setIsSupported] = useState<boolean>(true);
-+  const [isCheckingAvailability, setIsCheckingAvailability] = useState<boolean>(false);
++  const [targetLanguage, setTargetLanguage] = useState<string>('es');
++  const [availability, setAvailability] = useState<TranslatorAvailability | 'checking'>('checking');
 +  const [isTranslating, setIsTranslating] = useState<boolean>(false);
-+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
-+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
 +  const [isTranslated, setIsTranslated] = useState<boolean>(false);
-+  const [currentTranslatedLanguage, setCurrentTranslatedLanguage] = useState<string | null>(null);
-+  const [error, setError] = useState<string | null>(null);
++  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
++  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 +
-+  // References to preserve original content for restoring
-+  const originalHeadlineRef = useRef<string | null>(null);
-+  const originalSummaryRef = useRef<string | null>(null);
-+  const originalElementsRef = useRef<StoredElement[]>([]);
++  // Cache of original DOM content to enable restoring original text
++  const originalContentRef = useRef<{
++    headline?: string;
++    summary?: string;
++    elements: { el: HTMLElement; originalHtml: string; originalText: string }[];
++  }>({ elements: [] });
 +
-+  // Check support and availability on mount and when target language changes
-+  useEffect(() => {
-+    const supported = isTranslatorSupported();
-+    setIsSupported(supported);
-+
-+    if (!supported) {
++  // Check API support and language pair availability
++  const checkStatus = useCallback(async (target: string) => {
++    setErrorMessage(null);
++    if (!isTranslatorSupported()) {
++      setIsSupported(false);
 +      setAvailability('unavailable');
 +      return;
 +    }
 +
-+    let isCancelled = false;
-+    const check = async () => {
-+      setIsCheckingAvailability(true);
-+      setError(null);
-+      try {
-+        const avail = await checkAvailability({
-+          sourceLanguage,
-+          targetLanguage,
-+        });
-+        if (!isCancelled) {
-+          setAvailability(avail);
-+        }
-+      } catch (err) {
-+        if (!isCancelled) {
-+          console.error('Error during availability check:', err);
-+          setAvailability('unavailable');
-+        }
-+      } finally {
-+        if (!isCancelled) {
-+          setIsCheckingAvailability(false);
-+        }
-+      }
++    setIsSupported(true);
++    setAvailability('checking');
++
++    const options: TranslatorOptions = {
++      sourceLanguage,
++      targetLanguage: target,
 +    };
 +
-+    check();
++    const status = await checkAvailability(options);
++    setAvailability(status);
++  }, [sourceLanguage]);
 +
-+    return () => {
-+      isCancelled = true;
-+    };
-+  }, [sourceLanguage, targetLanguage]);
++  useEffect(() => {
++    checkStatus(targetLanguage);
++  }, [targetLanguage, checkStatus]);
 +
-+  // Capture original DOM elements on first translate or mount
-+  const captureOriginalContent = () => {
-+    const headlineEl = document.getElementById(headlineId);
-+    const summaryEl = document.getElementById(summaryId);
-+    const contentContainer = document.getElementById(contentContainerId);
-+
-+    if (headlineEl && originalHeadlineRef.current === null) {
-+      originalHeadlineRef.current = headlineEl.textContent || articleTitle;
-+    }
-+    if (summaryEl && originalSummaryRef.current === null) {
-+      originalSummaryRef.current = summaryEl.textContent || articleSummary;
++  // Restore original content
++  const handleRestoreOriginal = () => {
++    if (headlineSelector && originalContentRef.current.headline !== undefined) {
++      const headlineEl = document.querySelector(headlineSelector);
++      if (headlineEl) headlineEl.textContent = originalContentRef.current.headline;
 +    }
 +
-+    if (contentContainer && originalElementsRef.current.length === 0) {
-+      const translatableElements = contentContainer.querySelectorAll<HTMLElement>(
-+        'p, h2, h3, h4, h5, h6, li, blockquote, figcaption'
-+      );
-+      const stored: StoredElement[] = [];
-+      translatableElements.forEach((el) => {
-+        if (el.textContent && el.textContent.trim()) {
-+          stored.push({
-+            el,
-+            text: el.textContent,
-+          });
-+        }
-+      });
-+      originalElementsRef.current = stored;
-+    }
-+  };
-+
-+  // Revert all modified text back to original English
-+  const handleShowOriginal = () => {
-+    const headlineEl = document.getElementById(headlineId);
-+    const summaryEl = document.getElementById(summaryId);
-+
-+    if (headlineEl && originalHeadlineRef.current !== null) {
-+      headlineEl.textContent = originalHeadlineRef.current;
-+    }
-+    if (summaryEl && originalSummaryRef.current !== null) {
-+      summaryEl.textContent = originalSummaryRef.current;
++    if (summarySelector && originalContentRef.current.summary !== undefined) {
++      const summaryEl = document.querySelector(summarySelector);
++      if (summaryEl) summaryEl.textContent = originalContentRef.current.summary;
 +    }
 +
-+    originalElementsRef.current.forEach(({ el, text }) => {
-+      el.textContent = text;
++    originalContentRef.current.elements.forEach(({ el, originalHtml }) => {
++      el.innerHTML = originalHtml;
 +    });
 +
 +    setIsTranslated(false);
-+    setCurrentTranslatedLanguage(null);
-+    setError(null);
 +  };
 +
-+  // Execute translation
++  // Perform translation on click (user gesture)
 +  const handleTranslate = async () => {
-+    if (!isSupported) {
-+      setError('Client-side translation is currently unsupported in this browser.');
++    if (isTranslated) {
++      handleRestoreOriginal();
 +      return;
 +    }
 +
-+    if (availability === 'unavailable') {
-+      setError(`Translation from ${sourceLanguage} to ${targetLanguage} is unavailable.`);
-+      return;
-+    }
-+
++    setErrorMessage(null);
 +    setIsTranslating(true);
-+    setError(null);
-+    setDownloadProgress(0);
++    setDownloadProgress(null);
 +
-+    if (availability === 'downloadable' || availability === 'downloading') {
-+      setIsDownloading(true);
-+    }
++    const options: TranslatorOptions = {
++      sourceLanguage,
++      targetLanguage,
++    };
 +
 +    try {
-+      captureOriginalContent();
++      // Create translator instance with progress monitoring
++      const translator: TranslatorInstance = await createTranslator(
++        options,
++        (progressPercent: number, _event: TranslationDownloadProgressEvent) => {
++          setDownloadProgress(progressPercent);
++        }
++      );
 +
-+      const options = {
-+        sourceLanguage,
-+        targetLanguage,
++      // Collect elements to translate if not already stored
++      const elementsToTranslate: HTMLElement[] = [];
++      const container = document.querySelector(articleSelector);
++      if (container) {
++        const textElements = container.querySelectorAll<HTMLElement>('p, h2, h3, h4, li, blockquote');
++        textElements.forEach((el) => {
++          if (el.textContent && el.textContent.trim().length > 0) {
++            elementsToTranslate.push(el);
++          }
++        });
++      }
++
++      // Store original content
++      const headlineEl = headlineSelector ? document.querySelector<HTMLElement>(headlineSelector) : null;
++      const summaryEl = summarySelector ? document.querySelector<HTMLElement>(summarySelector) : null;
++
++      originalContentRef.current = {
++        headline: headlineEl?.textContent || undefined,
++        summary: summaryEl?.textContent || undefined,
++        elements: elementsToTranslate.map((el) => ({
++          el,
++          originalHtml: el.innerHTML,
++          originalText: el.textContent || '',
++        })),
 +      };
 +
-+      const translator = await createTranslator(options, (progress) => {
-+        setDownloadProgress(progress);
-+      });
-+
-+      setIsDownloading(false);
-+
-+      const headlineEl = document.getElementById(headlineId);
-+      const summaryEl = document.getElementById(summaryId);
-+
 +      // 1. Translate headline
-+      const headlineText = originalHeadlineRef.current || articleTitle;
-+      if (headlineText && headlineEl) {
-+        const translatedHeadline = await translateStreamingWithInstance(
-+          translator,
-+          headlineText,
-+          (chunk) => {
-+            headlineEl.textContent = chunk;
++      if (headlineEl && originalContentRef.current.headline) {
++        try {
++          if (typeof translator.translateStreaming === 'function') {
++            const stream = translator.translateStreaming(originalContentRef.current.headline);
++            if (Symbol.asyncIterator in stream) {
++              for await (const chunk of stream as AsyncIterable<string>) {
++                headlineEl.textContent = chunk;
++              }
++            } else {
++              const res = await translator.translate(originalContentRef.current.headline);
++              headlineEl.textContent = res;
++            }
++          } else {
++            const res = await translator.translate(originalContentRef.current.headline);
++            headlineEl.textContent = res;
 +          }
-+        );
-+        headlineEl.textContent = translatedHeadline;
++        } catch (e) {
++          console.warn('Failed to translate headline:', e);
++        }
 +      }
 +
 +      // 2. Translate summary
-+      const summaryText = originalSummaryRef.current || articleSummary;
-+      if (summaryText && summaryEl) {
-+        const translatedSummary = await translateStreamingWithInstance(
-+          translator,
-+          summaryText,
-+          (chunk) => {
-+            summaryEl.textContent = chunk;
++      if (summaryEl && originalContentRef.current.summary) {
++        try {
++          if (typeof translator.translateStreaming === 'function') {
++            const stream = translator.translateStreaming(originalContentRef.current.summary);
++            if (Symbol.asyncIterator in stream) {
++              for await (const chunk of stream as AsyncIterable<string>) {
++                summaryEl.textContent = chunk;
++              }
++            } else {
++              const res = await translator.translate(originalContentRef.current.summary);
++              summaryEl.textContent = res;
++            }
++          } else {
++            const res = await translator.translate(originalContentRef.current.summary);
++            summaryEl.textContent = res;
 +          }
-+        );
-+        summaryEl.textContent = translatedSummary;
++        } catch (e) {
++          console.warn('Failed to translate summary:', e);
++        }
 +      }
 +
-+      // 3. Translate all body elements
-+      for (const item of originalElementsRef.current) {
-+        if (item.text && item.text.trim()) {
-+          const translatedChunk = await translateStreamingWithInstance(
-+            translator,
-+            item.text,
-+            (chunk) => {
-+              item.el.textContent = chunk;
++      // 3. Translate body paragraphs
++      for (const item of originalContentRef.current.elements) {
++        if (!item.originalText.trim()) continue;
++        try {
++          if (typeof translator.translateStreaming === 'function') {
++            const stream = translator.translateStreaming(item.originalText);
++            if (Symbol.asyncIterator in stream) {
++              for await (const chunk of stream as AsyncIterable<string>) {
++                item.el.textContent = chunk;
++              }
++            } else {
++              const res = await translator.translate(item.originalText);
++              item.el.textContent = res;
 +            }
-+          );
-+          item.el.textContent = translatedChunk;
++          } else {
++            const res = await translator.translate(item.originalText);
++            item.el.textContent = res;
++          }
++        } catch (e) {
++          console.warn('Failed to translate element:', e);
 +        }
 +      }
 +
 +      setIsTranslated(true);
-+      setCurrentTranslatedLanguage(targetLanguage);
-+
 +      if (typeof translator.destroy === 'function') {
 +        translator.destroy();
 +      }
-+    } catch (err) {
-+      console.error('Translation failed:', err);
-+      setError(
-+        err instanceof Error ? err.message : 'An error occurred during translation. Please try again.'
-+      );
++    } catch (err: any) {
++      console.error('Translation error:', err);
++      setErrorMessage(err?.message || 'Translation failed. Please try again.');
 +    } finally {
 +      setIsTranslating(false);
-+      setIsDownloading(false);
++      setDownloadProgress(null);
 +    }
 +  };
 +
-+  const selectedTargetName =
-+    SUPPORTED_LANGUAGES.find((lang) => lang.code === targetLanguage)?.name || targetLanguage;
-+  const currentTranslatedName =
-+    SUPPORTED_LANGUAGES.find((lang) => lang.code === currentTranslatedLanguage)?.name ||
-+    currentTranslatedLanguage;
++  const getAvailabilityBadge = () => {
++    switch (availability) {
++      case 'available':
++        return (
++          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
++            <CheckIcon className="w-3 h-3" /> Ready
++          </span>
++        );
++      case 'downloadable':
++        return (
++          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
++            <ArrowDownTrayIcon className="w-3 h-3" /> Download needed
++          </span>
++        );
++      case 'downloading':
++        return (
++          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 animate-pulse">
++            <ArrowPathIcon className="w-3 h-3 animate-spin" /> Downloading...
++          </span>
++        );
++      case 'unavailable':
++      default:
++        return (
++          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
++            <ExclamationCircleIcon className="w-3 h-3" /> Unsupported
++          </span>
++        );
++    }
++  };
++
++  if (!isSupported) {
++    return (
++      <div className="flex items-center text-xs text-gray-500 gap-1.5 py-1">
++        <LanguageIcon className="w-4 h-4 text-gray-400" />
++        <span>Client-side translation is unsupported in this browser.</span>
++      </div>
++    );
++  }
 +
 +  return (
-+    <div className="w-full bg-amber-50/60 border border-amber-200 rounded-lg p-3 my-2 text-sm text-gray-800 transition-all">
-+      <div className="flex flex-wrap items-center justify-between gap-3">
-+        {/* Left Section: Language selector and status */}
-+        <div className="flex flex-wrap items-center gap-2">
-+          <div className="flex items-center text-amber-900 font-semibold space-x-1.5">
-+            <LanguageIcon className="w-5 h-5 text-amber-700" />
-+            <span>Translate Article:</span>
-+          </div>
-+
-+          <div className="relative inline-block">
-+            <label htmlFor={selectId} className="sr-only">
-+              Select translation language
-+            </label>
-+            <select
-+              id={selectId}
-+              value={targetLanguage}
-+              onChange={(e) => setTargetLanguage(e.target.value)}
-+              disabled={isTranslating}
-+              className="bg-white border border-gray-300 text-gray-800 text-xs rounded-md px-2.5 py-1.5 font-medium shadow-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden disabled:opacity-50 cursor-pointer"
-+            >
-+              {SUPPORTED_LANGUAGES.filter((lang) => lang.code !== sourceLanguage).map((lang) => (
-+                <option key={lang.code} value={lang.code}>
-+                  {lang.name} {lang.nativeName ? `(${lang.nativeName})` : ''}
-+                </option>
-+              ))}
-+            </select>
-+          </div>
-+
-+          {/* Availability Status Badge */}
-+          {isCheckingAvailability ? (
-+            <span className="inline-flex items-center text-xs text-gray-500">
-+              <ArrowPathIcon className="w-3.5 h-3.5 animate-spin mr-1 text-gray-400" />
-+              Checking...
-+            </span>
-+          ) : !isSupported ? (
-+            <span
-+              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700"
-+              title="Translator API not supported in this browser"
-+            >
-+              <InformationCircleIcon className="w-3.5 h-3.5 mr-1 text-gray-500" />
-+              Unsupported
-+            </span>
-+          ) : availability === 'available' ? (
-+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-+              <CheckCircleIcon className="w-3.5 h-3.5 mr-1 text-green-600" />
-+              Ready (On-Device)
-+            </span>
-+          ) : availability === 'downloadable' ? (
-+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-+              <ArrowDownTrayIcon className="w-3.5 h-3.5 mr-1 text-blue-600" />
-+              Download Required
-+            </span>
-+          ) : availability === 'downloading' ? (
-+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-+              <ArrowPathIcon className="w-3.5 h-3.5 animate-spin mr-1 text-amber-600" />
-+              Downloading Model...
-+            </span>
-+          ) : availability === 'unavailable' ? (
-+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-+              <ExclamationCircleIcon className="w-3.5 h-3.5 mr-1 text-gray-500" />
-+              Unavailable
-+            </span>
-+          ) : null}
-+        </div>
-+
-+        {/* Right Section: Action Buttons */}
-+        <div className="flex items-center space-x-2">
-+          {isTranslated && (
-+            <button
-+              onClick={handleShowOriginal}
-+              disabled={isTranslating}
-+              className="text-xs bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-1.5 px-3 rounded-md transition-colors shadow-xs cursor-pointer disabled:opacity-50"
-+            >
-+              Show Original (English)
-+            </button>
-+          )}
-+
-+          <button
-+            onClick={handleTranslate}
-+            disabled={!isSupported || availability === 'unavailable' || isTranslating}
-+            className={`text-xs font-semibold py-1.5 px-3 rounded-md transition-colors shadow-xs flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-+              isTranslated && currentTranslatedLanguage === targetLanguage
-+                ? 'bg-green-700 hover:bg-green-800 text-white'
-+                : 'bg-amber-600 hover:bg-amber-700 text-white'
-+            }`}
-+          >
-+            {isTranslating ? (
-+              <>
-+                <ArrowPathIcon className="w-4 h-4 animate-spin" />
-+                <span>
-+                  {isDownloading
-+                    ? `Downloading Model (${downloadProgress}%)...`
-+                    : 'Translating...'}
-+                </span>
-+              </>
-+            ) : isTranslated && currentTranslatedLanguage === targetLanguage ? (
-+              <>
-+                <CheckCircleIcon className="w-4 h-4" />
-+                <span>Re-translate</span>
-+              </>
-+            ) : availability === 'downloadable' ? (
-+              <>
-+                <ArrowDownTrayIcon className="w-4 h-4" />
-+                <span>Download & Translate to {selectedTargetName}</span>
-+              </>
-+            ) : (
-+              <>
-+                <LanguageIcon className="w-4 h-4" />
-+                <span>Translate to {selectedTargetName}</span>
-+              </>
-+            )}
-+          </button>
-+        </div>
++    <div className="flex flex-wrap items-center gap-2 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3">
++      <div className="flex items-center gap-1.5 text-gray-700 font-medium">
++        <LanguageIcon className="w-5 h-5 text-gray-600" />
++        <span className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Translate:</span>
 +      </div>
 +
-+      {/* Model Download Progress Bar */}
-+      {isDownloading && (
-+        <div className="mt-2.5 pt-2 border-t border-amber-200/80">
-+          <div className="flex justify-between text-xs text-amber-900 font-medium mb-1">
-+            <span>Downloading on-device AI model...</span>
-+            <span>{downloadProgress}%</span>
-+          </div>
-+          <div className="w-full bg-amber-200 rounded-full h-1.5 overflow-hidden">
++      {/* Language Selector */}
++      <select
++        value={targetLanguage}
++        onChange={(e) => {
++          setTargetLanguage(e.target.value);
++          if (isTranslated) {
++            handleRestoreOriginal();
++          }
++        }}
++        disabled={isTranslating}
++        className="text-xs bg-white border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-amber-500 focus:outline-none cursor-pointer"
++        aria-label="Target translation language"
++      >
++        {SUPPORTED_LANGUAGES.filter((lang) => lang.code !== sourceLanguage).map((lang) => (
++          <option key={lang.code} value={lang.code}>
++            {lang.name} ({lang.code})
++          </option>
++        ))}
++      </select>
++
++      {/* Availability Status Badge */}
++      <div className="hidden sm:flex items-center">
++        {getAvailabilityBadge()}
++      </div>
++
++      {/* Translate / Restore Action Button */}
++      <button
++        type="button"
++        id="start-translation-btn"
++        onClick={handleTranslate}
++        disabled={isTranslating || availability === 'unavailable'}
++        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded transition-colors ${
++          isTranslated
++            ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
++            : availability === 'unavailable'
++            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
++            : 'bg-amber-400 text-gray-900 hover:bg-amber-500 shadow-sm'
++        }`}
++      >
++        {isTranslating ? (
++          <>
++            <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
++            {downloadProgress !== null
++              ? `Downloading ${downloadProgress}%...`
++              : 'Translating...'}
++          </>
++        ) : isTranslated ? (
++          'Show Original'
++        ) : (
++          'Translate'
++        )}
++      </button>
++
++      {/* Download Progress Display */}
++      {downloadProgress !== null && (
++        <div className="flex items-center gap-2 text-xs text-amber-700 w-full sm:w-auto">
++          <div className="w-24 bg-gray-200 rounded-full h-1.5 overflow-hidden">
 +            <div
-+              className="bg-amber-600 h-1.5 rounded-full transition-all duration-300 ease-out"
++              className="bg-amber-500 h-1.5 rounded-full transition-all duration-200"
 +              style={{ width: `${downloadProgress}%` }}
 +            />
 +          </div>
++          <span>{downloadProgress}%</span>
 +        </div>
 +      )}
 +
-+      {/* Translation Active Notification */}
-+      {isTranslated && !isTranslating && (
-+        <div className="mt-2 pt-2 border-t border-amber-200/60 text-xs text-amber-900 flex items-center justify-between">
-+          <span className="flex items-center">
-+            <CheckCircleIcon className="w-4 h-4 text-green-600 mr-1" />
-+            Article translated to <strong>{currentTranslatedName}</strong> using on-device AI.
-+          </span>
-+          <span className="text-gray-500 text-[11px]">Private & On-Device</span>
-+        </div>
-+      )}
-+
-+      {/* Fallback & Unsupported Notice */}
-+      {!isSupported && (
-+        <div className="mt-2 pt-2 border-t border-amber-200/80 text-xs text-gray-600 flex items-start space-x-1.5">
-+          <InformationCircleIcon className="w-4 h-4 text-gray-500 shrink-0 mt-0.5" />
-+          <span>
-+            Client-side translation is currently unsupported in this browser. Built-in AI Translation requires
-+            Chrome 138+ or Edge 148+ on desktop.
-+          </span>
-+        </div>
-+      )}
-+
-+      {/* Error Message Display */}
-+      {error && (
-+        <div className="mt-2 pt-2 border-t border-red-200 text-xs text-red-700 flex items-center space-x-1.5">
-+          <ExclamationCircleIcon className="w-4 h-4 text-red-500 shrink-0" />
-+          <span>{error}</span>
++      {/* Error Message */}
++      {errorMessage && (
++        <div className="text-xs text-red-600 w-full mt-1">
++          {errorMessage}
 +        </div>
 +      )}
 +    </div>
 +  );
 +}
 diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
-index 24fea39..bad8d9c 100644
+index 24fea39..00207f4 100644
 --- a/src/pages/articles/[slug].astro
 +++ b/src/pages/articles/[slug].astro
 @@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
@@ -504,180 +434,200 @@ index 24fea39..bad8d9c 100644
              {article.data.summary}
          </p>
  
-@@ -86,8 +87,8 @@ const isBookmarked = readingList.includes(article.slug);
+@@ -86,7 +87,7 @@ const isBookmarked = readingList.includes(article.slug);
              )}
          </figure>
  
 -        <!-- Share Buttons & Comments -->
--        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
-+        <!-- Share Buttons & Actions -->
-+        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-4 mb-4">
++        <!-- Share Buttons & Translator -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
              <!-- Social Share Icons (Placeholders) -->
              <div class="flex space-x-3 items-center">
-                 <span class="text-sm font-semibold text-gray-800">Share:</span>
-@@ -101,11 +102,22 @@ const isBookmarked = readingList.includes(article.slug);
-                 </a>
+@@ -102,10 +103,12 @@ const isBookmarked = readingList.includes(article.slug);
                  <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
              </div>
-+        </div>
  
-+        <!-- Built-in AI Translator Widget -->
-+        <div class="mb-6">
-+            <ArticleTranslator
-+                client:load
-+                articleTitle={article.data.title}
-+                articleSummary={article.data.summary}
-+                contentContainerId="article-content"
-+                headlineId="article-headline"
-+                summaryId="article-summary"
-+            />
++            <!-- Translator Control -->
++            <ArticleTranslator client:load />
          </div>
  
          <!-- Article Body Content -->
 -        <div class="prose max-w-none">
-+        <div id="article-content" class="prose max-w-none">
++        <div id="article-body" class="prose max-w-none">
              <Content />
          </div>
  
 diff --git a/src/utils/translator.ts b/src/utils/translator.ts
 new file mode 100644
-index 0000000..fe1a0c3
+index 0000000..11d2705
 --- /dev/null
 +++ b/src/utils/translator.ts
-@@ -0,0 +1,194 @@
-+import type {
-+  TranslatorLanguageOptions,
-+  TranslatorCreateOptions,
-+  TranslatorAvailability,
-+  TranslatorInstance,
-+  TranslationDownloadMonitor,
-+  TranslationDownloadProgressEvent,
-+} from '../../global';
-+
-+export interface LanguageOption {
-+  code: string;
-+  name: string;
-+  nativeName?: string;
+@@ -0,0 +1,219 @@
++export interface TranslationDownloadProgressEvent extends Event {
++  readonly loaded: number;
++  readonly total?: number;
 +}
 +
-+/**
-+ * Languages supported by the Built-in AI Translator API.
-+ */
-+export const SUPPORTED_LANGUAGES: LanguageOption[] = [
-+  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
-+  { code: 'bg', name: 'Bulgarian', nativeName: 'Български' },
-+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
-+  { code: 'cs', name: 'Czech', nativeName: 'Čeština' },
-+  { code: 'da', name: 'Danish', nativeName: 'Dansk' },
-+  { code: 'de', name: 'German', nativeName: 'Deutsch' },
-+  { code: 'el', name: 'Greek', nativeName: 'Ελληνικά' },
-+  { code: 'en', name: 'English', nativeName: 'English' },
-+  { code: 'es', name: 'Spanish', nativeName: 'Español' },
-+  { code: 'fi', name: 'Finnish', nativeName: 'Suomi' },
-+  { code: 'fr', name: 'French', nativeName: 'Français' },
-+  { code: 'he', name: 'Hebrew', nativeName: 'עברית' },
-+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
-+  { code: 'hr', name: 'Croatian', nativeName: 'Hrvatski' },
-+  { code: 'hu', name: 'Hungarian', nativeName: 'Magyar' },
-+  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
-+  { code: 'it', name: 'Italian', nativeName: 'Italiano' },
-+  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
-+  { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
-+  { code: 'ko', name: 'Korean', nativeName: '한국어' },
-+  { code: 'lt', name: 'Lithuanian', nativeName: 'Lietuvių' },
-+  { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
-+  { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
-+  { code: 'no', name: 'Norwegian', nativeName: 'Norsk' },
-+  { code: 'pl', name: 'Polish', nativeName: 'Polski' },
-+  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
-+  { code: 'ro', name: 'Romanian', nativeName: 'Română' },
-+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
-+  { code: 'sk', name: 'Slovak', nativeName: 'Slovenčina' },
-+  { code: 'sl', name: 'Slovenian', nativeName: 'Slovenščina' },
-+  { code: 'sv', name: 'Swedish', nativeName: 'Svenska' },
-+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
-+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
-+  { code: 'th', name: 'Thai', nativeName: 'ไทย' },
-+  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe' },
-+  { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
-+  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
-+  { code: 'zh', name: 'Chinese (Simplified)', nativeName: '简体中文' },
-+  { code: 'zh-Hant', name: 'Chinese (Traditional)', nativeName: '繁體中文' },
++export interface TranslationDownloadMonitor extends EventTarget {
++  addEventListener(
++    type: 'downloadprogress',
++    listener: (event: TranslationDownloadProgressEvent) => void,
++    options?: boolean | AddEventListenerOptions
++  ): void;
++  removeEventListener(
++    type: 'downloadprogress',
++    listener: (event: TranslationDownloadProgressEvent) => void,
++    options?: boolean | EventListenerOptions
++  ): void;
++}
++
++export type TranslatorAvailability = 'available' | 'downloadable' | 'downloading' | 'unavailable';
++
++export interface TranslatorOptions {
++  sourceLanguage: string;
++  targetLanguage: string;
++}
++
++export interface TranslatorCreateOptions extends TranslatorOptions {
++  monitor?: (monitor: TranslationDownloadMonitor) => void;
++  signal?: AbortSignal;
++}
++
++export interface TranslatorInstance {
++  readonly sourceLanguage: string;
++  readonly targetLanguage: string;
++  translate(input: string): Promise<string>;
++  translateStreaming(input: string): AsyncIterable<string> | ReadableStream<string>;
++  destroy(): void;
++}
++
++export interface TranslatorFactory {
++  availability(options: TranslatorOptions): Promise<TranslatorAvailability>;
++  create(options: TranslatorCreateOptions): Promise<TranslatorInstance>;
++}
++
++export interface SupportedLanguage {
++  code: string;
++  name: string;
++}
++
++export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
++  { code: 'ar', name: 'Arabic' },
++  { code: 'bg', name: 'Bulgarian' },
++  { code: 'bn', name: 'Bengali' },
++  { code: 'cs', name: 'Czech' },
++  { code: 'da', name: 'Danish' },
++  { code: 'de', name: 'German' },
++  { code: 'el', name: 'Greek' },
++  { code: 'en', name: 'English' },
++  { code: 'es', name: 'Spanish' },
++  { code: 'fi', name: 'Finnish' },
++  { code: 'fr', name: 'French' },
++  { code: 'hi', name: 'Hindi' },
++  { code: 'hr', name: 'Croatian' },
++  { code: 'hu', name: 'Hungarian' },
++  { code: 'id', name: 'Indonesian' },
++  { code: 'it', name: 'Italian' },
++  { code: 'he', name: 'Hebrew' },
++  { code: 'ja', name: 'Japanese' },
++  { code: 'kn', name: 'Kannada' },
++  { code: 'ko', name: 'Korean' },
++  { code: 'lt', name: 'Lithuanian' },
++  { code: 'mr', name: 'Marathi' },
++  { code: 'nl', name: 'Dutch' },
++  { code: 'no', name: 'Norwegian' },
++  { code: 'pl', name: 'Polish' },
++  { code: 'pt', name: 'Portuguese' },
++  { code: 'ro', name: 'Romanian' },
++  { code: 'ru', name: 'Russian' },
++  { code: 'sk', name: 'Slovak' },
++  { code: 'sl', name: 'Slovenian' },
++  { code: 'sv', name: 'Swedish' },
++  { code: 'ta', name: 'Tamil' },
++  { code: 'te', name: 'Telugu' },
++  { code: 'th', name: 'Thai' },
++  { code: 'tr', name: 'Turkish' },
++  { code: 'uk', name: 'Ukrainian' },
++  { code: 'vi', name: 'Vietnamese' },
++  { code: 'zh', name: 'Chinese' },
++  { code: 'zh-Hant', name: 'Chinese (Traditional)' },
 +];
 +
 +/**
-+ * Checks whether the Translator API is available in the global browser scope.
-+ * The Translator API is accessed on window.Translator.
++ * Checks if the global Translator API is supported in the browser.
++ * MANDATORY: Access the Translator API exclusively via the global Translator interface (window.Translator / self.Translator).
++ * DO NOT check or use window.ai.translator.
 + */
 +export function isTranslatorSupported(): boolean {
 +  if (typeof window === 'undefined') return false;
-+  return 'Translator' in window && typeof window.Translator !== 'undefined';
++  return 'Translator' in window && typeof (window as any).Translator?.availability === 'function';
 +}
 +
 +/**
-+ * Checks model availability for a given language pair.
-+ * Must be called with both sourceLanguage and targetLanguage options.
++ * Checks the availability of a language pair for translation.
++ * MANDATORY: Must be called with both sourceLanguage and targetLanguage options.
 + * Returns 'available' | 'downloadable' | 'downloading' | 'unavailable'.
 + */
-+export async function checkAvailability(
-+  options: TranslatorLanguageOptions
-+): Promise<TranslatorAvailability> {
-+  if (!isTranslatorSupported() || !window.Translator) {
++export async function checkAvailability(options: TranslatorOptions): Promise<TranslatorAvailability> {
++  if (!isTranslatorSupported()) {
 +    return 'unavailable';
 +  }
 +
 +  try {
-+    const availability = await window.Translator.availability({
++    const translatorApi = (window as any).Translator as TranslatorFactory;
++    const availability = await translatorApi.availability({
 +      sourceLanguage: options.sourceLanguage,
 +      targetLanguage: options.targetLanguage,
 +    });
 +    return availability;
 +  } catch (error) {
-+    console.error('Error checking Translator availability:', error);
++    console.error('Failed to check Translator availability:', error);
 +    return 'unavailable';
 +  }
 +}
 +
 +/**
-+ * Creates a Translator instance with the given language options and a download progress monitor.
-+ * Passes the exact same sourceLanguage and targetLanguage options to Translator.create().
++ * Creates a Translator instance with download progress monitoring.
++ * MANDATORY:
++ * 1. Passes identical sourceLanguage and targetLanguage options as used in availability().
++ * 2. Implements a monitor for download progress using the 'downloadprogress' event.
 + */
 +export async function createTranslator(
-+  options: TranslatorLanguageOptions,
-+  onDownloadProgress?: (progressPercent: number, event: TranslationDownloadProgressEvent) => void,
-+  signal?: AbortSignal
++  options: TranslatorOptions,
++  onProgress?: (progressPercent: number, event: TranslationDownloadProgressEvent) => void
 +): Promise<TranslatorInstance> {
-+  if (!isTranslatorSupported() || !window.Translator) {
-+    throw new Error('Translator API is not supported in this browser.');
++  if (!isTranslatorSupported()) {
++    throw new Error('Translator API is not available on window.Translator in this browser.');
 +  }
++
++  const translatorApi = (window as any).Translator as TranslatorFactory;
 +
 +  const createOptions: TranslatorCreateOptions = {
 +    sourceLanguage: options.sourceLanguage,
 +    targetLanguage: options.targetLanguage,
-+    monitor(monitor: TranslationDownloadMonitor) {
-+      monitor.addEventListener('downloadprogress', (e: TranslationDownloadProgressEvent) => {
-+        const progress = typeof e.loaded === 'number' ? Math.round(e.loaded * 100) : 0;
-+        console.log(`Downloaded ${progress}%`);
-+        if (onDownloadProgress) {
-+          onDownloadProgress(progress, e);
++    monitor(m: TranslationDownloadMonitor) {
++      m.addEventListener('downloadprogress', (e: TranslationDownloadProgressEvent) => {
++        const percent = typeof e.loaded === 'number' ? Math.round(e.loaded * 100) : 0;
++        console.log(`Downloaded ${percent}%`);
++        if (onProgress) {
++          onProgress(percent, e);
 +        }
 +      });
 +    },
-+    ...(signal ? { signal } : {}),
 +  };
 +
-+  return await window.Translator.create(createOptions);
++  return await translatorApi.create(createOptions);
 +}
 +
 +/**
-+ * Translates a single text string using a newly created Translator instance.
++ * Translates text from sourceLanguage to targetLanguage using standard translate().
 + */
-+export async function translate(
++export async function translateText(
 +  text: string,
-+  options: TranslatorLanguageOptions,
-+  onDownloadProgress?: (percent: number, event: TranslationDownloadProgressEvent) => void
++  options: TranslatorOptions,
++  onProgress?: (progressPercent: number, event: TranslationDownloadProgressEvent) => void
 +): Promise<string> {
-+  const translator = await createTranslator(options, onDownloadProgress);
++  const translator = await createTranslator(options, onProgress);
 +  try {
 +    return await translator.translate(text);
 +  } finally {
@@ -688,54 +638,47 @@ index 0000000..fe1a0c3
 +}
 +
 +/**
-+ * Translates a text string with streaming chunks using a newly created Translator instance.
++ * Translates text using streaming translation (translateStreaming), with fallback to translate().
 + */
-+export async function translateStreaming(
++export async function translateTextStreaming(
 +  text: string,
-+  options: TranslatorLanguageOptions,
-+  onChunk: (chunk: string) => void,
-+  onDownloadProgress?: (percent: number, event: TranslationDownloadProgressEvent) => void
++  options: TranslatorOptions,
++  onChunk: (accumulatedOrChunk: string) => void,
++  onProgress?: (progressPercent: number, event: TranslationDownloadProgressEvent) => void
 +): Promise<string> {
-+  const translator = await createTranslator(options, onDownloadProgress);
++  const translator = await createTranslator(options, onProgress);
 +  try {
-+    return await translateStreamingWithInstance(translator, text, onChunk);
++    if (typeof translator.translateStreaming === 'function') {
++      const stream = translator.translateStreaming(text);
++      let lastText = '';
++
++      if (Symbol.asyncIterator in stream) {
++        for await (const chunk of stream as AsyncIterable<string>) {
++          lastText = chunk;
++          onChunk(chunk);
++        }
++        return lastText;
++      } else if (stream instanceof ReadableStream) {
++        const reader = stream.getReader();
++        while (true) {
++          const { done, value } = await reader.read();
++          if (done) break;
++          if (typeof value === 'string') {
++            lastText = value;
++            onChunk(value);
++          }
++        }
++        return lastText;
++      }
++    }
++
++    // Fallback to standard translate if translateStreaming is not available
++    const result = await translator.translate(text);
++    onChunk(result);
++    return result;
 +  } finally {
 +    if (typeof translator.destroy === 'function') {
 +      translator.destroy();
 +    }
-+  }
-+}
-+
-+/**
-+ * Translates text with an existing Translator instance using translate().
-+ */
-+export async function translateWithInstance(
-+  translator: TranslatorInstance,
-+  text: string
-+): Promise<string> {
-+  return await translator.translate(text);
-+}
-+
-+/**
-+ * Translates text with an existing Translator instance using translateStreaming() when available,
-+ * falling back to translate().
-+ */
-+export async function translateStreamingWithInstance(
-+  translator: TranslatorInstance,
-+  text: string,
-+  onChunk?: (chunk: string) => void
-+): Promise<string> {
-+  if (typeof translator.translateStreaming === 'function') {
-+    const stream = translator.translateStreaming(text);
-+    let result = '';
-+    for await (const chunk of stream) {
-+      result = chunk;
-+      onChunk?.(chunk);
-+    }
-+    return result;
-+  } else {
-+    const result = await translator.translate(text);
-+    onChunk?.(result);
-+    return result;
 +  }
 +}

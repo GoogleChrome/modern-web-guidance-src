@@ -14,7 +14,7 @@ The **Translator API** allows developers to perform client-side text translation
 ### API Surface & Global Scope
 
 - **MANDATORY:** Access the Translator API exclusively via the global `Translator` interface (`window.Translator` / `self.Translator`).
-- **DO NOT** use or check the deprecated `window.ai` or `window.ai.translator` namespaces.
+- **DO NOT** use or check the deprecated `window.ai.translator` namespace.
 
 ### Browser Support
 
@@ -41,7 +41,7 @@ To run Gemini Nano and associated models, the system needs:
 
 **Mandatory Progress Monitoring:** You MUST implement a monitor for model download progress by providing a `monitor(m)` callback to `Translator.create()` and adding a listener for the `downloadprogress` event.
 
-**User Gesture Requirement:** When `availability` is `'downloadable'` or `'downloading'`, calling `Translator.create()` triggers the download of the language pack and **strictly requires a user activation** (e.g. inside a button click or form submit handler, or checking `navigator.userActivation.isActive`). Calling `Translator.create()` without a user activation in these states will throw a `NotAllowedError`.
+**User Gesture Requirement:** When `availability` is `'downloadable'` or `'downloading'`, calling `Translator.create()` triggers the download of the language pack and **strictly requires a user gesture** (such as a button click) to prevent a `NotAllowedError`.
 
 `Translator.availability(options)` returns one of four string statuses:
 - `'available'`: The language pair model is already downloaded on the device and ready for immediate translation.
@@ -61,14 +61,7 @@ const availability = await Translator.availability(options);
 
 if (availability === 'available') {
   // Model is ready immediately on device
-  const translator = await Translator.create({
-    ...options,
-    monitor(m) {
-      m.addEventListener('downloadprogress', (e) => {
-        console.log(`Downloaded ${Math.round(e.loaded * 100)}%`);
-      });
-    },
-  });
+  const translator = await Translator.create(options);
 } else if (availability === 'downloadable' || availability === 'downloading') {
   // User gesture is strictly required before create() triggers or attaches to download
   document.getElementById('start-translation-btn').addEventListener('click', async () => {
@@ -186,7 +179,7 @@ Before use, check if the `Translator` object is available in the global scope:
 if ('Translator' in self) {
   // The Translator API is supported.
 } else {
-  // Execute fallback strategy. DO NOT check or use window.ai.translator.
+  // Execute fallback strategy (do not fall back to window.ai.translator).
 }
 ```
 

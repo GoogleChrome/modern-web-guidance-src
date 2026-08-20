@@ -1,284 +1,197 @@
 diff --git a/app.js b/app.js
 new file mode 100644
-index 0000000..9c3833c
+index 0000000..1efab63
 --- /dev/null
 +++ b/app.js
-@@ -0,0 +1,246 @@
-+// @ts-check
+@@ -0,0 +1,179 @@
++/**
++ * @typedef {'available'|'downloadable'|'downloading'|'unavailable'} TranslatorAvailability
++ * @typedef {{loaded: number}} DownloadProgressEvent
++ * @typedef {{addEventListener(type: 'downloadprogress', listener: (event: DownloadProgressEvent) => void): void}} TranslatorMonitor
++ * @typedef {{translate(text: string): Promise<string>, destroy?: () => void}} TranslatorInstance
++ * @typedef {{sourceLanguage: string, targetLanguage: string, monitor: (monitor: TranslatorMonitor) => void}} TranslatorOptions
++ * @typedef {{availability(options: TranslatorOptions): Promise<TranslatorAvailability>, create(options: TranslatorOptions): Promise<TranslatorInstance>}} TranslatorFactory
++ */
 +
-+/** @typedef {'available' | 'downloadable' | 'downloading' | 'unavailable'} Availability */
-+/** @typedef {{ sourceLanguage: string, targetLanguage: string }} LanguageOptions */
-+/** @typedef {{ loaded: number }} DownloadProgressEvent */
-+/** @typedef {{ addEventListener: (type: 'downloadprogress', listener: (event: DownloadProgressEvent) => void) => void }} CreateMonitor */
-+/** @typedef {{ translate: (text: string) => Promise<string>, destroy?: () => void }} TranslatorInstance */
-+/** @typedef {{ availability: (options: LanguageOptions) => Promise<Availability>, create: (options: LanguageOptions & { monitor: (monitor: CreateMonitor) => void }) => Promise<TranslatorInstance> }} TranslatorFactory */
++const translatorCard = document.querySelector('#translator-card');
++const targetLanguage = document.querySelector('#target-language');
++const translateButton = document.querySelector('#translate-button');
++const translateButtonLabel = document.querySelector('#translate-button-label');
++const resetButton = document.querySelector('#reset-button');
++const statusMessage = document.querySelector('#status-message');
++const progressWrap = document.querySelector('#progress-wrap');
++const progressBar = document.querySelector('#download-progress');
++const progressValue = document.querySelector('#progress-value');
++const translatableElements = [...document.querySelectorAll('[data-translate]')];
++const navToggle = document.querySelector('.nav-toggle');
++const navLinks = document.querySelector('#nav-links');
 +
-+const languages = [
-+  ['ar', 'Arabic'], ['bg', 'Bulgarian'], ['bn', 'Bengali'], ['cs', 'Czech'],
-+  ['da', 'Danish'], ['de', 'German'], ['el', 'Greek'], ['en', 'English'],
-+  ['es', 'Spanish'], ['fi', 'Finnish'], ['fr', 'French'], ['hi', 'Hindi'],
-+  ['hr', 'Croatian'], ['hu', 'Hungarian'], ['id', 'Indonesian'], ['it', 'Italian'],
-+  ['he', 'Hebrew'], ['ja', 'Japanese'], ['kn', 'Kannada'], ['ko', 'Korean'],
-+  ['lt', 'Lithuanian'], ['mr', 'Marathi'], ['nl', 'Dutch'], ['no', 'Norwegian'],
-+  ['pl', 'Polish'], ['pt', 'Portuguese'], ['ro', 'Romanian'], ['ru', 'Russian'],
-+  ['sk', 'Slovak'], ['sl', 'Slovenian'], ['sv', 'Swedish'], ['ta', 'Tamil'],
-+  ['te', 'Telugu'], ['th', 'Thai'], ['tr', 'Turkish'], ['uk', 'Ukrainian'],
-+  ['vi', 'Vietnamese'], ['zh', 'Chinese (Simplified)'], ['zh-Hant', 'Chinese (Traditional)'],
-+];
-+
-+/** @template {HTMLElement} T @param {string} id @returns {T} */
-+function requireElement(id) {
-+  const element = document.getElementById(id);
-+  if (!element) throw new Error(`Missing required element: #${id}`);
-+  return /** @type {T} */ (element);
-+}
-+
-+const sourceLanguage = /** @type {HTMLSelectElement} */ (requireElement('source-language'));
-+const targetLanguage = /** @type {HTMLSelectElement} */ (requireElement('target-language'));
-+const swapButton = /** @type {HTMLButtonElement} */ (requireElement('swap-languages'));
-+const sourceText = /** @type {HTMLTextAreaElement} */ (requireElement('source-text'));
-+const characterCount = requireElement('character-count');
-+const output = requireElement('translation-output');
-+const translateButton = /** @type {HTMLButtonElement} */ (requireElement('translate-button'));
-+const status = requireElement('api-status');
-+const statusText = requireElement('status-text');
-+const progressTrack = requireElement('download-progress');
-+const progressBar = requireElement('download-progress-bar');
-+
-+/** @type {TranslatorInstance | null} */
-+let translator = null;
-+/** @type {LanguageOptions | null} */
-+let checkedOptions = null;
-+/** @type {Availability | null} */
++/** @type {Map<Element, string>} */
++const originalText = new Map(translatableElements.map((element) => [element, element.textContent?.trim() ?? '']));
++/** @type {TranslatorInstance|null} */
++let activeTranslator = null;
++/** @type {TranslatorOptions|null} */
++let currentTranslatorOptions = null;
++/** @type {TranslatorAvailability|null} */
 +let availability = null;
-+let availabilityRequest = 0;
-+let busy = false;
++let translatedLanguage = '';
++let requestVersion = 0;
 +
-+for (const [code, name] of languages) {
-+  sourceLanguage.add(new Option(name, code));
-+  targetLanguage.add(new Option(name, code));
-+}
-+sourceLanguage.value = 'en';
-+targetLanguage.value = 'es';
-+
-+/** @param {string} message @param {'checking' | 'ready' | 'error'} state */
-+function setStatus(message, state) {
-+  statusText.textContent = message;
-+  status.dataset.state = state;
++function getTranslatorFactory() {
++  // The current Translator API is exposed directly on the global Window object.
++  return 'Translator' in window ? /** @type {TranslatorFactory} */ (window.Translator) : null;
 +}
 +
-+/** @param {boolean} visible */
-+function showProgress(visible) {
-+  progressTrack.classList.toggle('visible', visible);
++/** @param {string} message @param {'checking'|'ready'|'error'} [state] */
++function setStatus(message, state = 'checking') {
++  statusMessage.textContent = message;
++  translatorCard?.querySelector('.translator-status')?.classList.toggle('is-ready', state === 'ready');
++  translatorCard?.querySelector('.translator-status')?.classList.toggle('is-error', state === 'error');
 +}
 +
-+/** @param {boolean} value */
-+function setBusy(value) {
-+  busy = value;
-+  sourceLanguage.disabled = value;
-+  targetLanguage.disabled = value;
-+  swapButton.disabled = value;
++/** @param {number} loaded */
++function updateDownloadProgress(loaded) {
++  const percent = Math.max(0, Math.min(100, Math.round(loaded * 100)));
++  progressWrap.hidden = false;
++  progressBar.value = percent;
++  progressBar.textContent = `${percent}%`;
++  progressValue.textContent = `${percent}%`;
++  setStatus(percent < 100 ? 'Downloading the language model…' : 'Language model ready.', percent < 100 ? 'checking' : 'ready');
 +}
 +
-+/** @param {number} value */
-+function setProgress(value) {
-+  const percent = Math.max(0, Math.min(100, Math.round(value * 100)));
-+  progressBar.style.width = `${percent}%`;
-+  progressTrack.setAttribute('aria-valuenow', String(percent));
-+  setStatus(`Downloading language model… ${percent}%`, 'checking');
-+}
-+
-+function resetTranslator() {
-+  translator?.destroy?.();
-+  translator = null;
-+  availability = null;
-+  checkedOptions = null;
-+  showProgress(false);
-+  setProgress(0);
-+}
-+
-+/** @returns {LanguageOptions} */
-+function getLanguageOptions() {
++/** @returns {TranslatorOptions} */
++function makeTranslatorOptions() {
 +  return {
-+    sourceLanguage: sourceLanguage.value,
++    sourceLanguage: 'en',
 +    targetLanguage: targetLanguage.value,
++    monitor(monitor) {
++      monitor.addEventListener('downloadprogress', (event) => updateDownloadProgress(event.loaded));
++    },
 +  };
 +}
 +
-+/** @returns {TranslatorFactory | null} */
-+function getTranslatorApi() {
-+  // The standardized API lives directly on the Window object.
-+  if (!('Translator' in window)) return null;
-+  return /** @type {Window & { Translator: TranslatorFactory }} */ (window).Translator;
-+}
-+
-+/** @param {Availability} result */
-+function displayAvailability(result) {
-+  switch (result) {
-+    case 'available':
-+      setStatus('Ready for private, on-device translation.', 'ready');
-+      translateButton.textContent = 'Translate';
-+      translateButton.disabled = busy;
-+      break;
-+    case 'downloadable':
-+      setStatus('A language model will download when you translate.', 'ready');
-+      translateButton.textContent = 'Download & translate';
-+      translateButton.disabled = busy;
-+      break;
-+    case 'downloading':
-+      setStatus('The language model is currently downloading.', 'checking');
-+      translateButton.textContent = 'Continue & translate';
-+      translateButton.disabled = busy;
-+      break;
-+    case 'unavailable':
-+      setStatus('This language pair is not available on this device.', 'error');
-+      translateButton.textContent = 'Unavailable';
-+      translateButton.disabled = true;
-+      break;
-+  }
-+}
-+
 +async function checkAvailability() {
-+  const requestId = ++availabilityRequest;
-+  resetTranslator();
-+
-+  if (sourceLanguage.value === targetLanguage.value) {
-+    setStatus('Choose two different languages.', 'error');
-+    translateButton.textContent = 'Translate';
-+    translateButton.disabled = true;
-+    return;
-+  }
-+
-+  const translatorApi = getTranslatorApi();
-+  if (!translatorApi) {
-+    setStatus('On-device translation is unsupported in this browser. Try Chrome 138+ or Edge 148+ on desktop.', 'error');
-+    translateButton.textContent = 'Unsupported';
-+    translateButton.disabled = true;
-+    return;
-+  }
-+
-+  const options = getLanguageOptions();
-+  checkedOptions = options;
-+  setStatus('Checking this language pair…', 'checking');
++  const factory = getTranslatorFactory();
++  const version = ++requestVersion;
++  availability = null;
++  currentTranslatorOptions = null;
 +  translateButton.disabled = true;
++  progressWrap.hidden = true;
++  resetButton.hidden = translatedLanguage === '';
 +
++  if (!factory) {
++    setStatus('On-device translation is not supported in this browser. Try Chrome 138+ or Edge 148+ on desktop.', 'error');
++    translateButtonLabel.textContent = 'Translation unavailable';
++    return;
++  }
++
++  setStatus('Checking this language pair…');
 +  try {
-+    // Keep this exact options object for create(), ensuring an identical language pair.
-+    const result = await translatorApi.availability(options);
-+    if (requestId !== availabilityRequest) return;
++    const options = makeTranslatorOptions();
++    currentTranslatorOptions = options;
++    const result = await factory.availability(options);
++    if (version !== requestVersion) return;
 +    availability = result;
-+    displayAvailability(result);
++
++    if (result === 'available') {
++      setStatus('Ready to translate privately on this device.', 'ready');
++      translateButtonLabel.textContent = 'Translate the menu';
++      translateButton.disabled = false;
++    } else if (result === 'downloadable') {
++      setStatus('A small language model is needed. Download starts when you continue.');
++      translateButtonLabel.textContent = 'Download & translate';
++      translateButton.disabled = false;
++    } else if (result === 'downloading') {
++      setStatus('The language model is downloading. Continue to view progress.');
++      translateButtonLabel.textContent = 'Continue download';
++      translateButton.disabled = false;
++    } else {
++      setStatus('This language pair is not available on your device.', 'error');
++      translateButtonLabel.textContent = 'Language unavailable';
++    }
 +  } catch (error) {
-+    if (requestId !== availabilityRequest) return;
-+    console.error('Unable to check Translator availability:', error);
-+    availability = 'unavailable';
-+    setStatus('Could not start on-device translation. Please try again.', 'error');
-+    translateButton.disabled = true;
++    console.error('Could not check translation availability.', error);
++    setStatus('We could not check on-device translation right now. Please try again.', 'error');
++    translateButtonLabel.textContent = 'Try again';
++    translateButton.disabled = false;
 +  }
 +}
 +
-+/** @returns {Promise<TranslatorInstance>} */
-+async function createTranslatorFromGesture() {
-+  const translatorApi = getTranslatorApi();
-+  if (!translatorApi || !checkedOptions) throw new Error('Translator is not available');
++async function translateMenu() {
++  const factory = getTranslatorFactory();
++  if (!factory) return;
 +
-+  const options = checkedOptions;
-+  showProgress(availability === 'downloadable' || availability === 'downloading');
-+
-+  return translatorApi.create({
-+    ...options,
-+    monitor(monitor) {
-+      monitor.addEventListener('downloadprogress', (event) => {
-+        showProgress(true);
-+        setProgress(event.loaded);
-+      });
-+    },
-+  });
-+}
-+
-+async function translate() {
-+  const text = sourceText.value.trim();
-+  if (!text) {
-+    sourceText.focus();
-+    setStatus('Enter some text to translate.', 'error');
-+    return;
-+  }
-+  if (busy || availability === 'unavailable' || !checkedOptions) return;
-+
-+  setBusy(true);
 +  translateButton.disabled = true;
-+  translateButton.textContent = translator ? 'Translating…' : 'Starting…';
++  targetLanguage.disabled = true;
++  translateButtonLabel.textContent = availability === 'available' ? 'Translating…' : 'Preparing model…';
 +
 +  try {
-+    // This create call stays in the click-handler path, preserving the required user gesture.
-+    translator ??= await createTranslatorFromGesture();
-+    showProgress(false);
-+    setStatus('Translating privately on this device…', 'checking');
-+    translateButton.textContent = 'Translating…';
-+    const result = await translator.translate(text);
-+    output.textContent = result;
-+    output.classList.remove('placeholder');
-+    setStatus('Translation complete — nothing was sent to a server.', 'ready');
++    activeTranslator?.destroy?.();
++    // create() runs only from this click handler. It receives the same options
++    // object that availability() checked, including both language codes.
++    const options = currentTranslatorOptions ?? makeTranslatorOptions();
++    activeTranslator = await factory.create(options);
++    const translations = await Promise.all(
++      translatableElements.map((element) => activeTranslator.translate(originalText.get(element) ?? '')),
++    );
++    translations.forEach((translation, index) => { translatableElements[index].textContent = translation; });
++    translatedLanguage = targetLanguage.value;
++    document.querySelector('#translatable-menu')?.setAttribute('lang', translatedLanguage);
++    progressWrap.hidden = true;
++    resetButton.hidden = false;
++    setStatus('Menu translated on your device.', 'ready');
++    translateButtonLabel.textContent = 'Translate again';
 +  } catch (error) {
-+    console.error('Translation failed:', error);
-+    setStatus('Translation failed. Check browser support and try again.', 'error');
++    console.error('On-device translation failed.', error);
++    const denied = error instanceof DOMException && error.name === 'NotAllowedError';
++    setStatus(denied ? 'Click the button again to allow the model download.' : 'Translation did not finish. Please try again.', 'error');
++    translateButtonLabel.textContent = 'Try again';
 +  } finally {
-+    setBusy(false);
-+    translateButton.disabled = availability === 'unavailable';
-+    translateButton.textContent = translator ? 'Translate again' : 'Try again';
++    translateButton.disabled = false;
++    targetLanguage.disabled = false;
 +  }
 +}
 +
-+function languagesChanged() {
-+  output.textContent = 'Your translation will appear here.';
-+  output.classList.add('placeholder');
-+  void checkAvailability();
++function resetTranslation() {
++  originalText.forEach((text, element) => { element.textContent = text; });
++  translatedLanguage = '';
++  document.querySelector('#translatable-menu')?.setAttribute('lang', 'en');
++  resetButton.hidden = true;
++  setStatus('Original English menu restored.', 'ready');
 +}
 +
-+sourceText.addEventListener('input', () => {
-+  characterCount.textContent = `${sourceText.value.length.toLocaleString()} / 5,000`;
++targetLanguage?.addEventListener('change', () => {
++  activeTranslator?.destroy?.();
++  activeTranslator = null;
++  resetTranslation();
++  void checkAvailability();
 +});
++translateButton?.addEventListener('click', () => {
++  if (availability === null && translateButtonLabel.textContent === 'Try again') void checkAvailability();
++  else void translateMenu();
++});
++resetButton?.addEventListener('click', resetTranslation);
 +
-+sourceLanguage.addEventListener('change', languagesChanged);
-+targetLanguage.addEventListener('change', languagesChanged);
-+swapButton.addEventListener('click', () => {
-+  const previousSource = sourceLanguage.value;
-+  sourceLanguage.value = targetLanguage.value;
-+  targetLanguage.value = previousSource;
-+  languagesChanged();
++navToggle?.addEventListener('click', () => {
++  const open = navToggle.getAttribute('aria-expanded') !== 'true';
++  navToggle.setAttribute('aria-expanded', String(open));
++  navLinks?.classList.toggle('is-open', open);
 +});
-+translateButton.addEventListener('click', () => void translate());
++navLinks?.addEventListener('click', () => {
++  navToggle?.setAttribute('aria-expanded', 'false');
++  navLinks.classList.remove('is-open');
++});
 +
 +void checkAvailability();
 diff --git a/index.html b/index.html
-index 66c9173..10f0c1a 100644
+index 66c9173..a4a3175 100644
 --- a/index.html
 +++ b/index.html
-@@ -1,212 +1,371 @@
+@@ -1,212 +1,166 @@
 -<!DOCTYPE html>
 +<!doctype html>
  <html lang="en">
-+  <head>
-+    <meta charset="UTF-8">
-+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-+    <meta name="description" content="Private, on-device translation in your browser.">
-+    <title>LocalLingo — Private on-device translation</title>
-+    <style>
-+      :root {
-+        color-scheme: light;
-+        --ink: #17211c;
-+        --muted: #64706a;
-+        --paper: #fbfaf6;
-+        --surface: #ffffff;
-+        --line: #dce3dd;
-+        --brand: #12664f;
-+        --brand-dark: #0a4b39;
-+        --brand-soft: #e3f3ec;
-+        --accent: #e9a23b;
-+        --danger: #9d2d2d;
-+        --shadow: 0 24px 60px rgba(29, 49, 39, 0.12);
-+      }
- 
+-
 -<head>
 -  <meta charset="UTF-8">
 -  <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -465,324 +378,67 @@ index 66c9173..10f0c1a 100644
 -          <h3>Dark Roast Espresso</h3>
 -          <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
--        </div>
++  <head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <meta name="theme-color" content="#241813" />
++    <meta
++      name="description"
++      content="The Daily Grind serves thoughtfully sourced coffee, roasted locally and translated privately on your device."
++    />
++    <title>The Daily Grind | Artisanal Coffee</title>
++    <link rel="preconnect" href="https://images.unsplash.com" />
++    <link rel="stylesheet" href="styles.css" />
++    <script src="app.js" defer></script>
++  </head>
++
++  <body>
++    <a class="skip-link" href="#main-content">Skip to content</a>
++
++    <nav class="site-nav" aria-label="Main navigation">
++      <a class="logo" href="/" aria-label="The Daily Grind, home">
++        <span class="logo-mark" aria-hidden="true">DG</span>
++        <span>The Daily Grind</span>
++      </a>
++      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
++        <span class="sr-only">Toggle navigation</span>
++        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
++      </button>
++      <div class="nav-links" id="nav-links">
++        <a href="#seasonal">Menu</a>
++        <a href="#story">Our story</a>
++        <a href="#visit">Visit</a>
++        <a class="nav-order" href="/order-online">Order online</a>
++      </div>
++    </nav>
++
++    <main id="main-content">
++      <header class="hero">
++        <div class="hero-inner">
++          <p class="eyebrow">Small-batch coffee · Portland, Oregon</p>
++          <h1>Make time for<br /><em>better coffee.</em></h1>
++          <p class="hero-copy">Ethically sourced beans, roasted just down the road and poured with care every morning.</p>
++          <div class="hero-actions">
++            <a class="button button-light" href="/order-online">Order your usual <span aria-hidden="true">↗</span></a>
++            <a class="text-link" href="#seasonal">Explore the menu <span aria-hidden="true">↓</span></a>
++          </div>
+         </div>
 -        <div class="card">
 -          <h3>Cold Brew</h3>
 -          <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
--        </div>
-+      * { box-sizing: border-box; }
++        <p class="hero-note">Open daily<br /><strong>6:30 AM — 6 PM</strong></p>
++      </header>
 +
-+      body {
-+        min-height: 100vh;
-+        margin: 0;
-+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-+        color: var(--ink);
-+        background:
-+          radial-gradient(circle at 8% 4%, rgba(233, 162, 59, 0.15), transparent 24rem),
-+          radial-gradient(circle at 92% 32%, rgba(18, 102, 79, 0.12), transparent 30rem),
-+          var(--paper);
-+      }
-+
-+      button, select, textarea { font: inherit; }
-+
-+      .site-header {
-+        display: flex;
-+        align-items: center;
-+        justify-content: space-between;
-+        width: min(1120px, calc(100% - 40px));
-+        margin: 0 auto;
-+        padding: 28px 0;
-+      }
-+
-+      .brand {
-+        display: inline-flex;
-+        align-items: center;
-+        gap: 10px;
-+        color: var(--ink);
-+        font-size: 1.05rem;
-+        font-weight: 780;
-+        letter-spacing: -0.02em;
-+      }
-+
-+      .brand-mark {
-+        display: grid;
-+        width: 34px;
-+        height: 34px;
-+        place-items: center;
-+        border-radius: 10px;
-+        color: white;
-+        background: var(--brand);
-+      }
-+
-+      .privacy-note {
-+        display: flex;
-+        align-items: center;
-+        gap: 8px;
-+        color: var(--muted);
-+        font-size: 0.84rem;
-+      }
-+
-+      .privacy-note svg { color: var(--brand); }
-+
-+      main {
-+        width: min(1040px, calc(100% - 40px));
-+        margin: 52px auto 0;
-+      }
-+
-+      .intro {
-+        max-width: 720px;
-+        margin: 0 auto 34px;
-+        text-align: center;
-+      }
-+
-+      .eyebrow {
-+        margin: 0 0 12px;
-+        color: var(--brand);
-+        font-size: 0.78rem;
-+        font-weight: 800;
-+        letter-spacing: 0.14em;
-+        text-transform: uppercase;
-+      }
-+
-+      h1 {
-+        margin: 0;
-+        font-family: Georgia, "Times New Roman", serif;
-+        font-size: clamp(2.4rem, 6vw, 4.5rem);
-+        font-weight: 500;
-+        letter-spacing: -0.055em;
-+        line-height: 0.98;
-+      }
-+
-+      .lede {
-+        max-width: 580px;
-+        margin: 20px auto 0;
-+        color: var(--muted);
-+        font-size: 1.04rem;
-+      }
-+
-+      .translator-card {
-+        overflow: hidden;
-+        border: 1px solid rgba(18, 102, 79, 0.14);
-+        border-radius: 24px;
-+        background: rgba(255, 255, 255, 0.9);
-+        box-shadow: var(--shadow);
-+      }
-+
-+      .language-bar {
-+        display: grid;
-+        grid-template-columns: 1fr auto 1fr;
-+        align-items: end;
-+        gap: 18px;
-+        padding: 20px 24px;
-+        border-bottom: 1px solid var(--line);
-+        background: rgba(248, 250, 247, 0.85);
-+      }
-+
-+      label {
-+        display: block;
-+        margin-bottom: 7px;
-+        color: var(--muted);
-+        font-size: 0.75rem;
-+        font-weight: 750;
-+        letter-spacing: 0.06em;
-+        text-transform: uppercase;
-+      }
-+
-+      select {
-+        width: 100%;
-+        padding: 10px 38px 10px 12px;
-+        border: 1px solid var(--line);
-+        border-radius: 10px;
-+        color: var(--ink);
-+        background: white;
-+        cursor: pointer;
-+      }
-+
-+      .swap-button {
-+        width: 42px;
-+        height: 42px;
-+        border: 1px solid var(--line);
-+        border-radius: 50%;
-+        color: var(--brand);
-+        background: white;
-+        cursor: pointer;
-+        transition: transform 160ms ease, border-color 160ms ease;
-+      }
-+
-+      .swap-button:hover:not(:disabled) { transform: rotate(180deg); border-color: var(--brand); }
-+      .swap-button:disabled { cursor: not-allowed; opacity: 0.5; }
-+
-+      .translation-panes {
-+        display: grid;
-+        grid-template-columns: 1fr 1fr;
-+      }
-+
-+      .pane { min-width: 0; padding: 24px; }
-+      .pane + .pane { border-left: 1px solid var(--line); background: #fcfdfb; }
-+
-+      .pane-heading {
-+        display: flex;
-+        align-items: center;
-+        justify-content: space-between;
-+        margin-bottom: 10px;
-+      }
-+
-+      .pane-heading label { margin: 0; }
-+      .character-count { color: var(--muted); font-size: 0.75rem; }
-+
-+      textarea, .translation-output {
-+        width: 100%;
-+        min-height: 210px;
-+        border: 0;
-+        outline: 0;
-+        resize: vertical;
-+        color: var(--ink);
-+        background: transparent;
-+        font-size: clamp(1.05rem, 2vw, 1.28rem);
-+        line-height: 1.55;
-+      }
-+
-+      textarea::placeholder { color: #9ca59f; }
-+
-+      .translation-output {
-+        overflow-wrap: anywhere;
-+        white-space: pre-wrap;
-+      }
-+
-+      .translation-output.placeholder { color: #9ca59f; }
-+
-+      .action-bar {
-+        display: flex;
-+        align-items: center;
-+        justify-content: space-between;
-+        gap: 24px;
-+        padding: 18px 24px;
-+        border-top: 1px solid var(--line);
-+      }
-+
-+      .status-wrap { flex: 1; min-width: 0; }
-+
-+      .status {
-+        display: flex;
-+        align-items: center;
-+        gap: 8px;
-+        min-height: 22px;
-+        color: var(--muted);
-+        font-size: 0.84rem;
-+      }
-+
-+      .status-dot {
-+        width: 8px;
-+        height: 8px;
-+        flex: 0 0 auto;
-+        border-radius: 50%;
-+        background: var(--accent);
-+      }
-+
-+      .status[data-state="ready"] .status-dot { background: var(--brand); }
-+      .status[data-state="error"] { color: var(--danger); }
-+      .status[data-state="error"] .status-dot { background: var(--danger); }
-+
-+      .progress-track {
-+        display: none;
-+        height: 4px;
-+        margin-top: 8px;
-+        overflow: hidden;
-+        border-radius: 999px;
-+        background: var(--line);
-+      }
-+
-+      .progress-track.visible { display: block; }
-+
-+      .progress-bar {
-+        width: 0;
-+        height: 100%;
-+        border-radius: inherit;
-+        background: var(--brand);
-+        transition: width 180ms ease;
-+      }
-+
-+      .translate-button {
-+        min-width: 150px;
-+        padding: 12px 22px;
-+        border: 0;
-+        border-radius: 12px;
-+        color: white;
-+        background: var(--brand);
-+        font-weight: 750;
-+        cursor: pointer;
-+        box-shadow: 0 8px 20px rgba(18, 102, 79, 0.18);
-+      }
-+
-+      .translate-button:hover:not(:disabled) { background: var(--brand-dark); }
-+      .translate-button:disabled { cursor: not-allowed; opacity: 0.52; box-shadow: none; }
-+
-+      .footnote {
-+        display: flex;
-+        justify-content: center;
-+        gap: 9px;
-+        margin: 24px 0 54px;
-+        color: var(--muted);
-+        font-size: 0.82rem;
-+        text-align: center;
-+      }
-+
-+      button:focus-visible, select:focus-visible, textarea:focus-visible {
-+        outline: 3px solid rgba(18, 102, 79, 0.26);
-+        outline-offset: 2px;
-+      }
-+
-+      @media (max-width: 700px) {
-+        .site-header { padding-top: 20px; }
-+        .privacy-note span { display: none; }
-+        main { margin-top: 28px; }
-+        .language-bar { gap: 10px; padding: 16px; }
-+        .translation-panes { grid-template-columns: 1fr; }
-+        .pane { padding: 20px; }
-+        .pane + .pane { border-top: 1px solid var(--line); border-left: 0; }
-+        textarea, .translation-output { min-height: 150px; }
-+        .action-bar { align-items: stretch; flex-direction: column; gap: 14px; }
-+        .translate-button { width: 100%; }
-+      }
-+    </style>
-+    <script src="app.js" defer></script>
-+  </head>
-+  <body>
-+    <header class="site-header">
-+      <div class="brand" aria-label="LocalLingo home">
-+        <span class="brand-mark" aria-hidden="true">L</span>
-+        LocalLingo
-       </div>
++      <section class="translator-section" aria-labelledby="translator-title">
++        <div class="translator-intro">
++          <p class="eyebrow eyebrow-dark">Your menu, your language</p>
++          <h2 id="translator-title">Read today’s favorites<br />in a language you love.</h2>
++          <p>Chrome and Edge can translate our menu privately, right on your device. Your text never leaves your browser.</p>
+         </div>
+-      </div>
 -    </section>
 -  </main>
-+      <div class="privacy-note">
-+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-+          <path d="M7 10V7a5 5 0 0 1 10 0v3m-11 0h12v10H6V10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-+        </svg>
-+        <span>Translation stays on this device</span>
-+      </div>
-+    </header>
-+
-+    <main>
-+      <section class="intro" aria-labelledby="page-title">
-+        <p class="eyebrow">Private by design</p>
-+        <h1 id="page-title">Say it in another language.</h1>
-+        <p class="lede">Fast, private translation powered by your browser. Your words never leave your device.</p>
-+      </section>
-+
-+      <section class="translator-card" aria-label="Translator">
-+        <div class="language-bar">
-+          <div>
-+            <label for="source-language">Translate from</label>
-+            <select id="source-language" name="sourceLanguage"></select>
-+          </div>
-+          <button id="swap-languages" class="swap-button" type="button" aria-label="Swap languages" title="Swap languages">⇄</button>
-+          <div>
-+            <label for="target-language">Translate to</label>
-+            <select id="target-language" name="targetLanguage"></select>
-+          </div>
-+        </div>
  
 -  <footer>
 -    <div class="footer-links">
@@ -793,53 +449,269 @@ index 66c9173..10f0c1a 100644
 -    </div>
 -    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
 -  </footer>
-+        <div class="translation-panes">
-+          <div class="pane">
-+            <div class="pane-heading">
-+              <label for="source-text">Your text</label>
-+              <span id="character-count" class="character-count">0 / 5,000</span>
++        <div class="translator-card" id="translator-card">
++          <div class="language-row">
++            <div class="language-field">
++              <label for="source-language">From</label>
++              <select id="source-language" disabled>
++                <option value="en">English</option>
++              </select>
 +            </div>
-+            <textarea id="source-text" maxlength="5000" placeholder="Type or paste something to translate…"></textarea>
-+          </div>
-+          <div class="pane">
-+            <div class="pane-heading">
-+              <label id="translation-label">Translation</label>
++            <span class="language-arrow" aria-hidden="true">→</span>
++            <div class="language-field">
++              <label for="target-language">To</label>
++              <select id="target-language">
++                <option value="es">Español</option>
++                <option value="fr">Français</option>
++                <option value="de">Deutsch</option>
++                <option value="it">Italiano</option>
++                <option value="pt">Português</option>
++                <option value="ja">日本語</option>
++                <option value="ko">한국어</option>
++                <option value="zh">中文（简体）</option>
++                <option value="zh-Hant">中文（繁體）</option>
++                <option value="hi">हिन्दी</option>
++              </select>
 +            </div>
-+            <div id="translation-output" class="translation-output placeholder" role="status" aria-live="polite" aria-labelledby="translation-label">Your translation will appear here.</div>
 +          </div>
++
++          <div class="translator-status" id="translator-status" role="status" aria-live="polite">
++            <span class="status-dot" aria-hidden="true"></span>
++            <span id="status-message">Checking on-device translation…</span>
++          </div>
++
++          <div class="progress-wrap" id="progress-wrap" hidden>
++            <div class="progress-label"><span>Downloading language model</span><span id="progress-value">0%</span></div>
++            <progress id="download-progress" max="100" value="0">0%</progress>
++          </div>
++
++          <button class="button button-accent" id="translate-button" type="button" disabled>
++            <span id="translate-button-label">Translate the menu</span>
++            <span aria-hidden="true">→</span>
++          </button>
++          <button class="reset-button" id="reset-button" type="button" hidden>Show original English</button>
++          <p class="privacy-note"><span aria-hidden="true">◇</span> Powered by your browser’s on-device AI</p>
++        </div>
++      </section>
++
++      <section class="menu-section" id="seasonal" aria-labelledby="seasonal-title">
++        <div class="section-heading">
++          <div>
++            <p class="eyebrow eyebrow-dark">In season now</p>
++            <h2 id="seasonal-title">Worth slowing down for.</h2>
++          </div>
++          <a class="text-link text-link-dark" href="/menu">See the full menu <span aria-hidden="true">↗</span></a>
 +        </div>
  
 -</body>
-+        <div class="action-bar">
-+          <div class="status-wrap">
-+            <div id="api-status" class="status" data-state="checking" aria-live="polite">
-+              <span class="status-dot" aria-hidden="true"></span>
-+              <span id="status-text">Checking on-device translation…</span>
++        <div class="menu-grid" id="translatable-menu">
++          <article class="menu-card menu-card-featured">
++            <div class="card-number">01</div>
++            <div class="card-content">
++              <p class="card-kicker">House favorite</p>
++              <h3 data-translate>Maple oat latte</h3>
++              <p data-translate>Silky oat milk, pure maple, and a double shot of our Fireside espresso.</p>
++              <div class="card-footer"><span>$6.25</span><a href="/menu/seasonal" aria-label="View Maple oat latte">View drink →</a></div>
 +            </div>
-+            <div id="download-progress" class="progress-track" role="progressbar" aria-label="Language model download" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-+              <div id="download-progress-bar" class="progress-bar"></div>
++          </article>
++
++          <article class="menu-card">
++            <div class="card-number">02</div>
++            <div class="card-content">
++              <p class="card-kicker">Slow and smooth</p>
++              <h3 data-translate>Vanilla cream cold brew</h3>
++              <p data-translate>Steeped for eighteen hours and finished with house-made vanilla cream.</p>
++              <div class="card-footer"><span>$5.75</span><a href="/menu/cold-brew" aria-label="View Vanilla cream cold brew">View drink →</a></div>
 +            </div>
-+          </div>
-+          <button id="translate-button" class="translate-button" type="button" disabled>Translate</button>
++          </article>
++
++          <article class="menu-card">
++            <div class="card-number">03</div>
++            <div class="card-content">
++              <p class="card-kicker">Bright and balanced</p>
++              <h3 data-translate>Honey cinnamon cortado</h3>
++              <p data-translate>Equal parts espresso and steamed milk, warmed with local wildflower honey.</p>
++              <div class="card-footer"><span>$5.50</span><a href="/menu/espresso" aria-label="View Honey cinnamon cortado">View drink →</a></div>
++            </div>
++          </article>
 +        </div>
 +      </section>
- 
-+      <p class="footnote">
-+        <span aria-hidden="true">✦</span>
-+        The first translation may download a language model. An internet connection is only needed for that download.
-+      </p>
++
++      <section class="story-section" id="story">
++        <div class="story-photo" role="img" aria-label="Coffee being poured into a ceramic cup"></div>
++        <div class="story-copy">
++          <p class="eyebrow">From seed to Saturday morning</p>
++          <h2>Coffee with<br />nothing to hide.</h2>
++          <p>We know every farm we buy from and publish what we pay. Better relationships make better coffee — and a better morning for everyone.</p>
++          <a class="text-link" href="/about">How we source <span aria-hidden="true">→</span></a>
++        </div>
++      </section>
 +    </main>
+ 
++    <footer id="visit">
++      <div class="footer-brand">
++        <span class="logo-mark logo-mark-light" aria-hidden="true">DG</span>
++        <p>Good coffee.<br />Good company.</p>
++      </div>
++      <div class="footer-column"><h2>Come by</h2><p>1428 SE Hawthorne Blvd<br />Portland, OR 97214</p><p>Daily · 6:30 AM — 6 PM</p></div>
++      <div class="footer-column"><h2>Keep in touch</h2><a href="/newsletter">Newsletter</a><a href="/contact">Contact us</a><a href="/instagram">Instagram</a></div>
++      <div class="footer-bottom"><span>© 2026 The Daily Grind Coffee Co.</span><a href="/privacy-policy">Privacy</a></div>
++    </footer>
 +  </body>
  </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..266a71c 100644
+index 2bd4d77..d36c7c9 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,6 +2,7 @@
+@@ -2,7 +2,8 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "node --check app.js",
-     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node --check app.js"
    },
    "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..5e67102
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,136 @@
++@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap');
++
++:root {
++  --ink: #241813;
++  --coffee: #43291f;
++  --cream: #f4efe5;
++  --paper: #fbf9f4;
++  --orange: #eb7047;
++  --sage: #c7c8ad;
++  --line: rgba(36, 24, 19, 0.18);
++  --serif: 'DM Serif Display', Georgia, serif;
++  --sans: 'DM Sans', system-ui, sans-serif;
++}
++
++* { box-sizing: border-box; }
++html { scroll-behavior: smooth; }
++body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--sans); line-height: 1.6; }
++a { color: inherit; }
++button, select { font: inherit; }
++.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
++.skip-link { position: fixed; z-index: 100; top: -60px; left: 1rem; padding: .65rem 1rem; color: white; background: var(--ink); transition: top .2s; }
++.skip-link:focus { top: 1rem; }
++
++.site-nav { height: 84px; padding: 0 clamp(1.25rem, 5vw, 5rem); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.18); position: absolute; z-index: 10; width: 100%; color: white; }
++.logo { display: flex; gap: .75rem; align-items: center; text-decoration: none; text-transform: uppercase; font-size: .84rem; font-weight: 700; letter-spacing: .18em; }
++.logo-mark { display: grid; place-items: center; width: 39px; height: 39px; border: 1px solid currentColor; border-radius: 50%; font-family: var(--serif); font-size: .78rem; letter-spacing: 0; }
++.nav-links { display: flex; align-items: center; gap: 2.25rem; }
++.nav-links a { text-decoration: none; font-size: .83rem; font-weight: 600; }
++.nav-links a:not(.nav-order):hover { color: #f3c9b8; }
++.nav-order { border: 1px solid rgba(255,255,255,.65); padding: .7rem 1.05rem; transition: .2s; }
++.nav-order:hover { background: white; color: var(--ink); }
++.nav-toggle { display: none; padding: .4rem; color: white; background: none; border: 0; }
++.nav-toggle span:not(.sr-only) { display: block; width: 22px; height: 1px; background: currentColor; margin: 5px 0; }
++
++.hero { min-height: 720px; height: 92vh; max-height: 900px; position: relative; display: flex; align-items: center; padding: 7rem clamp(1.5rem, 8vw, 9rem) 4rem; color: white; background: linear-gradient(90deg, rgba(25,14,10,.88) 0%, rgba(25,14,10,.4) 58%, rgba(25,14,10,.22)), url('https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=1800&q=88') center/cover; }
++.hero-inner { width: min(760px, 100%); }
++.eyebrow { margin: 0 0 1.25rem; text-transform: uppercase; letter-spacing: .22em; font-size: .71rem; font-weight: 700; }
++.eyebrow::before { content: ''; display: inline-block; width: 30px; height: 1px; margin: 0 .8rem .25rem 0; background: currentColor; }
++.hero h1, .translator-intro h2, .section-heading h2, .story-copy h2 { margin: 0; font-family: var(--serif); font-weight: 400; line-height: .96; letter-spacing: -.03em; }
++.hero h1 { font-size: clamp(4rem, 7.2vw, 7.3rem); }
++.hero h1 em { color: #f3b191; font-weight: 400; }
++.hero-copy { max-width: 500px; margin: 2rem 0; color: rgba(255,255,255,.82); font-size: 1.04rem; }
++.hero-actions { display: flex; gap: 2rem; align-items: center; }
++.button { min-height: 50px; padding: .8rem 1.3rem; display: inline-flex; align-items: center; justify-content: space-between; gap: 2rem; border: 0; text-decoration: none; font-weight: 700; cursor: pointer; transition: transform .2s, background .2s, opacity .2s; }
++.button:hover:not(:disabled) { transform: translateY(-2px); }
++.button:disabled { cursor: not-allowed; opacity: .48; }
++.button-light { color: var(--ink); background: white; }
++.button-accent { width: 100%; color: white; background: var(--orange); }
++.text-link { display: inline-flex; gap: .65rem; text-underline-offset: .35rem; font-size: .86rem; font-weight: 600; }
++.hero-note { position: absolute; right: clamp(1.5rem, 5vw, 5rem); bottom: 3rem; margin: 0; padding-left: 1rem; border-left: 1px solid rgba(255,255,255,.6); font-size: .72rem; line-height: 1.7; text-transform: uppercase; letter-spacing: .14em; }
++
++.translator-section { padding: clamp(4rem, 8vw, 8rem) clamp(1.5rem, 8vw, 9rem); display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(340px, .9fr); gap: clamp(3rem, 10vw, 10rem); align-items: center; background: var(--cream); }
++.eyebrow-dark { color: #795e52; }
++.translator-intro h2, .section-heading h2 { font-size: clamp(2.8rem, 4.3vw, 4.8rem); }
++.translator-intro > p:last-child { max-width: 520px; margin: 1.8rem 0 0; color: #6b5c55; }
++.translator-card { padding: clamp(1.5rem, 4vw, 2.4rem); background: white; box-shadow: 0 22px 60px rgba(64,42,32,.11); }
++.language-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: end; }
++.language-field label { display: block; margin-bottom: .45rem; color: #7d6b63; text-transform: uppercase; font-size: .65rem; letter-spacing: .15em; font-weight: 700; }
++.language-field select { width: 100%; padding: .7rem .2rem; color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font-weight: 600; }
++.language-field select:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
++.language-arrow { padding-bottom: .7rem; color: var(--orange); }
++.translator-status { display: flex; gap: .7rem; align-items: center; min-height: 54px; margin: 1.25rem 0 .8rem; padding: .7rem .9rem; color: #665750; background: #f8f5ee; font-size: .78rem; }
++.status-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #c69b60; box-shadow: 0 0 0 4px rgba(198,155,96,.15); }
++.translator-status.is-ready .status-dot { background: #688569; box-shadow: 0 0 0 4px rgba(104,133,105,.15); }
++.translator-status.is-error .status-dot { background: #b64f3d; box-shadow: 0 0 0 4px rgba(182,79,61,.15); }
++.progress-wrap { margin: -.2rem 0 1rem; }
++.progress-label { display: flex; justify-content: space-between; margin-bottom: .35rem; color: #7d6b63; font-size: .68rem; }
++progress { width: 100%; height: 5px; appearance: none; border: 0; }
++progress::-webkit-progress-bar { background: #eee7dc; }
++progress::-webkit-progress-value { background: var(--orange); }
++progress::-moz-progress-bar { background: var(--orange); }
++.reset-button { width: 100%; margin: .8rem 0 0; padding: .4rem; color: #735a50; background: transparent; border: 0; text-decoration: underline; text-underline-offset: .25rem; cursor: pointer; }
++.privacy-note { margin: 1rem 0 0; color: #8b7c75; text-align: center; font-size: .67rem; }
++
++.menu-section { padding: clamp(5rem, 9vw, 9rem) clamp(1.5rem, 7vw, 8rem); }
++.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 3.5rem; }
++.text-link-dark { color: #69544b; }
++.menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
++.menu-card { min-height: 390px; padding: 1.5rem; display: flex; flex-direction: column; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
++.menu-card-featured { background: var(--sage); }
++.card-number { color: #826e65; font-family: var(--serif); font-style: italic; }
++.card-content { flex: 1; display: flex; flex-direction: column; justify-content: end; }
++.card-kicker { margin: 0 0 .75rem; color: #785f54; text-transform: uppercase; font-size: .66rem; font-weight: 700; letter-spacing: .17em; }
++.menu-card h3 { max-width: 300px; margin: 0; font-family: var(--serif); font-size: clamp(2rem, 3vw, 2.7rem); font-weight: 400; line-height: 1.05; }
++.menu-card .card-content > p:not(.card-kicker) { min-height: 76px; margin: 1.2rem 0; color: #675650; font-size: .87rem; }
++.card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--line); font-weight: 700; font-size: .78rem; }
++.card-footer a { font-weight: 600; }
++
++.story-section { min-height: 650px; display: grid; grid-template-columns: 1fr 1fr; background: var(--coffee); color: white; }
++.story-photo { min-height: 520px; background: url('https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=1200&q=85') center/cover; }
++.story-copy { padding: clamp(4rem, 9vw, 9rem); display: flex; flex-direction: column; justify-content: center; align-items: start; }
++.story-copy h2 { font-size: clamp(3.4rem, 5.4vw, 6rem); }
++.story-copy > p:not(.eyebrow) { max-width: 470px; margin: 2rem 0; color: rgba(255,255,255,.72); }
++
++footer { padding: 5rem clamp(1.5rem, 7vw, 8rem) 2rem; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 4rem; color: #e9dfd4; background: #1d1512; }
++.logo-mark-light { margin-bottom: 1.5rem; }
++.footer-brand p { margin: 0; font-family: var(--serif); font-size: 2rem; line-height: 1.1; }
++.footer-column { display: flex; flex-direction: column; align-items: start; }
++.footer-column h2 { margin: 0 0 1.2rem; color: #a89287; text-transform: uppercase; font-size: .68rem; letter-spacing: .18em; }
++.footer-column p, .footer-column a { margin: 0 0 .65rem; color: rgba(255,255,255,.65); font-size: .8rem; }
++.footer-bottom { grid-column: 1 / -1; margin-top: 2rem; padding-top: 1.5rem; display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,.13); color: rgba(255,255,255,.42); font-size: .68rem; }
++
++@media (max-width: 850px) {
++  .site-nav { height: 70px; }
++  .nav-toggle { display: block; }
++  .nav-links { display: none; position: absolute; top: 70px; left: 0; width: 100%; padding: 1.5rem; flex-direction: column; align-items: stretch; background: var(--ink); }
++  .nav-links.is-open { display: flex; }
++  .nav-order { text-align: center; }
++  .hero { min-height: 650px; }
++  .hero-note { display: none; }
++  .translator-section { grid-template-columns: 1fr; gap: 2.5rem; }
++  .menu-grid { grid-template-columns: 1fr; }
++  .menu-card { min-height: 330px; }
++  .story-section { grid-template-columns: 1fr; }
++  .story-photo { min-height: 430px; }
++  footer { grid-template-columns: 1fr 1fr; }
++  .footer-brand { grid-column: 1 / -1; }
++}
++
++@media (max-width: 540px) {
++  .hero { height: auto; min-height: 680px; }
++  .hero h1 { font-size: 3.5rem; }
++  .hero-actions { align-items: stretch; flex-direction: column; gap: 1.2rem; }
++  .button-light { align-self: start; }
++  .language-row { grid-template-columns: 1fr; }
++  .language-arrow { display: none; }
++  .section-heading { align-items: start; flex-direction: column; }
++  .story-copy { padding: 4rem 1.5rem; }
++  footer { grid-template-columns: 1fr; }
++  .footer-brand, .footer-bottom { grid-column: 1; }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  html { scroll-behavior: auto; }
++  *, *::before, *::after { transition-duration: .01ms !important; }
++}

@@ -1,1 +1,1 @@
-- Add a feature to translate text between languages in the web application.
+- Implement functionality to translate text between languages on the website.
