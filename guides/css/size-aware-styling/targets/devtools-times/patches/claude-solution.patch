@@ -1,0 +1,203 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..63cde83 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -15,6 +15,12 @@ const image = await getArticleImage(article);
+ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
++const articleUrl = `${import.meta.env.BASE_URL}articles/${article.id}`;
++const formattedDate = article.data.date.toLocaleDateString('en-US', {
++    year: 'numeric',
++    month: 'long',
++    day: 'numeric',
++});
+ ---
+ {large ? (
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+@@ -52,32 +58,156 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++    <div class="teaser-container">
++        <article class="teaser group">
++            <a href={articleUrl} class="teaser-media">
++                <Image
++                    src={image}
++                    alt={article.data.title}
++                    width={400}
++                    height={225}
++                    format="webp"
++                    class="w-full object-cover rounded-md aspect-[16/9]"
++                />
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++            <div class="teaser-body">
++                <div class="teaser-category text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++                <a href={articleUrl} class="teaser-headline">
++                    <h3 class="teaser-title text-lg font-brand text-gray-800 group-hover:text-amber-400 transition-colors">
++                        {article.data.title}
++                    </h3>
++                    <p class="teaser-summary text-gray-600 mt-1">{article.data.summary}</p>
++                </a>
++                <p class="teaser-details text-sm text-gray-500 mt-2">
++                    By <span class="font-semibold text-gray-700">{article.data.author}</span> · {formattedDate}
++                </p>
++                <div class="teaser-meta text-gray-500">
++                    <span class="text-sm font-medium flex items-center">
++                        <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                        {article.data.readingTime} Min.
++                    </span>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+-        </div>
+-    </article>
+-)}
+\ No newline at end of file
++        </article>
++    </div>
++)}
++
++<style>
++    /*
++     * Size-aware teaser card.
++     *
++     * The card adapts to the width of whatever slot it is dropped into (grid
++     * column, sidebar, full-width mobile stack) instead of the viewport, so the
++     * same component works everywhere without the call site knowing about it.
++     */
++
++    /* 1. Declare the wrapper as the container that descendants can query. */
++    .teaser-container {
++        container-type: inline-size;
++        container-name: teaser;
++        height: 100%;
++    }
++
++    /* 2. Safe default for the narrowest slots: everything stacked vertically. */
++    .teaser {
++        display: flex;
++        flex-direction: column;
++        gap: 0.75rem;
++        height: 100%;
++    }
++
++    .teaser-media {
++        display: block;
++        flex-shrink: 0;
++    }
++
++    .teaser-body {
++        display: flex;
++        flex-direction: column;
++        flex-grow: 1;
++        min-width: 0;
++    }
++
++    .teaser-headline {
++        display: flex;
++        flex-direction: column;
++    }
++
++    /* Secondary byline is opt-in: only rendered visible when there is room. */
++    .teaser-details {
++        display: none;
++    }
++
++    .teaser-meta {
++        display: flex;
++        justify-content: space-between;
++        align-items: center;
++        margin-top: auto;
++        padding-top: 0.5rem;
++        border-top: 1px solid var(--color-gray-100);
++    }
++
++    /*
++     * 3. Fallback for browsers without container query support.
++     *
++     * Approximate the slot width from the viewport: below the `md` breakpoint
++     * every teaser grid collapses to a single full-width column, which is the
++     * only case where the card is reliably wide enough for a side-by-side
++     * layout. Above `md` the grids split into narrow columns again, so the
++     * stacked default stays correct there.
++     */
++    @media (min-width: 600px) and (max-width: 767px) {
++        .teaser {
++            flex-direction: row;
++            align-items: flex-start;
++            gap: 1rem;
++        }
++
++        .teaser-media {
++            width: 45%;
++            max-width: 16rem;
++        }
++    }
++
++    @supports (container-type: inline-size) {
++        /* Drop the viewport-based guess; the container queries below are authoritative. */
++        @media (min-width: 600px) and (max-width: 767px) {
++            .teaser {
++                flex-direction: column;
++                gap: 0.75rem;
++            }
++
++            .teaser-media {
++                width: auto;
++                max-width: none;
++            }
++        }
++
++        /* 4. Wide enough for image and text to sit side by side. */
++        @container teaser (min-width: 400px) {
++            .teaser {
++                flex-direction: row;
++                align-items: flex-start;
++                gap: 1rem;
++            }
++
++            .teaser-media {
++                width: 45%;
++                max-width: 16rem;
++            }
++        }
++
++        /* 5. Plenty of room: promote the headline and reveal the byline. */
++        @container teaser (min-width: 600px) {
++            .teaser-title {
++                font-size: 1.5rem;
++                line-height: 2rem;
++            }
++
++            .teaser-details {
++                display: block;
++            }
++        }
++    }
++</style>
+\ No newline at end of file

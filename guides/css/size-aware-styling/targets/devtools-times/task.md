@@ -1,0 +1,1 @@
+- Update the article card component so its layout and styling adapt based on its own width rather than the viewport size.

@@ -1,0 +1,1 @@
+- Update the card component so its styles and layout adapt based on its own width rather than the viewport width.
