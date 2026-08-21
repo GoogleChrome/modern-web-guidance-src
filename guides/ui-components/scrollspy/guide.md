@@ -51,6 +51,7 @@ nav a:target-current {
 </nav>
 
 <main>
+  <!-- MANDATORY: Each section must have a unique ID matching a link fragment in the <nav>. -->
   <section id="intro">
     <h2>Introduction</h2>
     <!-- content -->
@@ -124,8 +125,8 @@ For browsers that do not support `scroll-target-group`, you should use a fallbac
 
 <style>
   /* Fallback style if :target-current is not supported.
-     Use :where() to combine the native pseudo-class with a fallback class for older browsers. DO NOT use `nav a:target-current, nav a.\:target-current, as the unrecognized pseudoselector invalidates the entire rule in older browsers. */
-  nav a:where(:target-current, .\:target-current) {
+     Use :is() to combine the native pseudo-class with a fallback class for older browsers. DO NOT use `nav a:target-current, nav a.\:target-current, as the unrecognized pseudoselector invalidates the entire rule in older browsers. */
+  nav a:is(:target-current, .\:target-current) {
     color: var(--accent, #007bff);
     border-bottom-color: var(--accent, #007bff);
     font-weight: bold;
