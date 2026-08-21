@@ -292,10 +292,11 @@ async function processSingleGuideFile(
   const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
 
   if (TARGET === 'static-site') {
-    const title = formatTitle(id);
+    const h1Match = markdownBody.match(/^#\s+(.+)$/m);
+    const title = h1Match ? h1Match[1].trim() : (data.title || formatTitle(id));
     const genericFrontmatter = `---
-title: ${title}
-description: ${data.description}
+title: ${JSON.stringify(title)}
+description: ${JSON.stringify(data.description)}
 category: ${category}
 ---`;
     const bodyWithoutH1 = processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
