@@ -22,7 +22,7 @@ The feature consists of two primary mechanisms:
 
 *   **Prioritize Above-the-Fold Content**: Stream critical UI (header, hero, primary navigation, primary content) first. Use placeholders for "expensive" or lower priority components like comments, ads, or related content.
 *   **Implement Native Loading States**: Use the `<?start>` and `<?end>` markers to wrap fallback content. The browser automatically replaces everything between these markers when the corresponding `<template for>` arrives.
-*   **Minimize Layout Shift (CLS)**: Always provide stable dimensions for placeholders. If the final content size is unknown, use skeleton screens or CSS `aspect-ratio` to reserve space and prevent jarring shifts.
+*   **Minimize Cumulative Layout Shift (CLS)**: Always provide stable dimensions for placeholders. If the final content size is unknown, use skeleton screens or CSS `aspect-ratio` to reserve space and prevent jarring shifts.
 *   **Accessibility & Focus Management**: Be mindful that out-of-order updates can confuse screen reader users. Use `aria-live` regions for critical updates and ensure that focus isn't lost if a placeholder containing the active element is replaced.
 
 
