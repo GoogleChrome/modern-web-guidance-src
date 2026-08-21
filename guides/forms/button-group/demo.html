@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Button Group Demo</title>
+    <style>
+      :root {
+        --button-radius: 8px;
+        --brand-blue: #0056b3;
+        --brand-hover: #f0f7ff;
+        --focus-gold: #ffc107;
+      }
+
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        padding: 2rem;
+        line-height: 1.5;
+      }
+
+      @supports (appearance: base-select) {
+        select {
+          appearance: base-select;
+          border: none;
+          background: transparent;
+          padding: 0;
+        }
+
+        .wrapper {
+          display: flex;
+          background: #eee;
+          padding: 4px;
+          border-radius: calc(var(--button-radius) + 4px);
+          inline-size: max-content;
+          block-size: min-content;
+        }
+
+        option {
+          appearance: none;
+          padding: 0.6rem 1.2rem;
+          border: 1px solid var(--brand-blue);
+          border-inline-end-width: 0;
+          background: white;
+          color: var(--brand-blue);
+          transition: all 0.2s ease;
+          text-align: center;
+          font-weight: 500;
+        }
+
+        option::checkmark {
+          display: none;
+        }
+
+        option:first-of-type {
+          border-radius: var(--button-radius) 0 0 var(--button-radius);
+        }
+
+        option:last-of-type {
+          border-radius: 0 var(--button-radius) var(--button-radius) 0;
+          border-inline-end-width: 1px;
+        }
+
+        option:hover {
+          background: var(--brand-hover);
+          color: #004494;
+          text-decoration: underline;
+        }
+
+        option:checked {
+          background: var(--brand-blue);
+          color: white;
+        }
+
+        option:focus-visible {
+          outline: 3px solid var(--focus-gold);
+          outline-offset: -3px;
+        }
+      }
+
+      .field {
+        margin-bottom: 2.5rem;
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-weight: bold;
+        font-size: 1.1rem;
+      }
+
+      .hint {
+        font-size: 0.9rem;
+        color: #555;
+        margin-bottom: 1rem;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Button Group Accessibility Demo</h1>
+
+    <div class="field">
+      <label for="view-select">Layout View</label>
+      <span class="hint"
+        >Select a single option to change the display mode.</span
+      >
+      <select id="view-select" size="4" required name="view">
+        <div class="wrapper">
+          <option value="grid" selected>Grid</option>
+          <option value="feed">Feed</option>
+          <option value="stack">Stack</option>
+          <option value="list">List</option>
+        </div>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="decoration-select">Text Formatting</label>
+      <span id="multi-hint" class="hint">Multiple selection allowed.</span>
+      <select
+        id="decoration-select"
+        multiple
+        aria-describedby="multi-hint"
+        name="decoration"
+      >
+        <div class="wrapper">
+          <option value="bold">Bold</option>
+          <option value="underline">Underline</option>
+          <option value="strikethrough">Strikethrough</option>
+        </div>
+      </select>
+    </div>
+    <script>
+      const addLeftRight = (select) => {
+        select.addEventListener("keydown", (event) => {
+          if (event.key === "ArrowLeft") {
+            const options = event.currentTarget.options;
+            const focused = [...options].findIndex(
+              (option) => option === document.activeElement,
+            );
+            if (focused > 0) {
+              options[focused - 1].focus();
+            }
+          } else if (event.key === "ArrowRight") {
+            const options = event.currentTarget.options;
+            const focused = [...options].findIndex(
+              (option) => option === document.activeElement,
+            );
+            if (focused < options.length - 1) {
+              options[focused + 1].focus();
+            }
+          }
+        });
+      };
+
+      const removeWrapper = (select) => {
+        const wrapper = select.querySelector(".wrapper");
+        [...wrapper.children].forEach((option) =>
+          select.insertBefore(option, wrapper),
+        );
+        wrapper.remove();
+      };
+
+      const selects = document.getElementsByTagName("select");
+      [...selects].forEach((select) => {
+        if (CSS.supports("appearance: base-select")) {
+          addLeftRight(select);
+        } else {
+          removeWrapper(select);
+        }
+      });
+    </script>
+  </body>
+</html>
