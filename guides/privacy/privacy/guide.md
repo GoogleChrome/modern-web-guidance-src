@@ -152,20 +152,19 @@ Third-party scripts and resources are a common source of privacy leaks. You are 
 </a>
 ```
 
-**Video Façade Pattern (HTML)**
+**Video Façade Pattern (HTML/JS)**
 ```html
 <div id="video-container" data-video-id="abc123">
   <img src="https://img.youtube.com/vi/abc123/maxresdefault.jpg" alt="Play Video" id="play-btn">
 </div>
-```
 
-**Video Façade Pattern (JavaScript)**
-```javascript
-document.getElementById('play-btn').addEventListener('click', () => {
+<script>
+document.getElementById('play-btn').addEventListener('click', function() {
   const container = document.getElementById('video-container');
   const videoId = container.dataset.videoId;
   container.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
 });
+</script>
 ```
 
 **FedCM Sign-In (JavaScript)**

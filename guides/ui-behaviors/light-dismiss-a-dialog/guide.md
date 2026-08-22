@@ -43,7 +43,7 @@ dialog::backdrop {
   </form>
 </dialog>
 
-<button id="open-dialog-btn">Open Dialog</button>
+<button onclick="document.getElementById('myDialog').showModal()">Open Dialog</button>
 ```
 
 ## Constraints & Accessibility
@@ -61,10 +61,7 @@ dialog::backdrop {
 **MANDATORY**: For browsers that do not yet support `closedby`, you **must** implement a fallback for light-dismiss by checking if a click occurred outside the dialog content's boundaries using the following script:
 
 ```javascript
-const dialog = document.getElementById('myDialog');
-document.getElementById('open-dialog-btn').addEventListener('click', () => {
-  dialog.showModal();
-});
+const dialog = document.querySelector('dialog');
 
 // Fallback for browsers without closedby support
 if (!('closedBy' in HTMLDialogElement.prototype)) {

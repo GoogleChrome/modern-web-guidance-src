@@ -372,14 +372,6 @@ form.addEventListener('submit', (e) => {
   </ol>
 </nav>
 
-<button type="button" id="prev-btn" enterkeyhint="previous">Previous</button>
+<button type="button" onclick="history.back()" enterkeyhint="previous">Previous</button>
 <button type="submit" enterkeyhint="next">Next</button>
-```
-
-Note: To bind the back navigation behavior to the previous button, use JavaScript:
-
-```javascript
-document.getElementById('prev-btn').addEventListener('click', () => {
-  history.back();
-});
 ```
