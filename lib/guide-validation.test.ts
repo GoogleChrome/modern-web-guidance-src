@@ -110,6 +110,18 @@ Also unescaped <label>.
     const errors = validateHtmlTags(body, 'test.md');
     assert.deepStrictEqual(errors, []);
   });
+
+  test('reports true line numbers for duplicate unescaped tags across document', () => {
+    const body = `Line 1: unescaped <dialog>.
+Line 2: normal text.
+Line 3: normal text.
+Line 4: duplicate unescaped <dialog>.
+`;
+    const errors = validateHtmlTags(body, 'test.md');
+    assert.strictEqual(errors.length, 2);
+    assert.ok(errors[0].includes('Unescaped HTML tag <dialog> found on line 1'));
+    assert.ok(errors[1].includes('Unescaped HTML tag <dialog> found on line 4'));
+  });
 });
 
 describe('validateHeadings and validateGuideTitle', () => {
@@ -121,6 +133,22 @@ describe('validateHeadings and validateGuideTitle', () => {
       assert.strictEqual(errors.length, 1);
       assert.ok(errors[0].includes('Vague H1 heading'));
     }
+  });
+
+  test('allows depth > 1 headings like ## Overview or ### Introduction without errors', () => {
+    const body = `# Valid Feature Guide
+
+## Overview
+Some overview content.
+
+### Introduction
+Some introduction details.
+
+#### Guide
+Some guide steps.
+`;
+    const errors = validateHeadings(body, 'test.md');
+    assert.deepStrictEqual(errors, []);
   });
 
   test('allows descriptive H1 headings', () => {
@@ -162,6 +190,19 @@ describe('validateHeadings and validateGuideTitle', () => {
     const errors = validateGuideTitle(nonStubBody, 'test.md', {}, { requireTitle: true });
     assert.strictEqual(errors.length, 1);
     assert.ok(errors[0].includes('Missing H1 heading or frontmatter "title" in non-stub guide'));
+  });
+
+  test('validateGuideTitle flags whitespace-only frontmatter title when requireTitle is set', () => {
+    const nonStubBody = `Some guide content without H1 heading.`;
+    const errors = validateGuideTitle(nonStubBody, 'test.md', { title: '   ' }, { requireTitle: true });
+    assert.strictEqual(errors.length, 1);
+    assert.ok(errors[0].includes('Missing H1 heading or frontmatter "title" in non-stub guide'));
+  });
+
+  test('validateGuideTitle succeeds with valid descriptive frontmatter title without an H1', () => {
+    const nonStubBody = `Some guide content without H1 heading.`;
+    const errors = validateGuideTitle(nonStubBody, 'test.md', { title: 'Descriptive Feature Guide' }, { requireTitle: true });
+    assert.deepStrictEqual(errors, []);
   });
 
   test('validateGuideTitle allows stub guide without title even when requireTitle is set', () => {

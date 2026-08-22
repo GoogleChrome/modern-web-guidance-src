@@ -630,12 +630,17 @@ export function resetGuidesMap() {
 // Safe typographic inline tags that don't represent interactive elements or cause layout breakage.
 const ALLOWED_HTML_TAGS = new Set(['kbd', 'br', 'wbr']);
 
+interface HtmlValidationState {
+  offset: number;
+}
+
 export function validateHtmlTags(body: string, relativePath: string): string[] {
   const errors: string[] = [];
 
   try {
     const tokens = marked.lexer(body);
-    findInvalidHtmlTokens(tokens, errors, relativePath, body);
+    const state: HtmlValidationState = { offset: 0 };
+    findInvalidHtmlTokens(tokens, errors, relativePath, body, state);
   } catch (e) {
     errors.push(`Failed to parse markdown with marked lexer for HTML validation in ${relativePath}: ${e}`);
   }
@@ -643,7 +648,13 @@ export function validateHtmlTags(body: string, relativePath: string): string[] {
   return errors;
 }
 
-function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: string, content: string) {
+function findInvalidHtmlTokens(
+  tokens: any[],
+  errors: string[],
+  relativePath: string,
+  content: string,
+  state: HtmlValidationState = { offset: 0 },
+) {
   for (const token of tokens) {
     if (token.type === 'html') {
       const raw = token.raw.trim();
@@ -658,15 +669,27 @@ function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: st
       if (match) {
         const tagName = match[1].toLowerCase();
         if (!ALLOWED_HTML_TAGS.has(tagName)) {
-          // Find line number in content
-          const offset = content.indexOf(token.raw);
+          // Find line number in content using running offset
+          let offset = content.indexOf(token.raw, state.offset);
+          if (offset === -1) {
+            offset = content.indexOf(token.raw);
+          }
+          if (offset !== -1) {
+            state.offset = offset + token.raw.length;
+          }
           const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
           const lineSuffix = line !== -1 ? ` on line ${line}` : '';
           errors.push(`Unescaped HTML tag <${tagName}> found${lineSuffix} in ${relativePath}. Use backticks or escape angle brackets if it is a tag name reference.`);
         }
       } else {
         // If it does not match a standard tag, but is still parsed as HTML token, warn/fail
-        const offset = content.indexOf(token.raw);
+        let offset = content.indexOf(token.raw, state.offset);
+        if (offset === -1) {
+          offset = content.indexOf(token.raw);
+        }
+        if (offset !== -1) {
+          state.offset = offset + token.raw.length;
+        }
         const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
         const lineSuffix = line !== -1 ? ` on line ${line}` : '';
         errors.push(`Potentially invalid or unescaped HTML block/tag "${raw}" found${lineSuffix} in ${relativePath}.`);
@@ -674,12 +697,12 @@ function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: st
     }
 
     if (token.tokens) {
-      findInvalidHtmlTokens(token.tokens, errors, relativePath, content);
+      findInvalidHtmlTokens(token.tokens, errors, relativePath, content, state);
     }
     if (token.items) {
       for (const item of token.items) {
         if (item.tokens) {
-          findInvalidHtmlTokens(item.tokens, errors, relativePath, content);
+          findInvalidHtmlTokens(item.tokens, errors, relativePath, content, state);
         }
       }
     }
@@ -737,7 +760,8 @@ export function validateGuideTitle(body: string, relativePath: string, data?: Gu
     } catch {
       hasH1 = /^#\s+(.+)$/m.test(body);
     }
-    if (!data?.title && !hasH1) {
+    const hasTitle = Boolean(data?.title?.toString().trim());
+    if (!hasTitle && !hasH1) {
       errors.push(`Missing H1 heading or frontmatter "title" in non-stub guide ${relativePath}.`);
     }
   }
