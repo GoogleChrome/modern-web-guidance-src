@@ -87,29 +87,30 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 #### The full list
 
 <details>
-<summary><strong>103 modern web features</strong></summary>
+<summary><strong>105 modern web features</strong></summary>
 
-### CSS & Layout (51 features)
+### CSS & Layout (53 features)
 
 | | | |
 | :--- | :--- | :--- |
-| [::backdrop](https://web-platform-dx.github.io/web-features-explorer/features/backdrop/) | [Custom highlights](https://web-platform-dx.github.io/web-features-explorer/features/highlight/) | [Scroll snap events](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap-events/) |
-| [:has()](https://web-platform-dx.github.io/web-features-explorer/features/has/) | [field-sizing](https://web-platform-dx.github.io/web-features-explorer/features/field-sizing/) | [Scroll-driven animations](https://web-platform-dx.github.io/web-features-explorer/features/scroll-driven-animations/) |
-| [:not()](https://web-platform-dx.github.io/web-features-explorer/features/not/) | [font-size-adjust](https://web-platform-dx.github.io/web-features-explorer/features/font-size-adjust/) | [scroll-initial-target](https://web-platform-dx.github.io/web-features-explorer/features/scroll-initial-target/) |
-| [:user-valid and :user-invalid](https://web-platform-dx.github.io/web-features-explorer/features/user-pseudos/) | [image-set()](https://web-platform-dx.github.io/web-features-explorer/features/image-set/) | [scrollbar-color](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-color/) |
-| [@function](https://web-platform-dx.github.io/web-features-explorer/features/function/) | [Individual transform properties](https://web-platform-dx.github.io/web-features-explorer/features/individual-transforms/) | [scrollbar-width](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-width/) |
-| [@starting-style](https://web-platform-dx.github.io/web-features-explorer/features/starting-style/) | [interpolate-size](https://web-platform-dx.github.io/web-features-explorer/features/interpolate-size/) | [scrollend](https://web-platform-dx.github.io/web-features-explorer/features/scrollend/) |
-| [accent-color](https://web-platform-dx.github.io/web-features-explorer/features/accent-color/) | [light-dark()](https://web-platform-dx.github.io/web-features-explorer/features/light-dark/) | [scrollIntoView()](https://web-platform-dx.github.io/web-features-explorer/features/scroll-into-view/) |
-| [Active view transition](https://web-platform-dx.github.io/web-features-explorer/features/active-view-transition/) | [linear() easing](https://web-platform-dx.github.io/web-features-explorer/features/linear-easing/) | [sibling-count() and sibling-index()](https://web-platform-dx.github.io/web-features-explorer/features/sibling-count/) |
-| [Anchor position container queries](https://web-platform-dx.github.io/web-features-explorer/features/container-anchor-position-queries/) | [Masks](https://web-platform-dx.github.io/web-features-explorer/features/masks/) | [text-box](https://web-platform-dx.github.io/web-features-explorer/features/text-box/) |
-| [Anchor positioning](https://web-platform-dx.github.io/web-features-explorer/features/anchor-positioning/) | [overflow-clip-margin](https://web-platform-dx.github.io/web-features-explorer/features/overflow-clip-margin/) | [text-wrap](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap/) |
-| [calc-size()](https://web-platform-dx.github.io/web-features-explorer/features/calc-size/) | [overflow: clip](https://web-platform-dx.github.io/web-features-explorer/features/overflow-clip/) | [text-wrap: balance](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap-balance/) |
-| [color-scheme](https://web-platform-dx.github.io/web-features-explorer/features/color-scheme/) | [overlay](https://web-platform-dx.github.io/web-features-explorer/features/overlay/) | [text-wrap: pretty](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap-pretty/) |
-| [Container queries](https://web-platform-dx.github.io/web-features-explorer/features/container-queries/) | [overscroll-behavior](https://web-platform-dx.github.io/web-features-explorer/features/overscroll-behavior/) | [transition-behavior](https://web-platform-dx.github.io/web-features-explorer/features/transition-behavior/) |
-| [Container scroll-state queries](https://web-platform-dx.github.io/web-features-explorer/features/container-scroll-state-queries/) | [prefers-color-scheme media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-color-scheme/) | [Trigonometric functions (CSS)](https://web-platform-dx.github.io/web-features-explorer/features/trig-functions/) |
-| [Container style queries](https://web-platform-dx.github.io/web-features-explorer/features/container-style-queries/) | [prefers-contrast media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-contrast/) | [View transitions](https://web-platform-dx.github.io/web-features-explorer/features/view-transitions/) |
-| [content-visibility](https://web-platform-dx.github.io/web-features-explorer/features/content-visibility/) | [prefers-reduced-motion media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-reduced-motion/) | [view-transition-class](https://web-platform-dx.github.io/web-features-explorer/features/view-transition-class/) |
+| [::backdrop](https://web-platform-dx.github.io/web-features-explorer/features/backdrop/) | [field-sizing](https://web-platform-dx.github.io/web-features-explorer/features/field-sizing/) | [Scroll-driven animations](https://web-platform-dx.github.io/web-features-explorer/features/scroll-driven-animations/) |
+| [:has()](https://web-platform-dx.github.io/web-features-explorer/features/has/) | [font-size-adjust](https://web-platform-dx.github.io/web-features-explorer/features/font-size-adjust/) | [scroll-initial-target](https://web-platform-dx.github.io/web-features-explorer/features/scroll-initial-target/) |
+| [:not()](https://web-platform-dx.github.io/web-features-explorer/features/not/) | [image-set()](https://web-platform-dx.github.io/web-features-explorer/features/image-set/) | [scroll-target-group](https://web-platform-dx.github.io/web-features-explorer/features/scroll-target-group/) |
+| [:user-valid and :user-invalid](https://web-platform-dx.github.io/web-features-explorer/features/user-pseudos/) | [Individual transform properties](https://web-platform-dx.github.io/web-features-explorer/features/individual-transforms/) | [scrollbar-color](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-color/) |
+| [@function](https://web-platform-dx.github.io/web-features-explorer/features/function/) | [interpolate-size](https://web-platform-dx.github.io/web-features-explorer/features/interpolate-size/) | [scrollbar-width](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-width/) |
+| [@starting-style](https://web-platform-dx.github.io/web-features-explorer/features/starting-style/) | [light-dark()](https://web-platform-dx.github.io/web-features-explorer/features/light-dark/) | [scrollend](https://web-platform-dx.github.io/web-features-explorer/features/scrollend/) |
+| [accent-color](https://web-platform-dx.github.io/web-features-explorer/features/accent-color/) | [linear() easing](https://web-platform-dx.github.io/web-features-explorer/features/linear-easing/) | [scrollIntoView()](https://web-platform-dx.github.io/web-features-explorer/features/scroll-into-view/) |
+| [Active view transition](https://web-platform-dx.github.io/web-features-explorer/features/active-view-transition/) | [Masks](https://web-platform-dx.github.io/web-features-explorer/features/masks/) | [sibling-count() and sibling-index()](https://web-platform-dx.github.io/web-features-explorer/features/sibling-count/) |
+| [Anchor position container queries](https://web-platform-dx.github.io/web-features-explorer/features/container-anchor-position-queries/) | [overflow-clip-margin](https://web-platform-dx.github.io/web-features-explorer/features/overflow-clip-margin/) | [text-box](https://web-platform-dx.github.io/web-features-explorer/features/text-box/) |
+| [Anchor positioning](https://web-platform-dx.github.io/web-features-explorer/features/anchor-positioning/) | [overflow: clip](https://web-platform-dx.github.io/web-features-explorer/features/overflow-clip/) | [text-wrap](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap/) |
+| [calc-size()](https://web-platform-dx.github.io/web-features-explorer/features/calc-size/) | [overlay](https://web-platform-dx.github.io/web-features-explorer/features/overlay/) | [text-wrap: balance](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap-balance/) |
+| [color-scheme](https://web-platform-dx.github.io/web-features-explorer/features/color-scheme/) | [overscroll-behavior](https://web-platform-dx.github.io/web-features-explorer/features/overscroll-behavior/) | [text-wrap: pretty](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap-pretty/) |
+| [Container queries](https://web-platform-dx.github.io/web-features-explorer/features/container-queries/) | [prefers-color-scheme media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-color-scheme/) | [transition-behavior](https://web-platform-dx.github.io/web-features-explorer/features/transition-behavior/) |
+| [Container scroll-state queries](https://web-platform-dx.github.io/web-features-explorer/features/container-scroll-state-queries/) | [prefers-contrast media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-contrast/) | [Trigonometric functions (CSS)](https://web-platform-dx.github.io/web-features-explorer/features/trig-functions/) |
+| [Container style queries](https://web-platform-dx.github.io/web-features-explorer/features/container-style-queries/) | [prefers-reduced-motion media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-reduced-motion/) | [View transitions](https://web-platform-dx.github.io/web-features-explorer/features/view-transitions/) |
+| [content-visibility](https://web-platform-dx.github.io/web-features-explorer/features/content-visibility/) | [Scroll marker target pseudo-classes](https://web-platform-dx.github.io/web-features-explorer/features/scroll-marker-targets/) | [view-transition-class](https://web-platform-dx.github.io/web-features-explorer/features/view-transition-class/) |
 | [Cross-document view transitions](https://web-platform-dx.github.io/web-features-explorer/features/cross-document-view-transitions/) | [Scroll snap](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap/) | [Web animations](https://web-platform-dx.github.io/web-features-explorer/features/web-animations/) |
+| [Custom highlights](https://web-platform-dx.github.io/web-features-explorer/features/highlight/) | [Scroll snap events](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap-events/) |  |
 
 ### HTML & DOM (20 features)
 
@@ -142,7 +143,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 </details>
 
 <details>
-<summary><strong>131 real-world developer use cases</strong></summary>
+<summary><strong>132 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
@@ -288,6 +289,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[navigation-drawer](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/navigation-drawer.md)**: Create a navigation drawer component that, when triggered from a menu button, slides in from the side overlayed on top of existing page content, and slides out when dismissed (by swiping away, tapping outside, or pressing escape).
 - **[persistent-app-tours](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/persistent-app-tours.md)**: Create persistent onboarding walkthroughs using tethered native overlays that stay open during user interaction.
 - **[persistent-toast-notifications](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/persistent-toast-notifications.md)**: Create non-intrusive toast and overlay notifications for persistent, stackable messaging and state communication.
+- **[scrollspy](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/scrollspy.md)**: Highlight the currently visible section of a page in a navigation menu
 - **[stack-drill-down](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/stack-drill-down.md)**: Build full-screen hierarchical navigation that lets users drill down into nested views and swipe or navigate back to return, with browser history kept in sync.
 
 <h3>visual-design</h3>
