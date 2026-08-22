@@ -117,6 +117,7 @@ export function validateGuide(filePath: string): ValidationResult {
 
   errors.push(...validateMacros(body, relativePath));
   errors.push(...validateHtmlTags(body, relativePath));
+  errors.push(...validateHeadings(body, relativePath, data));
 
   return { errors, data, body, filePath };
 }
@@ -683,5 +684,64 @@ function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: st
       }
     }
   }
+}
+
+export const VAGUE_H1_TITLES = new Set(['overview', 'introduction', 'guide', 'title']);
+
+/**
+ * Validates headings in a guide body, flagging vague top-level H1 headings.
+ */
+export function validateHeadings(body: string, relativePath: string, data?: GuideData): string[] {
+  const errors: string[] = [];
+
+  if (data?.title && VAGUE_H1_TITLES.has(String(data.title).trim().toLowerCase())) {
+    errors.push(`Vague title "${data.title}" in frontmatter for ${relativePath}. Use a descriptive title instead.`);
+  }
+
+  try {
+    const tokens = marked.lexer(body);
+    for (const token of tokens) {
+      if (token.type === 'heading' && token.depth === 1) {
+        const title = token.text.trim();
+        if (VAGUE_H1_TITLES.has(title.toLowerCase())) {
+          errors.push(`Vague H1 heading "# ${title}" in ${relativePath}. Use a descriptive title instead.`);
+        }
+      }
+    }
+  } catch {
+    const h1Matches = Array.from(body.matchAll(/^#\s+(.+)$/gm));
+    for (const match of h1Matches) {
+      const title = match[1].trim();
+      if (VAGUE_H1_TITLES.has(title.toLowerCase())) {
+        errors.push(`Vague H1 heading "# ${title}" in ${relativePath}. Use a descriptive title instead.`);
+      }
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validates that a non-stub guide has either a frontmatter title or an explicit H1 heading,
+ * and that any H1 heading is not vague.
+ */
+export function validateGuideTitle(body: string, relativePath: string, data?: GuideData, options?: { requireTitle?: boolean }): string[] {
+  const errors = validateHeadings(body, relativePath, data);
+  const isStub = body.replace(/<!--[\s\S]*?-->/g, '').trim().length === 0;
+
+  if (options?.requireTitle && !isStub) {
+    let hasH1 = false;
+    try {
+      const tokens = marked.lexer(body);
+      hasH1 = tokens.some((t: any) => t.type === 'heading' && t.depth === 1);
+    } catch {
+      hasH1 = /^#\s+(.+)$/m.test(body);
+    }
+    if (!data?.title && !hasH1) {
+      errors.push(`Missing H1 heading or frontmatter "title" in non-stub guide ${relativePath}.`);
+    }
+  }
+
+  return errors;
 }
 

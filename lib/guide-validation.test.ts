@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, inventoryGuide, classifyGuide, getSupportedBaseApps } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 
 describe('parseExpectations', () => {
@@ -109,6 +109,90 @@ Also unescaped <label>.
 `;
     const errors = validateHtmlTags(body, 'test.md');
     assert.deepStrictEqual(errors, []);
+  });
+});
+
+describe('validateHeadings and validateGuideTitle', () => {
+  test('disallows vague H1 headings like Overview, Introduction, Guide, Title', () => {
+    const vagueHeadings = ['# Overview', '# Introduction', '# Guide', '# Title', '# overview', '# OVERVIEW', '#  Introduction '];
+    for (const heading of vagueHeadings) {
+      const body = `${heading}\n\nSome body text.`;
+      const errors = validateHeadings(body, 'test.md');
+      assert.strictEqual(errors.length, 1);
+      assert.ok(errors[0].includes('Vague H1 heading'));
+    }
+  });
+
+  test('allows descriptive H1 headings', () => {
+    const validHeadings = [
+      '# Declarative Dialog and Popover Control',
+      '# HTML',
+      '# Persistent Top Layer UI',
+      '# Move DOM Element Without Losing State',
+      '# Agentic JavaScript Tools',
+      '# Overview of Invoker Commands',
+      '# Introduction to WebMCP',
+      '# Guide for Dynamic Sibling Animations',
+    ];
+    for (const heading of validHeadings) {
+      const body = `${heading}\n\nSome body text.`;
+      const errors = validateHeadings(body, 'test.md');
+      assert.deepStrictEqual(errors, []);
+    }
+  });
+
+  test('ignores vague headings inside code blocks', () => {
+    const body = `\`\`\`markdown
+# Overview
+# Introduction
+\`\`\`
+`;
+    const errors = validateHeadings(body, 'test.md');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('flags vague frontmatter title', () => {
+    const errors = validateHeadings('Some body text', 'test.md', { title: 'Overview' });
+    assert.strictEqual(errors.length, 1);
+    assert.ok(errors[0].includes('Vague title "Overview" in frontmatter'));
+  });
+
+  test('validateGuideTitle flags missing title in non-stub guide when requireTitle is set', () => {
+    const nonStubBody = `Some guide content without H1 heading.`;
+    const errors = validateGuideTitle(nonStubBody, 'test.md', {}, { requireTitle: true });
+    assert.strictEqual(errors.length, 1);
+    assert.ok(errors[0].includes('Missing H1 heading or frontmatter "title" in non-stub guide'));
+  });
+
+  test('validateGuideTitle allows stub guide without title even when requireTitle is set', () => {
+    const stubBody = `<!-- stub -->\n`;
+    const errors = validateGuideTitle(stubBody, 'test.md', {}, { requireTitle: true });
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('validateGuide integrates heading validation', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-val-test-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+---
+
+# Overview
+
+Guide content.
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.ok(result.errors.some(e => e.includes('Vague H1 heading "# Overview"')));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });
 
