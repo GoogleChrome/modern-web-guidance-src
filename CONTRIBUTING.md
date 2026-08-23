@@ -190,6 +190,7 @@ For setup of core guide development workflows (`gd dev`), configure your Gemini 
 ```bash
 GEMINI_API_KEY='your_api_key_here'
 GEMINI_MODEL='gemini-3-flash-preview'
+GD_DEV_USE_GEMINI=1 # Required to use Gemini CLI for 'gd dev'
 ```
 
 ### Runtime Configuration Overrides

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Utility functions shared between Dashboard and Landing pages.
  */
@@ -8,11 +9,6 @@ export function getRunStats(checks) {
     const total = checks.length;
     const rate = Math.round((passed / total) * 100);
     return { rate, passed, total };
-}
-
-export function isDisciplineSkillRun(run) {
-    if (!run) return false;
-    return run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
 }
 
 export function getColor(percentage) {
@@ -74,7 +70,7 @@ export function parseResultKey(key) {
     if (parts.length < 2 || parts.length > 3) return null;
     let [task, guide, runType] = parts;
 
-    const featuresMap = window.__featuresMapping;
+    const featuresMap = typeof window !== 'undefined' ? window.__featuresMapping : undefined;
     let isFlipped = false;
 
     if (featuresMap) {
@@ -157,37 +153,24 @@ export function calculateChartData(results) {
 }
 
 
-export function formatTestName(name, isDisciplineSkill = false) {
+export function formatTestName(name) {
     if (!name) return name;
     const parsedKey = parseResultKey(name);
     if (parsedKey) {
-        const { task: appName, guide: guideName } = parsedKey;
+        const { task: taskName, guide: guideName } = parsedKey;
         
         const featuresMap = window.__featuresMapping || {};
-        let featureId = '';
-        
-        if (isDisciplineSkill) {
-            // For skills, the first part is the discipline (e.g. performance)
-            return `${appName}: ${guideName}`; // discipline: task
-        }
-        
-        // For normal tasks, the second part is the guide name
-        if (featuresMap[guideName] && featuresMap[guideName].length > 0) {
-            featureId = featuresMap[guideName][0]; // take primary feature
-        }
-        
-        if (featureId) {
-            return `${featureId}: ${guideName}`;
-        }
-        
-        return `${appName}: ${guideName}`; // fallback
+        const featureId = (featuresMap[guideName] && featuresMap[guideName][0]) || 'uncategorized';
+        const displayName = `${guideName} (${taskName})`;
+
+        return `${featureId}: ${displayName}`;
     }
     return name.split(' - ').join(' / ');
 }
 
 // Google Identity Services (OAuth) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
-let accessToken = localStorage.getItem('gcs_access_token') || null;
+let accessToken = typeof localStorage !== 'undefined' ? localStorage.getItem('gcs_access_token') : null;
 
 export function getAccessToken() {
     return accessToken;

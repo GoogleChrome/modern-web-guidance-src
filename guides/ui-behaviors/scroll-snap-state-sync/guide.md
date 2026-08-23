@@ -80,7 +80,7 @@ if (!('onscrollsnapchange' in HTMLElement.prototype)) {
       const topEntry = [...headers].reduce((currentTop, header) => {
         // Use the bottom to handle scrolling up, when the top is still offscreen
         const {bottom} = header.getBoundingClientRect();
-        // Don't match if the header's bottom is aboce the scrollport
+        // Don't match if the header's bottom is above the scrollport
         if (bottom < 0) return;
         if (!currentTop) return header;
         return bottom <

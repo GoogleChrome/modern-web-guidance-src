@@ -7,6 +7,7 @@ import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
 import { runAllManifests } from './generate-manifests.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
@@ -89,7 +90,10 @@ const MIME_TYPES = {
  * @typedef {Object} SuiteInfo
  * @property {string} id
  * @property {string} source
- * @property {string | null} timestamp
+ * @property {string} [timestamp]
+ * @property {string} [testId]
+ * @property {Record<string, any>} [guidedStats]
+ * @property {Record<string, any>} [unguidedStats]
  */
 
 /** @type {string | null} */
@@ -243,6 +247,12 @@ const server = http.createServer(async (req, res) => {
           try {
             if (fs.existsSync(evalsJsonPath)) {
               timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
+              const rawData = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
+              const summary = extractSuiteSummary(d, rawData, timestamp);
+              if (summary) {
+                suitesList.push({ ...summary, id: d, source: 'local' });
+                return;
+              }
             } else {
               timestamp = fs.statSync(suiteDir).mtime.toISOString();
             }
@@ -265,33 +275,23 @@ const server = http.createServer(async (req, res) => {
   // --- /api/grouped-tasks : lists tasks grouped per guide ---
   if (decodedPath === '/api/grouped-tasks') {
     try {
-      const { getTaskMap, isDisciplineSkillDir } = await import('../lib/guide-validation.ts');
+      const { getTaskMap } = await import('../lib/guide-validation.ts');
       const { USE_CASES } = await import('../serving/lib/practices.ts');
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
-      /** @type {Record<string, string[]>} */
-      const disciplines = {}; // disciplineName -> [tasks]
       
-      for (const [key, info] of taskMap.entries()) {
+      for (const key of taskMap.keys()) {
         const [guide, task] = key.split('/');
-        
-        const isDisciplineSkill = isDisciplineSkillDir(info.guideDir);
-        
-        if (isDisciplineSkill) {
-          if (!disciplines[guide]) disciplines[guide] = [];
-          disciplines[guide].push(task);
-        } else {
-          const useCase = USE_CASES.find(u => u.id === guide);
-          const category = useCase ? useCase.category : 'Uncategorized';
-          if (!grouped[category]) grouped[category] = {};
-          if (!grouped[category][guide]) grouped[category][guide] = [];
-          grouped[category][guide].push(task);
-        }
+        const useCase = USE_CASES.find(u => u.id === guide);
+        const category = useCase ? useCase.category : 'Uncategorized';
+        if (!grouped[category]) grouped[category] = {};
+        if (!grouped[category][guide]) grouped[category][guide] = [];
+        grouped[category][guide].push(task);
       }
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ guides: grouped, disciplines: disciplines }));
+      res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {
       console.error('Error fetching grouped tasks:', e);
       res.writeHead(500);

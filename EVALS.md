@@ -14,13 +14,14 @@ Supported agents are defined in the `Agents` object within [`harness/config.ts`]
 
 ### Gemini CLI
 
-Gemini CLI (`gemini_cli`) is the default agent used by the evaluation harness and guide development workflows (`gd dev`).
+Gemini CLI (`gemini_cli`) is supported for evaluation harness runs and can be used in `gd dev` via the `GD_DEV_USE_GEMINI` flag.
 
 **Configuration:**
 Set your API key and preferred model in your environment or `.env` file at the repository root:
 ```bash
 GEMINI_API_KEY='your_api_key_here'
 GEMINI_MODEL='gemini-3-flash-preview'
+GD_DEV_USE_GEMINI=1  # Required to use Gemini CLI for 'gd dev'
 ```
 
 ---
@@ -64,7 +65,11 @@ harness/node_modules/.bin/codex
 
 ### Jetski CLI
 
-Set your preferred model in your environment:
+Jetski CLI (`jetski_cli`) is the default agent used by the guide development workflows (`gd dev`).
+
+**Configuration:**
+Configure the preferred model for Jetski agent runs:
 ```bash
-JETSKI_MODEL='Gemini 3.5 Flash'
+# Model selection for Jetski agent runs
+JETSKI_MODEL='gemini-3.6-flash'
 ```

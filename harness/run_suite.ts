@@ -5,8 +5,10 @@ import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
-import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
+import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
+import { applyPatchSync, initGitRepo } from '../lib/patch-utils.ts';
 import { getGraderScriptContent } from './lib/agent-shared.ts';
+import { copyBaseAppToWorkspace } from '../guides/lib/utils.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -16,7 +18,7 @@ let logStream: fs.WriteStream | null = null;
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-export async function runAgent(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
+export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
   const agent = suiteConfig.agent;
   let templateDir = templateDirRaw;
@@ -51,7 +53,8 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string,
         agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
           agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
             agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-              'jetski-agent.ts'
+              agent === Agents.PI ? 'pi-agent.ts' :
+                'jetski-agent.ts'
     );
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
@@ -76,7 +79,7 @@ export interface RunSuiteOptions {
   numRuns?: number;
   skipEval?: boolean;
   guidedOnly?: boolean;
-  suiteConfig?: SuiteConfig;
+  suiteConfig?: Partial<SuiteConfig>;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
@@ -136,7 +139,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         ? options.tasks
         : (suiteConfig.tasks.length > 0
           ? suiteConfig.tasks
-          : Array.from(taskMap.keys()).filter(key => key.endsWith('/task')));
+          : Array.from(taskMap.keys()));
 
       for (const task of tasksToRun) {
         const resolvedTask = resolveTaskName(task);
@@ -159,11 +162,15 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
-        const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+        let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+        const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
+        if (fs.existsSync(targetGraderPath)) {
+          graderPath = targetGraderPath;
+        }
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath);
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -197,6 +204,19 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         } finally {
           if (fs.existsSync(pnpmWorkspacePath)) {
             fs.unlinkSync(pnpmWorkspacePath);
+          }
+          // Clean up task workspace base_apps after all workers in run finish
+          for (const task of tasksToRun) {
+            const resolvedTask = resolveTaskName(task);
+            const [guideName, taskName] = resolvedTask.split('/');
+            const taskBaseAppDir = path.join(runDir, guideName, taskName, 'base_app');
+            if (fs.existsSync(taskBaseAppDir)) {
+              try {
+                fs.rmSync(taskBaseAppDir, { recursive: true, force: true });
+              } catch (err) {
+                console.warn(`Failed to clean up ${taskBaseAppDir}: ${err}`);
+              }
+            }
           }
         }
       }
@@ -303,32 +323,26 @@ async function runCommand(command: string, args: string[] = [], envOverrides?: R
 
 
 function resolveTaskName(task: string): string {
-  let resolvedTask = task;
-  if (task.startsWith('guides/')) {
-    const segments = task.split('/');
-    if (segments.length === 4 && segments[2] === 'tasks') {
-      // Support discipline skill tasks (e.g., guides/forms/tasks/task.md)
-      const guideName = segments[1];
-      const taskName = segments[3].replace('.md', '');
-      resolvedTask = `${guideName}/${taskName}`;
-    } else if (segments.length >= 3) {
-      // Standard guide path: guides/category/guideName/...
-      const guideName = segments[2];
-      let taskName = 'task';
-      const lastSegment = segments[segments.length - 1];
-      if (lastSegment.endsWith('.md')) {
-        taskName = lastSegment.replace('.md', '');
-      }
-      resolvedTask = `${guideName}/${taskName}`;
-    }
-  } else if (!task.includes('/')) {
-    resolvedTask = `${task}/task`;
+  // 1. Target task: guides/.../<guideName>/targets/<baseApp>/task.md
+  if (task.includes('/targets/')) {
+    const [beforeTargets, afterTargets] = task.split('/targets/');
+    const guideName = beforeTargets.split('/').pop()!;
+    const baseApp = afterTargets.split('/')[0];
+    return `${guideName}/${baseApp}`;
   }
-  return resolvedTask;
+
+  // 2. Legacy task: guides/.../<guideName>/tasks/<taskName>.md
+  if (task.includes('/tasks/')) {
+    const [beforeTasks, afterTasks] = task.split('/tasks/');
+    const guideName = beforeTasks.split('/').pop()!;
+    const taskName = afterTasks.replace(/\.md$/, '');
+    return `${guideName}/${taskName}`;
+  }
+
+  return task;
 }
 
-async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
-  // Copy the base app to the run directory (for tracking purposes)
+export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
   const guideFolder = path.join(runDir, guideName);
   const taskFolder = path.join(guideFolder, taskName);
   const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
@@ -336,36 +350,38 @@ async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideNa
     fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
   }
 
-  if (taskName === 'negative') {
-    const negativeDemoPath = path.join(taskInfo.guideDir, 'negative-demo.html');
-    if (fs.existsSync(negativeDemoPath)) {
-      fs.copyFileSync(negativeDemoPath, path.join(workspaceBaseAppDir, 'index.html'));
+  const refBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
+  if (!fs.existsSync(refBaseAppDir)) {
+    console.warn(`Source base app not found at ${refBaseAppDir}`);
+    return null;
+  }
+  await copyBaseAppToWorkspace(taskInfo.baseApp, workspaceBaseAppDir);
+  const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
+  if (fs.existsSync(pkgJsonPath)) {
+    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+    if (!pkgJson.pnpm || !pkgJson.pnpm.onlyBuiltDependencies) {
+      throw new Error(`Assertion failed: pnpm.onlyBuiltDependencies is missing in ${pkgJsonPath}`);
+    }
+  }
+
+  // If this is a target-based task and zero-passrate.patch exists, apply it before git init & agent execution
+  const targetZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskName, ZERO_PASSRATE_PATCH_FILE);
+  const baseAppZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskInfo.baseApp, ZERO_PASSRATE_PATCH_FILE);
+  const zeroPassratePath = fs.existsSync(targetZeroPassrate)
+    ? targetZeroPassrate
+    : (fs.existsSync(baseAppZeroPassrate) ? baseAppZeroPassrate : null);
+
+  if (zeroPassratePath) {
+    const applyRes = applyPatchSync(workspaceBaseAppDir, zeroPassratePath);
+    if (!applyRes.success) {
+      console.warn(`Failed to apply zero-passrate.patch to ${workspaceBaseAppDir}: ${applyRes.error}`);
     } else {
-      console.warn(`Skipping negative run for ${guideName}/${taskName}: Missing negative-demo.html`);
-      return null;
+      console.log(`Applied zero-passrate.patch to ${workspaceBaseAppDir}`);
     }
-  } else {
-    const sourceBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
-    if (fs.existsSync(sourceBaseAppDir)) {
-      await fs.promises.cp(sourceBaseAppDir, workspaceBaseAppDir, {
-        recursive: true,
-        filter: (src) => {
-          const basename = path.basename(src);
-          return !['node_modules', '.git', 'dist', '.astro'].includes(basename);
-        }
-      });
+  }
 
-      const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
-      if (fs.existsSync(pkgJsonPath)) {
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-        if (!pkgJson.pnpm || !pkgJson.pnpm.onlyBuiltDependencies) {
-          throw new Error(`Assertion failed: pnpm.onlyBuiltDependencies is missing in ${pkgJsonPath}`);
-        }
-
-        // pnpm install is intentionally deferred until after agent execution
-        // to avoid copying massive node_modules directories.
-      }
-    }
+  if (!fs.existsSync(path.join(workspaceBaseAppDir, '.git'))) {
+    initGitRepo(workspaceBaseAppDir);
   }
 
   return workspaceBaseAppDir;
@@ -379,7 +395,8 @@ export function generateTransientPackage(
   workspaceBaseAppDir: string,
   taskName: string,
   guideName: string,
-  graderPath: string
+  graderPath: string,
+  _baseApp: string = 'daily-grind'
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
@@ -432,15 +449,30 @@ env.PATH = \`${targetDir}:\${env.PATH}\`;
 const start = Date.now();
 let result;
 let attempts = 0;
-const maxAttempts = 3; // 1 initial attempt + 2 retries
+const maxAttempts = 5; // 1 initial attempt + 4 retries with exponential backoff
+const baseDelay = 15000; // 15 seconds base delay
 
 while (attempts < maxAttempts) {
   attempts++;
   result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
   if (result.status === 0) break;
+
+  // Check if this is a rate limit error (429)
+  const isRateLimit = result.status === 1 || (result.stderr && result.stderr.toString().includes('429'));
+
   if (attempts < maxAttempts) {
-    console.warn('⚠️ Attempt ' + attempts + ' failed with status ' + result.status + '. Waiting 20 seconds before retrying...');
-    spawnSync(process.execPath, ['-e', 'setTimeout(()=>{}, 20000)']);
+    // Exponential backoff: 15s, 30s, 60s, 120s (with some jitter)
+    // For rate limits, use longer delays
+    const base = isRateLimit ? 30000 : baseDelay;
+    const delay = base * Math.pow(2, attempts - 1) + Math.random() * 5000;
+    const delaySec = Math.round(delay / 1000);
+
+    if (isRateLimit) {
+      console.warn('⚠️ Rate limit hit (429). Attempt ' + attempts + ' failed. Waiting ' + delaySec + 's before retry...');
+    } else {
+      console.warn('⚠️ Attempt ' + attempts + ' failed with status ' + result.status + '. Waiting ' + delaySec + 's (exponential backoff)...');
+    }
+    spawnSync(process.execPath, ['-e', 'setTimeout(()=>{}, ' + delay + ')']);
   }
 }
 const runtime = Date.now() - start;
@@ -454,7 +486,8 @@ if (result.status === 0) {
     fs.unlinkSync(failureFile);
   }
   const gradeStart = Date.now();
-  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
+  const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status;
 } else {
@@ -483,7 +516,7 @@ process.exit(graderStatus !== null ? graderStatus : result.status ?? 0);
 
   // Generate transient package.json
   // This tells pnpm that this directory is a "package" that can be run
-  // via \`pnpm run-agent\`.
+  // via `pnpm run-agent`.
   fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
     name: `${taskName.substring(0, 30)}-${runType}`,
     type: "module",
@@ -496,6 +529,7 @@ function getAgentScript(agent: string): string {
     agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
     agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
     agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+    agent === Agents.PI ? 'pi-agent.ts' :
       'jetski-agent.ts');
 }
 

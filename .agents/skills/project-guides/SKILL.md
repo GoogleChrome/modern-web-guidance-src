@@ -15,18 +15,18 @@ This is the second of three stages in creating guidance:
 
 When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is eval infrastructure:
 
-| File | Purpose | Seen by real-world agents? |
+| File/Directory | Purpose | Seen by real-world agents? |
 |---|---|---|
 | `guide.md` | Guidance for implementing the use case | ✅ Yes — this is the only file |
-| `demo.html` | Reference implementation used to calibrate the grader | ❌ No |
-| `negative-demo.html` | Incorrect implementation used to verify the grader catches failures | ❌ No |
-| `expectations.md` | Source used to generate `grader.ts` | ❌ No |
-| `grader.ts` | Playwright tests run against the eval agent's output | ❌ No |
-| `tasks/task.md` | Simulated developer prompts and base application name fed to the eval agent by the harness | ❌ No |
+| `expectations.md` | Verification criteria used to generate target evaluation suites | ❌ No |
+| `targets/<base_app>/solution.patch` | Golden diff against clean base app used to calibrate the grader | ❌ No |
+| `targets/<base_app>/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
+| `targets/<base_app>/grader.ts` | Playwright test suite run against the eval agent's output | ❌ No |
+| `targets/<base_app>/task.md` | Simulated developer prompts fed to the eval agent by the harness | ❌ No |
 
-**Implication for `demo.html`:** Because real agents never see `demo.html`, it does not need to be a polished, production-ready example. It just needs to be a correct, minimal implementation that the grader can pass against. Do not over-engineer it.
+**Implication for authoring (`guide.md` & `expectations.md`):** Authors and SMEs strictly author `guide.md` and `expectations.md`. You do not hand-author `solution.patch`, `zero-passrate.patch`, `grader.ts`, or `task.md`. Once `guide.md` and `expectations.md` are authored, running `gd dev <guide>` automatically loops across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) inside safe temporary `/tmp/` sandboxes to generate and calibrate the evaluation capsules under `targets/<base_app>/`, runs agent evaluations, and produces an evaluation diagnostic report (`test-app-results/report.md`). Running `gd pr <guide>` then automatically commits, pushes, detects PR labels (`gd-dev-content` or `gd-dev-eval`), and opens the Pull Request.
 
-**Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `demo.html`, `expectations.md`, or any external link to understand how to implement the use case.
+**Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `expectations.md`, any target patch, or any external link to understand how to implement the use case.
 
 **MANDATORY RULES FOR WRITING `guide.md`:**
 
@@ -43,6 +43,7 @@ web-feature-ids:
 ---
 ```
 * **web-features**: Must be a list of accurate IDs found via webstatus.dev. Include ALL features referenced in the guide body, not just the primary one. If an ID is missing, inform the USER.
+  * **Pending Features (`tmp-` prefix)**: If a feature ID is pending upstream in `@web-platform-dx/web-features` (e.g. an open issue), use `tmp-<candidate-slug>` (e.g. `tmp-streaming-api`) AND register it in `lib/pending-web-features.json` along with its upstream issue link. This connects the guide to its GitHub issue and project board cards while pending, while ensuring centralized approval and no speculative ID sprawl. When the feature ID is officially released upstream in `web-features`, validator checks will automatically fail in CI to prompt updating the frontmatter to the official ID.
 
 ### 2. Tone and Formatting
 

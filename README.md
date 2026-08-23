@@ -81,13 +81,13 @@ We cover the past several years of the web platform's new features, all the way 
   </tr>
 </table>
 
-_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/overlays/navigation-drawer.md).
+_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/navigation-drawer.md).
 
 <!-- INJECT_SKILL_COVERAGE_START -->
 #### The full list
 
 <details>
-<summary><strong>102 modern web features</strong></summary>
+<summary><strong>103 modern web features</strong></summary>
 
 ### CSS & Layout (51 features)
 
@@ -123,26 +123,26 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 | [&lt;link rel="preload">](https://web-platform-dx.github.io/web-features-explorer/features/link-rel-preload/) | [inert](https://web-platform-dx.github.io/web-features-explorer/features/inert/) | [popover="hint"](https://web-platform-dx.github.io/web-features-explorer/features/popover-hint/) |
 | [blocking="render"](https://web-platform-dx.github.io/web-features-explorer/features/blocking-render/) | [Interest invokers](https://web-platform-dx.github.io/web-features-explorer/features/interest-invokers/) |  |
 
-### JavaScript & APIs (31 features)
+### JavaScript & APIs (32 features)
 
 | | | |
 | :--- | :--- | :--- |
-| [AbortController and AbortSignal](https://web-platform-dx.github.io/web-features-explorer/features/aborting/) | [Language detector](https://web-platform-dx.github.io/web-features-explorer/features/languagedetector/) | [Speculation rules](https://web-platform-dx.github.io/web-features-explorer/features/speculation-rules/) |
-| [document.modelContext](https://web-platform-dx.github.io/web-features-explorer/features/document-modelcontext/) | [LanguageModel](https://web-platform-dx.github.io/web-features-explorer/features/languagemodel/) | [Summarizer](https://web-platform-dx.github.io/web-features-explorer/features/summarizer/) |
-| [enterkeyhint](https://web-platform-dx.github.io/web-features-explorer/features/enterkeyhint/) | [Long animation frames](https://web-platform-dx.github.io/web-features-explorer/features/long-animation-frames/) | [SVG](https://web-platform-dx.github.io/web-features-explorer/features/svg/) |
-| [Event timing](https://web-platform-dx.github.io/web-features-explorer/features/event-timing/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
-| [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
-| [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Page visibility state](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
-| [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
-| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
-| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
-| [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) |  |
-| [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Scheduler API](https://web-platform-dx.github.io/web-features-explorer/features/scheduler/) |  |
+| [AbortController and AbortSignal](https://web-platform-dx.github.io/web-features-explorer/features/aborting/) | [Language detector](https://web-platform-dx.github.io/web-features-explorer/features/languagedetector/) | [Scheduler API](https://web-platform-dx.github.io/web-features-explorer/features/scheduler/) |
+| [document.modelContext](https://web-platform-dx.github.io/web-features-explorer/features/document-modelcontext/) | [LanguageModel](https://web-platform-dx.github.io/web-features-explorer/features/languagemodel/) | [Speculation rules](https://web-platform-dx.github.io/web-features-explorer/features/speculation-rules/) |
+| [enterkeyhint](https://web-platform-dx.github.io/web-features-explorer/features/enterkeyhint/) | [Lazy-loading images and iframes](https://web-platform-dx.github.io/web-features-explorer/features/loading-lazy/) | [Summarizer](https://web-platform-dx.github.io/web-features-explorer/features/summarizer/) |
+| [Event timing](https://web-platform-dx.github.io/web-features-explorer/features/event-timing/) | [Long animation frames](https://web-platform-dx.github.io/web-features-explorer/features/long-animation-frames/) | [SVG](https://web-platform-dx.github.io/web-features-explorer/features/svg/) |
+| [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
+| [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
+| [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Page visibility state](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
+| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
+| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
+| [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
+| [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) |  |
 
 </details>
 
 <details>
-<summary><strong>129 real-world developer use cases</strong></summary>
+<summary><strong>131 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
@@ -169,6 +169,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[reduce-style-repetition](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/css/reduce-style-repetition.md)**: Reduce excessive style repetition by encapsulating complex or dynamic styling logic into reusable functions (such as a function that computes a gradient based on a set of input parameters).
 - **[size-aware-styling](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/css/size-aware-styling.md)**: Build a component whose styles can be conditionally dependent on its own width or height, rather than the width or height of the viewport. For example a card component that can change its layouts depending on how large it is, or a call-to-action button that can conditionally display helper text based on its width.
 - **[style-parent-with-has](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/css/style-parent-with-has.md)**: Style parent elements of a form field (e.g. labels or fieldsets) when the field is invalid.
+- **[usage-aware-component-variations](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/css/usage-aware-component-variations.md)**: Build components that adapt visual logic based on semantic context using CSS container style queries.
 
 <h3>forms</h3>
 
@@ -248,6 +249,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[scroll-progress-indicator](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/scroll-progress-indicator.md)**: Create a scroll progress bar, stepped progress tracker, or any visual affordance that communicates how far through a page or section the user has scrolled.
 - **[scrollability-affordance-hints](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/scrollability-affordance-hints.md)**: Build scroll-shadow overlays, gradient fades, or directional arrow indicators that appear only when there's actually more content to scroll to in that direction.
 - **[shrinking-header-on-scroll](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/shrinking-header-on-scroll.md)**: Smoothly animate a fixed header or full-page cover on scroll to dynamically shrink, gain shadows, and transform its layout over a predefined scroll distance.
+- **[state-aware-sticky-headers](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/state-aware-sticky-headers.md)**: Build sticky section headers or navbars that visually transform when they're actually "stuck" at the top, changing their color scheme or gaining a shadow.
 
 <h3>ui-behaviors</h3>
 
@@ -377,6 +379,22 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 ```
 </details>
 
+<details>
+<summary><b>Grok Build CLI</b></summary>
+
+```shell
+grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
+```
+</details>
+
+<details>
+<summary><b>Kimi Code</b></summary>
+
+```shell
+/plugins install https://github.com/GoogleChrome/modern-web-guidance
+```
+</details>
+
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
@@ -411,16 +429,16 @@ We developed a robust eval harness to ensure that the content is **empirically p
 <!-- INJECT_EVAL_RESULTS_START -->
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
-| Jul 6 | codex_cli (gpt-5.5) | 129 / 1071 | 57% → 84% (**+27pp**) |
-| Jul 6 | claude_code (sonnet-5) | 129 / 1071 | 52% → 87% (**+35pp**) |
-| Jul 6 | antigravity | 129 / 1071 | 54% → 87% (**+33pp**) |
-| Jul 3 | codex_cli (gpt-5.5) | 129 / 1071 | 52% → 78% (**+26pp**) |
-| Jul 3 | claude_code (sonnet-5) | 129 / 1071 | 48% → 82% (**+34pp**) |
-| Jul 1 | claude_code (sonnet-5) | 129 / 1071 | 49% → 84% (**+35pp**) |
-| Jul 1 | antigravity | 129 / 1071 | 53% → 83% (**+30pp**) |
-| Jun 29 | codex_cli (gpt-5.5) | 129 / 1071 | 51% → 78% (**+27pp**) |
-| Jun 29 | claude_code (opus-4-8) | 129 / 1071 | 53% → 88% (**+35pp**) |
-| Jun 29 | antigravity | 129 / 1071 | 50% → 78% (**+28pp**) |
+| Aug 17 | codex_cli (gpt-5.6-sol) | 130 / 1112 | 60% → 83% (**+23pp**) |
+| Aug 17 | claude_code (opus-5) | 130 / 1033 | 58% → 92% (**+34pp**) |
+| Aug 17 | antigravity (gemini-launch-candidate) | 130 / 1112 | 64% → 90% (**+26pp**) |
+| Aug 14 | codex_cli (gpt-5.6-sol) | 132 / 1125 | 60% → 82% (**+22pp**) |
+| Aug 14 | claude_code (opus-5) | 132 / 1036 | 56% → 90% (**+34pp**) |
+| Aug 14 | antigravity (Gemini 3.7 Flash Preview) | 132 / 1125 | 62% → 89% (**+27pp**) |
+| Aug 10 | codex_cli (gpt-5.5) | 130 / 1112 | 55% → 83% (**+28pp**) |
+| Aug 10 | claude_code (sonnet-5) | 130 / 1112 | 54% → 87% (**+33pp**) |
+| Aug 10 | antigravity (gemini-3.6-flash) | 130 / 1112 | 57% → 89% (**+32pp**) |
+| Aug 7 | codex_cli (gpt-5.5) | 130 / 1112 | 56% → 83% (**+27pp**) |
 <!-- INJECT_EVAL_RESULTS_END -->
 
 
@@ -437,7 +455,7 @@ npx modern-web-guidance@latest install --choose
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
 
-Google collects anonymous usage statistics (such as search queries, guide retrievals, and installation) to improve the reliability, relevance, and performance of the tool. You can inspect what is collected in [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/serving/bin/modern-web.ts).
+Google collects anonymous usage information to improve the tool's reliability, relevance, and performance. Collected information includes installation counts, guide retrieval IDs, and CLI tool search queries generated by the agent (e.g. "dark mode scrollbar color-scheme"). Raw user prompts are not collected. You can inspect what is collected in [modern-web.ts](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/serving/bin/modern-web.ts).
 
 > [!TIP]
 > **To Opt-Out:** set the `DISABLE_TELEMETRY=1` env variable in your shell profile (e.g., `.bashrc` or `.zshrc`):

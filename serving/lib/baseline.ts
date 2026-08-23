@@ -1,6 +1,7 @@
-import { features } from 'web-features';
+import { features, groups } from 'web-features';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import type { Browsers, BrowserName } from '@mdn/browser-compat-data';
+import pendingWebFeatures from '../../features/pending-web-features.json' with { type: 'json' };
 
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 
@@ -11,7 +12,7 @@ type Feature = typeof features[string];
  */
 export interface FeatureValidationResult {
   isValid: boolean;
-  error?: 'not_found' | 'invalid_kind';
+  error?: 'not_found' | 'invalid_kind' | 'unregistered_temp_feature';
   kind?: string;
   suggestion?: string;
   errorMessage?: string;
@@ -183,25 +184,68 @@ export function resolveFeatureId(featureId: string): string[] {
  * @returns The feature name
  */
 export function getFeatureName(featureId: string): string {
-  const feature = features[featureId] as Feature;
+  const feature = features[featureId] as Feature | undefined;
+  if (!feature) {
+    if (featureId.startsWith('tmp-')) {
+      return featureId.slice(4);
+    }
+    return featureId;
+  }
   return feature.name;
 }
 
+/** A group plus its ancestors, most-specific first (`scroll-markers` → `["scroll-markers", "scrolling"]`). */
+export function getAncestorGroups(group: string): string[] {
+  const chain: string[] = [];
+  // Walk up the parent chain; the seen-check guards cycles.
+  for (let g: string | undefined = group; g && !chain.includes(g); g = (groups as any)[g]?.parent) {
+    chain.push(g);
+  }
+  return chain;
+}
+
 /**
- * Gets the group tags associated with a feature ID.
+ * A feature's group tags, flattened to include ancestors so owning a parent
+ * group covers its subtree (a `scroll-markers` feature also counts as `scrolling`).
+ * TEMP: child-vs-parent precedence unresolved (first-match, not most-specific).
  */
 export function getFeatureGroups(featureId: string): string[] {
   const feature = features[featureId] as any;
-  if (feature && feature.group) {
-    return Array.isArray(feature.group) ? feature.group : [feature.group];
+  if (!feature || !feature.group) {
+    return [];
   }
-  return [];
+  const immediate: string[] = Array.isArray(feature.group) ? feature.group : [feature.group];
+  return [...new Set(immediate.flatMap(getAncestorGroups))];
+}
+
+/**
+ * Maps each feature belonging to one of `ownedGroups` to the subset of those
+ * groups it belongs to (sorted). Features in none of the groups are omitted.
+ * @param ownedGroups - The group tags to index features by
+ */
+export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.keys(features).sort()
+      .map(fid => [fid, getFeatureGroups(fid).filter(group => ownedGroups.has(group)).sort()])
+      .filter(([, featureGroups]) => featureGroups.length > 0)
+  ) as Record<string, string[]>;
 }
 
 /**
  * Validates a feature ID.
  */
 export function validateFeature(id: string): FeatureValidationResult {
+  if (id.startsWith('tmp-')) {
+    if (!(id in pendingWebFeatures)) {
+      return {
+        isValid: false,
+        error: 'unregistered_temp_feature',
+        errorMessage: `Temporary web feature ID "${id}" is not registered in features/pending-web-features.json. Please register it with an upstream issue link.`
+      };
+    }
+    return { isValid: true };
+  }
+
   const feature = features[id] as Feature | undefined;
   if (!feature) {
     return {

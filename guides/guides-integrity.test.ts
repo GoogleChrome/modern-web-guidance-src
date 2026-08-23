@@ -8,8 +8,7 @@ import { marked } from 'marked';
 
 // Import shared utilities
 import { scanAllGuides, processGuideInventory } from '../lib/guide-validation.ts';
-import { MACRO_PATTERN, replaceMacros } from '../serving/lib/macros.ts';
-import { updateCodeowners } from './generate-codeowners.ts';
+import { replaceMacros, MACRO_PATTERN } from '../serving/lib/macros.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -147,8 +146,33 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
   });
 
-  it('ensures CODEOWNERS and feature-to-groups.generated.json are synchronized with guides/atls.json', () => {
-    const success = updateCodeowners(true);
-    assert.ok(success, 'CODEOWNERS or guides/feature-to-groups.generated.json are out of sync. Please run: node guides/generate-codeowners.ts');
+  it('validates all feature override keys in guides/atls.json', async () => {
+    const { validateFeature } = await import('../serving/lib/baseline.ts');
+    const atlsPath = path.join(import.meta.dirname, 'atls.json');
+    const atlsConfig = JSON.parse(fs.readFileSync(atlsPath, 'utf8'));
+    const featureIds = Object.keys(atlsConfig.web_features || {});
+
+    for (const fid of featureIds) {
+      const res = validateFeature(fid);
+      if (!res.isValid) {
+        assert.fail(`Feature ID "${fid}" in guides/atls.json is invalid: ${res.errorMessage}`);
+      }
+    }
+  });
+
+  it('validates that all features/tmp-*.md files are registered in features/pending-web-features.json', async () => {
+    const { validateFeature } = await import('../serving/lib/baseline.ts');
+    const featuresDir = path.join(REPO_ROOT, 'features');
+    const files = fs.readdirSync(featuresDir);
+
+    for (const file of files) {
+      if (file.startsWith('tmp-') && file.endsWith('.md')) {
+        const tmpId = file.slice(0, -3);
+        const res = validateFeature(tmpId);
+        if (!res.isValid) {
+          assert.fail(`Feature snippet file "features/${file}" uses unregistered feature ID: ${res.errorMessage}`);
+        }
+      }
+    }
   });
 });

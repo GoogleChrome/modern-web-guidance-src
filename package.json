@@ -26,7 +26,6 @@
     "build:mcp": "pnpm --filter serving build",
     "build:megaskill": "pnpm --filter serving build:megaskill",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
-    "generate-negative": "node --env-file=.env --experimental-strip-types guides/negative-gen.ts",
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
     "grade": "node --experimental-strip-types guides/run-grader.ts",
@@ -82,6 +81,6 @@
     "glob": "^13.0.6",
     "mdn-data": "^2.29.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.34.0"
+    "web-features": "^3.35.0"
   }
 }
