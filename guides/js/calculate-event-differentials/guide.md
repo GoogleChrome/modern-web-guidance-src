@@ -34,7 +34,7 @@ const endDateStr = "2025-01-31";
 const endTimeStr = "12:00:00";
 
 const start = Temporal.PlainDate.from(startDateStr).toPlainDateTime(startTimeStr).toZonedDateTime(tz);
-const end = Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(tz)
+const end = Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(tz);
 
 // 3. Calculate difference using .since() and .until()
 // By default, units larger than hours might not wrap automatically.

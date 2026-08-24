@@ -268,8 +268,10 @@
 <span class="keyword">const</span> tz = now.timeZoneId;
 
 <span class="comment">// 2. Parse inputs</span>
-<span class="keyword">const</span> start = Temporal.PlainDateTime.from(<span class="string">"..."</span>).toZonedDateTime(tz);
-<span class="keyword">const</span> end = Temporal.PlainDateTime.from(<span class="string">"..."</span>).toZonedDateTime(tz);
+<span class="keyword">const</span> start =
+Temporal.PlainDate.from(startDateStr).toPlainDateTime(startTimeStr).toZonedDateTime(tz);
+<span class="keyword">const</span> end =
+Temporal.PlainDate.from(endDateStr).toPlainDateTime(endTimeStr).toZonedDateTime(tz);
 
 <span class="comment">// 3. Calculate with .since() and .until()</span>
 <span class="keyword">const</span> timeActive = now.<span class="method">since</span>(start, { largestUnit: <span class="string">'year'</span> });
