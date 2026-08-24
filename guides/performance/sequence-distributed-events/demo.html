@@ -562,9 +562,12 @@
         let diffHtml = '';
         if (index > 0) {
           const prev = sortedEvents[index - 1].temporalInstant;
-          // Calculate difference in nanoseconds using BigInt to prevent safe integer overflow (> 2^53 ns)
-          const nsDiff = evt.temporalInstant.epochNanoseconds - prev.epochNanoseconds;
-          if (nsDiff > 0n) {
+
+          // Calculate difference in nanoseconds
+          const duration = evt.temporalInstant.since(prev);
+          const nsDiff = duration.total('nanoseconds');
+
+          if (nsDiff > 0) {
             diffHtml = `<span class="value-diff">+${nsDiff.toLocaleString()}ns</span>`;
           }
         }
