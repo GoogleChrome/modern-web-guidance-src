@@ -76,20 +76,29 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
   evalSummary: EvalSummaryItem[];
   changedFiles: string[];
 } {
-  // Ensure the previous tag is fetched from the distribution repo
+  // Ensure the previous tag is fetched from the distribution repo (public HTTPS)
   try {
     execSync(
-      `git fetch git@github.com:GoogleChrome/modern-web-guidance.git refs/tags/${previousTag}:refs/tags/dist/${previousTag}`,
+      `git fetch https://github.com/GoogleChrome/modern-web-guidance.git refs/tags/${previousTag}:refs/tags/dist/${previousTag}`,
       { cwd: rootDir, stdio: ['pipe', 'pipe', 'ignore'] }
     );
-  } catch { }
+  } catch {}
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-dist-prev-'));
   try {
-    execSync(`git archive dist/${previousTag} | tar -x -C "${tempDir}"`, {
-      cwd: rootDir,
-      stdio: ['pipe', 'pipe', 'ignore'],
-    });
+    try {
+      execSync(`git archive dist/${previousTag} | tar -x -C "${tempDir}"`, {
+        cwd: rootDir,
+        stdio: ['pipe', 'pipe', 'ignore'],
+      });
+    } catch (archiveErr) {
+      console.warn(`Could not extract dist/${previousTag} for diffing:`, archiveErr);
+      return {
+        guideDiff: '',
+        evalSummary: getLatestEvalResultsSummary(),
+        changedFiles: [],
+      };
+    }
 
     const rawDiff = execSync(
       `git diff --no-index --name-status "${tempDir}" "${publishCliDir}" || true`,
