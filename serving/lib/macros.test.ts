@@ -86,6 +86,149 @@ describe('replaceMacros (Functional with real data)', () => {
     assert.ok(result.includes('Widely available'));
     assert.ok(result.includes('Baseline since'));
   });
+
+  describe('consecutive macro spacing normalization', () => {
+    const gridStatus = replaceMacros('{{ BASELINE_STATUS("grid") }}', 'test.md');
+    const popoverStatus = replaceMacros('{{ BASELINE_STATUS("popover") }}', 'test.md');
+    const webmcpStatus = replaceMacros('{{ BASELINE_STATUS("declarative-webmcp") }}', 'test.md');
+
+    describe('consecutive BASELINE_STATUS calls', () => {
+      it('normalizes 0 blank lines (single newline) to double newlines', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+      });
+
+      it('preserves 1 blank line (double newlines)', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+      });
+
+      it('normalizes 2+ blank lines (multiple newlines) to standard double newlines', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+
+        const content4 = '{{ BASELINE_STATUS("grid") }}\n\n\n\n{{ BASELINE_STATUS("popover") }}';
+        const result4 = replaceMacros(content4, 'test.md');
+        assert.strictEqual(result4, `${gridStatus}\n\n${popoverStatus}`);
+      });
+
+      it('normalizes 3+ consecutive macros with mixed newline counts', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}\n\n\n{{ BASELINE_STATUS("declarative-webmcp") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}\n\n${webmcpStatus}`);
+      });
+
+      it('handles whitespace containing spaces and tabs around newlines', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}  \n  \t  \n  {{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+      });
+
+      it('handles CRLF line endings', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\r\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+      });
+    });
+
+    describe('mixed text and macros', () => {
+      it('normalizes consecutive macros within surrounding text', () => {
+        const content = '## Fallback strategies\n\n{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}\n\nSome explanation.';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `## Fallback strategies\n\n${gridStatus}\n\n${popoverStatus}\n\nSome explanation.`);
+      });
+
+      it('preserves single newlines between text and an isolated macro', () => {
+        const content = 'Before\n{{ BASELINE_STATUS("grid") }}\nAfter';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `Before\n${gridStatus}\nAfter`);
+      });
+
+      it('preserves double newlines between text and an isolated macro', () => {
+        const content = 'Before\n\n{{ BASELINE_STATUS("grid") }}\n\nAfter';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `Before\n\n${gridStatus}\n\nAfter`);
+      });
+
+      it('does not alter spacing for macros separated by intermediate text', () => {
+        const content = '{{ BASELINE_STATUS("grid") }}\n\nMiddle paragraph\n\n{{ BASELINE_STATUS("popover") }}';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `${gridStatus}\n\nMiddle paragraph\n\n${popoverStatus}`);
+      });
+
+      it('does not alter inline macros on the same line without newlines', () => {
+        const content = 'See {{ BASELINE_STATUS("grid") }} and {{ BASELINE_STATUS("popover") }} inline.';
+        const result = replaceMacros(content, 'test.md');
+        assert.strictEqual(result, `See ${gridStatus} and ${popoverStatus} inline.`);
+      });
+    });
+
+    describe('build targets', () => {
+      describe('static-site', () => {
+        it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+          assert.strictEqual(result, '[BASELINE_STATUS: grid]\n\n[BASELINE_STATUS: popover]');
+        });
+
+        it('normalizes consecutive BASELINE_STATUS with 1 blank line', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+          assert.strictEqual(result, '[BASELINE_STATUS: grid]\n\n[BASELINE_STATUS: popover]');
+        });
+
+        it('normalizes consecutive BASELINE_STATUS with multiple blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+          assert.strictEqual(result, '[BASELINE_STATUS: grid]\n\n[BASELINE_STATUS: popover]');
+        });
+
+        it('normalizes consecutive GUIDE_REF calls', () => {
+          const content = '{{ GUIDE_REF("break-up-long-tasks") }}\n{{ GUIDE_REF("forms") }}';
+          const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
+          assert.strictEqual(result, '[break-up-long-tasks](../performance/break-up-long-tasks.md)\n\n[forms](../forms/forms.md)');
+        });
+      });
+
+      describe('skills-cli', () => {
+        it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'skills-cli' });
+          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+        });
+
+        it('normalizes consecutive BASELINE_STATUS with 2+ blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'skills-cli' });
+          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+        });
+
+        it('normalizes consecutive GUIDE_REF calls', () => {
+          const content = '{{ GUIDE_REF("break-up-long-tasks") }}\n{{ GUIDE_REF("forms") }}';
+          const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'skills-cli' });
+          const expected = '`break-up-long-tasks` (via `npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"`)\n\n`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)';
+          assert.strictEqual(result, expected);
+        });
+      });
+
+      describe('local-dev', () => {
+        it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'local-dev' });
+          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+        });
+
+        it('normalizes consecutive BASELINE_STATUS with 2+ blank lines', () => {
+          const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
+          const result = replaceMacros(content, 'test.md', { target: 'local-dev' });
+          assert.strictEqual(result, `${gridStatus}\n\n${popoverStatus}`);
+        });
+      });
+    });
+  });
 });
 
 describe('slugify', () => {

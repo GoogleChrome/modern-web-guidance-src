@@ -2,10 +2,10 @@ import path from "node:path";
 import { validateFeature, getStatusMessage, getFeatureName } from "./baseline.ts";
 import { getGuidesMap, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
 import { resolveInclude } from "./include.ts";
-import { MACRO_PATTERN, parseArguments, getTranscludedFeatureIds } from "./macro-parsing.ts";
+import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, parseArguments, getTranscludedFeatureIds } from "./macro-parsing.ts";
 
 // Re-exported for convenience; the implementations live in the dependency-free ./macro-parsing.ts
-export { MACRO_PATTERN, parseArguments, getTranscludedFeatureIds };
+export { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, parseArguments, getTranscludedFeatureIds };
 
 export type BuildTarget = 'skills-cli' | 'mcp-server' | 'megaskill' | 'local-dev' | 'static-site';
 
@@ -187,7 +187,8 @@ export function validateMacros(content: string, filePath: string): string[] {
 }
 
 export function replaceMacros(content: string, filePath: string, options: { target?: BuildTarget } = {}): string {
-  return processMacros(content, (handler, args, match) => {
+  const normalized = content.replace(CONSECUTIVE_MACRO_PATTERN, "$1\n\n");
+  return processMacros(normalized, (handler, args, match) => {
     try {
       return handler(args, filePath, options);
     } catch (err: any) {
