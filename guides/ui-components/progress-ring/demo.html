@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Progress Ring Demo</title>
+    <style>
+      @layer utility {
+        .visually-hidden:where(:not(:focus-within, :active)) {
+          position: absolute !important;
+          clip-path: inset(50%) !important;
+          overflow: hidden !important;
+          width: 1px !important;
+          height: 1px !important;
+          margin: -1px !important;
+          padding: 0 !important;
+          border: 0 !important;
+          white-space: nowrap !important;
+        }
+      }
+      @layer demo {
+        body {
+          font-family:
+            system-ui,
+            -apple-system,
+            sans-serif;
+          display: grid;
+          place-items: center;
+          min-height: 100vh;
+          margin: 0;
+          background: #f8fafc;
+          color: #1e293b;
+        }
+
+        .container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2rem;
+          padding: 2.5rem;
+          background: white;
+          border-radius: 1.5rem;
+          box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+          width: 100%;
+          max-width: 400px;
+        }
+
+        .controls {
+          display: grid;
+          gap: 1.5rem;
+          width: 100%;
+        }
+
+        .range-control {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          width: 100%;
+        }
+
+        input[type="range"] {
+          width: 100%;
+          cursor: pointer;
+        }
+
+        button {
+          padding: 0.5rem 1rem;
+          border-radius: 0.5rem;
+          border: 1px solid #e2e8f0;
+          background: white;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        button:hover {
+          background: #f1f5f9;
+          border-color: #cbd5e1;
+        }
+      }
+
+      @layer component {
+        @property --value {
+          syntax: "<number>";
+          inherits: true;
+          initial-value: 0;
+        }
+
+        .progress-ring-wrapper {
+          --size: 150px;
+          --thickness: 16px;
+          --track-color: #f1f5f9;
+          --fill-color: #3b82f6;
+
+          position: relative;
+          display: grid;
+          place-items: center;
+          width: var(--size);
+          height: var(--size);
+
+          transition: --value 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .progress-ring {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+
+          background: conic-gradient(
+            var(--fill-color) calc(var(--value) * 1%),
+            var(--track-color) 0
+          );
+
+          mask-image: radial-gradient(
+            transparent calc(50% - var(--thickness)),
+            black calc(50% - var(--thickness) + 0.5px)
+          );
+        }
+
+        .progress-ring-content {
+          position: absolute;
+          font-size: 1.5rem;
+          font-weight: 800;
+          font-variant-numeric: tabular-nums;
+          color: #1e293b;
+        }
+
+        /* Success state example */
+        .progress-ring-wrapper:has(progress[value="100"]) {
+          --fill-color: #10b981;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="progress-ring-wrapper" id="main-wrapper" style="--value: 0">
+        <div class="progress-ring">
+          <progress
+            id="main-progress"
+            value="0"
+            max="100"
+            aria-label="Upload progress"
+            class="visually-hidden"
+          ></progress>
+        </div>
+        <div class="progress-ring-content" id="main-content">0%</div>
+      </div>
+
+      <div class="controls">
+        <div class="range-control">
+          <label for="progress-range">Adjust Progress:</label>
+          <input type="range" id="progress-range" min="0" max="100" value="0" />
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const wrapper = document.getElementById("main-wrapper");
+      const progress = document.getElementById("main-progress");
+      const content = document.getElementById("main-content");
+      const range = document.getElementById("progress-range");
+
+      function update(val) {
+        val = parseInt(val, 10);
+
+        progress.value = val;
+        wrapper.style.setProperty("--value", val);
+        content.textContent = val + "%";
+        range.value = val;
+
+        if (val === 100) {
+          wrapper.setAttribute("data-status", "success");
+        } else {
+          wrapper.removeAttribute("data-status");
+        }
+      }
+
+      range.addEventListener("input", (e) => {
+        update(e.target.value);
+      });
+    </script>
+  </body>
+</html>
