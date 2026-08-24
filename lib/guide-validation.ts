@@ -118,6 +118,7 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateMacros(body, relativePath));
   errors.push(...validateHtmlTags(body, relativePath));
   errors.push(...validateHeadings(body, relativePath, data));
+  errors.push(...validateBaselineClaims(body, relativePath));
 
   return { errors, data, body, filePath };
 }
@@ -768,4 +769,83 @@ export function validateGuideTitle(body: string, relativePath: string, data?: Gu
 
   return errors;
 }
+
+// Patterns that indicate hardcoded Baseline availability claims
+export const HARDCODED_BASELINE_PATTERNS = [
+  /\bBaseline\s+(?:widely|newly|limited)\s+available\b/i,
+  /\bBaseline\s+limited\s+availability\b/i,
+  /\bBaseline\s+\d{4}\b/i,
+  /\bBaseline\s+since\s+(?:[A-Z][a-z]+\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{4})\b/i,
+  /\b(?:is|are|was|were)\s+(?:all\s+)?Baseline\s+(?:widely|newly|limited)\b/i,
+  /\b(?:is|are|was|were)\s+(?:all\s+)?Baseline\b/i,
+  /\bnot\s+(?:yet\s+)?Baseline\s+(?:widely|newly|limited)?\b/i,
+  /\bwidely\s+supported\s*\(\s*Baseline\b/i,
+];
+
+// Patterns that are legitimate non-status uses to ignore even if they match partially
+export const LEGITIMATE_BASELINE_EXCLUSIONS = [
+  /\bbaseline\s+targets?\b/i,
+  /\bbaseline\s+styles?\b/i,
+  /\bbaseline\s+styling\b/i,
+  /\bbaseline\s+performance\b/i,
+  /\bbaseline\s+hygiene\b/i,
+  /\bbaseline\s+metrics?\b/i,
+  /\bbaseline\s+profile\b/i,
+  /\bbaseline\s+support\b/i,
+  /\bbaseline\s+requirement\b/i,
+  /\bbaseline\s+best\s+practices?\b/i,
+  /\balphabetic\s+baseline\b/i,
+  /\btext\s+baseline\b/i,
+  /\bfont\s+baseline\b/i,
+  /\bvertical-align:\s*baseline\b/i,
+  /\balignment-baseline\b/i,
+  /\bdominant-baseline\b/i,
+  /\breset\s+.*\bto\s+(?:its\s+)?baseline\b/i,
+  /\bclone\s+the\s+baseline\b/i,
+  /\bestablish\s+(?:a\s+)?baseline\b/i,
+  /\bmeasure\s+(?:a\s+)?baseline\b/i,
+];
+
+/**
+ * Validates that guide markdown does not contain hardcoded Baseline availability claims,
+ * ensuring authors use {{ BASELINE_STATUS("feature-id") }} macros instead.
+ */
+export function validateBaselineClaims(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const lines = body.split('\n');
+  let inCodeBlock = false;
+
+  // Skip meta skill instructions like modern-web-guidance/SKILL.md which describe baseline policy rules
+  if (relativePath.endsWith('SKILL.md')) {
+    return errors;
+  }
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+      inCodeBlock = !inCodeBlock;
+      return;
+    }
+    if (inCodeBlock) return;
+
+    // Ignore macro lines
+    if (line.includes('{{ BASELINE_STATUS') || line.includes('{{ FEATURE')) return;
+
+    // Check for hardcoded baseline claim
+    for (const pattern of HARDCODED_BASELINE_PATTERNS) {
+      if (pattern.test(line)) {
+        const isExcluded = LEGITIMATE_BASELINE_EXCLUSIONS.some(ex => ex.test(line));
+        if (!isExcluded) {
+          errors.push(
+            `Hardcoded Baseline availability claim found on line ${idx + 1} in ${relativePath}: "${trimmed}". Use {{ BASELINE_STATUS("feature-id") }} macro instead.`
+          );
+          break;
+        }
+      }
+    }
+  });
+
+  return errors;
+}
+
 

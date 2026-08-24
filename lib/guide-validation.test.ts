@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 
 describe('parseExpectations', () => {
@@ -374,4 +374,110 @@ https://webstatus.dev/features/tmp-custom-feature
     assert.ok(fids.includes('tmp-custom-feature'));
   });
 });
+
+describe('validateBaselineClaims', () => {
+  test('flags hardcoded baseline availability claims', () => {
+    const cases = [
+      'The `<details>` element is Baseline Widely available, so a fallback strategy is not required.',
+      'The `hidden="until-found"` attribute is not yet Baseline Widely available, but it can be safely used.',
+      'The `:user-invalid` pseudo-class is widely supported (Baseline 2023), but older browsers need a fallback.',
+      'Speculative loading is a new feature (Baseline limited availability).',
+      'The mechanics are all Baseline Widely Available, so the gesture works broadly.',
+      'The features are Baseline newly available across modern browsers.',
+      'The capabilities have been Baseline since April 2024.',
+      'Most features used in this guide are Baseline Widely available.',
+      'Feature overscroll-behavior was Baseline Widely Available but no longer is.',
+    ];
+
+    for (const text of cases) {
+      const errors = validateBaselineClaims(text, 'guides/test/guide.md');
+      assert.strictEqual(errors.length, 1, `Expected "${text}" to produce 1 error`);
+      assert.ok(errors[0].includes('Hardcoded Baseline availability claim found'));
+      assert.ok(errors[0].includes('Use {{ BASELINE_STATUS("feature-id") }} macro instead.'));
+    }
+  });
+
+  test('allows macros without error', () => {
+    const body = `
+## Fallback strategies
+
+{{ BASELINE_STATUS("speculation-rules") }}
+
+{{ FEATURE_FALLBACKS("user-pseudos") }}
+
+{{ BASELINE_STATUS("scroll-snap") }}
+`;
+    const errors = validateBaselineClaims(body, 'guides/test/guide.md');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('allows legitimate non-status baseline prose and CSS properties', () => {
+    const validProse = [
+      'A fallback strategy is required if `fetchLater()` does not meet your Baseline target.',
+      'If your Baseline target does not include `scrollbar-width`, the row still scrolls.',
+      'If a parallax fallback is required for older baseline targets, attach a `scroll` listener.',
+      'Reach for native masonry only when it ships in your Baseline target.',
+      'Use `@starting-style` to define the baseline styles the browser should compute.',
+      'Phase 1 and 2 establish baseline hygiene and data gathering.',
+      'Trim the text box to the cap-height and the alphabetic baseline.',
+      'Reset a task to its baseline configuration.',
+      'Clone the baseline session for new tasks.',
+      'Until there is Baseline support for container style queries, use selectors.',
+    ];
+
+    for (const text of validProse) {
+      const errors = validateBaselineClaims(text, 'guides/test/guide.md');
+      assert.deepStrictEqual(errors, [], `Expected legitimate prose "${text}" to have no errors`);
+    }
+  });
+
+  test('ignores code blocks with baseline mentions or CSS baseline properties', () => {
+    const body = `
+\`\`\`css
+.item {
+  vertical-align: baseline;
+  alignment-baseline: baseline;
+}
+\`\`\`
+
+\`\`\`markdown
+The <details> element is Baseline Widely available.
+\`\`\`
+`;
+    const errors = validateBaselineClaims(body, 'guides/test/guide.md');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('ignores SKILL.md meta policy instructions', () => {
+    const body = `* **Default Behavior**: All guides assume **Baseline Widely available** features are safe to use without fallbacks.`;
+    const errors = validateBaselineClaims(body, 'guides/modern-web-guidance/SKILL.md');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('validateGuide integrates baseline claims validation', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-baseline-test-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+---
+
+# Test Guide
+
+The \`<details>\` element is Baseline Widely available.
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.ok(result.errors.some(e => e.includes('Hardcoded Baseline availability claim found')));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
 
