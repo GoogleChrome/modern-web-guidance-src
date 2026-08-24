@@ -15,14 +15,17 @@ export interface ReleaseNotesOptions {
 }
 
 export interface EvalSummaryItem {
-  date: string;
+  testId?: string;
+  timestamp?: string;
   agent: string;
+  serving?: string;
   model: string;
-  tasksEvaluated: number;
-  totalAssertions: number;
-  unguidedPassingPct: number;
-  guidedPassingPct: number;
-  deltaPct: number;
+  taskCount: number;
+  assertionCount: number;
+  unguidedPassRate: number;
+  guidedPassRate: number;
+  skillVersion?: string;
+  cliVersion?: string;
 }
 
 const GH_PUBLISH_PATTERNS = [
@@ -46,7 +49,7 @@ export function getPreviousTag(targetTag: string): string {
     if (targetIndex !== -1 && targetIndex + 1 < tags.length) {
       return tags[targetIndex + 1];
     }
-  } catch {}
+  } catch { }
 
   const output = execSync(
     `git tag -l "v*.*.*" --sort=-v:refname --merged ${targetTag}`,
@@ -79,7 +82,7 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
       `git fetch git@github.com:GoogleChrome/modern-web-guidance.git refs/tags/${previousTag}:refs/tags/dist/${previousTag}`,
       { cwd: rootDir, stdio: ['pipe', 'pipe', 'ignore'] }
     );
-  } catch {}
+  } catch { }
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-dist-prev-'));
   try {
@@ -278,11 +281,14 @@ export function generateFallbackReleaseNotes(
 
   if (evalSummary.length > 0) {
     sections.push('### 📊 Benchmark Evaluations\n');
-    sections.push('* **Updated Eval Benchmarks**: Latest multi-agent evaluation benchmark results:');
+    sections.push('| Agent + Model | Tasks / Assertions | Unguided → Guided Pass Rate | Uplift |');
+    sections.push('| :--- | :---: | :---: | :---: |');
     for (const item of evalSummary) {
       const uplift = item.guidedPassRate - item.unguidedPassRate;
       const upliftStr = uplift >= 0 ? `+${uplift}pp` : `${uplift}pp`;
-      sections.push(`  * **${item.agent} (${item.model})**: ${item.unguidedPassRate}% → ${item.guidedPassRate}% (**${upliftStr}** uplift)`);
+      sections.push(
+        `| **${item.agent}** (${item.model}) | ${item.taskCount} / ${item.assertionCount} | ${item.unguidedPassRate}% → **${item.guidedPassRate}%** | **${upliftStr}** |`
+      );
     }
     sections.push('');
   }
@@ -345,7 +351,7 @@ ${guideDiff.substring(0, 15000)}
      | Agent + Model | Tasks / Assertions | Unguided → Guided Pass Rate | Uplift |
      | :--- | :---: | :---: | :---: |
      | **claude_code** (opus-5) | 130 / 1033 | 58% → **92%** | **+34pp** |
-     | **antigravity** (gemini-launch-candidate) | 130 / 1112 | 64% → **90%** | **+26pp** |
+     | **antigravity** (Gemini 3.7 Flash Preview) | 130 / 1112 | 64% → **90%** | **+26pp** |
      | **codex_cli** (gpt-5.6-sol) | 130 / 1112 | 60% → **83%** | **+23pp** |
    - Use the exact agent and model names provided in the Evaluation Benchmarks data.
    - Always express uplift in percentage points (\`+XXpp\`).
