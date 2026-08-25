@@ -429,16 +429,16 @@ We developed a robust eval harness to ensure that the content is **empirically p
 <!-- INJECT_EVAL_RESULTS_START -->
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
+| Aug 24 | claude_code (opus-5) | 131 / 1033 | 57% → 92% (**+35pp**) |
+| Aug 24 | antigravity (gemini-3.7-flash-medium) | 131 / 1118 | 60% → 89% (**+29pp**) |
+| Aug 21 | codex_cli (gpt-5.6-sol) | 131 / 1118 | 60% → 81% (**+21pp**) |
+| Aug 21 | claude_code (opus-5) | 131 / 1086 | 57% → 90% (**+33pp**) |
+| Aug 21 | antigravity (gemini-3.7-flash-medium) | 131 / 1118 | 60% → 90% (**+30pp**) |
 | Aug 17 | codex_cli (gpt-5.6-sol) | 130 / 1112 | 60% → 83% (**+23pp**) |
 | Aug 17 | claude_code (opus-5) | 130 / 1033 | 58% → 92% (**+34pp**) |
-| Aug 17 | antigravity (gemini-launch-candidate) | 130 / 1112 | 64% → 90% (**+26pp**) |
+| Aug 17 | antigravity (gemini-3.7-flash-medium) | 130 / 1112 | 64% → 90% (**+26pp**) |
 | Aug 14 | codex_cli (gpt-5.6-sol) | 132 / 1125 | 60% → 82% (**+22pp**) |
 | Aug 14 | claude_code (opus-5) | 132 / 1036 | 56% → 90% (**+34pp**) |
-| Aug 14 | antigravity (Gemini 3.7 Flash Preview) | 132 / 1125 | 62% → 89% (**+27pp**) |
-| Aug 10 | codex_cli (gpt-5.5) | 130 / 1112 | 55% → 83% (**+28pp**) |
-| Aug 10 | claude_code (sonnet-5) | 130 / 1112 | 54% → 87% (**+33pp**) |
-| Aug 10 | antigravity (gemini-3.6-flash) | 130 / 1112 | 57% → 89% (**+32pp**) |
-| Aug 7 | codex_cli (gpt-5.5) | 130 / 1112 | 56% → 83% (**+27pp**) |
 <!-- INJECT_EVAL_RESULTS_END -->
 
 
