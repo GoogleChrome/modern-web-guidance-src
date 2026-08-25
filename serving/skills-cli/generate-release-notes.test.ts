@@ -10,6 +10,7 @@ import {
   parseMarkdownBullets,
   isPatchOnlyVersionBump,
   isJsonOnlyVersionBump,
+  isPluginFile,
   type EvalSummaryItem,
 } from './generate-release-notes.ts';
 
@@ -96,12 +97,20 @@ test('getUniqueGuideNames deduplicates guide paths, includes SKILL.md, and filte
   ]);
 });
 
+test('isPluginFile correctly identifies plugin and manifest files', () => {
+  assert.strictEqual(isPluginFile('.claude-plugin/plugin.json'), true);
+  assert.strictEqual(isPluginFile('.grok-plugin/marketplace.json'), true);
+  assert.strictEqual(isPluginFile('gemini-extension.json'), true);
+  assert.strictEqual(isPluginFile('skills/modern-web-guidance/SKILL.md'), false);
+  assert.strictEqual(isPluginFile('README.md'), false);
+});
+
 test('buildReleaseNotesMarkdown omits Guidance and Ecosystem sections when empty', () => {
   const notes = buildReleaseNotesMarkdown({
     previousTag: 'v0.0.1',
     newVersion: '0.0.2',
     guideBullets: [],
-    pluginFiles: [],
+    ecosystemBullets: [],
     evalSummary: [
       {
         agent: 'claude_code',
@@ -128,7 +137,9 @@ test('buildReleaseNotesMarkdown constructs deterministic structure with custom b
       '* Updated the **Dynamic Sibling Styling** guide with cross-browser support details.',
       '* Added the **Container Queries** guide for responsive widget design.',
     ],
-    pluginFiles: ['.claude-plugin/plugin.json'],
+    ecosystemBullets: [
+      '* Added support for the **Grok** plugin marketplace.',
+    ],
     evalSummary: [
       {
         agent: 'claude_code',
@@ -146,15 +157,16 @@ test('buildReleaseNotesMarkdown constructs deterministic structure with custom b
   assert.ok(notes.includes('* Updated the **Dynamic Sibling Styling** guide with cross-browser support details.'));
   assert.ok(notes.includes('* Added the **Container Queries** guide for responsive widget design.'));
   assert.ok(notes.includes('### 🚀 Agent Ecosystem'));
+  assert.ok(notes.includes('* Added support for the **Grok** plugin marketplace.'));
   assert.ok(notes.includes('### 📊 Benchmark Evaluations'));
   assert.ok(notes.includes('| **claude_code** (opus-5) | 130 / 1033 | 58% → **92%** | **+34pp** |'));
   assert.ok(notes.endsWith('**Full Changelog**: https://github.com/GoogleChrome/modern-web-guidance/compare/v0.0.1...v0.0.2'));
 });
 
-test('generateFallbackReleaseNotes formats guide updates with correct guideName from dist path', () => {
+test('generateFallbackReleaseNotes formats guide and ecosystem updates', () => {
   const changedFiles = [
     'skills/modern-web-guidance/guides/css/size-aware-styling.md',
-    'skills/modern-web-guidance/guides/javascript/async-clipboard.md',
+    '.grok-plugin/marketplace.json',
   ];
   const evalSummary: EvalSummaryItem[] = [];
 
@@ -163,7 +175,6 @@ test('generateFallbackReleaseNotes formats guide updates with correct guideName 
   assert.ok(notes.includes('# Release Notes: `v0.1.1`'));
   assert.ok(notes.includes('### 📖 Guidance & Web Platform Updates'));
   assert.ok(notes.includes('* **size-aware-styling**: Updates and improvements to web platform guidance.'));
-  assert.ok(notes.includes('* **async-clipboard**: Updates and improvements to web platform guidance.'));
-  assert.ok(!notes.includes('**css**'));
-  assert.ok(!notes.includes('**javascript**'));
+  assert.ok(notes.includes('### 🚀 Agent Ecosystem'));
+  assert.ok(notes.includes('* **.grok-plugin/marketplace.json**: Updates to agent plugin configuration.'));
 });

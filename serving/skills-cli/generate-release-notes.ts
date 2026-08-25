@@ -101,11 +101,33 @@ export function isPatchOnlyVersionBump(patch?: string): boolean {
 }
 
 /**
+ * Predicate to determine if a changed file is a guidance document.
+ */
+export function isGuideFile(filePath: string): boolean {
+  if (!filePath.endsWith('.md')) return false;
+  if (filePath.endsWith('SKILL.md')) return true;
+  return filePath.includes('guide.md') || filePath.includes('/guides/');
+}
+
+/**
+ * Predicate to determine if a changed file is an agent plugin or manifest.
+ */
+export function isPluginFile(filePath: string): boolean {
+  return (
+    filePath.includes('-plugin') ||
+    filePath.includes('plugin.json') ||
+    filePath.includes('marketplace.json') ||
+    filePath.includes('gemini-extension.json')
+  );
+}
+
+/**
  * Extracts exact differences between the previous release and the newly built distribution payload.
  * Eliminates all heuristics by diffing the actual compiled output (dist/skills-cli).
  */
 export function getExactDistributionDiff(previousTag: string, publishCliDir: string): {
   guideDiff: string;
+  pluginDiff: string;
   evalSummary: EvalSummaryItem[];
   changedFiles: string[];
 } {
@@ -128,6 +150,7 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
       console.warn(`Could not extract dist/${previousTag} for diffing:`, archiveErr);
       return {
         guideDiff: '',
+        pluginDiff: '',
         evalSummary: getLatestEvalResultsSummary(),
         changedFiles: [],
       };
@@ -138,9 +161,13 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
       { encoding: 'utf8', cwd: rootDir }
     );
 
-    const sections: string[] = [];
+    const guideSections: string[] = [];
     const addedGuides: string[] = [];
-    const modifiedPatches: string[] = [];
+    const modifiedGuidePatches: string[] = [];
+
+    const pluginSections: string[] = [];
+    const modifiedPluginPatches: string[] = [];
+
     const changedFiles: string[] = [];
 
     for (const line of rawDiff.trim().split('\n')) {
@@ -182,37 +209,52 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
               { encoding: 'utf8', cwd: rootDir }
             );
             if (fileDiff) {
-              modifiedPatches.push(`--- ${relPath} (${status}) ---\n${fileDiff}`);
+              modifiedGuidePatches.push(`--- ${relPath} (${status}) ---\n${fileDiff}`);
               changedFiles.push(relPath);
             }
           } else if (fs.existsSync(newFile) && !fs.lstatSync(newFile).isSymbolicLink()) {
-            modifiedPatches.push(`--- ${relPath} (Added) ---`);
+            modifiedGuidePatches.push(`--- ${relPath} (Added) ---`);
             changedFiles.push(relPath);
           }
         }
-      } else {
-        if (status !== 'D') {
-          if (relPath.endsWith('.json')) {
-            const oldFile = path.join(tempDir, relPath);
-            const newFile = path.join(publishCliDir, relPath);
-            if (fs.existsSync(oldFile) && fs.existsSync(newFile) && isJsonOnlyVersionBump(oldFile, newFile)) {
-              continue;
-            }
+      } else if (isPluginFile(relPath) && status !== 'D') {
+        const oldFile = path.join(tempDir, relPath);
+        const newFile = path.join(publishCliDir, relPath);
+        if (relPath.endsWith('.json') && fs.existsSync(oldFile) && fs.existsSync(newFile) && isJsonOnlyVersionBump(oldFile, newFile)) {
+          continue;
+        }
+        if (fs.existsSync(oldFile) && fs.existsSync(newFile)) {
+          const fileDiff = execSync(
+            `git diff --no-index -u "${oldFile}" "${newFile}" || true`,
+            { encoding: 'utf8', cwd: rootDir }
+          );
+          if (fileDiff) {
+            modifiedPluginPatches.push(`--- ${relPath} (${status}) ---\n${fileDiff}`);
+            changedFiles.push(relPath);
           }
+        } else if (fs.existsSync(newFile)) {
+          modifiedPluginPatches.push(`--- ${relPath} (Added) ---`);
           changedFiles.push(relPath);
         }
+      } else if (status !== 'D') {
+        changedFiles.push(relPath);
       }
     }
 
     if (addedGuides.length > 0) {
-      sections.push(`### 🆕 Newly Added Guides:\n${addedGuides.join('\n\n')}`);
+      guideSections.push(`### 🆕 Newly Added Guides:\n${addedGuides.join('\n\n')}`);
     }
-    if (modifiedPatches.length > 0) {
-      sections.push(`### 🔄 Modified Files & Content Diff:\n${modifiedPatches.join('\n\n')}`);
+    if (modifiedGuidePatches.length > 0) {
+      guideSections.push(`### 🔄 Modified Files & Content Diff:\n${modifiedGuidePatches.join('\n\n')}`);
+    }
+
+    if (modifiedPluginPatches.length > 0) {
+      pluginSections.push(`### 🚀 Agent Plugin Changes:\n${modifiedPluginPatches.join('\n\n')}`);
     }
 
     return {
-      guideDiff: sections.join('\n\n'),
+      guideDiff: guideSections.join('\n\n'),
+      pluginDiff: pluginSections.join('\n\n'),
       evalSummary: getLatestEvalResultsSummary(),
       changedFiles,
     };
@@ -251,6 +293,7 @@ export function getLatestEvalResultsSummary(): EvalSummaryItem[] {
  */
 export function getConsumerFacingDiff(previousTag: string, targetTag: string): {
   guideDiff: string;
+  pluginDiff: string;
   evalSummary: EvalSummaryItem[];
   changedFiles: string[];
 } {
@@ -260,13 +303,17 @@ export function getConsumerFacingDiff(previousTag: string, targetTag: string): {
   ).trim();
 
   let guideDiff = '';
+  let pluginDiff = '';
   const changedFiles: string[] = [];
 
   const compareData = JSON.parse(ghOutput);
   if (compareData.files && Array.isArray(compareData.files)) {
-    const sections: string[] = [];
+    const guideSections: string[] = [];
     const addedGuides: string[] = [];
-    const modifiedPatches: string[] = [];
+    const modifiedGuidePatches: string[] = [];
+
+    const pluginSections: string[] = [];
+    const modifiedPluginPatches: string[] = [];
 
     for (const file of compareData.files) {
       if (isGuideFile(file.filename)) {
@@ -275,40 +322,41 @@ export function getConsumerFacingDiff(previousTag: string, targetTag: string): {
           addedGuides.push(`- **${guideName}** (Path: \`${file.filename}\`)`);
           changedFiles.push(file.filename);
         } else if (file.patch) {
-          modifiedPatches.push(`--- ${file.filename} (${file.status}) ---\n${file.patch}`);
+          modifiedGuidePatches.push(`--- ${file.filename} (${file.status}) ---\n${file.patch}`);
           changedFiles.push(file.filename);
         }
-      } else {
+      } else if (isPluginFile(file.filename) && file.status !== 'removed') {
         if (file.filename.endsWith('.json') && isPatchOnlyVersionBump(file.patch)) {
           continue;
         }
-        if (file.status !== 'removed') {
-          changedFiles.push(file.filename);
+        if (file.patch) {
+          modifiedPluginPatches.push(`--- ${file.filename} (${file.status}) ---\n${file.patch}`);
+        } else if (file.status === 'added') {
+          modifiedPluginPatches.push(`--- ${file.filename} (Added) ---`);
         }
+        changedFiles.push(file.filename);
+      } else if (file.status !== 'removed') {
+        changedFiles.push(file.filename);
       }
     }
 
     if (addedGuides.length > 0) {
-      sections.push(`### 🆕 Newly Added Guides:\n${addedGuides.join('\n')}`);
+      guideSections.push(`### 🆕 Newly Added Guides:\n${addedGuides.join('\n')}`);
     }
-    if (modifiedPatches.length > 0) {
-      sections.push(`### 🔄 Modified Files & Content Diff:\n${modifiedPatches.join('\n\n')}`);
+    if (modifiedGuidePatches.length > 0) {
+      guideSections.push(`### 🔄 Modified Files & Content Diff:\n${modifiedGuidePatches.join('\n\n')}`);
     }
 
-    guideDiff = sections.join('\n\n');
+    if (modifiedPluginPatches.length > 0) {
+      pluginSections.push(`### 🚀 Agent Plugin Changes:\n${modifiedPluginPatches.join('\n\n')}`);
+    }
+
+    guideDiff = guideSections.join('\n\n');
+    pluginDiff = pluginSections.join('\n\n');
   }
 
   const evalSummary = getLatestEvalResultsSummary();
-  return { guideDiff, evalSummary, changedFiles };
-}
-
-/**
- * Predicate to determine if a changed file is a guidance document.
- */
-export function isGuideFile(filePath: string): boolean {
-  if (!filePath.endsWith('.md')) return false;
-  if (filePath.endsWith('SKILL.md')) return true;
-  return filePath.includes('guide.md') || filePath.includes('/guides/');
+  return { guideDiff, pluginDiff, evalSummary, changedFiles };
 }
 
 /**
@@ -366,10 +414,10 @@ export function buildReleaseNotesMarkdown(opts: {
   previousTag: string;
   newVersion: string;
   guideBullets: string[];
-  pluginFiles: string[];
+  ecosystemBullets: string[];
   evalSummary: EvalSummaryItem[];
 }): string {
-  const { previousTag, newVersion, guideBullets, pluginFiles, evalSummary } = opts;
+  const { previousTag, newVersion, guideBullets, ecosystemBullets, evalSummary } = opts;
   const sections: string[] = [`# Release Notes: \`v${newVersion}\`\n`];
 
   if (guideBullets.length > 0) {
@@ -378,9 +426,10 @@ export function buildReleaseNotesMarkdown(opts: {
     sections.push('');
   }
 
-  if (pluginFiles.length > 0) {
+  if (ecosystemBullets.length > 0) {
     sections.push('### 🚀 Agent Ecosystem\n');
-    sections.push('* Updates to agent plugin configurations and manifests.\n');
+    sections.push(ecosystemBullets.join('\n'));
+    sections.push('');
   }
 
   if (evalSummary.length > 0) {
@@ -413,17 +462,21 @@ export function generateFallbackReleaseNotes(
   changedFiles: string[]
 ): string {
   const uniqueGuideNames = getUniqueGuideNames(changedFiles);
-  const pluginFiles = changedFiles.filter(f => f.includes('-plugin') || f.includes('plugin.json') || f.includes('gemini-extension.json'));
+  const pluginFiles = changedFiles.filter(isPluginFile);
 
   const guideBullets = uniqueGuideNames.map(
     guideName => `* **${guideName}**: Updates and improvements to web platform guidance.`
+  );
+
+  const ecosystemBullets = pluginFiles.map(
+    file => `* **${file}**: Updates to agent plugin configuration.`
   );
 
   return buildReleaseNotesMarkdown({
     previousTag,
     newVersion,
     guideBullets,
-    pluginFiles,
+    ecosystemBullets,
     evalSummary,
   });
 }
@@ -434,22 +487,28 @@ export function generateFallbackReleaseNotes(
  */
 export async function generateGuideSummariesWithGemini(opts: {
   guideDiff: string;
+  guideNames?: string[];
   expectedGuideCount: number;
   apiKey: string;
   model: string;
 }): Promise<string[] | null> {
-  const { guideDiff, expectedGuideCount, apiKey, model } = opts;
+  const { guideDiff, guideNames = [], expectedGuideCount, apiKey, model } = opts;
   if (!guideDiff.trim() || expectedGuideCount === 0) {
     return [];
   }
 
-  const prompt = `You are writing concise release note bullet points for guidance changes in GoogleChrome/modern-web-guidance.
+  const guidesListSection =
+    guideNames.length > 0
+      ? `\n### Changed Guides to Summarize (${expectedGuideCount} total):\n${guideNames.map(g => `- ${g}`).join('\n')}\n`
+      : '';
 
+  const prompt = `You are writing concise release note bullet points for guidance changes in GoogleChrome/modern-web-guidance.
+${guidesListSection}
 ### Consumer-facing Guide Changes / Diff:
 ${guideDiff}
 
 ### Core Formatting Rules:
-1. Output exactly ${expectedGuideCount} Markdown bullet points (starting with '* ' or '- ').
+1. Output exactly ${expectedGuideCount} Markdown bullet points (starting with '* ' or '- ')${guideNames.length > 0 ? ', one for each changed guide listed above' : ''}.
 2. Each bullet must describe one modified or new guide in a single concise sentence or short paragraph explaining the use case or key platform evolution.
 3. Keep each bullet point on a single line without manual line breaks.
 4. Bold the title or subject of the guide in each bullet (e.g., "* Updated the **Dynamic Sibling Styling** guide to ...").
@@ -508,6 +567,88 @@ ${guideDiff}
 }
 
 /**
+ * Uses Gemini to generate bullet summaries for agent ecosystem / plugin changes.
+ * Returns null if the API call fails or if output fails validation.
+ */
+export async function generateEcosystemSummariesWithGemini(opts: {
+  pluginDiff: string;
+  pluginFiles: string[];
+  apiKey: string;
+  model: string;
+}): Promise<string[] | null> {
+  const { pluginDiff, pluginFiles, apiKey, model } = opts;
+  if (!pluginDiff.trim() || pluginFiles.length === 0) {
+    return [];
+  }
+
+  const prompt = `You are writing concise release note bullet points for agent ecosystem and plugin marketplace changes in GoogleChrome/modern-web-guidance.
+
+### Changed Plugin Files:
+${pluginFiles.map(p => `- ${p}`).join('\n')}
+
+### Agent Plugin Diff / Changes:
+${pluginDiff}
+
+### Core Formatting Rules:
+1. Output concise Markdown bullet points (starting with '* ' or '- ') describing what was added or updated across the affected agent platforms, IDEs, or marketplaces.
+2. Bold the name of each agent platform, IDE, or marketplace (e.g., "* Added support for the **Grok** plugin marketplace.").
+3. Output at least 1 and at most ${pluginFiles.length} bullet points.
+4. Do NOT mention rote version bumps.
+5. Keep each bullet point on a single line without manual line breaks.
+6. Do NOT include headings, sections, or preamble. Output ONLY the bullet points.`;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(`Gemini API error (${response.status}): ${errorText}`);
+      return null;
+    }
+
+    const data = (await response.json()) as any;
+    const text: string | undefined = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!text) {
+      console.warn('Empty response from Gemini API.');
+      return null;
+    }
+
+    const cleanedText: string = text
+      .replace(/^```(?:markdown|md)?\r?\n/, '')
+      .replace(/\r?\n```$/, '')
+      .trim();
+
+    const bullets = parseMarkdownBullets(cleanedText);
+
+    // Validation: ensure at least 1 bullet and at most pluginFiles.length bullets
+    if (bullets.length === 0 || bullets.length > pluginFiles.length) {
+      console.warn(
+        `Gemini ecosystem summary validation failed: received ${bullets.length} bullets for ${pluginFiles.length} plugin files.`
+      );
+      return null;
+    }
+
+    return bullets;
+  } catch (err) {
+    console.warn('Failed to generate ecosystem summaries with Gemini:', err);
+    return null;
+  }
+}
+
+/**
  * Generates consumer-facing release notes using Gemini for guide summaries
  * while deterministically building structure, headings, tables, and changelogs.
  */
@@ -521,46 +662,63 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
     model = process.env.GEMINI_MODEL || 'gemini-3.7-flash',
   } = opts;
 
-  const { guideDiff, evalSummary, changedFiles } =
+  const { guideDiff, pluginDiff, evalSummary, changedFiles } =
     publishCliDir && fs.existsSync(publishCliDir)
       ? getExactDistributionDiff(previousTag, publishCliDir)
       : getConsumerFacingDiff(previousTag, target);
 
   const uniqueGuideNames = getUniqueGuideNames(changedFiles);
-  const pluginFiles = changedFiles.filter(f => f.includes('-plugin') || f.includes('plugin.json') || f.includes('gemini-extension.json'));
-
-  if (uniqueGuideNames.length === 0) {
-    return buildReleaseNotesMarkdown({
-      previousTag,
-      newVersion,
-      guideBullets: [],
-      pluginFiles,
-      evalSummary,
-    });
-  }
+  const pluginFiles = changedFiles.filter(isPluginFile);
 
   if (!apiKey) {
-    console.log('No GEMINI_API_KEY found. Generating fallback release notes...');
+    if (uniqueGuideNames.length > 0 || pluginFiles.length > 0) {
+      console.log('No GEMINI_API_KEY found. Generating fallback release notes...');
+    }
     return generateFallbackReleaseNotes(previousTag, newVersion, evalSummary, changedFiles);
   }
 
-  const guideBullets = await generateGuideSummariesWithGemini({
-    guideDiff,
-    expectedGuideCount: uniqueGuideNames.length,
-    apiKey,
-    model,
-  });
+  let guideBullets: string[] = [];
+  if (uniqueGuideNames.length > 0) {
+    const generatedGuideBullets = await generateGuideSummariesWithGemini({
+      guideDiff,
+      guideNames: uniqueGuideNames,
+      expectedGuideCount: uniqueGuideNames.length,
+      apiKey,
+      model,
+    });
+    if (generatedGuideBullets) {
+      guideBullets = generatedGuideBullets;
+    } else {
+      console.log('Falling back to default guide release notes generator...');
+      guideBullets = uniqueGuideNames.map(
+        guideName => `* **${guideName}**: Updates and improvements to web platform guidance.`
+      );
+    }
+  }
 
-  if (!guideBullets) {
-    console.log('Falling back to default guide release notes generator...');
-    return generateFallbackReleaseNotes(previousTag, newVersion, evalSummary, changedFiles);
+  let ecosystemBullets: string[] = [];
+  if (pluginFiles.length > 0) {
+    const generatedEcosystemBullets = await generateEcosystemSummariesWithGemini({
+      pluginDiff,
+      pluginFiles,
+      apiKey,
+      model,
+    });
+    if (generatedEcosystemBullets) {
+      ecosystemBullets = generatedEcosystemBullets;
+    } else {
+      console.log('Falling back to default ecosystem release notes generator...');
+      ecosystemBullets = pluginFiles.map(
+        file => `* **${file}**: Updates to agent plugin configuration.`
+      );
+    }
   }
 
   return buildReleaseNotesMarkdown({
     previousTag,
     newVersion,
     guideBullets,
-    pluginFiles,
+    ecosystemBullets,
     evalSummary,
   });
 }
