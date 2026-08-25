@@ -747,20 +747,29 @@ export function extractH1Heading(markdown: string): string | undefined {
 
 export const VAGUE_H1_TITLES = new Set(['overview', 'introduction', 'guide', 'title']);
 
+export const REDUNDANT_GUIDE_SUFFIX_PATTERN = /\bguide\s*$/i;
+
 /**
- * Validates headings in a guide body, flagging vague top-level H1 headings.
+ * Validates headings in a guide body, flagging vague top-level H1 headings and redundant trailing "Guide".
  */
 export function validateHeadings(body: string, relativePath: string, data?: GuideData): string[] {
   const errors: string[] = [];
 
-  if (data?.title && VAGUE_H1_TITLES.has(String(data.title).trim().toLowerCase())) {
-    errors.push(`Vague title "${data.title}" in frontmatter for ${relativePath}. Use a descriptive title instead.`);
+  if (data?.title) {
+    const titleStr = String(data.title).trim();
+    if (VAGUE_H1_TITLES.has(titleStr.toLowerCase())) {
+      errors.push(`Vague title "${data.title}" in frontmatter for ${relativePath}. Use a descriptive title instead.`);
+    } else if (REDUNDANT_GUIDE_SUFFIX_PATTERN.test(titleStr)) {
+      errors.push(`Redundant trailing "Guide" in frontmatter title "${data.title}" for ${relativePath}. Strip the trailing "Guide".`);
+    }
   }
 
   const headings = extractAllH1Headings(body);
   for (const title of headings) {
     if (VAGUE_H1_TITLES.has(title.toLowerCase())) {
       errors.push(`Vague H1 heading "# ${title}" in ${relativePath}. Use a descriptive title instead.`);
+    } else if (REDUNDANT_GUIDE_SUFFIX_PATTERN.test(title)) {
+      errors.push(`Redundant trailing "Guide" in H1 heading "# ${title}" for ${relativePath}. Strip the trailing "Guide".`);
     }
   }
 

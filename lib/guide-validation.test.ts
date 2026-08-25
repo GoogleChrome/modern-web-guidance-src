@@ -190,7 +190,7 @@ describe('validateHeadings and validateGuideTitle', () => {
   });
 
   test('allows depth > 1 headings like ## Overview or ### Introduction without errors', () => {
-    const body = `# Valid Feature Guide
+    const body = `# Valid Feature Heading
 
 ## Overview
 Some overview content.
@@ -203,6 +203,86 @@ Some guide steps.
 `;
     const errors = validateHeadings(body, 'test.md');
     assert.deepStrictEqual(errors, []);
+  });
+
+  test('disallows H1 headings ending with redundant "Guide"', () => {
+    const guideHeadings = [
+      '# Passkey Registration Guide',
+      '# Web Components Orientation Guide',
+      '# passkey guide',
+      '# PASSKEY AUTHENTICATION GUIDE',
+      '# Custom Elements Guide ',
+      '# Passkey Reauthentication Guide  ',
+    ];
+    for (const heading of guideHeadings) {
+      const body = `${heading}\n\nSome body text.`;
+      const errors = validateHeadings(body, 'test.md');
+      assert.strictEqual(errors.length, 1);
+      assert.ok(errors[0].includes('Redundant trailing "Guide" in H1 heading'));
+      assert.ok(errors[0].includes('Strip the trailing "Guide"'));
+    }
+  });
+
+  test('disallows frontmatter titles ending with redundant "Guide"', () => {
+    const guideTitles = [
+      'Passkey Registration Guide',
+      'Web Components Orientation Guide',
+      'passkey guide',
+      'PASSKEY AUTHENTICATION GUIDE',
+      'Custom Elements Guide ',
+      'Passkey Reauthentication Guide  ',
+    ];
+    for (const title of guideTitles) {
+      const errors = validateHeadings('Some body text', 'test.md', { title });
+      assert.strictEqual(errors.length, 1);
+      assert.ok(errors[0].includes('Redundant trailing "Guide" in frontmatter title'));
+      assert.ok(errors[0].includes('Strip the trailing "Guide"'));
+    }
+  });
+
+  test('allows depth > 1 headings ending with "Guide" (e.g. ## Implementation Guide)', () => {
+    const body = `# Passkey Authentication
+
+## Implementation Guide
+Some implementation steps.
+
+### Migration Guide
+Some migration details.
+
+#### Setup Guide
+Setup instructions.
+`;
+    const errors = validateHeadings(body, 'test.md');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('allows H1 headings containing "Guide" in non-suffix positions or words like Guidelines', () => {
+    const validHeadings = [
+      '# Guide for Dynamic Sibling Animations',
+      '# Guidelines for Accessibility',
+      '# Guide to Passkeys',
+      '# Web Privacy Guidelines for Developers',
+      '# Guidelines',
+    ];
+    for (const heading of validHeadings) {
+      const body = `${heading}\n\nSome body text.`;
+      const errors = validateHeadings(body, 'test.md');
+      assert.deepStrictEqual(errors, []);
+    }
+  });
+
+  test('allows frontmatter titles containing "Guide" in non-suffix positions or words like Guidelines', () => {
+    const validTitles = [
+      'Guide for Dynamic Sibling Animations',
+      'Guidelines for Accessibility',
+      'Guide to Passkeys',
+      'Web Privacy Guidelines for Developers',
+      'Guidelines',
+    ];
+    for (const title of validTitles) {
+      const errors = validateHeadings('Some body text', 'test.md', { title });
+      assert.deepStrictEqual(errors, []);
+    }
   });
 
   test('allows descriptive H1 headings', () => {
@@ -255,7 +335,7 @@ Some guide steps.
 
   test('validateGuideTitle succeeds with valid descriptive frontmatter title without an H1', () => {
     const nonStubBody = `Some guide content without H1 heading.`;
-    const errors = validateGuideTitle(nonStubBody, 'test.md', { title: 'Descriptive Feature Guide' }, { requireTitle: true });
+    const errors = validateGuideTitle(nonStubBody, 'test.md', { title: 'Descriptive Feature Title' }, { requireTitle: true });
     assert.deepStrictEqual(errors, []);
   });
 
