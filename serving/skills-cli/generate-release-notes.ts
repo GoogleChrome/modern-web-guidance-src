@@ -112,8 +112,9 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
 
     for (const line of rawDiff.trim().split('\n')) {
       if (!line.trim()) continue;
-      const [status, ...fileParts] = line.trim().split(/\s+/);
-      const targetFile = fileParts[fileParts.length - 1];
+const tabIndex = line.indexOf('\t');
+const status = line.slice(0, tabIndex).trim();
+const targetFile = line.slice(tabIndex + 1).trim();
       const relPath = targetFile.startsWith(tempDir)
         ? path.relative(tempDir, targetFile)
         : path.relative(publishCliDir, targetFile);
@@ -414,7 +415,8 @@ ${guideDiff.substring(0, 15000)}
     }
 
     // Clean any wrapping markdown code blocks if the model returned ```markdown ... ```
-    const cleanedText = text.replace(/^```markdown\n/, '').replace(/\n```$/, '').trim();
+const cleanedText = text
+  .replace(/^
     return cleanedText;
   } catch (err) {
     console.warn('Failed to generate release notes with Gemini:', err);

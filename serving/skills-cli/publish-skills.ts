@@ -103,22 +103,11 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
     );
   });
 
-  console.log(`\nGenerating release notes using Gemini for v${newVersion} (diffing published tags ${latestTag}...v${newVersion})...`);
-  let releaseNotes = '';
-  try {
-    releaseNotes = await generateReleaseNotes({
-      previousTag: latestTag,
-      newVersion,
-      target: `v${newVersion}`,
-    });
-  } catch (err) {
-    console.warn('Could not generate release notes from published tag. Falling back to local payload diff:', err);
-    releaseNotes = await generateReleaseNotes({
-      previousTag: latestTag,
-      newVersion,
-      publishCliDir,
-    });
-  }
+const releaseNotes = await generateReleaseNotes({
+  previousTag: latestTag,
+  newVersion,
+  publishCliDir,
+});
 
   // Attempt to create formal GitHub release on the distribution repo if gh CLI is authenticated
   try {
