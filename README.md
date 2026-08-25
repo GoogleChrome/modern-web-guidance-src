@@ -87,7 +87,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 #### The full list
 
 <details>
-<summary><strong>103 modern web features</strong></summary>
+<summary><strong>104 modern web features</strong></summary>
 
 ### CSS & Layout (51 features)
 
@@ -123,7 +123,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 | [&lt;link rel="preload">](https://web-platform-dx.github.io/web-features-explorer/features/link-rel-preload/) | [inert](https://web-platform-dx.github.io/web-features-explorer/features/inert/) | [popover="hint"](https://web-platform-dx.github.io/web-features-explorer/features/popover-hint/) |
 | [blocking="render"](https://web-platform-dx.github.io/web-features-explorer/features/blocking-render/) | [Interest invokers](https://web-platform-dx.github.io/web-features-explorer/features/interest-invokers/) |  |
 
-### JavaScript & APIs (32 features)
+### JavaScript & APIs (33 features)
 
 | | | |
 | :--- | :--- | :--- |
@@ -134,15 +134,15 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 | [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
 | [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
 | [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Page visibility state](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
-| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
-| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
-| [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
-| [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) |  |
+| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [Trusted types](https://web-platform-dx.github.io/web-features-explorer/features/trusted-types/) |
+| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
+| [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
+| [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
 
 </details>
 
 <details>
-<summary><strong>131 real-world developer use cases</strong></summary>
+<summary><strong>132 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
@@ -237,6 +237,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[passkey-reauthentication](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/passkey-reauthentication.md)**: Verify a signed-in user's identity using their existing passkeys before a sensitive action.
 - **[passkey-registration](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/passkey-registration.md)**: Register a passkey for an existing user account.
 - **[passkeys](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/passkeys.md)**: Comprehensive orientation and cross-cutting principles for implementing WebAuthn and Passkeys in web applications. Use this guide when handling passkey registration, authentication, management, or reauthentication.
+- **[trusted-types](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/trusted-types.md)**: Help prevent DOM-based XSS attacks by ensuring all untrusted content is sanitized before being inserted into the page.
 
 <h3>ui-atoms</h3>
 
