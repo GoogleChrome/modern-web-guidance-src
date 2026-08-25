@@ -80,10 +80,12 @@
       }
 
       @layer component {
-        .loading-spinner {
+        .loading-spinner:has(> progress:indeterminate) {
           --size: 40px;
           --thickness: 4px;
           --spinner-color: #3b82f6;
+          --spinner-duration: 0.8s;
+          --spinner-timing: linear;
 
           position: relative;
           width: var(--size);
@@ -101,16 +103,7 @@
             black calc(50% - var(--thickness) + 0.5px)
           );
 
-          animation: spinner-rotate 0.8s linear infinite;
-        }
-
-        .loading-spinner--large {
-          --size: 64px;
-          --thickness: 6px;
-        }
-
-        .loading-spinner--custom {
-          --spinner-color: #f43f5e;
+          animation: spinner-rotate var(--spinner-duration) var(--spinner-timing) infinite;
         }
 
         @keyframes spinner-rotate {
@@ -121,6 +114,18 @@
           .loading-spinner {
             animation-duration: 3s;
           }
+        }
+      }
+      @layer examples {
+        .loading-spinner--large {
+          --size: 64px;
+          --thickness: 6px;
+        }
+
+        .loading-spinner--custom {
+          --spinner-color: #f43f5e;
+          --spinner-duration: 1.2s;
+          --spinner-timing: ease-in-out;
         }
       }
     </style>

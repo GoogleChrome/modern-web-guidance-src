@@ -12,3 +12,4 @@
 - The `<progress>` element is visually hidden using a standard utility class (e.g., `.visually-hidden`).
 - The component's fill color changes to a success color (e.g., green) when the progress value reaches 100%.
 - The component has a distinct visual "track" (background) behind the progress fill.
+- The spinner respects `prefers-reduced-motion` by changing to a new value immediately, rather than having a smooth transition.

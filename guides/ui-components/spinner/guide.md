@@ -17,7 +17,7 @@ This guide implements a spinner by:
 - Styling the component with `conic-gradient()` to create a visual "trail" and `mask-image` to hollow out the center into a ring.
 - Animating the spinner efficiently using CSS transforms and respecting `prefers-reduced-motion` to ensure a comfortable experience for all users.
 
-See the [Progress Ring guide](../progress-ring/guide.md) for handling determinate tasks with a known duration.
+See {{ GUIDE_REF("progress-ring") }} for handling determinate tasks with a known duration.
 
 
 ## Implementation
@@ -39,13 +39,15 @@ Alternatively, you may choose to omit the `<progress>` element, and add the `sta
 
 #### Spinner Ring and Trail
 
-The spinner uses a `conic-gradient` to create a fading trail effect. `mask-image` is used to create the ring shape.
+The spinner uses a `conic-gradient` to create a fading trail effect. `mask-image` is used to create the ring shape. To ensure the loader is only shown when it is exposed to the accessibility tree, use `:has(> progress:indeterminate)`. 
 
 ```css
-.loading-spinner {
+.loading-spinner:has(> progress:indeterminate) {
   --size: 40px;
   --thickness: 4px;
   --spinner-color: #3b82f6;
+  --spinner-duration: 0.8s;
+  --spinner-timing: linear;
   
   position: relative;
   width: var(--size);
@@ -66,7 +68,7 @@ The spinner uses a `conic-gradient` to create a fading trail effect. `mask-image
   );
 
   /* Continuous rotation animation */
-  animation: spinner-rotate 0.8s linear infinite;
+  animation: spinner-rotate var(--spinner-duration) var(--spinner-timing) infinite;
 }
 
 @keyframes spinner-rotate {

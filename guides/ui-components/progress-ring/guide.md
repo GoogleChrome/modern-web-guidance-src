@@ -18,7 +18,9 @@ This guide implements a progress ring by:
 - Styling the component with `conic-gradient()` and `mask-image`, allowing for a fully responsive and themeable ring without the complexity of SVG path manipulation.
 - Leveraging CSS Custom Properties and `@property` to enable smooth, GPU-accelerated transitions of the progress fill.
 
-This approach is preferred over SVG-only solutions because it keeps the implementation entirely in CSS, making it easier to integrate with existing design systems and typography (especially for content in the center).
+This approach is preferred over SVG-only solutions because it uses the semantic `<progress>` element rather than ARIA, and more easily integrates with existing layout, design systems and typography.
+
+See the {{ GUIDE_REF("spinner") }} for handling indeterminate loading states.
 
 ## Implementation
 
@@ -36,12 +38,6 @@ Use a wrapper to hold both the visual ring and the optional center content. The 
     75%
   </div>
 </div>
-```
-
-Alternatively, you can choose to apply the `progressbar` role to the `.progress-ring` `<div>`, in which case you must set the minimum, maximum and current values using Aria.
-
-```html
-<div role="progressbar" aria-valuenow="23" aria-valuemin="0" aria-valuemax="100"></div>
 ```
 
 ### 2. Styles
@@ -115,6 +111,7 @@ To animate the progress ring smoothly when the value changes, register `--value`
 .progress-ring-wrapper {
   transition: --value 0.3s ease-in-out;
 }
+
 ```
 
 ### 3. Progress Updates
@@ -156,6 +153,19 @@ You can use the CSS `:has()` pseudo-class to automatically update the ring's app
 }
 ```
 
+### 5. Respecting Motion Preferences
+
+Users with motion sensitivities may find the transition between values disorienting. Respect the `prefers-reduced-motion` media query by transitioning immediately.
+
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .progress-ring-wrapper {
+    transition-duration: 0s;
+  }
+}
+```
+
 ## Fallback strategies
 
 The core components of this implementation — `<progress>` and `conic-gradient()` and `mask-image` with `radial-gradient()` — are Baseline Widely available. The registered `@property` for animation is the only modern addition.
@@ -167,5 +177,3 @@ Do not add a fallback value inside the `<progress>` element. It is not used by a
 {{ FEATURE_FALLBACKS("registered-custom-properties") }}
 
 If `@property` is not supported, the ring will jump to the new value instantly instead of transitioning smoothly. This does not break the functionality. For browsers without `@property`, you can achieve transitions using a JavaScript `requestAnimationFrame` loop to interpolate the `--value`, though the native CSS transition is preferred for performance.
-
-See the [Spinner guide](../spinner/guide.md) for handling indeterminate loading states.

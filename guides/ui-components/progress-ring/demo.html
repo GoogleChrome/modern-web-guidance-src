@@ -100,6 +100,11 @@
 
           transition: --value 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        @media (prefers-reduced-motion: reduce) {
+          .progress-ring-wrapper {
+            transition-duration: 0s;
+          }
+        }
 
         .progress-ring {
           width: 100%;
