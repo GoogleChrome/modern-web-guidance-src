@@ -457,8 +457,12 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   };
 }
 
+function getJetskiSummaryForDir(dir: string): TrajectorySummary {
+  return readTrajectorySummary(dir) || parseJetskiCliSession(dir);
+}
+
 export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
-  const summary = parseJetskiCliSession(dirPath);
+  const summary = getJetskiSummaryForDir(dirPath);
   return {
     retrievedGuides: summary?.retrievedGuides || [],
     fileReadGuides: summary?.fileReadGuides || []
@@ -466,17 +470,17 @@ export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _ser
 }
 
 export function extractJetskiCliModel(resultsDir: string): string {
-  const summary = parseJetskiCliSession(resultsDir);
-  return summary.model || 'unknown';
+  const summary = getJetskiSummaryForDir(resultsDir);
+  return summary?.model || 'unknown';
 }
 
 export function extractJetskiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  const summary = parseJetskiCliSession(dir);
+  const summary = getJetskiSummaryForDir(dir);
   return summary?.tokenUsage;
 }
 
 export function collectJetskiCliToolsFromTrajectory(dir: string): string[] {
-  const summary = parseJetskiCliSession(dir);
+  const summary = getJetskiSummaryForDir(dir);
   return summary?.toolsUsed || [];
 }
 

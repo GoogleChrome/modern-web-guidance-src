@@ -13,7 +13,8 @@ import {
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  generateNormalizedTrajectory
+  generateNormalizedTrajectory,
+  readTrajectorySummary
 } from '../lib/trajectory-normalizer.ts';
 
 export function setupGeminiCliCredentials(tempHome: string): string {
@@ -274,155 +275,72 @@ export function extractGeminiMetadata(session: any, subagentsMap: Record<string,
 }
 
 export function loadGeminiLogs(dir: string): { logData: any; subagentsMap: Record<string, any[]> } {
-  let logData: any = null;
+  let logData: any = { messages: [] };
   const subagentsMap: Record<string, any[]> = {};
   const files = getSessionFiles(dir);
 
   const mainFiles = files.filter(f => !f.startsWith('subagent-')).sort();
   const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
 
-  if (mainFiles.length > 0) {
-    logData = readTrajectory(path.join(dir, mainFiles[0]));
+  if (mainFiles.length === 1) {
+    try {
+      logData = readTrajectory(path.join(dir, mainFiles[0]));
+    } catch {}
+  } else if (mainFiles.length > 1) {
+    const allMsgs: any[] = [];
+    for (const f of mainFiles) {
+      try {
+        const c = readTrajectory(path.join(dir, f));
+        allMsgs.push(...(Array.isArray(c) ? c : (c.messages || [])));
+      } catch {}
+    }
+    logData = { messages: allMsgs };
   }
 
   for (const file of subFiles) {
-    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.(?:json|jsonl)$/, '');
-    const content = readTrajectory(path.join(dir, file));
-    subagentsMap[subId] = Array.isArray(content) ? content : (content.messages || []);
+    try {
+      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.(?:json|jsonl)$/, '');
+      const content = readTrajectory(path.join(dir, file));
+      subagentsMap[subId] = Array.isArray(content) ? content : (content.messages || []);
+    } catch {}
   }
 
   return { logData, subagentsMap };
 }
 
-export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
-  const retrievedGuides: string[] = [];
-  const fileReadGuides: string[] = [];
-  try {
-    const sessionFiles = getSessionFiles(dirPath);
-
-    for (const file of sessionFiles) {
-      const sessionPath = path.join(dirPath, file);
-      const session = readTrajectory(sessionPath);
-
-      if (session.messages) {
-        for (const msg of session.messages) {
-          if (msg.type === 'gemini' && msg.toolCalls) {
-            for (const tc of msg.toolCalls) {
-              if (tc.name.includes('get_best_practices') && tc.args?.use_case_id) {
-                retrievedGuides.push(tc.args.use_case_id as string);
-              } else if (tc.name === 'read_file' && tc.args?.file_path) {
-                const filePath = tc.args.file_path as string;
-                if (filePath.includes('/skills/')) {
-                  const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/) ||
-                                filePath.match(/\/skills\/[^/]+\/(?:references\/)?(?:[^/]+\/)*([^/]+)\.md$/);
-                  if (match) {
-                    fileReadGuides.push(match[1]);
-                  }
-                }
-              } else if (tc.name === 'run_shell_command' && tc.args?.command) {
-                const command = tc.args.command as string;
-                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                if (match) {
-                  retrievedGuides.push(...match[1].split(',').map(s => s.trim()));
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.error(`Error reading session files in ${dirPath}:`, e);
+function getGeminiMetadataForDir(dir: string): ReturnType<typeof extractGeminiMetadata> {
+  const summary = readTrajectorySummary(dir);
+  if (summary) {
+    return {
+      model: summary.model || 'unknown',
+      tokenUsage: summary.tokenUsage,
+      toolsUsed: summary.toolsUsed || [],
+      retrievedGuides: summary.retrievedGuides || [],
+      fileReadGuides: summary.fileReadGuides || []
+    };
   }
+  const { logData, subagentsMap } = loadGeminiLogs(dir);
+  return extractGeminiMetadata(logData, subagentsMap);
+}
+
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+  const meta = getGeminiMetadataForDir(dirPath);
   return {
-    retrievedGuides: [...new Set(retrievedGuides)],
-    fileReadGuides: [...new Set(fileReadGuides)]
+    retrievedGuides: meta.retrievedGuides,
+    fileReadGuides: meta.fileReadGuides
   };
 }
 
 export function extractGeminiCliModel(resultsDir: string): string {
-  const sessionFiles = getSessionFiles(resultsDir, true);
-  if (sessionFiles.length === 0) return 'unknown';
-
-  const counts: Record<string, number> = {};
-  for (const relativePath of sessionFiles as string[]) {
-    const sessionPath = path.join(resultsDir, relativePath);
-    try {
-      const session = readTrajectory(sessionPath);
-      if (session.messages) {
-        for (const m of session.messages) {
-          if (m.type === 'gemini' && m.model) {
-            counts[m.model] = (counts[m.model] || 0) + 1;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed to extract model from ${sessionPath}:`, e);
-    }
-  }
-
-  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  if (topModel) return topModel[0];
-
-  return 'unknown';
+  return getGeminiMetadataForDir(resultsDir).model;
 }
 
 export function extractGeminiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  let total = 0;
-  let cached = 0;
-  let hasData = false;
-  try {
-    const sessionFiles = getSessionFiles(dir);
-    for (const file of sessionFiles) {
-      try {
-        const session = readTrajectory(path.join(dir, file));
-        if (session.messages) {
-          const messagesWithTokens = (session.messages as any[]).filter(m => m && typeof m === 'object' && 'tokens' in m) as Array<{ tokens: { total?: number; cached?: number } }>;
-          const lastMsg = messagesWithTokens[messagesWithTokens.length - 1];
-          if (lastMsg) {
-            total += lastMsg.tokens.total || 0;
-            cached += lastMsg.tokens.cached || 0;
-            hasData = true;
-          }
-        }
-      } catch {
-        // Ignore
-      }
-    }
-  } catch {
-    // Ignore
-  }
-  return hasData ? { total, cached } : undefined;
+  return getGeminiMetadataForDir(dir).tokenUsage;
 }
 
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
-  const toolsUsed: string[] = [];
-  const sessionFiles = getSessionFiles(dir);
-  if (sessionFiles.length === 0) return toolsUsed;
-
-  for (const sessionFile of sessionFiles) {
-    try {
-      const sessionPath = path.join(dir, sessionFile);
-      const session = readTrajectory(sessionPath);
-      if (Array.isArray(session.messages)) {
-        for (const msg of session.messages) {
-          if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
-            for (const tc of msg.toolCalls) {
-              if (tc.name.includes('get_best_practices')) {
-                toolsUsed.push('modern-web-guidance');
-              } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
-                toolsUsed.push(tc.args.name as string);
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.error(`Failed to collect guidance tools used for Gemini CLI in ${sessionFile}:`, e);
-    }
-  }
-
-  return Array.from(new Set(toolsUsed));
+  return getGeminiMetadataForDir(dir).toolsUsed;
 }
 
 export function parseGeminiStreamOutput(outputStr: string, _skillName: string = 'modern-web-guidance'): {

@@ -55,7 +55,9 @@ export {
   collectPiGuidesFromTrajectory,
   collectPiToolsFromTrajectory,
   extractPiModel,
-  extractPiTokenUsage
+  extractPiTokenUsage,
+  loadPiLogs,
+  extractPiMetadata
 } from '../agents/pi-agent.ts';
 
 

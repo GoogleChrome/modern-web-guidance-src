@@ -13,7 +13,8 @@ import {
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  generateNormalizedTrajectory
+  generateNormalizedTrajectory,
+  readTrajectorySummary
 } from '../lib/trajectory-normalizer.ts';
 import type { ClaudeLogEntry } from './claude.d.ts';
 
@@ -373,107 +374,55 @@ export function loadClaudeLogs(dir: string): { logData: any[]; subagentsMap: Rec
   const mainFiles = files.filter(f => !f.startsWith('subagent-')).sort();
   const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
 
-  if (mainFiles.length > 0) {
-    logData = parseJsonlFile(path.join(dir, mainFiles[0]));
+  for (const file of mainFiles) {
+    try {
+      logData.push(...parseJsonlFile(path.join(dir, file)));
+    } catch {}
   }
 
   for (const file of subFiles) {
-    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
-    subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
+    try {
+      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+      subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
+    } catch {}
   }
 
   return { logData, subagentsMap };
 }
 
-export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
-  const retrievedGuides: string[] = [];
-  const fileReadGuides: string[] = [];
-
-  for (const file of getSessionFiles(dirPath)) {
-    const items = parseJsonlFile(path.join(dirPath, file));
-    for (const obj of items) {
-      const content = obj.message?.content;
-      for (const contentItem of Array.isArray(content) ? content : []) {
-        if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input?.command) {
-          const command = contentItem.input.command;
-          if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
-            const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-            if (match) {
-              retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
-            }
-          }
-        } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input?.file_path) {
-          const filePath = contentItem.input.file_path;
-          if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-            const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-            if (match) {
-              fileReadGuides.push(match[1]);
-            }
-          }
-        }
-      }
-    }
+function getClaudeMetadataForDir(dir: string): ReturnType<typeof extractClaudeMetadata> {
+  const summary = readTrajectorySummary(dir);
+  if (summary) {
+    return {
+      model: summary.model || 'unknown',
+      tokenUsage: summary.tokenUsage,
+      toolsUsed: summary.toolsUsed || [],
+      retrievedGuides: summary.retrievedGuides || [],
+      fileReadGuides: summary.fileReadGuides || []
+    };
   }
+  const { logData, subagentsMap } = loadClaudeLogs(dir);
+  return extractClaudeMetadata(logData, subagentsMap);
+}
+
+export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+  const meta = getClaudeMetadataForDir(dirPath);
   return {
-    retrievedGuides: [...new Set(retrievedGuides)],
-    fileReadGuides: [...new Set(fileReadGuides)]
+    retrievedGuides: meta.retrievedGuides,
+    fileReadGuides: meta.fileReadGuides
   };
 }
 
 export function extractClaudeCodeModel(resultsDir: string): string {
-  const counts: Record<string, number> = {};
-  for (const file of getSessionFiles(resultsDir, true)) {
-    const items = parseJsonlFile(path.join(resultsDir, file));
-    for (const obj of items) {
-      if (obj.message?.model) {
-        counts[obj.message.model] = (counts[obj.message.model] || 0) + 1;
-      }
-    }
-  }
-  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return topModel ? topModel[0] : 'unknown';
+  return getClaudeMetadataForDir(resultsDir).model;
 }
 
 export function extractClaudeCodeTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  let total = 0;
-  let cached = 0;
-  let hasData = false;
-
-  for (const file of getSessionFiles(dir)) {
-    const items = parseJsonlFile(path.join(dir, file));
-    for (const obj of items) {
-      if (obj.message?.usage) {
-        const u = obj.message.usage;
-        total += (u.output_tokens || 0) + (u.input_tokens || 0) + (u.cache_read_input_tokens || 0);
-        cached += u.cache_read_input_tokens || 0;
-        hasData = true;
-      }
-    }
-  }
-  return hasData ? { total, cached } : undefined;
+  return getClaudeMetadataForDir(dir).tokenUsage;
 }
 
 export function collectClaudeToolsFromTrajectory(dir: string): string[] {
-  const toolsUsed: string[] = [];
-  const sessionFiles = getSessionFiles(dir);
-  if (sessionFiles.length === 0) return toolsUsed;
-
-  for (const file of sessionFiles) {
-    const items = parseJsonlFile(path.join(dir, file));
-    for (const obj of items) {
-      const content = obj.message?.content;
-      for (const item of Array.isArray(content) ? content : []) {
-        if (item.type === 'tool_use') {
-          if (item.name === 'Skill' && item.input?.skill) {
-            toolsUsed.push(item.input.skill);
-          } else if (item.name === 'activate_skill' && item.input?.name) {
-            toolsUsed.push(item.input.name);
-          }
-        }
-      }
-    }
-  }
-  return Array.from(new Set(toolsUsed));
+  return getClaudeMetadataForDir(dir).toolsUsed;
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);

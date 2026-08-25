@@ -14,7 +14,8 @@ import {
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  generateNormalizedTrajectory
+  generateNormalizedTrajectory,
+  readTrajectorySummary
 } from '../lib/trajectory-normalizer.ts';
 
 export function setupCodexCliCredentials(tempHome: string): void {
@@ -382,109 +383,67 @@ export function loadCodexLogs(dir: string): { logData: any[]; subagentsMap: Reco
   const mainFiles = files.filter(f => !f.startsWith('subagent-')).sort();
   const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
 
-  if (mainFiles.length > 0) {
-    logData = parseJsonlFile(path.join(dir, mainFiles[0]));
+  for (const file of mainFiles) {
+    try {
+      logData.push(...parseJsonlFile(path.join(dir, file)));
+    } catch {}
   }
 
   for (const file of subFiles) {
-    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
-    subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
+    try {
+      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+      subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
+    } catch {}
   }
 
   return { logData, subagentsMap };
 }
 
-export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<GuideUsage> {
-  const retrievedGuides: string[] = [];
-  const fileReadGuides: string[] = [];
+function getCodexMetadataForDir(dir: string): ReturnType<typeof extractCodexMetadata> {
+  const summary = readTrajectorySummary(dir);
+  if (summary) {
+    return {
+      model: summary.model || 'unknown',
+      tokenUsage: summary.tokenUsage,
+      toolsUsed: summary.toolsUsed || [],
+      retrievedGuides: summary.retrievedGuides || [],
+      fileReadGuides: summary.fileReadGuides || []
+    };
+  }
+  const { logData, subagentsMap } = loadCodexLogs(dir);
+  return extractCodexMetadata(logData, subagentsMap);
+}
 
-  for (const file of getSessionFiles(dirPath)) {
-    const items = parseJsonlFile(path.join(dirPath, file));
-    for (const obj of items) {
-      const commands = extractCommandsFromCodexItem(obj);
-      for (const command of commands) {
-        if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
-          const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-          if (match) {
-            retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
-          }
-        } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
-          const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
-          if (match) {
-            fileReadGuides.push(match[1]);
-          }
-        }
-      }
-    }
+export async function collectCodexGuidesFromTrajectory(dirPath: string, serving?: string): Promise<GuideUsage> {
+  const meta = getCodexMetadataForDir(dirPath);
+  if (serving === Serving.SKILLS_CLI) {
+    return {
+      retrievedGuides: meta.retrievedGuides,
+      fileReadGuides: []
+    };
+  }
+  if (serving === Serving.SKILLS) {
+    return {
+      retrievedGuides: [],
+      fileReadGuides: meta.fileReadGuides
+    };
   }
   return {
-    retrievedGuides: [...new Set(retrievedGuides)],
-    fileReadGuides: [...new Set(fileReadGuides)]
+    retrievedGuides: meta.retrievedGuides,
+    fileReadGuides: meta.fileReadGuides
   };
 }
 
 export function extractCodexCliModel(resultsDir: string): string {
-  const counts: Record<string, number> = {};
-  for (const file of getSessionFiles(resultsDir, true)) {
-    const items = parseJsonlFile(path.join(resultsDir, file));
-    for (const obj of items) {
-      if (typeof obj.payload?.model === 'string') {
-        counts[obj.payload.model] = (counts[obj.payload.model] || 0) + 1;
-      }
-    }
-  }
-  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return topModel ? topModel[0] : 'unknown';
+  return getCodexMetadataForDir(resultsDir).model;
 }
 
 export function extractCodexCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  let total = 0;
-  let cached = 0;
-  let hasData = false;
-
-  for (const file of getSessionFiles(dir)) {
-    const items = parseJsonlFile(path.join(dir, file));
-    let lastTotal = 0;
-    let lastCached = 0;
-    let fileHasTokens = false;
-
-    for (const obj of items) {
-      const info = (obj.type === 'token_count' ? obj : obj.payload)?.info?.total_token_usage;
-      if (info) {
-        lastTotal = info.total_tokens || 0;
-        lastCached = info.cached_input_tokens || 0;
-        fileHasTokens = true;
-      }
-    }
-    if (fileHasTokens) {
-      total += lastTotal;
-      cached += lastCached;
-      hasData = true;
-    }
-  }
-  return hasData ? { total, cached } : undefined;
+  return getCodexMetadataForDir(dir).tokenUsage;
 }
 
 export function collectCodexToolsFromTrajectory(dir: string): string[] {
-  const toolsUsed: string[] = [];
-  const sessionFiles = getSessionFiles(dir);
-  if (sessionFiles.length === 0) return toolsUsed;
-
-  for (const file of sessionFiles) {
-    const items = parseJsonlFile(path.join(dir, file));
-    for (const obj of items) {
-      const commands = extractCommandsFromCodexItem(obj);
-      for (const command of commands) {
-        if (command.includes('.agents/skills/') && command.includes('SKILL.md')) {
-          const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
-          if (match) {
-            toolsUsed.push(match[1]);
-          }
-        }
-      }
-    }
-  }
-  return Array.from(new Set(toolsUsed));
+  return getCodexMetadataForDir(dir).toolsUsed;
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
