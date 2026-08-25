@@ -98,6 +98,9 @@ importers:
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.58.2
+      cssomnom:
+        specifier: ^0.1.4
+        version: 0.1.4
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -1676,6 +1679,10 @@ packages:
 
   cssom@0.5.0:
     resolution: {integrity: sha512-iKuQcq+NdHqlAcwUY0o/HL69XQrUaQdMjmStJ8JFmUaiiQErlhrmuigkg/CU4E2J0IyUKUrMAgl36TvN67MqTw==}
+
+  cssomnom@0.1.4:
+    resolution: {integrity: sha512-TlHXKwGFR4sUrMaJusJqXnRqHfH6pOCGFcz7+2cIEhgCr7THEElrbs0EkOG8e3ZdNOdtF+M6JIczViXNEFvq6A==}
+    engines: {node: '>=24.11.0'}
 
   data-uri-to-buffer@4.0.1:
     resolution: {integrity: sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==}
@@ -4870,6 +4877,8 @@ snapshots:
   css-what@8.0.0: {}
 
   cssom@0.5.0: {}
+
+  cssomnom@0.1.4: {}
 
   data-uri-to-buffer@4.0.1: {}
 
