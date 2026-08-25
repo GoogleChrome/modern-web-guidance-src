@@ -1,6 +1,155 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { generateFallbackReleaseNotes, type EvalSummaryItem } from './generate-release-notes.ts';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  generateFallbackReleaseNotes,
+  buildReleaseNotesMarkdown,
+  getUniqueGuideNames,
+  parseMarkdownBullets,
+  isPatchOnlyVersionBump,
+  isJsonOnlyVersionBump,
+  type EvalSummaryItem,
+} from './generate-release-notes.ts';
+
+test('isPatchOnlyVersionBump correctly detects rote version bumps', () => {
+  const versionOnlyPatch = `
+@@ -1,5 +1,5 @@
+ {
+   "name": "my-plugin",
+-  "version": "0.0.185"
++  "version": "0.0.186"
+ }
+ `;
+  assert.strictEqual(isPatchOnlyVersionBump(versionOnlyPatch), true);
+
+  const realChangePatch = `
+@@ -1,5 +1,5 @@
+ {
+-  "description": "old description",
++  "description": "new description",
+   "version": "0.0.186"
+ }
+ `;
+  assert.strictEqual(isPatchOnlyVersionBump(realChangePatch), false);
+});
+
+test('isJsonOnlyVersionBump correctly compares JSON objects on disk ignoring version', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-json-bump-'));
+  try {
+    const fileA = path.join(tempDir, 'a.json');
+    const fileB = path.join(tempDir, 'b.json');
+    const fileC = path.join(tempDir, 'c.json');
+
+    fs.writeFileSync(fileA, JSON.stringify({ name: 'plugin', version: '1.0.0', plugins: [{ version: '1.0.0' }] }));
+    fs.writeFileSync(fileB, JSON.stringify({ name: 'plugin', version: '1.0.1', plugins: [{ version: '1.0.1' }] }));
+    fs.writeFileSync(fileC, JSON.stringify({ name: 'plugin-renamed', version: '1.0.1' }));
+
+    assert.strictEqual(isJsonOnlyVersionBump(fileA, fileB), true);
+    assert.strictEqual(isJsonOnlyVersionBump(fileA, fileC), false);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('parseMarkdownBullets handles single-line and multi-line bullet points without truncation', () => {
+  const input = `
+* Updated the **Dynamic Sibling Styling** guide with cross-browser support details.
+  Specifically Firefox support was noted.
+- Added the **Container Queries** guide for responsive widget design.
+  Works across all modern engines.
+* Short one-liner bullet.
+`;
+
+  const bullets = parseMarkdownBullets(input);
+  assert.strictEqual(bullets.length, 3);
+  assert.strictEqual(
+    bullets[0],
+    '* Updated the **Dynamic Sibling Styling** guide with cross-browser support details. Specifically Firefox support was noted.'
+  );
+  assert.strictEqual(
+    bullets[1],
+    '- Added the **Container Queries** guide for responsive widget design. Works across all modern engines.'
+  );
+  assert.strictEqual(bullets[2], '* Short one-liner bullet.');
+});
+
+test('getUniqueGuideNames deduplicates guide paths, includes SKILL.md, and filters out non-guide markdown', () => {
+  const changedFiles = [
+    'skills/modern-web-guidance/guides/css/size-aware-styling.md',
+    'skills/modern-web-guidance/guides/css/size-aware-styling.md',
+    'guides/css/size-aware-styling/guide.md',
+    'skills/modern-web-guidance/guides/javascript/async-clipboard.md',
+    'skills/modern-web-guidance/SKILL.md',
+    'skills/chrome-extensions/SKILL.md',
+    'README.md',
+    'package.json',
+  ];
+
+  const unique = getUniqueGuideNames(changedFiles);
+  assert.deepStrictEqual(unique, [
+    'size-aware-styling',
+    'async-clipboard',
+    'modern-web-guidance-skill',
+    'chrome-extensions-skill',
+  ]);
+});
+
+test('buildReleaseNotesMarkdown omits Guidance and Ecosystem sections when empty', () => {
+  const notes = buildReleaseNotesMarkdown({
+    previousTag: 'v0.0.1',
+    newVersion: '0.0.2',
+    guideBullets: [],
+    pluginFiles: [],
+    evalSummary: [
+      {
+        agent: 'claude_code',
+        model: 'opus-5',
+        taskCount: 130,
+        assertionCount: 1033,
+        unguidedPassRate: 58,
+        guidedPassRate: 92,
+      },
+    ],
+  });
+
+  assert.ok(notes.startsWith('# Release Notes: `v0.0.2`'));
+  assert.ok(!notes.includes('### 📖 Guidance & Web Platform Updates'));
+  assert.ok(!notes.includes('### 🚀 Agent Ecosystem'));
+  assert.ok(notes.includes('### 📊 Benchmark Evaluations'));
+});
+
+test('buildReleaseNotesMarkdown constructs deterministic structure with custom bullets', () => {
+  const notes = buildReleaseNotesMarkdown({
+    previousTag: 'v0.0.1',
+    newVersion: '0.0.2',
+    guideBullets: [
+      '* Updated the **Dynamic Sibling Styling** guide with cross-browser support details.',
+      '* Added the **Container Queries** guide for responsive widget design.',
+    ],
+    pluginFiles: ['.claude-plugin/plugin.json'],
+    evalSummary: [
+      {
+        agent: 'claude_code',
+        model: 'opus-5',
+        taskCount: 130,
+        assertionCount: 1033,
+        unguidedPassRate: 58,
+        guidedPassRate: 92,
+      },
+    ],
+  });
+
+  assert.ok(notes.startsWith('# Release Notes: `v0.0.2`'));
+  assert.ok(notes.includes('### 📖 Guidance & Web Platform Updates'));
+  assert.ok(notes.includes('* Updated the **Dynamic Sibling Styling** guide with cross-browser support details.'));
+  assert.ok(notes.includes('* Added the **Container Queries** guide for responsive widget design.'));
+  assert.ok(notes.includes('### 🚀 Agent Ecosystem'));
+  assert.ok(notes.includes('### 📊 Benchmark Evaluations'));
+  assert.ok(notes.includes('| **claude_code** (opus-5) | 130 / 1033 | 58% → **92%** | **+34pp** |'));
+  assert.ok(notes.endsWith('**Full Changelog**: https://github.com/GoogleChrome/modern-web-guidance/compare/v0.0.1...v0.0.2'));
+});
 
 test('generateFallbackReleaseNotes formats guide updates with correct guideName from dist path', () => {
   const changedFiles = [
@@ -17,38 +166,4 @@ test('generateFallbackReleaseNotes formats guide updates with correct guideName 
   assert.ok(notes.includes('* **async-clipboard**: Updates and improvements to web platform guidance.'));
   assert.ok(!notes.includes('**css**'));
   assert.ok(!notes.includes('**javascript**'));
-});
-
-test('generateFallbackReleaseNotes formats guide updates from source path (guide.md)', () => {
-  const changedFiles = [
-    'guides/css/size-aware-styling/guide.md',
-  ];
-  const evalSummary: EvalSummaryItem[] = [];
-
-  const notes = generateFallbackReleaseNotes('v0.1.0', '0.1.1', evalSummary, changedFiles);
-
-  assert.ok(notes.includes('* **size-aware-styling**: Updates and improvements to web platform guidance.'));
-  assert.ok(!notes.includes('* **guide**:'));
-});
-
-test('generateFallbackReleaseNotes includes agent ecosystem and eval summary tables', () => {
-  const changedFiles = [
-    '.claude-plugin/plugin.json',
-  ];
-  const evalSummary: EvalSummaryItem[] = [
-    {
-      agent: 'antigravity',
-      model: 'gemini-3.7-flash',
-      taskCount: 130,
-      assertionCount: 1112,
-      unguidedPassRate: 64,
-      guidedPassRate: 90,
-    },
-  ];
-
-  const notes = generateFallbackReleaseNotes('v0.1.0', '0.1.1', evalSummary, changedFiles);
-
-  assert.ok(notes.includes('### 🚀 Agent Ecosystem'));
-  assert.ok(notes.includes('### 📊 Benchmark Evaluations'));
-  assert.ok(notes.includes('| **antigravity** (gemini-3.7-flash) | 130 / 1112 | 64% → **90%** | **+26pp** |'));
 });

@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { minimatch } from 'minimatch';
+import { fileURLToPath } from 'node:url';
 import { rootDir } from '../../lib/paths.ts';
 
 export interface ReleaseNotesOptions {
@@ -68,6 +69,38 @@ export function getPreviousTag(targetTag: string): string {
 }
 
 /**
+ * Checks if a JSON file diff represents only a version bump.
+ */
+export function isJsonOnlyVersionBump(oldFile: string, newFile: string): boolean {
+  try {
+    const oldObj = JSON.parse(fs.readFileSync(oldFile, 'utf8'));
+    const newObj = JSON.parse(fs.readFileSync(newFile, 'utf8'));
+
+    delete oldObj.version;
+    delete newObj.version;
+    if (oldObj.plugins?.[0]) delete oldObj.plugins[0].version;
+    if (newObj.plugins?.[0]) delete newObj.plugins[0].version;
+
+    return JSON.stringify(oldObj) === JSON.stringify(newObj);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Checks if a git diff patch represents only a version bump.
+ */
+export function isPatchOnlyVersionBump(patch?: string): boolean {
+  if (!patch) return false;
+  const changedLines = patch
+    .split('\n')
+    .filter(l => (l.startsWith('+') || l.startsWith('-')) && !l.startsWith('+++') && !l.startsWith('---'))
+    .map(l => l.slice(1).trim());
+
+  return changedLines.length > 0 && changedLines.every(line => line.startsWith('"version":'));
+}
+
+/**
  * Extracts exact differences between the previous release and the newly built distribution payload.
  * Eliminates all heuristics by diffing the actual compiled output (dist/skills-cli).
  */
@@ -112,9 +145,10 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
 
     for (const line of rawDiff.trim().split('\n')) {
       if (!line.trim()) continue;
-const tabIndex = line.indexOf('\t');
-const status = line.slice(0, tabIndex).trim();
-const targetFile = line.slice(tabIndex + 1).trim();
+      const tabIndex = line.indexOf('\t');
+      if (tabIndex === -1) continue;
+      const status = line.slice(0, tabIndex).trim();
+      const targetFile = line.slice(tabIndex + 1).trim();
       const relPath = targetFile.startsWith(tempDir)
         ? path.relative(tempDir, targetFile)
         : path.relative(publishCliDir, targetFile);
@@ -128,37 +162,44 @@ const targetFile = line.slice(tabIndex + 1).trim();
 
       if (!isAllowed) continue;
 
-      changedFiles.push(relPath);
-
-      if (relPath.startsWith('skills/modern-web-guidance/guides/') && status === 'A') {
-        const fullBuiltPath = path.join(publishCliDir, relPath);
-        if (fs.existsSync(fullBuiltPath) && !fs.lstatSync(fullBuiltPath).isSymbolicLink()) {
-          const guideName = path.basename(relPath, '.md');
-          addedGuides.push(`- **${guideName}** (Path: \`${relPath}\`)`);
-        }
-      } else if (status !== 'T') {
-        const oldFile = path.join(tempDir, relPath);
-        const newFile = path.join(publishCliDir, relPath);
-        if (fs.existsSync(oldFile) && fs.existsSync(newFile)) {
-          // If symlink, skip if target matches
-          if (fs.lstatSync(newFile).isSymbolicLink()) {
-            continue;
+      if (isGuideFile(relPath)) {
+        if (status === 'A') {
+          const fullBuiltPath = path.join(publishCliDir, relPath);
+          if (fs.existsSync(fullBuiltPath) && !fs.lstatSync(fullBuiltPath).isSymbolicLink()) {
+            const guideName = path.basename(relPath, '.md');
+            addedGuides.push(`- **${guideName}** (Path: \`${relPath}\`)`);
+            changedFiles.push(relPath);
           }
-          const fileDiff = execSync(
-            `git diff --no-index -u "${oldFile}" "${newFile}" || true`,
-            { encoding: 'utf8', cwd: rootDir }
-          );
-          if (fileDiff) {
-            // Ignore rote version bumps in manifest files
-            if (relPath.includes('plugin.json') || relPath === 'package.json' || relPath === 'gemini-extension.json') {
-              if (fileDiff.includes('"version":') && !fileDiff.includes('"name":')) {
-                continue;
-              }
+        } else if (status !== 'T' && status !== 'D') {
+          const oldFile = path.join(tempDir, relPath);
+          const newFile = path.join(publishCliDir, relPath);
+          if (fs.existsSync(oldFile) && fs.existsSync(newFile)) {
+            if (fs.lstatSync(newFile).isSymbolicLink()) {
+              continue;
             }
-            modifiedPatches.push(`--- ${relPath} (${status}) ---\n${fileDiff}`);
+            const fileDiff = execSync(
+              `git diff --no-index -u "${oldFile}" "${newFile}" || true`,
+              { encoding: 'utf8', cwd: rootDir }
+            );
+            if (fileDiff) {
+              modifiedPatches.push(`--- ${relPath} (${status}) ---\n${fileDiff}`);
+              changedFiles.push(relPath);
+            }
+          } else if (fs.existsSync(newFile) && !fs.lstatSync(newFile).isSymbolicLink()) {
+            modifiedPatches.push(`--- ${relPath} (Added) ---`);
+            changedFiles.push(relPath);
           }
-        } else if (fs.existsSync(newFile) && !fs.lstatSync(newFile).isSymbolicLink()) {
-          modifiedPatches.push(`--- ${relPath} (Added) ---`);
+        }
+      } else {
+        if (status !== 'D') {
+          if (relPath.endsWith('.json')) {
+            const oldFile = path.join(tempDir, relPath);
+            const newFile = path.join(publishCliDir, relPath);
+            if (fs.existsSync(oldFile) && fs.existsSync(newFile) && isJsonOnlyVersionBump(oldFile, newFile)) {
+              continue;
+            }
+          }
+          changedFiles.push(relPath);
         }
       }
     }
@@ -228,18 +269,22 @@ export function getConsumerFacingDiff(previousTag: string, targetTag: string): {
     const modifiedPatches: string[] = [];
 
     for (const file of compareData.files) {
-      changedFiles.push(file.filename);
-      if (file.filename.startsWith('skills/modern-web-guidance/guides/') && file.status === 'added') {
-        const guideName = path.basename(file.filename, '.md');
-        addedGuides.push(`- **${guideName}** (Path: \`${file.filename}\`)`);
-      } else if (file.patch) {
-        // Ignore rote version bumps in manifest files
-        if (file.filename.includes('plugin.json') || file.filename === 'package.json' || file.filename === 'gemini-extension.json') {
-          if (file.patch.includes('"version":') && !file.patch.includes('"name":')) {
-            continue;
-          }
+      if (isGuideFile(file.filename)) {
+        if (file.status === 'added') {
+          const guideName = path.basename(file.filename, '.md');
+          addedGuides.push(`- **${guideName}** (Path: \`${file.filename}\`)`);
+          changedFiles.push(file.filename);
+        } else if (file.patch) {
+          modifiedPatches.push(`--- ${file.filename} (${file.status}) ---\n${file.patch}`);
+          changedFiles.push(file.filename);
         }
-        modifiedPatches.push(`--- ${file.filename} (${file.status}) ---\n${file.patch}`);
+      } else {
+        if (file.filename.endsWith('.json') && isPatchOnlyVersionBump(file.patch)) {
+          continue;
+        }
+        if (file.status !== 'removed') {
+          changedFiles.push(file.filename);
+        }
       }
     }
 
@@ -258,27 +303,78 @@ export function getConsumerFacingDiff(previousTag: string, targetTag: string): {
 }
 
 /**
- * Deterministic fallback generator if Gemini API key is unavailable or fails.
+ * Predicate to determine if a changed file is a guidance document.
  */
-export function generateFallbackReleaseNotes(
-  previousTag: string,
-  newVersion: string,
-  evalSummary: EvalSummaryItem[],
-  changedFiles: string[]
-): string {
-  const guideFiles = changedFiles.filter(f => f.includes('guide.md') || f.includes('/guides/'));
-  const pluginFiles = changedFiles.filter(f => f.includes('-plugin') || f.includes('plugin.json'));
+export function isGuideFile(filePath: string): boolean {
+  if (!filePath.endsWith('.md')) return false;
+  if (filePath.endsWith('SKILL.md')) return true;
+  return filePath.includes('guide.md') || filePath.includes('/guides/');
+}
 
+/**
+ * Extracts unique guide identifiers from changed file paths.
+ */
+export function getUniqueGuideNames(changedFiles: string[]): string[] {
+  const guideFiles = changedFiles.filter(isGuideFile);
+  return Array.from(
+    new Set(
+      guideFiles.map(file => {
+        if (file.endsWith('SKILL.md')) {
+          return `${path.basename(path.dirname(file))}-skill`;
+        }
+        return path.basename(file) === 'guide.md'
+          ? path.basename(path.dirname(file))
+          : path.basename(file, '.md');
+      })
+    )
+  );
+}
+
+/**
+ * Parses markdown bullet points, merging multi-line continuations into their parent bullet.
+ */
+export function parseMarkdownBullets(text: string): string[] {
+  const lines = text.split('\n');
+  const bullets: string[] = [];
+  let currentBullet = '';
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    if (line.startsWith('* ') || line.startsWith('- ')) {
+      if (currentBullet) {
+        bullets.push(currentBullet);
+      }
+      currentBullet = line;
+    } else if (currentBullet) {
+      currentBullet += ' ' + line;
+    }
+  }
+
+  if (currentBullet) {
+    bullets.push(currentBullet);
+  }
+
+  return bullets;
+}
+
+/**
+ * Deterministically constructs release notes markdown from provided sections.
+ */
+export function buildReleaseNotesMarkdown(opts: {
+  previousTag: string;
+  newVersion: string;
+  guideBullets: string[];
+  pluginFiles: string[];
+  evalSummary: EvalSummaryItem[];
+}): string {
+  const { previousTag, newVersion, guideBullets, pluginFiles, evalSummary } = opts;
   const sections: string[] = [`# Release Notes: \`v${newVersion}\`\n`];
 
-  if (guideFiles.length > 0) {
+  if (guideBullets.length > 0) {
     sections.push('### 📖 Guidance & Web Platform Updates\n');
-    for (const file of guideFiles) {
-      const guideName = path.basename(file) === 'guide.md'
-        ? path.basename(path.dirname(file))
-        : path.basename(file, '.md');
-      sections.push(`* **${guideName}**: Updates and improvements to web platform guidance.`);
-    }
+    sections.push(guideBullets.join('\n'));
     sections.push('');
   }
 
@@ -308,82 +404,57 @@ export function generateFallbackReleaseNotes(
 }
 
 /**
- * Generates consumer-facing release notes using Gemini.
+ * Deterministic fallback generator when Gemini API is unavailable or fails validation.
  */
-export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<string> {
-  const {
+export function generateFallbackReleaseNotes(
+  previousTag: string,
+  newVersion: string,
+  evalSummary: EvalSummaryItem[],
+  changedFiles: string[]
+): string {
+  const uniqueGuideNames = getUniqueGuideNames(changedFiles);
+  const pluginFiles = changedFiles.filter(f => f.includes('-plugin') || f.includes('plugin.json') || f.includes('gemini-extension.json'));
+
+  const guideBullets = uniqueGuideNames.map(
+    guideName => `* **${guideName}**: Updates and improvements to web platform guidance.`
+  );
+
+  return buildReleaseNotesMarkdown({
     previousTag,
     newVersion,
-    target = 'HEAD',
-    publishCliDir,
-    apiKey = process.env.GEMINI_API_KEY,
-    model = process.env.GEMINI_MODEL || 'gemini-3.7-flash',
-  } = opts;
+    guideBullets,
+    pluginFiles,
+    evalSummary,
+  });
+}
 
-  const { guideDiff, evalSummary, changedFiles } =
-    publishCliDir && fs.existsSync(publishCliDir)
-      ? getExactDistributionDiff(previousTag, publishCliDir)
-      : getConsumerFacingDiff(previousTag, target);
-
-  if (!apiKey) {
-    console.log('No GEMINI_API_KEY found. Generating fallback release notes...');
-    return generateFallbackReleaseNotes(previousTag, newVersion, evalSummary, changedFiles);
+/**
+ * Uses Gemini to generate bullet summaries for changed guides.
+ * Returns null if the API call fails or if output fails bullet-count validation.
+ */
+export async function generateGuideSummariesWithGemini(opts: {
+  guideDiff: string;
+  expectedGuideCount: number;
+  apiKey: string;
+  model: string;
+}): Promise<string[] | null> {
+  const { guideDiff, expectedGuideCount, apiKey, model } = opts;
+  if (!guideDiff.trim() || expectedGuideCount === 0) {
+    return [];
   }
 
-  const prompt = `You are generating consumer-facing GitHub release notes for version v${newVersion} of GoogleChrome/modern-web-guidance (comparing against ${previousTag}).
+  const prompt = `You are writing concise release note bullet points for guidance changes in GoogleChrome/modern-web-guidance.
 
-### Context:
-- Target Repository: GoogleChrome/modern-web-guidance (the public distribution repository consumed by AI coding agents).
-- Previous Tag: ${previousTag}
-- New Version: v${newVersion}
-
-### Evaluation Benchmarks:
-${JSON.stringify(evalSummary, null, 2)}
-
-### Consumer-facing Changes / Diff:
-${guideDiff.substring(0, 15000)}
+### Consumer-facing Guide Changes / Diff:
+${guideDiff}
 
 ### Core Formatting Rules:
-1. **Repository Scope**: Focus strictly on consumer-facing changes in \`GoogleChrome/modern-web-guidance\`. Do NOT mention internal build scripts, CI workflows, or upstream \`modern-web-guidance-src\` changes.
-2. **Guide Changes**:
-   - Each modified or new guide must be described in **at most ONE concise bullet point** (a single sentence or short paragraph) explaining the use case or key improvements/platform evolution.
-   - **NEVER** use nested sub-bullets, lists within bullets, or multiple bullet points for a single guide. Keep the level of detail clean, concise, and uniform across all releases regardless of how many guides changed.
-   - If both new guides and updates exist, organize them under:
-     \`#### 🆕 New Guides\`
-     \`#### 🔄 Guide Updates & Platform Evolution\`
-   - If only new guides or only updates exist, list bullets directly under \`### 📖 Guidance & Web Platform Updates\`.
-3. **Agent Ecosystem**:
-   - Highlight newly supported agent platforms (e.g., Grok, Kimi, Claude, Cursor) or marketplace integrations in a single bullet point. Omit this section if no ecosystem changes occurred.
-4. **Benchmark Evaluations (Strict Table Format)**:
-   - Always format evaluation benchmarks using this exact 4-column Markdown table:
-     | Agent + Model | Tasks / Assertions | Unguided → Guided Pass Rate | Uplift |
-     | :--- | :---: | :---: | :---: |
-     | **claude_code** (opus-5) | 130 / 1033 | 58% → **92%** | **+34pp** |
-     | **antigravity** (Gemini 3.7 Flash Preview) | 130 / 1112 | 64% → **90%** | **+26pp** |
-     | **codex_cli** (gpt-5.6-sol) | 130 / 1112 | 60% → **83%** | **+23pp** |
-   - Use the exact agent and model names provided in the Evaluation Benchmarks data.
-   - Always express uplift in percentage points (\`+XXpp\`).
-   - Do NOT append extra bulleted commentary or "Key Takeaways" below the table.
-   - Omit the section if \`Evaluation Benchmarks\` is empty.
-5. **Omit Boilerplate**:
-   - Do NOT mention version bumps across manifest files (\`package.json\`, \`plugin.json\`, \`marketplace.json\`, etc.).
-6. **Required Template Structure**:
-   # Release Notes: \`v${newVersion}\`
-
-   ### 📖 Guidance & Web Platform Updates
-   [Categorized subheadings or bullets as specified in rule 2]
-
-   ### 🚀 Agent Ecosystem (omit if empty)
-   * [Agent ecosystem bullet points]
-
-   ### 📊 Benchmark Evaluations (omit if empty)
-   | Agent + Model | Tasks / Assertions | Unguided → Guided Pass Rate | Uplift |
-   | :--- | :---: | :---: | :---: |
-   ...
-
-   ---
-   **Full Changelog**: https://github.com/GoogleChrome/modern-web-guidance/compare/${previousTag}...v${newVersion}
-`;
+1. Output exactly ${expectedGuideCount} Markdown bullet points (starting with '* ' or '- ').
+2. Each bullet must describe one modified or new guide in a single concise sentence or short paragraph explaining the use case or key platform evolution.
+3. Keep each bullet point on a single line without manual line breaks.
+4. Bold the title or subject of the guide in each bullet (e.g., "* Updated the **Dynamic Sibling Styling** guide to ...").
+5. NEVER use nested sub-bullets or multiple bullet points for a single guide.
+6. Do NOT include headings, sections, benchmark tables, code blocks, or preamble. Output ONLY the ${expectedGuideCount} bullet points.`;
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -402,29 +473,97 @@ ${guideDiff.substring(0, 15000)}
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.warn(`Gemini API error (${response.status}): ${errorText}. Falling back to default generator.`);
-      return generateFallbackReleaseNotes(previousTag, newVersion, evalSummary, changedFiles);
+      console.warn(`Gemini API error (${response.status}): ${errorText}`);
+      return null;
     }
 
     const data = (await response.json()) as any;
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const text: string | undefined = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
     if (!text) {
-      console.warn('Empty response from Gemini API. Falling back to default generator.');
-      return generateFallbackReleaseNotes(previousTag, newVersion, evalSummary, changedFiles);
+      console.warn('Empty response from Gemini API.');
+      return null;
     }
 
-    // Clean any wrapping markdown code blocks if the model returned ```markdown ... ```
-const cleanedText = text
-  .replace(/^
-    return cleanedText;
+    const cleanedText: string = text
+      .replace(/^```(?:markdown|md)?\r?\n/, '')
+      .replace(/\r?\n```$/, '')
+      .trim();
+
+    const bullets = parseMarkdownBullets(cleanedText);
+
+    // Runtime validation: ensure exact count of guide bullets
+    if (bullets.length !== expectedGuideCount) {
+      console.warn(
+        `Gemini guide summary validation failed: expected ${expectedGuideCount} bullets, received ${bullets.length}.`
+      );
+      return null;
+    }
+
+    return bullets;
   } catch (err) {
-    console.warn('Failed to generate release notes with Gemini:', err);
-    return generateFallbackReleaseNotes(previousTag, newVersion, evalSummary, changedFiles);
+    console.warn('Failed to generate guide summaries with Gemini:', err);
+    return null;
   }
 }
 
-import { fileURLToPath } from 'node:url';
+/**
+ * Generates consumer-facing release notes using Gemini for guide summaries
+ * while deterministically building structure, headings, tables, and changelogs.
+ */
+export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<string> {
+  const {
+    previousTag,
+    newVersion,
+    target = 'HEAD',
+    publishCliDir,
+    apiKey = process.env.GEMINI_API_KEY,
+    model = process.env.GEMINI_MODEL || 'gemini-3.7-flash',
+  } = opts;
+
+  const { guideDiff, evalSummary, changedFiles } =
+    publishCliDir && fs.existsSync(publishCliDir)
+      ? getExactDistributionDiff(previousTag, publishCliDir)
+      : getConsumerFacingDiff(previousTag, target);
+
+  const uniqueGuideNames = getUniqueGuideNames(changedFiles);
+  const pluginFiles = changedFiles.filter(f => f.includes('-plugin') || f.includes('plugin.json') || f.includes('gemini-extension.json'));
+
+  if (uniqueGuideNames.length === 0) {
+    return buildReleaseNotesMarkdown({
+      previousTag,
+      newVersion,
+      guideBullets: [],
+      pluginFiles,
+      evalSummary,
+    });
+  }
+
+  if (!apiKey) {
+    console.log('No GEMINI_API_KEY found. Generating fallback release notes...');
+    return generateFallbackReleaseNotes(previousTag, newVersion, evalSummary, changedFiles);
+  }
+
+  const guideBullets = await generateGuideSummariesWithGemini({
+    guideDiff,
+    expectedGuideCount: uniqueGuideNames.length,
+    apiKey,
+    model,
+  });
+
+  if (!guideBullets) {
+    console.log('Falling back to default guide release notes generator...');
+    return generateFallbackReleaseNotes(previousTag, newVersion, evalSummary, changedFiles);
+  }
+
+  return buildReleaseNotesMarkdown({
+    previousTag,
+    newVersion,
+    guideBullets,
+    pluginFiles,
+    evalSummary,
+  });
+}
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2).filter(arg => !arg.startsWith('--'));
@@ -471,4 +610,3 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   });
 }
-
