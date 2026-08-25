@@ -39,14 +39,15 @@ Alternatively, you may choose to omit the `<progress>` element, and add the `sta
 
 #### Spinner Ring and Trail
 
-The spinner uses a `conic-gradient` to create a fading trail effect. `mask-image` is used to create the ring shape. To ensure the loader is only shown when it is exposed to the accessibility tree, use `:has(> progress:indeterminate)`. 
+The spinner uses a `conic-gradient` to create a fading trail effect. `mask-image` is used to create the ring shape. To ensure the loader is only shown when it is exposed to the accessibility tree, use `:has(> progress:indeterminate)`. Wrap that in `.loading-spinner:where()` to allow users to override the custom variables with a simple `.loading-spinner` selector.
 
 ```css
-.loading-spinner:has(> progress:indeterminate) {
+.loading-spinner:where(.loading-spinner:has(> progress:indeterminate)) { 
   --size: 40px;
   --thickness: 4px;
   --spinner-color: #3b82f6;
   --spinner-duration: 0.8s;
+   --_used-spinner-duration: var(--spinner-duration);
   --spinner-timing: linear;
   
   position: relative;
@@ -91,14 +92,14 @@ The spinner uses a `conic-gradient` to create a fading trail effect. `mask-image
 
 #### Respecting Motion Preferences
 
-Users with motion sensitivities may find fast-spinning elements disorienting. Always respect the `prefers-reduced-motion` media query.
+Users with motion sensitivities may find fast-spinning elements disorienting. Always respect the `prefers-reduced-motion` media query. Set the internal `--_used-spinner-duration` property to override the user's `--spinner-duration` value.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
   .loading-spinner {
     /* Slow down the animation significantly rather than stopping it entirely,
        so the user still knows that the process is active. */
-    animation-duration: 3s;
+    --_used-spinner-duration: 3s;
   }
 }
 ```
