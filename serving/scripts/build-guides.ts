@@ -17,7 +17,7 @@ export interface StoreUseCase {
 }
 import { replaceMacros, type BuildTarget, formatTitle } from "../lib/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
@@ -286,9 +286,8 @@ async function processSingleGuideFile(
   const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
 
   if (TARGET === 'static-site') {
-    const tokens = marked.lexer(markdownBody);
-    const h1Token = tokens.find((t: any) => t.type === 'heading' && t.depth === 1);
-    const title = h1Token ? (h1Token as any).text.trim() : (data.title || formatTitle(id));
+    const h1Title = extractH1Heading(markdownBody);
+    const title = h1Title || data.title || formatTitle(id);
     const genericFrontmatter = `---
 title: ${JSON.stringify(title)}
 description: ${JSON.stringify(data.description)}

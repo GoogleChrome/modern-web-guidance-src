@@ -710,6 +710,41 @@ function findInvalidHtmlTokens(
   }
 }
 
+/**
+ * Extracts all top-level H1 heading texts from markdown content using AST parsing.
+ * Headings inside code blocks are ignored.
+ */
+export function extractAllH1Headings(markdown: string): string[] {
+  if (!markdown || !markdown.trim()) {
+    return [];
+  }
+  try {
+    const tokens = marked.lexer(markdown);
+    const headings: string[] = [];
+    for (const token of tokens) {
+      if (token.type === 'heading' && token.depth === 1) {
+        const text = token.text.trim();
+        if (text.length > 0) {
+          headings.push(text);
+        }
+      }
+    }
+    return headings;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Extracts the first top-level H1 heading text from markdown content using AST parsing.
+ * Headings inside code blocks are ignored.
+ * Returns undefined if no top-level H1 heading is found.
+ */
+export function extractH1Heading(markdown: string): string | undefined {
+  const headings = extractAllH1Headings(markdown);
+  return headings.length > 0 ? headings[0] : undefined;
+}
+
 export const VAGUE_H1_TITLES = new Set(['overview', 'introduction', 'guide', 'title']);
 
 /**
@@ -722,23 +757,10 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
     errors.push(`Vague title "${data.title}" in frontmatter for ${relativePath}. Use a descriptive title instead.`);
   }
 
-  try {
-    const tokens = marked.lexer(body);
-    for (const token of tokens) {
-      if (token.type === 'heading' && token.depth === 1) {
-        const title = token.text.trim();
-        if (VAGUE_H1_TITLES.has(title.toLowerCase())) {
-          errors.push(`Vague H1 heading "# ${title}" in ${relativePath}. Use a descriptive title instead.`);
-        }
-      }
-    }
-  } catch {
-    const h1Matches = Array.from(body.matchAll(/^#\s+(.+)$/gm));
-    for (const match of h1Matches) {
-      const title = match[1].trim();
-      if (VAGUE_H1_TITLES.has(title.toLowerCase())) {
-        errors.push(`Vague H1 heading "# ${title}" in ${relativePath}. Use a descriptive title instead.`);
-      }
+  const headings = extractAllH1Headings(body);
+  for (const title of headings) {
+    if (VAGUE_H1_TITLES.has(title.toLowerCase())) {
+      errors.push(`Vague H1 heading "# ${title}" in ${relativePath}. Use a descriptive title instead.`);
     }
   }
 
@@ -754,13 +776,7 @@ export function validateGuideTitle(body: string, relativePath: string, data?: Gu
   const isStub = body.replace(/<!--[\s\S]*?-->/g, '').trim().length === 0;
 
   if (options?.requireTitle && !isStub) {
-    let hasH1 = false;
-    try {
-      const tokens = marked.lexer(body);
-      hasH1 = tokens.some((t: any) => t.type === 'heading' && t.depth === 1);
-    } catch {
-      hasH1 = /^#\s+(.+)$/m.test(body);
-    }
+    const hasH1 = Boolean(extractH1Heading(body));
     const hasTitle = Boolean(data?.title?.toString().trim());
     if (!hasTitle && !hasH1) {
       errors.push(`Missing H1 heading or frontmatter "title" in non-stub guide ${relativePath}.`);

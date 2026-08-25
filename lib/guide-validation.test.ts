@@ -3,8 +3,62 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
+
+describe('extractH1Heading and extractAllH1Headings', () => {
+  test('extracts standard ATX H1 heading', () => {
+    const markdown = '# My Title\n\nSome introductory paragraph.';
+    assert.strictEqual(extractH1Heading(markdown), 'My Title');
+    assert.deepStrictEqual(extractAllH1Headings(markdown), ['My Title']);
+  });
+
+  test('extracts H1 heading after HTML comments or frontmatter', () => {
+    const markdownWithComments = `<!-- Author: Someone -->\n<!-- Status: Draft -->\n\n# Document Title\n\nContent here.`;
+    assert.strictEqual(extractH1Heading(markdownWithComments), 'Document Title');
+    assert.deepStrictEqual(extractAllH1Headings(markdownWithComments), ['Document Title']);
+
+    const markdownWithFrontmatter = `---\nname: test-guide\ndescription: A test guide\n---\n\n# Frontmatter Title\n\nBody content.`;
+    assert.strictEqual(extractH1Heading(markdownWithFrontmatter), 'Frontmatter Title');
+    assert.deepStrictEqual(extractAllH1Headings(markdownWithFrontmatter), ['Frontmatter Title']);
+  });
+
+  test('ignores H1 headings inside code blocks', () => {
+    const markdown = `\`\`\`markdown\n# Inside Code Block\n# Another Inside Code Block\n\`\`\`\n\n\`\`\`js\n// # Not a heading\n\`\`\``;
+    assert.strictEqual(extractH1Heading(markdown), undefined);
+    assert.deepStrictEqual(extractAllH1Headings(markdown), []);
+
+    const markdownWithRealH1AndCodeBlock = `\`\`\`markdown\n# Code Block Title\n\`\`\`\n\n# Real Heading\n\n\`\`\`\n# Another Fake Heading\n\`\`\``;
+    assert.strictEqual(extractH1Heading(markdownWithRealH1AndCodeBlock), 'Real Heading');
+    assert.deepStrictEqual(extractAllH1Headings(markdownWithRealH1AndCodeBlock), ['Real Heading']);
+  });
+
+  test('preserves inline backticks and formatting in title', () => {
+    const markdown = '# Guide for `<dialog>` and `popover`\n\nContent.';
+    assert.strictEqual(extractH1Heading(markdown), 'Guide for `<dialog>` and `popover`');
+    assert.deepStrictEqual(extractAllH1Headings(markdown), ['Guide for `<dialog>` and `popover`']);
+  });
+
+  test('returns undefined / empty array when only lower level headings exist', () => {
+    const markdown = `## Subhead\n\n### Sub Subhead\n\n#### Minor Heading`;
+    assert.strictEqual(extractH1Heading(markdown), undefined);
+    assert.deepStrictEqual(extractAllH1Headings(markdown), []);
+  });
+
+  test('handles multiple H1 headings across document', () => {
+    const markdown = `# First Heading\n\nSome text.\n\n# Second Heading\n\nMore text.\n\n# Third Heading`;
+    assert.strictEqual(extractH1Heading(markdown), 'First Heading');
+    assert.deepStrictEqual(extractAllH1Headings(markdown), ['First Heading', 'Second Heading', 'Third Heading']);
+  });
+
+  test('returns undefined / empty array for empty or whitespace markdown', () => {
+    assert.strictEqual(extractH1Heading(''), undefined);
+    assert.deepStrictEqual(extractAllH1Headings(''), []);
+
+    assert.strictEqual(extractH1Heading('   \n\n  \t  \n'), undefined);
+    assert.deepStrictEqual(extractAllH1Headings('   \n\n  \t  \n'), []);
+  });
+});
 
 describe('parseExpectations', () => {
   test('legacy flat format: all bullets treated as mustPass', () => {
