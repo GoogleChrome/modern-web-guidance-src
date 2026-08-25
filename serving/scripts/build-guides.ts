@@ -15,7 +15,7 @@ export interface StoreUseCase {
   vector?: number[];
   distance?: number;
 }
-import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
+import { replaceMacros, type BuildTarget, formatTitle } from "../lib/macros.ts";
 
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
@@ -128,6 +128,7 @@ function restoreFromCache(paths: CachePaths, outputDir: string, target: string):
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
     fs.copyFileSync(paths.cachedTs, OUTPUT_FILE);
   } else if (target === 'static-site') {
+    fs.rmSync(outputDir, { recursive: true, force: true });
     fs.mkdirSync(outputDir, { recursive: true });
     fs.cpSync(paths.cachedGuides, outputDir, { recursive: true });
   } else {
@@ -262,13 +263,6 @@ export function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
-function formatTitle(id: string): string {
-  return id
-    .split("-")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
 async function processSingleGuideFile(
   filePath: string,
   category: string,
@@ -292,8 +286,9 @@ async function processSingleGuideFile(
   const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
 
   if (TARGET === 'static-site') {
-    const h1Match = markdownBody.match(/^#\s+(.+)$/m);
-    const title = h1Match ? h1Match[1].trim() : (data.title || formatTitle(id));
+    const tokens = marked.lexer(markdownBody);
+    const h1Token = tokens.find((t: any) => t.type === 'heading' && t.depth === 1);
+    const title = h1Token ? (h1Token as any).text.trim() : (data.title || formatTitle(id));
     const genericFrontmatter = `---
 title: ${JSON.stringify(title)}
 description: ${JSON.stringify(data.description)}

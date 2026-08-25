@@ -117,7 +117,7 @@ export function validateGuide(filePath: string): ValidationResult {
 
   errors.push(...validateMacros(body, relativePath));
   errors.push(...validateHtmlTags(body, relativePath));
-  errors.push(...validateHeadings(body, relativePath, data));
+  errors.push(...validateGuideTitle(body, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(body, relativePath));
 
   return { errors, data, body, filePath };

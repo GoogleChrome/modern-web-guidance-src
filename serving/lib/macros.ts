@@ -18,6 +18,13 @@ export class MacroError extends Error {
   }
 }
 
+export function formatTitle(id: string): string {
+  return id
+    .split("-")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 const MACRO_HANDLERS: Record<string, MacroHandler> = {
   INCLUDE: (args, filePath, options) => {
     const [rawArg] = args;
@@ -49,7 +56,7 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     const target = options?.target || 'local-dev';
 
     if (target === 'static-site') {
-      return `[${guideInfo.name}](../${guideInfo.category}/${guideInfo.name}.md)`;
+      return `[${formatTitle(guideInfo.name)}](../${guideInfo.category}/${guideInfo.name}.md)`;
     }
 
     if (target === 'skills-cli') {
@@ -65,7 +72,7 @@ defineFeatureMacro("BASELINE_STATUS", {
   content: (args, filePath, options) => {
     const [featureId, bcdKey] = args;
     if (options?.target === 'static-site') {
-      return `[BASELINE_STATUS: ${featureId}]`;
+      return bcdKey ? `{{ BASELINE_STATUS("${featureId}", "${bcdKey}") }}` : `{{ BASELINE_STATUS("${featureId}") }}`;
     }
     const status = getStatusMessage(featureId, bcdKey);
     if (!status) {

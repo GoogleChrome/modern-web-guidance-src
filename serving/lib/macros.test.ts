@@ -54,10 +54,16 @@ describe('replaceMacros (Functional with real data)', () => {
       );
     });
 
-    it('returns generic token for static-site target', () => {
+    it('preserves macro syntax for static-site target', () => {
       const content = '{{ BASELINE_STATUS("grid") }}';
       const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-      assert.strictEqual(result, '[BASELINE_STATUS: grid]');
+      assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}');
+    });
+
+    it('preserves macro syntax with BCD key for static-site target', () => {
+      const content = '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}';
+      const result = replaceMacros(content, 'test.md', { target: 'static-site' });
+      assert.strictEqual(result, '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}');
     });
 
     it('throws error for non-existent feature', () => {
@@ -171,25 +177,25 @@ describe('replaceMacros (Functional with real data)', () => {
         it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
           const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '[BASELINE_STATUS: grid]\n\n[BASELINE_STATUS: popover]');
+          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
         });
 
         it('normalizes consecutive BASELINE_STATUS with 1 blank line', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}';
           const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '[BASELINE_STATUS: grid]\n\n[BASELINE_STATUS: popover]');
+          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
         });
 
         it('normalizes consecutive BASELINE_STATUS with multiple blank lines', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
           const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '[BASELINE_STATUS: grid]\n\n[BASELINE_STATUS: popover]');
+          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
         });
 
         it('normalizes consecutive GUIDE_REF calls', () => {
           const content = '{{ GUIDE_REF("break-up-long-tasks") }}\n{{ GUIDE_REF("forms") }}';
           const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
-          assert.strictEqual(result, '[break-up-long-tasks](../performance/break-up-long-tasks.md)\n\n[forms](../forms/forms.md)');
+          assert.strictEqual(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)\n\n[Forms](../forms/forms.md)');
         });
       });
 
@@ -497,7 +503,7 @@ describe('INCLUDE', () => {
     it('replaces macro with relative markdown link for static-site target', () => {
       const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
       const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
-      assert.equal(result, '[break-up-long-tasks](../performance/break-up-long-tasks.md)');
+      assert.equal(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)');
     });
 
     it('throws error for non-existent guide', () => {

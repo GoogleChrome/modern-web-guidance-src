@@ -235,6 +235,54 @@ Guide content.
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('validateGuide enforces title presence on non-stub guides', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-val-title-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+---
+
+## Section Title
+
+Guide content without H1 heading or frontmatter title.
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.ok(result.errors.some(e => e.includes('Missing H1 heading or frontmatter "title" in non-stub guide')));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('validateGuide allows stub guides without title or H1 heading', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-val-stub-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+---
+
+<!-- stub guide -->
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.strictEqual(result.errors.length, 0);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('inventoryGuide and classifyGuide target discovery', () => {

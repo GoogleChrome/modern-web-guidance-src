@@ -11,6 +11,8 @@ web-feature-ids:
   - scroll-snap
 ---
 
+# Navigation Drawer
+
 ## Overview
 
 A navigation drawer is a panel that slides in from the edge of the viewport over the page content, dimming everything behind it. It is opened from a trigger button and dismissed by swiping the panel off-screen, tapping the dimmed backdrop, or pressing Escape.
