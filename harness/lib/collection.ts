@@ -10,7 +10,7 @@ function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPat
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
 }
 
-export function extractModelFromResults(resultsDir: string, _agent: string): string {
+export function extractModelFromResults(resultsDir: string, _agent?: string): string {
   const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
   try {
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
@@ -525,10 +525,18 @@ async function collectAllResults(
   runDirs: string[],
   taskMap: Map<string, any>,
   suiteConfig: SuiteConfig
-): Promise<Record<string, any[]>> {
+): Promise<{ allResults: Record<string, any[]>; model: string }> {
   const allResults: Record<string, any[]> = {};
+  let model = 'unknown';
 
   for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    if (model === 'unknown') {
+      const extracted = extractModelFromResults(dir, suiteConfig.agent);
+      if (extracted !== 'unknown') {
+        model = extracted;
+      }
+    }
+
     const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap, suiteConfig);
     if (!entry) continue;
 
@@ -538,7 +546,7 @@ async function collectAllResults(
     allResults[entry.testName].push(entry.payload);
   }
 
-  return allResults;
+  return { allResults, model };
 }
 
 export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
@@ -552,9 +560,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
   await executeParallelGrading(resultsDir, graderPackages);
 
   // PASS 2: Collect all results and formulate report
-  const allResults = await collectAllResults(resultsDir, runDirs, taskMap, suiteConfig);
+  const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap, suiteConfig);
 
   const estimatedRuntime = estimateTotalRuntime(resultsDir);
 
-  return { allResults, numRuns: runDirs.length, totalRuntime: estimatedRuntime };
+  return { allResults, numRuns: runDirs.length, model, totalRuntime: estimatedRuntime };
 }
+

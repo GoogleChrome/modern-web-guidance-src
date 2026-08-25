@@ -77,6 +77,19 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
   assert.strictEqual(noiseCat, 'incidental_noise');
 });
 
+test('categorizeAction distinguishes read actions mentioning files from mutation actions', () => {
+  // Read actions mentioning filenames should NOT be categorized as code_mutation
+  assert.notStrictEqual(categorizeAction('cat index.html', { cmd: 'cat index.html' }), 'code_mutation');
+  assert.notStrictEqual(categorizeAction('read_file', { file_path: 'index.html' }), 'code_mutation');
+  assert.notStrictEqual(categorizeAction('view_file', { AbsolutePath: 'app.jsx' }), 'code_mutation');
+
+  // Mutation actions should be categorized as code_mutation
+  assert.strictEqual(categorizeAction('write_to_file', { TargetFile: 'index.html' }), 'code_mutation');
+  assert.strictEqual(categorizeAction('replace_file_content', { TargetFile: 'app.jsx' }), 'code_mutation');
+  assert.strictEqual(categorizeAction('edit', { path: 'style.css' }), 'code_mutation');
+});
+
+
 test('mapToolType maps standard tool names to canonical types', () => {
   assert.strictEqual(mapToolType('read_file'), 'read_file');
   assert.strictEqual(mapToolType('view_file'), 'read_file');
@@ -278,3 +291,41 @@ test('generateNormalizedTrajectory dispatcher writes summary for given agent', a
     removeTempDir(tempDir);
   }
 });
+
+test('generateNormalizedTrajectory aggregates entries across multiple main session files', async () => {
+  const tempDir = createTempDir();
+  try {
+    const session1Lines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T21:00:00.000Z',
+        message: {
+          content: [{ type: 'tool_use', id: 'c1', name: 'search_use_cases', input: { query: 'first' } }]
+        }
+      })
+    ];
+    const session2Lines = [
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-09T21:00:05.000Z',
+        message: {
+          content: [{ type: 'tool_use', id: 'c2', name: 'write_file', input: { TargetFile: 'app.js' } }]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-1.jsonl'), session1Lines.join('\n'));
+    fs.writeFileSync(path.join(tempDir, 'session-2.jsonl'), session2Lines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Multi-session test');
+
+    const summary = readTrajectorySummary(tempDir);
+    assert.ok(summary, 'trajectory_summary.json should exist');
+    assert.strictEqual(summary.steps.length, 2, 'Should aggregate steps from both session files');
+    assert.strictEqual(summary.steps[0].action?.name, 'search_use_cases');
+    assert.strictEqual(summary.steps[1].action?.name, 'write_file');
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+

@@ -135,12 +135,13 @@ export function categorizeAction(name: string, params?: Record<string, any>, tho
     return 'other';
   }
 
+  const mutationParamKeys = ['targetfile', 'replacementcontent', 'replacementchunks', 'codecontent', 'write_to_file', 'replace_file_content'];
+  const paramKeys = params && typeof params === 'object' ? Object.keys(params).map(k => k.toLowerCase()) : [];
+  const hasMutationParam = paramKeys.some(k => mutationParamKeys.includes(k));
+  const isMutationName = ['write', 'replace', 'edit', 'touch'].some(k => actionName.includes(k));
+
   // 1. Code mutation takes highest priority to prevent false positives from code containing words like "search" or "retrieve"
-  if (
-    actionName.includes('write') || actionName.includes('replace') || actionName.includes('edit') || actionName.includes('touch') ||
-    actionParamsStr.includes('write_to_file') || actionParamsStr.includes('replace_file_content') ||
-    actionParamsStr.includes('index.html') || actionParamsStr.includes('app.jsx') || actionParamsStr.includes('style.css')
-  ) {
+  if (isMutationName || hasMutationParam) {
     return 'code_mutation';
   }
 
@@ -267,19 +268,32 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
         }
       }
 
-      if (mainSessionFiles[0] || subagentFiles[0]) {
-        const primaryFile = mainSessionFiles[0] || subagentFiles[0];
-        const filePath = path.join(targetDir, primaryFile);
-        const logData = primaryFile.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const allMainEntries: any[] = [];
+      for (const file of mainSessionFiles) {
+        const filePath = path.join(targetDir, file);
+        try {
+          const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          if (Array.isArray(logData)) {
+            allMainEntries.push(...logData);
+          } else if (logData && Array.isArray((logData as any).messages)) {
+            allMainEntries.push(...(logData as any).messages);
+          } else if (logData) {
+            allMainEntries.push(logData);
+          }
+        } catch (e) {
+          console.warn(`[TrajectoryParser] Failed to parse main session file ${file}:`, e);
+        }
+      }
 
+      if (allMainEntries.length > 0 || Object.keys(subagentsMap).length > 0) {
         if (agentName === Agents.CLAUDE_CODE) {
-          summary = parseClaudeTrajectory(logData, subagentsMap);
+          summary = parseClaudeTrajectory(allMainEntries, subagentsMap);
         } else if (agentName === Agents.GEMINI_CLI) {
-          summary = parseGeminiTrajectory(logData, subagentsMap);
+          summary = parseGeminiTrajectory(allMainEntries, subagentsMap);
         } else if (agentName === Agents.CODEX_CLI) {
-          summary = parseCodexTrajectory(logData, subagentsMap);
+          summary = parseCodexTrajectory(allMainEntries, subagentsMap);
         } else if (agentName === Agents.PI) {
-          summary = parsePiTrajectory(logData, subagentsMap);
+          summary = parsePiTrajectory(allMainEntries, subagentsMap);
         }
       }
     }
