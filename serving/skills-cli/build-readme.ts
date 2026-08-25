@@ -72,6 +72,22 @@ function listToMarkdownTable(items: string[], colCount = 3): string {
   return md;
 }
 
+export function getFeaturesAndUseCasesCount(): { featuresCount: number; useCasesCount: number } {
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide && inv.featureIds.length > 0);
+  const allFeatureIds = new Set<string>();
+
+  for (const guide of readyGuides) {
+    const guidePath = path.join(guide.dir, "guide.md");
+    if (!fs.existsSync(guidePath)) continue;
+    guide.featureIds.forEach(id => allFeatureIds.add(id));
+  }
+
+  return {
+    featuresCount: allFeatureIds.size,
+    useCasesCount: readyGuides.length,
+  };
+}
+
 export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const readyGuides = scanAllGuides().filter(inv => inv.hasGuide && inv.featureIds.length > 0);
 

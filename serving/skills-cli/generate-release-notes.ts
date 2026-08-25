@@ -212,48 +212,44 @@ export function getConsumerFacingDiff(previousTag: string, targetTag: string): {
   evalSummary: EvalSummaryItem[];
   changedFiles: string[];
 } {
+  const ghOutput = execSync(
+    `gh api repos/GoogleChrome/modern-web-guidance/compare/${previousTag}...${targetTag}`,
+    { encoding: 'utf8', cwd: rootDir, stdio: ['pipe', 'pipe', 'ignore'] }
+  ).trim();
+
   let guideDiff = '';
-  let changedFiles: string[] = [];
+  const changedFiles: string[] = [];
 
-  try {
-    const ghOutput = execSync(
-      `gh api repos/GoogleChrome/modern-web-guidance/compare/${previousTag}...${targetTag}`,
-      { encoding: 'utf8', cwd: rootDir, stdio: ['pipe', 'pipe', 'ignore'] }
-    ).trim();
+  const compareData = JSON.parse(ghOutput);
+  if (compareData.files && Array.isArray(compareData.files)) {
+    const sections: string[] = [];
+    const addedGuides: string[] = [];
+    const modifiedPatches: string[] = [];
 
-    const compareData = JSON.parse(ghOutput);
-    if (compareData.files && Array.isArray(compareData.files)) {
-      const sections: string[] = [];
-      const addedGuides: string[] = [];
-      const modifiedPatches: string[] = [];
-
-      for (const file of compareData.files) {
-        changedFiles.push(file.filename);
-        if (file.filename.startsWith('skills/modern-web-guidance/guides/') && file.status === 'added') {
-          const guideName = path.basename(file.filename, '.md');
-          addedGuides.push(`- **${guideName}** (Path: \`${file.filename}\`)`);
-        } else if (file.patch) {
-          // Ignore rote version bumps in manifest files
-          if (file.filename.includes('plugin.json') || file.filename === 'package.json' || file.filename === 'gemini-extension.json') {
-            if (file.patch.includes('"version":') && !file.patch.includes('"name":')) {
-              continue;
-            }
+    for (const file of compareData.files) {
+      changedFiles.push(file.filename);
+      if (file.filename.startsWith('skills/modern-web-guidance/guides/') && file.status === 'added') {
+        const guideName = path.basename(file.filename, '.md');
+        addedGuides.push(`- **${guideName}** (Path: \`${file.filename}\`)`);
+      } else if (file.patch) {
+        // Ignore rote version bumps in manifest files
+        if (file.filename.includes('plugin.json') || file.filename === 'package.json' || file.filename === 'gemini-extension.json') {
+          if (file.patch.includes('"version":') && !file.patch.includes('"name":')) {
+            continue;
           }
-          modifiedPatches.push(`--- ${file.filename} (${file.status}) ---\n${file.patch}`);
         }
+        modifiedPatches.push(`--- ${file.filename} (${file.status}) ---\n${file.patch}`);
       }
-
-      if (addedGuides.length > 0) {
-        sections.push(`### 🆕 Newly Added Guides:\n${addedGuides.join('\n')}`);
-      }
-      if (modifiedPatches.length > 0) {
-        sections.push(`### 🔄 Modified Files & Content Diff:\n${modifiedPatches.join('\n\n')}`);
-      }
-
-      guideDiff = sections.join('\n\n');
     }
-  } catch (err) {
-    console.warn(`Warning: Could not fetch GitHub compare between ${previousTag} and ${targetTag}:`, err);
+
+    if (addedGuides.length > 0) {
+      sections.push(`### 🆕 Newly Added Guides:\n${addedGuides.join('\n')}`);
+    }
+    if (modifiedPatches.length > 0) {
+      sections.push(`### 🔄 Modified Files & Content Diff:\n${modifiedPatches.join('\n\n')}`);
+    }
+
+    guideDiff = sections.join('\n\n');
   }
 
   const evalSummary = getLatestEvalResultsSummary();
@@ -277,7 +273,9 @@ export function generateFallbackReleaseNotes(
   if (guideFiles.length > 0) {
     sections.push('### 📖 Guidance & Web Platform Updates\n');
     for (const file of guideFiles) {
-      const guideName = path.basename(path.dirname(file)) || path.basename(file, '.md');
+      const guideName = path.basename(file) === 'guide.md'
+        ? path.basename(path.dirname(file))
+        : path.basename(file, '.md');
       sections.push(`* **${guideName}**: Updates and improvements to web platform guidance.`);
     }
     sections.push('');

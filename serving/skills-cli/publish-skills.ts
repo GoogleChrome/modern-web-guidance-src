@@ -3,7 +3,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
 import { buildDist } from './build-dist.ts';
-import { updateReadmeWithFeaturesAndUseCases } from './build-readme.ts';
+import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCasesCount } from './build-readme.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 import { generateReleaseNotes } from './generate-release-notes.ts';
@@ -174,7 +174,7 @@ async function main() {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
   if (isDryRun) {
-    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishCliDir);
+    const { featuresCount, useCasesCount } = getFeaturesAndUseCasesCount();
 
     const files = await fs.readdir(publishCliDir, {recursive: true, withFileTypes: true});
     const filteredFiles = files
