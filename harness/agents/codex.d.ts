@@ -6,6 +6,7 @@
 // - codex-rs/protocol/src/items.rs (TurnItem, CommandExecutionItem, McpToolCallItem)
 // - codex-rs/code-mode-protocol & codex-rs/core/src/tools (Code mode, exec_command, apply_patch)
 // - sdk/typescript/src/ (SDK ThreadItem and ThreadEvent definitions)
+// - Validated against ~/.codex/sessions rollout logs, history.jsonl, and logs_2.sqlite telemetry.
 
 // ============================================================================
 // 1. Top-Level Rollout JSONL Log Line
@@ -15,7 +16,7 @@
  * Each line in ~/.codex/sessions/ is a serialized RolloutLine.
  */
 export interface CodexRolloutLine {
-  /** ISO 8601 timestamp string (e.g. "2026-04-14T19:23:41.123Z") */
+  /** ISO 8601 timestamp string (e.g. "2026-05-14T17:45:15.100Z") */
   timestamp: string;
   /** Optional monotonic ordinal index within the rollout */
   ordinal?: number;
@@ -74,9 +75,10 @@ export interface CodexSessionMetaLine {
   dynamic_tools?: CodexDynamicToolSpec[] | null;
   selected_capability_roots?: string[];
   memory_mode?: string | null;
-  history_mode?: "legacy" | "paginated";
-  multi_agent_version?: "v1" | "v2" | null;
+  history_mode?: "legacy" | "paginated" | string;
+  multi_agent_version?: "v1" | "v2" | "disabled" | string | null;
   git?: CodexGitInfo | null;
+  context_window?: CodexContextWindowMeta | null;
 }
 
 export type CodexSessionSource =
@@ -84,7 +86,13 @@ export type CodexSessionSource =
   | "vscode"
   | "exec"
   | { custom: string }
+  | { subagent: Record<string, unknown> }
   | string;
+
+export interface CodexContextWindowMeta {
+  window_id?: string;
+  [key: string]: unknown;
+}
 
 export interface CodexGitInfo {
   commit_hash?: string | null;
@@ -167,7 +175,7 @@ export interface CodexResponseLocalShellCallItem {
   type: "local_shell_call";
   id?: string;
   call_id?: string | null;
-  status: "completed" | "in_progress" | "incomplete";
+  status: "completed" | "in_progress" | "incomplete" | string;
   action: {
     type: "exec";
     command: string[];
@@ -187,7 +195,7 @@ export interface CodexResponseFunctionCallItem {
   type: "function_call";
   id?: string;
   call_id: string;
-  name: string; // e.g. "exec_command", "write_stdin", "view_image"
+  name: string; // e.g. "exec_command", "write_stdin", "spawn_agent", "request_user_input", "wait", "wait_agent", "list_agents", "send_message", "interrupt_agent", "followup_task"
   namespace?: string;
   arguments: string; // JSON string payload (or parsed object in legacy/mock)
   encrypted_function_args?: string[];
@@ -252,12 +260,17 @@ export interface CodexResponseWebSearchCallItem {
   type: "web_search_call";
   id?: string;
   status?: string;
-  action?: {
-    type: "search";
-    query?: string;
-    queries?: string[];
-  };
+  action?: CodexWebSearchAction;
   internal_chat_message_metadata_passthrough?: CodexInternalChatMessageMetadataPassthrough;
+}
+
+export interface CodexWebSearchAction {
+  type: "search" | "open_page" | "find_in_page" | string;
+  query?: string;
+  queries?: string[];
+  url?: string;
+  pattern?: string;
+  [key: string]: unknown;
 }
 
 export interface CodexResponseImageGenerationCallItem {
@@ -333,6 +346,12 @@ export interface CodexExecCommandArgs {
   login?: boolean;
   /** Target execution environment ID */
   environment_id?: string;
+  /** Sandbox permissions profile requested */
+  sandbox_permissions?: string;
+  /** Justification for elevated tool permissions */
+  justification?: string;
+  /** Prefix rules applied to the command */
+  prefix_rule?: unknown[];
 }
 
 /**
@@ -343,6 +362,76 @@ export interface CodexWriteStdinArgs {
   chars?: string;
   yield_time_ms?: number;
   max_output_tokens?: number;
+}
+
+/**
+ * Arguments for spawning subagents (spawn_agent).
+ */
+export interface CodexSpawnAgentArgs {
+  agent_type: "explorer" | "sidecar" | string;
+  fork_context?: boolean;
+  message: string;
+  task_name?: string;
+  fork_turns?: string;
+}
+
+/**
+ * Arguments for request_user_input.
+ */
+export interface CodexRequestUserInputArgs {
+  questions: CodexUserInputQuestion[];
+}
+
+export interface CodexUserInputQuestion {
+  id: string;
+  header?: string;
+  question: string;
+  options: CodexUserInputOption[];
+}
+
+export interface CodexUserInputOption {
+  label: string;
+  description?: string;
+}
+
+/**
+ * Arguments for waiting on background execution cell (wait).
+ */
+export interface CodexWaitArgs {
+  cell_id?: string;
+  yield_time_ms?: number;
+  max_tokens?: number;
+  terminate?: boolean;
+}
+
+/**
+ * Arguments for waiting on subagent completion (wait_agent).
+ */
+export interface CodexWaitAgentArgs {
+  timeout_ms?: number;
+}
+
+/**
+ * Arguments for sending inter-agent messages (send_message / followup_task).
+ */
+export interface CodexSendMessageArgs {
+  target: string;
+  message: string;
+}
+
+/**
+ * Arguments for interrupting running subagents (interrupt_agent).
+ */
+export interface CodexInterruptAgentArgs {
+  target: string;
+}
+
+/**
+ * Arguments for follow-up subagent tasks (followup_task).
+ */
+export interface CodexFollowupTaskArgs {
+  target: string;
+  message: string;
 }
 
 /**
@@ -362,26 +451,39 @@ export interface CodexCodeModePragma {
 
 export type CodexEventMsg =
   | { type: "agent_message"; message: string; phase?: CodexMessagePhase; memory_citation?: unknown }
-  | { type: "user_message"; message: string; client_id?: string; images?: string[]; local_images?: string[] }
+  | { type: "user_message"; message: string; client_id?: string; images?: string[]; local_images?: string[]; text_elements?: unknown[]; audio?: unknown[]; local_audio?: unknown[] }
   | { type: "agent_reasoning"; text: string }
   | { type: "agent_reasoning_raw_content"; text: string }
   | { type: "agent_reasoning_section_break"; item_id: string; summary_index: number }
-  | { type: "token_count"; info?: CodexTokenUsageInfo; rate_limits?: CodexRateLimitSnapshot }
-  | { type: "task_started" | "turn_started"; turn_id: string; trace_id?: string; started_at?: number; model_context_window?: number }
+  | { type: "token_count"; info?: CodexTokenUsageInfo | null; rate_limits?: CodexRateLimitSnapshot | null }
+  | { type: "task_started" | "turn_started"; turn_id: string; trace_id?: string; started_at?: number; model_context_window?: number; collaboration_mode_kind?: string }
   | { type: "task_complete" | "turn_complete"; turn_id: string; last_agent_message?: string; error?: unknown; started_at?: number; completed_at?: number; duration_ms?: number }
   | { type: "exec_command_begin"; call_id: string; turn_id: string; command: string[]; cwd: string; parsed_cmd: unknown[]; source?: string }
   | { type: "exec_command_output_delta"; call_id: string; chunk: string }
-  | { type: "exec_command_end"; call_id: string; turn_id: string; command: string[]; stdout: string; completed_at_ms: number; exit_code?: number }
+  | { type: "exec_command_end"; call_id: string; turn_id: string; command: string[]; stdout: string; stderr?: string; aggregated_output?: string; formatted_output?: string; exit_code?: number; status?: string; process_id?: string; duration?: { secs: number; nanos: number }; parsed_cmd?: unknown[]; cwd?: string; source?: string; completed_at_ms?: number }
+  | { type: "patch_apply_begin"; call_id: string; turn_id: string }
+  | { type: "patch_apply_end"; call_id: string; turn_id: string; success: boolean; error?: string; stdout?: string; stderr?: string; changes?: Record<string, CodexPatchFileChange>; status?: string }
+  | { type: "web_search_end"; call_id: string; query?: string; action?: CodexWebSearchAction; results?: unknown[] }
+  | { type: "collab_agent_spawn_end"; call_id: string; sender_thread_id?: string; new_thread_id: string; new_agent_nickname?: string; new_agent_role?: string; prompt?: string; model?: string; reasoning_effort?: string; status?: string }
+  | { type: "thread_settings_applied"; thread_id?: string; turn_id?: string; settings?: CodexThreadSettings; thread_settings?: CodexThreadSettings }
+  | { type: "item_completed"; thread_id?: string; turn_id?: string; item?: { type: string; id: string; text?: string; [key: string]: unknown }; started_at_ms?: number; completed_at_ms?: number }
+  | { type: "sub_agent_activity"; event_id?: string; occurred_at_ms?: number; agent_thread_id?: string; agent_path?: string; kind?: "started" | "interacted" | "interrupted" | "completed" | string }
+  | { type: "error"; message: string; codex_error_info?: string }
   | { type: "mcp_tool_call_begin"; call_id: string; invocation: { server: string; tool: string; arguments?: unknown } }
   | { type: "mcp_tool_call_end"; call_id: string; result?: unknown; error?: unknown }
-  | { type: "patch_apply_begin"; call_id: string; turn_id: string }
-  | { type: "patch_apply_end"; call_id: string; turn_id: string; success: boolean; error?: string }
   | { type: "context_compacted" }
   | { type: "thread_rolled_back" }
   | { type: "turn_diff"; diff: string }
   | { type: "plan_update"; plan: unknown }
-  | { type: "turn_aborted"; reason?: string }
+  | { type: "turn_aborted"; turn_id?: string; reason?: string; completed_at?: number; duration_ms?: number }
   | { type: string; [key: string]: unknown };
+
+export interface CodexPatchFileChange {
+  type: "update" | "add" | "delete" | string;
+  unified_diff?: string;
+  move_path?: string | null;
+  [key: string]: unknown;
+}
 
 export interface CodexTokenUsage {
   input_tokens: number;
@@ -399,11 +501,13 @@ export interface CodexTokenUsageInfo {
 }
 
 export interface CodexRateLimitSnapshot {
-  limit_id?: string;
-  limit_name?: string;
-  primary?: { used_percent: number; window_minutes?: number; resets_at?: number };
-  secondary?: { used_percent: number; window_minutes?: number; resets_at?: number };
-  plan_type?: string;
+  limit_id?: string | null;
+  limit_name?: string | null;
+  primary?: { used_percent: number; window_minutes?: number; resets_at?: number } | null;
+  secondary?: { used_percent: number; window_minutes?: number; resets_at?: number } | null;
+  credits?: unknown | null;
+  plan_type?: string | null;
+  rate_limit_reached_type?: string | null;
   [key: string]: unknown;
 }
 
@@ -418,12 +522,63 @@ export interface CodexTurnContextItem {
   current_date?: string;
   timezone?: string;
   approval_policy: string;
-  sandbox_policy: string;
+  sandbox_policy: CodexSandboxPolicy | string;
+  permission_profile?: CodexPermissionProfile;
+  active_permission_profile?: { id: string };
+  file_system_sandbox_policy?: { kind?: string; entries?: unknown[]; [key: string]: unknown };
   model: string;
   personality?: string;
-  collaboration_mode?: unknown;
-  multi_agent_version?: string;
+  collaboration_mode?: CodexCollaborationMode;
+  realtime_active?: boolean;
+  summary?: string;
+  truncation_policy?: { mode?: string; limit?: number; [key: string]: unknown };
   effort?: string;
+  user_instructions?: string;
+  approvals_reviewer?: string;
+  comp_hash?: string;
+  multi_agent_version?: string;
+  [key: string]: unknown;
+}
+
+export interface CodexSandboxPolicy {
+  type: "danger-full-access" | "read-only" | "external-sandbox" | "workspace-write" | "read_write" | "read_only" | "disabled" | string;
+  writable_roots?: string[];
+  network_access?: string | boolean;
+  exclude_tmpdir_env_var?: boolean;
+  exclude_slash_tmp?: boolean;
+  [key: string]: unknown;
+}
+
+export interface CodexPermissionProfile {
+  id?: string;
+  type?: string;
+  file_system?: unknown;
+  network?: unknown;
+  [key: string]: unknown;
+}
+
+export interface CodexCollaborationMode {
+  mode: "default" | "plan" | string;
+  settings?: CodexCollaborationModeSettings;
+  [key: string]: unknown;
+}
+
+export interface CodexCollaborationModeSettings {
+  model?: string;
+  reasoning_effort?: string;
+  developer_instructions?: string;
+  [key: string]: unknown;
+}
+
+export interface CodexThreadSettings {
+  approval_policy?: string;
+  sandbox_policy?: CodexSandboxPolicy | string;
+  permission_profile?: CodexPermissionProfile;
+  active_permission_profile?: { id: string };
+  cwd?: string;
+  reasoning_effort?: string;
+  personality?: string;
+  collaboration_mode?: CodexCollaborationMode;
   [key: string]: unknown;
 }
 
@@ -466,4 +621,35 @@ export interface CodexRealtimeItem {
   realtime_session_id: string;
   type: string;
   [key: string]: unknown;
+}
+
+// ============================================================================
+// 7. Session History & SQLite Diagnostic Telemetry
+// ============================================================================
+
+/**
+ * Line item in ~/.codex/history.jsonl
+ */
+export interface CodexHistoryEntry {
+  session_id: string;
+  ts: number;
+  text: string;
+}
+
+/**
+ * Record row in ~/.codex/logs_2.sqlite (logs table)
+ */
+export interface CodexSqliteLogEntry {
+  id: number;
+  ts: number;
+  ts_nanos: number;
+  level: "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | string;
+  target: string;
+  feedback_log_body?: string | null;
+  module_path?: string | null;
+  file?: string | null;
+  line?: number | null;
+  thread_id?: string | null;
+  process_uuid?: string | null;
+  estimated_bytes: number;
 }
