@@ -38,11 +38,12 @@ export function setupPiCredentials(tempHome: string): void {
 
   fs.mkdirSync(piDestAgent, { recursive: true });
 
+  // Copy necessary auth and configuration files
   const filesToCopy = [
     'settings.json',
     'trust.json',
-    'auth.json',
-    'models-store.json'
+    'auth.json',  // Copy auth.json to provide API credentials in isolated env
+    'models-store.json'  // Copy models store so Pi knows about available models
   ];
 
   for (const file of filesToCopy) {
@@ -58,13 +59,14 @@ export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): {
   const piModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
   const modelArg = piModel ? ['--model', piModel] : [];
 
+  // Allow overriding --no-session via env var for trajectory testing
   const noSession = process.env.PI_NO_SESSION !== 'false';
   const sessionArgs = noSession ? ['--no-session'] : [];
 
   const commandArgs = [
-    '-p',
-    ...sessionArgs,
-    '--offline',
+    '-p', // print mode: non-interactive, process and exit
+    ...sessionArgs, // ephemeral mode: don't save session (unless disabled)
+    '--offline', // disable network operations for update checks
     ...modelArg,
     ...extraArgs,
     prompt
@@ -77,6 +79,9 @@ function exportPiTrajectories(workDir: string, targetDir: string): void {
   exportTrajectories(sessionsDir, '*.jsonl', targetDir);
 }
 
+/**
+ * Executes the Pi CLI command and captures output.
+ */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('pi-agent.ts');
   const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType, targetDir);
