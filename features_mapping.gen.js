@@ -113,6 +113,9 @@ window.__featuresMapping = {
   "form-fields-automatically-fit-contents": [
     "field-sizing"
   ],
+  "ime-safe-enter-submit": [
+    "keyboard-events"
+  ],
   "rating": [
     "meter",
     "input-range",
