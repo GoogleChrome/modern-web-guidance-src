@@ -53,6 +53,37 @@ test('extractCommandsFromCodexItem handles quotes, backticks, escapes, and paren
     }
   });
   assert.deepStrictEqual(cmd4, ['ls -la']);
+
+  // 5. Code mode with direct string argument (positional string parameter)
+  const cmd5 = extractCommandsFromCodexItem({
+    payload: {
+      type: 'custom_tool_call',
+      input: 'const r = await tools.exec_command("pnpm test");'
+    }
+  });
+  assert.deepStrictEqual(cmd5, ['pnpm test']);
+
+  // 6. Responses API local_shell_call
+  const cmd6 = extractCommandsFromCodexItem({
+    payload: {
+      type: 'local_shell_call',
+      action: {
+        type: 'exec',
+        command: ['bash', '-c', 'git status --short']
+      }
+    }
+  });
+  assert.deepStrictEqual(cmd6, ['git status --short']);
+
+  // 7. apply_patch should NOT be treated as a shell command
+  const cmd7 = extractCommandsFromCodexItem({
+    payload: {
+      type: 'custom_tool_call',
+      name: 'apply_patch',
+      input: '*** Begin Patch\n*** File: src/index.ts\n-cmd: old\n+cmd: new'
+    }
+  });
+  assert.deepStrictEqual(cmd7, []);
 });
 
 test('Codex CLI normalization with commentary, response items, and subagent inlining', async () => {

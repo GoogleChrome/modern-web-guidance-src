@@ -27,6 +27,7 @@ import {
   readTrajectorySummary,
   getSessionFiles
 } from '../lib/trajectory-normalizer.ts';
+import type { CodexRolloutLine } from './codex.d.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
 
@@ -140,7 +141,44 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   if (!payload) return commands;
 
   const itemType = payload.type || obj?.type;
+
+  // 1. local_shell_call response items
+  if (itemType === 'local_shell_call') {
+    const action = payload.action || obj?.action;
+    if (action?.type === 'exec' && Array.isArray(action.command)) {
+      const cmdArr = action.command;
+      const cIdx = cmdArr.indexOf('-c');
+      if (cIdx !== -1 && cmdArr[cIdx + 1]) {
+        commands.push(cmdArr[cIdx + 1]);
+      } else {
+        commands.push(cmdArr.join(' '));
+      }
+      return commands;
+    }
+  }
+
+  // 2. exec_command_begin / exec_command_end event_msg
+  if (itemType === 'exec_command_begin' || itemType === 'exec_command_end') {
+    if (Array.isArray(payload.command)) {
+      const cmdArr = payload.command;
+      const cIdx = cmdArr.indexOf('-c');
+      if (cIdx !== -1 && cmdArr[cIdx + 1]) {
+        commands.push(cmdArr[cIdx + 1]);
+      } else {
+        commands.push(cmdArr.join(' '));
+      }
+      return commands;
+    }
+  }
+
+  // 3. function_call or custom_tool_call
   if (itemType !== 'function_call' && itemType !== 'custom_tool_call') {
+    return commands;
+  }
+
+  // apply_patch is a file mutation, not a shell command
+  const toolName = (payload.name || obj.name || '').toLowerCase();
+  if (toolName === 'apply_patch' || toolName === 'patch') {
     return commands;
   }
 
@@ -164,16 +202,20 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
       // Not direct JSON
     }
 
-    const cmdRegex = /["']?(?:cmd|command)["']?\s*:\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
-    let found = false;
-    for (const match of raw.matchAll(cmdRegex)) {
+    // Match code-mode direct string calls: tools.exec_command("...")
+    const directCallRegex = /tools\.(?:exec_command|shell_command|bash)\(\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
+    for (const match of raw.matchAll(directCallRegex)) {
       commands.push(unescapeString(match[2], match[1]));
-      found = true;
     }
 
-    const toolName = (payload.name || obj.name || '').toLowerCase();
+    // Match { cmd: "..." } or { command: "..." } in code mode or function_call arguments
+    const cmdRegex = /["']?(?:cmd|command)["']?\s*:\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
+    for (const match of raw.matchAll(cmdRegex)) {
+      commands.push(unescapeString(match[2], match[1]));
+    }
+
     const isExecTool = !toolName || ['exec', 'exec_command', 'bash', 'shell', 'run_command', 'terminal'].some(t => toolName.includes(t));
-    if (!found && itemType === 'function_call' && isExecTool && raw.trim()) {
+    if (commands.length === 0 && itemType === 'function_call' && isExecTool && raw.trim()) {
       commands.push(raw);
     }
   }
@@ -181,7 +223,7 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   return commands;
 }
 
-export function parseCodexTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subagentsMap: Record<string, CodexRolloutLine[] | any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let currentThought = '';
   const callMap = new Map<string, StandardizedStep>();
