@@ -6,12 +6,20 @@ import path from 'node:path';
 import {
   generateFallbackReleaseNotes,
   buildReleaseNotesMarkdown,
+  buildBaselineBullets,
+  parseBaselineUpdateFromPatch,
+  isPatchOnlyBaselineUpdate,
+  stripBaselineLinesFromPatch,
+  classifyChanges,
+  getGuideDescription,
   getUniqueGuideNames,
   parseMarkdownBullets,
   isPatchOnlyVersionBump,
   isJsonOnlyVersionBump,
   isPluginFile,
   type EvalSummaryItem,
+  type BaselineUpdateInfo,
+  type RawChangeRecord,
 } from './generate-release-notes.ts';
 
 test('isPatchOnlyVersionBump correctly detects rote version bumps', () => {
@@ -34,6 +42,108 @@ test('isPatchOnlyVersionBump correctly detects rote version bumps', () => {
  }
  `;
   assert.strictEqual(isPatchOnlyVersionBump(realChangePatch), false);
+});
+
+test('isPatchOnlyBaselineUpdate correctly identifies baseline-only patches', () => {
+  const baselinePatch = `
+@@ -54,7 +54,7 @@
+ ### Fallback strategies
+-Baseline status for Masks: Newly available. It's been Baseline since 2023-12-07.
++Baseline status for Masks: Widely available. It's been Baseline since 2023-12-07.
+ Supported by: Chrome 120 (Dec 2023), Edge 120 (Dec 2023), Firefox 53 (Apr 2017), and Safari 15.4 (Mar 2022).
+`;
+  assert.strictEqual(isPatchOnlyBaselineUpdate(baselinePatch), true);
+
+  const substantivePatch = `
+@@ -10,6 +10,8 @@
+ ## Overview
++Here is some new important guidance about using mask-image safely.
++Always specify a fallback.
+`;
+  assert.strictEqual(isPatchOnlyBaselineUpdate(substantivePatch), false);
+});
+
+test('stripBaselineLinesFromPatch filters out baseline status lines while retaining substantive diffs', () => {
+  const mixedPatch = `
+@@ -1,6 +1,8 @@
+ ## Overview
++Here is some new substantive guidance about masks.
+-Baseline status for Masks: Newly available.
++Baseline status for Masks: Widely available.
++Always specify a fallback.
+`;
+  const stripped = stripBaselineLinesFromPatch(mixedPatch);
+  assert.ok(stripped.includes('+Here is some new substantive guidance about masks.'));
+  assert.ok(stripped.includes('+Always specify a fallback.'));
+  assert.ok(!stripped.includes('Baseline status for Masks'));
+});
+
+test('parseBaselineUpdateFromPatch extracts feature name and status rank', () => {
+  const patchWidely = `
+@@ -54,7 +54,7 @@
+-Baseline status for Masks: Newly available.
++Baseline status for Masks: Widely available.
+`;
+  const infoWidely = parseBaselineUpdateFromPatch('complex-shapes', patchWidely);
+  assert.strictEqual(infoWidely.featureName, 'CSS Masks');
+  assert.strictEqual(infoWidely.statusRank, 1);
+  assert.ok(infoWidely.statusDescription.includes('Widely available'));
+
+  const patchNewly = `
+@@ -10,7 +10,7 @@
+-Baseline status for field-sizing: Limited availability.
++Baseline status for field-sizing: Newly available.
+`;
+  const infoNewly = parseBaselineUpdateFromPatch('form-fields-automatically-fit-contents', patchNewly);
+  assert.strictEqual(infoNewly.featureName, 'field-sizing');
+  assert.strictEqual(infoNewly.statusRank, 2);
+  assert.ok(infoNewly.statusDescription.includes('Newly available'));
+});
+
+test('buildBaselineBullets sorts entries strictly: Widely -> Newly -> Limited and groups guides', () => {
+  const updates: BaselineUpdateInfo[] = [
+    {
+      featureName: 'Language Detection',
+      statusRank: 3,
+      statusDescription: 'Added **Edge 148** support',
+      guideName: 'language-detection',
+    },
+    {
+      featureName: 'CSS Masks',
+      statusRank: 1,
+      statusDescription: 'Now **Baseline Widely available**',
+      guideName: 'complex-shapes',
+    },
+    {
+      featureName: 'CSS Masks',
+      statusRank: 1,
+      statusDescription: 'Now **Baseline Widely available**',
+      guideName: 'shaped-cutouts',
+    },
+    {
+      featureName: 'field-sizing',
+      statusRank: 2,
+      statusDescription: 'Now **Baseline Newly available**',
+      guideName: 'form-fields-automatically-fit-contents',
+    },
+    {
+      featureName: ':has() selector',
+      statusRank: 1,
+      statusDescription: 'Now **Baseline Widely available**',
+      guideName: 'child-state-based-styling',
+    },
+  ];
+
+  const bullets = buildBaselineBullets(updates);
+  assert.strictEqual(bullets.length, 4);
+  // First should be Rank 1 (:has() and CSS Masks sorted alphabetically)
+  assert.ok(bullets[0].includes(':has() selector'));
+  assert.ok(bullets[1].includes('CSS Masks'));
+  assert.ok(bullets[1].includes('across 2 guides (`complex-shapes`, `shaped-cutouts`)'));
+  // Second group is Rank 2 (field-sizing)
+  assert.ok(bullets[2].includes('field-sizing'));
+  // Third group is Rank 3 (Language Detection)
+  assert.ok(bullets[3].includes('Language Detection'));
 });
 
 test('isJsonOnlyVersionBump correctly compares JSON objects on disk ignoring version', () => {
@@ -105,11 +215,12 @@ test('isPluginFile correctly identifies plugin and manifest files', () => {
   assert.strictEqual(isPluginFile('README.md'), false);
 });
 
-test('buildReleaseNotesMarkdown omits Guidance and Ecosystem sections when empty', () => {
+test('buildReleaseNotesMarkdown omits sections when empty', () => {
   const notes = buildReleaseNotesMarkdown({
     previousTag: 'v0.0.1',
     newVersion: '0.0.2',
     guideBullets: [],
+    baselineBullets: [],
     ecosystemBullets: [],
     evalSummary: [
       {
@@ -124,18 +235,29 @@ test('buildReleaseNotesMarkdown omits Guidance and Ecosystem sections when empty
   });
 
   assert.ok(notes.startsWith('# Release Notes: `v0.0.2`'));
-  assert.ok(!notes.includes('### 📖 Guidance & Web Platform Updates'));
-  assert.ok(!notes.includes('### 🚀 Agent Ecosystem'));
-  assert.ok(notes.includes('### 📊 Benchmark Evaluations'));
+  assert.ok(!notes.includes('## 🆕 New Guides'));
+  assert.ok(!notes.includes('## 🔄 Updated Guides'));
+  assert.ok(!notes.includes('## 🗑️ Removed Guides'));
+  assert.ok(!notes.includes('## 🌐 Browser Support Updates'));
+  assert.ok(!notes.includes('## 🔌 Plugins'));
+  assert.ok(notes.includes('## 📊 Benchmark Evaluations'));
 });
 
 test('buildReleaseNotesMarkdown constructs deterministic structure with custom bullets', () => {
   const notes = buildReleaseNotesMarkdown({
     previousTag: 'v0.0.1',
     newVersion: '0.0.2',
-    guideBullets: [
+    newGuideBullets: [
+      '* Introduced a new guide for **State-Aware Sticky Headers** detailing responsive header states.',
+    ],
+    updatedGuideBullets: [
       '* Updated the **Dynamic Sibling Styling** guide with cross-browser support details.',
-      '* Added the **Container Queries** guide for responsive widget design.',
+    ],
+    removedGuideBullets: [
+      '* Removed the **legacy-layout** guide.',
+    ],
+    baselineBullets: [
+      '* **CSS Masks**: Now **Baseline Widely available** across 2 guides (`complex-shapes`, `shaped-cutouts`).',
     ],
     ecosystemBullets: [
       '* Added support for the **Grok** plugin marketplace.',
@@ -153,28 +275,168 @@ test('buildReleaseNotesMarkdown constructs deterministic structure with custom b
   });
 
   assert.ok(notes.startsWith('# Release Notes: `v0.0.2`'));
-  assert.ok(notes.includes('### 📖 Guidance & Web Platform Updates'));
-  assert.ok(notes.includes('* Updated the **Dynamic Sibling Styling** guide with cross-browser support details.'));
-  assert.ok(notes.includes('* Added the **Container Queries** guide for responsive widget design.'));
-  assert.ok(notes.includes('### 🚀 Agent Ecosystem'));
-  assert.ok(notes.includes('* Added support for the **Grok** plugin marketplace.'));
-  assert.ok(notes.includes('### 📊 Benchmark Evaluations'));
+  assert.ok(notes.includes('## 🆕 New Guides\n\n* Introduced a new guide for **State-Aware Sticky Headers**'));
+  assert.ok(notes.includes('## 🔄 Updated Guides\n\n* Updated the **Dynamic Sibling Styling** guide'));
+  assert.ok(notes.includes('## 🗑️ Removed Guides\n\n* Removed the **legacy-layout** guide.'));
+  assert.ok(notes.includes('## 🌐 Browser Support Updates\n\n* **CSS Masks**: Now **Baseline Widely available**'));
+  assert.ok(notes.includes('## 🔌 Plugins\n\n* Added support for the **Grok** plugin marketplace.'));
+  assert.ok(notes.includes('## 📊 Benchmark Evaluations'));
   assert.ok(notes.includes('| **claude_code** (opus-5) | 130 / 1033 | 58% → **92%** | **+34pp** |'));
   assert.ok(notes.endsWith('**Full Changelog**: https://github.com/GoogleChrome/modern-web-guidance/compare/v0.0.1...v0.0.2'));
 });
 
-test('generateFallbackReleaseNotes formats guide and ecosystem updates', () => {
+test('generateFallbackReleaseNotes formats guide, baseline, and ecosystem updates', () => {
   const changedFiles = [
     'skills/modern-web-guidance/guides/css/size-aware-styling.md',
     '.grok-plugin/marketplace.json',
   ];
   const evalSummary: EvalSummaryItem[] = [];
+  const baselineUpdates: BaselineUpdateInfo[] = [
+    {
+      featureName: 'CSS Masks',
+      statusRank: 1,
+      statusDescription: 'Now **Baseline Widely available**',
+      guideName: 'complex-shapes',
+    },
+  ];
 
-  const notes = generateFallbackReleaseNotes('v0.1.0', '0.1.1', evalSummary, changedFiles);
+  const notes = generateFallbackReleaseNotes('v0.1.0', '0.1.1', evalSummary, changedFiles, baselineUpdates);
 
   assert.ok(notes.includes('# Release Notes: `v0.1.1`'));
-  assert.ok(notes.includes('### 📖 Guidance & Web Platform Updates'));
-  assert.ok(notes.includes('* **size-aware-styling**: Updates and improvements to web platform guidance.'));
-  assert.ok(notes.includes('### 🚀 Agent Ecosystem'));
-  assert.ok(notes.includes('* **.grok-plugin/marketplace.json**: Updates to agent plugin configuration.'));
+  assert.ok(notes.includes('## 🔄 Updated Guides\n\n* **size-aware-styling**: Updates and improvements to web platform guidance.'));
+  assert.ok(notes.includes('## 🌐 Browser Support Updates\n\n* **CSS Masks**: Now **Baseline Widely available** in `complex-shapes`.'));
+  assert.ok(notes.includes('## 🔌 Plugins\n\n* **.grok-plugin/marketplace.json**: Updates to agent plugin configuration.'));
 });
+
+test('classifyChanges correctly classifies added, modified, baseline, plugin, removed, and renamed records', () => {
+  const records: RawChangeRecord[] = [
+    {
+      relPath: 'skills/modern-web-guidance/guides/css/new-guide.md',
+      status: 'A',
+    },
+    {
+      relPath: 'skills/modern-web-guidance/guides/css/substantive-guide.md',
+      status: 'M',
+      patch: '@@ -1,3 +1,5 @@\n+New substantive content\n',
+    },
+    {
+      relPath: 'skills/modern-web-guidance/guides/css/baseline-guide.md',
+      status: 'M',
+      patch: '@@ -10,3 +10,3 @@\n-Baseline status for Masks: Newly available.\n+Baseline status for Masks: Widely available.\n',
+    },
+    {
+      relPath: 'skills/modern-web-guidance/guides/css/dual-update-guide.md',
+      status: 'M',
+      patch: '@@ -1,3 +1,5 @@\n+Refactored layout techniques and recommendations.\n@@ -10,3 +10,3 @@\n-Baseline status for linear() easing: Newly available.\n+Baseline status for linear() easing: Widely available.\n',
+    },
+    {
+      relPath: 'skills/modern-web-guidance/guides/css/renamed-guide.md',
+      oldPath: 'skills/modern-web-guidance/guides/css/old-guide-name.md',
+      status: 'R',
+      patch: '@@ -1,3 +1,4 @@\n+Additional notes on renamed guide\n',
+    },
+    {
+      relPath: 'skills/modern-web-guidance/guides/javascript/removed-guide.md',
+      status: 'D',
+    },
+    {
+      relPath: '.grok-plugin/marketplace.json',
+      status: 'A',
+    },
+    {
+      relPath: '.claude-plugin/plugin.json',
+      status: 'M',
+      patch: '@@ -1,5 +1,5 @@\n {\n-  "version": "1.0.0"\n+  "version": "1.0.1"\n }\n',
+    },
+    {
+      relPath: 'symlink-guide.md',
+      status: 'M',
+      isLink: true,
+    },
+    {
+      relPath: 'deleted-file.md',
+      status: 'D',
+    },
+  ];
+
+  const result = classifyChanges(records);
+
+  // 1. Added guide
+  assert.deepStrictEqual(result.addedGuideNames, ['new-guide']);
+  assert.ok(result.addedGuidesDiff.includes('- **new-guide** (Path: `skills/modern-web-guidance/guides/css/new-guide.md`)'));
+
+  // 2. Substantive modified guide & Renamed guide (including dual-update guide)
+  assert.deepStrictEqual(result.modifiedGuideNames, ['substantive-guide', 'dual-update-guide', 'renamed-guide']);
+  assert.ok(result.modifiedGuidesDiff.includes('skills/modern-web-guidance/guides/css/substantive-guide.md'));
+  assert.ok(result.modifiedGuidesDiff.includes('New substantive content'));
+  assert.ok(result.modifiedGuidesDiff.includes('Refactored layout techniques'));
+  assert.ok(result.modifiedGuidesDiff.includes('Renamed from skills/modern-web-guidance/guides/css/old-guide-name.md'));
+
+  // 3. Removed guide
+  assert.deepStrictEqual(result.removedGuideNames, ['removed-guide']);
+
+  // 4. Renamed guide record
+  assert.deepStrictEqual(result.renamedGuides, [
+    { oldName: 'old-guide-name', newName: 'renamed-guide' },
+  ]);
+
+  // 5. Baseline updates (includes both standalone baseline guide and dual-update guide)
+  assert.strictEqual(result.baselineUpdates.length, 2);
+  assert.strictEqual(result.baselineUpdates[0].featureName, 'CSS Masks');
+  assert.strictEqual(result.baselineUpdates[0].statusRank, 1);
+  assert.strictEqual(result.baselineUpdates[1].featureName, 'linear() easing');
+  assert.strictEqual(result.baselineUpdates[1].statusRank, 1);
+  assert.strictEqual(result.baselineUpdates[1].guideName, 'dual-update-guide');
+
+  // 6. Plugin file (added)
+  assert.ok(result.pluginDiff.includes('--- .grok-plugin/marketplace.json (Added) ---'));
+  // 7. Version-only bump plugin skipped
+  assert.ok(!result.pluginDiff.includes('.claude-plugin/plugin.json'));
+
+  // 8. Changed files
+  assert.deepStrictEqual(result.changedFiles, [
+    'skills/modern-web-guidance/guides/css/new-guide.md',
+    'skills/modern-web-guidance/guides/css/substantive-guide.md',
+    'skills/modern-web-guidance/guides/css/dual-update-guide.md',
+    'skills/modern-web-guidance/guides/css/renamed-guide.md',
+    'skills/modern-web-guidance/guides/javascript/removed-guide.md',
+    '.grok-plugin/marketplace.json',
+  ]);
+});
+
+test('getGuideDescription extracts frontmatter description from source and distribution paths', () => {
+  const guideDesc = getGuideDescription('skills/modern-web-guidance/guides/ui-atoms/state-aware-sticky-headers.md');
+  assert.ok(guideDesc);
+  assert.ok(guideDesc.includes('Build sticky section headers or navbars'));
+
+  const skillDesc = getGuideDescription('skills/chrome-extensions/SKILL.md');
+  assert.ok(skillDesc);
+  assert.ok(skillDesc.includes('Build and publish Chrome Extensions'));
+});
+
+test('generateFallbackReleaseNotes formats categorized guide additions, updates, and removals with frontmatter descriptions', () => {
+  const notes = generateFallbackReleaseNotes(
+    'v0.1.0',
+    '0.1.1',
+    [],
+    [
+      'skills/modern-web-guidance/guides/css/new-feature.md',
+      'skills/modern-web-guidance/guides/css/existing-feature.md',
+      'skills/modern-web-guidance/guides/css/old-feature.md',
+    ],
+    [],
+    {
+      addedGuideNames: ['new-feature'],
+      modifiedGuideNames: ['existing-feature'],
+      removedGuideNames: ['old-feature'],
+      guideDescriptions: {
+        'new-feature': 'Custom frontmatter description for new feature.',
+      },
+    }
+  );
+
+  assert.ok(notes.includes('## 🆕 New Guides\n\n* **new-feature**: Custom frontmatter description for new feature.'));
+  assert.ok(notes.includes('## 🔄 Updated Guides\n\n* **existing-feature**: Updates and improvements to web platform guidance.'));
+  assert.ok(notes.includes('## 🗑️ Removed Guides\n\n* Removed the **old-feature** guide.'));
+});
+
