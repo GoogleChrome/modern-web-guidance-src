@@ -69,31 +69,35 @@ const BASELINE_OUTPUT_PATTERNS = [
 ];
 
 export function getPreviousTag(targetTag: string): string {
+  let tags: string[] = [];
+
   try {
-    const ghOutput = execSync(
-      `gh api repos/GoogleChrome/modern-web-guidance/tags --jq '.[].name'`,
-      { encoding: 'utf8', cwd: rootDir, stdio: ['pipe', 'pipe', 'ignore'] }
-    ).trim();
-    const tags = ghOutput.split('\n').map(t => t.trim()).filter(Boolean);
-    const targetIndex = tags.indexOf(targetTag);
-    if (targetIndex !== -1 && targetIndex + 1 < tags.length) {
-      return tags[targetIndex + 1];
-    }
-  } catch { }
+    const output = execSync('git tag -l "v*.*.*" --sort=-v:refname', {
+      encoding: 'utf8',
+      cwd: rootDir,
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+    tags = output.split('\n').map(t => t.trim()).filter(Boolean);
+  } catch {}
 
-  const output = execSync(
-    `git tag -l "v*.*.*" --sort=-v:refname --merged ${targetTag}`,
-    { encoding: 'utf8', cwd: rootDir, stdio: ['pipe', 'pipe', 'ignore'] }
-  ).trim();
+  if (tags.length === 0) {
+    try {
+      const ghOutput = execSync(
+        `gh api --paginate repos/GoogleChrome/modern-web-guidance/tags --jq '.[].name'`,
+        { encoding: 'utf8', cwd: rootDir, stdio: ['pipe', 'pipe', 'ignore'] }
+      ).trim();
+      tags = ghOutput.split('\n').map(t => t.trim()).filter(Boolean);
+    } catch {}
+  }
 
-  const tags = output.split('\n').map(t => t.trim()).filter(Boolean);
   const targetIndex = tags.indexOf(targetTag);
   if (targetIndex !== -1 && targetIndex + 1 < tags.length) {
     return tags[targetIndex + 1];
   }
-  if (tags.length > 1) {
-    return tags[1];
+  if (tags.length > 0) {
+    return tags[0];
   }
+
   throw new Error(`Could not determine previous tag for ${targetTag}`);
 }
 
