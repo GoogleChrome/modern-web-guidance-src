@@ -1,0 +1,11 @@
+{
+  "tmp-linked-parameters": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/3492"
+  },
+  "tmp-streaming-api": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4117"
+  },
+  "tmp-cross-origin-storage": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4029"
+  }
+}

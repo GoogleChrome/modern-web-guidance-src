@@ -1,18 +1,35 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
-import config from '../../harness/config.ts';
+import { rootDir, baseAppsDir } from '../../lib/paths.ts';
 import {
   createIsolatedHome,
-  copyFileIfExists,
   createTrustedFolders,
+  spawnAsync,
+  setupAgentCredentials,
+  getAgentCommandAndArgs,
 } from '../../harness/lib/agent-shared.ts';
+import { Agents } from '../../harness/config.ts';
+import { getDefaultSolutionAgent } from '../../lib/guide-validation.ts';
 
-export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
+export async function copyBaseAppToWorkspace(baseApp: string, destDir: string): Promise<void> {
+  const refBaseAppDir = path.join(baseAppsDir, baseApp);
+  if (!fs.existsSync(refBaseAppDir)) {
+    console.warn(`Source base app not found at ${refBaseAppDir}`);
+    return;
+  }
+  await fs.promises.cp(refBaseAppDir, destDir, {
+    recursive: true,
+    filter: (src) => !src.includes('/dist') && !src.includes('/.astro') && !src.includes('node_modules'),
+  });
+}
+
+
+export async function runCommand(command: string, args: string[], cwd?: string, env?: NodeJS.ProcessEnv): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
-      env: { ...process.env },
+      env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -35,30 +52,60 @@ export async function runCommand(command: string, args: string[], cwd?: string):
   });
 }
 
-export async function runGemini(prompt: string, workDir?: string): Promise<string> {
-  const command = config.environment.geminiCliBin;
-  const commandArgs = ['-p', prompt, '--yolo'];
-  
-  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
-  return runCommand(command, commandArgs, workDir);
-}
+export async function runAgent(
+  agent: Agents,
+  prompt: string,
+  workDir?: string,
+  options: { captureOutput?: boolean } = {}
+): Promise<string> {
+  const { command, commandArgs } = getAgentCommandAndArgs(agent, prompt);
+  const tempHome = workDir ? path.dirname(workDir) : undefined;
+  const env = tempHome ? { ...process.env, HOME: tempHome } : { ...process.env };
 
-export function setupIsolatedWorkDir(prefix: string): string {
-  const tempHome = createIsolatedHome(prefix);
-  const workDir = path.join(tempHome, 'work');
-  fs.mkdirSync(workDir, { recursive: true });
-
-  const originalHome = process.env.HOME || process.cwd();
-  const geminiSource = path.join(originalHome, '.gemini');
-  const geminiDest = path.join(tempHome, '.gemini');
-  fs.mkdirSync(geminiDest, { recursive: true });
-
-  for (const file of ['oauth_creds.json', 'google_accounts.json', 'installation_id', 'settings.json']) {
-    copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
+  if (options.captureOutput) {
+    return runCommand(command, commandArgs, workDir, env);
   }
 
-  createTrustedFolders(geminiDest, [workDir]);
-  process.env.HOME = tempHome;
+  const exitCode = await spawnAsync(command, commandArgs, {
+    cwd: workDir,
+    env,
+    stdio: ['ignore', 'inherit', 'inherit'],
+  });
+
+  if (exitCode !== 0) {
+    throw new Error(`${agent} CLI exited with code ${exitCode}`);
+  }
+
+  return '';
+}
+
+export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string, agent?: Agents): string {
+  const tempHome = createIsolatedHome(`gd-gen-${suffix}`);
+  const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
+  fs.mkdirSync(workDir, { recursive: true });
+
+  const geminiDest = path.join(tempHome, '.gemini');
+  const effectiveAgent: Agents = agent ?? (getDefaultSolutionAgent() as Agents);
+  setupAgentCredentials(effectiveAgent, tempHome);
+
+  createTrustedFolders(geminiDest, [tempHome]);
+
+  // Symlink host node_modules to tempHome/node_modules and tempHome/guides/node_modules for local typechecking inside the sandbox
+  const hostNodeModules = path.join(rootDir, 'node_modules');
+  if (fs.existsSync(hostNodeModules)) {
+    fs.symlinkSync(hostNodeModules, path.join(tempHome, 'node_modules'));
+  }
+  const hostGuidesNodeModules = path.join(rootDir, 'guides', 'node_modules');
+  if (fs.existsSync(hostGuidesNodeModules)) {
+    fs.mkdirSync(path.join(tempHome, 'guides'), { recursive: true });
+    fs.symlinkSync(hostGuidesNodeModules, path.join(tempHome, 'guides', 'node_modules'));
+  }
+
+  // Write a dummy package.json at tempHome with type: module so tsc compiles test-fixture.ts as ESM
+  fs.writeFileSync(
+    path.join(tempHome, 'package.json'),
+    JSON.stringify({ type: 'module' }, null, 2)
+  );
   
   return workDir;
 }
@@ -70,18 +117,50 @@ export function escapeLeftAngleBracket(text: string): string {
 export interface PassRates {
   unguided: string;
   guided: string;
+  guidesConsumed?: string[];
 }
 
-export function parsePassRates(output: string): PassRates | null {
-  const unguidedMatch = output.match(
-    /Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/,
-  );
-  const guidedMatch = output.match(
-    /Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/,
-  );
+export function parsePassRates(output: string): Record<string, PassRates> | null {
+  const rates: Record<string, PassRates> = {};
+  const lines = output.split('\n');
+  let currentBaseApp = '';
 
-  if (unguidedMatch && guidedMatch) {
-    return {unguided: unguidedMatch[1], guided: guidedMatch[1]};
+  for (const line of lines) {
+    const baseAppMatch = line.match(/Running agent test for target:\s*(\S+)/);
+    if (baseAppMatch) {
+      currentBaseApp = baseAppMatch[1].trim();
+      continue;
+    }
+
+    const unguidedMatch = line.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
+    if (unguidedMatch) {
+      const app = currentBaseApp || 'demo';
+      if (!rates[app]) {
+        rates[app] = { unguided: '', guided: '', guidesConsumed: [] };
+      }
+      rates[app].unguided = unguidedMatch[1];
+    }
+
+    const guidedMatch = line.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
+    if (guidedMatch) {
+      const app = currentBaseApp || 'demo';
+      if (!rates[app]) {
+        rates[app] = { unguided: '', guided: '', guidesConsumed: [] };
+      }
+      rates[app].guided = guidedMatch[1];
+    }
+
+    const guidesMatch = line.match(/Guides consumed:\s+\[(.*)\]/);
+    if (guidesMatch) {
+      const app = currentBaseApp || 'demo';
+      if (!rates[app]) {
+        rates[app] = { unguided: '', guided: '', guidesConsumed: [] };
+      }
+      rates[app].guidesConsumed = guidesMatch[1]
+        ? guidesMatch[1].split(',').map(g => g.trim())
+        : [];
+    }
   }
-  return null;
+
+  return Object.keys(rates).length > 0 ? rates : null;
 }

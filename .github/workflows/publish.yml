@@ -19,14 +19,16 @@ jobs:
 
     steps:
       - name: Generate GitHub App token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
         with:
           app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }},modern-web-guidance
+          permission-contents: write
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
@@ -39,10 +41,10 @@ jobs:
           fi
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
       - name: Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -50,6 +52,24 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          credentials_json: ${{ secrets.GCP_EVALS_COLLECTOR_SA_KEY }}
+
+      - name: Collect latest evaluation results from GCS
+        id: collect-evals
+        continue-on-error: true
+        run: pnpm --filter serving run collect-evals
+
+      - name: Handle eval collection fallback on failure
+        if: steps.collect-evals.outcome != 'success'
+        run: |
+          echo "::warning title=Eval Collection Skipped::Evaluation collection or regression test failed. Discarding uncommitted summary and proceeding with previous stable eval data."
+          echo "### ⚠️ Evaluation Collection Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "Evaluation collection or regression tests encountered an issue. Discarding changes to \`eval-results-summary.json\` and proceeding with publish using previous data." >> $GITHUB_STEP_SUMMARY
+          git checkout -- serving/skills-cli/eval-results-summary.json || true
 
       - name: Build distribution
         run: pnpm --filter serving run build
@@ -64,16 +84,30 @@ jobs:
 
 
       - name: Configure Git for Auth and Commit
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Rewrite SSH to HTTPS using the App token for the target repo
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://x-access-token:${APP_TOKEN}@github.com/".insteadOf "git@github.com:"
 
       - name: Publish Skills to GitHub (modern-web-guidance)
         env:
           GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
+
+      - name: Commit and push updated evals and README to source repo
+        env:
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          if ! git diff --quiet README.md serving/skills-cli/eval-results-summary.json; then
+            git add README.md serving/skills-cli/eval-results-summary.json
+            git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"
+            git push origin HEAD:"$GITHUB_REF"
+          else
+            echo "No changes in README.md or eval-results-summary.json to commit."
+          fi
 
       - name: Publish to npm via OIDC Provenance
         run: |

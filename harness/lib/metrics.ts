@@ -20,8 +20,6 @@ export interface RunResult {
   tokenUsage?: { total: number; cached: number };
 }
 
-
-
 export interface Metrics {
   summary: {
     unguidedMedian: number;
@@ -78,6 +76,8 @@ export interface EvalsReport {
   serving: string;
   model: string;
   totalRuntime?: number;
+  skillVersion?: string;
+  cliVersion?: string;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
@@ -151,8 +151,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         }
       });
     }
-
-
 
     let totalTokensForConfig = 0;
     let cachedTokensForConfig = 0;

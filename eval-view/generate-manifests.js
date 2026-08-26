@@ -49,28 +49,36 @@ export function generateMapping(outputDir = '.') {
  * Generates suites.gen.json based on folders in harness/results that contain evals.json.
  */
 export async function generateSuitesManifest(outputDir = '.', resultsSourceDir = resultsDir, skipFetch = false) {
-    const suites = new Set();
+    const { extractSuiteSummary } = await import('./summary-extractor.js');
+    /** @type {Map<string, Record<string, any>>} */
+    const suitesMap = new Map();
     const outputPath = path.join(outputDir, 'suites.gen.json');
 
     // 1. Fetch live manifest from GitHub Pages to preserve historical data
     if (!skipFetch) {
-    const liveManifestUrl = 'https://googlechrome.github.io/guidance-dash/suites.gen.json';
-    console.log(`Fetching live manifest from ${liveManifestUrl}...`);
-    try {
-        const response = await fetch(liveManifestUrl);
-        if (response.ok) {
-            const liveSuites = await response.json();
-            if (Array.isArray(liveSuites)) {
-                console.log(`Fetched ${liveSuites.length} suites from live manifest.`);
-                liveSuites.forEach(s => suites.add(s));
+        const liveManifestUrl = 'https://googlechrome.github.io/guidance-dash/suites.gen.json';
+        console.log(`Fetching live manifest from ${liveManifestUrl}...`);
+        try {
+            const response = await fetch(liveManifestUrl);
+            if (response.ok) {
+                const liveSuites = await response.json();
+                if (Array.isArray(liveSuites)) {
+                    console.log(`Fetched ${liveSuites.length} suites from live manifest.`);
+                    liveSuites.forEach(s => {
+                        if (typeof s === 'string') {
+                            suitesMap.set(s, { testId: s, source: 'remote' });
+                        } else if (s && s.testId) {
+                            suitesMap.set(s.testId, s);
+                        }
+                    });
+                }
+            } else {
+                console.warn(`Failed to fetch live manifest (Status ${response.status}). Starting fresh.`);
             }
-        } else {
-            console.warn(`Failed to fetch live manifest (Status ${response.status}). Starting fresh.`);
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            console.warn(`Failed to fetch live manifest:`, message);
         }
-    } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        console.warn(`Failed to fetch live manifest:`, message);
-    }
     }
 
     // 2. Add new suites from results dir
@@ -79,14 +87,26 @@ export async function generateSuitesManifest(outputDir = '.', resultsSourceDir =
         for (const item of items) {
             if (item.isDirectory()) {
                 const suiteDir = path.join(resultsSourceDir, item.name);
-                if (fs.existsSync(path.join(suiteDir, 'evals.json'))) {
-                    suites.add(item.name);
+                const evalsPath = path.join(suiteDir, 'evals.json');
+                if (fs.existsSync(evalsPath)) {
+                    try {
+                        const rawData = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+                        const summary = extractSuiteSummary(item.name, rawData);
+                        if (summary) {
+                            suitesMap.set(item.name, summary);
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to parse evals.json for ${item.name}:`, e);
+                        suitesMap.set(item.name, { testId: item.name, source: 'local' });
+                    }
                 }
             }
         }
     }
 
-    const sortedSuites = Array.from(suites).sort();
+    const sortedSuites = Array.from(suitesMap.values()).sort((a, b) => {
+        return (a.testId || '').localeCompare(b.testId || '');
+    });
     fs.writeFileSync(outputPath, JSON.stringify(sortedSuites, null, 2));
     return sortedSuites;
 }
@@ -95,32 +115,23 @@ export async function generateSuitesManifest(outputDir = '.', resultsSourceDir =
  * Generates grouped-tasks.gen.json by scanning guides.
  */
 export async function generateGroupedTasksManifest(outputDir = '.') {
-    const { getTaskMap, isDisciplineSkillDir } = await import('../lib/guide-validation.ts');
+    const { getTaskMap } = await import('../lib/guide-validation.ts');
     const { USE_CASES } = await import('../serving/lib/practices.ts');
     const taskMap = getTaskMap();
     /** @type {Record<string, Record<string, string[]>>} */
     const grouped = {};
-    /** @type {Record<string, string[]>} */
-    const disciplines = {};
     
-    for (const [key, info] of taskMap.entries()) {
+    for (const key of taskMap.keys()) {
         const [guide, task] = key.split('/');
-        const isDisciplineSkill = isDisciplineSkillDir(info.guideDir);
-        
-        if (isDisciplineSkill) {
-            if (!disciplines[guide]) disciplines[guide] = [];
-            disciplines[guide].push(task);
-        } else {
-            const useCase = USE_CASES.find(u => u.id === guide);
-            const category = useCase ? useCase.category : 'Uncategorized';
-            if (!grouped[category]) grouped[category] = {};
-            if (!grouped[category][guide]) grouped[category][guide] = [];
-            grouped[category][guide].push(task);
-        }
+        const useCase = USE_CASES.find(u => u.id === guide);
+        const category = useCase ? useCase.category : 'Uncategorized';
+        if (!grouped[category]) grouped[category] = {};
+        if (!grouped[category][guide]) grouped[category][guide] = [];
+        grouped[category][guide].push(task);
     }
     
     const outputPath = path.join(outputDir, 'grouped-tasks.gen.json');
-    fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped, disciplines: disciplines }, null, 2));
+    fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped }, null, 2));
 }
 
 /**

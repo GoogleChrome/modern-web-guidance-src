@@ -1,0 +1,35 @@
+{
+  "default": {
+    "built-in-ai": "tomayac",
+    "css": "LeaVerou",
+    "html": "LeaVerou",
+    "forms": "LeaVerou",
+    "ui-behaviors": "LeaVerou",
+    "ui-atoms": "LeaVerou",
+    "ui-components": "LeaVerou",
+    "visual-design": "LeaVerou",
+    "performance": [
+      "tunetheweb",
+      "malchata"
+    ],
+    "privacy": "rowan-m",
+    "security": "rowan-m",
+    "webmcp": [
+      "beaufortfrancois",
+      "Kulikowski"
+    ]
+  },
+  "web_features": {
+    "canvas-html": "ewewraw",
+    "container-scroll-state-queries": "bramus",
+    "tmp-cross-origin-storage": "tomayac",
+    "prefers-reduced-motion": "bramus"
+  },
+  "web_features_groups": {
+    "scrolling": "bramus",
+    "animation": "bramus",
+    "transitions": "bramus",
+    "view-transitions": "bramus",
+    "webauthn": "agektmr"
+  }
+}

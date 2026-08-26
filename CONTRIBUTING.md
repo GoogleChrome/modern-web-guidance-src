@@ -31,6 +31,43 @@ To foster an open-source contributor environment while maintaining a stable, cle
 We want to encourage contributions while maintaining high standards. Our policy is:
 * **Proposal first**: For non-trivial changes, contributors need to to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
 
+## Project Roles
+
+To maintain high quality and coordinate efforts across the repository, the project defines the following key roles:
+
+### Subject Matter Experts (SMEs)
+SMEs focus on the technical accuracy and completeness of individual guides. They understand the edge cases of specific web features, write clear guidance, build canonical HTML/CSS/JS demos, and define testable expectations. Their primary deliverables are `guide.md`, `expectations.md`, and `demo.html`.
+
+### Content Area Tech Leads (Content ATLs)
+Content ATLs are responsible for the overall quality, completeness, and health of guidance within a specific domain category (e.g., Performance, CSS Layout, Forms & UI, Accessibility). Their expectations and responsibilities include:
+* **Subject Matter Expertise**:
+  * Possess domain-level expertise spanning the entire scope of their category.
+  * Serve as the primary technical point of contact to weigh in on any related architectural or technical questions.
+* **Authoring & Peer Review**:
+  * Act as the primary author or designated reviewer/approver for all guide content created within their area.
+  * Author high-quality guidance for new use cases.
+  * Review and approve guidance pull requests submitted by other contributors.
+* **Coverage Strategy**:
+  * Research and identify gaps where new guidance needs to be developed to address low agent performance or quality issues.
+* **Continuous Content Maintenance**:
+  * Update and evolve guidance as new web standards, browser features, and best practices emerge.
+  * Refactor or prune guidance if evaluation metrics indicate it is redundant or no longer necessary (e.g., if modern models naturally follow the best practice without guidance).
+* **Issue & Quality Triage**:
+  * Actively investigate and triage evaluation failures related to content quality or accuracy.
+  * Troubleshoot and resolve bug reports or quality feedback reported by the developer community.
+* **Use Case Validation**:
+  * Triage and align on proposed new use cases within their category before authoring begins.
+* **Evaluation Readiness & Expectations Sync**:
+  * Ensure all guides within their category are fully "eval-ready". While the engineering team is responsible for implementing/maintaining the evaluation harness and tasks, Content ATLs must verify that the natural-language assertions in `expectations.md` are kept perfectly in sync with the recommendations and code examples in `guide.md`, as the harness uses these expectations to generate the automated Playwright grader.
+* **Baseline & Fallback Alignment**:
+  * Align all guidance and expectations with a **Baseline Widely available** target. If a recommended feature is not yet widely available, the guide **must** specify (and the expectations/grader **must** test for) proper fallback strategies and progressive enhancement.
+* **Discipline Guide Decomposition**:
+  * Ensure discipline-level skills (e.g., CSS, JS) are broken up into modular "subskills" (i.e., smaller, focused guides) rather than structured as a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously.
+  * The primary discipline-level guide (e.g., `guides/css/css/guide.md` or `guides/performance/performance/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subskill guide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+
+### Infrastructure Engineers
+Infrastructure engineers focus on the tooling, CLI, test harness reliability, LLM generation pipelines, and dashboard interfaces. They ensure that the evaluation runner is stable, calibration retries function correctly, and maintain the MCP and CLI distribution paths.
+
 ## Development Setup
 
 This project is managed as a **pnpm workspace**. To set up your local environment:
@@ -153,6 +190,7 @@ For setup of core guide development workflows (`gd dev`), configure your Gemini 
 ```bash
 GEMINI_API_KEY='your_api_key_here'
 GEMINI_MODEL='gemini-3-flash-preview'
+GD_DEV_USE_GEMINI=1 # Required to use Gemini CLI for 'gd dev'
 ```
 
 ### Runtime Configuration Overrides

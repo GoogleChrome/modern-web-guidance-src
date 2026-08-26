@@ -1,5 +1,6 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, parseResultKey, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 
 let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
@@ -302,9 +303,12 @@ async function loadLocalTests() {
             // Try fetching suites.gen.json as fallback for static mode
             const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
             if (!staticRes.ok) return; // Silent fail if both fail
-            const suites = await staticRes.json();
-            // convert array of strings to expected format [{id: string, source: 'local'}]
-            manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+            const suitesData = await staticRes.json();
+            if (Array.isArray(suitesData)) {
+                manifest = { suites: suitesData };
+            } else {
+                manifest = suitesData;
+            }
             useResultsPrefix = true;
         } else {
             manifest = await response.json();
@@ -315,20 +319,24 @@ async function loadLocalTests() {
         }
 
         // Load local test data
+        const sourceName = useResultsPrefix ? 'static' : 'local';
         for (const suite of manifest.suites) {
-            if (suite.source !== 'local') continue;
-            
-            const testId = suite.id;
-            const suiteTimestamp = suite.timestamp;
-            try {
-                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
-                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+            if (typeof suite === 'object' && suite.testId && suite.guidedStats) {
+                registerSuiteSummary(suite, sourceName);
+            } else {
+                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
+                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
+                if (!testId) continue;
+                try {
+                    const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                    const response = await fetch(`${fetchPath}?source=${sourceName}&t=${Date.now()}`);
+                    if (response.ok) {
+                        const parsed = await response.json();
+                        registerTestData(testId, sourceName, parsed, suiteTimestamp);
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load local test ${testId}:`, e);
                 }
-            } catch (e) {
-                console.warn(`Failed to load local test ${testId}:`, e);
             }
         }
     } catch {
@@ -338,41 +346,20 @@ async function loadLocalTests() {
 
 async function loadRemoteTests() {
     try {
-        const prefixes = [];
-        let pageToken = '';
-        
-        // Paginate GCS to retrieve all prefixes without truncation limits
-        do {
-            const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}${pageToken ? `&pageToken=${pageToken}` : ''}`;
-            const response = await authenticatedFetch(url);
-            if (!response.ok) throw new Error('Failed to fetch remote suites');
-            
-            const data = await response.json();
-            if (data.prefixes) {
-                prefixes.push(...data.prefixes);
+        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
+        const response = await authenticatedFetch(fileUrl);
+        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
+
+        const manifest = await response.json();
+        if (Array.isArray(manifest) && manifest.length > 0) {
+            document.getElementById('empty-state').style.display = 'none';
+            for (const item of manifest) {
+                if (item && item.testId) {
+                    registerSuiteSummary(item, 'remote');
+                }
             }
-            pageToken = data.nextPageToken || '';
-        } while (pageToken);
-        
-        if (prefixes.length > 0) {
-             document.getElementById('empty-state').style.display = 'none';
         }
 
-        // Load remote test data in parallel
-        await Promise.all(prefixes.map(async (prefix) => {
-            const testId = prefix.slice(0, -1); // Remove trailing slash
-            try {
-                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                const response = await authenticatedFetch(fileUrl);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed);
-                }
-            } catch (e) {
-                console.warn(`Failed to load remote test ${testId}:`, e);
-            }
-        }));
-        
         // Re-render UI now that we have remote data
         const params = new URLSearchParams(window.location.search);
         let initialTests = params.get('tests');
@@ -387,32 +374,38 @@ async function loadRemoteTests() {
     }
 }
 
-function registerTestData(testId, source, parsed, forcedTimestamp) {
-    let serving = 'unknown';
-    if (parsed.serving !== undefined) {
-        serving = parsed.serving;
-    } else if (parsed.enableSkills !== undefined) {
-        serving = parsed.enableSkills ? 'skills' : 'mcp';
-    }
-
-    const compoundKey = `${testId}|||${source}`;
+function registerSuiteSummary(summary, source) {
+    const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
-        testId: testId,
-        timestamp: parsed.timestamp || forcedTimestamp || new Date().toISOString(),
-        data: parsed,
+        testId: summary.testId,
+        timestamp: summary.timestamp,
         source: source,
-        agent: parsed.agent || 'unknown',
-        serving: serving,
-        model: parsed.model || 'unknown',
-        toolActivationRate: parsed.summary?.toolActivationRate || 0,
-        guideUsageRate: parsed.summary?.guideUsageRate || 0
+        agent: summary.agent || 'unknown',
+        serving: summary.serving || 'unknown',
+        model: summary.model || 'unknown',
+        taskCount: summary.taskCount || 0,
+        maxRuns: summary.maxRuns || 1,
+        guidedStats: summary.guidedStats || { passed: 0, total: 0 },
+        unguidedStats: summary.unguidedStats || { passed: 0, total: 0 },
+        earlyFailureRate: summary.earlyFailureRate || 0,
+        guides: summary.guides || {},
+        chartData: summary.chartData || { labels: [], guided: [], unguided: [] },
+        data: summary.data || null
     };
     
     updateFilterOptions('filter-model-group', 'model');
     updateFilterOptions('filter-serving-group', 'serving');
     updateServingFilterOptions();
     updateAgentFilterOptions();
+}
+
+function registerTestData(testId, source, parsed, forcedTimestamp) {
+    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
+    if (summary) {
+        summary.data = parsed;
+        registerSuiteSummary(summary, source);
+    }
 }
 
 function updateFilterOptions(groupId, key) {
@@ -493,8 +486,6 @@ function renderSuites() {
         if (currentServingFilter !== 'all' && testInfo.serving !== currentServingFilter) return;
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
-        const data = testInfo.data;
-        const results = data.results;
         let _date = new Date(testInfo.timestamp);
         
         // Match Action Date logic from dashboard.js: 
@@ -536,8 +527,8 @@ function renderSuites() {
             ? _date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
             : prettyTimestampStr;
 
-        const gStats = calculateGroupTotalStats(results, 'guided');
-        const uStats = calculateGroupTotalStats(results, 'unguided');
+        const gStats = testInfo.guidedStats || { passed: 0, total: 0 };
+        const uStats = testInfo.unguidedStats || { passed: 0, total: 0 };
 
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
@@ -545,13 +536,9 @@ function renderSuites() {
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
         const timeAgoStr = timeAgo(_date);
 
-        const scenarioKeys = Object.keys(data.results || {});
-        const distinctScenarios = new Set(scenarioKeys.map(k => k.replace(' - guided', '').replace(' - unguided', '')));
-        const taskCount = data.summary && data.summary.taskCount ? data.summary.taskCount : distinctScenarios.size;
-        let maxRuns = 1;
-        scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
-
-        const earlyFailureRate = data.summary?.unguidedEarlyFailureRate || 0;
+        const taskCount = testInfo.taskCount || 0;
+        const maxRuns = testInfo.maxRuns || 1;
+        const earlyFailureRate = testInfo.earlyFailureRate || 0;
         const isFaulty = earlyFailureRate === 100;
 
         const { label, ldap } = formatSuiteLabel(testInfo);
@@ -641,9 +628,9 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const results = testInfo.data.results;
-    const { labels, guided, unguided } = calculateChartData(results);
-    if (labels.length < 1) return;
+    const chartData = testInfo.chartData || (testInfo.data?.results ? calculateChartData(testInfo.data.results) : null);
+    if (!chartData || !chartData.labels || chartData.labels.length < 1) return;
+    const { labels, guided, unguided } = chartData;
 
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
@@ -756,25 +743,7 @@ function getAgentBadge(agentName) {
     return '';
 }
 
-function calculateGroupTotalStats(results, groupType) {
-    let passed = 0;
-    let total = 0;
 
-    if (!results) return { passed, total }; // Guard against missing results
-
-    Object.keys(results).forEach(key => {
-        // key format: "scenario - prompt - agent"
-        if (key.endsWith(` - ${groupType}`)) {
-            results[key].forEach(run => {
-                const s = getRunStats(run.results);
-                passed += s.passed;
-                total += s.total;
-            });
-        }
-    });
-
-    return { passed, total };
-}
 
 function getSortedTestIds() {
     // Return only SELECTED tests, sorted by date
@@ -829,9 +798,8 @@ function renderPivotInsights() {
         const testInfo = allTestData[compoundKey];
         if (!testInfo) return;
         
-        const data = testInfo.data;
-        const gStats = calculateGroupTotalStats(data.results, 'guided');
-        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+        const gStats = testInfo.guidedStats || { passed: 0, total: 0 };
+        const uStats = testInfo.unguidedStats || { passed: 0, total: 0 };
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
         const uplift = gRate - uRate;
@@ -845,31 +813,10 @@ function renderPivotInsights() {
         if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
         grouped.model[testInfo.model].push({ uplift, uRate, gRate });
 
-        // Calculate guide-specific statistics for this test run
-        const suiteGuides = {};
-        if (data.results) {
-            Object.keys(data.results).forEach(key => {
-                const parsedKey = parseResultKey(key);
-                if (parsedKey) {
-                    const { guide, runType } = parsedKey;
-                    if (!suiteGuides[guide]) {
-                        suiteGuides[guide] = {
-                            guided: { passed: 0, total: 0 },
-                            unguided: { passed: 0, total: 0 }
-                        };
-                    }
-                    data.results[key].forEach(run => {
-                        const s = getRunStats(run.results);
-                        suiteGuides[guide][runType].passed += s.passed;
-                        suiteGuides[guide][runType].total += s.total;
-                    });
-                }
-            });
-        }
-
+        const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
-            const gG = suiteGuides[guide].guided;
-            const uG = suiteGuides[guide].unguided;
+            const gG = suiteGuides[guide].guided || { passed: 0, total: 0 };
+            const uG = suiteGuides[guide].unguided || { passed: 0, total: 0 };
             const gG_rate = gG.total > 0 ? Math.round((gG.passed / gG.total) * 100) : 0;
             const uG_rate = uG.total > 0 ? Math.round((uG.passed / uG.total) * 100) : 0;
             const uG_uplift = gG_rate - uG_rate;

@@ -71,8 +71,8 @@ test.describe('Eval View Dashboard', () => {
     await expect(modal).toBeVisible();
 
     // Verify diff content is displayed
-    // The title changes to "Diff: ..."
-    await expect(page.locator('#modal-title')).toContainText('Diff:');
+    // The title displays the filename (e.g. "index.html")
+    await expect(page.locator('#modal-title')).toHaveText('index.html');
     
     // Check for diff-container and some expected diff classes
     const diffContainer = page.locator('.diff-container');

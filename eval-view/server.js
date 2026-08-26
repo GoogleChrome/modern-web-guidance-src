@@ -1,11 +1,13 @@
 
 
 import * as http from "http";
+import * as https from "https";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
 import { runAllManifests } from './generate-manifests.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
@@ -88,8 +90,40 @@ const MIME_TYPES = {
  * @typedef {Object} SuiteInfo
  * @property {string} id
  * @property {string} source
- * @property {string | null} timestamp
+ * @property {string} [timestamp]
+ * @property {string} [testId]
+ * @property {Record<string, any>} [guidedStats]
+ * @property {Record<string, any>} [unguidedStats]
  */
+
+/** @type {string | null} */
+let cachedGcsToken = null;
+let tokenExpiry = 0;
+
+async function getGcsAccessToken() {
+  if (cachedGcsToken && Date.now() < tokenExpiry) {
+    return cachedGcsToken;
+  }
+  return new Promise((resolve) => {
+    exec('gcloud auth application-default print-access-token || gcloud auth print-access-token', (err, stdout) => {
+      if (err || !stdout.trim()) {
+        exec('gcloud auth print-access-token', (err2, stdout2) => {
+          if (err2 || !stdout2.trim()) {
+            resolve(null);
+          } else {
+            cachedGcsToken = stdout2.trim();
+            tokenExpiry = Date.now() + 50 * 60 * 1000;
+            resolve(cachedGcsToken);
+          }
+        });
+      } else {
+        cachedGcsToken = stdout.trim();
+        tokenExpiry = Date.now() + 50 * 60 * 1000;
+        resolve(cachedGcsToken);
+      }
+    });
+  });
+}
 
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
@@ -105,6 +139,70 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  const urlPath = reqUrl.split('?')[0];
+  const decodedPath = decodeURIComponent(urlPath);
+
+  // --- Remote GCS Reverse Proxy Route for Local Dashboard Server ---
+  if (decodedPath.startsWith('/gcs-proxy/') || (req.headers.referer && req.headers.referer.includes('/gcs-proxy/'))) {
+    let gcsObjectPath = '';
+    if (decodedPath.startsWith('/gcs-proxy/')) {
+      gcsObjectPath = decodedPath.substring(11);
+    } else if (req.headers.referer) {
+      try {
+        const refUrl = new URL(req.headers.referer);
+        if (refUrl.pathname.startsWith('/gcs-proxy/')) {
+          const refGcsPath = refUrl.pathname.substring(11);
+          const parts = refGcsPath.split('/');
+          const relative = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
+          if (parts.length >= 2 && !relative.startsWith(parts[0] + '/')) {
+            const basePath = parts.slice(0, parts.length - 1).join('/');
+            gcsObjectPath = path.join(basePath, relative);
+          } else {
+            gcsObjectPath = relative;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (gcsObjectPath.startsWith('guidance-evals/')) {
+      gcsObjectPath = gcsObjectPath.substring(15);
+    }
+
+    if (gcsObjectPath) {
+      const token = await getGcsAccessToken();
+      const gcsUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(gcsObjectPath)}?alt=media`;
+      
+      const options = {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      };
+
+      const gcsReq = https.request(gcsUrl, options, (gcsRes) => {
+        const headers = { ...gcsRes.headers };
+        delete headers['content-disposition'];
+        delete headers['content-disposition-filename'];
+        headers['Access-Control-Allow-Origin'] = '*';
+        headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
+        
+        const extname = path.extname(gcsObjectPath);
+        if (MIME_TYPES[extname]) {
+          headers['content-type'] = MIME_TYPES[extname];
+        }
+        
+        res.writeHead(gcsRes.statusCode || 200, headers);
+        gcsRes.pipe(res);
+      });
+
+      gcsReq.on('error', (e) => {
+        console.error('GCS Proxy error:', e);
+        res.writeHead(500);
+        res.end('GCS Proxy error');
+      });
+
+      gcsReq.end();
+      return;
+    }
+  }
+
   // Ultra-strict raw URL check
   if (reqUrl.includes('..') || reqUrl.toLowerCase().includes('%2e')) {
     console.log(`403 Forbidden: Traversal/Encoded attempt - ${req.method} ${reqUrl}`);
@@ -112,12 +210,6 @@ const server = http.createServer(async (req, res) => {
     res.end('403 Forbidden: Directory traversal is not allowed');
     return;
   }
-
-  // Normalize the URL and decode components for security checks
-  const urlPath = reqUrl.split('?')[0];
-  const decodedPath = decodeURIComponent(urlPath);
-  // Debug logging. Do not keep enabled.
-  // console.log(`Incoming request: ${req.method} ${reqUrl} (path: ${urlPath}, decoded: ${decodedPath})`);
 
   // Block directory traversal attempts
   if (decodedPath.includes('..')) {
@@ -155,6 +247,12 @@ const server = http.createServer(async (req, res) => {
           try {
             if (fs.existsSync(evalsJsonPath)) {
               timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
+              const rawData = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
+              const summary = extractSuiteSummary(d, rawData, timestamp);
+              if (summary) {
+                suitesList.push({ ...summary, id: d, source: 'local' });
+                return;
+              }
             } else {
               timestamp = fs.statSync(suiteDir).mtime.toISOString();
             }
@@ -177,33 +275,23 @@ const server = http.createServer(async (req, res) => {
   // --- /api/grouped-tasks : lists tasks grouped per guide ---
   if (decodedPath === '/api/grouped-tasks') {
     try {
-      const { getTaskMap, isDisciplineSkillDir } = await import('../lib/guide-validation.ts');
+      const { getTaskMap } = await import('../lib/guide-validation.ts');
       const { USE_CASES } = await import('../serving/lib/practices.ts');
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
-      /** @type {Record<string, string[]>} */
-      const disciplines = {}; // disciplineName -> [tasks]
       
-      for (const [key, info] of taskMap.entries()) {
+      for (const key of taskMap.keys()) {
         const [guide, task] = key.split('/');
-        
-        const isDisciplineSkill = isDisciplineSkillDir(info.guideDir);
-        
-        if (isDisciplineSkill) {
-          if (!disciplines[guide]) disciplines[guide] = [];
-          disciplines[guide].push(task);
-        } else {
-          const useCase = USE_CASES.find(u => u.id === guide);
-          const category = useCase ? useCase.category : 'Uncategorized';
-          if (!grouped[category]) grouped[category] = {};
-          if (!grouped[category][guide]) grouped[category][guide] = [];
-          grouped[category][guide].push(task);
-        }
+        const useCase = USE_CASES.find(u => u.id === guide);
+        const category = useCase ? useCase.category : 'Uncategorized';
+        if (!grouped[category]) grouped[category] = {};
+        if (!grouped[category][guide]) grouped[category][guide] = [];
+        grouped[category][guide].push(task);
       }
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ guides: grouped, disciplines: disciplines }));
+      res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {
       console.error('Error fetching grouped tasks:', e);
       res.writeHead(500);
@@ -310,6 +398,12 @@ const server = http.createServer(async (req, res) => {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
             .filter(d => !d.isDirectory())
             .map(d => d.name);
+          const gradeReportDataDir = path.join(targetDir, 'grade-report', 'data');
+          if (fs.existsSync(gradeReportDataDir)) {
+            const dataFiles = fs.readdirSync(gradeReportDataDir)
+              .map(f => `grade-report/data/${f}`);
+            files.push(...dataFiles);
+          }
         }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);

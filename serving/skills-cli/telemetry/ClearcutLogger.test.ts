@@ -118,6 +118,30 @@ describe('ClearcutLogger', () => {
       sendMock.mock.restore();
     }
   });
+
+  it('logs search results correctly via watchdog', async () => {
+    const sentMessages: any[] = [];
+    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
+      sentMessages.push(msg);
+    });
+
+    try {
+      const logger = new ClearcutLogger({ skillVersion: '2026_05_14-search' });
+      await logger.logSearchResult('address form', 80, true, [{ guide_id: 'guide-1', similarity: 0.9 }]);
+
+      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      const payload = sentMessages[sentMessages.length - 1].payload;
+      assert.deepStrictEqual(payload.search_result, {
+        query: 'address form',
+        search_items: [{ guide_id: 'guide-1', similarity: 0.9 }]
+      });
+      assert.strictEqual(payload.success, true);
+      assert.strictEqual(payload.latency_ms, 100); // 80 bucketized to 100
+      assert.strictEqual(payload.skill_version, '2026_05_14-search');
+    } finally {
+      sendMock.mock.restore();
+    }
+  });
 });
 
 describe('Installation output parser regex', () => {

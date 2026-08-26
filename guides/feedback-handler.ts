@@ -11,8 +11,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import fs from 'node:fs';
-import { runCommand, runGemini, escapeLeftAngleBracket } from './lib/utils.ts';
+import { runCommand, runAgent, escapeLeftAngleBracket } from './lib/utils.ts';
 import { parsePassRates, type PassRates } from './lib/utils.ts';
+import { getDefaultSolutionAgent } from '../lib/guide-validation.ts';
 
 async function fetchPRContext(prNumber: string): Promise<any> {
   console.log('Fetching PR context via GraphQL...');
@@ -105,7 +106,7 @@ Note: \`reviewThreads\` contains inline comments and their resolution status. \`
 Output your response as a clear markdown summary and TODO list.
 `;
 
-  const synthesis = await runGemini(plannerPrompt);
+  const synthesis = await runAgent(getDefaultSolutionAgent(), plannerPrompt, undefined, { captureOutput: true });
   console.log('\n--- Synthesis & Plan ---');
   console.log(synthesis);
   console.log('------------------------\n');
@@ -144,7 +145,7 @@ Focus on the source files. Do not run \`gd dev\` or try to calibrate the grader,
 Use your file editing tools to make the changes.
 `;
   try {
-    const response = await runGemini(fixerPrompt);
+    const response = await runAgent(getDefaultSolutionAgent(), fixerPrompt, undefined, { captureOutput: true });
     console.log('✅ Fixes applied to source files');
     return response;
   } catch (err) {
@@ -153,7 +154,7 @@ Use your file editing tools to make the changes.
   }
 }
 
-async function maybeRunGdDev(guideDir: string): Promise<PassRates | null> {
+async function maybeRunGdDev(guideDir: string): Promise<Record<string, PassRates> | null> {
   const modifiedFiles = await runCommand('git', ['diff', '--name-only', guideDir]);
   const modifiedFilesList = modifiedFiles.split('\n').filter(Boolean);
 
@@ -235,22 +236,26 @@ ${escapedReport}
   console.log('✅ Fixes report posted');
 }
 
-async function postAllPassRatesToPR(prNumber: string, allPassRates: Record<string, PassRates>): Promise<void> {
+async function postAllPassRatesToPR(prNumber: string, allPassRates: Record<string, Record<string, PassRates>>): Promise<void> {
   console.log('Posting all pass rates to PR:', JSON.stringify(allPassRates, null, 2));
 
   let body = `### 📊 Updated Pass Rates\n\n`;
-  body += `| Use Case | Unguided | Guided | Uplift |\n`;
-  body += `| :--- | :---: | :---: | :---: |\n`;
+  body += `| Use Case | Base App | Unguided | Guided | Uplift | Guides Consumed |\n`;
+  body += `| :--- | :--- | :---: | :---: | :---: | :--- |\n`;
 
-  for (const [guideDir, rates] of Object.entries(allPassRates)) {
-    const unguided = parseInt(rates.unguided, 10);
-    const guided = parseInt(rates.guided, 10);
-    const uplift = guided - unguided;
-    const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
-
+  for (const [guideDir, appRates] of Object.entries(allPassRates)) {
     const label = path.basename(guideDir);
+    for (const [baseApp, rates] of Object.entries(appRates)) {
+      const unguided = parseInt(rates.unguided, 10);
+      const guided = parseInt(rates.guided, 10);
+      const uplift = guided - unguided;
+      const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
+      const consumed = rates.guidesConsumed && rates.guidesConsumed.length > 0
+        ? rates.guidesConsumed.map(g => `\`${g}\``).join(', ')
+        : '—';
 
-    body += `| \`${label}\` | ${rates.unguided}% | ${rates.guided}% | ${upliftStr} |\n`;
+      body += `| \`${label}\` | \`${baseApp}\` | ${rates.unguided}% | ${rates.guided}% | ${upliftStr} | ${consumed} |\n`;
+    }
   }
 
   await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
@@ -279,7 +284,7 @@ export async function handleFeedback(prNumber: string): Promise<void> {
       await postFixesReportToPR(prNumber, fixesReport);
     }
 
-    const allPassRates: Record<string, PassRates> = {};
+    const allPassRates: Record<string, Record<string, PassRates>> = {};
 
     for (const guideDir of guideDirs) {
       const passRates = await maybeRunGdDev(guideDir);
