@@ -35,7 +35,6 @@ export interface RawChangeRecord {
 }
 
 export interface ClassifiedChanges {
-  guideDiff: string;
   addedGuidesDiff: string;
   modifiedGuidesDiff: string;
   addedGuideNames: string[];
@@ -435,15 +434,12 @@ export function classifyChanges(records: RawChangeRecord[]): ClassifiedChanges {
     ? `### 🔄 Modified Files & Content Diff:\n${modifiedGuidePatches.join('\n\n')}`
     : '';
 
-  const guideDiff = [addedGuidesDiff, modifiedGuidesDiff].filter(Boolean).join('\n\n');
-
   const pluginSections: string[] = [];
   if (modifiedPluginPatches.length > 0) {
     pluginSections.push(`### 🚀 Agent Plugin Changes:\n${modifiedPluginPatches.join('\n\n')}`);
   }
 
   return {
-    guideDiff,
     addedGuidesDiff,
     modifiedGuidesDiff,
     addedGuideNames,
@@ -456,6 +452,10 @@ export function classifyChanges(records: RawChangeRecord[]): ClassifiedChanges {
     changedFiles,
   };
 }
+
+export type ClassifiedChangesWithEvals = ClassifiedChanges & {
+  evalSummary: EvalSummaryItem[];
+};
 
 /**
  * Extracts latest eval results from eval-results-summary.json
@@ -482,12 +482,20 @@ export function getLatestEvalResultsSummary(): EvalSummaryItem[] {
 }
 
 /**
+ * Convenience wrapper attaching the latest eval benchmark results from disk to classified changes.
+ */
+export function classifyChangesWithEvals(records: RawChangeRecord[]): ClassifiedChangesWithEvals {
+  return {
+    ...classifyChanges(records),
+    evalSummary: getLatestEvalResultsSummary(),
+  };
+}
+
+/**
  * Extracts exact differences between the previous release and the newly built distribution payload.
  * Eliminates all heuristics by diffing the actual compiled output (dist/skills-cli).
  */
-export function getExactDistributionDiff(previousTag: string, publishCliDir: string): ClassifiedChanges & {
-  evalSummary: EvalSummaryItem[];
-} {
+export function getExactDistributionDiff(previousTag: string, publishCliDir: string): ClassifiedChangesWithEvals {
   try {
     execSync(
       `git fetch https://github.com/GoogleChrome/modern-web-guidance.git refs/tags/${previousTag}:refs/tags/dist/${previousTag}`,
@@ -504,20 +512,7 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
       });
     } catch (archiveErr) {
       console.warn(`Could not extract dist/${previousTag} for diffing:`, archiveErr);
-      return {
-        guideDiff: '',
-        addedGuidesDiff: '',
-        modifiedGuidesDiff: '',
-        addedGuideNames: [],
-        modifiedGuideNames: [],
-        removedGuideNames: [],
-        renamedGuides: [],
-        guideDescriptions: {},
-        pluginDiff: '',
-        baselineUpdates: [],
-        evalSummary: getLatestEvalResultsSummary(),
-        changedFiles: [],
-      };
+      return classifyChangesWithEvals([]);
     }
 
     const rawDiff = execSync(
@@ -575,11 +570,7 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
       records.push({ relPath, oldPath, status, patch, isLink });
     }
 
-    const classified = classifyChanges(records);
-    return {
-      ...classified,
-      evalSummary: getLatestEvalResultsSummary(),
-    };
+    return classifyChangesWithEvals(records);
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
@@ -588,9 +579,7 @@ export function getExactDistributionDiff(previousTag: string, publishCliDir: str
 /**
  * Extracts consumer-facing git diff by querying GoogleChrome/modern-web-guidance comparison API.
  */
-export function getConsumerFacingDiff(previousTag: string, targetTag: string): ClassifiedChanges & {
-  evalSummary: EvalSummaryItem[];
-} {
+export function getConsumerFacingDiff(previousTag: string, targetTag: string): ClassifiedChangesWithEvals {
   const ghOutput = execSync(
     `gh api repos/GoogleChrome/modern-web-guidance/compare/${previousTag}...${targetTag}`,
     { encoding: 'utf8', cwd: rootDir, stdio: ['pipe', 'pipe', 'ignore'] }
@@ -604,10 +593,6 @@ export function getConsumerFacingDiff(previousTag: string, targetTag: string): C
     patch: file.patch,
   }));
 
-  const classified = classifyChanges(records);
-  return {
-    ...classified,
-    evalSummary: getLatestEvalResultsSummary(),
-  };
+  return classifyChangesWithEvals(records);
 }
 

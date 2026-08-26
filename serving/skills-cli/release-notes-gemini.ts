@@ -106,6 +106,43 @@ async function callGeminiForBullets(opts: {
   return null;
 }
 
+interface BuildGuideSummaryPromptOptions {
+  type: 'new' | 'updated';
+  guideNames: string[];
+  guideDiff: string;
+}
+
+function buildGuideSummaryPrompt({ type, guideNames, guideDiff }: BuildGuideSummaryPromptOptions): string {
+  const isNew = type === 'new';
+  const label = isNew ? 'newly introduced guides' : 'updated guidance';
+  const sectionHeader = isNew ? 'New Guides to Summarize' : 'Updated Guides to Summarize';
+  const targetDesc = isNew ? 'new guide listed above' : 'updated guide listed above';
+  const contentDesc = isNew
+    ? 'what the new guide introduces and what use case or problem it solves'
+    : 'key improvements, best practices, or platform evolutions added to the guide';
+  const boldExample = isNew
+    ? '* Introduced a new guide for **State-Aware Sticky Headers** detailing how to build UI headers that react to scroll changes.'
+    : '* Updated the **Prompt API** guide to include best practices for session cloning and model pre-warming.';
+  const focusDesc = isNew ? 'developer guidance and use cases' : 'developer guidance and API patterns';
+
+  return `You are writing concise release note bullet points for ${label} in GoogleChrome/modern-web-guidance.
+
+### ${sectionHeader} (${guideNames.length} total):
+${guideNames.map(g => `- ${g}`).join('\n')}
+
+### Content Diff:
+${guideDiff}
+
+### Core Formatting Rules:
+1. Output exactly ${guideNames.length} Markdown bullet points (starting with '* ' or '- '), one for each ${targetDesc}.
+2. Each bullet must describe ${contentDesc} in a single concise sentence or short paragraph.
+3. Keep each bullet point on a single line without manual line breaks.
+4. Bold the title or subject of the guide in each bullet (e.g., "${boldExample}").
+5. NEVER use nested sub-bullets or multiple bullet points for a single guide.
+6. Do NOT mention Baseline status or browser compatibility updates (these are tracked separately in the Browser Support section). Focus on substantive ${focusDesc}.
+7. Do NOT include headings, sections, benchmark tables, code blocks, or preamble. Output ONLY the ${guideNames.length} bullet points.`;
+}
+
 /**
  * Uses Gemini to generate bullet summaries for newly added guides.
  */
@@ -120,22 +157,11 @@ export async function generateNewGuideSummariesWithGemini(opts: {
     return [];
   }
 
-  const prompt = `You are writing concise release note bullet points for newly introduced guides in GoogleChrome/modern-web-guidance.
-
-### New Guides to Summarize (${guideNames.length} total):
-${guideNames.map(g => `- ${g}`).join('\n')}
-
-### Content / Diff:
-${guideDiff}
-
-### Core Formatting Rules:
-1. Output exactly ${guideNames.length} Markdown bullet points (starting with '* ' or '- '), one for each new guide listed above.
-2. Each bullet must describe what the new guide introduces and what use case or problem it solves in a single concise sentence or short paragraph.
-3. Keep each bullet point on a single line without manual line breaks.
-4. Bold the title or subject of the guide in each bullet (e.g., "* Introduced a new guide for **State-Aware Sticky Headers** detailing how to build UI headers that react to scroll changes.").
-5. NEVER use nested sub-bullets or multiple bullet points for a single guide.
-6. Do NOT mention Baseline status or browser compatibility updates (these are tracked separately in the Browser Support section). Focus on substantive developer guidance and use cases.
-7. Do NOT include headings, sections, benchmark tables, code blocks, or preamble. Output ONLY the ${guideNames.length} bullet points.`;
+  const prompt = buildGuideSummaryPrompt({
+    type: 'new',
+    guideNames,
+    guideDiff,
+  });
 
   return callGeminiForBullets({
     prompt,
@@ -162,22 +188,11 @@ export async function generateUpdatedGuideSummariesWithGemini(opts: {
     return [];
   }
 
-  const prompt = `You are writing concise release note bullet points for updated guidance in GoogleChrome/modern-web-guidance.
-
-### Updated Guides to Summarize (${guideNames.length} total):
-${guideNames.map(g => `- ${g}`).join('\n')}
-
-### Content Diff:
-${guideDiff}
-
-### Core Formatting Rules:
-1. Output exactly ${guideNames.length} Markdown bullet points (starting with '* ' or '- '), one for each updated guide listed above.
-2. Each bullet must describe key improvements, best practices, or platform evolutions added to the guide in a single concise sentence or short paragraph.
-3. Keep each bullet point on a single line without manual line breaks.
-4. Bold the title or subject of the guide in each bullet (e.g., "* Updated the **Prompt API** guide to include best practices for session cloning and model pre-warming.").
-5. NEVER use nested sub-bullets or multiple bullet points for a single guide.
-6. Do NOT mention Baseline status or browser compatibility updates (these are tracked separately in the Browser Support section). Focus on substantive developer guidance and API patterns.
-7. Do NOT include headings, sections, benchmark tables, code blocks, or preamble. Output ONLY the ${guideNames.length} bullet points.`;
+  const prompt = buildGuideSummaryPrompt({
+    type: 'updated',
+    guideNames,
+    guideDiff,
+  });
 
   return callGeminiForBullets({
     prompt,
@@ -187,51 +202,6 @@ ${guideDiff}
     validate: (bullets) => bullets.length === guideNames.length,
     validationErrorMsg: (count) =>
       `Gemini updated guide summary validation failed: expected ${guideNames.length} bullets, received ${count}.`,
-  });
-}
-
-/**
- * Uses Gemini to generate bullet summaries for changed guides.
- */
-export async function generateGuideSummariesWithGemini(opts: {
-  guideDiff: string;
-  guideNames?: string[];
-  expectedGuideCount: number;
-  apiKey: string;
-  model: string;
-}): Promise<string[] | null> {
-  const { guideDiff, guideNames = [], expectedGuideCount, apiKey, model } = opts;
-  if (!guideDiff.trim() || expectedGuideCount === 0) {
-    return [];
-  }
-
-  const guidesListSection =
-    guideNames.length > 0
-      ? `\n### Changed Guides to Summarize (${expectedGuideCount} total):\n${guideNames.map(g => `- ${g}`).join('\n')}\n`
-      : '';
-
-  const prompt = `You are writing concise release note bullet points for guidance changes in GoogleChrome/modern-web-guidance.
-${guidesListSection}
-### Consumer-facing Guide Changes / Diff:
-${guideDiff}
-
-### Core Formatting Rules:
-1. Output exactly ${expectedGuideCount} Markdown bullet points (starting with '* ' or '- ')${guideNames.length > 0 ? ', one for each changed guide listed above' : ''}.
-2. Each bullet must describe one modified or new guide in a single concise sentence or short paragraph explaining the use case or key platform evolution.
-3. Keep each bullet point on a single line without manual line breaks.
-4. Bold the title or subject of the guide in each bullet (e.g., "* Updated the **Dynamic Sibling Styling** guide to ...").
-5. NEVER use nested sub-bullets or multiple bullet points for a single guide.
-6. Do NOT mention Baseline status or browser compatibility updates (these are tracked separately in the Browser Support section).
-7. Do NOT include headings, sections, benchmark tables, code blocks, or preamble. Output ONLY the ${expectedGuideCount} bullet points.`;
-
-  return callGeminiForBullets({
-    prompt,
-    apiKey,
-    model,
-    expectedItems: guideNames,
-    validate: (bullets) => bullets.length === expectedGuideCount,
-    validationErrorMsg: (count) =>
-      `Gemini guide summary validation failed: expected ${expectedGuideCount} bullets, received ${count}.`,
   });
 }
 

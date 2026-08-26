@@ -17,6 +17,8 @@ import {
   isPatchOnlyVersionBump,
   isJsonOnlyVersionBump,
   isPluginFile,
+  isGuideFile,
+  getGuideName,
   type EvalSummaryItem,
   type BaselineUpdateInfo,
   type RawChangeRecord,
@@ -219,7 +221,6 @@ test('buildReleaseNotesMarkdown omits sections when empty', () => {
   const notes = buildReleaseNotesMarkdown({
     previousTag: 'v0.0.1',
     newVersion: '0.0.2',
-    guideBullets: [],
     baselineBullets: [],
     ecosystemBullets: [],
     evalSummary: [
@@ -438,5 +439,52 @@ test('generateFallbackReleaseNotes formats categorized guide additions, updates,
   assert.ok(notes.includes('## 🆕 New Guides\n\n* **new-feature**: Custom frontmatter description for new feature.'));
   assert.ok(notes.includes('## 🔄 Updated Guides\n\n* **existing-feature**: Updates and improvements to web platform guidance.'));
   assert.ok(notes.includes('## 🗑️ Removed Guides\n\n* Removed the **old-feature** guide.'));
+});
+
+test('all changed guide files are categorized into added, modified, removed, or renamed categories', () => {
+  const records: RawChangeRecord[] = [
+    {
+      relPath: 'skills/modern-web-guidance/guides/css/new-guide.md',
+      status: 'A',
+    },
+    {
+      relPath: 'skills/modern-web-guidance/guides/css/substantive-guide.md',
+      status: 'M',
+      patch: '@@ -1,3 +1,5 @@\n+New substantive content\n',
+    },
+    {
+      relPath: 'skills/modern-web-guidance/guides/css/renamed-guide.md',
+      oldPath: 'skills/modern-web-guidance/guides/css/old-guide-name.md',
+      status: 'R',
+      patch: '@@ -1,3 +1,4 @@\n+Additional notes\n',
+    },
+    {
+      relPath: 'skills/modern-web-guidance/guides/javascript/removed-guide.md',
+      status: 'D',
+    },
+    {
+      relPath: 'skills/chrome-extensions/SKILL.md',
+      status: 'M',
+      patch: '@@ -1,3 +1,4 @@\n+Updated skill instructions\n',
+    },
+  ];
+
+  const result = classifyChanges(records);
+  const guideChangedFiles = result.changedFiles.filter(isGuideFile);
+
+  assert.ok(guideChangedFiles.length > 0);
+  for (const file of guideChangedFiles) {
+    const guideName = getGuideName(file);
+    const isCategorized =
+      result.addedGuideNames.includes(guideName) ||
+      result.modifiedGuideNames.includes(guideName) ||
+      result.removedGuideNames.includes(guideName) ||
+      result.renamedGuides.some(r => r.newName === guideName || r.oldName === guideName);
+
+    assert.ok(
+      isCategorized,
+      `Expected guide file '${file}' (${guideName}) in changedFiles to be in a category`
+    );
+  }
 });
 

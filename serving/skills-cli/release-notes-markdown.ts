@@ -77,7 +77,6 @@ export function buildBaselineBullets(updates: BaselineUpdateInfo[]): string[] {
 export interface BuildReleaseNotesMarkdownOptions {
   previousTag: string;
   newVersion: string;
-  guideBullets?: string[];
   newGuideBullets?: string[];
   updatedGuideBullets?: string[];
   removedGuideBullets?: string[];
@@ -93,7 +92,6 @@ export function buildReleaseNotesMarkdown(opts: BuildReleaseNotesMarkdownOptions
   const {
     previousTag,
     newVersion,
-    guideBullets = [],
     newGuideBullets = [],
     updatedGuideBullets = [],
     removedGuideBullets = [],
@@ -118,17 +116,6 @@ export function buildReleaseNotesMarkdown(opts: BuildReleaseNotesMarkdownOptions
   if (removedGuideBullets.length > 0) {
     sections.push('## 🗑️ Removed Guides\n');
     sections.push(removedGuideBullets.join('\n'));
-    sections.push('');
-  }
-
-  if (
-    guideBullets.length > 0 &&
-    newGuideBullets.length === 0 &&
-    updatedGuideBullets.length === 0 &&
-    removedGuideBullets.length === 0
-  ) {
-    sections.push('## 🔄 Updated Guides\n');
-    sections.push(guideBullets.join('\n'));
     sections.push('');
   }
 
@@ -191,7 +178,6 @@ export function generateFallbackReleaseNotes(
   let newGuideBullets: string[] = [];
   let updatedGuideBullets: string[] = [];
   let removedGuideBullets: string[] = [];
-  let guideBullets: string[] = [];
 
   if (addedNames.length > 0 || modifiedNames.length > 0 || removedNames.length > 0) {
     newGuideBullets = addedNames.map(g => {
@@ -202,8 +188,8 @@ export function generateFallbackReleaseNotes(
     });
     updatedGuideBullets = modifiedNames.map(g => `* **${g}**: Updates and improvements to web platform guidance.`);
     removedGuideBullets = removedNames.map(g => `* Removed the **${g}** guide.`);
-  } else {
-    guideBullets = uniqueGuideNames.map(
+  } else if (uniqueGuideNames.length > 0) {
+    updatedGuideBullets = uniqueGuideNames.map(
       guideName => `* **${guideName}**: Updates and improvements to web platform guidance.`
     );
   }
@@ -217,7 +203,6 @@ export function generateFallbackReleaseNotes(
   return buildReleaseNotesMarkdown({
     previousTag,
     newVersion,
-    guideBullets,
     newGuideBullets,
     updatedGuideBullets,
     removedGuideBullets,
