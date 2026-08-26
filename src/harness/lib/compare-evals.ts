@@ -1,8 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 
-import config from '../config.ts';
+import { Agents } from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
@@ -10,19 +9,13 @@ import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts 
 import { generateUnifiedDiff } from '../../lib/patch-utils.ts';
 import { categorizeAction, type StandardizedStep, type TrajectorySummary } from './trajectory-normalizer.ts';
 import { parseResultPath } from './collection.ts';
-import { GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE } from '../../lib/guide-validation.ts';
+import { isEnoent } from './agent-shared.ts';
+import { getDefaultSolutionAgent, getGuidesMap, getTaskMap, GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE, TASK_FILE } from '../../lib/guide-validation.ts';
+import { runAgent } from '../../guides/lib/utils.ts';
 
 const ERROR_LOOP_THRESHOLD = 2;
 const MAX_THOUGHT_SNIPPET_LEN = 120;
 const MAX_ACTION_PARAMS_SNIPPET_LEN = 200;
-
-function isNodeError(err: unknown): err is NodeJS.ErrnoException {
-  return err instanceof Error && 'code' in err;
-}
-
-function isEnoent(err: unknown): boolean {
-  return isNodeError(err) && err.code === 'ENOENT';
-}
 
 function tryReadFile(filePath: string): string | null {
   try {
@@ -45,68 +38,29 @@ function tryReadJson<T = any>(filePath: string): T | null {
 }
 
 /**
- * Calls the local agent CLI (Jetski or Gemini CLI based on GD_DEV_USE_JETSKI) to generate diagnostic text.
+ * Calls the local agent CLI (Jetski or Gemini CLI based on repository config) to generate diagnostic text.
  */
 async function callAgentCli(systemInstruction: string, prompt: string, label = 'Compare Agent'): Promise<string> {
-  const useJetski = process.env.GD_DEV_USE_JETSKI === '1';
-  const command = useJetski ? config.environment.jetskiCliBin : config.environment.geminiCliBin;
   const combinedPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
-  const commandArgs = ['-p', combinedPrompt];
+  const agent = (getDefaultSolutionAgent() as Agents) || Agents.JETSKI;
 
-  if (useJetski) {
-    const model = process.env.JETSKI_MODEL;
-    if (model) commandArgs.push('--model', model);
-    commandArgs.push('--dangerously-skip-permissions');
-  } else {
-    const model = process.env.GEMINI_MODEL;
-    if (model) commandArgs.push('--model', model);
+  console.log(`[${label}] Executing via ${agent}...`);
+
+  const cleanOutput = await runAgent(agent, combinedPrompt, undefined, { captureOutput: true });
+  if (!cleanOutput) {
+    throw new Error(`[${label}] Empty response received from ${agent}`);
   }
 
-  console.log(`[${label}] Executing via ${useJetski ? 'Jetski CLI' : 'Gemini CLI'}...`);
+  try {
+    const debugDir = path.join(resultsDir, 'compare_work');
+    fs.mkdirSync(debugDir, { recursive: true });
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    fs.writeFileSync(path.join(debugDir, `response_debug_${slug}.txt`), cleanOutput, 'utf8');
+  } catch (e) {
+    console.warn(`[${label}] Failed to save debug response:`, e);
+  }
 
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, commandArgs, {
-      env: { ...process.env },
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    let stdoutData = '';
-    let stderrData = '';
-
-    child.stdout.on('data', (chunk) => {
-      stdoutData += chunk.toString();
-    });
-
-    child.stderr.on('data', (chunk) => {
-      stderrData += chunk.toString();
-    });
-
-    child.on('error', (err) => {
-      reject(new Error(`[${label}] Failed to start ${useJetski ? 'Jetski' : 'Gemini'} CLI (${command}): ${err.message}`));
-    });
-
-    child.on('close', (exitCode) => {
-      if (exitCode !== 0) {
-        reject(new Error(`[${label}] ${useJetski ? 'Jetski' : 'Gemini'} CLI failed with exit code ${exitCode}:\n${stderrData || stdoutData}`));
-      } else {
-        const cleanOutput = stdoutData.trim();
-        if (!cleanOutput) {
-          reject(new Error(`[${label}] Empty response received from ${useJetski ? 'Jetski' : 'Gemini'} CLI`));
-        } else {
-          try {
-            const debugDir = path.join(resultsDir, 'compare_work');
-            fs.mkdirSync(debugDir, { recursive: true });
-            const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-            fs.writeFileSync(path.join(debugDir, `response_debug_${slug}.txt`), cleanOutput, 'utf8');
-          } catch (e) {
-            console.warn(`[${label}] Failed to save debug response:`, e);
-          }
-
-          resolve(cleanOutput);
-        }
-      }
-    });
-  });
+  return cleanOutput;
 }
 
 export interface TaggedStep {
@@ -162,62 +116,49 @@ export interface RunContext {
  * Finds guide.md, expectations.md, task.md, grader.ts, and base app content for a given guide/task name.
  */
 function findGuideContext(guideName: string, taskName: string): GuideContext {
+  const guideInfo = getGuidesMap().get(guideName);
+  const taskKey = `${guideName}/${taskName}`;
+  const taskInfo = getTaskMap().get(taskKey);
+
+  const guideDir = taskInfo?.guideDir || guideInfo?.dir || (fs.existsSync(path.join(guidesDir, guideName)) ? path.join(guidesDir, guideName) : '');
+
   let guideContent = '';
   let expectationsContent = '';
-  let taskPrompt = '';
   let graderContent = '';
+  let taskPrompt = taskInfo?.prompt || '';
   let baseAppContent = '';
-  let guideDir = '';
-
-  // Direct check first
-  const directPath = path.join(guidesDir, guideName);
-  if (tryReadFile(path.join(directPath, GUIDE_FILE))) {
-    guideDir = directPath;
-  } else {
-    try {
-      const items = fs.readdirSync(guidesDir, { withFileTypes: true });
-      for (const item of items) {
-        if (item.isDirectory()) {
-          const nested = path.join(guidesDir, item.name, guideName);
-          if (tryReadFile(path.join(nested, GUIDE_FILE))) {
-            guideDir = nested;
-            break;
-          }
-        }
-      }
-    } catch {
-      // guides directory not readable
-    }
-  }
 
   if (guideDir) {
     guideContent = tryReadFile(path.join(guideDir, GUIDE_FILE)) || '';
     expectationsContent = tryReadFile(path.join(guideDir, EXPECTATIONS_FILE)) || '';
-    graderContent = tryReadFile(path.join(guideDir, GRADER_FILE)) || '';
 
-    // Task prompt lookup
-    const taskCandidates = [
-      path.join(guideDir, 'tasks', `${taskName}.md`),
-      path.join(guideDir, 'tasks', 'task.md'),
-      path.join(guideDir, 'task.md')
-    ];
+    // Check target-specific grader first (targets/<taskName>/grader.ts), then root grader.ts
+    const targetGrader = path.join(guideDir, 'targets', taskName, GRADER_FILE);
+    graderContent = tryReadFile(targetGrader) || tryReadFile(path.join(guideDir, GRADER_FILE)) || '';
 
-    for (const candidate of taskCandidates) {
-      const content = tryReadFile(candidate);
-      if (content) {
-        taskPrompt = content;
-        break;
+    // If prompt wasn't populated from task map, check candidate file locations
+    if (!taskPrompt) {
+      const taskCandidates = [
+        path.join(guideDir, 'targets', taskName, TASK_FILE),
+        path.join(guideDir, 'tasks', `${taskName}.md`),
+        path.join(guideDir, 'tasks', TASK_FILE),
+        path.join(guideDir, TASK_FILE)
+      ];
+
+      for (const candidate of taskCandidates) {
+        const content = tryReadFile(candidate);
+        if (content) {
+          taskPrompt = content;
+          break;
+        }
       }
     }
 
-    if (taskPrompt) {
-      const baseAppMatch = taskPrompt.match(/base_app:\s*([^\s\r\n]+)/i);
-      if (baseAppMatch) {
-        const baseAppName = baseAppMatch[1].trim();
-        const baseAppDir = path.join(baseAppsDir, baseAppName);
-        const baseCode = findCodeOutput(baseAppDir);
-        baseAppContent = baseCode.content;
-      }
+    const baseAppName = taskInfo?.baseApp || taskPrompt.match(/base_app:\s*([^\s\r\n]+)/i)?.[1]?.trim();
+    if (baseAppName) {
+      const baseAppDir = path.join(baseAppsDir, baseAppName);
+      const baseCode = findCodeOutput(baseAppDir);
+      baseAppContent = baseCode.content;
     }
   }
 
