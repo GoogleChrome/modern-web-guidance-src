@@ -2,76 +2,188 @@ import {
   test,
   expect,
   getTargetFiles,
-  extractAllCss,
+  getCssStyleSheet,
   getHtmlDocuments,
 } from '../../../../test-fixture.ts';
-import { pathToFileURL } from 'url';
+import {
+  CSSStyleRule,
+  CSSContainerRule,
+  CSSSupportsRule,
+  CSSMediaRule,
+  type CSSRule,
+  type CSSStyleSheet,
+} from 'cssomnom';
 
-const currentFileUrl = typeof __filename !== 'undefined'
-  ? pathToFileURL(__filename).href
-  : pathToFileURL(process.cwd() + '/grader.ts').href;
-const targetFiles: string[] = getTargetFiles(currentFileUrl);
+const targetFiles: string[] = getTargetFiles(
+    // @ts-ignore
+    import.meta.url
+  );
 
-function extractContainerBlocks(css: string): string[] {
-  const blocks: string[] = [];
-  const matches = [...css.matchAll(/@container\b/gi)];
-  for (const m of matches) {
-    const startIdx = m.index;
-    if (startIdx === undefined) continue;
-    const openBrace = css.indexOf('{', startIdx);
-    if (openBrace === -1) continue;
-    let depth = 1;
-    let i = openBrace + 1;
-    while (i < css.length && depth > 0) {
-      if (css[i] === '{') depth++;
-      else if (css[i] === '}') depth--;
-      i++;
+function getAllCssRules(ruleList: Iterable<CSSRule>): CSSRule[] {
+  const all: CSSRule[] = [];
+  for (const rule of ruleList) {
+    all.push(rule);
+    if ('cssRules' in rule && (rule as { cssRules?: Iterable<CSSRule> }).cssRules) {
+      all.push(...getAllCssRules((rule as { cssRules: Iterable<CSSRule> }).cssRules!));
     }
-    blocks.push(css.slice(openBrace + 1, i - 1));
   }
-  return blocks;
+  return all;
 }
 
-test.describe('Size-Aware Styling (Daily Grind) Target Grader', () => {
-
-  // --- STATIC ASSERTIONS ---
-
-  test('HTML markup defines container wrapper elements for components', () => {
+test.describe('Size-Aware Styling Target Grader', () => {
+  test('Component wrapper specifies container-type of inline-size or size', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
-    const containerElements = docs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('.card-container, [class*="card-container"], [class*="card-wrapper"], [class*="container-"], [class*="cta-container"]'))
-    );
-    expect(containerElements.length).toBeGreaterThan(0);
-  });
+    const allRules = getAllCssRules(stylesheet.cssRules);
 
-  test('CSS declares container-type inline-size or size on component wrappers', () => {
-    const cleanCss: string = extractAllCss(targetFiles);
-    const hasContainerType = /(?:container-type\s*:\s*(?:inline-size|size)|container\s*:\s*[^;}]*\b(?:inline-size|size)\b)/i.test(cleanCss);
+    const hasContainerType =
+      allRules.some((r) => {
+        if (r instanceof CSSStyleRule) {
+          const ct = r.style.getPropertyValue('container-type');
+          const c = r.style.getPropertyValue('container');
+          return /\b(inline-size|size)\b/i.test(ct) || /\b(inline-size|size)\b/i.test(c);
+        }
+        return false;
+      }) ||
+      docs.some((d) =>
+        Boolean(d.document.querySelector('[class*="@container"], [class*="container-type"]'))
+      );
+
     expect(hasContainerType).toBe(true);
   });
 
-  test('CSS uses @container queries conditioned on container width or inline-size', () => {
-    const cleanCss: string = extractAllCss(targetFiles);
-    const hasContainerQuery = /@container\s+[^\{]*(?:min-width|max-width|width|inline-size|min-inline-size|max-inline-size)\b/i.test(cleanCss);
+  test('HTML markup contains wrapper elements for the size-aware components', () => {
+    const docs = getHtmlDocuments(targetFiles);
+    const hasContainerWrapper = docs.some((d) =>
+      Boolean(
+        d.document.querySelector(
+          '.card-container, [class*="card-container"], [class*="@container"], [data-container]'
+        )
+      )
+    );
+
+    expect(hasContainerWrapper).toBe(true);
+  });
+
+  test('Stylesheet applies @container queries conditioned on container width', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const docs = getHtmlDocuments(targetFiles);
+    const allRules = getAllCssRules(stylesheet.cssRules);
+
+    const containerRules = allRules.filter((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+    const hasContainerQuery =
+      containerRules.some((r) => {
+        const cond = r.conditionText || r.containerQuery || '';
+        return /\b(width|inline-size)\b/i.test(cond);
+      }) ||
+      docs.some((d) =>
+        Boolean(d.document.querySelector('[class*="@["], [class*="@sm:"], [class*="@md:"], [class*="@lg:"]'))
+      );
+
     expect(hasContainerQuery).toBe(true);
   });
 
-  test('CSS restructures component layout inside @container query blocks', () => {
-    const cleanCss: string = extractAllCss(targetFiles);
-    const containerBlocks = extractContainerBlocks(cleanCss);
-    const hasLayoutChange = containerBlocks.some(block =>
-      /(?:flex-direction\s*:\s*row|flex-flow\s*:\s*row|grid-template-columns|display\s*:\s*(?:flex|grid)|grid-auto-flow)/i.test(block)
-    );
-    expect(hasLayoutChange).toBe(true);
+  test('Container query establishes a width threshold condition for responsive styling', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const docs = getHtmlDocuments(targetFiles);
+    const allRules = getAllCssRules(stylesheet.cssRules);
+
+    const containerRules = allRules.filter((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+    const hasWidthThreshold =
+      containerRules.some((cr) => {
+        const cond = cr.conditionText || cr.containerQuery || '';
+        return /\b(min-width|max-width|width|inline-size)\s*[:><=]/i.test(cond);
+      }) ||
+      docs.some((d) =>
+        Boolean(
+          d.document.querySelector(
+            '[class*="@min-"], [class*="@max-"], [class*="@md"], [class*="@lg"], [class*="@["], [class*="@sm"]'
+          )
+        )
+      );
+
+    expect(hasWidthThreshold).toBe(true);
   });
 
-  test('CSS provides a fallback strategy using media queries or progressive enhancement', () => {
-    const cleanCss: string = extractAllCss(targetFiles);
-    const hasFallback = (
-      /@supports\s*(?:not\s*)?\(\s*(?:container-type|container)\s*:/i.test(cleanCss) ||
-      (/@media\s*\([^)]*min-width/i.test(cleanCss) && /(?:flex-direction\s*:\s*(?:column|row)|\bgrid\b)/i.test(cleanCss))
+  test('Container query rules adapt component layout between stacked and side-by-side structures', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const docs = getHtmlDocuments(targetFiles);
+    const allRules = getAllCssRules(stylesheet.cssRules);
+
+    const containerRules = allRules.filter((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+    const containerLayoutRules = containerRules.flatMap((cr) =>
+      getAllCssRules(cr.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule)
     );
-    expect(hasFallback).toBe(true);
+
+    const hasLayoutAdaptation =
+      containerLayoutRules.some((r) => {
+        const flexDir = r.style.getPropertyValue('flex-direction');
+        const gridCols = r.style.getPropertyValue('grid-template-columns');
+        const display = r.style.getPropertyValue('display');
+        const gridAuto = r.style.getPropertyValue('grid-auto-flow');
+        return (
+          /\b(row|row-reverse|column)\b/i.test(flexDir) ||
+          gridCols !== '' ||
+          gridAuto !== '' ||
+          /\b(flex|grid)\b/i.test(display)
+        );
+      }) ||
+      docs.some((d) =>
+        Boolean(
+          d.document.querySelector(
+            '[class*="@"][class*="flex"], [class*="@"][class*="grid"], [class*="@"][class*="row"], [class*="@"][class*="col"]'
+          )
+        )
+      );
+
+    expect(hasLayoutAdaptation).toBe(true);
   });
 
+  test('Component defines a safe default layout when container queries are not applied', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const docs = getHtmlDocuments(targetFiles);
+    const allRules = getAllCssRules(stylesheet.cssRules);
+
+    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+    const hasDefaultSafeLayout =
+      styleRules.some((r) => {
+        if (r.parentRule instanceof CSSContainerRule) return false;
+        const sel = r.selectorText;
+        if (/\b(card|coffee-card)\b/i.test(sel)) {
+          const display = r.style.getPropertyValue('display');
+          const flexDir = r.style.getPropertyValue('flex-direction');
+          return /\bcolumn\b/i.test(flexDir) || (/\bflex\b/i.test(display) && flexDir !== 'row');
+        }
+        return false;
+      }) ||
+      docs.some((d) =>
+        Boolean(d.document.querySelector('[class*="flex-col"], [class*="flex"][class*="col"]'))
+      );
+
+    expect(hasDefaultSafeLayout).toBe(true);
+  });
+
+  test('Fallback strategy using @supports or media queries is provided for older browsers', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = getAllCssRules(stylesheet.cssRules);
+
+    const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
+    const mediaRules = allRules.filter((r): r is CSSMediaRule => r instanceof CSSMediaRule);
+
+    const hasFallbackStrategy =
+      supportsRules.some((r) => /\bcontainer(-type)?\b/i.test(r.conditionText)) ||
+      mediaRules.some((r) => {
+        const innerStyleRules = getAllCssRules(r.cssRules).filter(
+          (x): x is CSSStyleRule => x instanceof CSSStyleRule
+        );
+        return innerStyleRules.some(
+          (sr) =>
+            /\b(card|coffee-card)\b/i.test(sr.selectorText) &&
+            (sr.style.getPropertyValue('flex-direction') !== '' ||
+              sr.style.getPropertyValue('display') !== '')
+        );
+      });
+
+    expect(hasFallbackStrategy).toBe(true);
+  });
 });

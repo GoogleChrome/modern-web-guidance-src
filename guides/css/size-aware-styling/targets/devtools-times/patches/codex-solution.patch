@@ -1,103 +1,148 @@
 diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
-index af1fa02..d90f3cd 100644
+index af1fa02..cc62db6 100644
 --- a/src/components/ArticleTeaser.astro
 +++ b/src/components/ArticleTeaser.astro
-@@ -16,6 +16,7 @@ const readingList = await Astro.session?.get('readingList') || [];
- const isBookmarked = readingList.includes(article.id);
- const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
- ---
-+<div class="article-teaser-container">
- {large ? (
-     <div class="bg-white p-6 md:p-8 shadow-sm">
-         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-@@ -52,8 +53,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+@@ -52,32 +52,34 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
          </div>
      </div>
  ) : (
 -    <article class="flex flex-col h-full group">
 -        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
-+    <article class="standard-teaser h-full group">
-+        <a class="teaser-media" href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
-             <Image 
-                 src={image} 
-                 alt={article.data.title} 
-@@ -63,7 +64,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
-                 class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
-             />
-         </a>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
 -        <div class="flex flex-col flex-grow mt-3">
-+        <div class="teaser-content flex flex-col flex-grow">
-             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
-             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
-                 <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
-@@ -80,4 +81,68 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++    <div class="article-teaser-container h-full">
++        <article class="article-teaser-card flex h-full group">
++            <a class="article-teaser-media" href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                <Image
++                    src={image}
++                    alt={article.data.title}
++                    width={400}
++                    height={225}
++                    format="webp"
++                    class="w-full h-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                />
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++            <div class="article-teaser-content flex flex-col flex-grow mt-3">
++                <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
++                    <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                        {article.data.title}
++                    </h3>
++                    <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                </a>
++                <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++                    <span class="text-sm font-medium flex items-center">
++                        <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                        {article.data.readingTime} Min.
++                    </span>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
              </div>
-         </div>
-     </article>
+-        </div>
+-    </article>
 -)}
 \ No newline at end of file
++        </article>
++    </div>
 +)}
-+</div>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..4b69e39 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,74 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
 +
-+<style>
-+    /* Each teaser responds to the space it is given, independently of the page. */
-+    .article-teaser-container {
-+        container-name: article-teaser;
-+        container-type: inline-size;
-+        height: 100%;
++/*
++ * Article teasers are used in both narrow grids and wide content regions. The
++ * wrapper establishes the component's own inline-size as the responsive input,
++ * so its layout does not depend on where it happens to be rendered.
++ */
++.article-teaser-container {
++  container-name: article-teaser;
++  container-type: inline-size;
++}
++
++/* Safe default for small containers and browsers without container queries. */
++.article-teaser-card {
++  flex-direction: column;
++}
++
++.article-teaser-media {
++  display: block;
++}
++
++/* Usable progressive fallback when container queries are unavailable. */
++@media (min-width: 600px) {
++  .article-teaser-card {
++    flex-direction: row;
++    align-items: stretch;
++    gap: 1rem;
++  }
++
++  .article-teaser-media {
++    flex: 0 0 40%;
++  }
++
++  .article-teaser-content {
++    margin-top: 0;
++  }
++}
++
++@supports (container-type: inline-size) {
++  /* Let component width, rather than viewport width, control enhanced layouts. */
++  @media (min-width: 600px) {
++    .article-teaser-card {
++      flex-direction: column;
++      gap: 0;
 +    }
 +
-+    /* Safe default for small containers and browsers without container queries. */
-+    .standard-teaser {
-+        display: flex;
-+        flex-direction: column;
-+        gap: 0.75rem;
++    .article-teaser-media {
++      flex-basis: auto;
 +    }
 +
-+    .teaser-media {
-+        display: block;
-+        flex: 0 0 auto;
-+        width: 100%;
++    .article-teaser-content {
++      margin-top: 0.75rem;
++    }
++  }
++
++  @container (min-width: 400px) {
++    .article-teaser-card {
++      flex-direction: row;
++      align-items: stretch;
++      gap: 1rem;
 +    }
 +
-+    /* Viewport-based enhancement for browsers without container-query support. */
-+    @media (min-width: 768px) {
-+        .standard-teaser {
-+            flex-direction: row;
-+            align-items: stretch;
-+        }
-+
-+        .teaser-media {
-+            width: 40%;
-+        }
++    .article-teaser-media {
++      flex: 0 0 40%;
 +    }
 +
-+    @supports (container-type: inline-size) {
-+        /* Remove the viewport fallback when the component can measure itself. */
-+        @media (min-width: 768px) {
-+            .standard-teaser {
-+                flex-direction: column;
-+            }
-+
-+            .teaser-media {
-+                width: 100%;
-+            }
-+        }
-+
-+        @container article-teaser (min-width: 400px) {
-+            .standard-teaser {
-+                flex-direction: row;
-+                align-items: stretch;
-+                gap: 1rem;
-+            }
-+
-+            .teaser-media {
-+                width: 40%;
-+            }
-+
-+            .teaser-content {
-+                min-width: 0;
-+            }
-+        }
++    .article-teaser-content {
++      margin-top: 0;
 +    }
-+</style>
++  }
++}
