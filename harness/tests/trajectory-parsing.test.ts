@@ -472,3 +472,33 @@ test('collectCodex metrics from modern custom_tool_call trajectory file', async 
     removeTempDir(tempDir);
   }
 });
+
+test('parseJetskiCliSession sanitizes pipe-delimited experimental model names', () => {
+  const tempDir = createTempDir();
+  try {
+    const dbPath = path.join(tempDir, 'session-pipe-model.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      CREATE TABLE steps (idx INTEGER, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
+      CREATE TABLE gen_metadata (idx INTEGER, data BLOB);
+    `);
+
+    const rawModelString = 'gemini-3.7-flash-medium|experimental-routing-path/checkpoint/1';
+    const modelInner = encodeField(19, 2, Buffer.from(rawModelString));
+    const genDataProto = encodeField(1, 2, modelInner);
+
+    const insertGen = db.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)');
+    insertGen.run(1, genDataProto);
+    db.close();
+
+    const parsed = parseJetskiCliSession(tempDir);
+    assert.strictEqual(parsed.model, 'gemini-3.7-flash-medium');
+
+    writeTrajectorySummary(tempDir, parsed);
+    const model = extractModelFromResults(tempDir, Agents.JETSKI_CLI);
+    assert.strictEqual(model, 'gemini-3.7-flash-medium');
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
