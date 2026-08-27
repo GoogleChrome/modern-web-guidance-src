@@ -99,16 +99,42 @@ export async function validateGraderExpectationCoverage(
   graderPath: string,
   threshold = 0.50
 ): Promise<GraderCoverageResult> {
-  const expectations = parseVerifiableExpectations(fs.readFileSync(expectationsPath, 'utf8'));
-  const testTitles = extractTestTitles(graderPath);
-
-  if (expectations.length === 0 || testTitles.length === 0) {
+  if (!fs.existsSync(expectationsPath) || !fs.existsSync(graderPath)) {
     return {
       isComplete: true,
       graderPath,
       expectationsPath,
       matches: [],
       missing: []
+    };
+  }
+
+  const expectations = parseVerifiableExpectations(fs.readFileSync(expectationsPath, 'utf8'));
+  const testTitles = extractTestTitles(graderPath);
+
+  if (expectations.length === 0) {
+    return {
+      isComplete: true,
+      graderPath,
+      expectationsPath,
+      matches: [],
+      missing: []
+    };
+  }
+
+  if (testTitles.length === 0) {
+    const missing: ExpectationMatch[] = expectations.map(exp => ({
+      expectation: exp,
+      isCovered: false,
+      bestMatchTest: '',
+      similarity: 0,
+    }));
+    return {
+      isComplete: false,
+      graderPath,
+      expectationsPath,
+      matches: missing,
+      missing,
     };
   }
 

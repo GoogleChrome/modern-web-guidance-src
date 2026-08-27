@@ -73,6 +73,69 @@ test.describe('Suite', () => {
     }
   });
 
+  it('parses structured ## Must pass sections and ignores ## Must fail or app-agnostic rules', () => {
+    const sample = `
+## Must pass
+- Required behavior 1
+- Required behavior 2
+  - Sub bullet
+
+## Must fail
+- Anti-pattern 1
+- Anti-pattern 2
+
+## App-agnostic rules
+- DO NOT require specific IDs
+`;
+    const parsed = parseVerifiableExpectations(sample);
+    assert.deepStrictEqual(parsed, ['Required behavior 1', 'Required behavior 2']);
+  });
+
+  it('handles multiline test titles in extractTestTitles', () => {
+    const sampleCode = `
+import { test } from '@playwright/test';
+test(
+  'Multiline test title \\n with whitespace',
+  async () => {}
+);
+`;
+    const tempFile = path.join(rootDir, 'lib', 'temp-multiline-titles.ts');
+    fs.writeFileSync(tempFile, sampleCode);
+    try {
+      const titles = extractTestTitles(tempFile);
+      assert.deepStrictEqual(titles, ['Multiline test title with whitespace']);
+    } finally {
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    }
+  });
+
+  it('handles non-existent files gracefully in validateGraderExpectationCoverage', async () => {
+    const res = await validateGraderExpectationCoverage('/non/existent/exp.md', '/non/existent/grader.ts');
+    assert.strictEqual(res.isComplete, true);
+    assert.deepStrictEqual(res.matches, []);
+    assert.deepStrictEqual(res.missing, []);
+  });
+
+  it('marks all expectations missing when grader has zero tests', async () => {
+    const tempExp = path.join(rootDir, 'lib', 'temp-zero-test-exp.md');
+    const tempGrader = path.join(rootDir, 'lib', 'temp-zero-test-grader.ts');
+    fs.writeFileSync(tempExp, '- Expectation 1\n- Expectation 2\n');
+    fs.writeFileSync(tempGrader, '// No test() calls here\n');
+
+    try {
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader);
+      assert.strictEqual(res.isComplete, false);
+      assert.strictEqual(res.missing.length, 2);
+      assert.strictEqual(res.missing[0].expectation, 'Expectation 1');
+      assert.strictEqual(res.missing[0].isCovered, false);
+      assert.strictEqual(res.missing[1].expectation, 'Expectation 2');
+      assert.strictEqual(res.missing[1].isCovered, false);
+    } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
   it('formats actionable failure messages when expectations are uncovered', () => {
     const fakeResult = {
       isComplete: false,
