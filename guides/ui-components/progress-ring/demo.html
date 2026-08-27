@@ -5,19 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Progress Ring Demo</title>
     <style>
-      @layer utility {
-        .visually-hidden:where(:not(:focus-within, :active)) {
-          position: absolute !important;
-          clip-path: inset(50%) !important;
-          overflow: hidden !important;
-          width: 1px !important;
-          height: 1px !important;
-          margin: -1px !important;
-          padding: 0 !important;
-          border: 0 !important;
-          white-space: nowrap !important;
-        }
-      }
       @layer demo {
         body {
           font-family:
@@ -85,30 +72,45 @@
           inherits: true;
           initial-value: 0;
         }
+        /*  Hide native bars */
+        progress.progress-ring::-webkit-progress-bar {
+          display: none;
+          background: none;
+        }
+        progress.progress-ring::-webkit-progress-value {
+          display: none;
+          background: none;
+        }
+        progress.progress-ring::-moz-progress-bar {
+          display: none;
+          background: none;
+        }
+        progress.progress-ring::slider-fill {
+          display: none;
+          background: none;
+        }
 
         .progress-ring-wrapper {
+          position: relative;
+          display: grid;
+          place-items: center;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          progress.progress-ring {
+            transition-duration: 0s !important;
+          }
+        }
+
+        progress.progress-ring {
           --size: 150px;
           --thickness: 16px;
           --track-color: #f1f5f9;
           --fill-color: #3b82f6;
-
-          position: relative;
-          display: grid;
-          place-items: center;
+          --value: attr(value type(<number>));
           width: var(--size);
           height: var(--size);
 
           transition: --value 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .progress-ring-wrapper {
-            transition-duration: 0s;
-          }
-        }
-
-        .progress-ring {
-          width: 100%;
-          height: 100%;
           border-radius: 50%;
 
           background: conic-gradient(
@@ -116,10 +118,18 @@
             var(--track-color) 0
           );
 
-          mask-image: radial-gradient(
-            transparent calc(50% - var(--thickness)),
-            black calc(50% - var(--thickness) + 0.5px)
-          );
+          @supports (background-clip: border-area) {
+            background-clip: border-area;
+            border: var(--thickness) solid transparent;
+            background-origin: border-box;
+          }
+          @supports not (background-clip: border-area) {
+            mask-image: radial-gradient(
+              transparent calc(50% - var(--thickness)),
+              black calc(50% - var(--thickness) + 0.5px)
+            );
+            border: 0;
+          }
         }
 
         .progress-ring-content {
@@ -131,7 +141,7 @@
         }
 
         /* Success state example */
-        .progress-ring-wrapper:has(progress[value="100"]) {
+        progress[value="100"] {
           --fill-color: #10b981;
         }
       }
@@ -139,16 +149,14 @@
   </head>
   <body>
     <div class="container">
-      <div class="progress-ring-wrapper" id="main-wrapper" style="--value: 0">
-        <div class="progress-ring">
-          <progress
-            id="main-progress"
-            value="0"
-            max="100"
-            aria-label="Upload progress"
-            class="visually-hidden"
-          ></progress>
-        </div>
+      <div class="progress-ring-wrapper" id="main-wrapper">
+        <progress
+          class="progress-ring"
+          id="main-progress"
+          value="0"
+          max="100"
+          aria-label="Upload progress"
+        ></progress>
         <div class="progress-ring-content" id="main-content">0%</div>
       </div>
 
@@ -161,7 +169,6 @@
     </div>
 
     <script>
-      const wrapper = document.getElementById("main-wrapper");
       const progress = document.getElementById("main-progress");
       const content = document.getElementById("main-content");
       const range = document.getElementById("progress-range");
@@ -170,15 +177,12 @@
         val = parseInt(val, 10);
 
         progress.value = val;
-        wrapper.style.setProperty("--value", val);
+        if(!CSS.supports('width: attr(value type(<number>))')){
+          progress.style.setProperty("--value", val);
+        }
         content.textContent = val + "%";
         range.value = val;
 
-        if (val === 100) {
-          wrapper.setAttribute("data-status", "success");
-        } else {
-          wrapper.removeAttribute("data-status");
-        }
       }
 
       range.addEventListener("input", (e) => {

@@ -29,10 +29,8 @@ See the {{ GUIDE_REF("spinner") }} for handling indeterminate loading states.
 Use a wrapper to hold both the visual ring and the optional center content. The `<progress>` element remains the semantic source of truth. Use a utility class to visually hide the native progress bar while keeping it accessible.
 
 ```html
-<div class="progress-ring-wrapper" style="--value: 75;">
-  <div class="progress-ring">
-    <progress value="75" max="100" aria-label="Task progress" class="visually-hidden"></progress>
-  </div>
+<div class="progress-ring-wrapper">
+  <progress value="75" max="100" aria-label="Task progress" class="progress-ring"></progress>
   <!-- Optional: Content to display in the center -->
   <div class="progress-ring-content">
     75%
@@ -42,53 +40,61 @@ Use a wrapper to hold both the visual ring and the optional center content. The 
 
 ### 2. Styles
 
+#### Hiding Native UI
+To style the `<progress>` element as a progress ring, first hide the default browser styling for progress bars.
+
+```css
+/* Hide native bars */
+progress.loading-spinner:indeterminate::-webkit-progress-bar {
+  display: none;
+  background: none;
+}
+progress.loading-spinner:indeterminate::-webkit-progress-value {
+  display: none;
+  background: none;
+}
+progress.loading-spinner:indeterminate::-moz-progress-bar {
+  display: none;
+  background: none;
+}
+progress.loading-spinner:indeterminate::slider-fill {
+  display: none;
+  background: none;
+}
+```
+
 #### Container and Ring
 
-The wrapper provides the positioning context. The `progress-ring` element handles the visual gradient and mask.
+The wrapper provides the positioning context. The `<progress>` element handles the visual gradient and mask.
 
 ```css
 .progress-ring-wrapper {
-  --size: 120px;
-  --thickness: 12px;
-  --track-color: #eee;
-  --fill-color: #3b82f6;
-
   position: relative;
   display: grid;
   place-items: center;
-  width: var(--size);
-  height: var(--size);
 }
 
-.progress-ring {
-  width: 100%;
-  height: 100%;
+progress.progress-ring {
+  --size: 150px;
+  --thickness: 16px;
+  --track-color: #f1f5f9;
+  --fill-color: #3b82f6;
+  --value: attr(value type(<number>));
+  width: var(--size);
+  height: var(--size);
+
+  transition: --value 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 50%;
 
-  /* The progress fill is a conic gradient mapped to the --value */
   background: conic-gradient(
     var(--fill-color) calc(var(--value) * 1%),
     var(--track-color) 0
   );
 
-  /* Create the "ring" by masking out the center */
-  mask-image: radial-gradient(
-    transparent calc(50% - var(--thickness)),
-    black calc(50% - var(--thickness) + 0.5px)
-  );
-}
-
-/* Standard utility to visually hide elements while keeping them accessible */
-.visually-hidden:where(:not(:focus-within, :active)) {
-  position: absolute !important;
-  clip-path: inset(50%) !important;
-  overflow: hidden !important;
-  width: 1px !important;
-  height: 1px !important;
-  margin: -1px !important;
-  padding: 0 !important;
-  border: 0 !important;
-  white-space: nowrap !important;
+  /* MANDATORY: Clip the background to the border-area. */
+  background-clip: border-area;
+  border: var(--thickness) solid transparent;
+  background-origin: border-box;
 }
 
 .progress-ring-content {
@@ -96,6 +102,8 @@ The wrapper provides the positioning context. The `progress-ring` element handle
   position: absolute;
 }
 ```
+
+You can also use a `radial-gradient` to make rounded end caps.
 
 #### Enable smooth transitions with `@property`
 
@@ -108,7 +116,7 @@ To animate the progress ring smoothly when the value changes, register `--value`
   initial-value: 0;
 }
 
-.progress-ring-wrapper {
+progress.progress-ring {
   transition: --value 0.3s ease-in-out;
 }
 
@@ -116,14 +124,13 @@ To animate the progress ring smoothly when the value changes, register `--value`
 
 ### 3. Progress Updates
 
-Update the `--value` custom property on the wrapper whenever the `<progress>` value changes.
+Update the `value` attribute on the `<progress>` element whenever the value changes.
 
 ```html
 <input type="range" min="0" max="100" value="75" id="range">
 
 <script>
   const range = document.getElementById('range');
-  const wrapper = document.querySelector('.progress-ring-wrapper');
   const progress = wrapper.querySelector('progress');
   const content = wrapper.querySelector('.progress-ring-content');
 
@@ -132,9 +139,6 @@ Update the `--value` custom property on the wrapper whenever the `<progress>` va
     
     // Update semantic value
     progress.value = newValue;
-    
-    // Update visual value
-    wrapper.style.setProperty('--value', newValue);
     
     // Update optional center content
     content.textContent = `${newValue}%`;
@@ -148,7 +152,7 @@ You can use the CSS `:has()` pseudo-class to automatically update the ring's app
 
 ```css
 /* Change the fill color to green when the progress reaches 100% */
-.progress-ring-wrapper:has(progress[value="100"]) {
+progress.progress-ring[value="100"]) {
   --fill-color: #10b981;
 }
 ```
@@ -160,7 +164,7 @@ Users with motion sensitivities may find the transition between values disorient
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  .progress-ring-wrapper {
+  progress.progress-ring {
     transition-duration: 0s;
   }
 }
@@ -168,7 +172,7 @@ Users with motion sensitivities may find the transition between values disorient
 
 ## Fallback strategies
 
-The core components of this implementation — `<progress>` and `conic-gradient()` and `mask-image` with `radial-gradient()` — are Baseline Widely available. The registered `@property` for animation is the only modern addition.
+The core components of this implementation — `<progress>` and `conic-gradient()` are Baseline Widely available.
 
 Do not add a fallback value inside the `<progress>` element. It is not used by assistive technology and ignored by all modern browsers.
 
@@ -177,3 +181,27 @@ Do not add a fallback value inside the `<progress>` element. It is not used by a
 {{ FEATURE_FALLBACKS("registered-custom-properties") }}
 
 If `@property` is not supported, the ring will jump to the new value instantly instead of transitioning smoothly. This does not break the functionality. For browsers without `@property`, you can achieve transitions using a JavaScript `requestAnimationFrame` loop to interpolate the `--value`, though the native CSS transition is preferred for performance.
+
+{{ FEATURE_FALLBACKS("background-clip-border-area") }}
+
+For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center.
+
+```css
+@supports not (background-clip: border-area) {
+  mask-image: radial-gradient(
+    transparent calc(50% - var(--thickness)),
+    black calc(50% - var(--thickness) + 0.5px)
+  );
+  border: 0;
+}
+```
+
+{{ FEATURE_FALLBACKS("attr") }}
+
+For browsers that don't support the `attr()` CSS function for any property, manually set the `--value` CSS property.
+
+```js
+ if(!CSS.supports('width: attr(value type(<number>))')){
+  wrapper.style.setProperty("--value", val);
+}
+```
