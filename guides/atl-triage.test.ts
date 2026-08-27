@@ -349,7 +349,7 @@ describe('handlePR', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/guide.md', // Has 'image-set' feature, will be overridden!
       'guides/motion/carousel-slide-effects/expectations.md',
-      'guides/css-layout/grid-layout/demo.html',
+      'guides/css-layout/grid-layout/guide.md',
       'guides/css-layout/grid-layout/other-file.json' // shouldn't trigger
     ];
 
@@ -371,18 +371,36 @@ describe('handlePR', () => {
     assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton'].sort());
   });
 
-  it('returns empty array when no content files are touched', () => {
+  it('returns empty array when no content files are touched and gd-dev-content label is not set', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/grader.ts',
       'guides/performance/deliver-optimized-decorative-images/tasks/task.md',
+      'guides/performance/deliver-optimized-decorative-images/demo.html',
       'README.md'
     ];
 
-    const result = handlePR(456, 'some-contributor', mockConfig, mockFiles);
+    const result = handlePR(456, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']);
     assert.deepStrictEqual(result, []);
   });
 
+  it('assigns corresponding ATL when gd-dev-content label is present even if only target eval files were touched', () => {
+    const mockFiles = [
+      'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/grader.ts',
+      'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/patches/zero-passrate.patch',
+      'guides/motion/carousel-slide-effects/targets/daily-grind/task.md'
+    ];
+
+    const result = handlePR(456, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-content']);
+    // 'deliver-optimized-decorative-images' has 'image-set' -> override-pr-reviewer + rviscomi, paulirish (performance)
+    // 'carousel-slide-effects' -> philipwalton (motion)
+    assert.deepStrictEqual(
+      result.sort(),
+      ['override-pr-reviewer', 'rviscomi', 'paulirish', 'philipwalton'].sort()
+    );
+  });
+
   it('filters out already requested and reviewed ATLs case-insensitively', () => {
+
     const filesMock = mock.method(githubApi, 'getPrFiles', () => [
       'guides/performance/deliver-optimized-decorative-images/guide.md',
       'guides/motion/carousel-slide-effects/expectations.md'

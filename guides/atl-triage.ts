@@ -10,7 +10,6 @@ import { getTranscludedFeatureIds } from '../serving/lib/macro-parsing.ts';
 // in the GitHub Actions runner, slowing down the triage job.
 export const GUIDE_FILE = 'guide.md';
 export const SKILL_FILE = 'SKILL.md';
-export const DEMO_FILE = 'demo.html';
 export const EXPECTATIONS_FILE = 'expectations.md';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -390,7 +389,8 @@ export function handlePR(
   prAuthor: string,
   atlConfig: AtlConfig,
   mockFiles?: string[],
-  guidesRootDir: string = path.join(path.resolve(__dirname, '..'), 'guides')
+  guidesRootDir: string = path.join(path.resolve(__dirname, '..'), 'guides'),
+  labels: string[] = []
 ) {
   console.log(`Triaging PR #${prNumber} by author: @${prAuthor}`);
   
@@ -408,23 +408,21 @@ export function handlePR(
 
   console.log(`PR modified ${files.length} files.`);
   
-  const contentFilenames = new Set([GUIDE_FILE, DEMO_FILE, EXPECTATIONS_FILE, SKILL_FILE]);
+  const contentFilenames = new Set([GUIDE_FILE, EXPECTATIONS_FILE, SKILL_FILE]);
+  const isContentLabelled = labels.includes('gd-dev-content');
   const matchedAtls = new Set<string>();
-
-  const REPO_ROOT = path.resolve(__dirname, '..');
 
   for (const file of files) {
     const parts = file.split(/[/\\]/);
 
-    // 1. Content files under guides/<category>/...
-    if (parts[0] === 'guides' && parts.length >= 2) {
+    // 1. Content files under guides/<category>/<guide-name>/...
+    if (parts[0] === 'guides' && parts.length >= 3) {
       const category = parts[1];
+      const guideName = parts[2];
       const filename = parts[parts.length - 1];
-
-      if (contentFilenames.has(filename)) {
-        const absolutePath = path.isAbsolute(file) ? file : path.join(REPO_ROOT, file);
-        const dir = path.dirname(absolutePath);
-        const guidePath = path.join(dir, GUIDE_FILE);
+      if (contentFilenames.has(filename) || isContentLabelled) {
+        const guideDir = path.join(guidesRootDir, category, guideName);
+        const guidePath = path.join(guideDir, GUIDE_FILE);
         const featureIds = getFeatureIdsFromGuide(guidePath);
         const atl = resolveAtl(category, featureIds, atlConfig);
         if (atl) {
@@ -523,7 +521,8 @@ export function main() {
     else if (event.pull_request) {
       const prNumber = event.pull_request.number;
       const prAuthor = event.pull_request.user.login;
-      handlePR(prNumber, prAuthor, atlConfig);
+      const prLabels = (event.pull_request.labels || []).map((l: any) => l.name);
+      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels);
     } 
     else {
       console.log('Event is neither an issue nor a pull request event. Skipping.');
@@ -534,7 +533,7 @@ export function main() {
     if (args.length < 2) {
       console.log('Usage for manual testing:');
       console.log('  node guides/atl-triage.ts issue <number> <label1> <label2> ...');
-      console.log('  node guides/atl-triage.ts pr <number> <author>');
+      console.log('  node guides/atl-triage.ts pr <number> <author> [label1] [label2] ...');
       process.exit(1);
     }
 
@@ -557,7 +556,8 @@ export function main() {
       handleIssue(number, labels, issueDescription, atlConfig);
     } else if (type === 'pr') {
       const author = args[2] || '';
-      handlePR(number, author, atlConfig);
+      const labels = args.slice(3);
+      handlePR(number, author, atlConfig, undefined, undefined, labels);
     } else {
       console.error(`Unknown type: ${type}`);
       process.exit(1);

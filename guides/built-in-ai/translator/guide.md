@@ -11,6 +11,11 @@ The **Translator API** allows developers to perform client-side text translation
 
 ## Prerequisites & Requirements
 
+### API Surface & Global Scope
+
+- **MANDATORY:** Access the Translator API exclusively via the global `Translator` interface (`window.Translator` / `self.Translator`).
+- **DO NOT** use or check the deprecated `window.ai.translator` namespace.
+
 ### Browser Support
 
 - **Chrome:** Version 138+ (Desktop only).
@@ -30,24 +35,35 @@ To run Gemini Nano and associated models, the system needs:
 
 ## Implementation & Code Samples
 
-### 1. Checking Availability & Downloading Models
+### 1. Checking Availability & Model Management
 
-**Mandatory Options Passing:** You must pass the identical configuration options object to both `Translator.availability(options)` and `Translator.create(options)`.
+**Mandatory Options Passing:** You must pass the identical configuration options object containing `sourceLanguage` and `targetLanguage` to both `Translator.availability(options)` and `Translator.create(options)`.
 
-**Mandatory Progress Monitoring:** You MUST implement a monitor for model download progress by providing a `monitor(m)` callback to `Translator.create()` and adding a listener for the `downloadprogress` event.
+**Recommended Progress Monitoring:** You should implement a monitor for model download progress by providing a `monitor(m)` callback to `Translator.create()` and adding a listener for the `downloadprogress` event, so the user can see model download progress.
 
-**User Gesture Requirement:** When `availability` is `'downloadable'`, triggering the model download via `Translator.create()` requires a user gesture (such as a button click listener context). Unconditional page-load calls will trigger a `NotAllowedError`.
+**User Gesture Requirement:** When calling `availability(options)` returns `'downloadable'` or `'downloading'`, calling `Translator.create()` triggers the download of the language pack and **strictly requires a user gesture** (such as a button click) to prevent a `NotAllowedError`.
+
+`Translator.availability(options)` returns one of four string statuses:
+- `'available'`: The language pair model is already downloaded on the device and ready for immediate translation.
+- `'downloadable'`: The language pair is supported, but the model needs to be downloaded. A user gesture is required to initiate `Translator.create()`.
+- `'downloading'`: The language pack is currently in the process of downloading. Calling `Translator.create()` with a user gesture attaches to the download.
+- `'unavailable'`: The language pair or device is not supported. Execute your fallback strategy.
 
 ```javascript
+// Language pair options passed to both availability() and create()
 const options = {
-  sourceLanguage: 'es',
-  targetLanguage: 'fr',
+  sourceLanguage: 'es', // Example BCP 47 language code
+  targetLanguage: 'fr', // Example BCP 47 language code
 };
 
+// 1. Check availability for the language pair
 const availability = await Translator.availability(options);
 
-if (availability === 'available' || availability === 'downloadable') {
-  // A user gesture is strictly required to trigger create when downloadable
+if (availability === 'available') {
+  // Model is ready immediately on device
+  const translator = await Translator.create(options);
+} else if (availability === 'downloadable' || availability === 'downloading') {
+  // User gesture is strictly required before create() triggers or attaches to download
   document.getElementById('start-translation-btn').addEventListener('click', async () => {
     const translator = await Translator.create({
       ...options,
@@ -58,19 +74,28 @@ if (availability === 'available' || availability === 'downloadable') {
       },
     });
   });
+} else if (availability === 'unavailable') {
+  // Language pair or hardware unsupported; execute fallback
+  console.warn('Translation model is unavailable on this device.');
 }
 ```
 
-### 3. Executing Translations
+### 2. Executing Translations
 
-The API supports both static and streaming responses.
+The API supports both static and streaming responses. Always include download progress monitoring when instantiating the translator.
 
 **Standard Translation:**
 
 ```javascript
+// Default to including a progress monitor when creating translator
 const translator = await Translator.create({
   sourceLanguage: 'en',
   targetLanguage: 'fr',
+  monitor(m) {
+    m.addEventListener('downloadprogress', (e) => {
+      console.log(`Downloaded ${Math.round(e.loaded * 100)}%`);
+    });
+  },
 });
 
 const result = await translator.translate(
@@ -154,7 +179,7 @@ Before use, check if the `Translator` object is available in the global scope:
 if ('Translator' in self) {
   // The Translator API is supported.
 } else {
-  // Execute fallback strategy
+  // Execute fallback strategy (do not fall back to window.ai.translator).
 }
 ```
 
@@ -165,4 +190,4 @@ Recommended options:
 2. **Graceful Degradation**: Visually disable translation control elements or buttons while showing an end-user friendly note (e.g., `"Client-side translation is currently unsupported in this browser"`). Do not allow unhandled exceptions.
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services.
 
-> **Privacy and Cost Implications:** These polyfills proxy requests to remote servers (such as Gemini API over the cloud). This completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will incur server-side API usage costs.
+> **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as Gemini API over the cloud), though local processing is an option, too. Remote processing completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will often incur server-side API usage costs.
