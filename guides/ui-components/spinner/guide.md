@@ -24,71 +24,77 @@ See {{ GUIDE_REF("progress-ring") }} for handling determinate tasks with a known
 
 ### 1. Markup
 
-We use a wrapper to hold the visual spinner. The `<progress>` element remains the semantic source of truth. Without a `value` attribute, it is implicitly indeterminate.
+Use the native `<progress>` element as both the semantic source of truth and the visual component. Without a `value` attribute, it is implicitly indeterminate.
 
 ```html
-<div class="loading-spinner">
-  <progress aria-label="Loading" class="visually-hidden"></progress>
-  <!-- The visual ring is created by the container itself -->
-</div>
+<progress aria-label="Loading" class="loading-spinner"></progress>
 ```
-
-Alternatively, you may choose to omit the `<progress>` element, and add the `status` ARIA role to the `.loading-spinner` `<div>` element.
 
 ### 2. Styles
 
-#### Spinner Ring and Trail
-
-The spinner uses a `conic-gradient` to create a fading trail effect. `mask-image` is used to create the ring shape. To ensure the loader is only shown when it is exposed to the accessibility tree, use `:has(> progress:indeterminate)`. Wrap that in `.loading-spinner:where()` to allow users to override the custom variables with a simple `.loading-spinner` selector.
+#### Hiding Native UI
+To style the `<progress>` element as a spinner, first hide the default browser styling for indeterminate progress bars.
 
 ```css
-.loading-spinner:where(.loading-spinner:has(> progress:indeterminate)) { 
+/* Hide native bars */
+progress.loading-spinner:indeterminate::-webkit-progress-bar {
+  display: none;
+  background: none;
+}
+progress.loading-spinner:indeterminate::-webkit-progress-value {
+  display: none;
+  background: none;
+}
+progress.loading-spinner:indeterminate::-moz-progress-bar {
+  display: none;
+  background: none;
+}
+progress.loading-spinner:indeterminate::slider-fill {
+  display: none;
+  background: none;
+}
+```
+
+#### Spinner Ring and Trail
+The spinner uses a `conic-gradient` to create a visual trail. Use `background-clip: border-area` to constrain the gradient to the border region. 
+
+```css
+progress.loading-spinner:indeterminate {
   --size: 40px;
-  --thickness: 4px;
+  --thickness: 2px;
   --spinner-color: #3b82f6;
+  --track-color: #e2e5e7;
   --spinner-duration: 0.8s;
-   --_used-spinner-duration: var(--spinner-duration);
+  --_used-spinner-duration: var(--spinner-duration);
   --spinner-timing: linear;
-  
+
   position: relative;
   width: var(--size);
   height: var(--size);
   border-radius: 50%;
+  appearance: none;
 
-  /* Create a fading trail from the spinner color to transparent */
+  /* Create the fading trail */
   background: conic-gradient(
     from 0deg,
-    var(--spinner-color),
-    transparent 75%
+    var(--track-color) 25%,
+    var(--spinner-color) 25%
   );
 
-  /* Hollow out the center to create a ring */
-  mask-image: radial-gradient(
-    transparent calc(50% - var(--thickness)),
-    black calc(50% - var(--thickness) + 0.5px)
-  );
+  background-clip: border-area;
+  border: var(--thickness) solid transparent;
+  background-origin: border-box;
 
-  /* Continuous rotation animation */
-  animation: spinner-rotate var(--spinner-duration) var(--spinner-timing) infinite;
+  animation: spinner-rotate var(--_used-spinner-duration)
+    var(--spinner-timing) infinite;
 }
 
 @keyframes spinner-rotate {
   to { transform: rotate(360deg); }
 }
-
-/* Standard utility to visually hide elements while keeping them accessible */
-.visually-hidden:where(:not(:focus-within, :active)) {
-  position: absolute !important;
-  clip-path: inset(50%) !important;
-  overflow: hidden !important;
-  width: 1px !important;
-  height: 1px !important;
-  margin: -1px !important;
-  padding: 0 !important;
-  border: 0 !important;
-  white-space: nowrap !important;
-}
 ```
+
+You can also use a `radial-gradient` to make rounded end caps.
 
 #### Respecting Motion Preferences
 
@@ -104,3 +110,22 @@ Users with motion sensitivities may find fast-spinning elements disorienting. Al
 }
 ```
 Alternatively, replace the spinner with a static text label for users with `prefers-reduced-motion` enabled.
+
+## Fallback strategies
+
+{{ FEATURE_FALLBACKS("background-clip-border-area") }}
+
+For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center.
+
+```css
+/* Fallback: use mask-image to create the ring */
+@supports not (background-clip: border-area) {
+  --clip-boundary: calc(100% - var(--thickness));
+  mask-image: radial-gradient(
+    farthest-side,
+    transparent var(--clip-boundary),
+    black var(--clip-boundary)
+  );
+  border: 0;
+}
+```

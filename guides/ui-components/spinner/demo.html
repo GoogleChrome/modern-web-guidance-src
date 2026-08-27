@@ -5,19 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spinner Demo</title>
     <style>
-      @layer util {
-        .visually-hidden:where(:not(:focus-within, :active)) {
-          position: absolute !important;
-          clip-path: inset(50%) !important;
-          overflow: hidden !important;
-          width: 1px !important;
-          height: 1px !important;
-          margin: -1px !important;
-          padding: 0 !important;
-          border: 0 !important;
-          white-space: nowrap !important;
-        }
-      }
       @layer demo {
         body {
           font-family:
@@ -80,10 +67,28 @@
       }
 
       @layer component {
-        .loading-spinner:where(.loading-spinner:has(> progress:indeterminate)) { 
+         /*  Hide native bars */
+        progress.loading-spinner:indeterminate::-webkit-progress-bar {
+          display: none;
+          background: none;
+        }
+        progress.loading-spinner:indeterminate::-webkit-progress-value {
+          display: none;
+          background: none;
+        }
+        progress.loading-spinner:indeterminate::-moz-progress-bar {
+          display: none;
+          background: none;
+        }
+        progress.loading-spinner:indeterminate::slider-fill {
+          display: none;
+          background: none;
+        }
+        progress.loading-spinner:indeterminate {
           --size: 40px;
-          --thickness: 4px;
+          --thickness: 2px;
           --spinner-color: #3b82f6;
+          --track-color: #e2e5e7;
           --spinner-duration: 0.8s;
           --_used-spinner-duration: var(--spinner-duration);
           --spinner-timing: linear;
@@ -95,14 +100,24 @@
 
           background: conic-gradient(
             from 0deg,
-            transparent 25%,
-            var(--spinner-color)
+            var(--track-color) 25%,
+            var(--spinner-color) 25%
           );
+          @supports (background-clip: border-area) {
+            background-clip: border-area;
+            border: var(--thickness) solid transparent;
+            background-origin: border-box;
+          }
 
-          mask-image: radial-gradient(
-            transparent calc(50% - var(--thickness)),
-            black calc(50% - var(--thickness) + 0.5px)
-          );
+          @supports not (background-clip: border-area) {
+            --clip-boundary: calc(100% - var(--thickness));
+            mask-image: radial-gradient(
+              farthest-side,
+              transparent var(--clip-boundary),
+              black var(--clip-boundary)
+            );
+            border: 0;
+          }
 
           animation: spinner-rotate var(--_used-spinner-duration)
             var(--spinner-timing) infinite;
@@ -128,8 +143,9 @@
 
         .loading-spinner--custom {
           --spinner-color: #f43f5e;
+          --track-color: transparent;
           --spinner-duration: 1.2s;
-          --spinner-timing: ease-in-out;
+          --spinner-timing: ease-out;
         }
       }
     </style>
@@ -139,23 +155,17 @@
       <div class="examples">
         <div id="default-container">
           <div class="label">Default</div>
-          <div class="loading-spinner" role="status">
-            <progress aria-label="Loading" class="visually-hidden"></progress>
-          </div>
+            <progress aria-label="Loading" class="loading-spinner"></progress>
         </div>
 
         <div id="large-container">
           <div class="label">Large</div>
-          <div class="loading-spinner loading-spinner--large" role="status">
-            <progress aria-label="Loading" class="visually-hidden"></progress>
-          </div>
+            <progress aria-label="Loading" class="loading-spinner loading-spinner--large"></progress>
         </div>
 
         <div id="custom-container">
           <div class="label">Custom</div>
-          <div class="loading-spinner loading-spinner--custom" role="status">
-            <progress aria-label="Loading" class="visually-hidden"></progress>
-          </div>
+            <progress aria-label="Loading" class="loading-spinner loading-spinner--custom"></progress>
         </div>
       </div>
     </div>
