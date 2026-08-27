@@ -46,7 +46,7 @@ const COMMAND_METADATA = {
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
-  pr: { desc: 'Push branch and create GitHub PR from dev report', flags: [] },
+  pr: { desc: 'Push branch and create or update GitHub PR from dev report', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -342,14 +342,10 @@ async function main() {
     }
 
     case 'pr': {
-      const guideDir = positionals[1];
-      if (!guideDir) {
-        console.error(cRed('Usage: gd pr <guide_dir>'));
-        process.exit(1);
-      }
+      const dir = requireArg(positionals[1], 'gd pr <path/to/guide>');
       const { runDevPr } = await import('../guides/lib/dev-pr.ts');
-      await runDevPr(guideDir);
-      break;
+      const success = await runDevPr(dir);
+      process.exit(success ? 0 : 1);
     }
 
 

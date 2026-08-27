@@ -45,12 +45,13 @@ gd pr <path/to/guide_dir>
 ```
 
 This will automatically:
-1. Stage and commit any uncommitted changes for the guide.
-2. Push your feature branch to `origin`.
-3. Analyze `report.md` to automatically detect and apply PR labels:
+1. Create and switch to a feature branch (`gd-dev/<guide-name>`) if currently on `main`.
+2. Stage and commit any uncommitted changes for the target guide directory.
+3. Push your feature branch to `origin`.
+4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
    - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`.
-4. Open the GitHub Pull Request with the full evaluation report (`report.md`) as the PR body description.
+5. Open a new draft Pull Request (or update the existing PR description and sync labels if a PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description.
 
 ### Checking Status: `gd audit`
 

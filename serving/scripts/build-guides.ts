@@ -341,5 +341,8 @@ if (process.argv[1] === import.meta.filename) {
     targetGuidePath,
     modelName,
     noChunking
-  }).catch(console.error);
+  }).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }
