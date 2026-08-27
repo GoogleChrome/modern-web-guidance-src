@@ -15,15 +15,15 @@ export interface UseCaseResult {
 
 let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; tokenCount: number; vector: number[]; norm: number }[] | null = null;
 
-function dotProduct(a: number[], b: number[]): number {
-  let dotProduct = 0;
+export function dotProduct(a: number[], b: number[]): number {
+  let dot = 0;
   for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
+    dot += a[i] * b[i];
   }
-  return dotProduct;
+  return dot;
 }
 
-function calculateNorm(v: number[]): number {
+export function calculateNorm(v: number[]): number {
   let sum = 0;
   for (const val of v) {
     sum += val * val;
