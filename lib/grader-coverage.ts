@@ -47,21 +47,7 @@ export function parseVerifiableExpectations(content: string): string[] {
   const lines = content.split('\n');
   const items: string[] = [];
 
-  const hasStructured = /^##\s+(Must pass)/im.test(content);
-  let inMustPass = !hasStructured;
-
   for (const rawLine of lines) {
-    const trimmed = rawLine.trim();
-    if (/^##\s+Must pass/i.test(trimmed)) {
-      inMustPass = true;
-      continue;
-    } else if (/^##\s+/i.test(trimmed)) {
-      inMustPass = false;
-      continue;
-    }
-
-    if (!inMustPass) continue;
-
     // Must be at start of line without indentation (top-level only)
     const match = rawLine.match(/^([-*]|\d+[.)])\s+(.+)$/);
     if (match) {

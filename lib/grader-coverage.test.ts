@@ -73,24 +73,6 @@ test.describe('Suite', () => {
     }
   });
 
-  it('parses structured ## Must pass sections and ignores ## Must fail or app-agnostic rules', () => {
-    const sample = `
-## Must pass
-- Required behavior 1
-- Required behavior 2
-  - Sub bullet
-
-## Must fail
-- Anti-pattern 1
-- Anti-pattern 2
-
-## App-agnostic rules
-- DO NOT require specific IDs
-`;
-    const parsed = parseVerifiableExpectations(sample);
-    assert.deepStrictEqual(parsed, ['Required behavior 1', 'Required behavior 2']);
-  });
-
   it('handles multiline test titles in extractTestTitles', () => {
     const sampleCode = `
 import { test } from '@playwright/test';
