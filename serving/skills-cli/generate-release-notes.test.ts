@@ -13,6 +13,11 @@ import {
   classifyChanges,
   getGuideDescription,
   getUniqueGuideNames,
+  getGuidePathInDistribution,
+  getGuideGithubUrl,
+  formatGuideBoldLink,
+  formatGuideCodeLink,
+  linkifyGuideBullets,
   parseMarkdownBullets,
   isPatchOnlyVersionBump,
   isJsonOnlyVersionBump,
@@ -141,9 +146,10 @@ test('buildBaselineBullets sorts entries strictly: Widely -> Newly -> Limited an
   // First should be Rank 1 (:has() and CSS Masks sorted alphabetically)
   assert.ok(bullets[0].includes(':has() selector'));
   assert.ok(bullets[1].includes('CSS Masks'));
-  assert.ok(bullets[1].includes('across 2 guides (`complex-shapes`, `shaped-cutouts`)'));
+  assert.ok(bullets[1].includes('across 2 guides ([`complex-shapes`](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/complex-shapes.md), [`shaped-cutouts`](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/shaped-cutouts.md))'));
   // Second group is Rank 2 (field-sizing)
   assert.ok(bullets[2].includes('field-sizing'));
+  assert.ok(bullets[2].includes('[`form-fields-automatically-fit-contents`](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/form-fields-automatically-fit-contents.md)'));
   // Third group is Rank 3 (Language Detection)
   assert.ok(bullets[3].includes('Language Detection'));
 });
@@ -304,8 +310,8 @@ test('generateFallbackReleaseNotes formats guide, baseline, and ecosystem update
   const notes = generateFallbackReleaseNotes('v0.1.0', '0.1.1', evalSummary, changedFiles, baselineUpdates);
 
   assert.ok(notes.includes('# Release Notes: `v0.1.1`'));
-  assert.ok(notes.includes('## 🔄 Updated Guides\n\n* **size-aware-styling**: Updates and improvements to web platform guidance.'));
-  assert.ok(notes.includes('## 🌐 Browser Support Updates\n\n* **CSS Masks**: Now **Baseline Widely available** in `complex-shapes`.'));
+  assert.ok(notes.includes('## 🔄 Updated Guides\n\n* **[size-aware-styling](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.1.1/skills/modern-web-guidance/guides/css/size-aware-styling.md)**: Updates and improvements to web platform guidance.'));
+  assert.ok(notes.includes('## 🌐 Browser Support Updates\n\n* **CSS Masks**: Now **Baseline Widely available** in [`complex-shapes`](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.1.1/skills/modern-web-guidance/guides/visual-design/complex-shapes.md).'));
   assert.ok(notes.includes('## 🔌 Plugins\n\n* **.grok-plugin/marketplace.json**: Updates to agent plugin configuration.'));
 });
 
@@ -486,5 +492,89 @@ test('all changed guide files are categorized into added, modified, removed, or 
       `Expected guide file '${file}' (${guideName}) in changedFiles to be in a category`
     );
   }
+});
+
+test('getGuidePathInDistribution and getGuideGithubUrl resolve correct paths and GitHub URLs', () => {
+  // 1. Regular guide in guides/<category>/<name>
+  const translatorPath = getGuidePathInDistribution('translator');
+  assert.strictEqual(translatorPath, 'skills/modern-web-guidance/guides/built-in-ai/translator.md');
+  assert.strictEqual(
+    getGuideGithubUrl('translator'),
+    'https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/built-in-ai/translator.md'
+  );
+  assert.strictEqual(
+    getGuideGithubUrl('translator', 'v0.0.185'),
+    'https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/built-in-ai/translator.md'
+  );
+  assert.strictEqual(
+    getGuideGithubUrl('translator', '0.0.185'),
+    'https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/built-in-ai/translator.md'
+  );
+
+  const siblingPath = getGuidePathInDistribution('dynamic-sibling-styling');
+  assert.strictEqual(siblingPath, 'skills/modern-web-guidance/guides/css/dynamic-sibling-styling.md');
+  assert.strictEqual(
+    getGuideGithubUrl('dynamic-sibling-styling', 'v0.0.185'),
+    'https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/css/dynamic-sibling-styling.md'
+  );
+
+  // 2. Standalone skills
+  assert.strictEqual(getGuidePathInDistribution('chrome-extensions'), 'skills/chrome-extensions/SKILL.md');
+  assert.strictEqual(getGuidePathInDistribution('chrome-extensions-skill'), 'skills/chrome-extensions/SKILL.md');
+  assert.strictEqual(
+    getGuideGithubUrl('chrome-extensions', 'v0.0.185'),
+    'https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/chrome-extensions/SKILL.md'
+  );
+
+  assert.strictEqual(getGuidePathInDistribution('modern-web-guidance'), 'skills/modern-web-guidance/SKILL.md');
+  assert.strictEqual(getGuidePathInDistribution('modern-web-guidance-skill'), 'skills/modern-web-guidance/SKILL.md');
+
+  // 3. Unknown guide returns undefined
+  assert.strictEqual(getGuidePathInDistribution('non-existent-guide-xyz'), undefined);
+  assert.strictEqual(getGuideGithubUrl('non-existent-guide-xyz'), undefined);
+});
+
+test('formatGuideBoldLink and formatGuideCodeLink format links when guide exists and fallback when absent', () => {
+  // Existing guide
+  assert.strictEqual(
+    formatGuideBoldLink('translator', 'v0.0.185'),
+    '**[translator](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/built-in-ai/translator.md)**'
+  );
+  assert.strictEqual(
+    formatGuideCodeLink('translator', 'v0.0.185'),
+    '[`translator`](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/built-in-ai/translator.md)'
+  );
+
+  // Non-existent guide
+  assert.strictEqual(formatGuideBoldLink('unknown-guide'), '**unknown-guide**');
+  assert.strictEqual(formatGuideCodeLink('unknown-guide'), '`unknown-guide`');
+});
+
+test('linkifyGuideBullets correctly links guide names in bullet points without double-linking', () => {
+  const originalBullets = [
+    '* **translator**: Updated to require accessing the API exclusively via the global `Translator` interface (deprecating `window.ai.translator`), clarified the 4 availability states (`available`, `downloadable`, `downloading`, `unavailable`), and added guidance on download progress monitoring and user gesture requirements.',
+    '* Introduced **[state-aware-sticky-headers](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/ui-atoms/state-aware-sticky-headers.md)** detailing how to build UI headers that react to scroll changes.',
+    '* Added `size-aware-styling` guidance for responsive container styling.',
+  ];
+
+  const linkedBullets = linkifyGuideBullets(originalBullets, ['translator', 'state-aware-sticky-headers', 'size-aware-styling'], 'v0.0.185');
+
+  // 1. Unlinked bold guide name is linked directly
+  assert.strictEqual(
+    linkedBullets[0],
+    '* **[translator](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/built-in-ai/translator.md)**: Updated to require accessing the API exclusively via the global `Translator` interface (deprecating `window.ai.translator`), clarified the 4 availability states (`available`, `downloadable`, `downloading`, `unavailable`), and added guidance on download progress monitoring and user gesture requirements.'
+  );
+
+  // 2. Already linked bullet remains intact (no double-linking)
+  assert.strictEqual(
+    linkedBullets[1],
+    '* Introduced **[state-aware-sticky-headers](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/ui-atoms/state-aware-sticky-headers.md)** detailing how to build UI headers that react to scroll changes.'
+  );
+
+  // 3. Code-formatted guide identifier is linked
+  assert.strictEqual(
+    linkedBullets[2],
+    '* Added [`size-aware-styling`](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/css/size-aware-styling.md) guidance for responsive container styling.'
+  );
 });
 

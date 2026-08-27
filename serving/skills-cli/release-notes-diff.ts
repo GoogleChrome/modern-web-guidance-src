@@ -319,12 +319,76 @@ export function getGuideDescription(relPath: string): string | undefined {
   return undefined;
 }
 
-/**
- * Extracts unique guide identifiers from changed file paths.
- */
 export function getUniqueGuideNames(changedFiles: string[]): string[] {
   const guideFiles = changedFiles.filter(isGuideFile);
   return Array.from(new Set(guideFiles.map(getGuideName)));
+}
+
+export const GITHUB_REPO_URL = 'https://github.com/GoogleChrome/modern-web-guidance';
+
+/**
+ * Resolves the relative path of a guide or skill within the published modern-web-guidance repository.
+ */
+export function getGuidePathInDistribution(guideName: string): string | undefined {
+  if (guideName.endsWith('-skill')) {
+    const skillBase = guideName.slice(0, -'-skill'.length);
+    return `skills/${skillBase}/SKILL.md`;
+  }
+
+  // Check standalone skills in skills-src
+  const skillSrcPath = path.join(rootDir, 'skills-src', guideName, 'SKILL.md');
+  if (fs.existsSync(skillSrcPath)) {
+    return `skills/${guideName}/SKILL.md`;
+  }
+
+  // Check discipline or category skills in guides/
+  const categorySkillPath = path.join(rootDir, 'guides', guideName, 'SKILL.md');
+  if (fs.existsSync(categorySkillPath)) {
+    return `skills/modern-web-guidance/SKILL.md`;
+  }
+
+  // Scan guides/ to find the category for guideName
+  const guidesRootDir = path.join(rootDir, 'guides');
+  if (fs.existsSync(guidesRootDir)) {
+    try {
+      const categories = fs.readdirSync(guidesRootDir, { withFileTypes: true });
+      for (const cat of categories) {
+        if (!cat.isDirectory() || cat.name.startsWith('.') || cat.name === 'node_modules') continue;
+        const candidateDir = path.join(guidesRootDir, cat.name, guideName);
+        if (fs.existsSync(candidateDir) && fs.existsSync(path.join(candidateDir, 'guide.md'))) {
+          return `skills/modern-web-guidance/guides/${cat.name}/${guideName}.md`;
+        }
+      }
+    } catch {}
+  }
+
+  return undefined;
+}
+
+/**
+ * Returns the direct GitHub URL for a guide or skill in GoogleChrome/modern-web-guidance.
+ */
+export function getGuideGithubUrl(guideName: string, ref = 'main'): string | undefined {
+  const relPath = getGuidePathInDistribution(guideName);
+  if (!relPath) return undefined;
+  const normalizedRef = ref.startsWith('v') || ref === 'main' || ref.startsWith('refs/') ? ref : `v${ref}`;
+  return `${GITHUB_REPO_URL}/blob/${normalizedRef}/${relPath}`;
+}
+
+/**
+ * Formats a guide name as a markdown bold link if a URL is resolved, or plain bold if not.
+ */
+export function formatGuideBoldLink(guideName: string, ref = 'main'): string {
+  const url = getGuideGithubUrl(guideName, ref);
+  return url ? `**[${guideName}](${url})**` : `**${guideName}**`;
+}
+
+/**
+ * Formats a guide name as a markdown code link if a URL is resolved, or plain code if not.
+ */
+export function formatGuideCodeLink(guideName: string, ref = 'main'): string {
+  const url = getGuideGithubUrl(guideName, ref);
+  return url ? `[\`${guideName}\`](${url})` : `\`${guideName}\``;
 }
 
 /**
