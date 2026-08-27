@@ -4,6 +4,7 @@ import {
   getGuideGithubUrl,
   formatGuideBoldLink,
   formatGuideCodeLink,
+  formatWebFeatureBoldLink,
   type BaselineUpdateInfo,
   type EvalSummaryItem,
 } from './release-notes-diff.ts';
@@ -85,13 +86,14 @@ export function parseMarkdownBullets(text: string): string[] {
  * Sorted order: Widely available (1) -> Newly available (2) -> Limited availability (3).
  */
 export function buildBaselineBullets(updates: BaselineUpdateInfo[], ref = 'main'): string[] {
-  const grouped = new Map<string, { featureName: string; statusRank: number; statusDescription: string; guides: string[] }>();
+  const grouped = new Map<string, { featureName: string; featureId?: string; statusRank: number; statusDescription: string; guides: string[] }>();
 
   for (const update of updates) {
     const key = `${update.featureName}::${update.statusRank}::${update.statusDescription}`;
     if (!grouped.has(key)) {
       grouped.set(key, {
         featureName: update.featureName,
+        featureId: update.featureId,
         statusRank: update.statusRank,
         statusDescription: update.statusDescription,
         guides: [],
@@ -112,12 +114,13 @@ export function buildBaselineBullets(updates: BaselineUpdateInfo[], ref = 'main'
 
   return entries.map(entry => {
     const uniqueGuides = Array.from(new Set(entry.guides));
+    const featureLink = formatWebFeatureBoldLink(entry.featureName, entry.featureId);
     if (uniqueGuides.length === 1) {
       const guideLink = formatGuideCodeLink(uniqueGuides[0], ref);
-      return `* **${entry.featureName}**: ${entry.statusDescription} in ${guideLink}.`;
+      return `* ${featureLink}: ${entry.statusDescription} in ${guideLink}.`;
     }
     const guidesList = uniqueGuides.map(g => formatGuideCodeLink(g, ref)).join(', ');
-    return `* **${entry.featureName}**: ${entry.statusDescription} across ${uniqueGuides.length} guides (${guidesList}).`;
+    return `* ${featureLink}: ${entry.statusDescription} across ${uniqueGuides.length} guides (${guidesList}).`;
   });
 }
 

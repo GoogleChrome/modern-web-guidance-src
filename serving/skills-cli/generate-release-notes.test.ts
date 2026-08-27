@@ -8,6 +8,7 @@ import {
   buildReleaseNotesMarkdown,
   buildBaselineBullets,
   parseBaselineUpdateFromPatch,
+  parseBaselineUpdatesFromPatch,
   isPatchOnlyBaselineUpdate,
   stripBaselineLinesFromPatch,
   classifyChanges,
@@ -17,6 +18,9 @@ import {
   getGuideGithubUrl,
   formatGuideBoldLink,
   formatGuideCodeLink,
+  resolveWebFeatureId,
+  getWebStatusUrl,
+  formatWebFeatureBoldLink,
   linkifyGuideBullets,
   parseMarkdownBullets,
   isPatchOnlyVersionBump,
@@ -92,7 +96,7 @@ test('parseBaselineUpdateFromPatch extracts feature name and status rank', () =>
 +Baseline status for Masks: Widely available.
 `;
   const infoWidely = parseBaselineUpdateFromPatch('complex-shapes', patchWidely);
-  assert.strictEqual(infoWidely.featureName, 'CSS Masks');
+  assert.strictEqual(infoWidely.featureName, 'Masks');
   assert.strictEqual(infoWidely.statusRank, 1);
   assert.ok(infoWidely.statusDescription.includes('Widely available'));
 
@@ -110,19 +114,19 @@ test('parseBaselineUpdateFromPatch extracts feature name and status rank', () =>
 test('buildBaselineBullets sorts entries strictly: Widely -> Newly -> Limited and groups guides', () => {
   const updates: BaselineUpdateInfo[] = [
     {
-      featureName: 'Language Detection',
+      featureName: 'Language detector',
       statusRank: 3,
       statusDescription: 'Added **Edge 148** support',
       guideName: 'language-detection',
     },
     {
-      featureName: 'CSS Masks',
+      featureName: 'Masks',
       statusRank: 1,
       statusDescription: 'Now **Baseline Widely available**',
       guideName: 'complex-shapes',
     },
     {
-      featureName: 'CSS Masks',
+      featureName: 'Masks',
       statusRank: 1,
       statusDescription: 'Now **Baseline Widely available**',
       guideName: 'shaped-cutouts',
@@ -134,7 +138,7 @@ test('buildBaselineBullets sorts entries strictly: Widely -> Newly -> Limited an
       guideName: 'form-fields-automatically-fit-contents',
     },
     {
-      featureName: ':has() selector',
+      featureName: ':has()',
       statusRank: 1,
       statusDescription: 'Now **Baseline Widely available**',
       guideName: 'child-state-based-styling',
@@ -143,15 +147,15 @@ test('buildBaselineBullets sorts entries strictly: Widely -> Newly -> Limited an
 
   const bullets = buildBaselineBullets(updates);
   assert.strictEqual(bullets.length, 4);
-  // First should be Rank 1 (:has() and CSS Masks sorted alphabetically)
-  assert.ok(bullets[0].includes(':has() selector'));
-  assert.ok(bullets[1].includes('CSS Masks'));
+  // First should be Rank 1 (:has() and Masks sorted alphabetically)
+  assert.ok(bullets[0].includes('**[:has()](https://webstatus.dev/features/has)**'));
+  assert.ok(bullets[1].includes('**[Masks](https://webstatus.dev/features/masks)**'));
   assert.ok(bullets[1].includes('across 2 guides ([`complex-shapes`](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/complex-shapes.md), [`shaped-cutouts`](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/shaped-cutouts.md))'));
   // Second group is Rank 2 (field-sizing)
-  assert.ok(bullets[2].includes('field-sizing'));
+  assert.ok(bullets[2].includes('**[field-sizing](https://webstatus.dev/features/field-sizing)**'));
   assert.ok(bullets[2].includes('[`form-fields-automatically-fit-contents`](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/form-fields-automatically-fit-contents.md)'));
-  // Third group is Rank 3 (Language Detection)
-  assert.ok(bullets[3].includes('Language Detection'));
+  // Third group is Rank 3 (Language detector)
+  assert.ok(bullets[3].includes('**[Language detector](https://webstatus.dev/features/languagedetector)**'));
 });
 
 test('isJsonOnlyVersionBump correctly compares JSON objects on disk ignoring version', () => {
@@ -300,7 +304,7 @@ test('generateFallbackReleaseNotes formats guide, baseline, and ecosystem update
   const evalSummary: EvalSummaryItem[] = [];
   const baselineUpdates: BaselineUpdateInfo[] = [
     {
-      featureName: 'CSS Masks',
+      featureName: 'Masks',
       statusRank: 1,
       statusDescription: 'Now **Baseline Widely available**',
       guideName: 'complex-shapes',
@@ -311,7 +315,7 @@ test('generateFallbackReleaseNotes formats guide, baseline, and ecosystem update
 
   assert.ok(notes.includes('# Release Notes: `v0.1.1`'));
   assert.ok(notes.includes('## 🔄 Updated Guides\n\n* **[size-aware-styling](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.1.1/skills/modern-web-guidance/guides/css/size-aware-styling.md)**: Updates and improvements to web platform guidance.'));
-  assert.ok(notes.includes('## 🌐 Browser Support Updates\n\n* **CSS Masks**: Now **Baseline Widely available** in [`complex-shapes`](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.1.1/skills/modern-web-guidance/guides/visual-design/complex-shapes.md).'));
+  assert.ok(notes.includes('## 🌐 Browser Support Updates\n\n* **[Masks](https://webstatus.dev/features/masks)**: Now **Baseline Widely available** in [`complex-shapes`](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.1.1/skills/modern-web-guidance/guides/visual-design/complex-shapes.md).'));
   assert.ok(notes.includes('## 🔌 Plugins\n\n* **.grok-plugin/marketplace.json**: Updates to agent plugin configuration.'));
 });
 
@@ -389,7 +393,7 @@ test('classifyChanges correctly classifies added, modified, baseline, plugin, re
 
   // 5. Baseline updates (includes both standalone baseline guide and dual-update guide)
   assert.strictEqual(result.baselineUpdates.length, 2);
-  assert.strictEqual(result.baselineUpdates[0].featureName, 'CSS Masks');
+  assert.strictEqual(result.baselineUpdates[0].featureName, 'Masks');
   assert.strictEqual(result.baselineUpdates[0].statusRank, 1);
   assert.strictEqual(result.baselineUpdates[1].featureName, 'linear() easing');
   assert.strictEqual(result.baselineUpdates[1].statusRank, 1);
@@ -576,5 +580,71 @@ test('linkifyGuideBullets correctly links guide names in bullet points without d
     linkedBullets[2],
     '* Added [`size-aware-styling`](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/css/size-aware-styling.md) guidance for responsive container styling.'
   );
+});
+
+test('resolveWebFeatureId, getWebStatusUrl, and formatWebFeatureBoldLink correctly link to webstatus.dev', () => {
+  // 1. Direct ID or canonical name resolution
+  assert.strictEqual(resolveWebFeatureId('sibling-count() and sibling-index()'), 'sibling-count');
+  assert.strictEqual(getWebStatusUrl('sibling-count() and sibling-index()'), 'https://webstatus.dev/features/sibling-count');
+  assert.strictEqual(
+    formatWebFeatureBoldLink('sibling-count() and sibling-index()'),
+    '**[sibling-count() and sibling-index()](https://webstatus.dev/features/sibling-count)**'
+  );
+  assert.strictEqual(resolveWebFeatureId('field-sizing'), 'field-sizing');
+  assert.strictEqual(resolveWebFeatureId('Masks'), 'masks');
+  assert.strictEqual(getWebStatusUrl('Masks'), 'https://webstatus.dev/features/masks');
+  assert.strictEqual(formatWebFeatureBoldLink('Masks'), '**[Masks](https://webstatus.dev/features/masks)**');
+
+  assert.strictEqual(resolveWebFeatureId(':has()'), 'has');
+  assert.strictEqual(getWebStatusUrl(':has()'), 'https://webstatus.dev/features/has');
+
+  // 2. Unknown feature fallback
+  assert.strictEqual(resolveWebFeatureId('unknown-feature-xyz'), undefined);
+  assert.strictEqual(getWebStatusUrl('unknown-feature-xyz'), undefined);
+  assert.strictEqual(formatWebFeatureBoldLink('unknown-feature-xyz'), '**unknown-feature-xyz**');
+});
+
+test('parseBaselineUpdateFromPatch extracts feature name from patch context lines', () => {
+  const patchWithContext = `
+@@ -50,3 +50,3 @@
+ Baseline status for Masks: Limited availability.
+-Supported by: Chrome 120.
++Supported by: Chrome 120, Firefox 135.
+`;
+  const info = parseBaselineUpdateFromPatch('complex-shapes', patchWithContext);
+  assert.strictEqual(info.featureName, 'Masks');
+  assert.strictEqual(info.featureId, 'masks');
+  assert.ok(info.statusDescription.includes('Firefox 135'));
+});
+
+test('parseBaselineUpdatesFromPatch extracts multiple feature updates from multi-hunk patches', () => {
+  const multiHunkPatch = `
+@@ -20,6 +20,6 @@
+ Baseline status for Masks: Limited availability.
+-Supported by: Chrome 120.
++Supported by: Chrome 120, Firefox 135.
+@@ -80,6 +80,6 @@
+ Baseline status for :has(): Limited availability.
+-Supported by: Safari 17.
++Supported by: Safari 17, Firefox 135.
+`;
+  const updates = parseBaselineUpdatesFromPatch('multi-feature-guide', multiHunkPatch);
+  assert.strictEqual(updates.length, 2);
+  assert.strictEqual(updates[0].featureName, 'Masks');
+  assert.strictEqual(updates[0].featureId, 'masks');
+  assert.ok(updates[0].statusDescription.includes('Firefox 135'));
+
+  assert.strictEqual(updates[1].featureName, ':has()');
+  assert.strictEqual(updates[1].featureId, 'has');
+  assert.ok(updates[1].statusDescription.includes('Firefox 135'));
+
+  // 3. Patch without any extractable feature name is omitted
+  const unidentifiablePatch = `
+@@ -10,2 +10,2 @@
+-Some unrelated line
++Some other line
+`;
+  assert.strictEqual(parseBaselineUpdateFromPatch('unrelated-guide', unidentifiablePatch), null);
+  assert.deepStrictEqual(parseBaselineUpdatesFromPatch('unrelated-guide', unidentifiablePatch), []);
 });
 

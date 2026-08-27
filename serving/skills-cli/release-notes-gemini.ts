@@ -238,7 +238,7 @@ ${pluginDiff}
 
 ### Core Formatting Rules:
 1. Output concise Markdown bullet points (starting with '* ' or '- ') describing what was added or updated across the affected agent platforms, IDEs, or marketplaces.
-2. Bold the name of each agent platform, IDE, or marketplace (e.g., "* Added support for the **Grok** plugin marketplace.").
+2. Bold the specific name of each target agent platform, IDE, or marketplace (e.g., **GitHub Copilot**, **Claude Code**, **Cursor**, **Grok**, **Gemini CLI**) derived from the plugin directory or manifest, rather than the generic package name.
 3. Output at least 1 and at most ${pluginFiles.length} bullet points.
 4. Do NOT mention rote version bumps.
 5. Keep each bullet point on a single line without manual line breaks.

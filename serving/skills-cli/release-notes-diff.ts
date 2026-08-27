@@ -4,6 +4,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import matter from 'gray-matter';
 import { minimatch } from 'minimatch';
+import { features } from 'web-features';
 import { rootDir } from '../../lib/paths.ts';
 export interface EvalSummaryItem {
   testId?: string;
@@ -21,6 +22,7 @@ export interface EvalSummaryItem {
 
 export interface BaselineUpdateInfo {
   featureName: string;
+  featureId?: string;
   statusRank: number; // 1: Widely, 2: Newly, 3: Limited
   statusDescription: string;
   guideName: string;
@@ -182,15 +184,15 @@ export function stripBaselineLinesFromPatch(patch?: string): string {
 }
 
 /**
- * Extracts structured Baseline / browser support update info from a patch.
+ * Extracts structured Baseline / browser support update info from a single hunk or patch block.
  */
-export function parseBaselineUpdateFromPatch(guideName: string, patch: string): BaselineUpdateInfo {
-  const addedLines = patch
+export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): BaselineUpdateInfo | null {
+  const addedLines = hunk
     .split('\n')
     .filter(l => l.startsWith('+') && !l.startsWith('+++'))
     .map(l => l.slice(1).trim());
 
-  const removedLines = patch
+  const removedLines = hunk
     .split('\n')
     .filter(l => l.startsWith('-') && !l.startsWith('---'))
     .map(l => l.slice(1).trim());
@@ -199,6 +201,7 @@ export function parseBaselineUpdateFromPatch(guideName: string, patch: string): 
   let statusRank = 3;
   let statusDescription = 'Updated browser engine support';
 
+  // 1. Check added lines for a status transition
   for (const line of addedLines) {
     const match = line.match(/Baseline status for\s+(.+?):\s*(Widely available|Newly available|Limited availability)/i);
     if (match) {
@@ -218,10 +221,17 @@ export function parseBaselineUpdateFromPatch(guideName: string, patch: string): 
     }
   }
 
-  if (featureName.toLowerCase() === 'masks') {
-    featureName = 'CSS Masks';
-  } else if (!featureName) {
-    featureName = guideName;
+  // 2. If status line didn't change (e.g. engine update in Limited status), extract featureName from hunk context
+  if (!featureName) {
+    const match = hunk.match(/Baseline status for\s+(.+?):/i);
+    if (match) {
+      featureName = match[1].trim();
+    }
+  }
+
+  // If the feature name cannot be extracted, omit this update
+  if (!featureName) {
+    return null;
   }
 
   if (statusRank === 3) {
@@ -237,12 +247,36 @@ export function parseBaselineUpdateFromPatch(guideName: string, patch: string): 
     }
   }
 
+  const featureId = resolveWebFeatureId(featureName);
+
   return {
     featureName,
+    featureId,
     statusRank,
     statusDescription,
     guideName,
   };
+}
+
+/**
+ * Extracts all Baseline / browser support update infos from a patch (supporting multi-hunk diffs).
+ */
+export function parseBaselineUpdatesFromPatch(guideName: string, patch: string): BaselineUpdateInfo[] {
+  const hunks = patch.split(/(?=@@ -\d+)/g).filter(h => h.trim());
+  const updates: BaselineUpdateInfo[] = [];
+  for (const hunk of hunks) {
+    if (hasBaselineUpdateInPatch(hunk)) {
+      const update = parseBaselineUpdateFromHunk(guideName, hunk);
+      if (update) {
+        updates.push(update);
+      }
+    }
+  }
+  return updates;
+}
+
+export function parseBaselineUpdateFromPatch(guideName: string, patch: string): BaselineUpdateInfo | null {
+  return parseBaselineUpdatesFromPatch(guideName, patch)[0] || null;
 }
 
 /**
@@ -383,6 +417,40 @@ export function formatGuideBoldLink(guideName: string, ref = 'main'): string {
   return url ? `**[${guideName}](${url})**` : `**${guideName}**`;
 }
 
+// Lookup mapping lowercase feature IDs and display names to canonical feature IDs
+const featureNameToIdMap = new Map<string, string>();
+for (const [id, f] of Object.entries(features)) {
+  featureNameToIdMap.set(id.toLowerCase(), id);
+  if (f.name) {
+    featureNameToIdMap.set(f.name.toLowerCase(), id);
+  }
+}
+
+/**
+ * Resolves the canonical web-features featureId from a feature name.
+ */
+export function resolveWebFeatureId(featureName: string): string | undefined {
+  return featureNameToIdMap.get(featureName.toLowerCase());
+}
+
+/**
+ * Returns the webstatus.dev feature URL if a feature ID is resolved.
+ */
+export function getWebStatusUrl(featureName: string): string | undefined {
+  const featureId = resolveWebFeatureId(featureName);
+  return featureId ? `https://webstatus.dev/features/${featureId}` : undefined;
+}
+
+/**
+ * Formats a web feature name as a markdown bold link to webstatus.dev if resolved, or plain bold if not.
+ */
+export function formatWebFeatureBoldLink(featureName: string, featureId?: string): string {
+  const resolvedId = featureId || resolveWebFeatureId(featureName);
+  return resolvedId
+    ? `**[${featureName}](https://webstatus.dev/features/${resolvedId})**`
+    : `**${featureName}**`;
+}
+
 /**
  * Formats a guide name as a markdown code link if a URL is resolved, or plain code if not.
  */
@@ -431,7 +499,7 @@ export function classifyChanges(records: RawChangeRecord[]): ClassifiedChanges {
         changedFiles.push(relPath);
         if (patch) {
           if (hasBaselineUpdateInPatch(patch)) {
-            baselineUpdates.push(parseBaselineUpdateFromPatch(guideName, patch));
+            baselineUpdates.push(...parseBaselineUpdatesFromPatch(guideName, patch));
           }
           if (!isPatchOnlyBaselineUpdate(patch)) {
             const renameNote = oldGuideName !== guideName
@@ -453,7 +521,7 @@ export function classifyChanges(records: RawChangeRecord[]): ClassifiedChanges {
         changedFiles.push(relPath);
       } else if (patch) {
         if (hasBaselineUpdateInPatch(patch)) {
-          baselineUpdates.push(parseBaselineUpdateFromPatch(guideName, patch));
+          baselineUpdates.push(...parseBaselineUpdatesFromPatch(guideName, patch));
         }
         if (!isPatchOnlyBaselineUpdate(patch)) {
           const substantivePatch = stripBaselineLinesFromPatch(patch);
