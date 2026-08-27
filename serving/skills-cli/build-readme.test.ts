@@ -2,7 +2,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { updateReadmeWithFeaturesAndUseCases } from './build-readme.ts';
+import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCasesCount } from './build-readme.ts';
 
 describe('updateReadmeWithFeaturesAndUseCases', () => {
   const testOutputDir = path.join(import.meta.dirname, 'test-readme-output');
@@ -43,5 +43,11 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     assert.match(content, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'Should link use cases to GitHub blob files');
 
     assert.ok(content.includes('`&lt;iframe&gt;` loading state'), 'Should escape angle brackets in descriptions');
+  });
+
+  it('getFeaturesAndUseCasesCount returns non-zero counts without modifying disk', () => {
+    const counts = getFeaturesAndUseCasesCount();
+    assert.ok(counts.featuresCount > 0);
+    assert.ok(counts.useCasesCount > 0);
   });
 });
