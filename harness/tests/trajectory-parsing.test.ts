@@ -10,6 +10,7 @@ import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory, extr
 import { collectJetskiCliGuidesFromTrajectory, collectJetskiCliToolsFromTrajectory, writeTrajectorySummary, readTrajectorySummary, parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from '../lib/guidance_validation.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from '../lib/collection.ts';
+import { exportTrajectories } from '../lib/agent-shared.ts';
 import { Agents, Serving } from '../config.ts';
 
 function createTempDir(): string {
@@ -106,6 +107,43 @@ test('collectJetski metrics from trajectory files', async () => {
   }
 });
 
+test('exportTrajectories copies SQLite WAL and SHM companion files and enables valid parsing', async () => {
+  const sourceDir = createTempDir();
+  const destDir = createTempDir();
+  try {
+    const dbPath = path.join(sourceDir, 'session-wal-test.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA wal_autocheckpoint = 0;
+      CREATE TABLE steps (idx INTEGER, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
+      CREATE TABLE gen_metadata (idx INTEGER, data BLOB);
+    `);
+
+    const payload = encodeField(5, 2, Buffer.from('npx -y modern-web-guidance@latest retrieve "translator"'));
+    const insertStep = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
+    insertStep.run(1, 21, 1, null, payload);
+
+    // Keep WAL open / uncheckpointed and export
+    exportTrajectories(sourceDir, '*.db', destDir);
+
+    // Verify companion files were copied
+    assert.ok(fs.existsSync(path.join(destDir, 'session-wal-test.db')));
+    if (fs.existsSync(`${dbPath}-wal`)) {
+      assert.ok(fs.existsSync(path.join(destDir, 'session-wal-test.db-wal')));
+    }
+
+    db.close();
+
+    // Verify destination DB can be parsed cleanly
+    const parsed = parseJetskiCliSession(destDir);
+    assert.deepStrictEqual(parsed.retrievedGuides, ['translator']);
+  } finally {
+    removeTempDir(sourceDir);
+    removeTempDir(destDir);
+  }
+});
+
 test('collectGemini metrics from a single trajectory file', async () => {
   const tempDir = createTempDir();
   try {
@@ -178,7 +216,7 @@ test('collectGemini metrics from a .jsonl trajectory file', async () => {
         toolCalls: [
           {
             name: 'run_shell_command',
-            args: { command: 'npx modern-web retrieve dialog-closedby' }
+            args: { command: 'npx modern-web-guidance retrieve dialog-closedby' }
           },
           {
             name: 'activate_skill',
