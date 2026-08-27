@@ -96,6 +96,7 @@ test('parseBaselineUpdateFromPatch extracts feature name and status rank', () =>
 +Baseline status for Masks: Widely available.
 `;
   const infoWidely = parseBaselineUpdateFromPatch('complex-shapes', patchWidely);
+  assert.ok(infoWidely);
   assert.strictEqual(infoWidely.featureName, 'Masks');
   assert.strictEqual(infoWidely.statusRank, 1);
   assert.ok(infoWidely.statusDescription.includes('Widely available'));
@@ -106,6 +107,7 @@ test('parseBaselineUpdateFromPatch extracts feature name and status rank', () =>
 +Baseline status for field-sizing: Newly available.
 `;
   const infoNewly = parseBaselineUpdateFromPatch('form-fields-automatically-fit-contents', patchNewly);
+  assert.ok(infoNewly);
   assert.strictEqual(infoNewly.featureName, 'field-sizing');
   assert.strictEqual(infoNewly.statusRank, 2);
   assert.ok(infoNewly.statusDescription.includes('Newly available'));
@@ -612,6 +614,7 @@ test('parseBaselineUpdateFromPatch extracts feature name from patch context line
 +Supported by: Chrome 120, Firefox 135.
 `;
   const info = parseBaselineUpdateFromPatch('complex-shapes', patchWithContext);
+  assert.ok(info);
   assert.strictEqual(info.featureName, 'Masks');
   assert.strictEqual(info.featureId, 'masks');
   assert.ok(info.statusDescription.includes('Firefox 135'));
