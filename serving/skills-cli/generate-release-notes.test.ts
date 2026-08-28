@@ -623,7 +623,15 @@ test('resolveWebFeatureId, getWebStatusUrl, and formatWebFeatureBoldLink correct
   assert.strictEqual(resolveWebFeatureId(':has()'), 'has');
   assert.strictEqual(getWebStatusUrl(':has()'), 'https://webstatus.dev/features/has');
 
-  // 2. Unknown feature fallback
+  // 2. Exact feature display names that differ from feature IDs
+  assert.strictEqual(resolveWebFeatureId('overflow'), 'overflow-shorthand');
+  assert.strictEqual(resolveWebFeatureId('Overflow media queries'), 'overflow');
+  assert.strictEqual(resolveWebFeatureId('lang'), 'lang-attr');
+  assert.strictEqual(resolveWebFeatureId(':lang()'), 'lang');
+  assert.strictEqual(resolveWebFeatureId('Selection'), 'selection-api');
+  assert.strictEqual(resolveWebFeatureId('::selection'), 'selection');
+
+  // 3. Unknown feature fallback
   assert.strictEqual(resolveWebFeatureId('unknown-feature-xyz'), undefined);
   assert.strictEqual(getWebStatusUrl('unknown-feature-xyz'), undefined);
   assert.strictEqual(formatWebFeatureBoldLink('unknown-feature-xyz'), '**unknown-feature-xyz**');

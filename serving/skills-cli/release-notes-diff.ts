@@ -470,20 +470,19 @@ export function formatGuideBoldLink(guideName: string, ref = 'main'): string {
   return url ? `**[${guideName}](${url})**` : `**${guideName}**`;
 }
 
-// Lookup mapping lowercase feature IDs and display names to canonical feature IDs
+// Lookup mapping feature display names to canonical web-feature IDs
 const featureNameToIdMap = new Map<string, string>();
 for (const [id, f] of Object.entries(features)) {
-  featureNameToIdMap.set(id.toLowerCase(), id);
-  if (f.name) {
-    featureNameToIdMap.set(f.name.toLowerCase(), id);
+  if (f.kind === 'feature') {
+    featureNameToIdMap.set(f.name, id);
   }
 }
 
 /**
- * Resolves the canonical web-features featureId from a feature name.
+ * Resolves the canonical web-features featureId from a feature display name.
  */
 export function resolveWebFeatureId(featureName: string): string | undefined {
-  return featureNameToIdMap.get(featureName.toLowerCase());
+  return featureNameToIdMap.get(featureName);
 }
 
 /**
