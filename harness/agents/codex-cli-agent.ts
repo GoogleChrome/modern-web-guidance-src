@@ -180,7 +180,7 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
     for (const obj of items) {
       const commands = extractCommandsFromCodexItem(obj);
       for (const command of commands) {
-        if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+        if (serving === Serving.SKILLS_CLI && command.includes('modern-web-guidance') && command.includes('retrieve')) {
           const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
           if (match) {
             retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
