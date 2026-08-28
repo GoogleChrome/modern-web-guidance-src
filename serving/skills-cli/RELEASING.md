@@ -1,6 +1,6 @@
 # Releasing Modern Web Guidance Skills
 
-To release updates for our AI skills (Claude Code, Gemini CLI / Antigravity, VS Code, Cursor, GitHub Copilot CLI, Grok, and Kimi Code), we use an automated pipeline that bundles our source files into a lightweight distribution pack (`dist/skills-cli/`) and publishes it to `GoogleChrome/modern-web-guidance`.
+To release updates for our AI skills (Claude Code, Gemini CLI / Antigravity, VS Code, Cursor, GitHub Copilot CLI, Grok, Kimi Code, and OpenAI Codex), we use an automated pipeline that bundles our source files into a lightweight distribution pack (`dist/skills-cli/`) and publishes it to `GoogleChrome/modern-web-guidance`.
 
 ## Automated CI/CD Publishing
 

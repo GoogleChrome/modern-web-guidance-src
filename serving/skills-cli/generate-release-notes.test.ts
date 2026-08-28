@@ -211,6 +211,7 @@ test('getUniqueGuideNames deduplicates guide paths, includes SKILL.md, and filte
 
 test('isPluginFile correctly identifies plugin and manifest files', () => {
   assert.strictEqual(isPluginFile('.claude-plugin/plugin.json'), true);
+  assert.strictEqual(isPluginFile('.codex-plugin/plugin.json'), true);
   assert.strictEqual(isPluginFile('.grok-plugin/marketplace.json'), true);
   assert.strictEqual(isPluginFile('gemini-extension.json'), true);
   assert.strictEqual(isPluginFile('skills/modern-web-guidance/SKILL.md'), false);

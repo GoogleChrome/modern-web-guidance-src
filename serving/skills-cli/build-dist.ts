@@ -82,6 +82,11 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   grokMarketplaceData.plugins[0].version = newVersion;
   fs.writeFileSync(grokMarketplacePath, JSON.stringify(grokMarketplaceData, null, 2) + '\n');
 
+  // Codex Plugin
+  const codexPluginPath = path.join(publishCliDir, ".codex-plugin/plugin.json");
+  const codexPluginData = JSON.parse(fs.readFileSync(codexPluginPath, 'utf8'));
+  codexPluginData.version = newVersion;
+  fs.writeFileSync(codexPluginPath, JSON.stringify(codexPluginData, null, 2) + '\n');
 }
 
 export function processSkills(publishRoot: string) {
