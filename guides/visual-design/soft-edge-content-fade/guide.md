@@ -5,6 +5,8 @@ web-feature-ids:
   - masks
 ---
 
+# Soft Edge Content Fade
+
 ## Overview
 To apply a transparency gradient to the edges of a container (e.g., to indicate more content is available to scroll or to fade out text), use CSS Masking with a linear gradient. This approach is superior to using a semi-transparent overlay because it actually fades the content itself, allowing the background to show through naturally without interfering with text selection or pointer events.
 

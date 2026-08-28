@@ -5,6 +5,8 @@ web-feature-ids:
   - summarizer
 ---
 
+# Summarizer
+
 The **Summarizer API** allows web developers to offer local, AI-powered text distillation directly within the browser using **Gemini Nano in Chrome or Phi in Edge**. This API supports various formats, including key points, headlines, and TL;DRs, while operating entirely on-device to ensure user privacy.
 
 ---
