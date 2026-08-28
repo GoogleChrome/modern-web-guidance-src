@@ -1,4 +1,5 @@
 import {
+  GITHUB_REPO_URL,
   isPluginFile,
   getUniqueGuideNames,
   getGuideGithubUrl,
@@ -196,7 +197,7 @@ export function buildReleaseNotesMarkdown(opts: BuildReleaseNotesMarkdownOptions
   }
 
   sections.push('---');
-  sections.push(`**Full Changelog**: https://github.com/GoogleChrome/modern-web-guidance/compare/${previousTag}...v${newVersion}`);
+  sections.push(`**Full Changelog**: ${GITHUB_REPO_URL}/compare/${previousTag}...v${newVersion}`);
 
   return sections.join('\n');
 }
