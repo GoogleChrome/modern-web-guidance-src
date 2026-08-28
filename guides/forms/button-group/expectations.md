@@ -8,7 +8,6 @@
 - The implementation MUST include a robust fallback for browsers that do not support `appearance: base-select`, such as a set of standard `<button>` elements.
 - The implementation MUST use `@supports` in CSS to toggle visibility between the modern `base-select` implementation and the fallback.
 - Fallback buttons MUST use `role="option"` and appropriate state attributes (like `aria-pressed`) to mimic listbox behavior.
-- The implementation MUST use CSS Cascade Layers (`@layer`) to organize styles and ensure the fallback is applied correctly.
 - The implementation MUST NOT use JavaScript as the mechanism for managing the *primary* selection state or layout when `appearance: base-select` is supported.
 - The `<select>` MUST have an associated `<label>` to ensure proper accessibility for screen reader users.
 - The `<select>` MUST include a `name` attribute to ensure it correctly integrates with standard HTML `<form>` submissions.
