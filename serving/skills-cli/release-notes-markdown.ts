@@ -32,7 +32,7 @@ export function linkifyGuideBullets(bullets: string[], guideNames: string[], ref
       if (result.includes(`](${url})`)) continue;
 
       // Replace bold markdown: **guideName**
-      const exactBoldRegex = new RegExp(`\\*\\*${escapeRegExp(guideName)}\\*\\*`, 'gi');
+      const exactBoldRegex = new RegExp(`(?<!\\[)\\*\\*${escapeRegExp(guideName)}\\*\\*(?!\\]\\()`, 'gi');
       if (exactBoldRegex.test(result)) {
         result = result.replace(exactBoldRegex, (match) => {
           const inner = match.slice(2, -2);
@@ -42,7 +42,7 @@ export function linkifyGuideBullets(bullets: string[], guideNames: string[], ref
       }
 
       // Replace code markdown: `guideName` (case-sensitive to avoid false positives on API symbols)
-      const codeRegex = new RegExp(`\`${escapeRegExp(guideName)}\``, 'g');
+      const codeRegex = new RegExp(`(?<!\\[)\`${escapeRegExp(guideName)}\`(?!\\]\\()`, 'g');
       if (codeRegex.test(result)) {
         result = result.replace(codeRegex, (match) => {
           return `[${match}](${url})`;

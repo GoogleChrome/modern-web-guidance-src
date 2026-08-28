@@ -114,7 +114,7 @@ interface BuildGuideSummaryPromptOptions {
   ref?: string;
 }
 
-function buildGuideSummaryPrompt({ type, guideNames, guideDiff, ref = 'main' }: BuildGuideSummaryPromptOptions): string {
+function buildGuideSummaryPrompt({ type, guideNames, guideDiff }: BuildGuideSummaryPromptOptions): string {
   const isNew = type === 'new';
   const label = isNew ? 'newly introduced guides' : 'updated guidance';
   const sectionHeader = isNew ? 'New Guides to Summarize' : 'Updated Guides to Summarize';
@@ -123,17 +123,14 @@ function buildGuideSummaryPrompt({ type, guideNames, guideDiff, ref = 'main' }: 
     ? 'what the new guide introduces and what use case or problem it solves'
     : 'key improvements, best practices, or platform evolutions added to the guide';
   const boldExample = isNew
-    ? `* Introduced a new guide for **[state-aware-sticky-headers](${getGuideGithubUrl('state-aware-sticky-headers', ref)})** detailing how to build UI headers that react to scroll changes.`
-    : `* Updated the **[translator](${getGuideGithubUrl('translator', ref)})** guide to require accessing the API exclusively via the global \`Translator\` interface.`;
+    ? `* Introduced a new guide for **state-aware-sticky-headers** detailing how to build UI headers that react to scroll changes.`
+    : `* Updated the **translator** guide to require accessing the API exclusively via the global \`Translator\` interface.`;
   const focusDesc = isNew ? 'developer guidance and use cases' : 'developer guidance and API patterns';
 
   return `You are writing concise release note bullet points for ${label} in GoogleChrome/modern-web-guidance.
 
 ### ${sectionHeader} (${guideNames.length} total):
-${guideNames.map(g => {
-  const url = getGuideGithubUrl(g, ref);
-  return url ? `- ${g} (Link: ${url})` : `- ${g}`;
-}).join('\n')}
+${guideNames.map(g => `- ${g}`).join('\n')}
 
 ### Content Diff:
 ${guideDiff}
@@ -142,7 +139,7 @@ ${guideDiff}
 1. Output exactly ${guideNames.length} Markdown bullet points (starting with '* ' or '- '), one for each ${targetDesc}.
 2. Each bullet must describe ${contentDesc} in a single concise sentence or short paragraph.
 3. Keep each bullet point on a single line without manual line breaks.
-4. Bold and link the guide identifier in each bullet using Markdown link syntax (e.g., "${boldExample}").
+4. Bold the guide identifier in each bullet using Markdown bold syntax (e.g., "${boldExample}").
 5. NEVER use nested sub-bullets or multiple bullet points for a single guide.
 6. Do NOT mention Baseline status or browser compatibility updates (these are tracked separately in the Browser Support section). Focus on substantive ${focusDesc}.
 7. Do NOT include headings, sections, benchmark tables, code blocks, or preamble. Output ONLY the ${guideNames.length} bullet points.`;
