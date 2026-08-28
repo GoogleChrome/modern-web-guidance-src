@@ -9,6 +9,7 @@
   "devDependencies": {
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
+    "cssomnom": "^0.1.4",
     "gray-matter": "^4.0.3",
     "linkedom": "^0.18.12",
     "marked": "^18.0.3",
