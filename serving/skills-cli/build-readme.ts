@@ -72,9 +72,8 @@ function listToMarkdownTable(items: string[], colCount = 3): string {
   return md;
 }
 
-export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[]) {
+export function getFeaturesAndUseCases() {
   const readyGuides = scanAllGuides().filter(inv => inv.hasGuide && inv.featureIds.length > 0);
-
   const allFeatureIds = new Set<string>();
   const categoryMap = new Map<string, { id: string; category: string; description: string }[]>();
 
@@ -100,6 +99,20 @@ export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[
       description
     });
   }
+
+  return {
+    allFeatureIds,
+    categoryMap,
+    readyGuides,
+  };
+}
+
+export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[]) {
+  const {
+    readyGuides,
+    allFeatureIds,
+    categoryMap,
+  } = getFeaturesAndUseCases();
 
   // Determine all features to generate the summary text
   const allFeaturesSorted = Array.from(allFeatureIds)

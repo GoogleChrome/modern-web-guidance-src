@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { rootDir } from '../../lib/paths.ts';
-import { updateReadmeWithFeaturesAndUseCases } from './build-readme.ts';
+import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCases } from './build-readme.ts';
 
 describe('updateReadmeWithFeaturesAndUseCases', () => {
   const testOutputDir = path.join(import.meta.dirname, 'test-readme-output');
@@ -78,5 +78,11 @@ describe('updateReadmeWithFeaturesAndUseCases', () => {
     } finally {
       fs.rmSync(secondOutputDir, { recursive: true, force: true });
     }
+  });
+
+  it('getFeaturesAndUseCases returns non-empty collections without modifying disk', () => {
+    const { allFeatureIds, readyGuides } = getFeaturesAndUseCases();
+    assert.ok(allFeatureIds.size > 0);
+    assert.ok(readyGuides.length > 0);
   });
 });
