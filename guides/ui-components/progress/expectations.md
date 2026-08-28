@@ -1,0 +1,17 @@
+- The implementation uses the semantic `<progress>` element.
+- The determinate progress bar has both `value` and `max` attributes correctly set.
+- The indeterminate progress bar state is achieved by omitting the `value` attribute.
+- Each progress bar is associated with a descriptive label (via `<label for="...">`, `aria-labelledby`, or `aria-label`).
+- The `<progress>` element includes fallback text content for legacy browsers.
+- Fallback text content is kept in sync with the `value` attribute when updated via JavaScript.
+- The `color-scheme` CSS property is used to support automatic light and dark mode adaptation.
+- Advanced custom styles normalize the element using `appearance: none` and `border: unset`.
+- Custom styles are provided for browser-specific pseudo-elements (`::-webkit-progress-bar`, `::-webkit-progress-value`, and `::-moz-progress-bar`).
+- The track background for WebKit and Firefox pseudo-elements (`::-webkit-progress-bar` and `::-moz-progress-bar`) is set to `transparent` in the indeterminate state using separate (non-grouped) CSS rules to ensure custom animations on the parent element are visible across all browsers.
+- The custom indeterminate animation respects the `prefers-reduced-motion: reduce` media query by significantly slowing down the animation (e.g., `10s`) and/or simplifying the visual transition to provide a subtle "reduced" motion experience rather than disabling it entirely.
+- Modern color syntax (`oklch()`) or CSS color-mix is used for the progress bar colors.
+- The `aria-busy` attribute is dynamically updated on the container during a multi-step process.
+- The container or status text uses `aria-live` to announce progress updates to screen readers.
+- The `aria-describedby` attribute is used to associate the progress bar with the section or status text it describes.
+- The progress element has `tabindex="-1"` and is programmatically focused in JavaScript when the task starts or completes to force screen reader announcements.
+
