@@ -87,6 +87,16 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   const codexPluginData = JSON.parse(fs.readFileSync(codexPluginPath, 'utf8'));
   codexPluginData.version = newVersion;
   fs.writeFileSync(codexPluginPath, JSON.stringify(codexPluginData, null, 2) + '\n');
+
+  // Codex Marketplace
+  const codexMarketplacePath = path.join(publishCliDir, ".agents/plugins/marketplace.json");
+  if (fs.existsSync(codexMarketplacePath)) {
+    const codexMarketplaceData = JSON.parse(fs.readFileSync(codexMarketplacePath, 'utf8'));
+    if (codexMarketplaceData.plugins?.[0]) {
+      codexMarketplaceData.plugins[0].version = newVersion;
+    }
+    fs.writeFileSync(codexMarketplacePath, JSON.stringify(codexMarketplaceData, null, 2) + '\n');
+  }
 }
 
 export function processSkills(publishRoot: string) {
