@@ -143,7 +143,7 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, _servin
       for (const contentItem of Array.isArray(content) ? content : []) {
         if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input?.command) {
           const command = contentItem.input.command;
-          if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+          if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
             const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
             if (match) {
               retrievedGuides.push(...match[1].split(',').map((s: string) => s.trim()));
