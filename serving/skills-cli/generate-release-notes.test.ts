@@ -65,6 +65,16 @@ test('isPatchOnlyBaselineUpdate correctly identifies baseline-only patches', () 
 `;
   assert.strictEqual(isPatchOnlyBaselineUpdate(baselinePatch), true);
 
+  const limitedBaselinePatch = `
+@@ -54,4 +54,4 @@
+ ### Fallback strategies
+  popover="hint" has limited availability.
+-Supported by: Chrome 133 (Feb 2025), Edge 133 (Feb 2025), and Firefox 149 (Mar 2026).
++Supported by: Chrome 151, Edge 151, and Firefox 153 (Jul 2026).
+  Unsupported in: Safari.
+`;
+  assert.strictEqual(isPatchOnlyBaselineUpdate(limitedBaselinePatch), true);
+
   const substantivePatch = `
 @@ -10,6 +10,8 @@
  ## Overview
@@ -87,6 +97,19 @@ test('stripBaselineLinesFromPatch filters out baseline status lines while retain
   assert.ok(stripped.includes('+Here is some new substantive guidance about masks.'));
   assert.ok(stripped.includes('+Always specify a fallback.'));
   assert.ok(!stripped.includes('Baseline status for Masks'));
+
+  const mixedLimitedPatch = `
+@@ -1,6 +1,8 @@
+ ## Overview
++Here is some new substantive guidance about tooltips.
+-popover="hint" has limited availability.
++popover="hint" has limited availability.
++Always specify a fallback.
+`;
+  const strippedLimited = stripBaselineLinesFromPatch(mixedLimitedPatch);
+  assert.ok(strippedLimited.includes('+Here is some new substantive guidance about tooltips.'));
+  assert.ok(strippedLimited.includes('+Always specify a fallback.'));
+  assert.ok(!strippedLimited.includes('has limited availability'));
 });
 
 test('parseBaselineUpdateFromPatch extracts feature name and status rank', () => {
@@ -103,7 +126,7 @@ test('parseBaselineUpdateFromPatch extracts feature name and status rank', () =>
 
   const patchNewly = `
 @@ -10,7 +10,7 @@
--Baseline status for field-sizing: Limited availability.
+-field-sizing has limited availability.
 +Baseline status for field-sizing: Newly available.
 `;
   const infoNewly = parseBaselineUpdateFromPatch('form-fields-automatically-fit-contents', patchNewly);
@@ -606,10 +629,10 @@ test('resolveWebFeatureId, getWebStatusUrl, and formatWebFeatureBoldLink correct
   assert.strictEqual(formatWebFeatureBoldLink('unknown-feature-xyz'), '**unknown-feature-xyz**');
 });
 
-test('parseBaselineUpdateFromPatch extracts feature name from patch context lines', () => {
+test('parseBaselineUpdateFromPatch extracts feature name from patch context lines and handles version updates', () => {
   const patchWithContext = `
 @@ -50,3 +50,3 @@
- Baseline status for Masks: Limited availability.
+ Masks has limited availability.
 -Supported by: Chrome 120.
 +Supported by: Chrome 120, Firefox 135.
 `;
@@ -617,17 +640,77 @@ test('parseBaselineUpdateFromPatch extracts feature name from patch context line
   assert.ok(info);
   assert.strictEqual(info.featureName, 'Masks');
   assert.strictEqual(info.featureId, 'masks');
-  assert.ok(info.statusDescription.includes('Firefox 135'));
+  assert.strictEqual(info.statusDescription, 'Added **Firefox 135** support');
+
+  // Version revision for existing browsers (e.g. v0.0.183 -> v0.0.184 popover="hint" case)
+  const patchVersionUpdate = `
+@@ -127,3 +127,3 @@
+ popover="hint" has limited availability.
+-Supported by: Chrome 133 (Feb 2025), Edge 133 (Feb 2025), and Firefox 149 (Mar 2026).
++Supported by: Chrome 151, Edge 151, and Firefox 153 (Jul 2026).
+`;
+  const infoVersion = parseBaselineUpdateFromPatch('interest-triggered-tooltips', patchVersionUpdate);
+  assert.ok(infoVersion);
+  assert.strictEqual(infoVersion.featureName, 'popover="hint"');
+  assert.strictEqual(infoVersion.statusDescription, 'Updated supported browser versions for **Chrome, Edge, and Firefox**');
+
+  // Safari iOS support handling
+  const patchSafariIOS = `
+@@ -50,3 +50,3 @@
+ WebGPU has limited availability.
+-Supported by: Chrome 113.
++Supported by: Chrome 113, Safari 18, and Safari iOS 18.3 (Jan 2025).
+`;
+  const infoIOS = parseBaselineUpdateFromPatch('gpu-compute', patchSafariIOS);
+  assert.ok(infoIOS);
+  assert.strictEqual(infoIOS.statusDescription, 'Added **Safari 18 and Safari iOS 18.3** support');
+
+  // Engine removal handling (v0.0.174 -> v0.0.175 LanguageModel case)
+  const patchRemoval = `
+@@ -170,3 +170,3 @@
+ LanguageModel has limited availability.
+-Supported by: Chrome 148 (May 2026) and Edge 148 (May 2026).
++Supported by: Chrome 148 (May 2026).
+`;
+  const infoRemoval = parseBaselineUpdateFromPatch('language-model', patchRemoval);
+  assert.ok(infoRemoval);
+  assert.strictEqual(infoRemoval.featureName, 'LanguageModel');
+  assert.strictEqual(infoRemoval.statusDescription, 'Removed **Edge** support');
+
+  // Multiple changes (add + remove + version update)
+  const patchMulti = `
+@@ -10,3 +10,3 @@
+ test-feature has limited availability.
+-Supported by: Chrome 123 and Firefox 100.
++Supported by: Chrome 150 and Edge 150.
+`;
+  const infoMulti = parseBaselineUpdateFromPatch('test-guide', patchMulti);
+  assert.ok(infoMulti);
+  assert.strictEqual(
+    infoMulti.statusDescription,
+    'Added **Edge 150** support, removed **Firefox** support, and updated supported browser version for **Chrome**'
+  );
+
+  // Mobile-to-desktop consolidation (iOS/Android expanded to full support)
+  const patchConsolidation = `
+@@ -10,3 +10,3 @@
+ test-feature has limited availability.
+-Supported by: Chrome 120 and Safari iOS 18.3.
++Supported by: Chrome 120 and Safari 18.3.
+`;
+  const infoConsolidation = parseBaselineUpdateFromPatch('test-guide', patchConsolidation);
+  assert.ok(infoConsolidation);
+  assert.strictEqual(infoConsolidation.statusDescription, 'Added **Safari 18.3** support');
 });
 
 test('parseBaselineUpdatesFromPatch extracts multiple feature updates from multi-hunk patches', () => {
   const multiHunkPatch = `
 @@ -20,6 +20,6 @@
- Baseline status for Masks: Limited availability.
+ Masks has limited availability.
 -Supported by: Chrome 120.
 +Supported by: Chrome 120, Firefox 135.
 @@ -80,6 +80,6 @@
- Baseline status for :has(): Limited availability.
+ :has() has limited availability.
 -Supported by: Safari 17.
 +Supported by: Safari 17, Firefox 135.
 `;
@@ -635,11 +718,11 @@ test('parseBaselineUpdatesFromPatch extracts multiple feature updates from multi
   assert.strictEqual(updates.length, 2);
   assert.strictEqual(updates[0].featureName, 'Masks');
   assert.strictEqual(updates[0].featureId, 'masks');
-  assert.ok(updates[0].statusDescription.includes('Firefox 135'));
+  assert.strictEqual(updates[0].statusDescription, 'Added **Firefox 135** support');
 
   assert.strictEqual(updates[1].featureName, ':has()');
   assert.strictEqual(updates[1].featureId, 'has');
-  assert.ok(updates[1].statusDescription.includes('Firefox 135'));
+  assert.strictEqual(updates[1].statusDescription, 'Added **Firefox 135** support');
 
   // 3. Patch without any extractable feature name is omitted
   const unidentifiablePatch = `

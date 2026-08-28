@@ -183,6 +183,24 @@ export function stripBaselineLinesFromPatch(patch?: string): string {
   return filtered.join('\n');
 }
 
+function formatList(items: string[]): string {
+  if (items.length <= 1) return items[0] || '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+function parseEngineMap(line?: string): Map<string, { raw: string; name: string; version: string }> {
+  if (!line) return new Map();
+  const regex = /(Chrome|Firefox|Safari(?:\s+iOS)?|Edge)\s+(\d+(?:\.\d+)?)/gi;
+  const map = new Map<string, { raw: string; name: string; version: string }>();
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(line)) !== null) {
+    const key = m[1].toLowerCase().replace(/\s+/g, '_');
+    map.set(key, { raw: m[0], name: m[1], version: m[2] });
+  }
+  return map;
+}
+
 /**
  * Extracts structured Baseline / browser support update info from a single hunk or patch block.
  */
@@ -203,7 +221,7 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
 
   // 1. Check added lines for a status transition
   for (const line of addedLines) {
-    const match = line.match(/Baseline status for\s+(.+?):\s*(Widely available|Newly available|Limited availability)/i);
+    const match = line.match(/Baseline status for\s+(.+?):\s*(Widely available|Newly available)/i);
     if (match) {
       featureName = match[1].trim();
       const status = match[2].trim().toLowerCase();
@@ -213,9 +231,6 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
       } else if (status.includes('newly')) {
         statusRank = 2;
         statusDescription = 'Now **Baseline Newly available**';
-      } else if (status.includes('limited')) {
-        statusRank = 3;
-        statusDescription = 'Updated Baseline status (**Limited availability**)';
       }
       break;
     }
@@ -223,9 +238,9 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
 
   // 2. If status line didn't change (e.g. engine update in Limited status), extract featureName from hunk context
   if (!featureName) {
-    const match = hunk.match(/Baseline status for\s+(.+?):/i);
+    const match = hunk.match(/(?:Baseline status for\s+(.+?):|(.+?)\s+has limited availability)/i);
     if (match) {
-      featureName = match[1].trim();
+      featureName = (match[1] || match[2]).trim();
     }
   }
 
@@ -238,11 +253,49 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
     const addedSupported = addedLines.find(l => l.includes('Supported by:'));
     const removedSupported = removedLines.find(l => l.includes('Supported by:'));
     if (addedSupported) {
-      const addedEngines: string[] = addedSupported.match(/(Chrome|Firefox|Safari|Edge)\s+\d+(\.\d+)?/gi) || [];
-      const removedEngines: string[] = removedSupported?.match(/(Chrome|Firefox|Safari|Edge)\s+\d+(\.\d+)?/gi) || [];
-      const newEngines = addedEngines.filter(e => !removedEngines.includes(e));
-      if (newEngines.length > 0) {
-        statusDescription = `Added **${newEngines.join(', ')}** support`;
+      const addedMap = parseEngineMap(addedSupported);
+      const removedMap = parseEngineMap(removedSupported);
+
+      const brandNew: string[] = [];
+      const removedEngines: string[] = [];
+      const versionUpdated: string[] = [];
+
+      for (const [key, info] of addedMap.entries()) {
+        if (!removedMap.has(key)) {
+          brandNew.push(info.raw);
+        } else if (removedMap.get(key)!.version !== info.version) {
+          versionUpdated.push(info.name);
+        }
+      }
+
+      for (const [key, info] of removedMap.entries()) {
+        if (!addedMap.has(key)) {
+          // If a mobile-specific variant (e.g. safari_ios, chrome_android, firefox_android)
+          // is omitted because the desktop base engine is now supported, it was consolidated into full support.
+          const baseKey = key.replace(/_(?:ios|android)$/, '');
+          if (baseKey !== key && addedMap.has(baseKey)) {
+            continue;
+          }
+          removedEngines.push(info.name);
+        }
+      }
+
+      const clauses: string[] = [];
+      if (brandNew.length > 0) {
+        clauses.push(`Added **${formatList(brandNew)}** support`);
+      }
+      if (removedEngines.length > 0) {
+        const verb = clauses.length > 0 ? 'removed' : 'Removed';
+        clauses.push(`${verb} **${formatList(removedEngines)}** support`);
+      }
+      if (versionUpdated.length > 0) {
+        const plural = versionUpdated.length > 1 ? 'versions' : 'version';
+        const verb = clauses.length > 0 ? 'updated' : 'Updated';
+        clauses.push(`${verb} supported browser ${plural} for **${formatList(versionUpdated)}**`);
+      }
+
+      if (clauses.length > 0) {
+        statusDescription = formatList(clauses);
       }
     }
   }
