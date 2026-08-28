@@ -142,7 +142,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 </details>
 
 <details>
-<summary><strong>132 real-world developer use cases</strong></summary>
+<summary><strong>133 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
