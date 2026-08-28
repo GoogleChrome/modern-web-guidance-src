@@ -1,5 +1,4 @@
 import { parseMarkdownBullets } from './release-notes-markdown.ts';
-import { getGuideGithubUrl } from './release-notes-diff.ts';
 
 export interface GeminiResponse {
   candidates?: Array<{
