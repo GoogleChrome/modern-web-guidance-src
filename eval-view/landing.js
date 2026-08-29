@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, hasNightlyRuns, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
@@ -35,10 +35,6 @@ let currentGuideSortDir = 'asc';
 
 function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-}
-
-function hasNightlyRuns() {
-    return Object.values(allTestData).some(t => (t.testId || '').toLowerCase().includes('nightly'));
 }
 
 /** @type {Record<string, string>} */

@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, hasNightlyRuns, $ } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -6,10 +6,6 @@ let allTestData = {}; // Cache all test data by testId
 let isCompareMode = false;
 let selectedPoints = []; // array of { testId, source, combKey }
 let currentRunFilter = 'nightly';
-
-function hasNightlyRuns() {
-    return Object.values(allTestData).some(t => (t.testId || '').toLowerCase().includes('nightly'));
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
@@ -243,6 +239,8 @@ function setupNavigationControls(currentGuide) {
     const list = $('#autocomplete-list');
     const goBtn = /** @type {HTMLButtonElement} */ ($('#go-guide-btn'));
 
+    const getNavUrl = (targetGuide) => `guide.html?guide=${encodeURIComponent(targetGuide)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
+
     const backLink = document.querySelector('a[href^="./"]');
     if (backLink) {
         backLink.setAttribute('href', `./${currentRunFilter ? `?runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`);
@@ -257,20 +255,20 @@ function setupNavigationControls(currentGuide) {
         prevBtn.disabled = false;
         prevBtn.onclick = () => {
             const prevIndex = (currentIndex - 1 + allGuides.length) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
+            window.location.href = getNavUrl(allGuides[prevIndex]);
         };
 
         nextBtn.disabled = false;
         nextBtn.onclick = () => {
             const nextIndex = (currentIndex + 1) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
+            window.location.href = getNavUrl(allGuides[nextIndex]);
         };
     }
 
     goBtn.onclick = () => {
         const val = searchInput.value.trim();
         if (val) {
-            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
+            window.location.href = getNavUrl(val);
         }
     };
 
@@ -300,7 +298,7 @@ function setupNavigationControls(currentGuide) {
             div.onclick = () => {
                 searchInput.value = match;
                 list.classList.add('hidden');
-                window.location.href = `guide.html?guide=${encodeURIComponent(match)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
+                window.location.href = getNavUrl(match);
             };
             list.appendChild(div);
         });
@@ -422,14 +420,7 @@ function renderGraphs(guideName) {
         const runs = combinations[combKey];
         runs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-        const runsByDateMap = new Map();
-        runs.forEach(run => {
-            const dateKey = getDateKey(run.timestamp);
-            if (!runsByDateMap.has(dateKey)) {
-                runsByDateMap.set(dateKey, []);
-            }
-            runsByDateMap.get(dateKey).push(run);
-        });
+        const runsByDateMap = Map.groupBy(runs, run => getDateKey(run.timestamp));
 
         const dateEntries = [];
         runsByDateMap.forEach((runsOnDate, dateKey) => {
