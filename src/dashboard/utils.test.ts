@@ -8,7 +8,8 @@ import {
   formatTokens,
   parseResultKey,
   categorizeActionClient,
-  normalizeTrajectoryClient
+  normalizeTrajectoryClient,
+  hasNightlyRuns
 } from "./utils.js";
 
 describe("eval-view utils", () => {
@@ -80,5 +81,13 @@ describe("eval-view utils", () => {
     const normalized = normalizeTrajectoryClient(rawSummary);
     assert.strictEqual(normalized.steps[0].action.canonicalCategory, "skill_search");
     assert.strictEqual(normalized.steps[1].action.canonicalCategory, "code_mutation");
+  });
+
+  test("hasNightlyRuns detects nightly in testId entries", () => {
+    assert.strictEqual(hasNightlyRuns(null), false);
+    assert.strictEqual(hasNightlyRuns({}), false);
+    assert.strictEqual(hasNightlyRuns({ a: { testId: "test-run-1" } }), false);
+    assert.strictEqual(hasNightlyRuns({ a: { testId: "nightly-2026-08-01" } }), true);
+    assert.strictEqual(hasNightlyRuns({ a: { testId: "run-A" }, b: { testId: "CLI-Nightly-eval" } }), true);
   });
 });
