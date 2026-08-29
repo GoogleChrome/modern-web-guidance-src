@@ -384,7 +384,8 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           const strings = getProtoStrings(proto);
 
           for (const text of strings) {
-            if (text.includes('retrieve')) {
+            // Shell commands & guide retrieval
+            if (text.includes('modern-web-guidance') && text.includes('retrieve')) {
               const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
               if (match && match[1]) {
                 const parts = match[1]
@@ -448,7 +449,9 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           }
         }
       } catch {}
-    } catch {} finally {
+    } catch (err) {
+      console.warn(`Warning: Failed to parse Jetski CLI session from ${fullPath}:`, err);
+    } finally {
       db?.close();
     }
   }

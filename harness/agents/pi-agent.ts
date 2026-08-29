@@ -216,10 +216,12 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
               }
             } else if (toolName === 'bash' && params.command) {
               const command = params.command as string;
-              const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-              if (match) {
-                for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                  retrievedGuides.add(g);
+              if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
+                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+                if (match) {
+                  for (const g of match[1].split(',').map((s: string) => s.trim())) {
+                    retrievedGuides.add(g);
+                  }
                 }
               }
             }

@@ -328,7 +328,7 @@ export function extractClaudeMetadata(logData: any[], subagentsMap: Record<strin
             toolsUsed.add(item.input.name);
           } else if (item.name === 'Bash' && item.input?.command) {
             const command = item.input.command;
-            if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+            if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
               const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
               if (match) {
                 for (const g of match[1].split(',').map((s: string) => s.trim())) {

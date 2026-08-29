@@ -215,7 +215,7 @@ test('collectGemini metrics from a .jsonl trajectory file', async () => {
         toolCalls: [
           {
             name: 'run_shell_command',
-            args: { command: 'npx modern-web retrieve dialog-closedby' }
+            args: { command: 'npx modern-web-guidance retrieve dialog-closedby' }
           },
           {
             name: 'activate_skill',

@@ -244,10 +244,12 @@ export function extractGeminiMetadata(session: any, subagentsMap: Record<string,
               }
             } else if (tc.name === 'run_shell_command' && tc.args?.command) {
               const command = tc.args.command;
-              const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-              if (match) {
-                for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                  retrievedGuides.add(g);
+              if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
+                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+                if (match) {
+                  for (const g of match[1].split(',').map((s: string) => s.trim())) {
+                    retrievedGuides.add(g);
+                  }
                 }
               }
             }
@@ -363,10 +365,10 @@ export function parseGeminiStreamOutput(outputStr: string, _skillName: string = 
                 }
                 if (event.tool_name === 'run_shell_command') {
                     const command = event.parameters?.command || '';
-                    if (command.includes('search') || command.includes('--search')) {
+                    if (command.includes('search')) {
                         searchCalled = true;
                     }
-                    if (command.includes('retrieve') || command.includes('--retrieve')) {
+                    if (command.includes('retrieve')) {
                         retrieveCalled = true;
                     }
                 }

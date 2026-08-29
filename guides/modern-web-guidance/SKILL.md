@@ -75,9 +75,16 @@ Once you have a relevant `id` from the search results, call this script using th
 npx -y modern-web-guidance@latest retrieve "<id>"
 ```
 
-
 **Example Output**:
 `The markdown content of the guide describing implementation steps...`
+
+---
+
+### Step 3. Verify Guidance Compliance
+
+When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
+- **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
+- **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
 
 ## Using npx
 
@@ -93,7 +100,6 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 -   Always search **first** to find the most relevant guides.
 -   These guides are usually framework-agnostic; adapt them correctly to your setup.
 -   Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
-
 
 ## Interpreting Browser Support & Fallbacks
 

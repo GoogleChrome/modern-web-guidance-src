@@ -14,6 +14,7 @@ import {
   extractJetskiCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from '../lib/collection.ts';
+import { exportTrajectories } from '../lib/agent-shared.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -154,5 +155,42 @@ test('collectJetski metrics from trajectory files', async () => {
     assert.deepStrictEqual(directTokens, { total: 1900, cached: 400 });
   } finally {
     removeTempDir(tempDir);
+  }
+});
+
+test('exportTrajectories copies SQLite WAL and SHM companion files and enables valid parsing', async () => {
+  const sourceDir = createTempDir();
+  const destDir = createTempDir();
+  try {
+    const dbPath = path.join(sourceDir, 'session-wal-test.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA wal_autocheckpoint = 0;
+      CREATE TABLE steps (idx INTEGER, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
+      CREATE TABLE gen_metadata (idx INTEGER, data BLOB);
+    `);
+
+    const payload = encodeField(5, 2, Buffer.from('npx -y modern-web-guidance@latest retrieve "translator"'));
+    const insertStep = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
+    insertStep.run(1, 21, 1, null, payload);
+
+    // Keep WAL open / uncheckpointed and export
+    exportTrajectories(sourceDir, '*.db', destDir);
+
+    // Verify companion files were copied
+    assert.ok(fs.existsSync(path.join(destDir, 'session-wal-test.db')));
+    if (fs.existsSync(`${dbPath}-wal`)) {
+      assert.ok(fs.existsSync(path.join(destDir, 'session-wal-test.db-wal')));
+    }
+
+    db.close();
+
+    // Verify destination DB can be parsed cleanly
+    const parsed = parseJetskiCliSession(destDir);
+    assert.deepStrictEqual(parsed.retrievedGuides, ['translator']);
+  } finally {
+    removeTempDir(sourceDir);
+    removeTempDir(destDir);
   }
 });
