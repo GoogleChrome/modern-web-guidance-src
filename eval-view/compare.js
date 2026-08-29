@@ -1,4 +1,4 @@
-import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey } from './utils.js';
+import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey, escapeHtml } from './utils.js';
 
 // Cross-Run Performance Variance Diagnosis Dashboard JavaScript
 
@@ -44,8 +44,7 @@ function renderMarkdown(md) {
   if (!md) return '';
   
   // Strip ANSI escape sequences (e.g. \x1b[36m)
-  const ansiRegex = new RegExp('[' + String.fromCharCode(27) + String.fromCharCode(155) + '][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]', 'g');
-  let cleanMd = md.replace(ansiRegex, '').trim();
+  const cleanMd = md.replace(new RegExp(String.fromCharCode(27) + '\\[[0-9;]*[a-zA-Z]', 'g'), '').trim();
   
   const lines = cleanMd.split('\n');
   let html = '';
@@ -307,6 +306,51 @@ async function handleRunTypeChange() {
   resetDiagnosisUI();
 }
 
+/**
+ * Streams a ReadableStream response into a <pre> element with throttled rendering.
+ * @param {ReadableStream<Uint8Array>} body
+ * @param {HTMLElement | null} logElement
+ * @returns {Promise<string>}
+ */
+async function streamBodyToElement(body, logElement) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let accumulatedText = '';
+  let lastUpdate = 0;
+  let updatePending = false;
+
+  function updateDOM() {
+    if (logElement) {
+      logElement.textContent = accumulatedText;
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+    updatePending = false;
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    accumulatedText += decoder.decode(value, { stream: true });
+
+    const now = performance.now();
+    if (now - lastUpdate > 100) {
+      updateDOM();
+      lastUpdate = now;
+    } else if (!updatePending) {
+      updatePending = true;
+      requestAnimationFrame(() => {
+        if (updatePending) {
+          updateDOM();
+          lastUpdate = performance.now();
+        }
+      });
+    }
+  }
+  updateDOM();
+  return accumulatedText;
+}
+
 async function ensureRunDirectories(dirA, dirB) {
   if (isStatic) return;
   try {
@@ -338,39 +382,7 @@ async function ensureRunDirectories(dirA, dirB) {
       }
 
       const logPre = document.getElementById('compare-log-stream');
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedText = '';
-      let lastUpdate = 0;
-      let updatePending = false;
-
-      function updateDOM() {
-        if (logPre) {
-          logPre.textContent = accumulatedText;
-          logPre.scrollTop = logPre.scrollHeight;
-        }
-        updatePending = false;
-      }
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        accumulatedText += chunk;
-
-        const now = performance.now();
-        if (now - lastUpdate > 100) {
-          updateDOM();
-          lastUpdate = now;
-        } else if (!updatePending) {
-          updatePending = true;
-          requestAnimationFrame(() => {
-            if (updatePending) updateDOM();
-          });
-        }
-      }
-      updateDOM();
+      await streamBodyToElement(response.body, logPre);
     }
   } catch (e) {
     console.warn('Failed to ensure run directories locally:', e);
@@ -1450,46 +1462,7 @@ async function runDiagnosticAgent() {
       <pre id="compare-log-stream" style="font-family:monospace; font-size:0.85em; background:#ffffff; border:1px solid #fde68a; padding:12px; border-radius:6px; overflow-x:auto; max-height:250px; overflow-y:auto; margin:0; white-space:pre-wrap; color:#334155; line-height:1.4; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);"></pre>
     `;
     const logPre = document.getElementById('compare-log-stream');
-    
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let accumulatedText = '';
-
-    let lastUpdate = 0;
-    let updatePending = false;
-
-    function updateDOM() {
-      if (logPre) {
-        logPre.textContent = accumulatedText;
-        logPre.scrollTop = logPre.scrollHeight;
-      }
-      updatePending = false;
-    }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      accumulatedText += chunk;
-      
-      const now = performance.now();
-      if (now - lastUpdate > 100) { // Limit DOM rendering to at most once per 100ms
-        updateDOM();
-        lastUpdate = now;
-      } else if (!updatePending) {
-        updatePending = true;
-        // Schedule trailing update on the next animation frame to keep CPU load low
-        requestAnimationFrame(() => {
-          if (updatePending) {
-            updateDOM();
-            lastUpdate = performance.now();
-          }
-        });
-      }
-    }
-    // Guarantee final, complete update when stream completes
-    updateDOM();
+    const accumulatedText = await streamBodyToElement(response.body, logPre);
 
     // Extraction of the final report from the accumulated stream text
     const startMarker = '--- DIAGNOSTIC REPORT ---';
@@ -1537,15 +1510,6 @@ async function runDiagnosticAgent() {
       runBtn.innerHTML = '🔄 Re-run Diagnosis';
     }
   }
-}
-
-function escapeHtml(str) {
-  return (str || '').toString()
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 // Global initialization

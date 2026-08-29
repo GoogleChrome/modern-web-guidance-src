@@ -404,3 +404,8 @@ export function normalizeTrajectoryClient(summary) {
   return summary;
 }
 
+export function hasNightlyRuns(testData) {
+  if (!testData || typeof testData !== 'object') return false;
+  return Object.values(testData).some(t => (t?.testId || '').toLowerCase().includes('nightly'));
+}
+
