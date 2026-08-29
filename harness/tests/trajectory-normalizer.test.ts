@@ -11,7 +11,11 @@ import {
   readTrajectorySummary,
   generateNormalizedTrajectory,
   type TrajectorySummary,
-  TRAJECTORY_SUMMARY_FILE
+  TRAJECTORY_SUMMARY_FILE,
+  extractClaudeMetadata,
+  extractCodexMetadata,
+  extractGeminiMetadata,
+  extractPiMetadata
 } from '../lib/trajectory-normalizer.ts';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from '../lib/guidance_validation.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from '../lib/collection.ts';
@@ -327,5 +331,50 @@ test('generateNormalizedTrajectory aggregates entries across multiple main sessi
   } finally {
     removeTempDir(tempDir);
   }
+});
+
+test('agent trajectory parsers strictly enforce modern-web-guidance retrieve filter', () => {
+  const validCmd = 'npx -y modern-web-guidance@latest retrieve "dialog-closedby,light-dismiss"';
+  const legacyCmd = 'npx modern-web retrieve dialog-closedby';
+  const searchCmd = 'npx modern-web-guidance search "dialog"';
+  const genericCmd = 'curl https://example.com/retrieve/docs && git retrieve-branch';
+
+  // 1. Claude
+  const claudeMeta = extractClaudeMetadata([
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: validCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: legacyCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: searchCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: genericCmd } }] } },
+  ]);
+  assert.deepStrictEqual(claudeMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
+
+  // 2. Codex
+  const codexMeta = extractCodexMetadata([
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: validCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: legacyCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: searchCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: genericCmd }) } },
+  ]);
+  assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
+
+  // 3. Gemini
+  const geminiMeta = extractGeminiMetadata({
+    messages: [
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: validCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: legacyCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: searchCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: genericCmd } }] },
+    ]
+  });
+  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
+
+  // 4. Pi
+  const piMeta = extractPiMetadata([
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: validCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: legacyCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: searchCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: genericCmd } }] } },
+  ]);
+  assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
 });
 

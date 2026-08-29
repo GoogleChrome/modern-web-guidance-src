@@ -101,6 +101,9 @@ test('collectJetski metrics from trajectory files', async () => {
     const payload1 = encodeField(5, 2, Buffer.from('npx -y modern-web-guidance@latest retrieve "validate-input-after-interaction,required-field-feedback"'));
     const payload2 = encodeField(5, 2, Buffer.from('/skills/modern-web-guidance/required-field-feedback/guide.md'));
     const payload3 = encodeField(5, 2, Buffer.from('/skills/modern-web-guidance/SKILL.md'));
+    const payloadNeg1 = encodeField(5, 2, Buffer.from('npx modern-web retrieve obsolete-guide'));
+    const payloadNeg2 = encodeField(5, 2, Buffer.from('curl https://example.com/retrieve/item'));
+    const payloadNeg3 = encodeField(5, 2, Buffer.from('npx -y modern-web-guidance@latest search "validate"'));
 
     // 2. metadata with tag 9 -> tag 2 (1500), tag 5 (400)
     const statsInner = Buffer.concat([
@@ -117,6 +120,9 @@ test('collectJetski metrics from trajectory files', async () => {
     insertStep.run(1, 21, 1, metadataProto, payload1);
     insertStep.run(2, 8, 1, null, payload2);
     insertStep.run(3, 8, 1, null, payload3);
+    insertStep.run(4, 21, 1, null, payloadNeg1);
+    insertStep.run(5, 21, 1, null, payloadNeg2);
+    insertStep.run(6, 21, 1, null, payloadNeg3);
 
     const insertGen = db.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)');
     insertGen.run(1, genDataProto);
