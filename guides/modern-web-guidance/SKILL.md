@@ -90,8 +90,8 @@ When generating or modifying code, cross-check the implementation against the re
 
 -   IMPORTANT: on Windows, using `npx` may fail. Use `npx.cmd ...` instead.
 -   Network access is required for fetching npm packages needed by the task.
--   If the `npx -y modern-web-guidance…` command hangs, you may be offline. Try running again in offline
-    mode: `npx --offline …`.
+-   If the `npx -y modern-web-guidance…` command reports a registry or network error, hangs, or produces no result, retry the same command with the environment's normal network approval. Do not treat empty output as a successful search.
+-   If the command hangs due to being offline, try running again in offline mode: `npx --offline …`.
 -   The `--skill-version` flag is used to determine if this SKILL.md is out of date. If it is, a warning
     message is logged to stderr.
 
