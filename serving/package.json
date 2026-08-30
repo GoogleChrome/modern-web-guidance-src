@@ -20,6 +20,7 @@
     "prepublishOnly": "pnpm run build",
     "build": "node scripts/build-guides.ts && pnpm run build-dist",
     "build:megaskill": "node scripts/build-megaskill.ts",
+    "build:static-site": "node scripts/build-guides.ts --target=static-site --output=dist/static-site-guides",
     "build-dist": "node --experimental-strip-types */build-dist.ts",
     "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",
     "collect-evals": "node --experimental-strip-types scripts/collect-eval-results.ts",
@@ -40,7 +41,7 @@
     "apache-arrow": "21.1.0",
     "marked": "^18.0.3",
     "onnxruntime-node": "^1.25.1",
-    "web-features": "^3.34.0",
+    "web-features": "^3.35.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
