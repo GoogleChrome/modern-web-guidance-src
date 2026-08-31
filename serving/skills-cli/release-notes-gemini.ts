@@ -110,7 +110,6 @@ interface BuildGuideSummaryPromptOptions {
   type: 'new' | 'updated';
   guideNames: string[];
   guideDiff: string;
-  ref?: string;
 }
 
 function buildGuideSummaryPrompt({ type, guideNames, guideDiff }: BuildGuideSummaryPromptOptions): string {
@@ -152,9 +151,8 @@ export async function generateNewGuideSummariesWithGemini(opts: {
   guideNames: string[];
   apiKey: string;
   model: string;
-  ref?: string;
 }): Promise<string[] | null> {
-  const { guideDiff, guideNames, apiKey, model, ref = 'main' } = opts;
+  const { guideDiff, guideNames, apiKey, model } = opts;
   if (!guideDiff.trim() || guideNames.length === 0) {
     return [];
   }
@@ -163,7 +161,6 @@ export async function generateNewGuideSummariesWithGemini(opts: {
     type: 'new',
     guideNames,
     guideDiff,
-    ref,
   });
 
   return callGeminiForBullets({
@@ -185,9 +182,8 @@ export async function generateUpdatedGuideSummariesWithGemini(opts: {
   guideNames: string[];
   apiKey: string;
   model: string;
-  ref?: string;
 }): Promise<string[] | null> {
-  const { guideDiff, guideNames, apiKey, model, ref = 'main' } = opts;
+  const { guideDiff, guideNames, apiKey, model } = opts;
   if (!guideDiff.trim() || guideNames.length === 0) {
     return [];
   }
@@ -196,7 +192,6 @@ export async function generateUpdatedGuideSummariesWithGemini(opts: {
     type: 'updated',
     guideNames,
     guideDiff,
-    ref,
   });
 
   return callGeminiForBullets({

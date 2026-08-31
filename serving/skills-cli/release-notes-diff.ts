@@ -458,7 +458,7 @@ export function getGuidePathInDistribution(guideName: string): string | undefine
 export function getGuideGithubUrl(guideName: string, ref = 'main'): string | undefined {
   const relPath = getGuidePathInDistribution(guideName);
   if (!relPath) return undefined;
-const normalizedRef = /^\d+\./.test(ref) ? `v${ref}` : ref;
+  const normalizedRef = /^\d+\./.test(ref) ? `v${ref}` : ref;
   return `${GITHUB_REPO_URL}/blob/${normalizedRef}/${relPath}`;
 }
 

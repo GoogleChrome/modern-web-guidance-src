@@ -102,7 +102,6 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
       guideNames: addedGuideNames,
       apiKey,
       model,
-      ref: targetTag,
     });
     if (generatedNewBullets) {
       newGuideBullets = linkifyGuideBullets(generatedNewBullets, addedGuideNames, targetTag);
@@ -125,7 +124,6 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
       guideNames: modifiedGuideNames,
       apiKey,
       model,
-      ref: targetTag,
     });
     if (generatedUpdatedBullets) {
       updatedGuideBullets = linkifyGuideBullets(generatedUpdatedBullets, modifiedGuideNames, targetTag);
