@@ -1,13 +1,63 @@
-// @ts-nocheck
-import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey, escapeHtml } from './utils.js';
+/// <reference path="./evals.d.ts" />
+import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey, escapeHtml, $ } from './utils.js';
+
+/**
+ * @typedef {import('../harness/lib/metrics.ts').EvalsReport & {
+ *   enableSkills?: boolean;
+ * }} SuiteReport
+ *
+ * @typedef {Omit<import('../harness/lib/trajectory-normalizer.ts').StandardizedStep, 'action' | 'outcome'> & {
+ *   action?: {
+ *     type?: string;
+ *     name?: string;
+ *     params?: any;
+ *     canonicalCategory?: string;
+ *   };
+ *   outcome?: any;
+ *   output?: any;
+ *   result?: any;
+ * }} CompareStep
+ *
+ * @typedef {import('../harness/lib/trajectory-normalizer.ts').TrajectorySummary & {
+ *   steps: CompareStep[];
+ * }} CompareTrajectory
+ *
+ * @typedef {Object} AlignedStepPair
+ * @property {CompareStep | null} stepA
+ * @property {CompareStep | null} stepB
+ *
+ * @typedef {Object} DivergenceInfo
+ * @property {number | null} primaryStepA
+ * @property {number | null} primaryStepB
+ *
+ * @typedef {Object} AssertionResult
+ * @property {string} message
+ * @property {boolean} passed
+ *
+ * @typedef {Object} PlaywrightSpec
+ * @property {string} title
+ * @property {boolean} [ok]
+ *
+ * @typedef {Object} PlaywrightSuite
+ * @property {PlaywrightSpec[]} [specs]
+ * @property {PlaywrightSuite[]} [suites]
+ *
+ * @typedef {Object} PlaywrightReport
+ * @property {PlaywrightSuite[]} [suites]
+ */
 
 // Cross-Run Performance Variance Diagnosis Dashboard JavaScript
 
+/** @type {'assertions' | 'timeline' | 'code'} */
 let currentTab = 'assertions';
 let activeTask = '';
+/** @type {string[]} */
 let availableTasks = [];
+/** @type {'milestone' | 'raw'} */
 let timelineViewMode = 'milestone'; // 'milestone' | 'raw'
+/** @type {CompareTrajectory | null} */
 let _loadedTrajA = null;
+/** @type {CompareTrajectory | null} */
 let _loadedTrajB = null;
 let _loadedChatA = '';
 let _loadedChatB = '';
@@ -23,9 +73,11 @@ let guideName = '';
 let isStatic = false;
 let agentA = '';
 let modelA = '';
+/** @type {string | null} */
 let scoreAParam = null;
 let agentB = '';
 let modelB = '';
+/** @type {string | null} */
 let scoreBParam = null;
 
 // Live Run Types & Scores
@@ -37,10 +89,16 @@ let currentScoreB = 0;
 // Parsed run data
 let _runDirA = '';
 let _runDirB = '';
+/** @type {SuiteReport | null} */
 let suiteDataA = null;
+/** @type {SuiteReport | null} */
 let suiteDataB = null;
 
-// Robust line-by-line markdown to HTML compiler with ANSI stripping & GFM Table support
+/**
+ * Robust line-by-line markdown to HTML compiler with ANSI stripping & GFM Table support
+ * @param {string | null | undefined} md
+ * @returns {string}
+ */
 function renderMarkdown(md) {
   if (!md) return '';
   
@@ -54,9 +112,13 @@ function renderMarkdown(md) {
   let inCodeBlock = false;
   let inTable = false;
   let codeLanguage = '';
+  /** @type {string[]} */
   let codeContent = [];
+  /** @type {string[]} */
   let tableHeaders = [];
+  /** @type {string[]} */
   let tableAlignments = [];
+  /** @type {string[][]} */
   let tableRows = [];
   
   for (let i = 0; i < lines.length; i++) {
@@ -132,10 +194,10 @@ function renderMarkdown(md) {
           inTable = true;
           tableRows = [];
           
-          const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+          const cells = line.split('|').map(c => c.trim()).filter((_c, idx, arr) => idx > 0 && idx < arr.length - 1);
           tableHeaders = cells;
           
-          const dividerCells = escapedNextLine.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+          const dividerCells = escapedNextLine.split('|').map(c => c.trim()).filter((_c, idx, arr) => idx > 0 && idx < arr.length - 1);
           tableAlignments = dividerCells.map(cell => {
             const left = cell.startsWith(':');
             const right = cell.endsWith(':');
@@ -148,7 +210,7 @@ function renderMarkdown(md) {
           continue;
         }
       } else {
-        const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+        const cells = line.split('|').map(c => c.trim()).filter((_c, idx, arr) => idx > 0 && idx < arr.length - 1);
         tableRows.push(cells);
         continue;
       }
@@ -204,7 +266,13 @@ function renderMarkdown(md) {
   return html;
 }
 
-// Helper to compile a parsed markdown table into structured HTML
+/**
+ * Helper to compile a parsed markdown table into structured HTML
+ * @param {string[]} headers
+ * @param {string[]} alignments
+ * @param {string[][]} rows
+ * @returns {string}
+ */
 function renderTableHtml(headers, alignments, rows) {
   let html = '<table class="markdown-table">';
   
@@ -232,6 +300,10 @@ function renderTableHtml(headers, alignments, rows) {
   return html;
 }
 
+/**
+ * @param {string} text
+ * @returns {string}
+ */
 function parseInline(text) {
   // Bold: **text**
   text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -242,7 +314,10 @@ function parseInline(text) {
   return text;
 }
 
-// Extract query parameters
+/**
+ * Extract query parameters
+ * @returns {boolean}
+ */
 function initParams() {
   const urlParams = new URLSearchParams(window.location.search);
   trialA = urlParams.get('trialA') || '';
@@ -272,12 +347,18 @@ function initParams() {
 
   // Set up dropdown change listeners
   elA?.addEventListener('change', async (e) => {
-    runTypeA = /** @type {HTMLSelectElement} */ (e.target).value;
-    await handleRunTypeChange();
+    const target = /** @type {HTMLSelectElement | null} */ (e.target);
+    if (target) {
+      runTypeA = target.value;
+      await handleRunTypeChange();
+    }
   });
   elB?.addEventListener('change', async (e) => {
-    runTypeB = /** @type {HTMLSelectElement} */ (e.target).value;
-    await handleRunTypeChange();
+    const target = /** @type {HTMLSelectElement | null} */ (e.target);
+    if (target) {
+      runTypeB = target.value;
+      await handleRunTypeChange();
+    }
   });
 
   // Back button setup
@@ -287,19 +368,20 @@ function initParams() {
   }
 
   if (!trialA || !guideName) {
-    document.getElementById('compare-title').innerText = 'Error: Missing Parameters';
+    $('#compare-title').innerText = 'Error: Missing Parameters';
     alert('Missing required parameters: trialA and guide are required.');
     return false;
   }
 
   // Update browser tab title with active guide name
   document.title = `${guideName} - AI Variance Diagnosis`;
-  document.getElementById('compare-title').innerHTML = `Cross-Run Variance Diagnosis <span style="font-weight: 400; color: #64748b;">(${guideName})</span>`;
+  $('#compare-title').innerHTML = `Cross-Run Variance Diagnosis <span style="font-weight: 400; color: #64748b;">(${guideName})</span>`;
   return true;
 }
 
 /**
  * Handles reloading of workspace files and resetting diagnosis state when run type is toggled.
+ * @returns {Promise<void>}
  */
 async function handleRunTypeChange() {
   updateExecutiveSummary();
@@ -352,6 +434,11 @@ async function streamBodyToElement(body, logElement) {
   return accumulatedText;
 }
 
+/**
+ * @param {string} dirA
+ * @param {string} dirB
+ * @returns {Promise<void>}
+ */
 async function ensureRunDirectories(dirA, dirB) {
   if (isStatic) return;
   try {
@@ -390,6 +477,9 @@ async function ensureRunDirectories(dirA, dirB) {
   }
 }
 
+/**
+ * @returns {Promise<void>}
+ */
 async function loadTrialMetadata() {
   const resultsBase = isStatic ? 'results' : '';
   const srcParam = isStatic ? '' : '?source=local';
@@ -407,7 +497,7 @@ async function loadTrialMetadata() {
   try {
     const responseA = await fetch(`${resultsBase}/${trialA}/evals.json${srcParam}`);
     if (responseA.ok) {
-      suiteDataA = await responseA.json();
+      suiteDataA = /** @type {SuiteReport} */ (await responseA.json());
     }
   } catch (e) {
     console.error('Failed to load Trial A suite data:', e);
@@ -418,7 +508,7 @@ async function loadTrialMetadata() {
     if (trialA !== trialB) {
       const responseB = await fetch(`${resultsBase}/${trialB}/evals.json${srcParam}`);
       if (responseB.ok) {
-        suiteDataB = await responseB.json();
+        suiteDataB = /** @type {SuiteReport} */ (await responseB.json());
       }
     } else {
       suiteDataB = suiteDataA;
@@ -428,7 +518,9 @@ async function loadTrialMetadata() {
   }
 
   // Determine tasks belonging to this guide in Trial A and Trial B
+  /** @type {Set<string>} */
   const tasksA = new Set();
+  /** @type {Set<string>} */
   const tasksB = new Set();
 
   if (suiteDataA?.results) {
@@ -473,6 +565,11 @@ async function loadTrialMetadata() {
   resetDiagnosisUI();
 }
 
+/**
+ * @param {SuiteReport | null | undefined} suiteData
+ * @param {string} task
+ * @returns {boolean}
+ */
 function checkTaskInSuite(suiteData, task) {
   if (!suiteData || !suiteData.results) return false;
   return Object.keys(suiteData.results).some(key => {
@@ -481,8 +578,11 @@ function checkTaskInSuite(suiteData, task) {
   });
 }
 
+/**
+ * @returns {void}
+ */
 function populateSidebar() {
-  const sidebarList = document.getElementById('task-sidebar-list');
+  const sidebarList = $('#task-sidebar-list');
   sidebarList.innerHTML = '';
   availableTasks.forEach(task => {
     const btn = document.createElement('button');
@@ -504,46 +604,49 @@ function populateSidebar() {
   });
 }
 
+/**
+ * @returns {void}
+ */
 function updateExecutiveSummary() {
   const displayRunA = runIndexA ? runIndexA : runNumA;
   const displayRunB = runIndexB ? runIndexB : runNumB;
 
   // Trial A
-  document.getElementById('title-a').innerText = `${trialA.slice(0, 18)} (Run ${displayRunA})`;
-  document.getElementById('meta-a').innerText = trialA.includes('test-') ? `Date: ${trialA.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
+  $('#title-a').innerText = `${trialA.slice(0, 18)} (Run ${displayRunA})`;
+  $('#meta-a').innerText = trialA.includes('test-') ? `Date: ${trialA.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   
   const displayAgentA = agentA || suiteDataA?.agent || 'Unknown';
   const displayModelA = modelA || suiteDataA?.model || 'Unknown';
-  document.getElementById('agent-model-a').innerText = `Agent: ${displayAgentA} | Model: ${displayModelA}`;
+  $('#agent-model-a').innerText = `Agent: ${displayAgentA} | Model: ${displayModelA}`;
 
   // Trial B
   if (trialA === trialB) {
-    document.getElementById('title-b').innerText = `${trialA.slice(0, 18)} (Run ${displayRunB})`;
-    document.getElementById('meta-b').innerText = 'Within-Trial Non-determinism Check';
+    $('#title-b').innerText = `${trialA.slice(0, 18)} (Run ${displayRunB})`;
+    $('#meta-b').innerText = 'Within-Trial Non-determinism Check';
   } else {
-    document.getElementById('title-b').innerText = `${trialB.slice(0, 18)} (Run ${displayRunB})`;
-    document.getElementById('meta-b').innerText = trialB.includes('test-') ? `Date: ${trialB.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
+    $('#title-b').innerText = `${trialB.slice(0, 18)} (Run ${displayRunB})`;
+    $('#meta-b').innerText = trialB.includes('test-') ? `Date: ${trialB.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   }
   
   const displayAgentB = agentB || suiteDataB?.agent || 'Unknown';
   const displayModelB = modelB || suiteDataB?.model || 'Unknown';
-  document.getElementById('agent-model-b').innerText = `Agent: ${displayAgentB} | Model: ${displayModelB}`;
+  $('#agent-model-b').innerText = `Agent: ${displayAgentB} | Model: ${displayModelB}`;
 
   // Calculate Scores for the specific guide across active run types and runs
-  currentScoreA = suiteDataA ? calculateGuideScore(suiteDataA, runNumA, runTypeA) : (scoreAParam !== null ? parseInt(scoreAParam) : 0);
-  currentScoreB = suiteDataB ? calculateGuideScore(suiteDataB, runNumB, runTypeB) : (scoreBParam !== null ? parseInt(scoreBParam) : 0);
+  currentScoreA = suiteDataA ? calculateGuideScore(suiteDataA, runNumA, runTypeA) : (scoreAParam !== null ? parseInt(scoreAParam, 10) : 0);
+  currentScoreB = suiteDataB ? calculateGuideScore(suiteDataB, runNumB, runTypeB) : (scoreBParam !== null ? parseInt(scoreBParam, 10) : 0);
 
-  const badgeA = document.getElementById('score-badge-a');
+  const badgeA = $('#score-badge-a');
   badgeA.innerText = `${currentScoreA}%`;
   badgeA.className = `score-badge ${currentScoreA >= 70 ? 'score-high' : 'score-low'}`;
 
-  const badgeB = document.getElementById('score-badge-b');
+  const badgeB = $('#score-badge-b');
   badgeB.innerText = `${currentScoreB}%`;
   badgeB.className = `score-badge ${currentScoreB >= 70 ? 'score-high' : 'score-low'}`;
 
   const delta = currentScoreB - currentScoreA;
   const deltaText = delta === 0 ? 'No change (0%)' : delta > 0 ? `+${delta}% Improvement` : `${delta}% Regression`;
-  const deltaSpan = document.getElementById('summary-delta');
+  const deltaSpan = $('#summary-delta');
   deltaSpan.innerText = deltaText;
   deltaSpan.style.color = delta === 0 ? '#475569' : delta > 0 ? '#166534' : '#991b1b';
 
@@ -554,6 +657,12 @@ function updateExecutiveSummary() {
   }
 }
 
+/**
+ * @param {SuiteReport | null | undefined} suiteData
+ * @param {string | number} runNum
+ * @param {string} [runType]
+ * @returns {number}
+ */
 function calculateGuideScore(suiteData, runNum, runType) {
   if (!suiteData || !suiteData.results) return 0;
   
@@ -561,7 +670,7 @@ function calculateGuideScore(suiteData, runNum, runType) {
   let passedAsserts = 0;
   
   const targetRunType = runType || 'guided';
-  const targetRunNum = parseInt(runNum, 10);
+  const targetRunNum = typeof runNum === 'number' ? runNum : parseInt(runNum, 10);
 
   Object.keys(suiteData.results).forEach(key => {
     const parsedKey = parseResultKey(key);
@@ -584,19 +693,27 @@ function calculateGuideScore(suiteData, runNum, runType) {
   return totalAsserts > 0 ? Math.round((passedAsserts / totalAsserts) * 100) : 0;
 }
 
+/**
+ * @param {string} task
+ * @returns {Promise<void>}
+ */
 async function switchTask(task) {
   if (activeTask === task) return;
   activeTask = task;
   
   // Update sidebar active state
   document.querySelectorAll('.task-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent.trim() === activeTask);
+    btn.classList.toggle('active', (btn.textContent || '').trim() === activeTask);
   });
 
   await loadActiveTaskDetails();
   resetDiagnosisUI();
 }
 
+/**
+ * @param {string | null | undefined} trialId
+ * @returns {string}
+ */
 function getRunDateString(trialId) {
   if (!trialId) return 'Unknown Date';
   const match = trialId.match(/\d{4}-\d{2}-\d{2}/);
@@ -605,6 +722,18 @@ function getRunDateString(trialId) {
   return trialId.slice(0, 12);
 }
 
+/**
+ * @param {string} label
+ * @param {string} trialId
+ * @param {string | number} runNum
+ * @param {string} [runType]
+ * @param {string} [agent]
+ * @param {string} [model]
+ * @param {CompareTrajectory | null} [traj]
+ * @param {SuiteReport | null} [suiteData]
+ * @param {string | number} [overrideRunIndex]
+ * @returns {string}
+ */
 function getFormattedTrialTitle(label, trialId, runNum, runType, agent, model, traj, suiteData, overrideRunIndex) {
   const dateStr = getRunDateString(trialId);
   const resolvedAgent = agent && agent !== 'unknown' ? agent : (traj?.agent || suiteData?.agent || 'Unknown Agent');
@@ -613,11 +742,14 @@ function getFormattedTrialTitle(label, trialId, runNum, runType, agent, model, t
   return `${label} (Run ${activeRunNum} - ${capitalize(runType || 'guided')}) — agent: ${resolvedAgent} model: ${resolvedModel} (${dateStr})`;
 }
 
+/**
+ * @returns {Promise<void>}
+ */
 async function loadActiveTaskDetails() {
-  document.getElementById('compare-loading').style.display = 'flex';
-  document.getElementById('tab-content-assertions').style.display = 'none';
-  document.getElementById('tab-content-timeline').style.display = 'none';
-  document.getElementById('tab-content-code').style.display = 'none';
+  $('#compare-loading').style.display = 'flex';
+  $('#tab-content-assertions').style.display = 'none';
+  $('#tab-content-timeline').style.display = 'none';
+  $('#tab-content-code').style.display = 'none';
 
   const resultsBase = isStatic ? 'results' : '';
   
@@ -632,12 +764,18 @@ async function loadActiveTaskDetails() {
   const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, null, suiteDataA, runIndexA);
   const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, null, suiteDataB, runIndexB);
 
-  if (document.getElementById('timeline-title-a')) document.getElementById('timeline-title-a').innerText = titleAStr;
-  if (document.getElementById('timeline-title-b')) document.getElementById('timeline-title-b').innerText = titleBStr;
-  if (document.getElementById('code-title-a')) document.getElementById('code-title-a').innerText = titleAStr;
-  if (document.getElementById('code-title-b')) document.getElementById('code-title-b').innerText = titleBStr;
-  if (document.getElementById('header-assert-a')) document.getElementById('header-assert-a').innerText = titleAStr;
-  if (document.getElementById('header-assert-b')) document.getElementById('header-assert-b').innerText = titleBStr;
+  const timelineTitleA = document.getElementById('timeline-title-a');
+  if (timelineTitleA) timelineTitleA.innerText = titleAStr;
+  const timelineTitleB = document.getElementById('timeline-title-b');
+  if (timelineTitleB) timelineTitleB.innerText = titleBStr;
+  const codeTitleA = document.getElementById('code-title-a');
+  if (codeTitleA) codeTitleA.innerText = titleAStr;
+  const codeTitleB = document.getElementById('code-title-b');
+  if (codeTitleB) codeTitleB.innerText = titleBStr;
+  const headerAssertA = document.getElementById('header-assert-a');
+  if (headerAssertA) headerAssertA.innerText = titleAStr;
+  const headerAssertB = document.getElementById('header-assert-b');
+  if (headerAssertB) headerAssertB.innerText = titleBStr;
 
   // 0. Ensure run directories exist locally before fetching tab data
   await ensureRunDirectories(pathPartA, pathPartB);
@@ -651,19 +789,25 @@ async function loadActiveTaskDetails() {
   // 3. Load Code Output Diffs
   await loadCodeOutputs(pathPartA, pathPartB);
 
-  document.getElementById('compare-loading').style.display = 'none';
+  $('#compare-loading').style.display = 'none';
   switchTab(currentTab);
 }
 
 /**
  * Recursively parses Playwright's JSON report and extracts a flat array of assertions.
+ * @param {PlaywrightReport | null | undefined} report
+ * @returns {AssertionResult[]}
  */
 function parsePlaywrightResults(report) {
+  /** @type {AssertionResult[]} */
   const assertions = [];
   if (!report || !Array.isArray(report.suites)) {
     return assertions;
   }
   
+  /**
+   * @param {PlaywrightSuite} suite
+   */
   function collectSpecs(suite) {
     if (Array.isArray(suite.specs)) {
       suite.specs.forEach((spec) => {
@@ -682,13 +826,20 @@ function parsePlaywrightResults(report) {
   return assertions;
 }
 
+/**
+ * @param {string} pathA
+ * @param {string} pathB
+ * @returns {Promise<void>}
+ */
 async function loadAssertions(pathA, pathB) {
   const resultsBase = isStatic ? 'results' : '';
   const srcParam = isStatic ? '' : '?source=local';
-  const tbody = document.getElementById('assert-tbody');
+  const tbody = $('tbody#assert-tbody');
   tbody.innerHTML = '';
 
+  /** @type {AssertionResult[]} */
   let resultsA = [];
+  /** @type {AssertionResult[]} */
   let resultsB = [];
 
   // Fetch Run A results JSON
@@ -697,13 +848,14 @@ async function loadAssertions(pathA, pathB) {
     if (!resA.ok) {
       const filesResA = await fetch(`/api/run-files?dir=${encodeURIComponent(pathA)}&source=local`);
       if (filesResA.ok) {
+        /** @type {string[]} */
         const filesA = (await filesResA.json()).files || [];
-        const resFile = filesA.find(f => f.endsWith('_results.json'));
+        const resFile = filesA.find((/** @type {string} */ f) => f.endsWith('_results.json'));
         if (resFile) resA = await fetch(`${resultsBase}/${pathA}/${resFile}${srcParam}`);
       }
     }
     if (resA.ok) {
-      const rawA = await resA.json();
+      const rawA = /** @type {PlaywrightReport} */ (await resA.json());
       resultsA = parsePlaywrightResults(rawA);
     }
   } catch (e) {}
@@ -714,13 +866,14 @@ async function loadAssertions(pathA, pathB) {
     if (!resB.ok) {
       const filesResB = await fetch(`/api/run-files?dir=${encodeURIComponent(pathB)}&source=local`);
       if (filesResB.ok) {
+        /** @type {string[]} */
         const filesB = (await filesResB.json()).files || [];
-        const resFile = filesB.find(f => f.endsWith('_results.json'));
+        const resFile = filesB.find((/** @type {string} */ f) => f.endsWith('_results.json'));
         if (resFile) resB = await fetch(`${resultsBase}/${pathB}/${resFile}${srcParam}`);
       }
     }
     if (resB.ok) {
-      const rawB = await resB.json();
+      const rawB = /** @type {PlaywrightReport} */ (await resB.json());
       resultsB = parsePlaywrightResults(rawB);
     }
   } catch (e) {}
@@ -785,26 +938,21 @@ async function loadAssertions(pathA, pathB) {
   });
 }
 
-async function loadTrajectories(pathA, pathB) {
-  const resultsBase = isStatic ? 'results' : '';
-  const srcParam = isStatic ? '' : '?source=local';
-  const container = document.getElementById('tab-content-timeline');
-  container.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Loading aligned trajectories...</div>';
-
-  let trajA = null;
-  let trajB = null;
-  let chatA = '';
-  let chatB = '';
-  let sessionUrlA = '';
-  let sessionUrlB = '';
-
+/**
+ * @param {CompareTrajectory | null | undefined} traj
+ * @param {string} pathStr
+ * @param {string} resultsBase
+ * @returns {Promise<void>}
+ */
 async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   if (!traj || !Array.isArray(traj.steps)) return;
+  const srcParam = isStatic ? '' : '?source=local';
   try {
     const logRes = await fetch(`${resultsBase}/${pathStr}/modern-web.log${srcParam}`);
     if (logRes.ok) {
       const logText = await logRes.text();
       const lines = logText.split('\n').filter(Boolean);
+      /** @type {any[]} */
       const logCalls = [];
       for (const line of lines) {
         if (line.trim().startsWith('{')) {
@@ -816,7 +964,9 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
         if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
           if (logCalls[searchIdx]) {
             if (!step.outcome) step.outcome = { status: 'success' };
-            step.outcome.output = logCalls[searchIdx].result;
+            if (typeof step.outcome !== 'string') {
+              step.outcome.output = logCalls[searchIdx].result;
+            }
             searchIdx++;
           }
         }
@@ -825,10 +975,30 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   } catch (e) {}
 }
 
+/**
+ * @param {string} pathA
+ * @param {string} pathB
+ * @returns {Promise<void>}
+ */
+async function loadTrajectories(pathA, pathB) {
+  const resultsBase = isStatic ? 'results' : '';
+  const srcParam = isStatic ? '' : '?source=local';
+  const container = $('#tab-content-timeline');
+  container.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Loading aligned trajectories...</div>';
+
+  /** @type {CompareTrajectory | null} */
+  let trajA = null;
+  /** @type {CompareTrajectory | null} */
+  let trajB = null;
+  let chatA = '';
+  let chatB = '';
+  let sessionUrlA = '';
+  let sessionUrlB = '';
+
   try {
     const resA = await fetch(`${resultsBase}/${pathA}/trajectory_summary.json${srcParam}`);
     if (resA.ok) {
-      trajA = normalizeTrajectoryClient(await resA.json());
+      trajA = /** @type {CompareTrajectory} */ (normalizeTrajectoryClient(await resA.json()));
       await enrichTrajectorySteps(trajA, pathA, resultsBase);
     }
   } catch (e) {}
@@ -836,7 +1006,7 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   try {
     const resB = await fetch(`${resultsBase}/${pathB}/trajectory_summary.json${srcParam}`);
     if (resB.ok) {
-      trajB = normalizeTrajectoryClient(await resB.json());
+      trajB = /** @type {CompareTrajectory} */ (normalizeTrajectoryClient(await resB.json()));
       await enrichTrajectorySteps(trajB, pathB, resultsBase);
     }
   } catch (e) {}
@@ -854,8 +1024,9 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   try {
     const filesResA = await fetch(`/api/run-files?dir=${encodeURIComponent(pathA)}&source=local`);
     if (filesResA.ok) {
+      /** @type {string[]} */
       const filesA = (await filesResA.json()).files || [];
-      const sessionFileA = filesA.find(f => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || filesA.find(f => f.startsWith('session-') && f.endsWith('.html'));
+      const sessionFileA = filesA.find((/** @type {string} */ f) => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || filesA.find((/** @type {string} */ f) => f.startsWith('session-') && f.endsWith('.html'));
       if (sessionFileA) sessionUrlA = `${resultsBase}/${pathA}/${sessionFileA}`;
     }
   } catch (e) {}
@@ -863,8 +1034,9 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   try {
     const filesResB = await fetch(`/api/run-files?dir=${encodeURIComponent(pathB)}&source=local`);
     if (filesResB.ok) {
+      /** @type {string[]} */
       const filesB = (await filesResB.json()).files || [];
-      const sessionFileB = filesB.find(f => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || filesB.find(f => f.startsWith('session-') && f.endsWith('.html'));
+      const sessionFileB = filesB.find((/** @type {string} */ f) => f.startsWith('session-') && !f.includes('-subagents-') && f.endsWith('.html')) || filesB.find((/** @type {string} */ f) => f.startsWith('session-') && f.endsWith('.html'));
       if (sessionFileB) sessionUrlB = `${resultsBase}/${pathB}/${sessionFileB}`;
     }
   } catch (e) {}
@@ -876,15 +1048,23 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
   renderTimelineRows(container, trajA, trajB, chatA, chatB, sessionUrlA, sessionUrlB);
 }
 
+/**
+ * @param {CompareTrajectory | CompareStep[] | null | undefined} trajOrStepsA
+ * @param {CompareTrajectory | CompareStep[] | null | undefined} trajOrStepsB
+ * @param {'milestone' | 'raw'} [mode='milestone']
+ * @returns {AlignedStepPair[]}
+ */
 function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
+  /** @type {{ steps: CompareStep[], initialPrompt?: string }} */
   const trajAObj = (trajOrStepsA && !Array.isArray(trajOrStepsA)) ? trajOrStepsA : { steps: Array.isArray(trajOrStepsA) ? trajOrStepsA : [] };
+  /** @type {{ steps: CompareStep[], initialPrompt?: string }} */
   const trajBObj = (trajOrStepsB && !Array.isArray(trajOrStepsB)) ? trajOrStepsB : { steps: Array.isArray(trajOrStepsB) ? trajOrStepsB : [] };
 
   let listA = trajAObj.steps || [];
   let listB = trajBObj.steps || [];
 
   if (mode === 'milestone') {
-    const filterFn = s => s.action?.canonicalCategory && s.action.canonicalCategory !== 'incidental_noise' && s.action.canonicalCategory !== 'launch';
+    const filterFn = (/** @type {CompareStep} */ s) => s.action?.canonicalCategory && s.action.canonicalCategory !== 'incidental_noise' && s.action.canonicalCategory !== 'launch';
     const filteredA = listA.filter(filterFn);
     const filteredB = listB.filter(filterFn);
     if (filteredA.length > 0 || filteredB.length > 0) {
@@ -900,6 +1080,11 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
   const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
   const gapPenalty = -2;
 
+  /**
+   * @param {CompareStep} sA
+   * @param {CompareStep} sB
+   * @returns {number}
+   */
   function matchScore(sA, sB) {
     let score = 0;
     const catA = sA.action?.canonicalCategory || 'other';
@@ -928,6 +1113,7 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
     }
   }
 
+  /** @type {AlignedStepPair[]} */
   const aligned = [];
   let i = m, j = n;
   while (i > 0 || j > 0) {
@@ -951,12 +1137,14 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
     const promptA = trajAObj.initialPrompt || '';
     const promptB = trajBObj.initialPrompt || '';
     if (promptA || promptB) {
+      /** @type {CompareStep | null} */
       const step0A = promptA ? {
         stepNumber: 0,
         thought: 'Harness launched agent with initial prompt',
         action: { type: 'launch', name: 'Starting Prompt / Launch', params: { prompt: promptA }, canonicalCategory: 'launch' },
         outcome: { status: 'success', output: promptA }
       } : null;
+      /** @type {CompareStep | null} */
       const step0B = promptB ? {
         stepNumber: 0,
         thought: 'Harness launched agent with initial prompt',
@@ -970,10 +1158,17 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
   return alignedResult;
 }
 
+/**
+ * @param {CompareTrajectory | null | undefined} trajA
+ * @param {CompareTrajectory | null | undefined} trajB
+ * @returns {DivergenceInfo}
+ */
 function findDivergenceInfo(trajA, trajB) {
   const aligned = alignTrajectorySteps(trajA, trajB, timelineViewMode);
 
+  /** @type {number | null} */
   let primaryStepA = null;
+  /** @type {number | null} */
   let primaryStepB = null;
 
   const diagnosisTextElement = document.getElementById('diagnosis-text');
@@ -1019,8 +1214,8 @@ function findDivergenceInfo(trajA, trajB) {
       }
 
       if (sA.stepNumber === 0 && sB.stepNumber === 0) {
-        const pA = (sA.outcome?.output || '').trim();
-        const pB = (sB.outcome?.output || '').trim();
+        const pA = (sA.outcome && typeof sA.outcome === 'object' ? sA.outcome.output || '' : '').trim();
+        const pB = (sB.outcome && typeof sB.outcome === 'object' ? sB.outcome.output || '' : '').trim();
         if (pA && pB && pA !== pB) {
           primaryStepA = 0;
           primaryStepB = 0;
@@ -1033,8 +1228,8 @@ function findDivergenceInfo(trajA, trajB) {
       const aB = (sB.action?.name || '').toLowerCase();
       const catA = sA.action?.canonicalCategory || 'other';
       const catB = sB.action?.canonicalCategory || 'other';
-      const isErrA = sA.outcome?.status === 'error';
-      const isErrB = sB.outcome?.status === 'error';
+      const isErrA = typeof sA.outcome === 'object' && sA.outcome !== null ? sA.outcome.status === 'error' : false;
+      const isErrB = typeof sB.outcome === 'object' && sB.outcome !== null ? sB.outcome.status === 'error' : false;
 
       if (aA !== aB || catA !== catB || isErrA !== isErrB) {
         if (primaryStepA === null) primaryStepA = sA.stepNumber;
@@ -1047,6 +1242,16 @@ function findDivergenceInfo(trajA, trajB) {
   return { primaryStepA, primaryStepB };
 }
 
+/**
+ * @param {HTMLElement} container
+ * @param {CompareTrajectory | null} trajA
+ * @param {CompareTrajectory | null} trajB
+ * @param {string} [chatA='']
+ * @param {string} [chatB='']
+ * @param {string} [sessionUrlA='']
+ * @param {string} [sessionUrlB='']
+ * @returns {void}
+ */
 function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', sessionUrlA = '', sessionUrlB = '') {
   container.innerHTML = '';
 
@@ -1062,12 +1267,18 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
   const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, trajA, suiteDataA, runIndexA);
   const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, trajB, suiteDataB, runIndexB);
 
-  if (document.getElementById('timeline-title-a')) document.getElementById('timeline-title-a').innerText = titleAStr;
-  if (document.getElementById('timeline-title-b')) document.getElementById('timeline-title-b').innerText = titleBStr;
-  if (document.getElementById('code-title-a')) document.getElementById('code-title-a').innerText = titleAStr;
-  if (document.getElementById('code-title-b')) document.getElementById('code-title-b').innerText = titleBStr;
-  if (document.getElementById('header-assert-a')) document.getElementById('header-assert-a').innerText = titleAStr;
-  if (document.getElementById('header-assert-b')) document.getElementById('header-assert-b').innerText = titleBStr;
+  const timelineTitleA = document.getElementById('timeline-title-a');
+  if (timelineTitleA) timelineTitleA.innerText = titleAStr;
+  const timelineTitleB = document.getElementById('timeline-title-b');
+  if (timelineTitleB) timelineTitleB.innerText = titleBStr;
+  const codeTitleA = document.getElementById('code-title-a');
+  if (codeTitleA) codeTitleA.innerText = titleAStr;
+  const codeTitleB = document.getElementById('code-title-b');
+  if (codeTitleB) codeTitleB.innerText = titleBStr;
+  const headerAssertA = document.getElementById('header-assert-a');
+  if (headerAssertA) headerAssertA.innerText = titleAStr;
+  const headerAssertB = document.getElementById('header-assert-b');
+  if (headerAssertB) headerAssertB.innerText = titleBStr;
 
   // Top header row
   const headerRow = document.createElement('div');
@@ -1178,10 +1389,17 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
   }
 }
 
+/**
+ * @param {CompareStep} step
+ * @param {boolean} [isDivergent=false]
+ * @param {string} [sessionUrl='']
+ * @returns {string}
+ */
 function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
-  const isErr = step.outcome?.status === 'error';
+  const isErr = typeof step.outcome === 'object' && step.outcome !== null ? step.outcome.status === 'error' : false;
   const cardClass = `timeline-step ${isErr ? 'error' : 'success'} ${isDivergent ? 'divergence-card' : ''}`;
   const stepAnchorUrl = sessionUrl ? `${sessionUrl}#step-${step.stepNumber}` : '';
+  const outcomeStatus = typeof step.outcome === 'object' && step.outcome !== null && step.outcome.status ? step.outcome.status : 'UNKNOWN';
 
   let html = `
     <div class="${cardClass}">
@@ -1194,7 +1412,7 @@ function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
             </a>
           ` : ''}
         </div>
-        <span style="color:${isErr ? '#ef4444' : '#22c55e'}">${(step.outcome?.status || 'UNKNOWN').toUpperCase()}</span>
+        <span style="color:${isErr ? '#ef4444' : '#22c55e'}">${outcomeStatus.toUpperCase()}</span>
       </div>
   `;
 
@@ -1228,14 +1446,17 @@ function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
   if (step.outcome) {
     if (typeof step.outcome === 'string') {
       outcomeText = step.outcome;
-    } else if (step.outcome.output || step.outcome.result || step.outcome.message || step.outcome.content || step.outcome.text || step.outcome.stdout || step.outcome.stderr) {
-      outcomeText = step.outcome.output || step.outcome.result || step.outcome.message || step.outcome.content || step.outcome.text || step.outcome.stdout || step.outcome.stderr;
-      if (typeof outcomeText === 'object') outcomeText = JSON.stringify(outcomeText, null, 2);
-    } else {
-      const keys = Object.keys(step.outcome);
-      const onlyStatus = keys.every(k => k === 'status' || k === 'exitCode');
-      if (!onlyStatus) {
-        outcomeText = JSON.stringify(step.outcome, null, 2);
+    } else if (typeof step.outcome === 'object' && step.outcome !== null) {
+      const outcomeObj = /** @type {Record<string, any>} */ (step.outcome);
+      if (outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr) {
+        outcomeText = outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr;
+        if (typeof outcomeText === 'object') outcomeText = JSON.stringify(outcomeText, null, 2);
+      } else {
+        const keys = Object.keys(outcomeObj);
+        const onlyStatus = keys.every(k => k === 'status' || k === 'exitCode');
+        if (!onlyStatus) {
+          outcomeText = JSON.stringify(outcomeObj, null, 2);
+        }
       }
     }
   } else if (step.output || step.result) {
@@ -1273,12 +1494,17 @@ function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
   return html;
 }
 
+/**
+ * @param {string} pathA
+ * @param {string} pathB
+ * @returns {Promise<void>}
+ */
 async function loadCodeOutputs(pathA, pathB) {
   const resultsBase = isStatic ? 'results' : '';
   const srcParam = isStatic ? '' : '?source=local';
   
-  const containerA = document.getElementById('code-a');
-  const containerB = document.getElementById('code-b');
+  const containerA = $('#code-a');
+  const containerB = $('#code-b');
   
   containerA.innerHTML = 'Loading output file...';
   containerB.innerHTML = 'Loading output file...';
@@ -1314,8 +1540,12 @@ async function loadCodeOutputs(pathA, pathB) {
   containerB.innerText = codeTextB;
 }
 
+/**
+ * @param {string} tab
+ * @returns {void}
+ */
 function switchTab(tab) {
-  currentTab = tab;
+  currentTab = /** @type {'assertions' | 'timeline' | 'code'} */ (tab);
   
   // Update tab buttons active state using data-tab attribute
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1324,20 +1554,23 @@ function switchTab(tab) {
   });
 
   // Hide all tab contents
-  document.getElementById('tab-content-assertions').style.display = 'none';
-  document.getElementById('tab-content-timeline').style.display = 'none';
-  document.getElementById('tab-content-code').style.display = 'none';
+  $('#tab-content-assertions').style.display = 'none';
+  $('#tab-content-timeline').style.display = 'none';
+  $('#tab-content-code').style.display = 'none';
 
   // Show active tab content
   if (currentTab === 'assertions') {
-    document.getElementById('tab-content-assertions').style.display = 'block';
+    $('#tab-content-assertions').style.display = 'block';
   } else if (currentTab === 'timeline') {
-    document.getElementById('tab-content-timeline').style.display = 'block';
+    $('#tab-content-timeline').style.display = 'block';
   } else if (currentTab === 'code') {
-    document.getElementById('tab-content-code').style.display = 'flex';
+    $('#tab-content-code').style.display = 'flex';
   }
 }
 
+/**
+ * @returns {void}
+ */
 function resetDiagnosisUI() {
   const diagnosisText = document.getElementById('diagnosis-text');
   const statusSpan = document.getElementById('summary-status');
@@ -1360,10 +1593,13 @@ function resetDiagnosisUI() {
   }
 }
 
+/**
+ * @returns {Promise<void>}
+ */
 async function runDiagnosticAgent() {
-  const diagnosisBox = document.getElementById('diagnosis-box');
-  const diagnosisText = document.getElementById('diagnosis-text');
-  const statusSpan = document.getElementById('summary-status');
+  const diagnosisBox = $('#diagnosis-box');
+  const diagnosisText = $('#diagnosis-text');
+  const statusSpan = $('#summary-status');
   const runBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('run-diagnosis-btn'));
 
   const relativeA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
@@ -1453,6 +1689,9 @@ async function runDiagnosticAgent() {
       const errorText = await response.text();
       throw new Error(errorText || `HTTP error ${response.status}`);
     }
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
 
     // Set up a scrollable log container to stream raw output in real-time
     diagnosisText.innerHTML = `
@@ -1494,10 +1733,11 @@ async function runDiagnosticAgent() {
       }
     }
   } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : String(e);
     console.error('LLM Diagnosis error:', e);
     diagnosisText.innerHTML = `
       <div style="color:#b91c1c; font-weight:600;">On-the-fly LLM diagnosis failed.</div>
-      <div style="font-size:0.9em; color:#64748b; margin-top:5px;">Error: ${escapeHtml(e.message)}</div>
+      <div style="font-size:0.9em; color:#64748b; margin-top:5px;">Error: ${escapeHtml(errorMsg)}</div>
       <div style="font-size:0.9em; margin-top:10px; color:#475569;">
         You can try running the comparison manually in your terminal:
         <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ../harness/results/${relativeA} ../harness/results/${relativeB}</pre>
@@ -1521,18 +1761,25 @@ window.onload = async () => {
 };
 
 // Expose module functions globally for inline HTML event handlers (since compare.js is loaded as a module)
-/** @type {any} */ (window).switchTab = switchTab;
-/** @type {any} */ (window).switchTask = switchTask;
-/** @type {any} */ (window).runDiagnosticAgent = runDiagnosticAgent;
+window.switchTab = switchTab;
+window.switchTask = switchTask;
+window.runDiagnosticAgent = runDiagnosticAgent;
 
+/**
+ * @param {'milestone' | 'raw'} mode
+ * @returns {void}
+ */
 function switchTimelineMode(mode) {
   timelineViewMode = mode;
   const pathPartA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
   const pathPartB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
   loadTrajectories(pathPartA, pathPartB);
 }
-/** @type {any} */ (window).switchTimelineMode = switchTimelineMode;
+window.switchTimelineMode = switchTimelineMode;
 
+/**
+ * @returns {void}
+ */
 function exportCompareReport() {
   const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, _loadedTrajA, suiteDataA, runIndexA);
   const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, _loadedTrajB, suiteDataB, runIndexB);
@@ -1593,7 +1840,8 @@ function exportCompareReport() {
       // Trial A
       report += `#### Trial A (Step ${pair.stepA?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepA?.stepNumber || 'N/A'})${markerA}\n`;
       if (pair.stepA) {
-        report += `- **Status**: ${pair.stepA.outcome?.status?.toUpperCase() || 'UNKNOWN'}\n`;
+        const outcomeStatus = typeof pair.stepA.outcome === 'object' && pair.stepA.outcome !== null && pair.stepA.outcome.status ? pair.stepA.outcome.status : 'UNKNOWN';
+        report += `- **Status**: ${outcomeStatus.toUpperCase()}\n`;
         if (pair.stepA.thought) {
           report += `- **Thinking / Reasoning**:\n\`\`\`\n${pair.stepA.thought.trim()}\n\`\`\`\n`;
         }
@@ -1607,7 +1855,9 @@ function exportCompareReport() {
           }
         }
         if (pair.stepA.outcome) {
-          const out = pair.stepA.outcome.output || pair.stepA.outcome.result || pair.stepA.outcome.message || pair.stepA.outcome.content || pair.stepA.outcome.text || pair.stepA.outcome.stdout || pair.stepA.outcome.stderr || '';
+          const out = typeof pair.stepA.outcome === 'object' && pair.stepA.outcome !== null
+            ? (pair.stepA.outcome.output || pair.stepA.outcome.result || pair.stepA.outcome.message || pair.stepA.outcome.content || pair.stepA.outcome.text || pair.stepA.outcome.stdout || pair.stepA.outcome.stderr || '')
+            : pair.stepA.outcome;
           if (out && typeof out !== 'object' || (typeof out === 'object' && Object.keys(out).length > 0)) {
             const outStr = typeof out === 'object' ? JSON.stringify(out, null, 2) : String(out);
             if (outStr !== '{}' && outStr !== 'null') {
@@ -1623,7 +1873,8 @@ function exportCompareReport() {
       // Trial B
       report += `#### Trial B (Step ${pair.stepB?.stepNumber === 0 ? '0 - Starting Prompt / Launch' : pair.stepB?.stepNumber || 'N/A'})${markerB}\n`;
       if (pair.stepB) {
-        report += `- **Status**: ${pair.stepB.outcome?.status?.toUpperCase() || 'UNKNOWN'}\n`;
+        const outcomeStatus = typeof pair.stepB.outcome === 'object' && pair.stepB.outcome !== null && pair.stepB.outcome.status ? pair.stepB.outcome.status : 'UNKNOWN';
+        report += `- **Status**: ${outcomeStatus.toUpperCase()}\n`;
         if (pair.stepB.thought) {
           report += `- **Thinking / Reasoning**:\n\`\`\`\n${pair.stepB.thought.trim()}\n\`\`\`\n`;
         }
@@ -1637,7 +1888,9 @@ function exportCompareReport() {
           }
         }
         if (pair.stepB.outcome) {
-          const out = pair.stepB.outcome.output || pair.stepB.outcome.result || pair.stepB.outcome.message || pair.stepB.outcome.content || pair.stepB.outcome.text || pair.stepB.outcome.stdout || pair.stepB.outcome.stderr || '';
+          const out = typeof pair.stepB.outcome === 'object' && pair.stepB.outcome !== null
+            ? (pair.stepB.outcome.output || pair.stepB.outcome.result || pair.stepB.outcome.message || pair.stepB.outcome.content || pair.stepB.outcome.text || pair.stepB.outcome.stdout || pair.stepB.outcome.stderr || '')
+            : pair.stepB.outcome;
           if (out && typeof out !== 'object' || (typeof out === 'object' && Object.keys(out).length > 0)) {
             const outStr = typeof out === 'object' ? JSON.stringify(out, null, 2) : String(out);
             if (outStr !== '{}' && outStr !== 'null') {
@@ -1678,4 +1931,4 @@ function exportCompareReport() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-/** @type {any} */ (window).exportCompareReport = exportCompareReport;
+window.exportCompareReport = exportCompareReport;
