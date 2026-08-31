@@ -9,7 +9,7 @@ import {
   buildBaselineBullets,
   parseBaselineUpdateFromPatch,
   parseBaselineUpdatesFromPatch,
-  isPatchOnlyBaselineUpdate,
+  isPatchOnlyNonSubstantive,
   stripBaselineLinesFromPatch,
   classifyChanges,
   getGuideDescription,
@@ -55,7 +55,7 @@ test('isPatchOnlyVersionBump correctly detects rote version bumps', () => {
   assert.strictEqual(isPatchOnlyVersionBump(realChangePatch), false);
 });
 
-test('isPatchOnlyBaselineUpdate correctly identifies baseline-only patches', () => {
+test('isPatchOnlyNonSubstantive correctly identifies baseline-only and non-substantive patches', () => {
   const baselinePatch = `
 @@ -54,7 +54,7 @@
  ### Fallback strategies
@@ -63,7 +63,7 @@ test('isPatchOnlyBaselineUpdate correctly identifies baseline-only patches', () 
 +Baseline status for Masks: Widely available. It's been Baseline since 2023-12-07.
  Supported by: Chrome 120 (Dec 2023), Edge 120 (Dec 2023), Firefox 53 (Apr 2017), and Safari 15.4 (Mar 2022).
 `;
-  assert.strictEqual(isPatchOnlyBaselineUpdate(baselinePatch), true);
+  assert.strictEqual(isPatchOnlyNonSubstantive(baselinePatch), true);
 
   const limitedBaselinePatch = `
 @@ -54,4 +54,4 @@
@@ -73,7 +73,7 @@ test('isPatchOnlyBaselineUpdate correctly identifies baseline-only patches', () 
 +Supported by: Chrome 151, Edge 151, and Firefox 153 (Jul 2026).
   Unsupported in: Safari.
 `;
-  assert.strictEqual(isPatchOnlyBaselineUpdate(limitedBaselinePatch), true);
+  assert.strictEqual(isPatchOnlyNonSubstantive(limitedBaselinePatch), true);
 
   const substantivePatch = `
 @@ -10,6 +10,8 @@
@@ -81,7 +81,7 @@ test('isPatchOnlyBaselineUpdate correctly identifies baseline-only patches', () 
 +Here is some new important guidance about using mask-image safely.
 +Always specify a fallback.
 `;
-  assert.strictEqual(isPatchOnlyBaselineUpdate(substantivePatch), false);
+  assert.strictEqual(isPatchOnlyNonSubstantive(substantivePatch), false);
 });
 
 test('stripBaselineLinesFromPatch filters out baseline status lines while retaining substantive diffs', () => {
@@ -574,6 +574,16 @@ test('formatGuideBoldLink and formatGuideCodeLink format links when guide exists
     '[`translator`](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.185/skills/modern-web-guidance/guides/built-in-ai/translator.md)'
   );
 
+  // Standalone skill (ends with -skill) formats as "**[name](url)** skill"
+  assert.strictEqual(
+    formatGuideBoldLink('modern-web-guidance-skill', 'v0.0.186'),
+    '**[modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.186/skills/modern-web-guidance/SKILL.md)** skill'
+  );
+  assert.strictEqual(
+    formatGuideCodeLink('modern-web-guidance-skill', 'v0.0.186'),
+    '[`modern-web-guidance`](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.186/skills/modern-web-guidance/SKILL.md)'
+  );
+
   // Non-existent guide
   assert.strictEqual(formatGuideBoldLink('unknown-guide'), '**unknown-guide**');
   assert.strictEqual(formatGuideCodeLink('unknown-guide'), '`unknown-guide`');
@@ -741,4 +751,106 @@ test('parseBaselineUpdatesFromPatch extracts multiple feature updates from multi
   assert.strictEqual(parseBaselineUpdateFromPatch('unrelated-guide', unidentifiablePatch), null);
   assert.deepStrictEqual(parseBaselineUpdatesFromPatch('unrelated-guide', unidentifiablePatch), []);
 });
+
+test('parseBaselineUpdateFromHunk strips leading + from feature name in diff lines', () => {
+  const patchWithPlus = `
+@@ -114,6 +114,8 @@
+-Speculative loading is a new feature, and as such, is not supported in all modern browsers (Baseline limited availability).
++Speculation rules has limited availability.
++Supported by: Chrome 109 (Jan 2023) and Edge 109 (Jan 2023).
++Unsupported in: Firefox and Safari.
+`;
+  const info = parseBaselineUpdateFromPatch('improve-next-page-load-performance', patchWithPlus);
+  assert.ok(info);
+  assert.strictEqual(info.featureName, 'Speculation rules');
+  assert.strictEqual(info.featureId, 'speculation-rules');
+  assert.strictEqual(info.statusDescription, 'Added **Chrome 109 and Edge 109** support');
+  assert.strictEqual(
+    formatWebFeatureBoldLink(info.featureName, info.featureId),
+    '**[Speculation rules](https://webstatus.dev/features/speculation-rules)**'
+  );
+});
+
+test('formatWebFeatureBoldLink escapes HTML tags to prevent broken markdown rendering', () => {
+  assert.strictEqual(
+    formatWebFeatureBoldLink('<details>', 'details'),
+    '**[&lt;details&gt;](https://webstatus.dev/features/details)**'
+  );
+  assert.strictEqual(
+    formatWebFeatureBoldLink('<select>', 'select'),
+    '**[&lt;select&gt;](https://webstatus.dev/features/select)**'
+  );
+  assert.strictEqual(
+    formatWebFeatureBoldLink('<dialog>'),
+    '**[&lt;dialog&gt;](https://webstatus.dev/features/dialog)**'
+  );
+  assert.strictEqual(
+    formatWebFeatureBoldLink('<a>'),
+    '**[&lt;a&gt;](https://webstatus.dev/features/a)**'
+  );
+  assert.strictEqual(
+    formatWebFeatureBoldLink('<custom-unregistered>'),
+    '**&lt;custom-unregistered&gt;**'
+  );
+});
+
+test('hasSubstantiveGuideChanges and isPatchOnlyNonSubstantive filter out heading additions and legacy baseline text', () => {
+  // 1. Guide with only auto-generated H1 title added at the top
+  const titleOnlyPatch = `
+@@ -1,3 +1,5 @@
++# Complex Shapes
++
+ ## Overview
+`;
+  assert.strictEqual(isPatchOnlyNonSubstantive(titleOnlyPatch), true);
+  assert.strictEqual(stripBaselineLinesFromPatch(titleOnlyPatch).trim(), '@@ -1,3 +1,5 @@\n ## Overview');
+
+  // 2. Guide with legacy handwritten baseline line removed and replaced by macro
+  const legacyBaselineReplacementPatch = `
+@@ -97,7 +97,8 @@
+-The \`:user-invalid\` pseudo-class is widely supported (Baseline 2023), but older browsers need a fallback.
++Baseline status for :user-valid and :user-invalid: Widely available. It's been Baseline since 2023-11-02.
++Supported by: Chrome 119 (Oct 2023), Edge 119 (Nov 2023), Firefox 88 (Apr 2021), and Safari 16.5 (May 2023).
+`;
+  assert.strictEqual(isPatchOnlyNonSubstantive(legacyBaselineReplacementPatch), true);
+
+  // 3. Guide with fallback boilerplate change
+  const fallbackBoilerplatePatch = `
+@@ -603,7 +603,7 @@
+-Most of the features used in this guide are Baseline Widely available, and do not require any fallback. The only features not widely available that may require fallbacks are scroll-snap-events and scroll-driven-animations, both of which have robust fallback or progressive enhancement stories, and are safe to use for this use case:
++The features that may require fallbacks are scroll-snap-events and scroll-driven-animations, both of which have robust fallback or progressive enhancement stories, and are safe to use for this use case:
+`;
+  assert.strictEqual(isPatchOnlyNonSubstantive(fallbackBoilerplatePatch), true);
+
+  // 4. Truly substantive guide change
+  const substantivePatch = `
+@@ -50,6 +50,10 @@
++When handling Enter key press, always check \`KeyboardEvent.isComposing\`.
++Otherwise IME conversion will be broken for multilingual users.
+`;
+  assert.strictEqual(isPatchOnlyNonSubstantive(substantivePatch), false);
+});
+
+test('linkifyGuideBullets correctly links bold and code guide names', () => {
+  const bullets = [
+    '* Updated the **modern-web-guidance** skill with redirection instructions.',
+    '* Enhanced **forms** with IME handling guidance.',
+    '* Updated the **modern-web-guidance-skill** directly.',
+  ];
+  const linked = linkifyGuideBullets(bullets, ['modern-web-guidance-skill', 'forms'], 'v0.0.186');
+
+  assert.strictEqual(
+    linked[0],
+    '* Updated the **[modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.186/skills/modern-web-guidance/SKILL.md)** skill with redirection instructions.'
+  );
+  assert.strictEqual(
+    linked[1],
+    '* Enhanced **[forms](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.186/skills/modern-web-guidance/guides/forms/forms.md)** with IME handling guidance.'
+  );
+  assert.strictEqual(
+    linked[2],
+    '* Updated the **[modern-web-guidance-skill](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.186/skills/modern-web-guidance/SKILL.md)** directly.'
+  );
+});
+
 

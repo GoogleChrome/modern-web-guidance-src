@@ -60,14 +60,21 @@ const GH_PUBLISH_PATTERNS = [
 ];
 
 // Canonical lines produced by formatStatusMessage() in serving/lib/baseline.ts and baseline macros
-const BASELINE_OUTPUT_PATTERNS = [
+export const BASELINE_OUTPUT_PATTERNS = [
   /^Baseline status for /i,
-  /has limited availability\./i,
-  /is not natively supported by any major browser yet\./i,
+  /has limited availability/i,
+  /is not natively supported by any major browser yet/i,
   /^Supported by:\s*(Chrome|Firefox|Safari|Edge|iOS)/i,
   /^Unsupported in:\s*(Chrome|Firefox|Safari|Edge|iOS)/i,
   /^<!--\s*(?:baseline:|MACRO:(?:BASELINE_STATUS|FEATURE_FALLBACKS))/i,
   /^>\s*Baseline:\s*\[/i,
+];
+
+export const NON_SUBSTANTIVE_PATTERNS = [
+  ...BASELINE_OUTPUT_PATTERNS,
+  /Baseline\s*(?:\d{4}|widely|newly|limited)/i,
+  /(?:core mechanics|features used in this guide|is widely supported|are all Baseline|are Baseline Widely available|safe to use for this use case)/i,
+  /^#+\s+/, // Markdown headings (# H1 through ###### H6)
 ];
 
 export function getPreviousTag(targetTag: string): string {
@@ -149,9 +156,10 @@ export function hasBaselineUpdateInPatch(patch?: string): boolean {
 }
 
 /**
- * Checks if a git diff patch represents only Baseline status or browser support updates.
+ * Checks if a git diff patch represents only non-substantive changes
+ * (Baseline status updates, macro expansions, heading structure, or boilerplate).
  */
-export function isPatchOnlyBaselineUpdate(patch?: string): boolean {
+export function isPatchOnlyNonSubstantive(patch?: string): boolean {
   if (!patch) return false;
   const changedLines = patch
     .split('\n')
@@ -162,12 +170,12 @@ export function isPatchOnlyBaselineUpdate(patch?: string): boolean {
 
   return changedLines.every(line => {
     if (!line) return true;
-    return BASELINE_OUTPUT_PATTERNS.some(pattern => pattern.test(line));
+    return NON_SUBSTANTIVE_PATTERNS.some(pattern => pattern.test(line));
   });
 }
 
 /**
- * Strips out Baseline status and browser support lines from a diff patch,
+ * Strips out Baseline status, browser support, and non-substantive lines from a diff patch,
  * leaving only substantive code and documentation changes.
  */
 export function stripBaselineLinesFromPatch(patch?: string): string {
@@ -176,11 +184,26 @@ export function stripBaselineLinesFromPatch(patch?: string): string {
   const filtered = lines.filter(line => {
     if ((line.startsWith('+') || line.startsWith('-')) && !line.startsWith('+++') && !line.startsWith('---')) {
       const content = line.slice(1).trim();
-      return !BASELINE_OUTPUT_PATTERNS.some(pattern => pattern.test(content));
+      if (!content) return false;
+      return !NON_SUBSTANTIVE_PATTERNS.some(pattern => pattern.test(content));
     }
     return true;
   });
   return filtered.join('\n');
+}
+
+/**
+ * Determines whether a patch contains substantive guide modifications.
+ */
+export function hasSubstantiveGuideChanges(patch?: string): boolean {
+  if (!patch) return false;
+  const substantive = stripBaselineLinesFromPatch(patch);
+  const changedLines = substantive
+    .split('\n')
+    .filter(l => (l.startsWith('+') || l.startsWith('-')) && !l.startsWith('+++') && !l.startsWith('---'))
+    .map(l => l.slice(1).trim())
+    .filter(Boolean);
+  return changedLines.length > 0;
 }
 
 function formatList(items: string[]): string {
@@ -215,6 +238,10 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
     .filter(l => l.startsWith('-') && !l.startsWith('---'))
     .map(l => l.slice(1).trim());
 
+  const allStrippedLines = hunk
+    .split('\n')
+    .map(l => l.replace(/^[+-]/, '').trim());
+
   let featureName = '';
   let statusRank = 3;
   let statusDescription = 'Updated browser engine support';
@@ -236,11 +263,15 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
     }
   }
 
-  // 2. If status line didn't change (e.g. engine update in Limited status), extract featureName from hunk context
+  // 2. If status line didn't change (e.g. engine update in Limited status), extract featureName from context lines
   if (!featureName) {
-    const match = hunk.match(/(?:Baseline status for\s+(.+?):|(.+?)\s+has limited availability)/i);
-    if (match) {
-      featureName = (match[1] || match[2]).trim();
+    const candidateLine = addedLines.find(l => /has limited availability/i.test(l) || /Baseline status for/i.test(l))
+      || allStrippedLines.find(l => /has limited availability/i.test(l) || /Baseline status for/i.test(l));
+    if (candidateLine) {
+      const match = candidateLine.match(/(?:Baseline status for\s+(.+?):|(.+?)\s+has limited availability)/i);
+      if (match) {
+        featureName = (match[1] || match[2]).trim();
+      }
     }
   }
 
@@ -248,6 +279,9 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
   if (!featureName) {
     return null;
   }
+
+  // Clean up any remaining leading/trailing diff symbols or backticks
+  featureName = featureName.replace(/^[+-]\s*/, '').replace(/^`|`$/g, '').trim();
 
   if (statusRank === 3) {
     const addedSupported = addedLines.find(l => l.includes('Supported by:'));
@@ -464,9 +498,14 @@ export function getGuideGithubUrl(guideName: string, ref = 'main'): string | und
 
 /**
  * Formats a guide name as a markdown bold link if a URL is resolved, or plain bold if not.
+ * Formats standalone skills (ending in -skill) as `**[name](url)** skill`.
  */
 export function formatGuideBoldLink(guideName: string, ref = 'main'): string {
   const url = getGuideGithubUrl(guideName, ref);
+  if (guideName.endsWith('-skill')) {
+    const displayName = guideName.slice(0, -'-skill'.length);
+    return url ? `**[${displayName}](${url})** skill` : `**${displayName}** skill`;
+  }
   return url ? `**[${guideName}](${url})**` : `**${guideName}**`;
 }
 
@@ -475,7 +514,16 @@ const featureNameToIdMap = new Map<string, string>();
 for (const [id, f] of Object.entries(features)) {
   if (f.kind === 'feature') {
     featureNameToIdMap.set(f.name, id);
+    featureNameToIdMap.set(id, id);
   }
+}
+
+/**
+ * Escapes special HTML characters so feature names like <select> or <details>
+ * don't get interpreted as HTML tags in Markdown.
+ */
+export function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /**
@@ -495,12 +543,14 @@ export function getWebStatusUrl(featureName: string): string | undefined {
 
 /**
  * Formats a web feature name as a markdown bold link to webstatus.dev if resolved, or plain bold if not.
+ * Escapes HTML characters (e.g. <details>, <select>) to ensure valid Markdown rendering.
  */
 export function formatWebFeatureBoldLink(featureName: string, featureId?: string): string {
   const resolvedId = featureId || resolveWebFeatureId(featureName);
+  const escapedName = escapeHtml(featureName);
   return resolvedId
-    ? `**[${featureName}](https://webstatus.dev/features/${resolvedId})**`
-    : `**${featureName}**`;
+    ? `**[${escapedName}](https://webstatus.dev/features/${resolvedId})**`
+    : `**${escapedName}**`;
 }
 
 /**
@@ -508,7 +558,8 @@ export function formatWebFeatureBoldLink(featureName: string, featureId?: string
  */
 export function formatGuideCodeLink(guideName: string, ref = 'main'): string {
   const url = getGuideGithubUrl(guideName, ref);
-  return url ? `[\`${guideName}\`](${url})` : `\`${guideName}\``;
+  const displayName = guideName.endsWith('-skill') ? guideName.slice(0, -'-skill'.length) : guideName;
+  return url ? `[\`${displayName}\`](${url})` : `\`${displayName}\``;
 }
 
 /**
@@ -553,7 +604,7 @@ export function classifyChanges(records: RawChangeRecord[]): ClassifiedChanges {
           if (hasBaselineUpdateInPatch(patch)) {
             baselineUpdates.push(...parseBaselineUpdatesFromPatch(guideName, patch));
           }
-          if (!isPatchOnlyBaselineUpdate(patch)) {
+          if (hasSubstantiveGuideChanges(patch)) {
             const renameNote = oldGuideName !== guideName
               ? ` (Renamed from ${oldPath || oldGuideName})`
               : '';
@@ -575,7 +626,7 @@ export function classifyChanges(records: RawChangeRecord[]): ClassifiedChanges {
         if (hasBaselineUpdateInPatch(patch)) {
           baselineUpdates.push(...parseBaselineUpdatesFromPatch(guideName, patch));
         }
-        if (!isPatchOnlyBaselineUpdate(patch)) {
+        if (hasSubstantiveGuideChanges(patch)) {
           const substantivePatch = stripBaselineLinesFromPatch(patch);
           modifiedGuidePatches.push(`--- ${relPath} (${status}) ---\n${substantivePatch}`);
           modifiedGuideNamesSet.add(guideName);

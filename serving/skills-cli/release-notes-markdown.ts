@@ -10,7 +10,7 @@ import {
   type EvalSummaryItem,
 } from './release-notes-diff.ts';
 
-function escapeRegExp(string: string): string {
+export function escapeRegExp(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
@@ -31,23 +31,36 @@ export function linkifyGuideBullets(bullets: string[], guideNames: string[], ref
       // Skip if this URL is already linked in the bullet
       if (result.includes(`](${url})`)) continue;
 
-      // Replace bold markdown: **guideName**
-      const exactBoldRegex = new RegExp(`(?<!\\[)\\*\\*${escapeRegExp(guideName)}\\*\\*(?!\\]\\()`, 'gi');
-      if (exactBoldRegex.test(result)) {
-        result = result.replace(exactBoldRegex, (match) => {
-          const inner = match.slice(2, -2);
-          return `**[${inner}](${url})**`;
-        });
-        continue;
+      const candidates = [guideName];
+      if (guideName.endsWith('-skill')) {
+        candidates.push(guideName.slice(0, -'-skill'.length));
       }
 
-      // Replace code markdown: `guideName` (case-sensitive to avoid false positives on API symbols)
-      const codeRegex = new RegExp(`(?<!\\[)\`${escapeRegExp(guideName)}\`(?!\\]\\()`, 'g');
-      if (codeRegex.test(result)) {
-        result = result.replace(codeRegex, (match) => {
-          return `[${match}](${url})`;
-        });
+      let matched = false;
+      for (const nameToMatch of candidates) {
+        // Replace bold markdown: **nameToMatch**
+        const exactBoldRegex = new RegExp(`(?<!\\[)\\*\\*${escapeRegExp(nameToMatch)}\\*\\*(?!\\]\\()`, 'gi');
+        if (exactBoldRegex.test(result)) {
+          result = result.replace(exactBoldRegex, (match) => {
+            const inner = match.slice(2, -2);
+            return `**[${inner}](${url})**`;
+          });
+          matched = true;
+          break;
+        }
+
+        // Replace code markdown: `nameToMatch` (case-sensitive to avoid false positives on API symbols)
+        const codeRegex = new RegExp(`(?<!\\[)\`${escapeRegExp(nameToMatch)}\`(?!\\]\\()`, 'g');
+        if (codeRegex.test(result)) {
+          result = result.replace(codeRegex, (match) => {
+            return `[${match}](${url})`;
+          });
+          matched = true;
+          break;
+        }
       }
+
+      if (matched) continue;
     }
     return result;
   });
