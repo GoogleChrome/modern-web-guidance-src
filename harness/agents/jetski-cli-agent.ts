@@ -444,7 +444,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           const strings = getProtoStrings(proto);
           const modelCandidate = strings.find(s => /^gemini/i.test(s));
           if (modelCandidate) {
-            modelName = modelCandidate;
+            modelName = modelCandidate.split('|')[0].trim();
             break;
           }
         }

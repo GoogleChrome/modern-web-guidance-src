@@ -5,8 +5,12 @@ import matter from 'gray-matter';
 const guidesDir = path.resolve('../guides');
 const outputFilePath = path.resolve('./features_mapping.gen.js');
 
+/** @type {Record<string, string[]>} */
 const mapping = {}; // usecase -> [feature_ids]
 
+/**
+ * @param {string} dir
+ */
 function scanDir(dir) {
   const items = fs.readdirSync(dir, { withFileTypes: true });
   for (const item of items) {
