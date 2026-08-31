@@ -1,5 +1,5 @@
 ---
-name: ring
+name: progress-ring
 description: Build a progress ring component that visually represents the completion status of a task or process, with support for content in the center and brand-consistent styling.
 web-feature-ids:
   - progress
@@ -30,7 +30,7 @@ Use a wrapper to hold both the visual ring and the optional center content. The 
 
 ```html
 <div class="ring-wrapper">
-  <progress value="75" max="100" aria-label="Task progress" class="ring"></progress>
+  <progress value="75" max="100" aria-label="Task progress" class="progress-ring"></progress>
   <!-- Optional: Content to display in the center -->
   <div class="ring-content">
     75%
@@ -68,13 +68,13 @@ progress.loading-spinner:indeterminate::slider-fill {
 The wrapper provides the positioning context. The `<progress>` element handles the visual gradient.
 
 ```css
-.ring-wrapper {
+.progress-ring-wrapper {
   position: relative;
   display: grid;
   place-items: center;
 }
 
-progress.ring {
+progress.progress-ring {
   --size: 150px;
   --thickness: 16px;
   --track-color: #f1f5f9;
@@ -97,7 +97,7 @@ progress.ring {
   background-origin: border-box;
 }
 
-.ring-content {
+.progress-ring-content {
   /* Positioned in the center of the wrapper */
   position: absolute;
 }
@@ -107,7 +107,10 @@ You can also use a `radial-gradient` to make rounded end caps.
 
 #### Enable smooth transitions with `@property`
 
-To animate the progress ring smoothly when the value changes, register `--value` as a numeric custom property.
+To animate the progress ring smoothly when the value changes, register `--value` as a numeric custom property. 
+
+Users with motion sensitivities may find the transition between values disorienting. Respect the `prefers-reduced-motion` media query by having a 0 second (immediate) duration by default, and setting a longer time for users with no preference.
+
 
 ```css
 @property --value {
@@ -116,15 +119,18 @@ To animate the progress ring smoothly when the value changes, register `--value`
   initial-value: 0;
 }
 
-progress.ring {
-  transition: --value 0.3s ease-in-out;
+progress.progress-ring {
+  transition: --value 0s ease-in-out;
+  @media (prefers-reduced-motion: no-preference) {
+    transition-duration: 0.4s;
+  }
 }
 
 ```
 
 ### 3. Progress Updates
 
-Update the `value` attribute on the `<progress>` element and the text content of `.ring-content` (if displaying a percentage) whenever the value changes.
+Update the `value` attribute on the `<progress>` element and the text content of `.progress-ring-content` (if displaying a percentage) whenever the value changes.
 
 ### 4. Optional Success State
 
@@ -132,21 +138,8 @@ You can use the CSS attribute selector to automatically update the ring's appear
 
 ```css
 /* Change the fill color to green when the progress reaches 100% */
-progress.ring[value="100"] {
+progress.progress-ring[value="100"] {
   --fill-color: #10b981;
-}
-```
-
-### 5. Respecting Motion Preferences
-
-Users with motion sensitivities may find the transition between values disorienting. Respect the `prefers-reduced-motion` media query by transitioning immediately.
-
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  progress.ring {
-    transition-duration: 0s;
-  }
 }
 ```
 

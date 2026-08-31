@@ -77,6 +77,11 @@
           inherits: false;
           initial-value: 0deg;
         }
+        @property --progress-dash-animation {
+          syntax: "*";
+          inherits: false;
+          initial-value: , progress-dash 3s ease-in-out infinite;
+        }
         /*  Hide native bars */
         progress.loading-spinner:indeterminate::-webkit-progress-bar {
           display: none;
@@ -103,8 +108,7 @@
           --track-color: #e2e5e7;
           --spinner-duration: 1.5s;
           --_used-spinner-duration: var(--spinner-duration);
-          --dash-duration: 3s;
-          --_used-dash-duration: var(--dash-duration);
+
           --spinner-timing: linear;
 
           position: relative;
@@ -135,8 +139,8 @@
           }
 
           animation:
-            progress-spin var(--_used-spinner-duration) linear infinite,
-            progress-dash var(--_used-dash-duration) ease-in-out infinite;
+            progress-spin var(--_used-spinner-duration) linear infinite 
+            var(--progress-dash-animation, );
         }
 
         @keyframes progress-spin {
@@ -206,14 +210,5 @@
         </div>
       </div>
     </div>
-    <script type="module">
-      if (!("registerProperty" in CSS)) {
-        // disable dash animation
-        const spinners = document.querySelectorAll(".loading-spinner");
-        spinners.forEach((spinner) => {
-          spinner.style.setProperty("--dash-duration", "0s");
-        });
-      }
-    </script>
   </body>
 </html>

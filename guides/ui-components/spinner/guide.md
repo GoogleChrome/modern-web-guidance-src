@@ -69,18 +69,22 @@ The spinner uses a `conic-gradient` to create a visual trail.
   inherits: false;
   initial-value: 0deg;
 }
+/* Use a custom property to conditionally include the dash animation */
+@property --progress-dash-animation {
+  syntax: "*";
+  inherits: false;
+  initial-value: , progress-dash 3s ease-in-out infinite;
+}
 
 progress.loading-spinner:indeterminate {
-  --_from: calc(90deg + var(--arc-start));
-  --_to: calc(90deg + var(--arc-end));
+  --_from: calc(90deg + var(--arc-start, 0deg));
+  --_to: calc(90deg + var(--arc-end, 158deg));
   --size: 40px;
   --thickness: 2px;
   --spinner-color: #3b82f6;
   --track-color: #e2e5e7;
   --spinner-duration: 1.5s;
   --_used-spinner-duration: var(--spinner-duration);
-  --dash-duration: 3s;
-  --_used-dash-duration: var(--dash-duration);
   --spinner-timing: linear;
 
   position: relative;
@@ -105,28 +109,10 @@ progress.loading-spinner:indeterminate {
 
   /* ... fallback for background-clip: border-area ... */
 
+  /* The dash animation is only included if @property is supported */
   animation:
-    progress-spin var(--_used-spinner-duration) linear infinite,
-    progress-dash var(--_used-dash-duration) ease-in-out infinite;
-}
-
-@keyframes progress-spin {
-  to { rotate: 1turn; }
-}
-
-@keyframes progress-dash {
-  from {
-    --arc-start: 0deg;
-    --arc-end: 3deg;
-  }
-  50% {
-    --arc-start: 100deg;
-    --arc-end: 358deg;
-  }
-  to {
-    --arc-start: 360deg;
-    --arc-end: 363deg;
-  }
+    progress-spin var(--_used-spinner-duration) linear infinite
+    var(--progress-dash-animation, );
 }
 ```
 
@@ -148,24 +134,7 @@ Users with motion sensitivities may find fast-spinning elements disorienting. Al
 
 {{ FEATURE_FALLBACKS("registered-custom-properties") }}
 
-If `@property` is not supported, the dash animation will not function. You should provide a script to disable the dash animation (allowing it to fall back to a simple rotation) in these browsers.
-
-```js
-if (!("registerProperty" in CSS)) {
-  // disable dash animation
-  const spinners = document.querySelectorAll(".loading-spinner");
-  spinners.forEach((spinner) => {
-    spinner.style.setProperty("--dash-duration", "0s");
-  });
-}
-```
-
-You must also provide fallback values when using the values set by the dash animation.
-
-```css
---_from: calc(90deg + var(--arc-start, 0deg));
---_to: calc(90deg + var(--arc-end, 158deg));
-```
+If `@property` is supported, the dash animation is automatically included via the `--progress-dash-animation` property's `initial-value`. In browsers without `@property` support, the property registration is ignored, and the animation falls back to a simple rotation. No JavaScript is required for this fallback.
 
 {{ FEATURE_FALLBACKS("background-clip-border-area") }}
 

@@ -73,35 +73,30 @@
           initial-value: 0;
         }
         /*  Hide native bars */
-        progress.ring::-webkit-progress-bar {
+        progress.progress-ring::-webkit-progress-bar {
           display: none;
           background: none;
         }
-        progress.ring::-webkit-progress-value {
+        progress.progress-ring::-webkit-progress-value {
           display: none;
           background: none;
         }
-        progress.ring::-moz-progress-bar {
+        progress.progress-ring::-moz-progress-bar {
           display: none;
           background: none;
         }
-        progress.ring::slider-fill {
+        progress.progress-ring::slider-fill {
           display: none;
           background: none;
         }
 
-        .ring-wrapper {
+        .progress-ring-wrapper {
           position: relative;
           display: grid;
           place-items: center;
         }
-        @media (prefers-reduced-motion: reduce) {
-          progress.ring {
-            transition-duration: 0s !important;
-          }
-        }
 
-        progress.ring {
+        progress.progress-ring {
           --size: 150px;
           --thickness: 16px;
           --track-color: #f1f5f9;
@@ -110,7 +105,11 @@
           width: var(--size);
           height: var(--size);
 
-          transition: --value 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: --value 0s cubic-bezier(0.4, 0, 0.2, 1);
+          @media (prefers-reduced-motion: no-preference) {
+            transition-duration: 0.4s !important;
+          }
+          
           border-radius: 50%;
 
           background: conic-gradient(
@@ -132,7 +131,7 @@
           }
         }
 
-        .ring-content {
+        .progress-ring-content {
           position: absolute;
           font-size: 1.5rem;
           font-weight: 800;
@@ -149,15 +148,15 @@
   </head>
   <body>
     <div class="container">
-      <div class="ring-wrapper" id="main-wrapper">
+      <div class="progress-ring-wrapper" id="main-wrapper">
         <progress
-          class="ring"
+          class="progress-ring"
           id="main-progress"
           value="0"
           max="100"
           aria-label="Upload progress"
         ></progress>
-        <div class="ring-content" id="main-content">0%</div>
+        <div class="progress-ring-content" id="main-content">0%</div>
       </div>
 
       <div class="controls">
