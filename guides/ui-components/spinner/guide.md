@@ -56,16 +56,31 @@ progress.loading-spinner:indeterminate::slider-fill {
 ```
 
 #### Spinner Ring and Trail
-The spinner uses a `conic-gradient` to create a visual trail. Use `background-clip: border-area` to constrain the gradient to the border region. 
+The spinner uses a `conic-gradient` to create a visual trail.
 
 ```css
+@property --arc-start {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --arc-end {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
 progress.loading-spinner:indeterminate {
+  --_from: calc(90deg + var(--arc-start));
+  --_to: calc(90deg + var(--arc-end));
   --size: 40px;
   --thickness: 2px;
   --spinner-color: #3b82f6;
   --track-color: #e2e5e7;
-  --spinner-duration: 0.8s;
+  --spinner-duration: 1.5s;
   --_used-spinner-duration: var(--spinner-duration);
+  --dash-duration: 3s;
+  --_used-dash-duration: var(--dash-duration);
   --spinner-timing: linear;
 
   position: relative;
@@ -74,27 +89,46 @@ progress.loading-spinner:indeterminate {
   border-radius: 50%;
   appearance: none;
 
-  /* Create the fading trail */
+  /* Create the fading trail with dynamic angles */
   background: conic-gradient(
-    from 0deg,
-    var(--track-color) 25%,
-    var(--spinner-color) 25%
-  );
+      from var(--_from),
+      var(--spinner-color) calc(var(--_to) - var(--_from)),
+      transparent 0
+    )
+    var(--track-color);
 
-  background-clip: border-area;
-  border: var(--thickness) solid transparent;
-  background-origin: border-box;
+  @supports (background-clip: border-area) {
+    background-clip: border-area;
+    border: var(--thickness) solid transparent;
+    background-origin: border-box;
+  }
 
-  animation: spinner-rotate var(--_used-spinner-duration)
-    var(--spinner-timing) infinite;
+  /* ... fallback for background-clip: border-area ... */
+
+  animation:
+    progress-spin var(--_used-spinner-duration) linear infinite,
+    progress-dash var(--_used-dash-duration) ease-in-out infinite;
 }
 
-@keyframes spinner-rotate {
-  to { transform: rotate(360deg); }
+@keyframes progress-spin {
+  to { rotate: 1turn; }
+}
+
+@keyframes progress-dash {
+  from {
+    --arc-start: 0deg;
+    --arc-end: 3deg;
+  }
+  50% {
+    --arc-start: 100deg;
+    --arc-end: 358deg;
+  }
+  to {
+    --arc-start: 360deg;
+    --arc-end: 363deg;
+  }
 }
 ```
-
-You can also use a `radial-gradient` to make rounded end caps.
 
 #### Respecting Motion Preferences
 
@@ -105,13 +139,33 @@ Users with motion sensitivities may find fast-spinning elements disorienting. Al
   .loading-spinner {
     /* Slow down the animation significantly rather than stopping it entirely,
        so the user still knows that the process is active. */
-    --_used-spinner-duration: 3s;
+    --_used-spinner-duration: 6s;
   }
 }
 ```
-Alternatively, replace the spinner with a static text label for users with `prefers-reduced-motion` enabled.
 
 ## Fallback strategies
+
+{{ FEATURE_FALLBACKS("registered-custom-properties") }}
+
+If `@property` is not supported, the dash animation will not function. You should provide a script to disable the dash animation (allowing it to fall back to a simple rotation) in these browsers.
+
+```js
+if (!("registerProperty" in CSS)) {
+  // disable dash animation
+  const spinners = document.querySelectorAll(".loading-spinner");
+  spinners.forEach((spinner) => {
+    spinner.style.setProperty("--dash-duration", "0s");
+  });
+}
+```
+
+You must also provide fallback values when using the values set by the dash animation.
+
+```css
+--_from: calc(90deg + var(--arc-start, 0deg));
+--_to: calc(90deg + var(--arc-end, 158deg));
+```
 
 {{ FEATURE_FALLBACKS("background-clip-border-area") }}
 

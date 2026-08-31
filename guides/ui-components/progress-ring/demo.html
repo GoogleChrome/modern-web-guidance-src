@@ -73,35 +73,35 @@
           initial-value: 0;
         }
         /*  Hide native bars */
-        progress.progress-ring::-webkit-progress-bar {
+        progress.ring::-webkit-progress-bar {
           display: none;
           background: none;
         }
-        progress.progress-ring::-webkit-progress-value {
+        progress.ring::-webkit-progress-value {
           display: none;
           background: none;
         }
-        progress.progress-ring::-moz-progress-bar {
+        progress.ring::-moz-progress-bar {
           display: none;
           background: none;
         }
-        progress.progress-ring::slider-fill {
+        progress.ring::slider-fill {
           display: none;
           background: none;
         }
 
-        .progress-ring-wrapper {
+        .ring-wrapper {
           position: relative;
           display: grid;
           place-items: center;
         }
         @media (prefers-reduced-motion: reduce) {
-          progress.progress-ring {
+          progress.ring {
             transition-duration: 0s !important;
           }
         }
 
-        progress.progress-ring {
+        progress.ring {
           --size: 150px;
           --thickness: 16px;
           --track-color: #f1f5f9;
@@ -132,7 +132,7 @@
           }
         }
 
-        .progress-ring-content {
+        .ring-content {
           position: absolute;
           font-size: 1.5rem;
           font-weight: 800;
@@ -149,15 +149,15 @@
   </head>
   <body>
     <div class="container">
-      <div class="progress-ring-wrapper" id="main-wrapper">
+      <div class="ring-wrapper" id="main-wrapper">
         <progress
-          class="progress-ring"
+          class="ring"
           id="main-progress"
           value="0"
           max="100"
           aria-label="Upload progress"
         ></progress>
-        <div class="progress-ring-content" id="main-content">0%</div>
+        <div class="ring-content" id="main-content">0%</div>
       </div>
 
       <div class="controls">
@@ -173,16 +173,26 @@
       const content = document.getElementById("main-content");
       const range = document.getElementById("progress-range");
 
+      // Fallback for browsers that don't support advanced attr()
+      if (!CSS.supports("width: attr(value type(<number>))")) {
+        const observer = new MutationObserver(() => {
+          progress.style.setProperty("--value", progress.getAttribute("value"));
+        });
+        observer.observe(progress, {
+          attributes: true,
+          attributeFilter: ["value"],
+        });
+        // Set initial value
+        progress.style.setProperty("--value", progress.getAttribute("value"));
+      }
+
       function update(val) {
         val = parseInt(val, 10);
 
         progress.value = val;
-        if(!CSS.supports('width: attr(value type(<number>))')){
-          progress.style.setProperty("--value", val);
-        }
+
         content.textContent = val + "%";
         range.value = val;
-
       }
 
       range.addEventListener("input", (e) => {

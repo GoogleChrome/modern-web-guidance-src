@@ -1,5 +1,5 @@
 ---
-name: progress-ring
+name: ring
 description: Build a progress ring component that visually represents the completion status of a task or process, with support for content in the center and brand-consistent styling.
 web-feature-ids:
   - progress
@@ -29,10 +29,10 @@ See the {{ GUIDE_REF("spinner") }} for handling indeterminate loading states.
 Use a wrapper to hold both the visual ring and the optional center content. The `<progress>` element remains the semantic source of truth. Use a utility class to visually hide the native progress bar while keeping it accessible.
 
 ```html
-<div class="progress-ring-wrapper">
-  <progress value="75" max="100" aria-label="Task progress" class="progress-ring"></progress>
+<div class="ring-wrapper">
+  <progress value="75" max="100" aria-label="Task progress" class="ring"></progress>
   <!-- Optional: Content to display in the center -->
-  <div class="progress-ring-content">
+  <div class="ring-content">
     75%
   </div>
 </div>
@@ -68,13 +68,13 @@ progress.loading-spinner:indeterminate::slider-fill {
 The wrapper provides the positioning context. The `<progress>` element handles the visual gradient and mask.
 
 ```css
-.progress-ring-wrapper {
+.ring-wrapper {
   position: relative;
   display: grid;
   place-items: center;
 }
 
-progress.progress-ring {
+progress.ring {
   --size: 150px;
   --thickness: 16px;
   --track-color: #f1f5f9;
@@ -97,7 +97,7 @@ progress.progress-ring {
   background-origin: border-box;
 }
 
-.progress-ring-content {
+.ring-content {
   /* Positioned in the center of the wrapper */
   position: absolute;
 }
@@ -116,7 +116,7 @@ To animate the progress ring smoothly when the value changes, register `--value`
   initial-value: 0;
 }
 
-progress.progress-ring {
+progress.ring {
   transition: --value 0.3s ease-in-out;
 }
 
@@ -132,12 +132,11 @@ Update the `value` attribute on the `<progress>` element whenever the value chan
 <script>
   const range = document.getElementById('range');
   const progress = wrapper.querySelector('progress');
-  const content = wrapper.querySelector('.progress-ring-content');
+  const content = wrapper.querySelector('.ring-content');
 
   range.addEventListener('input', (e) => {
     const newValue = e.target.value;
     
-    // Update semantic value
     progress.value = newValue;
     
     // Update optional center content
@@ -148,11 +147,11 @@ Update the `value` attribute on the `<progress>` element whenever the value chan
 
 ### 4. Optional Success State
 
-You can use the CSS `:has()` pseudo-class to automatically update the ring's appearance (e.g., changing the color to green) when the task reaches completion.
+You can use the CSS attribute selector to automatically update the ring's appearance (e.g., changing the color to green) when the task reaches completion.
 
 ```css
 /* Change the fill color to green when the progress reaches 100% */
-progress.progress-ring[value="100"]) {
+progress.ring[value="100"] {
   --fill-color: #10b981;
 }
 ```
@@ -164,7 +163,7 @@ Users with motion sensitivities may find the transition between values disorient
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  progress.progress-ring {
+  progress.ring {
     transition-duration: 0s;
   }
 }
@@ -198,10 +197,16 @@ For browsers that don't yet support `background-clip: border-area`, fall back to
 
 {{ FEATURE_FALLBACKS("attr") }}
 
-For browsers that don't support the `attr()` CSS function for any property, manually set the `--value` CSS property.
+For browsers that don't support the `attr()` CSS function for any property, use a `MutationObserver` to automatically sync the `value` attribute to the `--value` custom property.
 
 ```js
- if(!CSS.supports('width: attr(value type(<number>))')){
-  wrapper.style.setProperty("--value", val);
+if (!CSS.supports("width: attr(value type(<number>))")) {
+  const observer = new MutationObserver(() => {
+    progress.style.setProperty("--value", progress.getAttribute("value"));
+  });
+  observer.observe(progress, {
+    attributes: true,
+    attributeFilter: ["value"],
+  });
 }
 ```

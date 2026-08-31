@@ -67,6 +67,16 @@
       }
 
       @layer component {
+        @property --arc-start {
+          syntax: "<angle>";
+          inherits: false;
+          initial-value: 0deg;
+        }
+        @property --arc-end {
+          syntax: "<angle>";
+          inherits: false;
+          initial-value: 0deg;
+        }
         /*  Hide native bars */
         progress.loading-spinner:indeterminate::-webkit-progress-bar {
           display: none;
@@ -85,12 +95,16 @@
           background: none;
         }
         progress.loading-spinner:indeterminate {
+          --_from: calc(90deg + var(--arc-start, 0deg));
+          --_to: calc(90deg + var(--arc-end, 158deg));
           --size: 40px;
           --thickness: 2px;
           --spinner-color: #3b82f6;
           --track-color: #e2e5e7;
-          --spinner-duration: 0.8s;
+          --spinner-duration: 1.5s;
           --_used-spinner-duration: var(--spinner-duration);
+          --dash-duration: 3s;
+          --_used-dash-duration: var(--dash-duration);
           --spinner-timing: linear;
 
           position: relative;
@@ -99,10 +113,11 @@
           border-radius: 50%;
 
           background: conic-gradient(
-            from 0deg,
-            var(--track-color) 25%,
-            var(--spinner-color) 25%
-          );
+              from var(--_from),
+              var(--spinner-color) calc(var(--_to) - var(--_from)),
+              transparent 0
+            )
+            var(--track-color);
           @supports (background-clip: border-area) {
             background-clip: border-area;
             border: var(--thickness) solid transparent;
@@ -119,19 +134,35 @@
             border: 0;
           }
 
-          animation: spinner-rotate var(--_used-spinner-duration)
-            var(--spinner-timing) infinite;
+          animation:
+            progress-spin var(--_used-spinner-duration) linear infinite,
+            progress-dash var(--_used-dash-duration) ease-in-out infinite;
         }
 
-        @keyframes spinner-rotate {
+        @keyframes progress-spin {
           to {
-            transform: rotate(360deg);
+            rotate: 1turn;
+          }
+        }
+
+        @keyframes progress-dash {
+          from {
+            --arc-start: 0deg;
+            --arc-end: 3deg;
+          }
+          50% {
+            --arc-start: 100deg;
+            --arc-end: 358deg;
+          }
+          to {
+            --arc-start: 360deg;
+            --arc-end: 363deg;
           }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .loading-spinner {
-            --_used-spinner-duration: 3s;
+          progress.loading-spinner:indeterminate {
+            --_used-spinner-duration: 6s;
           }
         }
       }
@@ -155,19 +186,34 @@
       <div class="examples">
         <div id="default-container">
           <div class="label">Default</div>
-            <progress aria-label="Loading" class="loading-spinner"></progress>
+          <progress aria-label="Loading" class="loading-spinner"></progress>
         </div>
 
         <div id="large-container">
           <div class="label">Large</div>
-            <progress aria-label="Loading" class="loading-spinner loading-spinner--large"></progress>
+          <progress
+            aria-label="Loading"
+            class="loading-spinner loading-spinner--large"
+          ></progress>
         </div>
 
         <div id="custom-container">
           <div class="label">Custom</div>
-            <progress aria-label="Loading" class="loading-spinner loading-spinner--custom"></progress>
+          <progress
+            aria-label="Loading"
+            class="loading-spinner loading-spinner--custom"
+          ></progress>
         </div>
       </div>
     </div>
+    <script type="module">
+      if (!("registerProperty" in CSS)) {
+        // disable dash animation
+        const spinners = document.querySelectorAll(".loading-spinner");
+        spinners.forEach((spinner) => {
+          spinner.style.setProperty("--dash-duration", "0s");
+        });
+      }
+    </script>
   </body>
 </html>
