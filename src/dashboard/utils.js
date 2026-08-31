@@ -54,8 +54,8 @@ export function escapeHtml(text) {
 }
 
 /**
- * @param {string} s
- * @returns {string}
+ * @param {string | null | undefined} s
+ * @returns {string | null | undefined}
  */
 export function capitalize(s) {
     if (typeof s !== 'string' || s.length === 0) return s;
@@ -366,6 +366,12 @@ export function $(query, context) {
   return /** @type {E} */ (result);
 }
 
+/**
+ * @param {string} [name]
+ * @param {Record<string, any>} [params]
+ * @param {string} [thought]
+ * @returns {string}
+ */
 export function categorizeActionClient(name, params, thought) {
   const actionName = (name || '').toLowerCase();
   const actionParamsStr = JSON.stringify(params || {}).toLowerCase();
@@ -392,6 +398,10 @@ export function categorizeActionClient(name, params, thought) {
   return 'incidental_noise';
 }
 
+/**
+ * @param {any} summary
+ * @returns {any}
+ */
 export function normalizeTrajectoryClient(summary) {
   if (!summary) return summary;
   if (Array.isArray(summary.steps)) {
@@ -404,6 +414,10 @@ export function normalizeTrajectoryClient(summary) {
   return summary;
 }
 
+/**
+ * @param {Record<string, any> | null | undefined} [testData]
+ * @returns {boolean}
+ */
 export function hasNightlyRuns(testData) {
   if (!testData || typeof testData !== 'object') return false;
   return Object.values(testData).some(t => (t?.testId || '').toLowerCase().includes('nightly'));
