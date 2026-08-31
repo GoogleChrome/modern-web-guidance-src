@@ -1,1 +1,0 @@
-- in index.html, make navigation between views faster by caching the rendered state of inactive views in the DOM instead of destroying and rebuilding them on every navigation.
