@@ -87,7 +87,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 #### The full list
 
 <details>
-<summary><strong>104 modern web features</strong></summary>
+<summary><strong>106 modern web features</strong></summary>
 
 ### CSS & Layout (52 features)
 
@@ -143,7 +143,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 </details>
 
 <details>
-<summary><strong>132 real-world developer use cases</strong></summary>
+<summary><strong>134 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
