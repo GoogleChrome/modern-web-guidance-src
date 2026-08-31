@@ -15,6 +15,6 @@
     "marked": "^18.0.3",
     "serving": "workspace:*",
     "ts-morph": "^27.0.2",
-    "web-features": "^3.35.1"
+    "web-features": "^3.36.0"
   }
 }
