@@ -66,7 +66,7 @@ nav a:target-current {
   </section>
 </main>
 
-<script>
+<script type="module">
   if (CSS.supports('scroll-target-group: auto')) {
     const syncAriaCurrent = () => {
       const currentLink = document.querySelector('nav a:target-current');
@@ -74,8 +74,8 @@ nav a:target-current {
         link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
       });
     };
-    // Update the aria on initial page load.
-    setTimeout(syncAriaCurrent, 10);
+    // Update the aria on initial page load. Ensure the DOM content is loaded, either by using `<script type="module">` or an event listener for `DOMContentLoaded`.
+    syncAriaCurrent();
     // Update the aria after scroll ends
     document.addEventListener('scrollend', syncAriaCurrent);
   }
@@ -88,7 +88,7 @@ nav a:target-current {
 - **DO** ensure targets have unique `id` attributes matching the links' `href` attributes.
 - **DO** provide enough vertical space for sections: `scroll-target-group` most clearly identifies the visible target when sections are large enough that only one or two are visible at a time.
 - **MANDATORY**: For accessibility, the visual state must be mirrored with `aria-current`. While `:target-current` handles the visual aspect, this is not exposed to screen readers.
-- **DO NOT** rely solely on color for the active state: Include other visual cues like font weight, an underline, or an indicator dot to ensure the state is accessible to users with color vision deficiencies.
+- **AVOID** relying solely on color for the active state: Include other visual cues like font weight, an underline, or an indicator dot, or ensure there is sufficient contrast between the colors to ensure the difference is accessible to users with color vision deficiencies.
 
 ## Fallback strategies
 
@@ -113,7 +113,7 @@ For browsers that do not support `scroll-target-group`, you should use a fallbac
             const isActive = link.getAttribute('href') === `#${id}`;
             // Use the escaped colon class for consistent styling
             link.classList.toggle('\:target-current', isActive);
-            link.setAttribute('aria-current', isActive ? 'true' : 'false');
+            link.setAttribute('aria-current', isActive);
           });
         }
       });

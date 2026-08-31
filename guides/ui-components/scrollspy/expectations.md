@@ -1,7 +1,7 @@
 - Navigation links use fragment identifiers (e.g., `href="#section-id"`) that match the unique IDs of their target content sections.
 - The navigation container has `scroll-target-group: auto` applied to enable native browser tracking.
 - Navigation links use the `:target-current` pseudo-class for active state styling (preferably using `:is()` to prevent parsing issues in browsers that don't support `:target-current`).
-- The link corresponding to the section currently in view is visually highlighted with a color change and at least one non-color indicator (like font-weight, underline, or an indicator dot).
+- The link corresponding to the section currently in view is visually highlighted with a color change. The color difference must have sufficient contrast or at least one non-color indicator (like font-weight, underline, or an indicator dot).
 - The `aria-current` attribute is set to `"true"` on the navigation link corresponding to the visible section and `"false"` on all other links.
 - The `aria-current` state is synchronized with the visible section when scrolling stops (e.g., using a `scrollend` event listener).
 - An `IntersectionObserver` fallback applies the `\:target-current` class to the active navigation link in browsers that do not support the native CSS scrollspy features.

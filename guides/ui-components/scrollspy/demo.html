@@ -101,14 +101,14 @@
       </section>
     </main>
 
-    <script>
+    <script type="module">
       const navLinks = document.querySelectorAll("nav a");
       const sections = document.querySelectorAll("section");
       const supportsScrollTargetGroup = CSS.supports(
         "scroll-target-group: auto",
       );
 
-            // We query the native :target-current state to ensure the A11y tree
+      // We query the native :target-current state to ensure the A11y tree
       // matches the visual CSS state exactly.
       const syncAriaCurrent = () => {
         const currentLink = document.querySelector("nav a:target-current");
@@ -120,7 +120,8 @@
 
       if (supportsScrollTargetGroup) {
         // Sync on initial load, but wait for :target-current to be applied.
-        setTimeout(syncAriaCurrent, 10);
+        // setTimeout(syncAriaCurrent, 10);
+        syncAriaCurrent();
         // ALWAYS sync aria-current when scroll stops
         document.addEventListener("scrollend", syncAriaCurrent);
       }
@@ -136,10 +137,7 @@
                   const isActive = link.getAttribute("href") === `#${id}`;
                   link.classList.toggle("\:target-current", isActive);
                   // In fallback mode, we update ARIA immediately since we're already observing
-                  link.setAttribute(
-                    "aria-current",
-                    isActive ? "true" : "false",
-                  );
+                  link.setAttribute("aria-current", isActive);
                 });
               }
             });
