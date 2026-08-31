@@ -2,25 +2,9 @@
 import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey, escapeHtml, $ } from './utils.js';
 
 /**
- * @typedef {import('../harness/lib/metrics.ts').EvalsReport & {
- *   enableSkills?: boolean;
- * }} SuiteReport
- *
- * @typedef {Omit<import('../harness/lib/trajectory-normalizer.ts').StandardizedStep, 'action' | 'outcome'> & {
- *   action?: {
- *     type?: string;
- *     name?: string;
- *     params?: any;
- *     canonicalCategory?: string;
- *   };
- *   outcome?: any;
- *   output?: any;
- *   result?: any;
- * }} CompareStep
- *
- * @typedef {import('../harness/lib/trajectory-normalizer.ts').TrajectorySummary & {
- *   steps: CompareStep[];
- * }} CompareTrajectory
+ * @import { EvalsReport } from '../harness/lib/metrics.ts'
+ * @import { StandardizedStep, TrajectorySummary } from '../harness/lib/trajectory-normalizer.ts'
+ * @import { SelectedTrialPoint, CompareSide, SuiteReport, CompareStep, CompareTrajectory } from './evals.d.ts'
  *
  * @typedef {Object} AlignedStepPair
  * @property {CompareStep | null} stepA
@@ -55,44 +39,37 @@ let activeTask = '';
 let availableTasks = [];
 /** @type {'milestone' | 'raw'} */
 let timelineViewMode = 'milestone'; // 'milestone' | 'raw'
-/** @type {CompareTrajectory | null} */
-let _loadedTrajA = null;
-/** @type {CompareTrajectory | null} */
-let _loadedTrajB = null;
-let _loadedChatA = '';
-let _loadedChatB = '';
-
-// Context parameters
-let trialA = '';
-let trialB = '';
-let runNumA = '1';
-let runNumB = '1';
-let runIndexA = '';
-let runIndexB = '';
 let guideName = '';
 let isStatic = false;
-let agentA = '';
-let modelA = '';
-/** @type {string | null} */
-let scoreAParam = null;
-let agentB = '';
-let modelB = '';
-/** @type {string | null} */
-let scoreBParam = null;
 
-// Live Run Types & Scores
-let runTypeA = 'guided';
-let runTypeB = 'guided';
-let currentScoreA = 0;
-let currentScoreB = 0;
+/**
+ * Factory for creating a side of the trial comparison
+ * @param {'A' | 'B'} key
+ * @param {string} label
+ * @returns {CompareSide}
+ */
+function createCompareSide(key, label) {
+  return {
+    key,
+    label,
+    testId: '',
+    trialId: '',
+    runNum: '1',
+    runIndex: undefined,
+    agent: '',
+    model: '',
+    scoreParam: null,
+    score: 0,
+    runType: 'guided',
+    runDir: '',
+    suiteData: null,
+    trajectory: null,
+    chatLog: '',
+  };
+}
 
-// Parsed run data
-let _runDirA = '';
-let _runDirB = '';
-/** @type {SuiteReport | null} */
-let suiteDataA = null;
-/** @type {SuiteReport | null} */
-let suiteDataB = null;
+const sideA = createCompareSide('A', 'Trial A');
+const sideB = createCompareSide('B', 'Trial B');
 
 /**
  * Robust line-by-line markdown to HTML compiler with ANSI stripping & GFM Table support
@@ -315,48 +292,52 @@ function parseInline(text) {
 }
 
 /**
+ * @param {CompareSide} side
+ * @param {'A' | 'B'} key
+ * @param {URLSearchParams} urlParams
+ */
+function initSideFromParams(side, key, urlParams) {
+  side.trialId = urlParams.get(`trial${key}`) || (key === 'B' ? sideA.trialId : '');
+  side.testId = side.trialId;
+  const rawRunIndex = urlParams.get(`runIndex${key}`);
+  side.runIndex = rawRunIndex ? parseInt(rawRunIndex, 10) : undefined;
+  side.agent = urlParams.get(`agent${key}`) || '';
+  side.model = urlParams.get(`model${key}`) || '';
+  side.scoreParam = urlParams.get(`score${key}`);
+  side.runType = /** @type {'guided' | 'unguided'} */ (urlParams.get(`runType${key}`) || 'guided');
+  side.runNum = urlParams.get(`run${key}`) || (side.runIndex !== undefined ? String(side.runIndex) : (key === 'B' && sideA.trialId === side.trialId ? '2' : '1'));
+}
+
+/**
  * Extract query parameters
  * @returns {boolean}
  */
 function initParams() {
   const urlParams = new URLSearchParams(window.location.search);
-  trialA = urlParams.get('trialA') || '';
-  trialB = urlParams.get('trialB') || trialA;
-  runIndexA = urlParams.get('runIndexA') || '';
-  runIndexB = urlParams.get('runIndexB') || '';
-  runNumA = urlParams.get('runA') || runIndexA || '1';
-  runNumB = urlParams.get('runB') || runIndexB || (trialA === trialB ? '2' : '1');
   guideName = urlParams.get('guide') || '';
   isStatic = urlParams.get('source') === 'static' || window.location.hostname.includes('github.io');
 
-  agentA = urlParams.get('agentA') || '';
-  modelA = urlParams.get('modelA') || '';
-  scoreAParam = urlParams.get('scoreA');
-  agentB = urlParams.get('agentB') || '';
-  modelB = urlParams.get('modelB') || '';
-  scoreBParam = urlParams.get('scoreB');
-
-  runTypeA = urlParams.get('runTypeA') || 'guided';
-  runTypeB = urlParams.get('runTypeB') || 'guided';
+  initSideFromParams(sideA, 'A', urlParams);
+  initSideFromParams(sideB, 'B', urlParams);
 
   // Initialize dropdown selections
   const elA = /** @type {HTMLSelectElement | null} */ (document.getElementById('run-type-a'));
   const elB = /** @type {HTMLSelectElement | null} */ (document.getElementById('run-type-b'));
-  if (elA) elA.value = runTypeA;
-  if (elB) elB.value = runTypeB;
+  if (elA) elA.value = sideA.runType;
+  if (elB) elB.value = sideB.runType;
 
   // Set up dropdown change listeners
   elA?.addEventListener('change', async (e) => {
     const target = /** @type {HTMLSelectElement | null} */ (e.target);
     if (target) {
-      runTypeA = target.value;
+      sideA.runType = /** @type {'guided' | 'unguided'} */ (target.value);
       await handleRunTypeChange();
     }
   });
   elB?.addEventListener('change', async (e) => {
     const target = /** @type {HTMLSelectElement | null} */ (e.target);
     if (target) {
-      runTypeB = target.value;
+      sideB.runType = /** @type {'guided' | 'unguided'} */ (target.value);
       await handleRunTypeChange();
     }
   });
@@ -367,7 +348,7 @@ function initParams() {
     backBtn.href = `guide.html?guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
   }
 
-  if (!trialA || !guideName) {
+  if (!sideA.trialId || !guideName) {
     $('#compare-title').innerText = 'Error: Missing Parameters';
     alert('Missing required parameters: trialA and guide are required.');
     return false;
@@ -491,13 +472,13 @@ async function loadTrialMetadata() {
   }
   
   // Ensure suite directories exist locally
-  await ensureRunDirectories(trialA, trialB);
+  await ensureRunDirectories(sideA.trialId, sideB.trialId);
 
   // Fetch Trial A suite metadata
   try {
-    const responseA = await fetch(`${resultsBase}/${trialA}/evals.json${srcParam}`);
+    const responseA = await fetch(`${resultsBase}/${sideA.trialId}/evals.json${srcParam}`);
     if (responseA.ok) {
-      suiteDataA = /** @type {SuiteReport} */ (await responseA.json());
+      sideA.suiteData = /** @type {SuiteReport} */ (await responseA.json());
     }
   } catch (e) {
     console.error('Failed to load Trial A suite data:', e);
@@ -505,13 +486,13 @@ async function loadTrialMetadata() {
 
   // Fetch Trial B suite metadata
   try {
-    if (trialA !== trialB) {
-      const responseB = await fetch(`${resultsBase}/${trialB}/evals.json${srcParam}`);
+    if (sideA.trialId !== sideB.trialId) {
+      const responseB = await fetch(`${resultsBase}/${sideB.trialId}/evals.json${srcParam}`);
       if (responseB.ok) {
-        suiteDataB = /** @type {SuiteReport} */ (await responseB.json());
+        sideB.suiteData = /** @type {SuiteReport} */ (await responseB.json());
       }
     } else {
-      suiteDataB = suiteDataA;
+      sideB.suiteData = sideA.suiteData;
     }
   } catch (e) {
     console.error('Failed to load Trial B suite data:', e);
@@ -523,8 +504,8 @@ async function loadTrialMetadata() {
   /** @type {Set<string>} */
   const tasksB = new Set();
 
-  if (suiteDataA?.results) {
-    Object.keys(suiteDataA.results).forEach(key => {
+  if (sideA.suiteData?.results) {
+    Object.keys(sideA.suiteData.results).forEach(key => {
       const parsedKey = parseResultKey(key);
       if (parsedKey && parsedKey.guide === guideName) {
         tasksA.add(parsedKey.task);
@@ -532,8 +513,8 @@ async function loadTrialMetadata() {
     });
   }
 
-  if (suiteDataB?.results) {
-    Object.keys(suiteDataB.results).forEach(key => {
+  if (sideB.suiteData?.results) {
+    Object.keys(sideB.suiteData.results).forEach(key => {
       const parsedKey = parseResultKey(key);
       if (parsedKey && parsedKey.guide === guideName) {
         tasksB.add(parsedKey.task);
@@ -588,8 +569,8 @@ function populateSidebar() {
     const btn = document.createElement('button');
     btn.className = `task-btn ${task === activeTask ? 'active' : ''}`;
     
-    const inA = suiteDataA ? checkTaskInSuite(suiteDataA, task) : true;
-    const inB = suiteDataB ? checkTaskInSuite(suiteDataB, task) : true;
+    const inA = sideA.suiteData ? checkTaskInSuite(sideA.suiteData, task) : true;
+    const inB = sideB.suiteData ? checkTaskInSuite(sideB.suiteData, task) : true;
     
     let taskLabel = task;
     if (!inA && inB) {
@@ -608,43 +589,43 @@ function populateSidebar() {
  * @returns {void}
  */
 function updateExecutiveSummary() {
-  const displayRunA = runIndexA ? runIndexA : runNumA;
-  const displayRunB = runIndexB ? runIndexB : runNumB;
+  const displayRunA = sideA.runIndex !== undefined ? sideA.runIndex : sideA.runNum;
+  const displayRunB = sideB.runIndex !== undefined ? sideB.runIndex : sideB.runNum;
 
   // Trial A
-  $('#title-a').innerText = `${trialA.slice(0, 18)} (Run ${displayRunA})`;
-  $('#meta-a').innerText = trialA.includes('test-') ? `Date: ${trialA.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
+  $('#title-a').innerText = `${sideA.trialId.slice(0, 18)} (Run ${displayRunA})`;
+  $('#meta-a').innerText = sideA.trialId.includes('test-') ? `Date: ${sideA.trialId.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   
-  const displayAgentA = agentA || suiteDataA?.agent || 'Unknown';
-  const displayModelA = modelA || suiteDataA?.model || 'Unknown';
+  const displayAgentA = sideA.agent || sideA.suiteData?.agent || 'Unknown';
+  const displayModelA = sideA.model || sideA.suiteData?.model || 'Unknown';
   $('#agent-model-a').innerText = `Agent: ${displayAgentA} | Model: ${displayModelA}`;
 
   // Trial B
-  if (trialA === trialB) {
-    $('#title-b').innerText = `${trialA.slice(0, 18)} (Run ${displayRunB})`;
+  if (sideA.trialId === sideB.trialId) {
+    $('#title-b').innerText = `${sideA.trialId.slice(0, 18)} (Run ${displayRunB})`;
     $('#meta-b').innerText = 'Within-Trial Non-determinism Check';
   } else {
-    $('#title-b').innerText = `${trialB.slice(0, 18)} (Run ${displayRunB})`;
-    $('#meta-b').innerText = trialB.includes('test-') ? `Date: ${trialB.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
+    $('#title-b').innerText = `${sideB.trialId.slice(0, 18)} (Run ${displayRunB})`;
+    $('#meta-b').innerText = sideB.trialId.includes('test-') ? `Date: ${sideB.trialId.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   }
   
-  const displayAgentB = agentB || suiteDataB?.agent || 'Unknown';
-  const displayModelB = modelB || suiteDataB?.model || 'Unknown';
+  const displayAgentB = sideB.agent || sideB.suiteData?.agent || 'Unknown';
+  const displayModelB = sideB.model || sideB.suiteData?.model || 'Unknown';
   $('#agent-model-b').innerText = `Agent: ${displayAgentB} | Model: ${displayModelB}`;
 
   // Calculate Scores for the specific guide across active run types and runs
-  currentScoreA = suiteDataA ? calculateGuideScore(suiteDataA, runNumA, runTypeA) : (scoreAParam !== null ? parseInt(scoreAParam, 10) : 0);
-  currentScoreB = suiteDataB ? calculateGuideScore(suiteDataB, runNumB, runTypeB) : (scoreBParam !== null ? parseInt(scoreBParam, 10) : 0);
+  sideA.score = sideA.suiteData ? calculateGuideScore(sideA.suiteData, sideA.runNum, sideA.runType) : (sideA.scoreParam !== null ? parseInt(sideA.scoreParam, 10) : 0);
+  sideB.score = sideB.suiteData ? calculateGuideScore(sideB.suiteData, sideB.runNum, sideB.runType) : (sideB.scoreParam !== null ? parseInt(sideB.scoreParam, 10) : 0);
 
   const badgeA = $('#score-badge-a');
-  badgeA.innerText = `${currentScoreA}%`;
-  badgeA.className = `score-badge ${currentScoreA >= 70 ? 'score-high' : 'score-low'}`;
+  badgeA.innerText = `${sideA.score}%`;
+  badgeA.className = `score-badge ${sideA.score >= 70 ? 'score-high' : 'score-low'}`;
 
   const badgeB = $('#score-badge-b');
-  badgeB.innerText = `${currentScoreB}%`;
-  badgeB.className = `score-badge ${currentScoreB >= 70 ? 'score-high' : 'score-low'}`;
+  badgeB.innerText = `${sideB.score}%`;
+  badgeB.className = `score-badge ${sideB.score >= 70 ? 'score-high' : 'score-low'}`;
 
-  const delta = currentScoreB - currentScoreA;
+  const delta = sideB.score - sideA.score;
   const deltaText = delta === 0 ? 'No change (0%)' : delta > 0 ? `+${delta}% Improvement` : `${delta}% Regression`;
   const deltaSpan = $('#summary-delta');
   deltaSpan.innerText = deltaText;
@@ -723,23 +704,18 @@ function getRunDateString(trialId) {
 }
 
 /**
- * @param {string} label
- * @param {string} trialId
- * @param {string | number} runNum
- * @param {string} [runType]
- * @param {string} [agent]
- * @param {string} [model]
- * @param {CompareTrajectory | null} [traj]
- * @param {SuiteReport | null} [suiteData]
- * @param {string | number} [overrideRunIndex]
+ * Helper to format human-readable title for split-pane views
+ * @param {CompareSide} side
+ * @param {CompareTrajectory | null} [trajOverride]
  * @returns {string}
  */
-function getFormattedTrialTitle(label, trialId, runNum, runType, agent, model, traj, suiteData, overrideRunIndex) {
-  const dateStr = getRunDateString(trialId);
-  const resolvedAgent = agent && agent !== 'unknown' ? agent : (traj?.agent || suiteData?.agent || 'Unknown Agent');
-  const resolvedModel = (model && model !== 'unknown' ? model : (traj?.model || suiteData?.model || 'Unknown Model')).replace(/^models\//, '');
-  const activeRunNum = overrideRunIndex || runNum;
-  return `${label} (Run ${activeRunNum} - ${capitalize(runType || 'guided')}) — agent: ${resolvedAgent} model: ${resolvedModel} (${dateStr})`;
+function getFormattedTrialTitle(side, trajOverride) {
+  const traj = trajOverride !== undefined ? trajOverride : side.trajectory;
+  const dateStr = getRunDateString(side.trialId);
+  const resolvedAgent = side.agent && side.agent !== 'unknown' ? side.agent : (traj?.agent || side.suiteData?.agent || 'Unknown Agent');
+  const resolvedModel = (side.model && side.model !== 'unknown' ? side.model : (traj?.model || side.suiteData?.model || 'Unknown Model')).replace(/^models\//, '');
+  const activeRunNum = side.runIndex !== undefined ? side.runIndex : side.runNum;
+  return `${side.label} (Run ${activeRunNum} - ${capitalize(side.runType || 'guided')}) — agent: ${resolvedAgent} model: ${resolvedModel} (${dateStr})`;
 }
 
 /**
@@ -754,15 +730,15 @@ async function loadActiveTaskDetails() {
   const resultsBase = isStatic ? 'results' : '';
   
   // Format run directory paths using active run types
-  const pathPartA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
-  const pathPartB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
+  const pathPartA = `${sideA.trialId}/${sideA.runNum}/${guideName}/${activeTask}/${sideA.runType}`;
+  const pathPartB = `${sideB.trialId}/${sideB.runNum}/${guideName}/${activeTask}/${sideB.runType}`;
   
-  _runDirA = `${resultsBase}/${pathPartA}`;
-  _runDirB = `${resultsBase}/${pathPartB}`;
+  sideA.runDir = `${resultsBase}/${pathPartA}`;
+  sideB.runDir = `${resultsBase}/${pathPartB}`;
 
   // Update split-pane column titles to display both run number and run type
-  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, null, suiteDataA, runIndexA);
-  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, null, suiteDataB, runIndexB);
+  const titleAStr = getFormattedTrialTitle(sideA);
+  const titleBStr = getFormattedTrialTitle(sideB);
 
   const timelineTitleA = document.getElementById('timeline-title-a');
   if (timelineTitleA) timelineTitleA.innerText = titleAStr;
@@ -879,8 +855,8 @@ async function loadAssertions(pathA, pathB) {
   } catch (e) {}
 
   // Update Assertion table column headers with task-specific pass rate
-  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, null, suiteDataA, runIndexA);
-  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, null, suiteDataB, runIndexB);
+  const titleAStr = getFormattedTrialTitle(sideA);
+  const titleBStr = getFormattedTrialTitle(sideB);
   if (resultsA.length > 0) {
     const passedA = resultsA.filter(r => r.passed).length;
     const taskScoreA = Math.round((passedA / resultsA.length) * 100);
@@ -1041,10 +1017,10 @@ async function loadTrajectories(pathA, pathB) {
     }
   } catch (e) {}
 
-  _loadedTrajA = trajA;
-  _loadedTrajB = trajB;
-  _loadedChatA = chatA;
-  _loadedChatB = chatB;
+  sideA.trajectory = trajA;
+  sideB.trajectory = trajB;
+  sideA.chatLog = chatA;
+  sideB.chatLog = chatB;
   renderTimelineRows(container, trajA, trajB, chatA, chatB, sessionUrlA, sessionUrlB);
 }
 
@@ -1264,8 +1240,8 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
 
   const { primaryStepA, primaryStepB } = findDivergenceInfo(trajA, trajB);
 
-  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, trajA, suiteDataA, runIndexA);
-  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, trajB, suiteDataB, runIndexB);
+  const titleAStr = getFormattedTrialTitle(sideA, trajA);
+  const titleBStr = getFormattedTrialTitle(sideB, trajB);
 
   const timelineTitleA = document.getElementById('timeline-title-a');
   if (timelineTitleA) timelineTitleA.innerText = titleAStr;
@@ -1602,8 +1578,8 @@ async function runDiagnosticAgent() {
   const statusSpan = $('#summary-status');
   const runBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('run-diagnosis-btn'));
 
-  const relativeA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
-  const relativeB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
+  const relativeA = `${sideA.trialId}/${sideA.runNum}/${guideName}/${activeTask}/${sideA.runType}`;
+  const relativeB = `${sideB.trialId}/${sideB.runNum}/${guideName}/${activeTask}/${sideB.runType}`;
 
   if (runBtn) {
     runBtn.disabled = true;
@@ -1628,7 +1604,7 @@ async function runDiagnosticAgent() {
     if (isStatic) {
       const resultsBase = 'results';
       const fileName = `${guideName}-${activeTask}-guided.md`;
-      const url = `${resultsBase}/${trialA}/variance_diagnoses/${fileName}`;
+      const url = `${resultsBase}/${sideA.trialId}/variance_diagnoses/${fileName}`;
       
       try {
         const response = await fetch(url);
@@ -1643,7 +1619,7 @@ async function runDiagnosticAgent() {
             <div style="font-size:0.9em; margin-top:5px; color:#475569;">
               Running in STATIC mode. On-the-fly LLM comparison is only available when running the dashboard locally via <code>pnpm dashboard</code>.
               To generate this report locally, run:
-              <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ${trialA}/${runNumA}/${guideName}/${activeTask}/guided ${trialB}/${runNumB}/${guideName}/${activeTask}/guided</pre>
+              <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ${sideA.trialId}/${sideA.runNum}/${guideName}/${activeTask}/guided ${sideB.trialId}/${sideB.runNum}/${guideName}/${activeTask}/guided</pre>
             </div>
           `;
           statusSpan.innerText = 'Not Pre-generated';
@@ -1657,10 +1633,10 @@ async function runDiagnosticAgent() {
     }
 
     // Local Mode: Call Node dev server API to run comparison on the fly!
-    const hasTaskA = suiteDataA ? checkTaskInSuite(suiteDataA, activeTask) : true;
-    const hasTaskB = suiteDataB ? checkTaskInSuite(suiteDataB, activeTask) : true;
+    const hasTaskA = sideA.suiteData ? checkTaskInSuite(sideA.suiteData, activeTask) : true;
+    const hasTaskB = sideB.suiteData ? checkTaskInSuite(sideB.suiteData, activeTask) : true;
 
-    if (suiteDataA && suiteDataB && (!hasTaskA || !hasTaskB)) {
+    if (sideA.suiteData && sideB.suiteData && (!hasTaskA || !hasTaskB)) {
       const missingIn = !hasTaskA && !hasTaskB ? 'both trials' : !hasTaskA ? 'Trial A' : 'Trial B';
       const presentIn = !hasTaskA ? 'Trial B' : 'Trial A';
       diagnosisText.innerHTML = `
@@ -1771,8 +1747,8 @@ window.runDiagnosticAgent = runDiagnosticAgent;
  */
 function switchTimelineMode(mode) {
   timelineViewMode = mode;
-  const pathPartA = `${trialA}/${runNumA}/${guideName}/${activeTask}/${runTypeA}`;
-  const pathPartB = `${trialB}/${runNumB}/${guideName}/${activeTask}/${runTypeB}`;
+  const pathPartA = `${sideA.trialId}/${sideA.runNum}/${guideName}/${activeTask}/${sideA.runType}`;
+  const pathPartB = `${sideB.trialId}/${sideB.runNum}/${guideName}/${activeTask}/${sideB.runType}`;
   loadTrajectories(pathPartA, pathPartB);
 }
 window.switchTimelineMode = switchTimelineMode;
@@ -1781,8 +1757,8 @@ window.switchTimelineMode = switchTimelineMode;
  * @returns {void}
  */
 function exportCompareReport() {
-  const titleAStr = getFormattedTrialTitle('Trial A', trialA, runNumA, runTypeA, agentA, modelA, _loadedTrajA, suiteDataA, runIndexA);
-  const titleBStr = getFormattedTrialTitle('Trial B', trialB, runNumB, runTypeB, agentB, modelB, _loadedTrajB, suiteDataB, runIndexB);
+  const titleAStr = getFormattedTrialTitle(sideA);
+  const titleBStr = getFormattedTrialTitle(sideB);
 
   let report = `# Cross-Run Variance Diagnosis & Trajectory Comparison Report\n`;
   report += `Generated: ${new Date().toISOString()}\n`;
@@ -1790,9 +1766,9 @@ function exportCompareReport() {
   report += `Active Task: ${activeTask}\n\n`;
 
   report += `## 1. Executive Summary\n`;
-  report += `- **Trial A**: ${titleAStr} | Score: ${currentScoreA}%\n`;
-  report += `- **Trial B**: ${titleBStr} | Score: ${currentScoreB}%\n`;
-  const delta = currentScoreB - currentScoreA;
+  report += `- **Trial A**: ${titleAStr} | Score: ${sideA.score}%\n`;
+  report += `- **Trial B**: ${titleBStr} | Score: ${sideB.score}%\n`;
+  const delta = sideB.score - sideA.score;
   report += `- **Score Delta**: ${delta === 0 ? 'No change (0%)' : delta > 0 ? `+${delta}% Improvement` : `${delta}% Regression`}\n\n`;
 
   report += `## 2. AI Variance Diagnosis\n`;
@@ -1801,7 +1777,7 @@ function exportCompareReport() {
   report += `${diagText.trim()}\n\n`;
 
   report += `## 3. Assertions Comparison Table\n`;
-  report += `| Assertion Check | Trial A (${currentScoreA}%) | Trial B (${currentScoreB}%) |\n`;
+  report += `| Assertion Check | Trial A (${sideA.score}%) | Trial B (${sideB.score}%) |\n`;
   report += `| :--- | :---: | :---: |\n`;
   const assertRows = document.querySelectorAll('#assert-tbody tr');
   if (assertRows && assertRows.length > 0) {
@@ -1822,11 +1798,11 @@ function exportCompareReport() {
   report += `\n`;
 
   report += `## 4. Trajectory Comparison (${timelineViewMode.toUpperCase()} Mode)\n`;
-  const aligned = alignTrajectorySteps(_loadedTrajA, _loadedTrajB, timelineViewMode);
+  const aligned = alignTrajectorySteps(sideA.trajectory, sideB.trajectory, timelineViewMode);
   if (aligned.length === 0) {
     report += `No trajectory steps available.\n\n`;
   } else {
-    const { primaryStepA, primaryStepB } = findDivergenceInfo(_loadedTrajA, _loadedTrajB);
+    const { primaryStepA, primaryStepB } = findDivergenceInfo(sideA.trajectory, sideB.trajectory);
     aligned.forEach((pair, idx) => {
       const stepNum = idx + 1;
       const isPrimaryA = Boolean(pair.stepA && (typeof pair.stepA.stepNumber === 'number' ? pair.stepA.stepNumber === primaryStepA : stepNum === primaryStepA));
@@ -1905,10 +1881,10 @@ function exportCompareReport() {
     });
   }
 
-  if (_loadedChatA || _loadedChatB) {
+  if (sideA.chatLog || sideB.chatLog) {
     report += `### Final Assistant Output\n\n`;
-    report += `#### Trial A Final Response:\n\`\`\`\n${(_loadedChatA || 'No final response recorded.').trim()}\n\`\`\`\n\n`;
-    report += `#### Trial B Final Response:\n\`\`\`\n${(_loadedChatB || 'No final response recorded.').trim()}\n\`\`\`\n\n`;
+    report += `#### Trial A Final Response:\n\`\`\`\n${(sideA.chatLog || 'No final response recorded.').trim()}\n\`\`\`\n\n`;
+    report += `#### Trial B Final Response:\n\`\`\`\n${(sideB.chatLog || 'No final response recorded.').trim()}\n\`\`\`\n\n`;
   }
 
   report += `## 5. Code Output Comparison\n\n`;
