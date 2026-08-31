@@ -1,1 +1,0 @@
-- Enable faster transitions back to previously visited views in the application by preserving their structural DOM state instead of destroying and rebuilding them on every navigation.
