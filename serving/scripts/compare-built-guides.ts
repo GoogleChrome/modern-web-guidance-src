@@ -31,9 +31,6 @@ function runCommand(cmd: string, cwd?: string): string {
 }
 
 function setupBaselineWorkspace() {
-  mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
-  console.log(`Resolved base git merge ancestor: ${mergeBase}`);
-
   try {
     runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
   } catch (e) {}
@@ -48,7 +45,10 @@ function setupBaselineWorkspace() {
 
     fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
     fs.mkdirSync(BASELINE_DIR, { recursive: true });
-    fs.cpSync(path.join(TEMP_REPO_DIR, "serving/build/guides"), BASELINE_DIR, { recursive: true });
+    const baselineGuidesDir = path.join(TEMP_REPO_DIR, "serving/build/guides");
+    if (fs.existsSync(baselineGuidesDir)) {
+      fs.cpSync(baselineGuidesDir, BASELINE_DIR, { recursive: true });
+    }
   } catch (err) {
     console.error("Fatal: Failed to bootstrap baseline comparison guide assets.", err);
     process.exit(1);
@@ -153,15 +153,18 @@ function cleanupWorkspace() {
 }
 
 function main() {
+  mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
+  console.log(`Resolved base git merge ancestor: ${mergeBase}`);
+
+  const modifiedGuides = getModifiedGuides();
+  if (modifiedGuides.length === 0) {
+    writeReport("### 📝 Built Guides Diff Review\n\nNo modified guides detected compared to baseline.");
+    return;
+  }
+
   setupBaselineWorkspace();
 
   try {
-    const modifiedGuides = getModifiedGuides();
-    if (modifiedGuides.length === 0) {
-      writeReport("### 📝 Built Guides Diff Review\n\nNo modified guides detected compared to baseline.");
-      return;
-    }
-
     const report = compareGuides(modifiedGuides);
     writeReport(report);
   } finally {

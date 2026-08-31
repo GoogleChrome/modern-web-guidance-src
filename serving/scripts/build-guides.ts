@@ -15,9 +15,9 @@ export interface StoreUseCase {
   vector?: number[];
   distance?: number;
 }
-import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
+import { replaceMacros, type BuildTarget, formatTitle } from "../lib/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
@@ -127,6 +127,10 @@ function restoreFromCache(paths: CachePaths, outputDir: string, target: string):
     fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
     fs.copyFileSync(paths.cachedTs, OUTPUT_FILE);
+  } else if (target === 'static-site') {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+    fs.mkdirSync(outputDir, { recursive: true });
+    fs.cpSync(paths.cachedGuides, outputDir, { recursive: true });
   } else {
     fs.mkdirSync(path.join(ROOT_DIR, "lib"), { recursive: true });
     fs.mkdirSync(path.join(ROOT_DIR, "build"), { recursive: true });
@@ -175,13 +179,16 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
 
-  if (modelName) {
-    console.log(`Using custom embedding model: ${modelName}`);
-  }
+  let embedder: any = null;
+  if (TARGET !== 'static-site') {
+    if (modelName) {
+      console.log(`Using custom embedding model: ${modelName}`);
+    }
 
-  const { Embedder } = await import("../lib/transformers-embedder.ts");
-  const embedder = Embedder.getInstance(modelName);
-  await embedder.init();
+    const { Embedder } = await import("../lib/transformers-embedder.ts");
+    embedder = Embedder.getInstance(modelName);
+    await embedder.init();
+  }
 
   if (targetGuidePath) {
     // Single guide mode
@@ -262,7 +269,7 @@ async function processSingleGuideFile(
   id: string,
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
-  embedder: any
+  embedder?: any
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -277,6 +284,27 @@ async function processSingleGuideFile(
   }
 
   const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
+
+  if (TARGET === 'static-site') {
+    const h1Title = extractH1Heading(markdownBody);
+    const title = h1Title || data.title || formatTitle(id);
+    const genericFrontmatter = `---
+title: ${JSON.stringify(title)}
+description: ${JSON.stringify(data.description)}
+category: ${category}
+---`;
+    const bodyWithoutH1 = processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+    const finalContent = `${genericFrontmatter}\n\n# ${title}\n\n${bodyWithoutH1}\n`;
+
+    const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
+    if (!fs.existsSync(buildCategoryDir)) {
+      fs.mkdirSync(buildCategoryDir, { recursive: true });
+    }
+
+    const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
+    fs.writeFileSync(buildFilePath, finalContent);
+    return;
+  }
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
@@ -326,6 +354,8 @@ if (process.argv[1] === import.meta.filename) {
     force: { type: 'boolean' as const },
     model: { type: 'string' as const },
     'no-chunking': { type: 'boolean' as const },
+    target: { type: 'string' as const },
+    output: { type: 'string' as const },
   };
 
   const { values, positionals } = parseArgs({ options, allowPositionals: true });
@@ -334,12 +364,18 @@ if (process.argv[1] === import.meta.filename) {
   const force = values.force;
   const noChunking = values['no-chunking'];
   const modelName = values.model;
+  const target = values.target as BuildTarget | undefined;
+  const output = values.output;
 
   processGuides({
-    outputDir: path.join(ROOT_DIR, "build"),
+    outputDir: output ? path.resolve(WORKSPACE_ROOT, output) : path.join(ROOT_DIR, "build"),
+    target,
     force,
     targetGuidePath,
     modelName,
     noChunking
-  }).catch(console.error);
+  }).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

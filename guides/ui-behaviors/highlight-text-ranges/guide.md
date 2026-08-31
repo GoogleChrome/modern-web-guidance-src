@@ -5,6 +5,8 @@ web-feature-ids:
   - highlight
 ---
 
+# Highlight Text Ranges
+
 The CSS Custom Highlight API lets you style arbitrary text ranges on a page without modifying the DOM structure. This enables search-result highlighting, syntax coloring, collaborative editing cursors, or spelling and grammar error markers without wrapping text in extra elements or relying on `innerHTML` manipulation.
 
 ### Core implementation
