@@ -257,7 +257,7 @@ export function formatTestName(name) {
 // Google Identity Services (OAuth) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
 /** @type {string | null} */
-let accessToken = typeof localStorage !== 'undefined' ? localStorage.getItem('gcs_access_token') : null;
+let accessToken = typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function' ? localStorage.getItem('gcs_access_token') : null;
 
 /**
  * @returns {string | null}
