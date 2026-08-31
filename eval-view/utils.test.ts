@@ -1,5 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
+import type { ScenarioCheck } from "../harness/lib/metrics.ts";
 import {
   getRunStats,
   getColor,
@@ -17,7 +18,12 @@ describe("eval-view utils", () => {
     assert.deepStrictEqual(getRunStats([]), { rate: 0, passed: 0, total: 0 });
     assert.deepStrictEqual(getRunStats(null), { rate: 0, passed: 0, total: 0 });
 
-    const checks = [{ passed: true }, { passed: false }, { passed: true }, { passed: true }];
+    const checks: ScenarioCheck[] = [
+      { id: "1", message: "", passed: true },
+      { id: "2", message: "", passed: false },
+      { id: "3", message: "", passed: true },
+      { id: "4", message: "", passed: true }
+    ];
     assert.deepStrictEqual(getRunStats(checks), { rate: 75, passed: 3, total: 4 });
   });
 
@@ -49,6 +55,7 @@ describe("eval-view utils", () => {
     assert.strictEqual(parseResultKey("invalid"), null);
 
     const parsed = parseResultKey("anchor-tooltip - anchor-positioning - guided");
+    assert.ok(parsed);
     assert.strictEqual(parsed.task, "anchor-tooltip");
     assert.strictEqual(parsed.guide, "anchor-positioning");
     assert.strictEqual(parsed.runType, "guided");
