@@ -4,11 +4,11 @@ import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey, 
 /**
  * @import { EvalsReport } from '../harness/lib/metrics.ts'
  * @import { StandardizedStep, TrajectorySummary } from '../harness/lib/trajectory-normalizer.ts'
- * @import { SelectedTrialPoint, CompareSide, SuiteReport, CompareStep, CompareTrajectory } from './evals.d.ts'
+ * @import { CompareSide, TrialSelection } from './evals.d.ts'
  *
  * @typedef {Object} AlignedStepPair
- * @property {CompareStep | null} stepA
- * @property {CompareStep | null} stepB
+ * @property {StandardizedStep | null} stepA
+ * @property {StandardizedStep | null} stepB
  *
  * @typedef {Object} DivergenceInfo
  * @property {number | null} primaryStepA
@@ -45,31 +45,34 @@ let isStatic = false;
 /**
  * Factory for creating a side of the trial comparison
  * @param {'A' | 'B'} key
- * @param {string} label
  * @returns {CompareSide}
  */
-function createCompareSide(key, label) {
+function createCompareSide(key) {
   return {
     key,
-    label,
     testId: '',
-    trialId: '',
-    runNum: '1',
-    runIndex: undefined,
+    runNumber: 1,
+    runType: 'guided',
     agent: '',
     model: '',
-    scoreParam: null,
     score: 0,
-    runType: 'guided',
-    runDir: '',
     suiteData: null,
     trajectory: null,
     chatLog: '',
   };
 }
 
-const sideA = createCompareSide('A', 'Trial A');
-const sideB = createCompareSide('B', 'Trial B');
+const sideA = createCompareSide('A');
+const sideB = createCompareSide('B');
+
+/**
+ * Encapsulates the relative directory path for a trial run.
+ * @param {CompareSide} side
+ * @returns {string}
+ */
+function getTrialPath(side) {
+  return `${side.testId}/${side.runNumber}/${guideName}/${activeTask}/${side.runType}`;
+}
 
 /**
  * Robust line-by-line markdown to HTML compiler with ANSI stripping & GFM Table support
@@ -292,20 +295,27 @@ function parseInline(text) {
 }
 
 /**
+ * Parses URL query parameters into a validated CompareSide domain object.
  * @param {CompareSide} side
  * @param {'A' | 'B'} key
  * @param {URLSearchParams} urlParams
+ * @param {CompareSide} [fallbackSide]
  */
-function initSideFromParams(side, key, urlParams) {
-  side.trialId = urlParams.get(`trial${key}`) || (key === 'B' ? sideA.trialId : '');
-  side.testId = side.trialId;
-  const rawRunIndex = urlParams.get(`runIndex${key}`);
-  side.runIndex = rawRunIndex ? parseInt(rawRunIndex, 10) : undefined;
+function parseSideFromUrl(side, key, urlParams, fallbackSide) {
+  const testId = urlParams.get(`trial${key}`) || fallbackSide?.testId || '';
+  const rawRun = urlParams.get(`runIndex${key}`) || urlParams.get(`run${key}`);
+  const defaultRun = fallbackSide && fallbackSide.testId === testId ? 2 : 1;
+  const parsedRun = rawRun ? parseInt(rawRun, 10) : defaultRun;
+  const rawScore = urlParams.get(`score${key}`);
+  const parsedScore = rawScore !== null ? parseInt(rawScore, 10) : 0;
+  const rawType = urlParams.get(`runType${key}`);
+
+  side.testId = testId;
+  side.runNumber = Number.isNaN(parsedRun) ? defaultRun : parsedRun;
+  side.runType = rawType === 'unguided' ? 'unguided' : 'guided';
   side.agent = urlParams.get(`agent${key}`) || '';
   side.model = urlParams.get(`model${key}`) || '';
-  side.scoreParam = urlParams.get(`score${key}`);
-  side.runType = /** @type {'guided' | 'unguided'} */ (urlParams.get(`runType${key}`) || 'guided');
-  side.runNum = urlParams.get(`run${key}`) || (side.runIndex !== undefined ? String(side.runIndex) : (key === 'B' && sideA.trialId === side.trialId ? '2' : '1'));
+  side.score = Number.isNaN(parsedScore) ? 0 : parsedScore;
 }
 
 /**
@@ -317,8 +327,8 @@ function initParams() {
   guideName = urlParams.get('guide') || '';
   isStatic = urlParams.get('source') === 'static' || window.location.hostname.includes('github.io');
 
-  initSideFromParams(sideA, 'A', urlParams);
-  initSideFromParams(sideB, 'B', urlParams);
+  parseSideFromUrl(sideA, 'A', urlParams);
+  parseSideFromUrl(sideB, 'B', urlParams, sideA);
 
   // Initialize dropdown selections
   const elA = /** @type {HTMLSelectElement | null} */ (document.getElementById('run-type-a'));
@@ -348,7 +358,7 @@ function initParams() {
     backBtn.href = `guide.html?guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
   }
 
-  if (!sideA.trialId || !guideName) {
+  if (!sideA.testId || !guideName) {
     $('#compare-title').innerText = 'Error: Missing Parameters';
     alert('Missing required parameters: trialA and guide are required.');
     return false;
@@ -459,6 +469,24 @@ async function ensureRunDirectories(dirA, dirB) {
 }
 
 /**
+ * Helper to fetch suite metadata for a test ID.
+ * @param {string} testId
+ * @param {string} resultsBase
+ * @param {string} srcParam
+ * @returns {Promise<EvalsReport | null>}
+ */
+async function loadSuiteData(testId, resultsBase, srcParam) {
+  if (!testId) return null;
+  try {
+    const res = await fetch(`${resultsBase}/${testId}/evals.json${srcParam}`);
+    if (res.ok) return /** @type {EvalsReport} */ (await res.json());
+  } catch (e) {
+    console.error(`Failed to load suite data for ${testId}:`, e);
+  }
+  return null;
+}
+
+/**
  * @returns {Promise<void>}
  */
 async function loadTrialMetadata() {
@@ -470,33 +498,15 @@ async function loadTrialMetadata() {
     guideLinkEl.innerText = guideName;
     guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'local' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
   }
-  
+
   // Ensure suite directories exist locally
-  await ensureRunDirectories(sideA.trialId, sideB.trialId);
+  await ensureRunDirectories(sideA.testId, sideB.testId);
 
-  // Fetch Trial A suite metadata
-  try {
-    const responseA = await fetch(`${resultsBase}/${sideA.trialId}/evals.json${srcParam}`);
-    if (responseA.ok) {
-      sideA.suiteData = /** @type {SuiteReport} */ (await responseA.json());
-    }
-  } catch (e) {
-    console.error('Failed to load Trial A suite data:', e);
-  }
-
-  // Fetch Trial B suite metadata
-  try {
-    if (sideA.trialId !== sideB.trialId) {
-      const responseB = await fetch(`${resultsBase}/${sideB.trialId}/evals.json${srcParam}`);
-      if (responseB.ok) {
-        sideB.suiteData = /** @type {SuiteReport} */ (await responseB.json());
-      }
-    } else {
-      sideB.suiteData = sideA.suiteData;
-    }
-  } catch (e) {
-    console.error('Failed to load Trial B suite data:', e);
-  }
+  // Fetch suite metadata for Side A and Side B
+  sideA.suiteData = await loadSuiteData(sideA.testId, resultsBase, srcParam);
+  sideB.suiteData = sideA.testId === sideB.testId
+    ? sideA.suiteData
+    : await loadSuiteData(sideB.testId, resultsBase, srcParam);
 
   // Determine tasks belonging to this guide in Trial A and Trial B
   /** @type {Set<string>} */
@@ -547,7 +557,7 @@ async function loadTrialMetadata() {
 }
 
 /**
- * @param {SuiteReport | null | undefined} suiteData
+ * @param {EvalsReport | null | undefined} suiteData
  * @param {string} task
  * @returns {boolean}
  */
@@ -589,24 +599,21 @@ function populateSidebar() {
  * @returns {void}
  */
 function updateExecutiveSummary() {
-  const displayRunA = sideA.runIndex !== undefined ? sideA.runIndex : sideA.runNum;
-  const displayRunB = sideB.runIndex !== undefined ? sideB.runIndex : sideB.runNum;
-
   // Trial A
-  $('#title-a').innerText = `${sideA.trialId.slice(0, 18)} (Run ${displayRunA})`;
-  $('#meta-a').innerText = sideA.trialId.includes('test-') ? `Date: ${sideA.trialId.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
+  $('#title-a').innerText = `${sideA.testId.slice(0, 18)} (Run ${sideA.runNumber})`;
+  $('#meta-a').innerText = sideA.testId.includes('test-') ? `Date: ${sideA.testId.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   
   const displayAgentA = sideA.agent || sideA.suiteData?.agent || 'Unknown';
   const displayModelA = sideA.model || sideA.suiteData?.model || 'Unknown';
   $('#agent-model-a').innerText = `Agent: ${displayAgentA} | Model: ${displayModelA}`;
 
   // Trial B
-  if (sideA.trialId === sideB.trialId) {
-    $('#title-b').innerText = `${sideA.trialId.slice(0, 18)} (Run ${displayRunB})`;
+  if (sideA.testId === sideB.testId) {
+    $('#title-b').innerText = `${sideA.testId.slice(0, 18)} (Run ${sideB.runNumber})`;
     $('#meta-b').innerText = 'Within-Trial Non-determinism Check';
   } else {
-    $('#title-b').innerText = `${sideB.trialId.slice(0, 18)} (Run ${displayRunB})`;
-    $('#meta-b').innerText = sideB.trialId.includes('test-') ? `Date: ${sideB.trialId.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
+    $('#title-b').innerText = `${sideB.testId.slice(0, 18)} (Run ${sideB.runNumber})`;
+    $('#meta-b').innerText = sideB.testId.includes('test-') ? `Date: ${sideB.testId.replace('test-', '').slice(0, 10)}` : 'Historical Suite';
   }
   
   const displayAgentB = sideB.agent || sideB.suiteData?.agent || 'Unknown';
@@ -614,8 +621,12 @@ function updateExecutiveSummary() {
   $('#agent-model-b').innerText = `Agent: ${displayAgentB} | Model: ${displayModelB}`;
 
   // Calculate Scores for the specific guide across active run types and runs
-  sideA.score = sideA.suiteData ? calculateGuideScore(sideA.suiteData, sideA.runNum, sideA.runType) : (sideA.scoreParam !== null ? parseInt(sideA.scoreParam, 10) : 0);
-  sideB.score = sideB.suiteData ? calculateGuideScore(sideB.suiteData, sideB.runNum, sideB.runType) : (sideB.scoreParam !== null ? parseInt(sideB.scoreParam, 10) : 0);
+  if (sideA.suiteData) {
+    sideA.score = calculateGuideScore(sideA.suiteData, sideA.runNumber, sideA.runType);
+  }
+  if (sideB.suiteData) {
+    sideB.score = calculateGuideScore(sideB.suiteData, sideB.runNumber, sideB.runType);
+  }
 
   const badgeA = $('#score-badge-a');
   badgeA.innerText = `${sideA.score}%`;
@@ -639,27 +650,26 @@ function updateExecutiveSummary() {
 }
 
 /**
- * @param {SuiteReport | null | undefined} suiteData
- * @param {string | number} runNum
+ * @param {EvalsReport | null | undefined} suiteData
+ * @param {number} runNumber
  * @param {string} [runType]
  * @returns {number}
  */
-function calculateGuideScore(suiteData, runNum, runType) {
+function calculateGuideScore(suiteData, runNumber, runType) {
   if (!suiteData || !suiteData.results) return 0;
   
   let totalAsserts = 0;
   let passedAsserts = 0;
   
   const targetRunType = runType || 'guided';
-  const targetRunNum = typeof runNum === 'number' ? runNum : parseInt(runNum, 10);
 
   Object.keys(suiteData.results).forEach(key => {
     const parsedKey = parseResultKey(key);
     if (!parsedKey) return;
     if (parsedKey.guide === guideName && parsedKey.runType === targetRunType) {
       const runs = suiteData.results[key] || [];
-      const matchingRuns = (!isNaN(targetRunNum) && runs.some(r => r.runNumber === targetRunNum))
-        ? runs.filter(r => r.runNumber === targetRunNum)
+      const matchingRuns = (!isNaN(runNumber) && runs.some(r => r.runNumber === runNumber))
+        ? runs.filter(r => r.runNumber === runNumber)
         : runs;
 
       matchingRuns.forEach(r => {
@@ -692,30 +702,29 @@ async function switchTask(task) {
 }
 
 /**
- * @param {string | null | undefined} trialId
+ * @param {string | null | undefined} testId
  * @returns {string}
  */
-function getRunDateString(trialId) {
-  if (!trialId) return 'Unknown Date';
-  const match = trialId.match(/\d{4}-\d{2}-\d{2}/);
+function getRunDateString(testId) {
+  if (!testId) return 'Unknown Date';
+  const match = testId.match(/\d{4}-\d{2}-\d{2}/);
   if (match) return match[0];
-  if (trialId.includes('test-')) return trialId.replace('test-', '').slice(0, 10);
-  return trialId.slice(0, 12);
+  if (testId.includes('test-')) return testId.replace('test-', '').slice(0, 10);
+  return testId.slice(0, 12);
 }
 
 /**
  * Helper to format human-readable title for split-pane views
  * @param {CompareSide} side
- * @param {CompareTrajectory | null} [trajOverride]
+ * @param {TrajectorySummary | null} [trajOverride]
  * @returns {string}
  */
 function getFormattedTrialTitle(side, trajOverride) {
   const traj = trajOverride !== undefined ? trajOverride : side.trajectory;
-  const dateStr = getRunDateString(side.trialId);
+  const dateStr = getRunDateString(side.testId);
   const resolvedAgent = side.agent && side.agent !== 'unknown' ? side.agent : (traj?.agent || side.suiteData?.agent || 'Unknown Agent');
   const resolvedModel = (side.model && side.model !== 'unknown' ? side.model : (traj?.model || side.suiteData?.model || 'Unknown Model')).replace(/^models\//, '');
-  const activeRunNum = side.runIndex !== undefined ? side.runIndex : side.runNum;
-  return `${side.label} (Run ${activeRunNum} - ${capitalize(side.runType || 'guided')}) — agent: ${resolvedAgent} model: ${resolvedModel} (${dateStr})`;
+  return `Trial ${side.key} (Run ${side.runNumber} - ${capitalize(side.runType)}) — agent: ${resolvedAgent} model: ${resolvedModel} (${dateStr})`;
 }
 
 /**
@@ -727,14 +736,8 @@ async function loadActiveTaskDetails() {
   $('#tab-content-timeline').style.display = 'none';
   $('#tab-content-code').style.display = 'none';
 
-  const resultsBase = isStatic ? 'results' : '';
-  
-  // Format run directory paths using active run types
-  const pathPartA = `${sideA.trialId}/${sideA.runNum}/${guideName}/${activeTask}/${sideA.runType}`;
-  const pathPartB = `${sideB.trialId}/${sideB.runNum}/${guideName}/${activeTask}/${sideB.runType}`;
-  
-  sideA.runDir = `${resultsBase}/${pathPartA}`;
-  sideB.runDir = `${resultsBase}/${pathPartB}`;
+  const pathPartA = getTrialPath(sideA);
+  const pathPartB = getTrialPath(sideB);
 
   // Update split-pane column titles to display both run number and run type
   const titleAStr = getFormattedTrialTitle(sideA);
@@ -915,7 +918,7 @@ async function loadAssertions(pathA, pathB) {
 }
 
 /**
- * @param {CompareTrajectory | null | undefined} traj
+ * @param {TrajectorySummary | null | undefined} traj
  * @param {string} pathStr
  * @param {string} resultsBase
  * @returns {Promise<void>}
@@ -962,9 +965,9 @@ async function loadTrajectories(pathA, pathB) {
   const container = $('#tab-content-timeline');
   container.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Loading aligned trajectories...</div>';
 
-  /** @type {CompareTrajectory | null} */
+  /** @type {TrajectorySummary | null} */
   let trajA = null;
-  /** @type {CompareTrajectory | null} */
+  /** @type {TrajectorySummary | null} */
   let trajB = null;
   let chatA = '';
   let chatB = '';
@@ -974,7 +977,7 @@ async function loadTrajectories(pathA, pathB) {
   try {
     const resA = await fetch(`${resultsBase}/${pathA}/trajectory_summary.json${srcParam}`);
     if (resA.ok) {
-      trajA = /** @type {CompareTrajectory} */ (normalizeTrajectoryClient(await resA.json()));
+      trajA = /** @type {TrajectorySummary} */ (normalizeTrajectoryClient(await resA.json()));
       await enrichTrajectorySteps(trajA, pathA, resultsBase);
     }
   } catch (e) {}
@@ -982,7 +985,7 @@ async function loadTrajectories(pathA, pathB) {
   try {
     const resB = await fetch(`${resultsBase}/${pathB}/trajectory_summary.json${srcParam}`);
     if (resB.ok) {
-      trajB = /** @type {CompareTrajectory} */ (normalizeTrajectoryClient(await resB.json()));
+      trajB = /** @type {TrajectorySummary} */ (normalizeTrajectoryClient(await resB.json()));
       await enrichTrajectorySteps(trajB, pathB, resultsBase);
     }
   } catch (e) {}
@@ -1025,22 +1028,22 @@ async function loadTrajectories(pathA, pathB) {
 }
 
 /**
- * @param {CompareTrajectory | CompareStep[] | null | undefined} trajOrStepsA
- * @param {CompareTrajectory | CompareStep[] | null | undefined} trajOrStepsB
+ * @param {TrajectorySummary | StandardizedStep[] | null | undefined} trajOrStepsA
+ * @param {TrajectorySummary | StandardizedStep[] | null | undefined} trajOrStepsB
  * @param {'milestone' | 'raw'} [mode='milestone']
  * @returns {AlignedStepPair[]}
  */
 function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
-  /** @type {{ steps: CompareStep[], initialPrompt?: string }} */
+  /** @type {{ steps: StandardizedStep[], initialPrompt?: string }} */
   const trajAObj = (trajOrStepsA && !Array.isArray(trajOrStepsA)) ? trajOrStepsA : { steps: Array.isArray(trajOrStepsA) ? trajOrStepsA : [] };
-  /** @type {{ steps: CompareStep[], initialPrompt?: string }} */
+  /** @type {{ steps: StandardizedStep[], initialPrompt?: string }} */
   const trajBObj = (trajOrStepsB && !Array.isArray(trajOrStepsB)) ? trajOrStepsB : { steps: Array.isArray(trajOrStepsB) ? trajOrStepsB : [] };
 
   let listA = trajAObj.steps || [];
   let listB = trajBObj.steps || [];
 
   if (mode === 'milestone') {
-    const filterFn = (/** @type {CompareStep} */ s) => s.action?.canonicalCategory && s.action.canonicalCategory !== 'incidental_noise' && s.action.canonicalCategory !== 'launch';
+    const filterFn = (/** @type {StandardizedStep} */ s) => s.action?.canonicalCategory && s.action.canonicalCategory !== 'incidental_noise';
     const filteredA = listA.filter(filterFn);
     const filteredB = listB.filter(filterFn);
     if (filteredA.length > 0 || filteredB.length > 0) {
@@ -1057,8 +1060,8 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
   const gapPenalty = -2;
 
   /**
-   * @param {CompareStep} sA
-   * @param {CompareStep} sB
+   * @param {StandardizedStep} sA
+   * @param {StandardizedStep} sB
    * @returns {number}
    */
   function matchScore(sA, sB) {
@@ -1113,18 +1116,18 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
     const promptA = trajAObj.initialPrompt || '';
     const promptB = trajBObj.initialPrompt || '';
     if (promptA || promptB) {
-      /** @type {CompareStep | null} */
+      /** @type {StandardizedStep | null} */
       const step0A = promptA ? {
         stepNumber: 0,
         thought: 'Harness launched agent with initial prompt',
-        action: { type: 'launch', name: 'Starting Prompt / Launch', params: { prompt: promptA }, canonicalCategory: 'launch' },
+        action: { type: 'other', name: 'Starting Prompt / Launch', params: { prompt: promptA }, canonicalCategory: 'other' },
         outcome: { status: 'success', output: promptA }
       } : null;
-      /** @type {CompareStep | null} */
+      /** @type {StandardizedStep | null} */
       const step0B = promptB ? {
         stepNumber: 0,
         thought: 'Harness launched agent with initial prompt',
-        action: { type: 'launch', name: 'Starting Prompt / Launch', params: { prompt: promptB }, canonicalCategory: 'launch' },
+        action: { type: 'other', name: 'Starting Prompt / Launch', params: { prompt: promptB }, canonicalCategory: 'other' },
         outcome: { status: 'success', output: promptB }
       } : null;
       alignedResult.unshift({ stepA: step0A, stepB: step0B });
@@ -1135,8 +1138,8 @@ function alignTrajectorySteps(trajOrStepsA, trajOrStepsB, mode = 'milestone') {
 }
 
 /**
- * @param {CompareTrajectory | null | undefined} trajA
- * @param {CompareTrajectory | null | undefined} trajB
+ * @param {TrajectorySummary | null | undefined} trajA
+ * @param {TrajectorySummary | null | undefined} trajB
  * @returns {DivergenceInfo}
  */
 function findDivergenceInfo(trajA, trajB) {
@@ -1220,8 +1223,8 @@ function findDivergenceInfo(trajA, trajB) {
 
 /**
  * @param {HTMLElement} container
- * @param {CompareTrajectory | null} trajA
- * @param {CompareTrajectory | null} trajB
+ * @param {TrajectorySummary | null} trajA
+ * @param {TrajectorySummary | null} trajB
  * @param {string} [chatA='']
  * @param {string} [chatB='']
  * @param {string} [sessionUrlA='']
@@ -1366,7 +1369,7 @@ function renderTimelineRows(container, trajA, trajB, chatA = '', chatB = '', ses
 }
 
 /**
- * @param {CompareStep} step
+ * @param {StandardizedStep} step
  * @param {boolean} [isDivergent=false]
  * @param {string} [sessionUrl='']
  * @returns {string}
@@ -1435,9 +1438,12 @@ function renderStepCardHtml(step, isDivergent = false, sessionUrl = '') {
         }
       }
     }
-  } else if (step.output || step.result) {
-    outcomeText = step.output || step.result;
-    if (typeof outcomeText === 'object') outcomeText = JSON.stringify(outcomeText, null, 2);
+  } else {
+    const unnormalizedStep = /** @type {Record<string, any>} */ (step);
+    if (unnormalizedStep.output || unnormalizedStep.result) {
+      outcomeText = unnormalizedStep.output || unnormalizedStep.result;
+      if (typeof outcomeText === 'object') outcomeText = JSON.stringify(outcomeText, null, 2);
+    }
   }
 
   const cleanText = String(outcomeText || '').trim().replace(/\s+/g, '');
@@ -1578,8 +1584,8 @@ async function runDiagnosticAgent() {
   const statusSpan = $('#summary-status');
   const runBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('run-diagnosis-btn'));
 
-  const relativeA = `${sideA.trialId}/${sideA.runNum}/${guideName}/${activeTask}/${sideA.runType}`;
-  const relativeB = `${sideB.trialId}/${sideB.runNum}/${guideName}/${activeTask}/${sideB.runType}`;
+  const relativeA = getTrialPath(sideA);
+  const relativeB = getTrialPath(sideB);
 
   if (runBtn) {
     runBtn.disabled = true;
@@ -1604,7 +1610,7 @@ async function runDiagnosticAgent() {
     if (isStatic) {
       const resultsBase = 'results';
       const fileName = `${guideName}-${activeTask}-guided.md`;
-      const url = `${resultsBase}/${sideA.trialId}/variance_diagnoses/${fileName}`;
+      const url = `${resultsBase}/${sideA.testId}/variance_diagnoses/${fileName}`;
       
       try {
         const response = await fetch(url);
@@ -1619,7 +1625,7 @@ async function runDiagnosticAgent() {
             <div style="font-size:0.9em; margin-top:5px; color:#475569;">
               Running in STATIC mode. On-the-fly LLM comparison is only available when running the dashboard locally via <code>pnpm dashboard</code>.
               To generate this report locally, run:
-              <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ${sideA.trialId}/${sideA.runNum}/${guideName}/${activeTask}/guided ${sideB.trialId}/${sideB.runNum}/${guideName}/${activeTask}/guided</pre>
+              <pre style="background:#fff; border:1px solid #fecaca; margin-top:8px; padding:10px; border-radius:4px; font-family:monospace;">gd compare ${getTrialPath(sideA)} ${getTrialPath(sideB)}</pre>
             </div>
           `;
           statusSpan.innerText = 'Not Pre-generated';
@@ -1747,9 +1753,7 @@ window.runDiagnosticAgent = runDiagnosticAgent;
  */
 function switchTimelineMode(mode) {
   timelineViewMode = mode;
-  const pathPartA = `${sideA.trialId}/${sideA.runNum}/${guideName}/${activeTask}/${sideA.runType}`;
-  const pathPartB = `${sideB.trialId}/${sideB.runNum}/${guideName}/${activeTask}/${sideB.runType}`;
-  loadTrajectories(pathPartA, pathPartB);
+  loadTrajectories(getTrialPath(sideA), getTrialPath(sideB));
 }
 window.switchTimelineMode = switchTimelineMode;
 
@@ -1831,8 +1835,9 @@ function exportCompareReport() {
           }
         }
         if (pair.stepA.outcome) {
+          const outcomeObj = /** @type {Record<string, any>} */ (pair.stepA.outcome);
           const out = typeof pair.stepA.outcome === 'object' && pair.stepA.outcome !== null
-            ? (pair.stepA.outcome.output || pair.stepA.outcome.result || pair.stepA.outcome.message || pair.stepA.outcome.content || pair.stepA.outcome.text || pair.stepA.outcome.stdout || pair.stepA.outcome.stderr || '')
+            ? (outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr || '')
             : pair.stepA.outcome;
           if (out && typeof out !== 'object' || (typeof out === 'object' && Object.keys(out).length > 0)) {
             const outStr = typeof out === 'object' ? JSON.stringify(out, null, 2) : String(out);
@@ -1864,8 +1869,9 @@ function exportCompareReport() {
           }
         }
         if (pair.stepB.outcome) {
+          const outcomeObj = /** @type {Record<string, any>} */ (pair.stepB.outcome);
           const out = typeof pair.stepB.outcome === 'object' && pair.stepB.outcome !== null
-            ? (pair.stepB.outcome.output || pair.stepB.outcome.result || pair.stepB.outcome.message || pair.stepB.outcome.content || pair.stepB.outcome.text || pair.stepB.outcome.stdout || pair.stepB.outcome.stderr || '')
+            ? (outcomeObj.output || outcomeObj.result || outcomeObj.message || outcomeObj.content || outcomeObj.text || outcomeObj.stdout || outcomeObj.stderr || '')
             : pair.stepB.outcome;
           if (out && typeof out !== 'object' || (typeof out === 'object' && Object.keys(out).length > 0)) {
             const outStr = typeof out === 'object' ? JSON.stringify(out, null, 2) : String(out);
