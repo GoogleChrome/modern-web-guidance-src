@@ -1166,6 +1166,7 @@ function openTrajectory(usedBasePath, sessionFile) {
                 const htmlBlob = new Blob([blob], { type: 'text/html' });
                 const url = URL.createObjectURL(htmlBlob);
                 window.open(url, '_blank');
+                setTimeout(() => URL.revokeObjectURL(url), 10_000);
             })
             .catch(e => {
                 console.error('Error loading trajectory:', e);

@@ -9,7 +9,7 @@ test.describe('Eval View Dashboard', () => {
 
     // Check suites content
     await expect(page.locator('.suite-table-row').first()).toBeVisible();
-    // await page.screenshot({ path: '/usr/local/google/home/paulirish/.gemini/jetski/brain/b8464d5f-c6eb-4c16-a55f-18cf4758fd4d/dashboard-landing.png' });
+    // await page.screenshot({ path: '/tmp/dashboard-landing.png' });
   });
 
   test('should load suites from API', async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe('Eval View Dashboard', () => {
     
     const count = await page.locator('.task-accordion-header').count();
     expect(count).toBeGreaterThan(0);
-    // await page.screenshot({ path: '/usr/local/google/home/paulirish/.gemini/jetski/brain/b8464d5f-c6eb-4c16-a55f-18cf4758fd4d/dashboard-suite.png' });
+    // await page.screenshot({ path: '/tmp/dashboard-suite.png' });
   });
 
   test('should show details and toggle diff view', async ({ page }) => {
@@ -85,7 +85,7 @@ test.describe('Eval View Dashboard', () => {
     const diffParts = page.locator('.diff-added, .diff-removed, .diff-unchanged');
     const partsCount = await diffParts.count();
     expect(partsCount).toBeGreaterThan(0);
-    // await page.screenshot({ path: '/usr/local/google/home/paulirish/.gemini/jetski/brain/b8464d5f-c6eb-4c16-a55f-18cf4758fd4d/dashboard-diff-modal.png' });
+    // await page.screenshot({ path: '/tmp/dashboard-diff-modal.png' });
   });
 
   test('should show By Guide panel and navigate to guide.html on click', async ({ page }) => {
@@ -124,7 +124,7 @@ test.describe('Eval View Dashboard', () => {
     const tooltip = page.locator('#tooltip-container');
     await expect(tooltip).toBeVisible();
     await expect(page.locator('#tooltip-content')).toBeVisible();
-    // await page.screenshot({ path: '/usr/local/google/home/paulirish/.gemini/jetski/brain/b8464d5f-c6eb-4c16-a55f-18cf4758fd4d/dashboard-guide-timeline.png' });
+    // await page.screenshot({ path: '/tmp/dashboard-guide-timeline.png' });
   });
 
   test('should support autocomplete search and prev/next guide navigation', async ({ page }) => {
