@@ -2,13 +2,13 @@ import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, hasNigh
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /**
- * @import { SelectedTrialPoint } from './evals.d.ts'
+ * @import { TrialSelection } from './evals.d.ts'
  */
 
 /** @type {Record<string, GuideSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
 let isCompareMode = false;
-/** @type {SelectedTrialPoint[]} */
+/** @type {TrialSelection[]} */
 let selectedPoints = []; // array of selected trial points
 let currentRunFilter = 'nightly';
 
@@ -864,7 +864,7 @@ function setupCompareMode(guideName) {
             const urlParams = new URLSearchParams(window.location.search);
             const isStatic = urlParams.get('source') === 'static' || window.location.hostname.includes('github.io');
             
-            window.location.href = `compare.html?trialA=${pA.testId}&trialB=${pB.testId}&runIndexA=${pA.runIndex || 1}&runIndexB=${pB.runIndex || 1}&agentA=${encodeURIComponent(pA.agent || '')}&modelA=${encodeURIComponent(pA.model || '')}&scoreA=${pA.score || 0}&agentB=${encodeURIComponent(pB.agent || '')}&modelB=${encodeURIComponent(pB.model || '')}&scoreB=${pB.score || 0}&guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
+            window.location.href = `compare.html?trialA=${pA.testId}&trialB=${pB.testId}&runIndexA=${pA.runNumber || 1}&runIndexB=${pB.runNumber || 1}&agentA=${encodeURIComponent(pA.agent || '')}&modelA=${encodeURIComponent(pA.model || '')}&scoreA=${pA.score || 0}&agentB=${encodeURIComponent(pB.agent || '')}&modelB=${encodeURIComponent(pB.model || '')}&scoreB=${pB.score || 0}&guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
         }
     });
 }
@@ -898,13 +898,13 @@ function clearSelections() {
 }
 
 /**
- * @param {any} runData
+ * @param {GuideSuiteSummary} runData
  * @param {SVGElement} group
  * @param {string} combKey
  * @param {string} guideName
- * @param {number} [runIndex]
+ * @param {number} [runNumber=1]
  */
-function handlePointSelection(runData, group, combKey, guideName, runIndex = 1) {
+function handlePointSelection(runData, group, combKey, guideName, runNumber = 1) {
     const testId = runData.testId;
     const dateKey = group.getAttribute('data-datekey') || '';
     const existingIdx = selectedPoints.findIndex(p => p.dateKey === dateKey && p.combKey === combKey);
@@ -919,8 +919,8 @@ function handlePointSelection(runData, group, combKey, guideName, runIndex = 1) 
                 testId, 
                 dateKey,
                 combKey,
-                runIndex,
-                source: runData.source, 
+                runNumber,
+                source: /** @type {'local' | 'static' | undefined} */ (runData.source), 
                 agent: runData.agent, 
                 model: runData.model,
                 score: runData.guides[guideName] ? runData.guides[guideName].guidedRate : 0
@@ -940,8 +940,8 @@ function handlePointSelection(runData, group, combKey, guideName, runIndex = 1) 
             testId, 
             dateKey,
             combKey,
-            runIndex,
-            source: runData.source, 
+            runNumber,
+            source: /** @type {'local' | 'static' | undefined} */ (runData.source), 
             agent: runData.agent, 
             model: runData.model,
             score: stats ? stats.guidedRate : 0
@@ -977,12 +977,12 @@ function updateCompareBanner() {
         text.innerText = 'Select two trials on the chart to compare.';
         launchBtn.disabled = true;
     } else if (selectedPoints.length === 1) {
-        const label0 = selectedPoints[0].runIndex ? ` (Run ${selectedPoints[0].runIndex})` : '';
+        const label0 = selectedPoints[0].runNumber ? ` (Run ${selectedPoints[0].runNumber})` : '';
         text.innerHTML = `Selected 1 trial: <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[0].testId.slice(0, 15)}${label0}...</span>. Select one more.`;
         launchBtn.disabled = true;
     } else if (selectedPoints.length === 2) {
-        const label0 = selectedPoints[0].runIndex ? ` (Run ${selectedPoints[0].runIndex})` : '';
-        const label1 = selectedPoints[1].runIndex ? ` (Run ${selectedPoints[1].runIndex})` : '';
+        const label0 = selectedPoints[0].runNumber ? ` (Run ${selectedPoints[0].runNumber})` : '';
+        const label1 = selectedPoints[1].runNumber ? ` (Run ${selectedPoints[1].runNumber})` : '';
         text.innerHTML = `Ready to compare: <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[0].testId.slice(0, 10)}${label0}...</span> vs <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[1].testId.slice(0, 10)}${label1}...</span>`;
         launchBtn.disabled = false;
     }
