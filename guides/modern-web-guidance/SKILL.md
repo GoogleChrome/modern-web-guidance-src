@@ -75,12 +75,7 @@ Once you have a relevant `id` from the search results, call this script using th
 npx -y modern-web-guidance@latest retrieve "<id>"
 ```
 
-> **Handling Large Output / Truncation**:
-> Guides contain complete code samples and browser fallbacks that may exceed terminal output limits. If the output is truncated, redirect to a temporary file and read it with your file viewing tool:
-> ```sh
-> npx -y modern-web-guidance@latest retrieve "<id>" > .temp-guide.md
-> ```
-> Read the complete file before generating code, and delete the temporary file when finished.
+If the output is truncated, you must repeat the command but redirect to a file and read that file.
 
 **Example Output**:
 `The markdown content of the guide describing implementation steps...`
