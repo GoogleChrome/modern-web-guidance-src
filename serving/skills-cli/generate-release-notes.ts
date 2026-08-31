@@ -23,7 +23,6 @@ import {
   buildReleaseNotesMarkdown,
   generateFallbackReleaseNotes,
   linkifyGuideBullets,
-  escapeRegExp,
 } from './release-notes-markdown.ts';
 import {
   generateNewGuideSummariesWithGemini,
