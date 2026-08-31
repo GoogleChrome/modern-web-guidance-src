@@ -86,8 +86,10 @@ When generating or modifying code, cross-check the implementation against the re
 - **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
 - **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
 
-## Using npx
+## Using npx / pnx
 
+-   Prefer `pnx` over `npx` if `pnpm` is available.
+-   When requesting tool permissions, allowlist `npx -y modern-web-guidance@latest *` specifically (or the `pnx` equivalent), never bare `npx *`.
 -   IMPORTANT: on Windows, using `npx` may fail. Use `npx.cmd ...` instead.
 -   Network access is required for fetching npm packages needed by the task.
 -   If the `npx -y modern-web-guidance…` command hangs, you may be offline. Try running again in offline
