@@ -1,6 +1,7 @@
 import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
+/** @type {Record<string, GuideSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -34,6 +35,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+/**
+ * @typedef {Object} GuideSuiteSummary
+ * @property {string} testId
+ * @property {string} timestamp
+ * @property {string} source
+ * @property {string} agent
+ * @property {string} serving
+ * @property {string} model
+ * @property {Record<string, any>} guides
+ */
+
+/**
+ * @param {any} summary
+ * @param {string} source
+ */
 function registerSuiteSummary(summary, source) {
     const compoundKey = `${summary.testId}|||${source}`;
 
@@ -48,6 +64,12 @@ function registerSuiteSummary(summary, source) {
     };
 }
 
+/**
+ * @param {string} testId
+ * @param {string} source
+ * @param {import('../harness/lib/metrics.ts').EvalsReport} parsed
+ * @param {string} [forcedTimestamp]
+ */
 function registerTestData(testId, source, parsed, forcedTimestamp) {
     const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
     if (summary) {
@@ -123,6 +145,9 @@ async function loadRemoteTests() {
     }
 }
 
+/**
+ * @param {string} guideName
+ */
 function setupTimelineFilterControls(guideName) {
     const limitInput = /** @type {HTMLInputElement} */ ($('#timeline-limit-input'));
     const showAllCheck = /** @type {HTMLInputElement} */ ($('#timeline-show-all-check'));
@@ -143,6 +168,9 @@ function setupTimelineFilterControls(guideName) {
     });
 }
 
+/**
+ * @param {string} currentGuide
+ */
 function setupNavigationControls(currentGuide) {
     const guideSet = new Set();
     Object.values(allTestData).forEach(run => {
@@ -242,6 +270,9 @@ function setupNavigationControls(currentGuide) {
         }
     };
 
+    /**
+     * @param {NodeListOf<Element>} items
+     */
     function setActive(items) {
         if (!items) return;
         items.forEach(item => item.classList.remove('active'));
@@ -259,6 +290,9 @@ function setupNavigationControls(currentGuide) {
     });
 }
 
+/**
+ * @param {string} guideName
+ */
 function renderGraphs(guideName) {
     const grid = $('#graphs-grid');
     grid.innerHTML = '';
@@ -284,6 +318,7 @@ function renderGraphs(guideName) {
     }
     $('#empty-state').style.display = 'none';
 
+    /** @type {Record<string, GuideSuiteSummary[]>} */
     const combinations = {};
     filteredKeys.forEach(compoundKey => {
         const run = allTestData[compoundKey];
@@ -294,6 +329,10 @@ function renderGraphs(guideName) {
         combinations[combKey].push(run);
     });
 
+    /**
+     * @param {string | number | Date} timestamp
+     * @returns {string}
+     */
     const getDateKey = (timestamp) => {
         const d = new Date(timestamp);
         const year = d.getFullYear();
@@ -404,7 +443,7 @@ function renderGraphs(guideName) {
         const plotWidth = globalWidth - 2 * paddingX;
         const stepX = globalTimeline.length > 1 ? plotWidth / (globalTimeline.length - 1) : 0;
 
-        const rateToY = (rate) => paddingY + plotHeight - (rate / 100 * plotHeight);
+        const rateToY = (/** @type {number} */ rate) => paddingY + plotHeight - (rate / 100 * plotHeight);
 
         let svgContent = '';
         
@@ -497,10 +536,12 @@ function renderGraphs(guideName) {
             }
         }
 
-        svg.querySelectorAll('.timeline-point').forEach(group => {
+        svg.querySelectorAll('.timeline-point').forEach(el => {
+            const group = /** @type {SVGElement} */ (el);
             group.addEventListener('mouseenter', () => {
                 const combKey = group.getAttribute('data-comb');
                 const testId = group.getAttribute('data-testid');
+                if (!combKey || !testId) return;
                 const runData = combinations[combKey].find(r => r.testId === testId);
                 if (!runData) return;
 
@@ -545,7 +586,7 @@ function renderGraphs(guideName) {
                 tooltip.classList.remove('hidden');
             });
 
-            group.addEventListener('mousemove', /** @param {MouseEvent} e */ (e) => {
+            group.addEventListener('mousemove', (e) => {
                 const tooltip = $('#tooltip-container');
                 const offset = 15;
                 let finalX = e.clientX + offset;
@@ -572,6 +613,7 @@ function renderGraphs(guideName) {
             group.addEventListener('click', () => {
                 const combKey = group.getAttribute('data-comb');
                 const testId = group.getAttribute('data-testid');
+                if (!combKey || !testId) return;
                 const runData = combinations[combKey].find(r => r.testId === testId);
                 if (runData) {
                     window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}#guide-${guideName}`;
