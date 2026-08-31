@@ -1,54 +1,33 @@
 import type { EvalsReport } from '../harness/lib/metrics.ts';
-import type { StandardizedStep, TrajectorySummary } from '../harness/lib/trajectory-normalizer.ts';
-
-export type SuiteReport = EvalsReport & {
-  enableSkills?: boolean;
-};
-
-export type CompareStep = Omit<StandardizedStep, 'action' | 'outcome'> & {
-  action?: {
-    type?: string;
-    name?: string;
-    params?: any;
-    canonicalCategory?: string;
-  };
-  outcome?: any;
-  output?: any;
-  result?: any;
-};
-
-export type CompareTrajectory = TrajectorySummary & {
-  steps: CompareStep[];
-};
+import type { TrajectorySummary } from '../harness/lib/trajectory-normalizer.ts';
 
 /**
- * A trial point selected on the timeline in guide view for comparison.
+ * A trial run point selected on the timeline in guide view for comparison.
  */
-export interface SelectedTrialPoint {
+export interface TrialSelection {
   testId: string;
-  dateKey?: string;
-  combKey?: string;
-  runIndex?: number;
-  source?: string;
+  runNumber: number;
+  source?: 'local' | 'static';
   agent?: string;
   model?: string;
   score?: number;
+  dateKey?: string;
+  combKey?: string;
 }
 
 /**
  * State, configuration, and loaded artifacts for one side (A or B) of a comparison run.
  */
-export interface CompareSide extends SelectedTrialPoint {
+export interface CompareSide {
   key: 'A' | 'B';
-  label: string;
-  trialId: string;
-  runNum: string;
-  score: number;
-  scoreParam: string | null;
+  testId: string;
+  runNumber: number;
   runType: 'guided' | 'unguided';
-  runDir: string;
-  suiteData: SuiteReport | null;
-  trajectory: CompareTrajectory | null;
+  agent: string;
+  model: string;
+  score: number;
+  suiteData: EvalsReport | null;
+  trajectory: TrajectorySummary | null;
   chatLog: string;
 }
 
