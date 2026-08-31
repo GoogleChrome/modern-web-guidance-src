@@ -1,11 +1,15 @@
 import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, hasNightlyRuns, $ } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
+/**
+ * @import { SelectedTrialPoint } from './evals.d.ts'
+ */
+
 /** @type {Record<string, GuideSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
 let isCompareMode = false;
-/** @type {Array<{ dateKey?: string, combKey?: string, testId: string, source?: string, group?: any, runIndex?: number, agent?: string, model?: string, score?: number }>} */
-let selectedPoints = []; // array of { testId, source, combKey }
+/** @type {SelectedTrialPoint[]} */
+let selectedPoints = []; // array of selected trial points
 let currentRunFilter = 'nightly';
 
 document.addEventListener('DOMContentLoaded', async () => {
