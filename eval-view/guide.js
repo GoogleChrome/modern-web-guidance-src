@@ -4,6 +4,7 @@ import { extractSuiteSummary } from './summary-extractor.js';
 /** @type {Record<string, GuideSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
 let isCompareMode = false;
+/** @type {Array<{ dateKey?: string, combKey?: string, testId: string, source?: string, group?: any, runIndex?: number, agent?: string, model?: string, score?: number }>} */
 let selectedPoints = []; // array of { testId, source, combKey }
 let currentRunFilter = 'nightly';
 
@@ -239,7 +240,7 @@ function setupNavigationControls(currentGuide) {
     const list = $('#autocomplete-list');
     const goBtn = /** @type {HTMLButtonElement} */ ($('#go-guide-btn'));
 
-    const getNavUrl = (targetGuide) => `guide.html?guide=${encodeURIComponent(targetGuide)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
+    const getNavUrl = (/** @type {string} */ targetGuide) => `guide.html?guide=${encodeURIComponent(targetGuide)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
 
     const backLink = document.querySelector('a[href^="./"]');
     if (backLink) {
@@ -422,6 +423,7 @@ function renderGraphs(guideName) {
 
         const runsByDateMap = Map.groupBy(runs, run => getDateKey(run.timestamp));
 
+        /** @type {Array<{ dateKey: string, latestRun: any, runsOnDate: any[] }>} */
         const dateEntries = [];
         runsByDateMap.forEach((runsOnDate, dateKey) => {
             runsOnDate.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -556,7 +558,7 @@ function renderGraphs(guideName) {
             const run = entry ? entry.latestRun : null;
             const runsOnDate = entry ? entry.runsOnDate : [];
             
-            const isHighlighted = run && runsOnDate.some(r => r.testId === highlightTestId);
+            const isHighlighted = run && runsOnDate.some((/** @type {any} */ r) => r.testId === highlightTestId);
             if (isHighlighted) {
                 svgContent += `
                     <rect x="${x - 12}" y="${paddingY - 5}" width="24" height="${plotHeight + 10}" fill="var(--color-primary)" style="opacity: 0.12; rx: 4px;" />
@@ -670,7 +672,7 @@ function renderGraphs(guideName) {
                                 ${runsOnDate.length} runs on this date:
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                ${runsOnDate.map((r, idx) => {
+                                ${runsOnDate.map((/** @type {any} */ r, /** @type {number} */ idx) => {
                                     const rStats = r.guides[guideName];
                                     const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                                     const isLatest = idx === runsOnDate.length - 1;
@@ -789,7 +791,7 @@ function renderGraphs(guideName) {
                         select.style.fontWeight = '500';
                         select.style.cursor = 'pointer';
 
-                        runsOnDate.forEach((r, idx) => {
+                        runsOnDate.forEach((/** @type {any} */ r, /** @type {number} */ idx) => {
                             const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             const rStats = r.guides[guideName];
                             const opt = document.createElement('option');
@@ -807,7 +809,7 @@ function renderGraphs(guideName) {
                             const chosenTestId = select.value;
                             const selectedOpt = select.options[select.selectedIndex];
                             const chosenRunIndex = parseInt(selectedOpt.getAttribute('data-runindex') || '1');
-                            const chosenRun = runsOnDate.find(r => r.testId === chosenTestId) || defaultRun;
+                            const chosenRun = runsOnDate.find((/** @type {any} */ r) => r.testId === chosenTestId) || defaultRun;
                             handlePointSelection(chosenRun, group, combKey, guideName, chosenRunIndex);
                         });
 
@@ -820,13 +822,15 @@ function renderGraphs(guideName) {
                     }
                 } else {
                     window.location.href = `dashboard.html?testId=${defaultRun.testId}&source=${defaultRun.source}#guide-${guideName}`;
->>>>>>> 45a3b374 (feat(eval-view): add run comparison dashboard and visualizer)
                 }
             });
         });
     });
 }
 
+/**
+ * @param {string} guideName
+ */
 function setupCompareMode(guideName) {
     const compareBtn = $('#compare-mode-btn');
     const banner = $('#compare-banner');
@@ -861,6 +865,9 @@ function setupCompareMode(guideName) {
     });
 }
 
+/**
+ * @param {boolean} on
+ */
 function toggleCompareMode(on) {
     isCompareMode = on;
     const compareBtn = $('#compare-mode-btn');
@@ -886,9 +893,16 @@ function clearSelections() {
     updateCompareBanner();
 }
 
+/**
+ * @param {any} runData
+ * @param {SVGElement} group
+ * @param {string} combKey
+ * @param {string} guideName
+ * @param {number} [runIndex]
+ */
 function handlePointSelection(runData, group, combKey, guideName, runIndex = 1) {
     const testId = runData.testId;
-    const dateKey = group.getAttribute('data-datekey');
+    const dateKey = group.getAttribute('data-datekey') || '';
     const existingIdx = selectedPoints.findIndex(p => p.dateKey === dateKey && p.combKey === combKey);
 
     if (existingIdx !== -1) {
@@ -911,8 +925,10 @@ function handlePointSelection(runData, group, combKey, guideName, runIndex = 1) 
     } else {
         if (selectedPoints.length >= 2) {
             const removed = selectedPoints.shift();
-            const oldGroup = document.querySelector(`[data-datekey="${removed.dateKey}"][data-comb="${removed.combKey}"]`);
-            if (oldGroup) oldGroup.querySelector('.compare-highlight')?.remove();
+            if (removed) {
+                const oldGroup = document.querySelector(`[data-datekey="${removed.dateKey}"][data-comb="${removed.combKey}"]`);
+                if (oldGroup) oldGroup.querySelector('.compare-highlight')?.remove();
+            }
         }
 
         const stats = runData.guides[guideName];
@@ -927,8 +943,8 @@ function handlePointSelection(runData, group, combKey, guideName, runIndex = 1) 
             score: stats ? stats.guidedRate : 0
         });
 
-        const x = parseFloat(group.getAttribute('data-x'));
-        const y = parseFloat(group.getAttribute('data-yg'));
+        const x = parseFloat(group.getAttribute('data-x') || '0');
+        const y = parseFloat(group.getAttribute('data-yg') || '0');
         
         if (!group.querySelector('.compare-highlight')) {
             const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
