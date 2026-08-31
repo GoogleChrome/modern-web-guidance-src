@@ -65,7 +65,7 @@ progress.loading-spinner:indeterminate::slider-fill {
 
 #### Container and Ring
 
-The wrapper provides the positioning context. The `<progress>` element handles the visual gradient and mask.
+The wrapper provides the positioning context. The `<progress>` element handles the visual gradient.
 
 ```css
 .ring-wrapper {
@@ -124,26 +124,7 @@ progress.ring {
 
 ### 3. Progress Updates
 
-Update the `value` attribute on the `<progress>` element whenever the value changes.
-
-```html
-<input type="range" min="0" max="100" value="75" id="range">
-
-<script>
-  const range = document.getElementById('range');
-  const progress = wrapper.querySelector('progress');
-  const content = wrapper.querySelector('.ring-content');
-
-  range.addEventListener('input', (e) => {
-    const newValue = e.target.value;
-    
-    progress.value = newValue;
-    
-    // Update optional center content
-    content.textContent = `${newValue}%`;
-  });
-</script>
-```
+Update the `value` attribute on the `<progress>` element and the text content of `.ring-content` (if displaying a percentage) whenever the value changes.
 
 ### 4. Optional Success State
 
@@ -179,11 +160,13 @@ Do not add a fallback value inside the `<progress>` element. It is not used by a
 
 {{ FEATURE_FALLBACKS("registered-custom-properties") }}
 
-If `@property` is not supported, the ring will jump to the new value instantly instead of transitioning smoothly. This does not break the functionality. For browsers without `@property`, you can achieve transitions using a JavaScript `requestAnimationFrame` loop to interpolate the `--value`, though the native CSS transition is preferred for performance.
+If `@property` is not supported, the ring will jump to the new value instantly instead of transitioning smoothly. In most cases this is fine, and does not break any functionality.
+
+If the transition is absolutely necessary, you can check for `@property` support and use a `requestAnimationFrame()` loop to interpolate `--value` in older browsers.
 
 {{ FEATURE_FALLBACKS("background-clip-border-area") }}
 
-For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center.
+For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center of the `<progress>` element.
 
 ```css
 @supports not (background-clip: border-area) {

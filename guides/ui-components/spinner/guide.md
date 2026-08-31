@@ -14,7 +14,7 @@ A loading spinner (or activity indicator) informs users that a process is underw
 This guide implements a spinner by:
 
 - Using the native `<progress>` element as the semantic foundation. By omitting the `value` attribute, the browser treats it as an indeterminate progress bar, ensuring correct announcement by assistive technologies.
-- Styling the component with `conic-gradient()` to create a visual "trail" and `mask-image` to hollow out the center into a ring.
+- Styling the component with `conic-gradient()` to create a visual "trail" and `background-clip: border-area` to hollow out the center into a ring.
 - Animating the spinner efficiently using CSS transforms and respecting `prefers-reduced-motion` to ensure a comfortable experience for all users.
 
 See {{ GUIDE_REF("progress-ring") }} for handling determinate tasks with a known duration.
