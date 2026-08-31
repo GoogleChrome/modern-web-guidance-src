@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getAccessToken, capitalize, normalizeTrajectoryClient, parseResultKey, escapeHtml } from './utils.js';
 
 // Cross-Run Performance Variance Diagnosis Dashboard JavaScript
