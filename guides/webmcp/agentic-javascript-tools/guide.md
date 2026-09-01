@@ -5,6 +5,8 @@ web-feature-ids:
   - document-modelcontext
 ---
 
+# Agentic JavaScript Tools
+
 The Imperative API uses `document.modelContext.registerTool()` to programmatically define JavaScript tools. This is ideal for Single Page Applications (SPAs) where tools need to be added or removed based on the current route or user state.
 
 ## Registration and Lifecycle

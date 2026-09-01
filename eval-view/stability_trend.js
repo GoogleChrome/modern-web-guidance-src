@@ -3,6 +3,21 @@ import { getRunStats, getColor } from './utils.js';
 
 const api = new ApiClient();
 
+/**
+ * @typedef {Object} SuiteInfo
+ * @property {string} id
+ * @property {string} source
+ * @property {string} [timestamp]
+ * @property {string} [agent]
+ * @property {string} [model]
+ * @property {string} [serving]
+ */
+
+/**
+ * @param {string} scenarioName
+ * @param {string} currentTestId
+ * @returns {Promise<void>}
+ */
 export async function loadStabilityTrend(scenarioName, currentTestId) {
     const containerId = `stability-trend-${scenarioName.replace(/\s+/g, '-')}`;
     const container = document.getElementById(containerId);
@@ -13,16 +28,19 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
     try {
         const response = await fetch('/api/suites');
         if (!response.ok) throw new Error('Could not fetch suite manifest');
+        /** @type {{ suites: SuiteInfo[] }} */
         const manifest = await response.json();
 
         const currentSuite = manifest.suites.find(s => s.id === currentTestId);
         const criteria = currentSuite ? { agent: currentSuite.agent, model: currentSuite.model, serving: currentSuite.serving } : null;
 
+        /** @type {string[]} */
         let currentAssertions = [];
         let currentPromptText = '';
         try {
             const currentRes = await fetch(`${currentTestId}/evals.json`);
             if (currentRes.ok) {
+                /** @type {import('../harness/lib/metrics.ts').EvalsReport} */
                 const currentData = await currentRes.json();
                 const guidedKey = `${scenarioName} - guided`;
                 const unguidedKey = `${scenarioName} - unguided`;
@@ -41,6 +59,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
             }
         } catch (e) {}
 
+        /** @type {any[]} */
         let history = [];
         for (const suite of manifest.suites) {
             if (criteria) {
@@ -49,6 +68,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
             const res = await fetch(`${suite.id}/evals.json`);
             if (res.ok) {
+                /** @type {import('../harness/lib/metrics.ts').EvalsReport} */
                 const data = await res.json();
                 if (!data || !data.results) {
                     console.warn(`[StabilityTrend] Suite ${suite.id} has no results.`);
@@ -60,7 +80,9 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                 const guidedRun = data.results[guidedKey];
                 const unguidedRun = data.results[unguidedKey];
 
+                /** @type {number[]} */
                 let guidedTrials = [];
+                /** @type {number[]} */
                 let unguidedTrials = [];
 
                 if (guidedRun) {
@@ -83,15 +105,20 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                 // Verify prompt text matches exactly across this suite!
                 let historyPromptText = '';
                 try {
-                    const candidateRun = guidedRun[0] || unguidedRun[0];
-                    const typeLabel = guidedRun[0] ? 'guided' : 'unguided';
-                    const { usedBasePath } = await api.getResultInfo(suite.id, candidateRun, `${scenarioName} - ${typeLabel}`);
-                    const runText = await api.getFileText(`${usedBasePath}/run.mjs`);
-                    const match = runText.match(/\.\.\.\[([\s\S]+?)\]/);
-                    if (match) {
-                        const arrayStr = `[${match[1]}]`;
-                        const arr = JSON.parse(arrayStr);
-                        historyPromptText = arr[1];
+                    const candidateRun = (guidedRun && guidedRun[0]) || (unguidedRun && unguidedRun[0]);
+                    if (candidateRun) {
+                        const typeLabel = guidedRun && guidedRun[0] ? 'guided' : 'unguided';
+                        const resultInfo = await api.getResultInfo(suite.id, candidateRun, `${scenarioName} - ${typeLabel}`);
+                        if (resultInfo) {
+                            const { usedBasePath } = resultInfo;
+                            const runText = await api.getFileText(`${usedBasePath}/run.mjs`);
+                            const match = runText.match(/\.\.\.\[([\s\S]+?)\]/);
+                            if (match) {
+                                const arrayStr = `[${match[1]}]`;
+                                const arr = JSON.parse(arrayStr);
+                                historyPromptText = arr[1];
+                            }
+                        }
                     }
                 } catch (e) {}
 
@@ -126,6 +153,10 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
         history.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
+        /**
+         * @param {string | undefined} timestamp
+         * @returns {string}
+         */
         function formatShortTime(timestamp) {
             if (!timestamp) return '-';
             const date = new Date(timestamp);
@@ -202,7 +233,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
                         let uTrialPoints = '';
                         if (h.unguidedTrials) {
-                            h.unguidedTrials.forEach(trialRate => {
+                            h.unguidedTrials.forEach((/** @type {number} */ trialRate) => {
                                 const yU = paddingY + graphHeight - (trialRate / 100 * graphHeight);
                                 uTrialPoints += `
                                     <circle cx="${x}" cy="${yU}" r="4" fill="rgba(255,255,255,0.3)" stroke="${strokeColor}" stroke-width="${strokeWidth}">
@@ -214,7 +245,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
                         let gTrialPoints = '';
                         if (h.guidedTrials) {
-                            h.guidedTrials.forEach(trialRate => {
+                            h.guidedTrials.forEach((/** @type {number} */ trialRate) => {
                                 const yG = gOffset + paddingY + graphHeight - (trialRate / 100 * graphHeight);
                                 gTrialPoints += `
                                     <circle cx="${x}" cy="${yG}" r="5" fill="${getColor(trialRate)}" stroke="${strokeColor}" stroke-width="${strokeWidth}">
@@ -239,6 +270,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
         container.innerHTML = svgHtml;
 
     } catch (e) {
-        container.innerHTML = `<div class="stability-error">Error querying trend: ${e.message}</div>`;
+        const message = e instanceof Error ? e.message : String(e);
+        container.innerHTML = `<div class="stability-error">Error querying trend: ${message}</div>`;
     }
 };

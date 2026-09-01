@@ -5,6 +5,8 @@ web-feature-ids:
   - dialog-closedby
 ---
 
+# Light-Dismiss a Dialog
+
 Modern modal dialogs often support "light-dismiss," allowing users to close a dialog by clicking or tapping the backdrop (the area outside the dialog). The `closedby` attribute provides a declarative way to enable this behavior without custom JavaScript.
 
 ## Implementation
