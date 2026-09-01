@@ -292,7 +292,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           // Look for Gemini model name patterns across string fields in the Protobuf message
           const modelCandidate = strings.find(s => /^gemini/i.test(s));
           if (modelCandidate) {
-            modelName = modelCandidate;
+            modelName = modelCandidate.split('|')[0].trim();
             break;
           }
         }
