@@ -11,6 +11,10 @@ This is the second of three stages in creating guidance:
 2. Stage 2: Authoring guidance for a use case (you are here)
 3. Stage 3: Evaluating guidance for a use case
 
+> **SME Fast-Track**: While non-SME contributors align on use cases via Stage 1 first, Subject Matter Experts (SMEs) are trusted to define appropriate use cases directly and can go straight to Stage 2 (authoring `guide.md`, `demo.html`, and `expectations.md`).
+>
+> **SME Review Requirement**: Every guide in this repository must be written or reviewed by an SME. If a guide is drafted by a non-SME contributor, a domain SME or Content ATL **must** review and approve the technical accuracy before the guide can be merged and published.
+
 ## What a real-world coding agent sees
 
 When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is eval infrastructure:
@@ -112,8 +116,12 @@ If the primary implementation uses features that are not Baseline Widely Availab
 
 When the same feature-level content (intro, fallback patterns, a11y, gotchas) applies to multiple guides, extract it into `features/<feature-id>.md` and pull it in with the macros above. Rule of thumb: extract if two or more guides cover the same `web-feature-id` and repeat the same advice. Standard section names: `## Fallbacks` (used by `FEATURE_FALLBACKS`), `## Issues` (used by `FEATURE_ISSUES`); add others as needed and pull them with `FEATURE`. Verify your include resolved by inspecting the build output (`serving/build/guides/<category>/<id>.md`) — silent misses won't fail the build.
 
-## Authoring `expectations.md` and  `demo.html`
+## Authoring `expectations.md` and `demo.html`
 
 * **`expectations.md`**: Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly. (e.g., "The input element is styled with a red border only AFTER a blur event").
 * **`demo.html`**: The `demo.html` file should be a clean example of a correct implementation of the use case. If possible, it should be self-contained with inline scripts and styles.
 * **Warning-Free Demos**: Documentation and demos must adhere to all browser console recommendations, including non-fatal warnings, to ensure clean evaluation runs.
+
+## Self-Validation (Before Submitting a PR)
+
+Once you have authored `guide.md`, `demo.html`, and `expectations.md`, invoke the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill with your AI coding assistant to self-validate your work before opening a PR or proceeding to Stage 3. This autonomously exercises the demo in a browser via DevTools MCP, verifies expectation alignment, and checks accessibility compliance.
