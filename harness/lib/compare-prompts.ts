@@ -11,7 +11,7 @@ export function getCompliancePrompts(
 
 Specifically analyze:
 1. **Starting Point & Eval Prompt Audit**: Inspect the initial eval prompt given to Run A vs Run B (Initial Eval / Task Prompts). Verify if both runs received the exact same initial instructions. If the initial prompts are identical, state clearly that both runs started from an identical prompt, so any divergence in behavior is due to agent decision-making or execution timeline differences (such as searching/retrieving the guide before vs after writing code).
-2. **Chronological Execution & Sequencing Audit**: Check the step numbers and order of events in the Chronological Milestone Timeline. Did the agent search for and retrieve the mandatory guide *before* writing or modifying code? If an agent wrote code first (e.g. step 4 code mutation) and only searched for or retrieved the guide later (or not at all), flag this as a critical sequencing failure ("Premature coding before guide retrieval").
+2. **Chronological Execution & Sequencing Audit**: Check the step numbers and order of events in the Chronological Milestone Timeline. Did the agent search for and retrieve the mandatory guide *before* writing or modifying code? If an agent wrote code first (e.g. code mutation) and only searched for or retrieved the guide later (or not at all), flag this as a critical sequencing failure ("Premature coding before guide retrieval").
 3. **Skill Discovery & Search**: Compare search queries used by Run A vs Run B. Did the search query accurately surface the guide, or did it miss due to vague/generic phrasing?
 4. **Guide Retrieval & Reading**: Did the agent actually retrieve guide.md before implementing code changes?
 5. **Mandatory Rule Adoption**: Compare agent thinking/reasoning steps against MANDATORY guide requirements. Did an agent explicitly ignore, bypass, or misunderstand a mandatory rule (e.g. opting for JS instead of CSS, omitting fallback, missing required HTML attributes)?
@@ -139,10 +139,10 @@ ${diffAvsB.slice(0, 30000)}
 
 ### Tagged Trajectory Steps Overview
 #### Run A:
-${JSON.stringify(ctxA.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, isErr: s.isError, thought: s.thought?.slice(0, 100) })), null, 2)}
+${JSON.stringify(ctxA.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, thought: s.thought?.slice(0, 100) })), null, 2)}
 
 #### Run B:
-${JSON.stringify(ctxB.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, isErr: s.isError, thought: s.thought?.slice(0, 100) })), null, 2)}
+${JSON.stringify(ctxB.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, thought: s.thought?.slice(0, 100) })), null, 2)}
 `;
 
   return { systemInstruction, prompt };
