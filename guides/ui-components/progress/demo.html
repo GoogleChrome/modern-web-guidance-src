@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Bar Demo</title>
+    <style>
+        :root {
+            /* Automatic theme adaptation */
+            color-scheme: light dark;
+            --color-dark-accent: oklch(52.451% 0.159 325);
+            --accent-color: var(--color-dark-accent, AccentColor); 
+            /* Fixed: Light-dark colors should be light in light mode and dark in dark mode for track/surface */
+            --color-surface: light-dark(oklch(95.6% 0.027 340), oklch(30% 0.027 340));
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.5;
+            background-color: canvas;
+            color: canvastext;
+        }
+
+        section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid light-dark(oklch(90% 0 0), oklch(40% 0 0));
+            border-radius: 8px;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Basic progress styling used in Determinate/Indeterminate examples */
+        .basic-progress {
+            accent-color: var(--accent-color);
+            display: block;
+            inline-size: 100%;
+            max-inline-size: 400px;
+            margin-block: 0.5rem;
+        }
+
+        /* Advanced styling from the guide */
+        .advanced-progress {
+            appearance: none;
+            block-size: 0.5lh;
+            border: unset;
+            inline-size: 100%;
+            max-inline-size: 400px;
+            margin-block: 0.5rem;
+            display: block;
+            border-radius: 1e5px;
+            overflow: hidden;
+
+            &[value] {
+                --progress-color: var(--accent-color);
+            }
+
+            &,
+            &::-webkit-progress-bar {
+                background: var(--color-surface);
+            }
+
+            &::-webkit-progress-value {
+                background: var(--progress-color, var(--accent-color));
+            }
+
+            &::-moz-progress-bar {
+                background: var(--progress-color, var(--accent-color));
+            }
+
+            /* Custom indeterminate animation */
+            &:not([value]) {
+                background: linear-gradient(90deg, transparent, var(--accent-color, currentColor), transparent);
+                background-size: 200% 100%;
+                animation: loading 2s infinite linear;
+            }
+
+            /* Ensure track backgrounds don't hide animation in WebKit and Firefox.
+               Note: These cannot be grouped or the entire rule will be ignored. */
+            &:not([value])::-webkit-progress-bar {
+                background: transparent;
+            }
+            &:not([value])::-moz-progress-bar {
+                background: transparent;
+            }
+
+            &:focus-visible {
+              outline: 1px solid canvasText;
+              outline-offset: 4px;
+            }
+        }
+
+        @keyframes loading {
+            from { background-position: 200% 0; }
+            to { background-position: -200% 0; }
+        }
+
+        /* Respect prefers-reduced-motion */
+        @media (prefers-reduced-motion: reduce) {
+            .advanced-progress:not([value]) {
+                /* Slow down the animation significantly and use a subtler visual change */
+                animation-duration: 10s;
+                background: linear-gradient(90deg, var(--color-surface), var(--accent-color), var(--color-surface));
+                background-size: 200% 100%;
+            }
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 1rem;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Native Progress Bars</h1>
+
+    <section>
+        <h2>Determinate State</h2>
+        <label for="det-progress">File progress:</label>
+        <progress id="det-progress" class="basic-progress" value="20" max="100">
+            20%
+        </progress>
+        
+        <div class="controls">
+            <button id="update-btn">Add 10%</button>
+        </div>
+    </section>
+
+    <section>
+        <h2>Indeterminate State</h2>
+        <label for="indet-progress">Downloading...</label>
+        <!-- Omit value attribute for indeterminate state -->
+        <progress id="indet-progress" class="basic-progress" max="100">
+            Loading...
+        </progress>
+    </section>
+
+    <section id="upload-container" aria-live="polite" aria-describedby="upload-progress">
+        <h2>Advanced Styling & Accessibility</h2>
+        <label for="upload-progress">
+            <span class="sr-only">File Upload Status:</span>
+            <progress id="upload-progress" class="advanced-progress" tabindex="-1">
+                Preparing...
+            </progress>
+        </label>
+        <p id="status-text">Preparing...</p>
+        <div class="controls">
+            <button id="start-btn">Simulate Upload</button>
+        </div>
+    </section>
+
+    <script>
+        // Determinate example logic
+        const detBar = document.getElementById('det-progress');
+        const updateBtn = document.getElementById('update-btn');
+
+        updateBtn.addEventListener('click', () => {
+            if (detBar.value < detBar.max) {
+                detBar.value += 10;
+            } else {
+                detBar.value = 0;
+            }
+            // Sync fallback text
+            detBar.textContent = `${detBar.value}%`;
+        });
+
+        // Advanced example logic
+        const container = document.getElementById('upload-container');
+        const advBar = document.getElementById('upload-progress');
+        const status = document.getElementById('status-text');
+        const startBtn = document.getElementById('start-btn');
+
+        startBtn.addEventListener('click', () => {
+            startBtn.disabled = true;
+            simulateTask();
+        });
+
+        function simulateTask() {
+            container.setAttribute('aria-busy', 'true');
+            status.textContent = "Uploading...";
+            advBar.removeAttribute('value'); // Set to indeterminate
+            advBar.textContent = "Uploading...";
+
+            setTimeout(() => {
+                advBar.max = 100;
+                advBar.value = 0;
+                advBar.textContent = "0%";
+                advBar.focus(); // Force screen reader announcement
+
+                const interval = setInterval(() => {
+                    advBar.value += 10;
+                    advBar.textContent = `${advBar.value}%`;
+
+                    if (advBar.value >= 100) {
+                        clearInterval(interval);
+                        status.textContent = "Task Complete!";
+                        advBar.textContent = "Task Complete!";
+                        container.setAttribute('aria-busy', 'false');
+                        advBar.focus();
+                        startBtn.disabled = false;
+                    } else {
+                        status.textContent = `Progress: ${advBar.value}%`;
+                    }
+                }, 400);
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
