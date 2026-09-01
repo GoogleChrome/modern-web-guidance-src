@@ -1,0 +1,228 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..08d9573 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -54,31 +54,137 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    <section class="view-switcher" aria-labelledby="edition-navigation-heading">
++        <h2 id="edition-navigation-heading" class="sr-only">News editions</h2>
++        <div class="border-b border-gray-300 bg-white px-4 sm:px-6">
++            <div
++                class="flex gap-1 max-w-6xl mx-auto"
++                role="tablist"
++                aria-label="Choose a news edition"
++            >
++                <button
++                    id="latest-tab"
++                    class="edition-tab active"
++                    type="button"
++                    role="tab"
++                    aria-selected="true"
++                    aria-controls="latest-view"
++                    tabindex="0"
++                    data-view-target="latest-view"
++                >
++                    Latest
++                </button>
++                <button
++                    id="world-tab"
++                    class="edition-tab"
++                    type="button"
++                    role="tab"
++                    aria-selected="false"
++                    aria-controls="world-view"
++                    tabindex="-1"
++                    data-view-target="world-view"
++                >
++                    World
++                </button>
++                <button
++                    id="politics-tab"
++                    class="edition-tab"
++                    type="button"
++                    role="tab"
++                    aria-selected="false"
++                    aria-controls="politics-view"
++                    tabindex="-1"
++                    data-view-target="politics-view"
++                >
++                    Politics
++                </button>
++            </div>
++        </div>
+ 
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++        <div class="spa-view" id="latest-view" role="tabpanel" aria-labelledby="latest-tab" aria-hidden="false" tabindex="-1">
++            <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++                <ArticleTeaser article={topArticle} large={true} />
++            </main>
+ 
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++            <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
++                <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++            </div>
++        </div>
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++        <div class="spa-view inactive" id="world-view" role="tabpanel" aria-labelledby="world-tab" aria-hidden="true" tabindex="-1">
++            <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++                <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
++            </div>
++        </div>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <div class="spa-view inactive" id="politics-view" role="tabpanel" aria-labelledby="politics-tab" aria-hidden="true" tabindex="-1">
++            <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++                <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++            </div>
++        </div>
++    </section>
++</Layout>
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++<script is:inline data-astro-rerun>
++    (() => {
++        const switcher = document.querySelector('.view-switcher');
++        if (!switcher) return;
+ 
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++        const tabs = Array.from(switcher.querySelectorAll('[role="tab"]'));
++        const views = Array.from(switcher.querySelectorAll('.spa-view'));
++
++        const switchToView = (viewId, moveFocus = true) => {
++            const activeView = views.find((view) => view.id === viewId);
++            const activeTab = tabs.find((tab) => tab.getAttribute('aria-controls') === viewId);
++            if (!activeView || !activeTab) return;
++
++            views.forEach((view) => {
++                view.classList.add('inactive');
++                view.setAttribute('aria-hidden', 'true');
++            });
++
++            tabs.forEach((tab) => {
++                const isActive = tab === activeTab;
++                tab.classList.toggle('active', isActive);
++                tab.setAttribute('aria-selected', String(isActive));
++                tab.setAttribute('tabindex', isActive ? '0' : '-1');
++            });
++
++            activeView.classList.remove('inactive');
++            activeView.setAttribute('aria-hidden', 'false');
++
++            if (moveFocus) activeView.focus();
++        };
++
++        tabs.forEach((tab, index) => {
++            tab.addEventListener('click', () => {
++                const viewId = tab.getAttribute('data-view-target');
++                if (viewId) switchToView(viewId);
++            });
++
++            tab.addEventListener('keydown', (event) => {
++                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
++                event.preventDefault();
++
++                let nextIndex = index;
++                if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
++                if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
++                if (event.key === 'Home') nextIndex = 0;
++                if (event.key === 'End') nextIndex = tabs.length - 1;
++
++                const nextTab = tabs[nextIndex];
++                const viewId = nextTab?.getAttribute('data-view-target');
++                if (viewId) {
++                    nextTab.focus();
++                    switchToView(viewId);
++                }
++            });
++        });
++    })();
++</script>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..490f697 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,56 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.view-switcher {
++  position: relative;
++  min-height: 32rem;
++}
++
++.edition-tab {
++  border-bottom: 3px solid transparent;
++  color: #4b5563;
++  cursor: pointer;
++  font-size: 0.875rem;
++  font-weight: 700;
++  padding: 0.9rem 1.15rem 0.75rem;
++  transition: border-color 150ms ease, color 150ms ease;
++}
++
++.edition-tab:hover {
++  color: #111827;
++}
++
++.edition-tab:focus-visible {
++  border-radius: 0.25rem;
++  outline: 2px solid #92400e;
++  outline-offset: -2px;
++}
++
++.edition-tab.active {
++  border-bottom-color: #d97706;
++  color: #111827;
++}
++
++.spa-view {
++  content-visibility: visible;
++  outline: none;
++}
++
++.spa-view:focus-visible {
++  box-shadow: inset 0 0 0 3px #d97706;
++}
++
++.spa-view.inactive {
++  content-visibility: hidden;
++  pointer-events: none;
++  position: absolute;
++  width: 100%;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

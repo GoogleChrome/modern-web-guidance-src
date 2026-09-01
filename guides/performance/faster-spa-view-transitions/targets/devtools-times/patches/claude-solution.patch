@@ -1,0 +1,189 @@
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..caf8153 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -1,21 +1,141 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import { getCollection } from 'astro:content';
++import ArticleTeaser from '../components/ArticleTeaser.astro';
++import { getCollection, render } from 'astro:content';
+ 
+-const reports = await getCollection('reports');
++const RELATED_CATEGORIES: Record<string, string[]> = {
++    'News & Politics': ['politics', 'national', 'news', 'media', 'economy', 'business', 'labor', 'urban development'],
++    'Science & Tech': ['science'],
++    'Arts & Culture': ['culture', 'media'],
++    'Lifestyle & Sports': ['sports', 'lifestyle', 'pets'],
++};
++
++const reports = (await getCollection('reports')).sort((a, b) =>
++    a.data.title.localeCompare(b.data.title)
++);
++const articles = await getCollection('articles');
++
++const views = await Promise.all(
++    reports.map(async (report) => {
++        const { Content } = await render(report);
++        const categories = RELATED_CATEGORIES[report.data.category] ?? [];
++        return {
++            report,
++            Content,
++            related: articles
++                .filter((article) => categories.includes(article.data.category.toLowerCase()))
++                .slice(0, 3),
++        };
++    })
++);
+ ---
++
+ <Layout title="Reports">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+-        <div class="prose max-w-none">
+-            <p>Read our latest reports.</p>
+-            <ul>
+-                {reports.map(report => (
+-                    <li>
+-                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
++    <div class="max-w-6xl mx-auto px-4 py-8 md:py-12" data-spa-view-switcher>
++        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Reports</h1>
++        <p class="text-gray-600 mb-6">
++            Read our latest reports. Switching between reports keeps every report you have
++            already opened cached in the browser, so returning to one is instant.
++        </p>
++
++        <div
++            role="tablist"
++            aria-label="Reports"
++            class="flex flex-wrap gap-1 border-b border-gray-300 mb-8"
++        >
++            {views.map(({ report }, index) => (
++                <button
++                    type="button"
++                    role="tab"
++                    id={`tab-${report.id}`}
++                    data-view-target={`view-${report.id}`}
++                    aria-controls={`view-${report.id}`}
++                    aria-selected={index === 0 ? 'true' : 'false'}
++                    class="px-4 py-2 -mb-px border-b-2 border-transparent text-sm md:text-base text-gray-500 whitespace-nowrap cursor-pointer hover:text-gray-900 aria-selected:border-amber-400 aria-selected:text-gray-900 aria-selected:font-semibold"
++                >
++                    {report.data.title}
++                </button>
++            ))}
++        </div>
++
++        <div class="spa-view-stack">
++            {views.map(({ report, Content, related }, index) => (
++                <section
++                    id={`view-${report.id}`}
++                    role="tabpanel"
++                    aria-labelledby={`tab-${report.id}`}
++                    aria-hidden={index === 0 ? 'false' : 'true'}
++                    tabindex="-1"
++                    class:list={['spa-view', 'outline-none', { inactive: index !== 0 }]}
++                >
++                    <div class="text-amber-800 text-sm font-brand tracking-widest">
++                        {report.data.category}
++                    </div>
++                    <h2 class="mt-1 text-2xl md:text-3xl font-brand text-gray-900">
++                        {report.data.title}
++                    </h2>
++                    <p class="mt-2 text-lg text-gray-700">{report.data.description}</p>
++                    <p class="mt-1 text-sm text-gray-500 border-b border-gray-200 pb-4">
++                        Published {report.data.publishDate}
++                    </p>
++
++                    <div class="prose max-w-none mt-6">
++                        <Content />
++                    </div>
++
++                    {related.length > 0 && (
++                        <section class="mt-10 border-t border-gray-200 pt-6">
++                            <h3 class="text-xl font-brand text-gray-900 mb-6">Related coverage</h3>
++                            <div class="grid md:grid-cols-3 gap-6">
++                                {related.map((article) => <ArticleTeaser article={article} />)}
++                            </div>
++                        </section>
++                    )}
++                </section>
++            ))}
+         </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<script>
++    function setUpViewSwitcher(root: HTMLElement) {
++        if (root.dataset.spaViewSwitcherReady === 'true') return;
++        root.dataset.spaViewSwitcherReady = 'true';
++
++        const tabs = Array.from(root.querySelectorAll<HTMLElement>('[data-view-target]'));
++        const views = Array.from(root.querySelectorAll<HTMLElement>('.spa-view'));
++
++        function switchToView(viewId: string) {
++            const activeView = views.find((view) => view.id === viewId);
++            if (!activeView) return;
++
++            for (const view of views) {
++                const isActive = view === activeView;
++                view.classList.toggle('inactive', !isActive);
++                view.setAttribute('aria-hidden', isActive ? 'false' : 'true');
++            }
++
++            for (const tab of tabs) {
++                tab.setAttribute(
++                    'aria-selected',
++                    tab.dataset.viewTarget === viewId ? 'true' : 'false'
++                );
++            }
++
++            // Move focus to the new view so the tab order continues from the visible content.
++            activeView.focus();
++        }
++
++        for (const tab of tabs) {
++            const target = tab.dataset.viewTarget;
++            if (!target) continue;
++            tab.addEventListener('click', () => switchToView(target));
++        }
++    }
++
++    document.addEventListener('astro:page-load', () => {
++        document
++            .querySelectorAll<HTMLElement>('[data-spa-view-switcher]')
++            .forEach(setUpViewSwitcher);
++    });
++</script>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..750b370 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,22 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++.spa-view-stack {
++  position: relative;
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++
++  /* Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
+ }
+\ No newline at end of file

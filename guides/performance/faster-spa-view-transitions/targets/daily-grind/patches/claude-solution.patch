@@ -1,0 +1,415 @@
+diff --git a/index.html b/index.html
+index 66c9173..a1b0fb7 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,11 @@
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      border-bottom: 2px solid var(--accent);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -120,6 +125,11 @@
+       color: var(--primary);
+     }
+ 
++    .card p.price {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -129,6 +139,9 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      cursor: pointer;
++      border: none;
++      font: inherit;
+     }
+ 
+     .btn:hover {
+@@ -152,6 +165,93 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ------------------------------------------------------------------
++       SPA view caching
++
++       Views are never destroyed on navigation. Inactive views keep their
++       DOM, listeners and state, and the browser keeps their cached
++       rendering state, so returning to a view skips layout + paint.
++
++       This app has a fixed set of five views, so unconditional caching is
++       safe. A highly dynamic app (dozens of generated reports, unbounded
++       dynamic routes) would need an LRU eviction strategy instead.
++       ------------------------------------------------------------------ */
++    .spa-views {
++      position: relative;
++    }
++
++    .spa-view {
++      /* Views are programmatically focused on transition; the focus ring
++         would otherwise appear on a non-interactive container. */
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++      content-visibility: hidden;
++
++      /* Keep hidden views out of the layout flow. `content-visibility:
++         hidden` only skips the *contents*, so the element box itself would
++         still be part of the flow and still paint its own background. */
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      pointer-events: none;
++    }
++
++    /* Fallback: browsers without `content-visibility` support would render
++       every view at once, so collapse inactive views the traditional way.
++       This trades the caching benefit for correctness. */
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
++    .location {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: left;
++    }
++
++    .location h3 {
++      color: var(--primary);
++    }
++
++    .tier-list {
++      list-style: none;
++      margin-top: 20px;
++    }
++
++    .tier-list li {
++      background: white;
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      margin-bottom: 10px;
++      border-radius: 4px;
++    }
++
++    .account-table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 20px;
++      background: white;
++    }
++
++    .account-table th,
++    .account-table td {
++      border-bottom: 1px solid var(--secondary);
++      padding: 12px;
++      text-align: left;
++    }
++
++    .view-title {
++      text-align: center;
++    }
+   </style>
+ </head>
+ 
+@@ -160,42 +260,154 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/" data-view="view-home">Home</a></li>
++      <li><a href="/menu" data-view="view-menu">Menu</a></li>
++      <li><a href="/locations" data-view="view-locations">Locations</a></li>
++      <li><a href="/rewards" data-view="view-rewards">Rewards</a></li>
++      <li><a href="/account" data-view="view-account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <div class="spa-views" id="spa-views">
++
++    <section id="view-home" class="spa-view" tabindex="-1" aria-label="Home">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/menu" class="btn" data-view="view-menu">Order Now</a>
++      </header>
++
++      <main class="container">
++        <h2 class="view-title">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu" class="btn" data-view="view-menu">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu" class="btn" data-view="view-menu">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu" class="btn" data-view="view-menu">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </main>
++    </section>
++
++    <section id="view-menu" class="spa-view" tabindex="-1" aria-label="Menu">
++      <div class="container">
++        <h2 class="view-title">Our Menu</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <p class="price">$5.75</p>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <p class="price">$3.25</p>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <p class="price">$4.50</p>
++          </div>
++          <div class="card">
++            <h3>Cortado</h3>
++            <p>Equal parts espresso and warm microfoam.</p>
++            <p class="price">$4.00</p>
++          </div>
++          <div class="card">
++            <h3>Pour Over</h3>
++            <p>Single origin, ground to order, brewed by hand.</p>
++            <p class="price">$5.00</p>
++          </div>
++          <div class="card">
++            <h3>Cardamom Bun</h3>
++            <p>Baked in-house every morning at 5am.</p>
++            <p class="price">$4.25</p>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++    </section>
++
++    <section id="view-locations" class="spa-view" tabindex="-1" aria-label="Locations">
++      <div class="container">
++        <h2 class="view-title">Find Us</h2>
++        <div class="grid">
++          <div class="location">
++            <h3>Riverside</h3>
++            <p>118 Mill Street</p>
++            <p>Open 6am &ndash; 7pm daily</p>
++          </div>
++          <div class="location">
++            <h3>Old Town</h3>
++            <p>42 Cobblestone Lane</p>
++            <p>Open 7am &ndash; 6pm daily</p>
++          </div>
++          <div class="location">
++            <h3>The Roastery</h3>
++            <p>900 Warehouse Row</p>
++            <p>Open 8am &ndash; 4pm, weekends only</p>
++          </div>
+         </div>
+       </div>
+     </section>
+-  </main>
++
++    <section id="view-rewards" class="spa-view" tabindex="-1" aria-label="Rewards">
++      <div class="container">
++        <h2 class="view-title">Grind Rewards</h2>
++        <p style="text-align: center;">You have <strong>340</strong> beans. 160 more until your next free drink.</p>
++        <ul class="tier-list">
++          <li><strong>Sprout (0&ndash;249 beans)</strong> &mdash; Free birthday drink.</li>
++          <li><strong>Roaster (250&ndash;749 beans)</strong> &mdash; Free size upgrades, every day.</li>
++          <li><strong>Master Blender (750+ beans)</strong> &mdash; Monthly bag of single origin beans.</li>
++        </ul>
++      </div>
++    </section>
++
++    <section id="view-account" class="spa-view" tabindex="-1" aria-label="My Account">
++      <div class="container">
++        <h2 class="view-title">My Account</h2>
++        <p style="text-align: center;">Signed in as <strong>sam@example.com</strong></p>
++        <table class="account-table">
++          <caption class="view-title">Recent orders</caption>
++          <thead>
++            <tr>
++              <th scope="col">Date</th>
++              <th scope="col">Item</th>
++              <th scope="col">Total</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <td>2026-08-29</td>
++              <td>Cold Brew</td>
++              <td>$4.50</td>
++            </tr>
++            <tr>
++              <td>2026-08-27</td>
++              <td>Maple Oat Latte, Cardamom Bun</td>
++              <td>$10.00</td>
++            </tr>
++            <tr>
++              <td>2026-08-24</td>
++              <td>Pour Over</td>
++              <td>$5.00</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++    </section>
++
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +419,100 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var ROUTES = {
++        '/': 'view-home',
++        '/index.html': 'view-home',
++        '/menu': 'view-menu',
++        '/locations': 'view-locations',
++        '/rewards': 'view-rewards',
++        '/account': 'view-account'
++      };
++      var DEFAULT_VIEW = 'view-home';
++
++      function pathForView(viewId) {
++        for (var path in ROUTES) {
++          if (ROUTES[path] === viewId && path !== '/index.html') return path;
++        }
++        return '/';
++      }
++
++      function viewForPath(pathname) {
++        return ROUTES[pathname] || DEFAULT_VIEW;
++      }
++
++      function switchToView(viewId, options) {
++        var opts = options || {};
++        var activeView = document.getElementById(viewId) || document.getElementById(DEFAULT_VIEW);
++
++        // Hide every view: the cached rendering state survives, the DOM is
++        // never torn down.
++        var allViews = document.querySelectorAll('.spa-view');
++        for (var i = 0; i < allViews.length; i++) {
++          var view = allViews[i];
++          view.classList.add('inactive');
++          view.setAttribute('aria-hidden', 'true');
++        }
++
++        // Show the target view.
++        activeView.classList.remove('inactive');
++        activeView.setAttribute('aria-hidden', 'false');
++
++        var links = document.querySelectorAll('nav a[data-view]');
++        for (var j = 0; j < links.length; j++) {
++          if (links[j].getAttribute('data-view') === activeView.id) {
++            links[j].setAttribute('aria-current', 'page');
++          } else {
++            links[j].removeAttribute('aria-current');
++          }
++        }
++
++        // MANDATORY: Move focus to the new view to ensure a logical tab-order.
++        activeView.focus({ preventScroll: true });
++
++        if (opts.scrollToTop) window.scrollTo(0, 0);
++        return activeView;
++      }
++
++      function navigate(viewId) {
++        if (window.history && window.history.pushState) {
++          var path = pathForView(viewId);
++          if (path !== window.location.pathname) {
++            window.history.pushState({ viewId: viewId }, '', path);
++          }
++        }
++        switchToView(viewId, { scrollToTop: true });
++      }
++
++      document.addEventListener('click', function (event) {
++        if (event.defaultPrevented || event.button !== 0) return;
++        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++
++        var target = event.target.closest ? event.target.closest('[data-view]') : null;
++        if (!target) return;
++
++        var viewId = target.getAttribute('data-view');
++        if (!document.getElementById(viewId)) return;
++
++        event.preventDefault();
++        navigate(viewId);
++      });
++
++      window.addEventListener('popstate', function (event) {
++        var viewId = (event.state && event.state.viewId) || viewForPath(window.location.pathname);
++        switchToView(viewId, { scrollToTop: true });
++      });
++
++      switchToView(viewForPath(window.location.pathname), { scrollToTop: false });
++
++      // Exposed so tests and other modules can drive navigation.
++      window.switchToView = switchToView;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,193 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..492b700 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,6 +1,7 @@
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    switchToView: (viewId: string | HTMLElement) => void;
+   }
+ }
+ 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..bbca958 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -12,6 +12,14 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++
++const pathname = Astro.url.pathname;
++const base = baseUrl.replace(/^\/|\/$/g, '');
++let cleanPath = pathname.replace(/^\/|\/$/g, '');
++if (base && cleanPath.startsWith(base)) {
++  cleanPath = cleanPath.slice(base.length).replace(/^\/|\/$/g, '');
++}
++const viewId = cleanPath ? `view-${cleanPath.replace(/[^a-zA-Z0-9_-]/g, '-')}` : 'view-home';
+ ---
+ 
+ <!doctype html>
+@@ -45,11 +53,104 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main id="spa-view-container" class="bg-white relative">
++          <div
++            id={viewId}
++            class="spa-view"
++            tabindex="-1"
++            aria-hidden="false"
++            data-view-path={pathname}
++          >
++            <slot />
++          </div>
+         </main>
+       </div>
+     </div>
+     <Footer />
++
++    <script is:inline>
++      function switchToView(viewId) {
++        // Hide all views
++        document.querySelectorAll('.spa-view').forEach(view => {
++          view.classList.add('inactive');
++          view.setAttribute('aria-hidden', 'true');
++        });
++
++        // Show the target view
++        const activeView = typeof viewId === 'string' ? (document.getElementById(viewId) || document.querySelector(viewId)) : viewId;
++        if (activeView) {
++          activeView.classList.remove('inactive');
++          activeView.setAttribute('aria-hidden', 'false');
++
++          // MANDATORY: Move focus to the new view to ensure a logical tab-order
++          if (!activeView.hasAttribute('tabindex')) {
++            activeView.setAttribute('tabindex', '-1');
++          }
++          activeView.focus();
++        }
++      }
++
++      window.switchToView = switchToView;
++
++      document.addEventListener('astro:before-swap', (event) => {
++        event.swap = () => {
++          const container = document.getElementById('spa-view-container');
++          const newDoc = event.newDocument;
++
++          document.title = newDoc.title;
++
++          if (!container) return;
++
++          const newView = newDoc.querySelector('.spa-view');
++          if (!newView) return;
++
++          const targetId = newView.id;
++          let existingView = targetId ? document.getElementById(targetId) : null;
++
++          // Hide all existing views
++          document.querySelectorAll('.spa-view').forEach(view => {
++            view.classList.add('inactive');
++            view.setAttribute('aria-hidden', 'true');
++          });
++
++          if (existingView) {
++            existingView.classList.remove('inactive');
++            existingView.setAttribute('aria-hidden', 'false');
++            if (!existingView.hasAttribute('tabindex')) {
++              existingView.setAttribute('tabindex', '-1');
++            }
++            existingView.focus();
++          } else {
++            const adoptedView = document.adoptNode(newView);
++            container.appendChild(adoptedView);
++            adoptedView.classList.remove('inactive');
++            adoptedView.setAttribute('aria-hidden', 'false');
++            if (!adoptedView.hasAttribute('tabindex')) {
++              adoptedView.setAttribute('tabindex', '-1');
++            }
++            adoptedView.focus();
++          }
++
++          // Eviction strategy (LRU): limit number of cached views
++          const maxCachedViews = 10;
++          const views = Array.from(document.querySelectorAll('.spa-view'));
++          const inactiveViews = views.filter(v => v.classList.contains('inactive'));
++          if (views.length > maxCachedViews && inactiveViews.length > 0) {
++            const toRemove = inactiveViews.slice(0, views.length - maxCachedViews);
++            toRemove.forEach(v => v.remove());
++          }
++        };
++      });
++
++      document.addEventListener('astro:page-load', () => {
++        const activeView = document.querySelector('.spa-view:not(.inactive)');
++        if (activeView) {
++          if (!activeView.hasAttribute('tabindex')) {
++            activeView.setAttribute('tabindex', '-1');
++          }
++          activeView.setAttribute('aria-hidden', 'false');
++        }
++      });
++    </script>
+   </body>
+ </html>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..7198306 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,23 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++.spa-view {
++  content-visibility: visible;
++  outline: none;
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++
++  /* Optional: Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
+ }
+\ No newline at end of file
+diff --git a/src/utils/spa-views.ts b/src/utils/spa-views.ts
+new file mode 100644
+index 0000000..06edf49
+--- /dev/null
++++ b/src/utils/spa-views.ts
+@@ -0,0 +1,20 @@
++export function switchToView(viewId: string | HTMLElement): void {
++  // Hide all views
++  document.querySelectorAll('.spa-view').forEach(view => {
++    view.classList.add('inactive');
++    view.setAttribute('aria-hidden', 'true');
++  });
++
++  // Show the target view
++  const activeView = typeof viewId === 'string' ? (document.getElementById(viewId) || document.querySelector(viewId)) : viewId;
++  if (activeView) {
++    activeView.classList.remove('inactive');
++    activeView.setAttribute('aria-hidden', 'false');
++
++    // MANDATORY: Move focus to the new view to ensure a logical tab-order
++    if (!activeView.hasAttribute('tabindex')) {
++      activeView.setAttribute('tabindex', '-1');
++    }
++    (activeView as HTMLElement).focus();
++  }
++}
