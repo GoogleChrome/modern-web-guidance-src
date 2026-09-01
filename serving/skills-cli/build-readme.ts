@@ -72,25 +72,8 @@ function listToMarkdownTable(items: string[], colCount = 3): string {
   return md;
 }
 
-export function getFeaturesAndUseCasesCount(): { featuresCount: number; useCasesCount: number } {
+export function getFeaturesAndUseCases() {
   const readyGuides = scanAllGuides().filter(inv => inv.hasGuide && inv.featureIds.length > 0);
-  const allFeatureIds = new Set<string>();
-
-  for (const guide of readyGuides) {
-    const guidePath = path.join(guide.dir, "guide.md");
-    if (!fs.existsSync(guidePath)) continue;
-    guide.featureIds.forEach(id => allFeatureIds.add(id));
-  }
-
-  return {
-    featuresCount: allFeatureIds.size,
-    useCasesCount: readyGuides.length,
-  };
-}
-
-export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
-  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide && inv.featureIds.length > 0);
-
   const allFeatureIds = new Set<string>();
   const categoryMap = new Map<string, { id: string; category: string; description: string }[]>();
 
@@ -116,6 +99,20 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       description
     });
   }
+
+  return {
+    allFeatureIds,
+    categoryMap,
+    readyGuides,
+  };
+}
+
+export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[]) {
+  const {
+    readyGuides,
+    allFeatureIds,
+    categoryMap,
+  } = getFeaturesAndUseCases();
 
   // Determine all features to generate the summary text
   const allFeaturesSorted = Array.from(allFeatureIds)
@@ -176,40 +173,22 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 
   const evalsMd = generateEvalsResultsTable();
 
-  // Copy README template to the distribution build folder
-  const templateReadmePath = path.join(SERVING_DIR, "skills-cli/template/README.md");
-  const destReadmePath = path.join(publishRoot, "README.md");
-  if (fs.existsSync(templateReadmePath)) {
-    fs.copyFileSync(templateReadmePath, destReadmePath);
-  }
-
-  // Update both the distribution and source repo README files inline
-  const readmesToUpdate = Array.from(new Set([
-    path.join(rootDir, "README.md"),
-    destReadmePath,
-  ]));
-
-  for (const readmePath of readmesToUpdate) {
+  // Update target README file(s) inline
+  const dirs = Array.isArray(targetDirs) ? targetDirs : [targetDirs];
+  for (const dir of dirs) {
+    const destReadmePath = path.join(dir, "README.md");
     updateFileBetweenMarkers(
-      readmePath,
+      destReadmePath,
       "<!-- INJECT_SKILL_COVERAGE_START -->",
       "<!-- INJECT_SKILL_COVERAGE_END -->",
       dynamicMd
     );
     updateFileBetweenMarkers(
-      readmePath,
+      destReadmePath,
       "<!-- INJECT_EVAL_RESULTS_START -->",
       "<!-- INJECT_EVAL_RESULTS_END -->",
       evalsMd
     );
-  }
-
-  // Copy .github/img assets
-  const srcImgDir = path.join(rootDir, ".github/img");
-  const destImgDir = path.join(publishRoot, ".github/img");
-  if (fs.existsSync(srcImgDir)) {
-    fs.mkdirSync(destImgDir, { recursive: true });
-    fs.cpSync(srcImgDir, destImgDir, { recursive: true });
   }
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
