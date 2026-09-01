@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { resultsDir as baseResultsDir } from '../../lib/paths.ts';
 import { cCyan, cGreen, cYellow, cRed } from '../../lib/colors.ts';
-import { Agents, Serving } from '../config.ts';
+import { Agents } from '../config.ts';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
@@ -26,21 +26,32 @@ async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: s
   }
   if (needsGeneration) {
     console.log(cCyan(`[GCS Downloader] trajectory_summary.json is missing or outdated in historical run. Generating v2.0 on the fly...`));
-    let detectedAgent: string = Agents.JETSKI;
-    const lower = relativeRunPath.toLowerCase();
-    if (lower.includes('claude')) {
-      detectedAgent = Agents.CLAUDE_CODE;
-    } else if (lower.includes('gemini')) {
-      detectedAgent = Agents.GEMINI_CLI;
-    } else if (lower.includes('codex')) {
-      detectedAgent = Agents.CODEX_CLI;
-    } else if (lower.includes('pi')) {
-      detectedAgent = Agents.PI;
+    let detectedAgent: string | undefined;
+    let curr = absoluteRunDir;
+    while (curr && curr !== path.dirname(curr)) {
+      const evalsPath = path.join(curr, 'evals.json');
+      if (fs.existsSync(evalsPath)) {
+        try {
+          const data = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+          if (data.agent) {
+            const raw = String(data.agent).replace(/-/g, '_');
+            detectedAgent = Object.values(Agents).find(a => a === raw || a === data.agent) || data.agent;
+            break;
+          }
+        } catch {
+          // ignore parse failure
+        }
+      }
+      curr = path.dirname(curr);
+    }
+
+    if (!detectedAgent) {
+      throw new Error(`[GCS Downloader] Could not determine agent from evals.json for run: ${relativeRunPath}`);
     }
     
     try {
       const { generateNormalizedTrajectory } = await import('./trajectory-normalizer.ts');
-      await generateNormalizedTrajectory(absoluteRunDir, detectedAgent, Serving.MCP);
+      await generateNormalizedTrajectory(absoluteRunDir, detectedAgent);
     } catch (err: any) {
       console.warn(`[GCS Downloader] Warning: Failed to generate trajectory on the fly: ${err.message}`);
     }
@@ -276,19 +287,6 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
     return true;
   }
 
-  // 2. Download the primary requested directory (e.g., guided)
-  const success = await downloadSingleDirFromGcs(runDir, token);
-
-  // 3. Pre-emptively download the sibling run type directory (guided/unguided)
-  if (runDir.endsWith('guided')) {
-    const unguidedDir = runDir.slice(0, -6) + 'unguided';
-    console.log(cCyan(`[GCS Downloader] Pre-emptively downloading sibling unguided run: ${unguidedDir}`));
-    await downloadSingleDirFromGcs(unguidedDir, token);
-  } else if (runDir.endsWith('unguided')) {
-    const guidedDir = runDir.slice(0, -8) + 'guided';
-    console.log(cCyan(`[GCS Downloader] Pre-emptively downloading sibling guided run: ${guidedDir}`));
-    await downloadSingleDirFromGcs(guidedDir, token);
-  }
-
-  return success;
+  // 2. Download the primary requested directory
+  return downloadSingleDirFromGcs(runDir, token);
 }
