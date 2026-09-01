@@ -121,4 +121,62 @@ describe('compare-evals pipeline', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('runs runComparison end-to-end with mock agent caller', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compare-e2e-'));
+    try {
+      const suiteDir = path.join(baseDir, 'results', 'suite-test');
+      const runDirA = path.join(suiteDir, '1', 'details-styling', 'task', 'guided');
+      const runDirB = path.join(suiteDir, '2', 'details-styling', 'task', 'unguided');
+      fs.mkdirSync(runDirA, { recursive: true });
+      fs.mkdirSync(runDirB, { recursive: true });
+
+      // Run A setup (success)
+      fs.writeFileSync(path.join(runDirA, 'details-styling_results.json'), JSON.stringify({
+        suites: [{ specs: [{ title: 'test 1', ok: true }] }]
+      }));
+      fs.writeFileSync(path.join(runDirA, 'trajectory_summary.json'), JSON.stringify({
+        agent: 'claude_code',
+        initialPrompt: 'Style details',
+        steps: [{ stepNumber: 1, action: { type: 'run_command', name: 'npm' }, outcome: { status: 'success' } }]
+      }));
+      fs.writeFileSync(path.join(runDirA, 'index.html'), '<details></details>');
+
+      // Run B setup (failure)
+      fs.writeFileSync(path.join(runDirB, 'details-styling_results.json'), JSON.stringify({
+        suites: [{ specs: [{ title: 'test 1', ok: false, tests: [{ results: [{ error: { message: 'failed' } }] }] }] }]
+      }));
+      fs.writeFileSync(path.join(runDirB, 'trajectory_summary.json'), JSON.stringify({
+        agent: 'claude_code',
+        initialPrompt: 'Style details',
+        steps: [{ stepNumber: 1, action: { type: 'run_command', name: 'npm' }, outcome: { status: 'error' } }]
+      }));
+      fs.writeFileSync(path.join(runDirB, 'index.html'), '<div></div>');
+
+      const calls: string[] = [];
+      const mockAgentCaller = async (_sys: string, _prompt: string, label = 'agent'): Promise<string> => {
+        calls.push(label);
+        return `Mock analysis from ${label}`;
+      };
+
+      const { runComparison } = await import('../lib/compare-evals.ts');
+      const report = await runComparison(runDirA, runDirB, mockAgentCaller);
+
+      assert.strictEqual(typeof report, 'string');
+      assert.ok(report.includes('Mock analysis'));
+      assert.strictEqual(calls.length, 3);
+      assert.ok(calls.includes('Sub-Agent 1 (Guide Compliance)'));
+      assert.ok(calls.includes('Sub-Agent 2 (Code & Friction)'));
+      assert.ok(calls.includes('Synthesizer Sub-Agent'));
+
+      // Check that report was saved to variance_diagnoses
+      const expectedReportPath = path.join(suiteDir, 'variance_diagnoses', 'details-styling-task-guided.md');
+      assert.ok(fs.existsSync(expectedReportPath), `Expected report to be saved at ${expectedReportPath}`);
+      const savedContent = fs.readFileSync(expectedReportPath, 'utf8');
+      assert.strictEqual(savedContent, report);
+    } finally {
+      fs.rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
 });
+

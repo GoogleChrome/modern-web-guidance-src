@@ -19,7 +19,6 @@ function createMockGuideContext(overrides?: Partial<GuideContext>): GuideContext
 function createMockRunContext(overrides?: Partial<RunContext>): RunContext {
   return {
     dir: "/tmp/results/trial-1/1/anchor-positioning/anchor-tooltip/guided",
-    runNumber: 1,
     score: 85,
     resultsJson: [
       { message: "should position tooltip above", passed: true },
@@ -30,41 +29,26 @@ function createMockRunContext(overrides?: Partial<RunContext>): RunContext {
         errors: ["Expected anchor center to align with target center"]
       }
     ],
-    trajectorySummary: {
-      agent: "claude-code",
-      initialPrompt: "Create a tooltip anchored to a target element with fallback.",
-      steps: []
-    },
     codeOutput: "<div class=\"tooltip\">Content</div>",
-    codePath: "index.html",
     preprocessed: {
       taggedSteps: [
         {
           stepNumber: 1,
           category: "skill_search",
           thought: "Searching for anchor positioning skill",
-          actionName: "search",
-          actionDetails: "{\"query\":\"anchor positioning\"}",
-          isError: false,
-          raw: { stepNumber: 1 }
+          actionName: "search"
         },
         {
           stepNumber: 2,
           category: "guide_retrieval",
           thought: "Retrieving guide anchor-positioning",
-          actionName: "retrieve",
-          actionDetails: "{\"id\":\"anchor-positioning\"}",
-          isError: false,
-          raw: { stepNumber: 2 }
+          actionName: "retrieve"
         },
         {
           stepNumber: 3,
           category: "code_mutation",
           thought: "Writing index.html with position-anchor",
-          actionName: "write_to_file",
-          actionDetails: "{\"TargetFile\":\"index.html\"}",
-          isError: false,
-          raw: { stepNumber: 3 }
+          actionName: "write_to_file"
         }
       ],
       searchQueries: ["anchor positioning"],
