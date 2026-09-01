@@ -5,6 +5,8 @@ web-feature-ids:
   - customizable-select
 ---
 
+# Button group
+
 Button groups (sometimes called segment controls or toggle buttons) are common UI patterns for selecting a single option from a small set, such as choosing a layout view or a text alignment. Traditionally, these were built using complex radio button hacks or entirely custom JavaScript components, which often introduced accessibility gaps.
 
 By using the `appearance: base-select` feature, you can transform a standard `<select>` element into a fully customizable button group while retaining all the native accessibility and form integration of a standard select.
