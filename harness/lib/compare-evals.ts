@@ -4,10 +4,10 @@ import path from 'node:path';
 import { Agents } from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
-import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
+import { baseAppsDir, guidesDir } from '../../lib/paths.ts';
 import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from './compare-prompts.ts';
 import { generateUnifiedDiff } from '../../lib/patch-utils.ts';
-import { categorizeAction, type StandardizedStep, type TrajectorySummary } from './trajectory-normalizer.ts';
+import { categorizeAction, type TrajectorySummary } from './trajectory-normalizer.ts';
 import { parseResultPath } from './collection.ts';
 import { isEnoent } from './agent-shared.ts';
 import { getDefaultSolutionAgent, getGuidesMap, getTaskMap, GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE, TASK_FILE } from '../../lib/guide-validation.ts';
@@ -15,7 +15,6 @@ import { runAgent } from '../../guides/lib/utils.ts';
 
 const ERROR_LOOP_THRESHOLD = 2;
 const MAX_THOUGHT_SNIPPET_LEN = 120;
-const MAX_ACTION_PARAMS_SNIPPET_LEN = 200;
 
 function tryReadFile(filePath: string): string | null {
   try {
@@ -51,15 +50,6 @@ async function callAgentCli(systemInstruction: string, prompt: string, label = '
     throw new Error(`[${label}] Empty response received from ${agent}`);
   }
 
-  try {
-    const debugDir = path.join(resultsDir, 'compare_work');
-    fs.mkdirSync(debugDir, { recursive: true });
-    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-    fs.writeFileSync(path.join(debugDir, `response_debug_${slug}.txt`), cleanOutput, 'utf8');
-  } catch (e) {
-    console.warn(`[${label}] Failed to save debug response:`, e);
-  }
-
   return cleanOutput;
 }
 
@@ -68,9 +58,6 @@ export interface TaggedStep {
   category: 'skill_search' | 'guide_retrieval' | 'mandatory_rule_thought' | 'code_mutation' | 'incidental_noise';
   thought?: string;
   actionName?: string;
-  actionDetails?: string;
-  isError?: boolean;
-  raw: StandardizedStep;
 }
 
 export interface PreprocessedTrajectory {
@@ -102,12 +89,9 @@ export interface PlaywrightAssertion {
 
 export interface RunContext {
   dir: string;
-  runNumber: number;
   score: number;
   resultsJson: PlaywrightAssertion[];
-  trajectorySummary: TrajectorySummary | null;
   codeOutput: string;
-  codePath: string;
   preprocessed: PreprocessedTrajectory;
   initialPrompt: string;
 }
@@ -287,7 +271,6 @@ function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): Prep
     const thought = rawStep.thought || '';
     const actionName = rawStep.action?.name || '';
     const actionParams = rawStep.action?.params;
-    const actionParamsStr = JSON.stringify(actionParams || {}).toLowerCase();
     const isErr = rawStep.outcome?.status === 'error';
 
     if (isErr) {
@@ -320,10 +303,7 @@ function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): Prep
       stepNumber,
       category,
       thought,
-      actionName,
-      actionDetails: actionParamsStr.slice(0, MAX_ACTION_PARAMS_SNIPPET_LEN),
-      isError: isErr,
-      raw: rawStep
+      actionName
     });
   }
 
@@ -345,16 +325,20 @@ function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): Prep
 
 function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
   let curr = runDir;
+  const parsed = parseResultPath(runDir);
+  const guideName = parsed?.guide;
+  const taskName = parsed?.taskName;
+
   while (curr && curr !== path.dirname(curr)) {
     const data = tryReadJson(path.join(curr, 'evals.json'));
     if (data && data.results) {
-      const pathSegments = runDir.split(/[/\\]/);
-      const taskName = pathSegments[pathSegments.length - 2];
       for (const testName in data.results) {
         const runs = data.results[testName];
         if (Array.isArray(runs)) {
           for (const run of runs) {
-            if (run.targetFile && (run.taskName === taskName || testName.includes(taskName || ''))) {
+            const matchesGuide = !guideName || run.guideName === guideName || run.taskPath?.includes(guideName);
+            const matchesTask = !taskName || run.taskName === taskName;
+            if (matchesGuide && matchesTask && run.targetFile) {
               return run.targetFile;
             }
           }
@@ -380,10 +364,8 @@ function loadRunContext(runDir: string): RunContext {
     throw err;
   }
 
-  const pathSegments = absoluteDir.split(/[/\\]/);
-  const runNumberMatch = absoluteDir.match(/[/\\](\d+)[/\\]/);
-  const runNumber = runNumberMatch ? parseInt(runNumberMatch[1], 10) : 0;
-  const guideName = pathSegments[pathSegments.length - 3] || '';
+  const parsed = parseResultPath(absoluteDir);
+  const guideName = parsed?.guide || '';
 
   let resultsJson: PlaywrightAssertion[] = [];
   let score = 0;
@@ -414,12 +396,9 @@ function loadRunContext(runDir: string): RunContext {
 
   return {
     dir: absoluteDir,
-    runNumber,
     score,
     resultsJson,
-    trajectorySummary,
     codeOutput: code.content,
-    codePath: code.path,
     preprocessed,
     initialPrompt
   };
@@ -433,10 +412,11 @@ async function runSubAgent1_GuideCompliance(
   ctxA: RunContext,
   ctxB: RunContext,
   statusA: string,
-  statusB: string
+  statusB: string,
+  agentCaller = callAgentCli
 ): Promise<string> {
   const { systemInstruction, prompt } = getCompliancePrompts(guideCtx, ctxA, ctxB, statusA, statusB);
-  return callAgentCli(systemInstruction, prompt, 'Sub-Agent 1 (Guide Compliance)');
+  return agentCaller(systemInstruction, prompt, 'Sub-Agent 1 (Guide Compliance)');
 }
 
 /**
@@ -450,7 +430,8 @@ async function runSubAgent2_CodeAndFriction(
   diffBaseVsB: string,
   diffAvsB: string,
   statusA: string,
-  statusB: string
+  statusB: string,
+  agentCaller = callAgentCli
 ): Promise<string> {
   const { systemInstruction, prompt } = getCodeAndFrictionPrompts(
     guideCtx,
@@ -462,7 +443,7 @@ async function runSubAgent2_CodeAndFriction(
     statusA,
     statusB
   );
-  return callAgentCli(systemInstruction, prompt, 'Sub-Agent 2 (Code & Friction)');
+  return agentCaller(systemInstruction, prompt, 'Sub-Agent 2 (Code & Friction)');
 }
 
 /**
@@ -475,7 +456,8 @@ async function synthesizeDiagnosis(
   complianceAnalysis: string,
   codeAndFrictionAnalysis: string,
   statusA: string,
-  statusB: string
+  statusB: string,
+  agentCaller = callAgentCli
 ): Promise<string> {
   const { systemInstruction, prompt } = getSynthesizerPrompts(
     guideCtx,
@@ -486,13 +468,17 @@ async function synthesizeDiagnosis(
     statusA,
     statusB
   );
-  return callAgentCli(systemInstruction, prompt, 'Synthesizer Sub-Agent');
+  return agentCaller(systemInstruction, prompt, 'Synthesizer Sub-Agent');
 }
 
 /**
  * Runs the diagnostic agent comparison using local CLI sub-agents.
  */
-export async function runComparison(runDirA: string, runDirB: string): Promise<string> {
+export async function runComparison(
+  runDirA: string,
+  runDirB: string,
+  agentCaller: (sys: string, prompt: string, label?: string) => Promise<string> = callAgentCli
+): Promise<string> {
   console.log(cCyan(`\n=== Starting Run Comparison (Guide-Grounded 3-Phase Pipeline) ===`));
   console.log(`Run A: ${runDirA}`);
   console.log(`Run B: ${runDirB}\n`);
@@ -510,10 +496,10 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
   const isAProblem = ctxA.score < ctxB.score;
   const successCtx = isAProblem ? ctxB : ctxA;
 
-  const parsedPath = parseResultPath(path.relative(resultsDir, successCtx.dir));
-  const guideName = parsedPath?.guide || successCtx.dir.split(/[/\\]/).slice(-3, -2)[0] || 'guide';
-  const taskName = parsedPath?.taskName || successCtx.dir.split(/[/\\]/).slice(-2, -1)[0] || 'task';
-  const runType = parsedPath?.runType || successCtx.dir.split(/[/\\]/).slice(-1)[0] || 'guided';
+  const parsedPath = parseResultPath(successCtx.dir);
+  const guideName = parsedPath?.guide || 'guide';
+  const taskName = parsedPath?.taskName || 'task';
+  const runType = parsedPath?.runType || 'guided';
 
   const guideCtx = findGuideContext(guideName, taskName);
   const diffBaseVsA = generateUnifiedDiff(guideCtx.baseAppContent || '', ctxA.codeOutput || '', 'Base App', 'Run A Output');
@@ -525,8 +511,6 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
 
   const suiteMatch = successCtx.dir.match(/(.*[/\\]results[/\\][^/\\]+)/);
   const suiteDir = suiteMatch ? suiteMatch[1] : successCtx.dir;
-  const workDir = path.join(suiteDir, 'compare_work');
-  fs.mkdirSync(workDir, { recursive: true });
 
   try {
     console.log(cBold(`[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`));
@@ -535,8 +519,8 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
 
     console.log(cBold(`[Compare Agent] Phase 2: Dispatching parallel sub-agents (Guide Compliance & Code/Friction)...`));
     const [complianceAnalysis, codeAndFrictionAnalysis] = await Promise.all([
-      runSubAgent1_GuideCompliance(guideCtx, ctxA, ctxB, statusA, statusB),
-      runSubAgent2_CodeAndFriction(guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB, statusA, statusB)
+      runSubAgent1_GuideCompliance(guideCtx, ctxA, ctxB, statusA, statusB, agentCaller),
+      runSubAgent2_CodeAndFriction(guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB, statusA, statusB, agentCaller)
     ]);
 
     console.log(cBold(`[Compare Agent] Phase 3: Synthesizing final 4-section diagnostic report...`));
@@ -547,7 +531,8 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
       complianceAnalysis,
       codeAndFrictionAnalysis,
       statusA,
-      statusB
+      statusB,
+      agentCaller
     );
 
     if (suiteMatch) {
@@ -558,10 +543,6 @@ export async function runComparison(runDirA: string, runDirB: string): Promise<s
       fs.writeFileSync(savedPath, markdownReport, 'utf8');
       console.log(cGreen(`\n✅ Saved diagnostic report to: ${savedPath}`));
     }
-
-    const localSavedPath = path.resolve('./variance_diagnosis.md');
-    fs.writeFileSync(localSavedPath, markdownReport, 'utf8');
-    console.log(cGreen(`✅ Saved local copy to: ${localSavedPath}\n`));
 
     console.log(cBold(cCyan('--- DIAGNOSTIC REPORT ---')));
     console.log(markdownReport);

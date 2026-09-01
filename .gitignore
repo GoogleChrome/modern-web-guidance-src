@@ -70,6 +70,3 @@ serving/lib/tfjs_model_minilm/saved_model*/
 # Agent skills artifacts
 .agents/skills/nightly-eval-investigation/artifacts/
 
-# AI Variance Diagnosis outputs
-harness/results/
-variance_diagnosis.md
