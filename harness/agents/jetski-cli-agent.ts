@@ -325,18 +325,9 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.CommandLine || (obj.toolAction && obj.toolAction.includes('Running command'))) {
-              let actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
-              let actName = obj.CommandLine ? obj.CommandLine.split(' ')[0] : 'terminal_command';
+              const actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
+              const actName = obj.CommandLine ? obj.CommandLine.split(' ')[0] : 'terminal_command';
               const params: Record<string, any> = { command: obj.CommandLine || obj.toolAction };
-
-              if (/(?:modern-web-guidance|modern-web|\bgd\b)/.test(obj.CommandLine) && (obj.CommandLine.includes('search') || obj.CommandLine.includes('retrieve'))) {
-                actType = 'web_search';
-                actName = 'get_best_practices';
-                const qMatch = obj.CommandLine.match(/(?:search|retrieve)\s+["']?([^"'\n]+)["']?/i);
-                if (qMatch) {
-                  params.query = qMatch[1];
-                }
-              }
 
               steps.push({
                 stepNumber: 0,

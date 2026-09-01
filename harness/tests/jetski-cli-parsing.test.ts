@@ -57,7 +57,7 @@ test('Jetski CLI normalization', async () => {
     `);
 
     const mockActionJson = JSON.stringify({
-      CommandLine: 'gd retrieve "validate-input-after-interaction"',
+      CommandLine: 'npx -y modern-web-guidance@latest retrieve "validate-input-after-interaction"',
       toolSummary: 'Retrieving guidance',
       toolAction: 'Searching'
     });
@@ -78,9 +78,9 @@ test('Jetski CLI normalization', async () => {
     assert.ok(Array.isArray(summary.steps));
     
     assert.strictEqual(summary.steps.length, 1);
-    assert.strictEqual(summary.steps[0].action?.type, 'web_search');
-    assert.strictEqual(summary.steps[0].action?.name, 'get_best_practices');
-    assert.strictEqual(summary.steps[0].action?.params?.query, 'validate-input-after-interaction');
+    assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[0].action?.name, 'npx');
+    assert.strictEqual(summary.steps[0].action?.params?.command, 'npx -y modern-web-guidance@latest retrieve "validate-input-after-interaction"');
 
   } finally {
     removeTempDir(tempDir);

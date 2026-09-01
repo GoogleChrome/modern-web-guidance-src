@@ -275,7 +275,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         if (commands.length > 0) {
           actionType = 'run_command';
           actionName = commands[0];
-          params = { cmd: commands[0] };
+          params = { command: commands[0] };
         } else {
           try {
             params = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : (p.arguments || p.input);
