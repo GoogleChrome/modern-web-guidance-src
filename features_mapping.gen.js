@@ -155,9 +155,6 @@ window.__featuresMapping = {
   "validate-input-after-interaction": [
     "user-pseudos"
   ],
-  "migrate-web-app-origin": [
-    "app-migration"
-  ],
   "accessible-web-components": [
     "aria-attribute-reflection",
     "shadow-dom"
@@ -314,6 +311,9 @@ window.__featuresMapping = {
     "partitioned-cookies",
     "fedcm",
     "ua-client-hints"
+  ],
+  "migrate-web-app-origin": [
+    "app-migration"
   ],
   "passkey-authentication": [
     "webauthn",
