@@ -128,7 +128,7 @@ function buildGuideSummaryPrompt({ type, guideNames, guideDiff }: BuildGuideSumm
   return `You are writing concise release note bullet points for ${label} in GoogleChrome/modern-web-guidance.
 
 ### ${sectionHeader} (${guideNames.length} total):
-${guideNames.map(g => `- ${g}`).join('\n')}
+${guideNames.map(g => `- ${g.endsWith('-skill') ? `${g.slice(0, -'-skill'.length)} skill` : g}`).join('\n')}
 
 ### Content Diff:
 ${guideDiff}
@@ -137,7 +137,7 @@ ${guideDiff}
 1. Output exactly ${guideNames.length} Markdown bullet points (starting with '* ' or '- '), one for each ${targetDesc}.
 2. Each bullet must describe ${contentDesc} in a single concise sentence or short paragraph.
 3. Keep each bullet point on a single line without manual line breaks.
-4. Bold the guide identifier in each bullet using Markdown bold syntax (e.g., "${boldExample}").
+4. Bold the guide identifier or skill name in each bullet using Markdown bold syntax (e.g., "* Updated the **modern-web-guidance** skill to..." or "${boldExample}").
 5. NEVER use nested sub-bullets or multiple bullet points for a single guide.
 6. Do NOT mention Baseline status or browser compatibility updates (these are tracked separately in the Browser Support section). Focus on substantive ${focusDesc}.
 7. Do NOT include headings, sections, benchmark tables, code blocks, or preamble. Output ONLY the ${guideNames.length} bullet points.`;
