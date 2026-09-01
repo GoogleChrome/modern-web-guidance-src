@@ -113,6 +113,27 @@ progress.loading-spinner:indeterminate {
   animation:
     progress-spin var(--_used-spinner-duration) linear infinite
     var(--progress-dash-animation, );
+
+  @keyframes progress-spin {
+    to {
+      rotate: 1turn;
+    }
+  }
+
+  @keyframes progress-dash {
+    from {
+      --arc-start: 0deg;
+      --arc-end: 3deg;
+    }
+    50% {
+      --arc-start: 100deg;
+      --arc-end: 358deg;
+    }
+    to {
+      --arc-start: 360deg;
+      --arc-end: 363deg;
+    }
+  }
 }
 ```
 
