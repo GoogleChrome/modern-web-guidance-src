@@ -8,7 +8,7 @@ web-feature-ids:
   - registered-custom-properties
 ---
 
-## Overview
+# Overview
 
 A progress ring (or circular progress bar) provides visual feedback on the status of a task. Unlike a linear progress bar, its circular shape is ideal for dashboards, card components, or anywhere space is constrained.
 
@@ -144,8 +144,6 @@ progress.progress-ring[value="100"] {
 ```
 
 ## Fallback strategies
-
-The core components of this implementation — `<progress>` and `conic-gradient()` are Baseline Widely available.
 
 Do not add a fallback value inside the `<progress>` element. It is not used by assistive technology and ignored by all modern browsers.
 
