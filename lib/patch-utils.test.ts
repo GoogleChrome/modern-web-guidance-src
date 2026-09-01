@@ -158,8 +158,8 @@ describe('generateUnifiedDiff', () => {
     assert.match(diff, /^--- OldFile/m);
     assert.match(diff, /^\+\+\+ NewFile/m);
     assert.match(diff, /^@@ -\d+,\d+ \+\d+,\d+ @@/m);
-    assert.match(diff, /^- line 2/m);
-    assert.match(diff, /^\+ line 2 modified/m);
+    assert.match(diff, /^-line 2/m);
+    assert.match(diff, /^\+line 2 modified/m);
   });
 
   test('handles insertions at beginning, middle, and end correctly with prefix/suffix trimming', async () => {
@@ -168,9 +168,18 @@ describe('generateUnifiedDiff', () => {
     const newText = 'top new\nheader\nshared 1\nmiddle inserted\nshared 2\nfooter\nbottom new';
     const diff = generateUnifiedDiff(oldText, newText);
 
-    assert.match(diff, /^\+ top new/m);
-    assert.match(diff, /^\+ middle inserted/m);
-    assert.match(diff, /^\+ bottom new/m);
+    assert.match(diff, /^\+top new/m);
+    assert.match(diff, /^\+middle inserted/m);
+    assert.match(diff, /^\+bottom new/m);
+  });
+
+  test('handles empty string edge cases correctly', async () => {
+    const { generateUnifiedDiff } = await import('./patch-utils.ts');
+    const diffFromEmpty = generateUnifiedDiff('', 'new content\n');
+    assert.match(diffFromEmpty, /^\+new content/m);
+
+    const diffToEmpty = generateUnifiedDiff('old content\n', '');
+    assert.match(diffToEmpty, /^-old content/m);
   });
 });
 
