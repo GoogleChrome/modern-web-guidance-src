@@ -47,8 +47,8 @@ export function getGeminiCliCommandAndArgs(prompt: string, extraArgs: string[] =
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
 
-function getSessionFiles(dir: string, recursive = false): string[] {
-  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+function getSessionFiles(dir: string): string[] {
+  return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
 }
 
 /**
@@ -325,7 +325,7 @@ function getGeminiMetadataForDir(dir: string): ReturnType<typeof extractGeminiMe
   return extractGeminiMetadata(logData, subagentsMap);
 }
 
-export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+export async function collectGeminiGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
   const meta = getGeminiMetadataForDir(dirPath);
   return {
     retrievedGuides: meta.retrievedGuides,

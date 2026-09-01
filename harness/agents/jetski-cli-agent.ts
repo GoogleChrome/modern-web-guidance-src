@@ -235,10 +235,9 @@ export function parseProtobuf(buffer: Buffer): Record<number, any[]> {
   return fields;
 }
 
-function getSessionFiles(dir: string, recursive = false): string[] {
-  const pattern = recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB;
+function getSessionFiles(dir: string): string[] {
   try {
-    const files = fs.globSync(pattern, { cwd: dir });
+    const files = fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
     return (files as string[]).filter(f => !f.endsWith('-shm') && !f.endsWith('-wal'));
   } catch (err) {
     if (!isEnoent(err)) throw err;
@@ -476,7 +475,7 @@ function getJetskiSummaryForDir(dir: string): TrajectorySummary {
   return readTrajectorySummary(dir) || parseJetskiCliSession(dir);
 }
 
-export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+export async function collectJetskiCliGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
   const summary = getJetskiSummaryForDir(dirPath);
   return {
     retrievedGuides: summary?.retrievedGuides || [],

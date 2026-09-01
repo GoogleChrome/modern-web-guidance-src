@@ -10,7 +10,7 @@ function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPat
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
 }
 
-export function extractModelFromResults(resultsDir: string, _agent?: string): string {
+export function extractModelFromResults(resultsDir: string): string {
   const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
   try {
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
@@ -23,7 +23,7 @@ export function extractModelFromResults(resultsDir: string, _agent?: string): st
   return 'unknown';
 }
 
-export function extractTokenUsageFromResults(resultsDir: string, _agent: string): { total: number; cached: number } | null {
+export function extractTokenUsageFromResults(resultsDir: string): { total: number; cached: number } | null {
   const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
   try {
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
@@ -324,19 +324,18 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   console.log(`✅ Completed parallel grading pass\n`);
 }
 
-async function collectGuideUsage(dir: string, runType: string, suiteConfig: SuiteConfig) {
+async function collectGuideUsage(dir: string, runType: string) {
   let guidesUsedResult: string[] = [];
   let retrievedGuides: string[] = [];
   let fileReadGuides: string[] = [];
   let guidanceToolsUsedResult: string[] = [];
 
   if (runType === 'guided') {
-    const serving = suiteConfig.serving;
-    const usage = await collectGuidesUsed(dir, serving, suiteConfig.agent);
+    const usage = await collectGuidesUsed(dir);
     retrievedGuides = usage.retrievedGuides;
     fileReadGuides = usage.fileReadGuides;
     guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides])];
-    guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, suiteConfig.agent);
+    guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir);
   }
 
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
@@ -466,13 +465,12 @@ async function collectTaskRunEntry(
   dir: string,
   runPath: string,
   runNumber: number,
-  taskMap: Map<string, any>,
-  suiteConfig: SuiteConfig
+  taskMap: Map<string, any>
 ): Promise<{ testName: string; payload: any } | null> {
   const ctx = getTaskRunContext(dir, runPath, taskMap, true);
   if (!ctx) return null;
 
-  const usage = await collectGuideUsage(dir, ctx.runType, suiteConfig);
+  const usage = await collectGuideUsage(dir, ctx.runType);
 
   const isDisciplineSkill = isDisciplineSkillDir(ctx.taskInfo.guideDir);
   const taskCategory = isDisciplineSkill
@@ -494,7 +492,7 @@ async function collectTaskRunEntry(
   // For skills, placing the discipline name (`guide`) first ensures it is correctly identified 
   // and displayed as the main category in the dashboard's transposed layout.
   const testName = isDisciplineSkill ? `${ctx.guide} - ${ctx.taskName} - ${ctx.runType}` : `${ctx.taskName} - ${ctx.guide} - ${ctx.runType}`;
-  const tokenUsage = extractTokenUsageFromResults(dir, suiteConfig.agent);
+  const tokenUsage = extractTokenUsageFromResults(dir);
   const runtimeData = readRuntimeData(dir);
 
   const payload = {
@@ -523,21 +521,20 @@ async function collectTaskRunEntry(
 async function collectAllResults(
   resultsDir: string,
   runDirs: string[],
-  taskMap: Map<string, any>,
-  suiteConfig: SuiteConfig
+  taskMap: Map<string, any>
 ): Promise<{ allResults: Record<string, any[]>; model: string }> {
   const allResults: Record<string, any[]> = {};
   let model = 'unknown';
 
   for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
     if (model === 'unknown') {
-      const extracted = extractModelFromResults(dir, suiteConfig.agent);
+      const extracted = extractModelFromResults(dir);
       if (extracted !== 'unknown') {
         model = extracted;
       }
     }
 
-    const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap, suiteConfig);
+    const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap);
     if (!entry) continue;
 
     if (!allResults[entry.testName]) {
@@ -549,7 +546,7 @@ async function collectAllResults(
   return { allResults, model };
 }
 
-export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
+export async function collectResults(resultsDir: string, _suiteConfig?: SuiteConfig) {
   const taskMap = getTaskMap();
   const runDirs = getRunNumberDirs(resultsDir);
 
@@ -560,7 +557,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
   await executeParallelGrading(resultsDir, graderPackages);
 
   // PASS 2: Collect all results and formulate report
-  const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap, suiteConfig);
+  const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap);
 
   const estimatedRuntime = estimateTotalRuntime(resultsDir);
 

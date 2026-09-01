@@ -1,9 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { type Serving } from '../config.ts';
 import { isEnoent, type GuideUsage } from './agent-shared.ts';
 
-export async function collectGuidesUsed(dirPath: string, _serving?: Serving, _agent?: string): Promise<GuideUsage> {
+export async function collectGuidesUsed(dirPath: string): Promise<GuideUsage> {
   const summaryPath = path.join(dirPath, 'trajectory_summary.json');
   try {
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
@@ -19,7 +18,7 @@ export async function collectGuidesUsed(dirPath: string, _serving?: Serving, _ag
   return { retrievedGuides: [], fileReadGuides: [] };
 }
 
-export async function collectGuidanceToolsUsed(dir: string, _serving?: Serving, _agent?: string): Promise<string[]> {
+export async function collectGuidanceToolsUsed(dir: string): Promise<string[]> {
   const summaryPath = path.join(dir, 'trajectory_summary.json');
   try {
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));

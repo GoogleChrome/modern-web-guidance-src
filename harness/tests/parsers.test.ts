@@ -3,7 +3,6 @@ import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { Agents } from '../config.ts';
 import { extractTokenUsageFromResults, extractModelFromResults } from '../lib/collection.ts';
 import {
   collectGeminiToolsFromTrajectory,
@@ -68,18 +67,18 @@ test('Jetski CLI real trajectory parsing sanity check', async (t) => {
 
   const tempDir = setupTempSessionDir(recentFiles);
   try {
-    const usage = extractTokenUsageFromResults(tempDir, Agents.JETSKI_CLI);
+    const usage = extractTokenUsageFromResults(tempDir);
     if (usage) {
       assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
       assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
       assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
     }
 
-    const model = extractModelFromResults(tempDir, Agents.JETSKI_CLI);
+    const model = extractModelFromResults(tempDir);
     assert.ok(typeof model === 'string', 'Model extracted as string');
 
     assert.doesNotThrow(() => collectJetskiCliToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectJetskiCliGuidesFromTrajectory(tempDir, 'skills_cli'));
+    await assert.doesNotReject(async () => collectJetskiCliGuidesFromTrajectory(tempDir));
   } finally {
     cleanupTempDir(tempDir);
   }
@@ -96,18 +95,18 @@ test('Gemini CLI real trajectory parsing sanity check', async (t) => {
 
   const tempDir = setupTempSessionDir(recentFiles);
   try {
-    const usage = extractTokenUsageFromResults(tempDir, Agents.GEMINI_CLI);
+    const usage = extractTokenUsageFromResults(tempDir);
     if (usage) {
       assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
       assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
       assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
     }
 
-    const model = extractModelFromResults(tempDir, Agents.GEMINI_CLI);
+    const model = extractModelFromResults(tempDir);
     assert.ok(typeof model === 'string', 'Model extracted as string');
 
     assert.doesNotThrow(() => collectGeminiToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectGeminiGuidesFromTrajectory(tempDir, 'mcp'));
+    await assert.doesNotReject(async () => collectGeminiGuidesFromTrajectory(tempDir));
   } finally {
     cleanupTempDir(tempDir);
   }
@@ -124,18 +123,18 @@ test('Claude Code real trajectory parsing sanity check', async (t) => {
 
   const tempDir = setupTempSessionDir(recentFiles);
   try {
-    const usage = extractTokenUsageFromResults(tempDir, Agents.CLAUDE_CODE);
+    const usage = extractTokenUsageFromResults(tempDir);
     if (usage) {
       assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
       assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
       assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
     }
 
-    const model = extractModelFromResults(tempDir, Agents.CLAUDE_CODE);
+    const model = extractModelFromResults(tempDir);
     assert.ok(typeof model === 'string', 'Model extracted as string');
 
     assert.doesNotThrow(() => collectClaudeToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectClaudeGuidesFromTrajectory(tempDir, 'mcp'));
+    await assert.doesNotReject(async () => collectClaudeGuidesFromTrajectory(tempDir));
   } finally {
     cleanupTempDir(tempDir);
   }
@@ -152,18 +151,18 @@ test('Codex CLI real trajectory parsing sanity check', async (t) => {
 
   const tempDir = setupTempSessionDir(recentFiles);
   try {
-    const usage = extractTokenUsageFromResults(tempDir, Agents.CODEX_CLI);
+    const usage = extractTokenUsageFromResults(tempDir);
     if (usage) {
       assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
       assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
       assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
     }
 
-    const model = extractModelFromResults(tempDir, Agents.CODEX_CLI);
+    const model = extractModelFromResults(tempDir);
     assert.ok(typeof model === 'string', 'Model extracted as string');
 
     assert.doesNotThrow(() => collectCodexToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectCodexGuidesFromTrajectory(tempDir, 'skills_cli'));
+    await assert.doesNotReject(async () => collectCodexGuidesFromTrajectory(tempDir));
   } finally {
     cleanupTempDir(tempDir);
   }

@@ -65,10 +65,9 @@ export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
 
-export function getSessionFiles(dir: string, recursive = false): string[] {
+export function getSessionFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
-  const pattern = recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB;
-  return fs.globSync(pattern, { cwd: dir });
+  return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
 }
 
 export interface StandardizedStep {
@@ -99,7 +98,6 @@ export interface SubagentMetadata {
 
 export interface TrajectorySummary {
   agent: string;
-  serving?: string;
   steps: StandardizedStep[];
   subagents?: Record<string, SubagentMetadata>;
   tokenUsage?: { total: number; cached: number };

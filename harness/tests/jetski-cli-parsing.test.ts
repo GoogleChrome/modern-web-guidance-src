@@ -141,17 +141,17 @@ test('collectJetski metrics from trajectory files', async () => {
     writeTrajectorySummary(tempDir, parsed);
 
     // 3. Verify collection methods read strictly from summary
-    const guides = await collectJetskiCliGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectJetskiCliGuidesFromTrajectory(tempDir);
     assert.deepStrictEqual(guides.retrievedGuides, ['validate-input-after-interaction', 'required-field-feedback']);
     assert.deepStrictEqual(guides.fileReadGuides, ['required-field-feedback']);
 
     const tools = collectJetskiCliToolsFromTrajectory(tempDir);
     assert.deepStrictEqual(tools, ['modern-web-guidance']);
 
-    const model = extractModelFromResults(tempDir, Agents.JETSKI_CLI);
+    const model = extractModelFromResults(tempDir);
     assert.strictEqual(model, 'gemini-3.6-flash');
 
-    const tokens = extractTokenUsageFromResults(tempDir, Agents.JETSKI_CLI);
+    const tokens = extractTokenUsageFromResults(tempDir);
     assert.deepStrictEqual(tokens, { total: 1900, cached: 400 });
 
     const directModel = extractJetskiCliModel(tempDir);
@@ -223,7 +223,7 @@ test('parseJetskiCliSession sanitizes pipe-delimited experimental model names', 
     assert.strictEqual(parsed.model, 'gemini-3.7-flash-medium');
 
     writeTrajectorySummary(tempDir, parsed);
-    const model = extractModelFromResults(tempDir, Agents.JETSKI_CLI);
+    const model = extractModelFromResults(tempDir);
     assert.strictEqual(model, 'gemini-3.7-flash-medium');
   } finally {
     removeTempDir(tempDir);

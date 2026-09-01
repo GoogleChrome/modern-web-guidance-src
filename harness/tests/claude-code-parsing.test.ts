@@ -421,7 +421,7 @@ test('collectClaude metrics and token extraction from trajectory files', async (
     fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
 
     // Test Guides
-    const guides = await collectClaudeGuidesFromTrajectory(tempDir, 'mcp');
+    const guides = await collectClaudeGuidesFromTrajectory(tempDir);
     assert.deepStrictEqual(guides.retrievedGuides, ['accessible-error-announcement']);
     assert.deepStrictEqual(guides.fileReadGuides, ['accessible-error-announcement']);
 

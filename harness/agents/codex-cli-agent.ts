@@ -12,7 +12,7 @@ import {
   isEnoent,
   type GuideUsage
 } from '../lib/agent-shared.ts';
-import config, { Agents, Serving } from '../config.ts';
+import config, { Agents } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 import {
@@ -452,20 +452,8 @@ function getCodexMetadataForDir(dir: string): ReturnType<typeof extractCodexMeta
   return extractCodexMetadata(logData, subagentsMap);
 }
 
-export async function collectCodexGuidesFromTrajectory(dirPath: string, serving?: string): Promise<GuideUsage> {
+export async function collectCodexGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
   const meta = getCodexMetadataForDir(dirPath);
-  if (serving === Serving.SKILLS_CLI) {
-    return {
-      retrievedGuides: meta.retrievedGuides,
-      fileReadGuides: []
-    };
-  }
-  if (serving === Serving.SKILLS) {
-    return {
-      retrievedGuides: [],
-      fileReadGuides: meta.fileReadGuides
-    };
-  }
   return {
     retrievedGuides: meta.retrievedGuides,
     fileReadGuides: meta.fileReadGuides

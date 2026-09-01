@@ -11,7 +11,7 @@ import {
   extractCodexCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
 import { extractCommandsFromCodexItem } from '../agents/codex-cli-agent.ts';
-import { Agents, Serving } from '../config.ts';
+import { Agents } from '../config.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'codex-parsing-test-'));
@@ -303,12 +303,9 @@ test('collectCodex metrics from legacy function_call trajectory file', async () 
 
     fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
 
-    const guides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS_CLI);
+    const guides = await collectCodexGuidesFromTrajectory(tempDir);
     assert.deepStrictEqual(guides.retrievedGuides, ['visually-texture-content', 'complex-shapes']);
-    assert.deepStrictEqual(guides.fileReadGuides, []);
-
-    const skillGuides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS);
-    assert.deepStrictEqual(skillGuides.fileReadGuides, ['size-aware-styling']);
+    assert.deepStrictEqual(guides.fileReadGuides, ['size-aware-styling']);
 
     const tools = collectCodexToolsFromTrajectory(tempDir);
     assert.deepStrictEqual(tools, ['modern-web-guidance']);
@@ -367,11 +364,9 @@ test('collectCodex metrics from modern custom_tool_call trajectory file', async 
 
     fs.writeFileSync(path.join(tempDir, 'session-456.jsonl'), lines.join('\n'));
 
-    const guides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS_CLI);
+    const guides = await collectCodexGuidesFromTrajectory(tempDir);
     assert.deepStrictEqual(guides.retrievedGuides, ['validate-input-after-interaction', 'accessible-error-announcement']);
-
-    const skillGuides = await collectCodexGuidesFromTrajectory(tempDir, Serving.SKILLS);
-    assert.deepStrictEqual(skillGuides.fileReadGuides, ['validate-input-after-interaction']);
+    assert.deepStrictEqual(guides.fileReadGuides, ['validate-input-after-interaction']);
 
     const tools = collectCodexToolsFromTrajectory(tempDir);
     assert.deepStrictEqual(tools, ['modern-web-guidance']);

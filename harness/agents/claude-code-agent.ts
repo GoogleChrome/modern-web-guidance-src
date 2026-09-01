@@ -41,8 +41,8 @@ export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] 
 // into the test output directory to ensure uniform matching across the dashboard and metrics engine.
 const TRAJECTORY_GLOB = '*.jsonl';
 
-function getSessionFiles(dir: string, recursive = false): string[] {
-  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+function getSessionFiles(dir: string): string[] {
+  return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
 }
 
 function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void {
@@ -405,7 +405,7 @@ function getClaudeMetadataForDir(dir: string): ReturnType<typeof extractClaudeMe
   return extractClaudeMetadata(logData, subagentsMap);
 }
 
-export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+export async function collectClaudeGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
   const meta = getClaudeMetadataForDir(dirPath);
   return {
     retrievedGuides: meta.retrievedGuides,

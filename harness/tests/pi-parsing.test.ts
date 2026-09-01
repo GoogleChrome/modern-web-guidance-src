@@ -101,7 +101,7 @@ test('collectPiGuidesFromTrajectory extracts guide reads', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-456.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
     
     assert.deepStrictEqual(
       guides.fileReadGuides.sort(),
@@ -136,7 +136,7 @@ test('collectPiGuidesFromTrajectory extracts retrieve commands', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-789.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
     
     assert.deepStrictEqual(
       guides.retrievedGuides.sort(),
@@ -226,7 +226,7 @@ test('collectPiGuidesFromTrajectory handles mixed session with multiple entries'
 
     fs.writeFileSync(path.join(tempDir, 'session-mixed.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
     
     assert.deepStrictEqual(
       guides.fileReadGuides,
@@ -257,7 +257,7 @@ test('collectPiToolsFromTrajectory handles empty or missing sessions', () => {
 test('collectPiGuidesFromTrajectory handles empty or missing sessions', async () => {
   const tempDir = createTempDir();
   try {
-    const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
     assert.deepStrictEqual(guides, { retrievedGuides: [], fileReadGuides: [] }, 'Should return empty for no sessions');
   } finally {
     removeTempDir(tempDir);

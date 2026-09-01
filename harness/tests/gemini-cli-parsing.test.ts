@@ -171,7 +171,7 @@ test('collectGemini metrics from a single trajectory file', async () => {
     fs.writeFileSync(path.join(tempDir, 'session-123.json'), JSON.stringify(sessionData));
 
     // Test Guides
-    const guides = await collectGeminiGuidesFromTrajectory(tempDir, 'mcp');
+    const guides = await collectGeminiGuidesFromTrajectory(tempDir);
     assert.deepStrictEqual(guides.retrievedGuides.sort(), ['accessible-error-announcement', 'dialog-closedby'].sort());
     assert.deepStrictEqual(guides.fileReadGuides, ['required-field-feedback']);
 
@@ -228,7 +228,7 @@ test('collectGemini metrics from a .jsonl trajectory file', async () => {
     fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
 
     // Test Guides
-    const guides = await collectGeminiGuidesFromTrajectory(tempDir, 'mcp');
+    const guides = await collectGeminiGuidesFromTrajectory(tempDir);
     assert.deepStrictEqual(guides.retrievedGuides.sort(), ['accessible-error-announcement', 'dialog-closedby'].sort());
     assert.deepStrictEqual(guides.fileReadGuides, ['required-field-feedback']);
 

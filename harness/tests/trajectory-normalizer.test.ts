@@ -19,7 +19,7 @@ import {
 } from '../lib/trajectory-normalizer.ts';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from '../lib/guidance_validation.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from '../lib/collection.ts';
-import { Agents, Serving } from '../config.ts';
+import { Agents } from '../config.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'trajectory-normalizer-test-'));
@@ -243,17 +243,17 @@ test('trajectory_summary.json generation and priority read', async () => {
     assert.deepStrictEqual(summary.tokenUsage, { total: 500, cached: 200 });
 
     // Validate that collection functions read from summary without requiring raw session files
-    const guides = await collectGuidesUsed(tempDir, Serving.SKILLS_CLI, Agents.JETSKI_CLI);
+    const guides = await collectGuidesUsed(tempDir);
     assert.deepStrictEqual(guides.retrievedGuides, ['summary-guide-1']);
     assert.deepStrictEqual(guides.fileReadGuides, ['summary-read-1']);
 
-    const tools = await collectGuidanceToolsUsed(tempDir, Serving.SKILLS_CLI, Agents.JETSKI_CLI);
+    const tools = await collectGuidanceToolsUsed(tempDir);
     assert.deepStrictEqual(tools, ['modern-web-guidance']);
 
-    const model = extractModelFromResults(tempDir, Agents.JETSKI_CLI);
+    const model = extractModelFromResults(tempDir);
     assert.strictEqual(model, 'test-model-pro');
 
-    const tokenUsage = extractTokenUsageFromResults(tempDir, Agents.JETSKI_CLI);
+    const tokenUsage = extractTokenUsageFromResults(tempDir);
     assert.deepStrictEqual(tokenUsage, { total: 500, cached: 200 });
   } finally {
     removeTempDir(tempDir);

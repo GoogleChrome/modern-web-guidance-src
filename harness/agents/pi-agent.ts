@@ -349,7 +349,7 @@ function getPiMetadataForDir(dir: string): ReturnType<typeof extractPiMetadata> 
   return extractPiMetadata(logData, subagentsMap);
 }
 
-export async function collectPiGuidesFromTrajectory(dirPath: string, _serving?: string): Promise<GuideUsage> {
+export async function collectPiGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
   const meta = getPiMetadataForDir(dirPath);
   return {
     retrievedGuides: meta.retrievedGuides,
