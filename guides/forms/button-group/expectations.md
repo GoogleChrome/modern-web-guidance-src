@@ -5,9 +5,7 @@
 - The implementation MUST use `option::checkmark { display: none; }` to hide the default selection indicator, as selection state will be communicated via button-like styling.
 - The implementation MUST style the `:checked` state of the `<option>` elements to provide clear visual feedback of the current selection.
 - The implementation MUST provide distinct `:hover` and `:focus-visible` styles for the `<option>` elements to ensure interactive and keyboard affordance.
-- The implementation MUST include a robust fallback for browsers that do not support `appearance: base-select`, such as a set of standard `<button>` elements.
-- The implementation MUST use `@supports` in CSS to toggle visibility between the modern `base-select` implementation and the fallback.
-- Fallback buttons MUST use `role="option"` and appropriate state attributes (like `aria-pressed`) to mimic listbox behavior.
-- The implementation MUST NOT use JavaScript as the mechanism for managing the *primary* selection state or layout when `appearance: base-select` is supported.
+- The implementation MUST NOT use JavaScript as the mechanism for managing selection state or layout.
 - The `<select>` MUST have an associated `<label>` to ensure proper accessibility for screen reader users.
 - The `<select>` MUST include a `name` attribute to ensure it correctly integrates with standard HTML `<form>` submissions.
+- The implementation MUST only apply styles to the select if `appearance: base-select` is supported.
