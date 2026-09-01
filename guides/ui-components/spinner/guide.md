@@ -7,7 +7,7 @@ web-feature-ids:
   - progress
 ---
 
-# Overview
+# Loading spinner
 
 A loading spinner (or activity indicator) informs users that a process is underway when the exact duration is unknown. Unlike a progress ring, a spinner is "indeterminate" and typically uses animation to signal activity.
 
