@@ -1,9 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { TfjsEmbedder } from '../serving/lib/tfjs-embedder.ts';
-import { dotProduct, calculateNorm } from '../serving/lib/search.ts';
 
 const embedCache = new Map<string, number[]>();
+
+function dotProduct(a: number[], b: number[]): number {
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+  }
+  return dot;
+}
+
+function calculateNorm(v: number[]): number {
+  let sum = 0;
+  for (const val of v) {
+    sum += val * val;
+  }
+  return Math.sqrt(sum);
+}
 
 export function cosineSimilarity(vectorA: number[], vectorB: number[]): number {
   const normA = calculateNorm(vectorA);
@@ -41,21 +56,24 @@ export function extractTestTitles(graderFilePath: string): string[] {
 
 /**
  * Extracts top-level verifiable expectations from expectations.md.
- * Ignores indented sub-bullets and skips non-testable authoring rules.
+ * Combines any indented sub-bullets into their parent expectation.
  */
 export function parseVerifiableExpectations(content: string): string[] {
   const lines = content.split('\n');
   const items: string[] = [];
 
   for (const rawLine of lines) {
-    // Must be at start of line without indentation (top-level only)
-    const match = rawLine.match(/^([-*]|\d+[.)])\s+(.+)$/);
-    if (match) {
-      const text = match[2].trim();
-      // Skip authoring notes like "DO NOT assume ..."
-      if (!/^DO NOT (?:assume|write|require)/i.test(text)) {
-        items.push(text);
-      }
+    // Top-level bullet / numbered item (starts at column 0)
+    const topMatch = rawLine.match(/^([-*]|\d+[.)])\s+(.+)$/);
+    if (topMatch) {
+      items.push(topMatch[2].trim());
+      continue;
+    }
+
+    // Indented sub-bullet (has leading whitespace)
+    const subMatch = rawLine.match(/^\s+([-*]|\d+[.)])\s+(.+)$/);
+    if (subMatch && items.length > 0) {
+      items[items.length - 1] += ` ${subMatch[2].trim()}`;
     }
   }
 
@@ -139,12 +157,22 @@ export async function validateGraderExpectationCoverage(
   const rawTestVectors = await Promise.all(testTitles.map(getVec));
   const cleanedTestVectors = await Promise.all(testTitles.map(t => getVec(cleanText(t))));
 
+  const expectationEntries = expectations.map(exp => {
+    const firstSentence = exp.split(/[.!?]\s+/)[0];
+    return {
+      exp,
+      cleanedClause: cleanText(firstSentence),
+    };
+  });
+
+  const rawExpVectors = await Promise.all(expectationEntries.map(e => getVec(e.exp)));
+  const cleanedExpVectors = await Promise.all(expectationEntries.map(e => getVec(e.cleanedClause)));
+
   const matches: ExpectationMatch[] = [];
 
-  for (const exp of expectations) {
-    const rawExpVec = await getVec(exp);
-    const firstSentence = exp.split(/[.!?]\s+/)[0];
-    const cleanedExpVec = await getVec(cleanText(firstSentence));
+  for (let eIdx = 0; eIdx < expectations.length; eIdx++) {
+    const rawExpVec = rawExpVectors[eIdx];
+    const cleanedExpVec = cleanedExpVectors[eIdx];
 
     let bestScore = -1;
     let bestTestTitle = '';
@@ -161,7 +189,7 @@ export async function validateGraderExpectationCoverage(
     }
 
     matches.push({
-      expectation: exp,
+      expectation: expectations[eIdx],
       isCovered: bestScore >= threshold,
       bestMatchTest: bestTestTitle,
       similarity: parseFloat(bestScore.toFixed(4)),

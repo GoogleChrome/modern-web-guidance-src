@@ -19,7 +19,7 @@ describe('Grader Coverage Validation Utility', () => {
     assert.strictEqual(cleanText('* Should use `onINP` for metric collection'), 'use onINP for metric collection');
   });
 
-  it('parses only top-level expectations and ignores sub-bullets', () => {
+  it('parses top-level expectations and combines indented sub-bullets into their parent', () => {
     const sample = `# Header
 - Top level 1
   - Sub bullet A
@@ -29,7 +29,11 @@ describe('Grader Coverage Validation Utility', () => {
 - DO NOT assume specific class names
 `;
     const parsed = parseVerifiableExpectations(sample);
-    assert.deepStrictEqual(parsed, ['Top level 1', 'Top level 2']);
+    assert.deepStrictEqual(parsed, [
+      'Top level 1 Sub bullet A Sub bullet B',
+      'Top level 2 Sub bullet C',
+      'DO NOT assume specific class names',
+    ]);
   });
 
   it('extracts test titles from Playwright test blocks', () => {
@@ -77,7 +81,8 @@ test.describe('Suite', () => {
     const sampleCode = `
 import { test } from '@playwright/test';
 test(
-  'Multiline test title \\n with whitespace',
+  \`Multiline test title
+  with whitespace\`,
   async () => {}
 );
 `;
