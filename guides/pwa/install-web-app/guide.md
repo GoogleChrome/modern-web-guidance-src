@@ -143,16 +143,40 @@ The Web Install API is a progressive enhancement. Browsers without either modern
 entry point still provide their own installation UI when they support installing
 web apps.
 
-{{ FEATURE_FALLBACKS("install") }}
+### `<install>` fallback
 
-{{ FEATURE_FALLBACKS("navigator-install") }}
+{{ BASELINE_STATUS("install") }}
+
+The `<install>` element supports fallback child content for browsers that do not
+render the browser-controlled install button. Use fallback content to link to a
+maintained installation help page when the product provides one.
+
+```html
+<install>
+  <!-- Rendered only when the browser does not provide the install control. -->
+  <a href="/install-help">How to install this app</a>
+</install>
+```
+
+If browser-specific instructions would be inaccurate or difficult to maintain,
+leave the element empty. It then renders no non-functional replacement in an
+unsupported browser.
+
+For a custom install button, render it separately with `hidden` and reveal it
+only when `navigator.install()` is supported or a `beforeinstallprompt` event
+has been captured. Do not put an always-visible imitation of the
+browser-controlled install button inside the fallback content.
+
+### `navigator.install()` fallback
+
+{{ BASELINE_STATUS("navigator-install") }}
 
 For Chromium browsers without the Web Install API, use the
 `beforeinstallprompt` event as a fallback for installing the current app. This
 fallback cannot install a different app and is not supported by Firefox or
 Safari.
 
-{{ FEATURE_FALLBACKS("beforeinstallprompt") }}
+{{ BASELINE_STATUS("beforeinstallprompt") }}
 
 Capture the event, prevent its automatic prompt, and reveal the custom install
 button only after the browser confirms that prompting is possible. The event is
