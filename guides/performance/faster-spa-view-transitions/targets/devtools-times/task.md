@@ -1,1 +1,1 @@
-- Enable faster transitions back to previously visited views in the application by preserving their structural DOM state instead of destroying and rebuilding them on every navigation.
+- Enable faster transitions back to previously visited views in a Single-Page Application (SPA) by preserving their structural DOM state instead of destroying and rebuilding them on every navigation.

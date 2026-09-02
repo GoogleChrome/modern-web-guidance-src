@@ -1,26 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..64a0298 100644
+index 66c9173..d906fd3 100644
 --- a/index.html
 +++ b/index.html
-@@ -12,6 +12,7 @@
-       --accent: #ffab40;
-       --text: #3e2723;
-       --light: #fafafa;
-+      --border: #e0d7d3;
-     }
- 
-     * {
-@@ -25,6 +26,9 @@
-       line-height: 1.6;
-       color: var(--text);
-       background-color: var(--light);
-+      min-height: 100vh;
-+      display: flex;
-+      flex-direction: column;
-     }
- 
-     /* Navigation */
-@@ -44,11 +48,15 @@
+@@ -44,6 +44,9 @@
        font-size: 1.5rem;
        font-weight: bold;
        letter-spacing: 1px;
@@ -30,13 +12,7 @@ index 66c9173..64a0298 100644
      }
  
      nav ul {
-       display: flex;
-       list-style: none;
-+      align-items: center;
-     }
- 
-     nav ul li {
-@@ -60,6 +68,7 @@
+@@ -60,6 +63,7 @@
        text-decoration: none;
        font-size: 0.9rem;
        transition: color 0.3s;
@@ -44,21 +20,21 @@ index 66c9173..64a0298 100644
      }
  
      nav a:hover {
-@@ -72,10 +81,31 @@
+@@ -72,6 +76,27 @@
        border-radius: 4px;
      }
  
-+    /* SPA View Transitions */
++    /* SPA View Containers & Transitions */
 +    .spa-view {
 +      content-visibility: visible;
-+      width: 100%;
 +      outline: none;
++      width: 100%;
 +    }
 +
 +    .spa-view.inactive {
 +      /* MANDATORY: Use hidden to cache the rendering state of inactive views */
 +      content-visibility: hidden;
-+
++      
 +      /* Optional: Prevent hidden views from taking up physical space in layout flow */
 +      position: absolute;
 +    }
@@ -71,278 +47,126 @@ index 66c9173..64a0298 100644
 +
      /* Hero Section */
      .hero {
--      height: 60vh;
--      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-+      height: 50vh;
-+      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
-         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
-       background-size: cover;
-       background-position: center;
-@@ -86,60 +116,223 @@
-       color: white;
-       text-align: center;
-       padding: 0 20px;
-+      border-radius: 8px;
-+      margin-bottom: 30px;
-     }
- 
-     .hero h1 {
--      font-size: 3rem;
--      margin-bottom: 1rem;
-+      font-size: 2.75rem;
-+      margin-bottom: 0.75rem;
-+    }
-+
-+    .hero p {
-+      font-size: 1.15rem;
-+      max-width: 600px;
-     }
- 
-     /* Content Sections */
-     .container {
+       height: 60vh;
+@@ -98,6 +123,24 @@
        max-width: 1100px;
--      margin: 40px auto;
-+      width: 100%;
-+      margin: 30px auto;
+       margin: 40px auto;
        padding: 0 20px;
-+      flex: 1;
++      min-height: 50vh;
 +      position: relative;
 +    }
 +
-+    .section-title {
++    .view-header {
 +      text-align: center;
++      margin-bottom: 30px;
++    }
++
++    .view-header h2 {
++      font-size: 2.2rem;
 +      color: var(--primary);
-+      margin-bottom: 25px;
-+      font-size: 1.85rem;
++      margin-bottom: 8px;
++    }
++
++    .view-header p {
++      color: #6d4c41;
++      font-size: 1.1rem;
      }
  
      .grid {
-       display: grid;
--      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
--      gap: 20px;
-+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-+      gap: 24px;
-       margin-top: 20px;
-     }
+@@ -109,10 +152,13 @@
  
      .card {
        background: white;
 -      padding: 20px;
 +      padding: 24px;
        border-radius: 8px;
--      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
-+      border: 1px solid var(--border);
 +      display: flex;
 +      flex-direction: column;
 +      justify-content: space-between;
      }
  
      .card h3 {
--      margin-bottom: 10px;
-+      margin-bottom: 8px;
+@@ -120,6 +166,17 @@
        color: var(--primary);
-+      font-size: 1.25rem;
-+    }
-+
-+    .card p {
-+      font-size: 0.95rem;
-+      color: #5d4037;
-+      margin-bottom: 12px;
-+    }
-+
-+    .card .price {
-+      font-weight: bold;
-+      color: var(--primary);
-+      font-size: 1.1rem;
-+      margin-bottom: 10px;
-+    }
-+
-+    .card .tag {
-+      display: inline-block;
-+      align-self: center;
-+      background: var(--secondary);
-+      color: var(--text);
-+      font-size: 0.75rem;
-+      padding: 3px 8px;
-+      border-radius: 12px;
-+      margin-bottom: 10px;
-+      font-weight: 600;
      }
  
++    .card p {
++      margin-bottom: 12px;
++      color: #5d4037;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
      .btn {
        display: inline-block;
        background: var(--primary);
-       color: white;
--      padding: 10px 20px;
-+      padding: 10px 22px;
+@@ -127,14 +184,34 @@
+       padding: 10px 20px;
        text-decoration: none;
        border-radius: 5px;
 -      margin-top: 15px;
--      transition: background 0.3s;
 +      margin-top: 10px;
-+      font-weight: 600;
-+      transition: background 0.3s, transform 0.1s;
-+      border: none;
+       transition: background 0.3s;
 +      cursor: pointer;
++      border: none;
++      font-size: 0.95rem;
      }
  
      .btn:hover {
        background: #3e2723;
      }
  
-+    .btn-accent {
-+      background: var(--accent);
-+      color: var(--text);
-+    }
-+
-+    .btn-accent:hover {
-+      background: #ff9100;
-+    }
-+
-+    /* Features Row */
-+    .features-row {
-+      display: grid;
-+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-+      gap: 20px;
-+      margin: 40px 0;
-+      text-align: center;
-+    }
-+
-+    .feature-box {
++    .info-section {
 +      background: white;
-+      padding: 20px;
-+      border-radius: 8px;
-+      border-left: 4px solid var(--primary);
-+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-+    }
-+
-+    .feature-box h4 {
-+      color: var(--primary);
-+      margin-bottom: 6px;
-+    }
-+
-+    .feature-box p {
-+      font-size: 0.9rem;
-+      color: #6d4c41;
-+    }
-+
-+    /* Rewards styling */
-+    .rewards-banner {
-+      background: linear-gradient(135deg, var(--primary), #6d4c41);
-+      color: white;
 +      padding: 30px;
 +      border-radius: 8px;
-+      margin-bottom: 30px;
-+      display: flex;
-+      justify-content: space-between;
-+      align-items: center;
-+      flex-wrap: wrap;
-+      gap: 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
 +    }
 +
-+    .progress-bar-container {
-+      width: 100%;
-+      background: rgba(255,255,255,0.25);
-+      border-radius: 10px;
-+      height: 14px;
-+      margin-top: 10px;
-+      overflow: hidden;
-+    }
-+
-+    .progress-bar-fill {
-+      width: 70%;
-+      background: var(--accent);
-+      height: 100%;
-+      border-radius: 10px;
-+    }
-+
-+    /* Account styling */
-+    .account-details {
-+      background: white;
-+      border-radius: 8px;
-+      padding: 25px;
-+      border: 1px solid var(--border);
-+      margin-bottom: 25px;
-+    }
-+
-+    .orders-table {
-+      width: 100%;
-+      border-collapse: collapse;
-+      margin-top: 15px;
-+    }
-+
-+    .orders-table th, .orders-table td {
-+      padding: 12px;
-+      text-align: left;
-+      border-bottom: 1px solid var(--border);
-+    }
-+
-+    .orders-table th {
-+      background: #efebe9;
++    .info-section h3 {
 +      color: var(--primary);
++      margin-bottom: 12px;
 +    }
 +
-+    /* Form styling */
-+    .form-group {
-+      margin-bottom: 16px;
-+      text-align: left;
-+    }
-+
-+    .form-group label {
-+      display: block;
-+      margin-bottom: 6px;
-+      font-weight: 600;
-+      font-size: 0.9rem;
-+    }
-+
-+    .form-group input, .form-group textarea, .form-group select {
-+      width: 100%;
-+      padding: 10px;
-+      border: 1px solid var(--border);
-+      border-radius: 4px;
-+      font-family: inherit;
++    .info-section p {
++      margin-bottom: 15px;
 +    }
 +
      footer {
        background: var(--secondary);
        text-align: center;
-       padding: 40px 20px;
--      margin-top: 40px;
-+      margin-top: auto;
-     }
- 
-     .footer-links {
-@@ -151,6 +344,11 @@
+@@ -151,6 +228,7 @@
        color: var(--text);
        text-decoration: none;
        font-size: 0.85rem;
 +      cursor: pointer;
-+    }
-+
-+    .footer-links a:hover {
-+      text-decoration: underline;
      }
    </style>
  </head>
-@@ -158,55 +356,429 @@
+@@ -158,55 +236,324 @@
  <body>
  
    <nav>
 -    <div class="logo">THE DAILY GRIND</div>
-+    <a href="/" class="logo" data-view="home">THE DAILY GRIND</a>
++    <a href="#home" data-view="home" class="logo">THE DAILY GRIND</a>
      <ul>
 -      <li><a href="/menu">Menu</a></li>
 -      <li><a href="/locations">Locations</a></li>
 -      <li><a href="/rewards">Rewards</a></li>
 -      <li><a href="/account">My Account</a></li>
 -      <li><a href="/logout" class="logout-link">Logout</a></li>
-+      <li><a href="/menu" data-view="menu">Menu</a></li>
-+      <li><a href="/locations" data-view="locations">Locations</a></li>
-+      <li><a href="/rewards" data-view="rewards">Rewards</a></li>
-+      <li><a href="/account" data-view="account">My Account</a></li>
-+      <li><a href="/logout" class="logout-link" data-view="logout">Logout</a></li>
++      <li><a href="#menu" data-view="menu">Menu</a></li>
++      <li><a href="#locations" data-view="locations">Locations</a></li>
++      <li><a href="#rewards" data-view="rewards">Rewards</a></li>
++      <li><a href="#account" data-view="account">My Account</a></li>
++      <li><a href="#account" data-view="account" class="logout-link">Logout</a></li>
      </ul>
    </nav>
  
@@ -351,306 +175,211 @@ index 66c9173..64a0298 100644
 -    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
 -    <a href="/order-online" class="btn">Order Now</a>
 -  </header>
-+  <main id="app-main" class="container">
-+
-+    <!-- Home View (Active by default) -->
-+    <section id="home" class="spa-view" tabindex="-1" aria-hidden="false" data-view="home">
-+      <header class="hero">
-+        <h1>Wake Up Your Senses</h1>
-+        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
-+        <a href="/menu" class="btn btn-accent" style="margin-top: 20px;">Order Now</a>
-+      </header>
-+
-+      <div class="features-row">
-+        <div class="feature-box">
-+          <h4>Single-Origin Beans</h4>
-+          <p>Carefully sourced from sustainable family-owned farms across 12 countries.</p>
-+        </div>
-+        <div class="feature-box">
-+          <h4>Roasted Daily</h4>
-+          <p>Small-batch roasted every morning for peak aroma, sweetness, and depth.</p>
-+        </div>
-+        <div class="feature-box">
-+          <h4>Eco-Friendly</h4>
-+          <p>100% compostable cups, plant-based straws, and carbon-neutral shipping.</p>
-+        </div>
-+      </div>
++  <!-- SPA Views -->
++  <section id="home" class="spa-view" tabindex="-1" aria-hidden="false">
++    <header class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="#menu" data-view="menu" class="btn">Order Now</a>
++    </header>
  
 -  <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+      <h2 class="section-title">Seasonal Favorites</h2>
++    <div class="container">
++      <div class="view-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Handcrafted drinks perfected for the season</p>
++      </div>
        <div class="grid">
          <div class="card">
-+          <span class="tag">Autumn Special</span>
            <h3>Maple Oat Latte</h3>
--          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
-+          <p>Creamy oat milk infused with pure Vermont maple syrup and cinnamon dust.</p>
-+          <div class="price">$5.75</div>
-+          <a href="/menu" class="btn">View Details</a>
++          <span class="price">$5.75</span>
++          <a href="#menu" data-view="menu" class="btn">View Details</a>
          </div>
          <div class="card">
-+          <span class="tag">Signature Blend</span>
            <h3>Dark Roast Espresso</h3>
--          <p>Bold, smokey, and perfect for a morning boost.</p>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
-+          <p>Bold, rich, and velvety with notes of dark chocolate and toasted hazelnut.</p>
-+          <div class="price">$3.50</div>
-+          <a href="/menu" class="btn">View Details</a>
++          <span class="price">$3.95</span>
++          <a href="#menu" data-view="menu" class="btn">View Details</a>
          </div>
          <div class="card">
-+          <span class="tag">Customer Choice</span>
            <h3>Cold Brew</h3>
--          <p>Steeped for 18 hours for maximum smoothness.</p>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+          <p>Steeped cold for 18 hours for maximum smoothness and ultra-low acidity.</p>
-+          <div class="price">$4.75</div>
-+          <a href="/menu" class="btn">View Details</a>
++          <span class="price">$4.85</span>
++          <a href="#menu" data-view="menu" class="btn">View Details</a>
++        </div>
++      </div>
++    </div>
++  </section>
++
++  <div class="container">
++    <section id="menu" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Our Artisanal Menu</h2>
++        <p>Expertly crafted beverages and fresh baked goods</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Pour-Over Single Origin</h3>
++          <p>Rotating single-origin beans brewed to precision.</p>
++          <span class="price">$4.50</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Caramel Macchiato</h3>
++          <p>Espresso layered with steamed milk and vanilla syrup, topped with caramel drizzle.</p>
++          <span class="price">$5.25</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Nitro Cold Brew</h3>
++          <p>Infused with nitrogen for a creamy, velvety head and rich texture.</p>
++          <span class="price">$5.50</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Matcha Green Tea Latte</h3>
++          <p>Ceremonial-grade Japanese matcha whisked with lightly sweetened milk.</p>
++          <span class="price">$5.25</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Almond Croissant</h3>
++          <p>Flaky butter pastry baked twice with almond frangipane.</p>
++          <span class="price">$4.25</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++        <div class="card">
++          <h3>Avocado Toast</h3>
++          <p>Sourdough toast with mashed avocado, chili flakes, and microgreens.</p>
++          <span class="price">$7.50</span>
++          <button class="btn" type="button">Add to Order</button>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Our Locations</h2>
++        <p>Find your nearest Daily Grind cafe and roastery</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown Flagship</h3>
++          <p>100 Main Street, Suite 1A<br>Mon-Sun: 6:00 AM - 8:00 PM</p>
++          <button class="btn" type="button">Get Directions</button>
++        </div>
++        <div class="card">
++          <h3>Arts District Roastery</h3>
++          <p>450 Industrial Parkway<br>Mon-Sat: 7:00 AM - 7:00 PM</p>
++          <button class="btn" type="button">Get Directions</button>
++        </div>
++        <div class="card">
++          <h3>Westside Commons</h3>
++          <p>780 West Grand Avenue<br>Mon-Sun: 6:30 AM - 6:00 PM</p>
++          <button class="btn" type="button">Get Directions</button>
          </div>
        </div>
      </section>
+-  </main>
 +
-+    <!-- Menu View -->
-+    <section id="menu" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="menu">
-+      <h2 class="section-title">Artisanal Menu</h2>
-+      <p style="text-align: center; margin-bottom: 25px; color: #5d4037;">Handcrafted beverages and baked goods prepared fresh daily.</p>
-+      
++    <section id="rewards" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Daily Grind Rewards</h2>
++        <p>Earn beans on every purchase and unlock exclusive perks</p>
++      </div>
 +      <div class="grid">
 +        <div class="card">
-+          <span class="tag">Espresso</span>
-+          <h3>Classic Cappuccino</h3>
-+          <p>Equal parts rich espresso, steamed milk, and silky foam topped with cocoa.</p>
-+          <div class="price">$4.50</div>
-+          <button class="btn">Add to Cart</button>
++          <h3>Free Birthday Drink</h3>
++          <p>Celebrate your special day with any beverage on the house.</p>
++          <span class="price">All Members</span>
 +        </div>
 +        <div class="card">
-+          <span class="tag">Cold Drinks</span>
-+          <h3>Nitro Cold Brew</h3>
-+          <p>Infused with nitrogen for a naturally creamy, cascading head and smooth taste.</p>
-+          <div class="price">$5.25</div>
-+          <button class="btn">Add to Cart</button>
++          <h3>Free Refills</h3>
++          <p>Enjoy free brewed coffee and tea refills during the same visit.</p>
++          <span class="price">Gold Tier</span>
 +        </div>
 +        <div class="card">
-+          <span class="tag">Specialty Tea</span>
-+          <h3>Ceremonial Matcha Latte</h3>
-+          <p>Grade-A Japanese Uji matcha whisked with steamed oat milk and vanilla bean.</p>
-+          <div class="price">$5.50</div>
-+          <button class="btn">Add to Cart</button>
-+        </div>
-+        <div class="card">
-+          <span class="tag">Bakery</span>
-+          <h3>Almond Butter Croissant</h3>
-+          <p>Flaky, buttery pastry filled with rich almond cream and toasted almond flakes.</p>
-+          <div class="price">$4.25</div>
-+          <button class="btn">Add to Cart</button>
-+        </div>
-+        <div class="card">
-+          <span class="tag">Espresso</span>
-+          <h3>Vanilla Bean Flat White</h3>
-+          <p>Ristretto shots paired with velvety micro-foam and Madagascar vanilla syrup.</p>
-+          <div class="price">$4.95</div>
-+          <button class="btn">Add to Cart</button>
-+        </div>
-+        <div class="card">
-+          <span class="tag">Bakery</span>
-+          <h3>Blueberry Scone</h3>
-+          <p>Tender, crumbly scone baked with fresh wild Maine blueberries and lemon glaze.</p>
-+          <div class="price">$3.75</div>
-+          <button class="btn">Add to Cart</button>
++          <h3>Exclusive Tastings</h3>
++          <p>Invitations to monthly private cuppings and new roast previews.</p>
++          <span class="price">Platinum Tier</span>
 +        </div>
 +      </div>
 +    </section>
 +
-+    <!-- Locations View -->
-+    <section id="locations" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="locations">
-+      <h2 class="section-title">Our Locations</h2>
-+      <p style="text-align: center; margin-bottom: 25px; color: #5d4037;">Visit any of our cozy community cafes or order ahead for pickup.</p>
-+      
++    <section id="account" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>My Account</h2>
++        <p>Manage your orders, payment methods, and subscription</p>
++      </div>
++      <div class="info-section">
++        <h3>Member Profile</h3>
++        <p><strong>Status:</strong> Gold Member (340 Beans)</p>
++        <p><strong>Active Subscription:</strong> Monthly Roaster's Choice (2 Bags)</p>
++        <p><strong>Next Delivery:</strong> September 15, 2026</p>
++        <button class="btn" type="button">Manage Subscription</button>
++      </div>
++    </section>
++
++    <section id="about" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Our Story</h2>
++        <p>Passion for craft coffee since 2018</p>
++      </div>
++      <div class="info-section">
++        <h3>Crafted with Care</h3>
++        <p>Founded with a mission to bring sustainable, direct-trade coffees to our local community, The Daily Grind partners directly with independent farmers across Central and South America, Africa, and Southeast Asia.</p>
++      </div>
++    </section>
++
++    <section id="careers" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Join the Team</h2>
++        <p>Grow your career with us</p>
++      </div>
 +      <div class="grid">
 +        <div class="card">
-+          <h3>Downtown Roastery & Cafe</h3>
-+          <p><strong>Address:</strong> 101 Main Street, Suite A</p>
-+          <p><strong>Hours:</strong> Mon–Sun: 6:00 AM – 8:00 PM</p>
-+          <p><strong>Phone:</strong> (555) 234-5678</p>
-+          <span class="tag">Roastery Tours • Free WiFi • Patio</span>
-+          <button class="btn" style="margin-top: 15px;">Order for Pickup</button>
-+        </div>
-+        <div class="card">
-+          <h3>Arts District Flagship</h3>
-+          <p><strong>Address:</strong> 452 Broad Avenue</p>
-+          <p><strong>Hours:</strong> Mon–Sun: 7:00 AM – 6:00 PM</p>
-+          <p><strong>Phone:</strong> (555) 345-6789</p>
-+          <span class="tag">Pour-Over Bar • Art Gallery • Workspace</span>
-+          <button class="btn" style="margin-top: 15px;">Order for Pickup</button>
-+        </div>
-+        <div class="card">
-+          <h3>Westside Corner Cafe</h3>
-+          <p><strong>Address:</strong> 789 Elmwood Boulevard</p>
-+          <p><strong>Hours:</strong> Mon–Sat: 6:30 AM – 7:00 PM</p>
-+          <p><strong>Phone:</strong> (555) 456-7890</p>
-+          <span class="tag">Drive-Thru • Bakery Kitchen • Pet Friendly</span>
-+          <button class="btn" style="margin-top: 15px;">Order for Pickup</button>
-+        </div>
-+      </div>
-+    </section>
-+
-+    <!-- Rewards View -->
-+    <section id="rewards" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="rewards">
-+      <h2 class="section-title">Grind Rewards</h2>
-+      
-+      <div class="rewards-banner">
-+        <div>
-+          <h3 style="font-size: 1.5rem; margin-bottom: 6px;">Gold Member Status</h3>
-+          <p>You have <strong>140 points</strong>. Only <strong>60 points</strong> until your next free handcrafted drink!</p>
-+          <div class="progress-bar-container">
-+            <div class="progress-bar-fill"></div>
-+          </div>
-+        </div>
-+        <button class="btn btn-accent">Redeem Points</button>
-+      </div>
-+
-+      <h3 style="color: var(--primary); margin-bottom: 15px;">Reward Tiers</h3>
-+      <div class="grid">
-+        <div class="card">
-+          <span class="tag">50 Points</span>
-+          <h3>Bakery Item or Extra Shot</h3>
-+          <p>Redeem for any fresh bakery item, flavored syrup, or espresso shot add-on.</p>
-+        </div>
-+        <div class="card">
-+          <span class="tag">150 Points</span>
-+          <h3>Handcrafted Beverage</h3>
-+          <p>Enjoy any size brewed coffee, handcrafted latte, cold brew, or tea on us.</p>
-+        </div>
-+        <div class="card">
-+          <span class="tag">300 Points</span>
-+          <h3>12oz Whole Bean Bag</h3>
-+          <p>Take home a full 12oz bag of any single-origin or signature blend beans.</p>
-+        </div>
-+      </div>
-+    </section>
-+
-+    <!-- Account View -->
-+    <section id="account" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="account">
-+      <h2 class="section-title">My Account</h2>
-+      
-+      <div class="account-details">
-+        <h3 style="color: var(--primary); margin-bottom: 15px;">Account Information</h3>
-+        <p><strong>Name:</strong> Alex Morgan</p>
-+        <p><strong>Email:</strong> alex.morgan@example.com</p>
-+        <p><strong>Member Since:</strong> March 2024</p>
-+        <p><strong>Default Store:</strong> Downtown Roastery & Cafe</p>
-+      </div>
-+
-+      <div class="account-details">
-+        <h3 style="color: var(--primary); margin-bottom: 15px;">Recent Orders</h3>
-+        <table class="orders-table">
-+          <thead>
-+            <tr>
-+              <th>Order ID</th>
-+              <th>Date</th>
-+              <th>Items</th>
-+              <th>Total</th>
-+              <th>Status</th>
-+            </tr>
-+          </thead>
-+          <tbody>
-+            <tr>
-+              <td>#DG-10482</td>
-+              <td>Aug 29, 2026</td>
-+              <td>1x Nitro Cold Brew, 1x Almond Croissant</td>
-+              <td>$9.50</td>
-+              <td><span style="color: green; font-weight: bold;">Completed</span></td>
-+            </tr>
-+            <tr>
-+              <td>#DG-10419</td>
-+              <td>Aug 22, 2026</td>
-+              <td>2x Vanilla Bean Flat White</td>
-+              <td>$9.90</td>
-+              <td><span style="color: green; font-weight: bold;">Completed</span></td>
-+            </tr>
-+            <tr>
-+              <td>#DG-10355</td>
-+              <td>Aug 15, 2026</td>
-+              <td>1x Dark Roast Beans (12oz)</td>
-+              <td>$16.00</td>
-+              <td><span style="color: green; font-weight: bold;">Completed</span></td>
-+            </tr>
-+          </tbody>
-+        </table>
-+      </div>
-+    </section>
-+
-+    <!-- About View -->
-+    <section id="about" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="about">
-+      <h2 class="section-title">Our Story</h2>
-+      <div class="card" style="text-align: left; line-height: 1.8;">
-+        <p style="margin-bottom: 15px;">Founded in 2018, The Daily Grind started as a small cart with a passion for exceptional coffee and genuine human connection. Today, we operate three community-focused cafe roasteries dedicated to sustainable sourcing and artisanal craftsmanship.</p>
-+        <p style="margin-bottom: 15px;">We partner directly with coffee farmers across Latin America, East Africa, and the Pacific Islands, ensuring fair wages, environmental stewardship, and the highest standard of bean quality.</p>
-+        <p>Every single cup is a celebration of dedication, precision, and passion.</p>
-+      </div>
-+    </section>
-+
-+    <!-- Careers View -->
-+    <section id="careers" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="careers">
-+      <h2 class="section-title">Join Our Team</h2>
-+      <p style="text-align: center; margin-bottom: 25px; color: #5d4037;">We are always looking for passionate baristas, roasters, and team leaders.</p>
-+      
-+      <div class="grid">
-+        <div class="card">
-+          <span class="tag">Full-Time</span>
 +          <h3>Lead Barista</h3>
-+          <p>Downtown Roastery • Competitive Pay & Benefits</p>
-+          <button class="btn">Apply Now</button>
++          <p>Full-time | Downtown Flagship</p>
++          <button class="btn" type="button">Apply Now</button>
 +        </div>
 +        <div class="card">
-+          <span class="tag">Full-Time</span>
-+          <h3>Apprentice Roaster</h3>
-+          <p>Roasting Facility • Coffee Training Program</p>
-+          <button class="btn">Apply Now</button>
-+        </div>
-+        <div class="card">
-+          <span class="tag">Part-Time</span>
-+          <h3>Cafe Associate</h3>
-+          <p>Arts District • Flexible Hours & Free Coffee</p>
-+          <button class="btn">Apply Now</button>
++          <h3>Roastery Assistant</h3>
++          <p>Full-time | Arts District Roastery</p>
++          <button class="btn" type="button">Apply Now</button>
 +        </div>
 +      </div>
 +    </section>
 +
-+    <!-- Contact View -->
-+    <section id="contact" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="contact">
-+      <h2 class="section-title">Contact Us</h2>
-+      <div class="card" style="max-width: 600px; margin: 0 auto;">
-+        <form onsubmit="event.preventDefault(); alert('Thank you! We will get back to you soon.');">
-+          <div class="form-group">
-+            <label for="contact-name">Name</label>
-+            <input type="text" id="contact-name" placeholder="Your Full Name" required>
-+          </div>
-+          <div class="form-group">
-+            <label for="contact-email">Email</label>
-+            <input type="email" id="contact-email" placeholder="you@example.com" required>
-+          </div>
-+          <div class="form-group">
-+            <label for="contact-message">Message</label>
-+            <textarea id="contact-message" rows="4" placeholder="How can we help?" required></textarea>
-+          </div>
-+          <button type="submit" class="btn">Send Message</button>
-+        </form>
++    <section id="contact" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Contact Us</h2>
++        <p>We'd love to hear from you</p>
++      </div>
++      <div class="info-section">
++        <h3>Get in Touch</h3>
++        <p>Email: hello@dailygrindcoffee.example.com</p>
++        <p>Phone: (555) 019-2834</p>
++        <p>Customer support hours: Mon-Fri 8:00 AM - 5:00 PM EST</p>
 +      </div>
 +    </section>
 +
-+    <!-- Privacy Policy View -->
-+    <section id="privacy" class="spa-view inactive" tabindex="-1" aria-hidden="true" data-view="privacy">
-+      <h2 class="section-title">Privacy Policy</h2>
-+      <div class="card" style="text-align: left; line-height: 1.8;">
-+        <p style="margin-bottom: 12px;">At The Daily Grind, we respect your privacy. We collect minimal personal information solely to process orders, manage your rewards account, and provide top-notch service.</p>
-+        <p style="margin-bottom: 12px;">We never sell or distribute your personal data to third-party advertisers.</p>
-+        <p>For questions or requests regarding your data, contact privacy@dailygrindcoffee.com.</p>
++    <section id="privacy-policy" class="spa-view inactive" tabindex="-1" aria-hidden="true">
++      <div class="view-header">
++        <h2>Privacy Policy</h2>
++        <p>Your privacy is important to us</p>
++      </div>
++      <div class="info-section">
++        <h3>Data Collection & Usage</h3>
++        <p>We respect your privacy and only collect information required to fulfill orders and provide loyalty rewards.</p>
 +      </div>
 +    </section>
-+
-   </main>
++  </div>
  
    <footer>
      <div class="footer-links">
@@ -658,16 +387,34 @@ index 66c9173..64a0298 100644
 -      <a href="/careers">Join the Team</a> |
 -      <a href="/contact">Contact Us</a> |
 -      <a href="/privacy-policy">Privacy</a>
-+      <a href="/about" data-view="about">Our Story</a> |
-+      <a href="/careers" data-view="careers">Join the Team</a> |
-+      <a href="/contact" data-view="contact">Contact Us</a> |
-+      <a href="/privacy" data-view="privacy">Privacy</a>
++      <a href="#about" data-view="about">Our Story</a> |
++      <a href="#careers" data-view="careers">Join the Team</a> |
++      <a href="#contact" data-view="contact">Contact Us</a> |
++      <a href="#privacy-policy" data-view="privacy-policy">Privacy</a>
      </div>
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
 +    function switchToView(viewId) {
++      let activeView = null;
++      if (typeof viewId === 'string') {
++        const cleanId = viewId.replace(/^[#/]+/, '');
++        activeView = document.getElementById(viewId) ||
++                     document.getElementById(cleanId) ||
++                     document.getElementById(cleanId.replace(/^view-/, '')) ||
++                     document.getElementById('view-' + cleanId) ||
++                     document.querySelector(`[data-view="${cleanId}"]`) ||
++                     document.querySelector(`[data-view="${viewId}"]`);
++      } else if (viewId instanceof HTMLElement) {
++        activeView = viewId;
++      }
++
++      if (!activeView) {
++        console.warn('View not found:', viewId);
++        return;
++      }
++
 +      // Hide all views
 +      document.querySelectorAll('.spa-view').forEach(view => {
 +        view.classList.add('inactive');
@@ -675,113 +422,83 @@ index 66c9173..64a0298 100644
 +      });
 +
 +      // Show the target view
-+      let activeView = typeof viewId === 'string' ? document.getElementById(viewId) : viewId;
-+      if (!activeView && typeof viewId === 'string') {
-+        const cleanId = viewId.replace(/^view-|-view$/, '');
-+        activeView = document.getElementById(cleanId) ||
-+                     document.getElementById(cleanId + '-view') ||
-+                     document.getElementById('view-' + cleanId) ||
-+                     (cleanId === 'privacy-policy' ? document.getElementById('privacy') : null) ||
-+                     (cleanId === 'order-online' ? document.getElementById('menu') : null) ||
-+                     document.querySelector(`.spa-view[data-view="${cleanId}"]`) ||
-+                     document.querySelector(`.spa-view[data-view="${viewId}"]`);
-+      }
++      activeView.classList.remove('inactive');
++      activeView.setAttribute('aria-hidden', 'false');
 +
-+      if (activeView) {
-+        activeView.classList.remove('inactive');
-+        activeView.setAttribute('aria-hidden', 'false');
-+
-+        // MANDATORY: Move focus to the new view to ensure a logical tab-order
-+        if (activeView.tabIndex < 0) {
-+          activeView.setAttribute('tabindex', '-1');
-+        }
-+        activeView.focus();
++      // MANDATORY: Move focus to the new view to ensure a logical tab-order
++      if (!activeView.hasAttribute('tabindex')) {
++        activeView.setAttribute('tabindex', '-1');
 +      }
++      activeView.focus();
 +    }
 +
 +    // Expose globally
 +    window.switchToView = switchToView;
 +
-+    // Navigation click handler
-+    document.addEventListener('click', (e) => {
-+      const link = e.target.closest('a');
-+      if (!link) return;
-+      const href = link.getAttribute('href');
-+      if (!href) return;
-+
-+      let targetViewId = null;
-+      if (href.startsWith('#')) {
-+        targetViewId = href.slice(1);
-+      } else if (href.startsWith('/')) {
-+        targetViewId = href.replace(/^\//, '').split('/')[0];
-+        if (!targetViewId) targetViewId = 'home';
-+      }
-+
-+      if (targetViewId) {
-+        if (targetViewId === 'logout') {
-+          e.preventDefault();
-+          alert('You have been logged out.');
-+          history.pushState(null, '', '/');
-+          switchToView('home');
-+          return;
-+        }
-+        if (targetViewId === 'order-online') {
-+          targetViewId = 'menu';
-+        }
-+        if (targetViewId === 'privacy-policy') {
-+          targetViewId = 'privacy';
-+        }
-+
-+        const targetElement = document.getElementById(targetViewId) ||
-+                              document.getElementById(targetViewId + '-view') ||
-+                              document.getElementById('view-' + targetViewId) ||
-+                              document.querySelector(`.spa-view[data-view="${targetViewId}"]`);
-+        if (targetElement && targetElement.classList.contains('spa-view')) {
-+          e.preventDefault();
-+          history.pushState(null, '', href);
-+          switchToView(targetElement.id);
-+        }
-+      }
-+    });
-+
-+    // Handle browser back/forward and hash changes
-+    function handleRoute() {
-+      const hash = window.location.hash.slice(1);
-+      const path = window.location.pathname.replace(/^\//, '').split('/')[0];
-+      let targetId = hash || path || 'home';
-+      if (targetId === 'index.html' || !targetId) targetId = 'home';
-+      if (targetId === 'privacy-policy') targetId = 'privacy';
-+      if (targetId === 'order-online') targetId = 'menu';
-+
-+      const targetElement = document.getElementById(targetId) ||
-+                            document.getElementById(targetId + '-view') ||
-+                            document.getElementById('view-' + targetId) ||
-+                            document.querySelector(`.spa-view[data-view="${targetId}"]`);
-+      if (targetElement && targetElement.classList.contains('spa-view')) {
-+        switchToView(targetElement.id);
-+      } else {
-+        switchToView('home');
-+      }
-+    }
-+
-+    window.addEventListener('popstate', handleRoute);
-+    window.addEventListener('hashchange', handleRoute);
-+
-+    // Initial view activation if hash or path specified
++    // Attach link handlers and history navigation
 +    document.addEventListener('DOMContentLoaded', () => {
-+      const hash = window.location.hash.slice(1);
-+      const path = window.location.pathname.replace(/^\//, '').split('/')[0];
-+      if (hash || (path && path !== 'index.html')) {
-+        handleRoute();
++      document.querySelectorAll('a[href], [data-view]').forEach(elem => {
++        elem.addEventListener('click', (e) => {
++          const targetView = elem.getAttribute('data-view');
++          const href = elem.getAttribute('href');
++          
++          let viewId = targetView;
++          if (!viewId && href) {
++            if (href.startsWith('#')) {
++              viewId = href.slice(1);
++            } else if (href.startsWith('/')) {
++              const path = href.slice(1).split('/')[0];
++              viewId = path || 'home';
++            }
++          }
++
++          if (viewId) {
++            const cleanId = viewId.replace(/^[#/]+/, '');
++            const targetElem = document.getElementById(viewId) ||
++                               document.getElementById(cleanId) ||
++                               document.getElementById(cleanId.replace(/^view-/, '')) ||
++                               document.getElementById('view-' + cleanId) ||
++                               document.querySelector(`[data-view="${cleanId}"]`);
++            if (targetElem) {
++              e.preventDefault();
++              switchToView(viewId);
++              if (window.location.hash !== '#' + cleanId) {
++                history.pushState(null, '', '#' + cleanId);
++              }
++            }
++          }
++        });
++      });
++
++      window.addEventListener('hashchange', () => {
++        const hash = window.location.hash.slice(1);
++        if (hash) {
++          switchToView(hash);
++        }
++      });
++
++      window.addEventListener('popstate', () => {
++        const hash = window.location.hash.slice(1);
++        if (hash) {
++          switchToView(hash);
++        } else {
++          switchToView('home');
++        }
++      });
++
++      // Activate initial view based on hash if present
++      const initialHash = window.location.hash.slice(1);
++      if (initialHash) {
++        switchToView(initialHash);
 +      }
 +    });
 +  </script>
-+
  </body>
  
  </html>
++
 diff --git a/package.json b/package.json
-index 2bd4d77..405a02b 100644
+index 2bd4d77..a28c8d2 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,7 +2,8 @@
@@ -790,7 +507,7 @@ index 2bd4d77..405a02b 100644
    "scripts": {
 -    "start": "pnpm dlx statikk --port ${PORT:-11222}"
 +    "start": "pnpm dlx statikk --port ${PORT:-11222}",
-+    "build": "echo 'Build complete'"
++    "build": "node -e 'console.log(\"Build complete\")'"
    },
    "pnpm": {
      "onlyBuiltDependencies": []
