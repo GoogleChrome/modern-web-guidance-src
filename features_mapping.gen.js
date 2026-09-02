@@ -625,7 +625,9 @@ window.__featuresMapping = {
   ],
   "progress-ring": [
     "progress",
-    "conic-gradients"
+    "conic-gradients",
+    "masks",
+    "registered-custom-properties"
   ],
   "scrollspy": [
     "scroll-marker-targets",
