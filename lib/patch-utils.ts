@@ -64,9 +64,12 @@ export function capturePatchFromGit(
     const relFlag = relativeSubdir ? ` --relative="${relativeSubdir}"` : '';
     const targetPath = relativeSubdir ? `"${relativeSubdir}"` : '.';
 
-    // Ensure untracked files are recognized by git diff
+    // Stage untracked files with intent-to-add so git diff includes them
     execSync(`git add -N --ignore-removal ${targetPath}`, { cwd: workDir, stdio: 'ignore' });
-    const diff = execSync(`git diff${relFlag} ${targetPath}`, { cwd: workDir, encoding: 'utf8' });
+
+    // Diff against the initial root commit to include any commits made by the agent
+    const rootCommit = execSync('git rev-list --max-parents=0 HEAD', { cwd: workDir, encoding: 'utf8' }).trim();
+    const diff = execSync(`git diff ${rootCommit}${relFlag} -- ${targetPath}`, { cwd: workDir, encoding: 'utf8' });
 
     if (!diff.trim()) {
       return { success: false, diff: '' };

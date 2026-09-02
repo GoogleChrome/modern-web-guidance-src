@@ -3,8 +3,10 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
 import { buildDist } from './build-dist.ts';
+import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCases } from './build-readme.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
+import { generateReleaseNotes } from './generate-release-notes.ts';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
@@ -77,26 +79,49 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
   return newVersion;
 }
 
-async function publishToDistributionRepo(publishCliDir: string, newVersion: string, releaseNotes: string) {
-  console.log(`Creating GitHub release v${newVersion} on GoogleChrome/modern-web-guidance...`);
+async function publishToDistributionRepo(publishCliDir: string, newVersion: string, latestTag: string) {
   console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
 
-  await ghpages.publish(publishCliDir, {
-    branch: 'main',
-    repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
-    dotfiles: true,
-    message: `Release v${newVersion}`,
-    tag: `v${newVersion}`,
-    src: GH_PUBLISH_PATTERNS,
+  await new Promise<void>((resolve, reject) => {
+    ghpages.publish(
+      publishCliDir,
+      {
+        branch: 'main',
+        repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
+        dotfiles: true,
+        message: `Release v${newVersion}`,
+        tag: `v${newVersion}`,
+        src: GH_PUBLISH_PATTERNS,
+      },
+      (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      },
+    );
   });
 
-  // TODO: not working. Think we need a GH API key from the modern-web-guidance repo.
-  // Create GitHub release on the distribution repo.
-  // execSync(`gh release create v${newVersion} -R GoogleChrome/modern-web-guidance --title "v${newVersion}" --notes -`, {
-  //   input: releaseNotes,
-  //   stdio: ['pipe', 'inherit', 'inherit']
-  // });
-  // console.log(`✅ GitHub release v${newVersion} created successfully!`);
+const releaseNotes = await generateReleaseNotes({
+  previousTag: latestTag,
+  newVersion,
+  publishCliDir,
+});
+
+  // Attempt to create formal GitHub release on the distribution repo if gh CLI is authenticated
+  try {
+    console.log(`Creating GitHub release v${newVersion} on GoogleChrome/modern-web-guidance...`);
+    execSync(`gh release create "v${newVersion}" -R GoogleChrome/modern-web-guidance --title "v${newVersion}" --notes-file -`, {
+      input: releaseNotes,
+      stdio: ['pipe', 'inherit', 'pipe'],
+    });
+    console.log(`✅ GitHub release v${newVersion} created successfully!`);
+  } catch (err: any) {
+    console.log(`Note: Could not automatically create GitHub release via gh CLI: ${err?.message || err}`);
+  }
+
+  console.log('\n--- Release Notes ---');
   console.log(releaseNotes);
 
   console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
@@ -125,6 +150,7 @@ async function validate(newVersion: string) {
 }
 
 async function main() {
+  const latestTag = getLatestGitTag();
   let newVersion = await getNextVersion();
 
   // Self-healing loop: ensure the version tag doesn't exist locally or on remote origin
@@ -133,12 +159,14 @@ async function main() {
     newVersion = incrementVersion(newVersion);
   }
 
-  const result = await validate(newVersion);
+  const { skillsCount, skillNames } = await validate(newVersion);
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
-  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
-
   if (isDryRun) {
+    const { allFeatureIds, readyGuides } = getFeaturesAndUseCases();
+    const featuresCount = allFeatureIds.size;
+    const useCasesCount = readyGuides.length;
+
     const files = await fs.readdir(publishCliDir, {recursive: true, withFileTypes: true});
     const filteredFiles = files
       .filter(f => !f.parentPath.includes('node_modules') && f.isFile())
@@ -155,11 +183,19 @@ async function main() {
 
     console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${filteredFiles.join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
+    console.log(`\n[Dry Run] Skills: ${skillsCount} (${skillNames.join(', ')})`);
+    console.log(`\n[Dry Run] Features: ${featuresCount}, Use cases: ${useCasesCount}`);
 
-    console.log(`\n[Dry Run] Summary:`);
-    console.log(` - Use cases: ${useCasesCount}`);
-    console.log(` - Features: ${featuresCount}`);
-    console.log(` - Skills: ${skillsCount} (${skillNames.join(', ')})`);
+    console.log(`\n[Dry Run] Generating release notes using Gemini for v${newVersion} (diff against ${latestTag})...`);
+    const releaseNotes = await generateReleaseNotes({
+      previousTag: latestTag,
+      newVersion,
+      publishCliDir,
+    });
+
+    console.log('\n============================== [DRY RUN] RELEASE NOTES ==============================');
+    console.log(releaseNotes);
+    console.log('====================================================================================\n');
 
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
@@ -167,12 +203,10 @@ async function main() {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
-    const releaseNotes = `### Summary
-- Use cases: ${useCasesCount}
-- Features: ${featuresCount}
-- Skills: ${skillsCount}
-${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
-    await publishToDistributionRepo(publishCliDir, newVersion, releaseNotes);
+    // Update both the distribution bundle README and the source repo README
+    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
+
+    await publishToDistributionRepo(publishCliDir, newVersion, latestTag);
 
     // Create and push tag on current repo
     console.log(`Creating and pushing Git tag v${newVersion}...`);

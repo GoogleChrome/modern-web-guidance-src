@@ -24,7 +24,7 @@ When a developer asks an AI coding assistant to implement something, the assista
 | `targets/<base_app>/grader.ts` | Playwright test suite run against the eval agent's output | ❌ No |
 | `targets/<base_app>/task.md` | Simulated developer prompts fed to the eval agent by the harness | ❌ No |
 
-**Implication for authoring (`guide.md` & `expectations.md`):** Authors and SMEs strictly author `guide.md` and `expectations.md`. You do not hand-author `solution.patch`, `zero-passrate.patch`, `grader.ts`, or `task.md`. Once `guide.md` and `expectations.md` are authored, running `gd dev <guide>` automatically loops across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) inside safe temporary `/tmp/` sandboxes to generate and calibrate the evaluation capsules under `targets/<base_app>/`.
+**Implication for authoring (`guide.md` & `expectations.md`):** Authors and SMEs strictly author `guide.md` and `expectations.md`. You do not hand-author `solution.patch`, `zero-passrate.patch`, `grader.ts`, or `task.md`. Once `guide.md` and `expectations.md` are authored, running `gd dev <guide>` automatically loops across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) inside safe temporary `/tmp/` sandboxes to generate and calibrate the evaluation capsules under `targets/<base_app>/`, runs agent evaluations, and produces an evaluation diagnostic report (`test-app-results/report.md`). Running `gd pr <guide>` then automatically commits, pushes, detects PR labels (`gd-dev-content` or `gd-dev-eval`), and opens the Pull Request.
 
 **Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `expectations.md`, any target patch, or any external link to understand how to implement the use case.
 
@@ -43,6 +43,7 @@ web-feature-ids:
 ---
 ```
 * **web-features**: Must be a list of accurate IDs found via webstatus.dev. Include ALL features referenced in the guide body, not just the primary one. If an ID is missing, inform the USER.
+  * **Pending Features (`tmp-` prefix)**: If a feature ID is pending upstream in `@web-platform-dx/web-features` (e.g. an open issue), use `tmp-<candidate-slug>` (e.g. `tmp-streaming-api`) AND register it in `lib/pending-web-features.json` along with its upstream issue link. This connects the guide to its GitHub issue and project board cards while pending, while ensuring centralized approval and no speculative ID sprawl. When the feature ID is officially released upstream in `web-features`, validator checks will automatically fail in CI to prompt updating the frontmatter to the official ID.
 
 ### 2. Tone and Formatting
 

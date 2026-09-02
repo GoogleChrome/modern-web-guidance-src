@@ -234,7 +234,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
 
           for (const text of strings) {
             // Shell commands & guide retrieval
-            if (text.includes('retrieve')) {
+            if (text.includes('modern-web-guidance') && text.includes('retrieve')) {
               const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
               if (match && match[1]) {
                 const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
@@ -292,14 +292,16 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           // Look for Gemini model name patterns across string fields in the Protobuf message
           const modelCandidate = strings.find(s => /^gemini/i.test(s));
           if (modelCandidate) {
-            modelName = modelCandidate;
+            modelName = modelCandidate.split('|')[0].trim();
             break;
           }
         }
       } catch {}
 
       db.close();
-    } catch {}
+    } catch (err) {
+      console.warn(`Warning: Failed to parse Jetski CLI session from ${fullPath}:`, err);
+    }
   }
 
   return {

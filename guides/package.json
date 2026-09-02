@@ -9,11 +9,12 @@
   "devDependencies": {
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
+    "cssomnom": "^0.1.4",
     "gray-matter": "^4.0.3",
     "linkedom": "^0.18.12",
     "marked": "^18.0.3",
-    "ts-morph": "^27.0.2",
     "serving": "workspace:*",
-    "web-features": "latest"
+    "ts-morph": "^27.0.2",
+    "web-features": "^3.36.0"
   }
 }

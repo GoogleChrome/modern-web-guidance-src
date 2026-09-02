@@ -1,14 +1,45 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, isDisciplineSkillRun } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability_trend.js';
 
-// Keep track of current details state for navigation
+/**
+ * @typedef {Object} CurrentDetails
+ * @property {string} testName
+ * @property {DashboardRunResult[]} runs
+ * @property {import('../harness/lib/metrics.ts').Metrics['testStats'][string]} stats
+ * @property {string} testId
+ */
+
+/**
+ * @typedef {import('../harness/lib/metrics.ts').RunResult & {
+ *   discipline?: string;
+ *   files?: string[];
+ *   runtime?: { agentRuntime?: number; graderRuntime?: number } | null;
+ *   guideUsed?: { guidesUsed?: string[] } | null;
+ *   retrievedGuides?: string[];
+ *   fileReadGuides?: string[];
+ * }} DashboardRunResult
+ */
+
+/**
+ * @typedef {import('../harness/lib/metrics.ts').EvalsReport & {
+ *   enableSkills?: boolean;
+ *   results: Record<string, DashboardRunResult[]>;
+ * }} DashboardEvalsReport
+ */
+
+/** @type {CurrentDetails | null} */
 let currentDetails = null;
+/** @type {DashboardEvalsReport | null} */
 let allTestData = null;
+/** @type {string[]} */
 let sortedScenarios = [];
-let currentRunTypes = [];
+/** @type {string[]} */
+let currentRunTypes = ['unguided', 'guided'];
+/** @type {string | null} */
 let currentTestID = null;
+/** @type {ApiClient} */
 let api;
 
 // Module-scoped state
@@ -51,6 +82,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+/**
+ * @param {string} testId
+ */
 async function loadDashboardData(testId) {
     // Prevent double loading
     if (dashboardLoaded) return;
@@ -104,16 +138,20 @@ async function loadDashboardData(testId) {
 
             if (runData && testStats) {
                 const view = params.get('view');
-                const runNumber = parseInt(params.get('run'));
+                const runParam = params.get('run');
+                const runNumber = runParam ? parseInt(runParam) : NaN;
 
-                if (view === 'diff' && runNumber) {
+                if (view === 'diff' && !isNaN(runNumber)) {
                     const run = runData.find(r => r.runNumber === runNumber);
                     if (run) {
                         currentDetails = { testName, runs: runData, stats: testStats, testId };
                         await showDetails(testName, runData, testStats, testId);
 
-                        const { setupPath, resultPath } = await getResultPaths(testId, run, testName);
-                        await viewDiff(setupPath, resultPath, testName, run.runNumber);
+                        const paths = await getResultPaths(testId, run, testName);
+                        if (paths) {
+                            const { setupPath, resultPath } = paths;
+                            await viewDiff(setupPath, resultPath, testName, run.runNumber);
+                        }
                     } else {
                         await showDetails(testName, runData, testStats, testId);
                     }
@@ -160,9 +198,11 @@ async function loadDashboardData(testId) {
         console.error('Error:', error);
         dashboardLoaded = false;
 
+        const message = (error instanceof Error) ? error.message : String(error);
+
         let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
             <h3>Error loading dashboard data</h3>
-            <p>${error.message}</p>
+            <p>${escapeHtml(message)}</p>
         </div>`;
 
         if (api && api.source === 'remote') {
@@ -249,7 +289,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const text = await api.getFileText(`${testId}/test_suite.log`);
                                 body.innerHTML = `<div class="log-content">${escapeHtml(text)}</div>`;
                             } catch (e) {
-                                body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${e.message}</div>`;
+                                const msg = (e instanceof Error) ? e.message : String(e);
+                                body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${escapeHtml(msg)}</div>`;
                             }
                         };
                     }
@@ -269,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!modal.open || modal.dataset.view !== 'details') return;
 
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-            if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
+            if (!allTestData || !currentTestID || !currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
             const parsed = parseResultKey(currentDetails.testName);
             if (!parsed) return;
@@ -317,6 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+/**
+ * @param {number} ms
+ */
 function formatRuntime(ms) {
     if (!ms) return '-';
     const seconds = Math.floor(ms / 1000);
@@ -328,6 +372,12 @@ function formatRuntime(ms) {
     return `${seconds}s`;
 }
 
+/**
+ * @param {string} testId
+ * @param {string | null} jetskiVersion
+ * @param {string | null} timestamp
+ * @param {DashboardEvalsReport} data
+ */
 function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     const container = $('#test-header');
     if (container) {
@@ -368,6 +418,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
             } else if (data.enableSkills !== undefined) {
                 serving = data.enableSkills ? 'skills' : 'mcp';
             }
+            /** @type {Record<string, string>} */
             const servingDisplayNames = {
                 'skills': 'Skills',
                 'skills_cli': 'Skills (CLI)',
@@ -427,6 +478,13 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     }
 }
 
+/**
+ * @param {number} uRate
+ * @param {number} gRate
+ * @param {boolean} [isSmall]
+ * @param {string} [uTitle]
+ * @param {string} [gTitle]
+ */
 function renderSparkline(uRate, gRate, isSmall = false, uTitle = '', gTitle = '') {
     const barClass = isSmall ? 'sparkline-bar small' : 'sparkline-bar';
     const dotClass = isSmall ? 'sparkline-dot small' : 'sparkline-dot';
@@ -444,6 +502,9 @@ function renderSparkline(uRate, gRate, isSmall = false, uTitle = '', gTitle = ''
     `;
 }
 
+/**
+ * @param {DashboardEvalsReport} data
+ */
 function renderSummary(data) {
     const container = document.getElementById('summary-side-panel');
     if (!container) return;
@@ -475,7 +536,7 @@ function renderSummary(data) {
         const isGuided = key.endsWith(' - guided');
         if (isGuided) guidedRunsCount += runs.length;
 
-        runs.forEach(run => {
+        runs.forEach((/** @type {DashboardRunResult} */ run) => {
             const hasTools = run.guidanceToolsUsed && run.guidanceToolsUsed.length > 0;
             const hasGuides = (run.guidesUsed && run.guidesUsed.length > 0) || (run.guideUsed && typeof run.guideUsed === 'object' && run.guideUsed.guidesUsed && run.guideUsed.guidesUsed.length > 0);
 
@@ -527,7 +588,7 @@ function renderSummary(data) {
                 Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
             </div>
             ` : ''}
-            ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || summary.totalEarlyFailures !== undefined) ? `
+            ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined) ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - totalEarlyFailureRate)}">${totalEarlyFailureRate}%</span>
                 <span style="opacity: 0.8; color: ${getColor(100 - totalEarlyFailureRate)}">(${totalEarlyFailures} run${totalEarlyFailures === 1 ? '' : 's'})</span>
@@ -602,13 +663,15 @@ function renderSummary(data) {
     `;
 }
 
+/**
+ * @param {DashboardEvalsReport} data
+ * @param {string} testId
+ */
 function renderGrid(data, testId) {
     const guideGrid = document.getElementById('guide-grid');
-    const disciplineGrid = document.getElementById('discipline-grid');
     const grid = document.getElementById('dashboard-grid');
 
     if (guideGrid) guideGrid.innerHTML = '';
-    if (disciplineGrid) disciplineGrid.innerHTML = '';
     if (grid) grid.innerHTML = '';
     const results = data.results;
 
@@ -645,12 +708,13 @@ function renderGrid(data, testId) {
 
             if (!unguidedRuns && !guidedRuns) return; // Skip if neither exists
 
-            const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
-            const isDisciplineSkill = isDisciplineSkillRun(sampleRun);
-
             sortedScenarios.push(scenarioName);
 
             // Calculate averages
+            /**
+             * @param {DashboardRunResult[] | undefined} runs
+             * @returns {number}
+             */
             const getAvg = (runs) => {
                 if (!runs || runs.length === 0) return 0;
                 const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
@@ -662,7 +726,11 @@ function renderGrid(data, testId) {
             const guidedAvg = getAvg(guidedRuns);
             const uplift = guidedAvg - unguidedAvg;
 
-            const isRunEarlyFailure = (runs) => runs && runs.some(r => r.results?.some(c => c.isEarlyFailure));
+            /**
+             * @param {DashboardRunResult[] | undefined} runs
+             * @returns {boolean}
+             */
+            const isRunEarlyFailure = (runs) => !!(runs && runs.some(r => r.results?.some(c => c.isEarlyFailure)));
             const unguidedFailed = isRunEarlyFailure(unguidedRuns);
             const guidedFailed = isRunEarlyFailure(guidedRuns);
             const hasFailure = unguidedFailed || guidedFailed;
@@ -675,7 +743,7 @@ function renderGrid(data, testId) {
             const minVal = Math.min(unguidedAvg, guidedAvg);
             const maxVal = Math.max(unguidedAvg, guidedAvg);
             const trackWidth = 250; // matches css
-            const scale = (val) => (val / 100) * trackWidth;
+            const scale = (/** @type {number} */ val) => (val / 100) * trackWidth;
 
             const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
             const trendLinkHtml = `
@@ -691,8 +759,8 @@ function renderGrid(data, testId) {
                 <div class="task-accordion-header">
                     <div class="left-section">
                         <span class="chevron" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
-                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[0])}</span>
-                        <span class="task-title" style="${hasFailure ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[1] || '')}</span>
+                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
+                        <span class="task-title" style="${hasFailure ? 'color: var(--color-accent-failure, #da3633); font-weight: bold;' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
                         ${trendLinkHtml}
                         ${hasFailure ? `<span style="font-size: 0.8rem; color: var(--color-accent-failure, #da3633); margin-left: 8px; border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px;">Generation Failed</span>` : ''}
                     </div>
@@ -725,13 +793,8 @@ function renderGrid(data, testId) {
                 }
             };
 
-            const targetGrid = isDisciplineSkill ? disciplineGrid : guideGrid;
-            if (targetGrid) {
-                targetGrid.appendChild(accordion);
-                if (isDisciplineSkill) {
-                    const section = document.getElementById('discipline-section');
-                    if (section) section.style.display = 'block';
-                }
+            if (guideGrid) {
+                guideGrid.appendChild(accordion);
             } else if (grid) {
                 grid.appendChild(accordion);
             }
@@ -741,6 +804,13 @@ function renderGrid(data, testId) {
 
 }
 
+/**
+ * @param {HTMLElement} container
+ * @param {string} scenarioName
+ * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} unguidedRuns
+ * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} guidedRuns
+ * @param {string} testId
+ */
 async function fillAccordionDetails(container, scenarioName, unguidedRuns, guidedRuns, testId) {
     try {
         let promptHtml = '<div style="color: var(--text-secondary); margin-bottom: 20px;">Prompt fetch deferred or failed.</div>';
@@ -751,7 +821,9 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         if (sampleRun && sampleRun.taskName) {
             try {
                 const typeLabel = (unguidedRuns && unguidedRuns[0]) ? 'unguided' : 'guided';
-                const { usedBasePath } = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
+                const paths = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
+                if (!paths) return;
+                const { usedBasePath } = paths;
 
                 let promptText = '';
                 try {
@@ -806,6 +878,10 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const maxRuns = Math.max(maxUnguided, maxGuided);
 
         const assertionMap = new Map(); // message -> { unguided: [], guided: [] }
+        /**
+         * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
+         * @param {'unguided' | 'guided'} type
+         */
         const processResultsToMap = (runs, type) => {
             if (!runs) return;
             runs.forEach((run, runIndex) => {
@@ -821,6 +897,9 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         processResultsToMap(unguidedRuns, 'unguided');
         processResultsToMap(guidedRuns, 'guided');
 
+        /**
+         * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
+         */
         const isRunEarlyFailure = (runs) => runs && runs.some(r => r.results?.some(c => c.isEarlyFailure));
         const uFailed = isRunEarlyFailure(unguidedRuns);
         const gFailed = isRunEarlyFailure(guidedRuns);
@@ -873,28 +952,26 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
 
         // Compute run cards for separate horizontal grid
         // Compute column chips for the footer transposed layout (Percent + Traj + Diff Table + Log)
+        /**
+         * @param {string} g
+         * @param {DashboardRunResult} run
+         */
         const renderGuideChip = (g, run) => {
             const isExpectedGuide = g === run.guideName;
-            const hasExpectedPrefix = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => g.startsWith(p));
+            const hasExpectedPrefix = run.expectedToolPrefixes && run.expectedToolPrefixes.some((/** @type {string} */ p) => g.startsWith(p));
             const isGreen = isExpectedGuide || hasExpectedPrefix;
-            
-            const isCorrespondingDiscipline = !isDisciplineSkillRun(run) && g === run.discipline;
-
-            let className = 'default-guide';
-            let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace; text-decoration: none;';
-
-            if (isGreen) {
-                className = 'matching-guide';
-            } else if (isCorrespondingDiscipline) {
-                className = ''; // Don't use default-guide
-                style += ' background-color: rgba(218, 165, 32, 0.15); color: #daa520; border: 1px solid rgba(218, 165, 32, 0.3);';
-            }
+            const className = isGreen ? 'matching-guide' : 'default-guide';
+            const style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace; text-decoration: none;';
 
             const url = `guide.html?guide=${encodeURIComponent(g)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
             return `<a href="${url}" class="${className}" style="${style}" title="View guide trend">${escapeHtml(g)}</a>`;
         };
 
-                const getTfootChips = async (runs, typeLabel) => {
+        /**
+         * @param {DashboardRunResult[] | undefined} runs
+         * @param {string} typeLabel
+         */
+        const getTfootChips = async (runs, typeLabel) => {
              const chips = [];
              for (let i = 0; i < maxRuns; i++) {
                  if (!runs || i >= runs.length) {
@@ -903,11 +980,18 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  }
                  const run = runs[i];
                  const s = getRunStats(run.results);
-                 const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
+                 const paths = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
+                 if (!paths) {
+                     chips.push('-');
+                     continue;
+                 }
+                 const { setupPath, resultPath, usedBasePath } = paths;
+                 /** @type {string[]} */
                  let files = [];
-                 try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
+                 try { files = (await api.getRunFiles(usedBasePath)) || []; } catch (e) {}
                  if (files.length === 0) files = run.files || [];
 
+                 const patchFile = files.includes('agent.patch') ? 'agent.patch' : null;
                  const sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
                  const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
                  const jsonFile = files.find(f => f.endsWith('_results.json'));
@@ -921,7 +1005,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
 
                  const playWUrl = (api.source === 'remote' && !isLocalServer)
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}/grade-report/index.html`
-                     : api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`);
+                     : api.getAbsoluteUrl ? api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`) : `${usedBasePath}/grade-report/index.html`;
 
                  const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
 
@@ -932,7 +1016,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                          ${run.tokenUsage ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatTokens(run.tokenUsage.total)}</span>` : ''}
                          <div style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
                              ${sessionFile ? `<button class="tfoot-action-btn" onclick="openTrajectory('${escapeHtml(usedBasePath)}', '${escapeHtml(sessionFile)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
-                             <button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>
+                             ${patchFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${patchFile}`)}', '${escapeHtml(`${usedBasePath}/${patchFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
                              <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
                              ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
                              ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
@@ -940,7 +1024,6 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              ${failureFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${failureFile}`)}', '${escapeHtml(`${usedBasePath}/${failureFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Failure Log</button>` : ''}
                              <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
                          </div>
-
                      </div>
                  `);
              }
@@ -948,15 +1031,21 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         };
 
         // Compute separate horizontal run boxes for Tools Used & Guides Used Only
-                        const getRunCards = async (runs, typeLabel) => {
+        /**
+         * @param {DashboardRunResult[] | undefined} runs
+         * @param {string} typeLabel
+         */
+        const getRunCards = async (runs, typeLabel) => {
              let html = '';
              for (let i = 0; i < maxRuns; i++) {
                  if (!runs || i >= runs.length) continue;
                  const run = runs[i];
-                 const { usedBasePath } = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
+                 const paths = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
+                  if (!paths) continue;
+                  const { usedBasePath } = paths;
                  let files = run.files || [];
                  if (files.length === 0) {
-                     try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
+                     try { files = (await api.getRunFiles(usedBasePath)) || []; } catch (e) {}
                  }
                  const toolsUsed = run.guidanceToolsUsed || [];
                  const guidesUsed = run.guidesUsed || (run.guideUsed && run.guideUsed.guidesUsed) || [];
@@ -973,19 +1062,10 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                          <div class="run-card-row">
                              <span class="run-card-label">Tools Used:</span>
                              <div class="run-card-row-inner" style="flex-wrap: wrap;">
-                                                                   ${toolsUsed.map(t => {
-                                      const isCorrectTool = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => t.startsWith(p));
-                                      const isCorrespondingDiscipline = !isDisciplineSkillRun(run) && t === run.discipline;
-
-                                      let className = 'default-guide';
-                                      let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
-
-                                      if (isCorrectTool) {
-                                          className = 'matching-guide';
-                                      } else if (isCorrespondingDiscipline) {
-                                          className = ''; // Don't use default-guide
-                                          style += ' background-color: rgba(218, 165, 32, 0.15); color: #daa520; border: 1px solid rgba(218, 165, 32, 0.3);';
-                                      }
+${toolsUsed.map((/** @type {string} */ t) => {
+                                      const isCorrectTool = run.expectedToolPrefixes && run.expectedToolPrefixes.some((/** @type {string} */ p) => t.startsWith(p));
+                                      const className = isCorrectTool ? "matching-guide" : "default-guide";
+                                      const style = "padding: 2px 4px; border-radius: 4px; font-family: monospace;";
 
                                       return `<span class="${className}" style="${style}">${escapeHtml(t)}</span>`;
                                   }).join('')}
@@ -1055,14 +1135,18 @@ const guidedCards = await getRunCards(guidedRuns, 'Guided');
         }
 
     } catch (e) {
-        container.innerHTML = `<div style="color: var(--accent-failure);">Error loading details: ${e.message}</div>`;
+        const msg = e instanceof Error ? e.message : String(e);
+        container.innerHTML = `<div style="color: var(--accent-failure);">Error loading details: ${escapeHtml(msg)}</div>`;
     }
 }
 
+/**
+ * @param {string} text
+ */
 function formatPromptText(text) {
-    const escaped = escapeHtml(text);
+    const escaped = escapeHtml(text) || '';
     const target = "\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.";
-    const escapedTarget = escapeHtml(target);
+    const escapedTarget = escapeHtml(target) || '';
 
     if (escaped.includes(escapedTarget)) {
         return escaped.replace(escapedTarget, `<span style="font-size: 80%; opacity: 0.7;">${escapedTarget}</span>`);
@@ -1070,15 +1154,19 @@ function formatPromptText(text) {
     return escaped;
 }
 
+/**
+ * @param {string} usedBasePath
+ * @param {string} sessionFile
+ */
 function openTrajectory(usedBasePath, sessionFile) {
     if (api.source === 'remote') {
-        const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
-        api._fetch(finalPath)
-            .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
+        const finalPath = `${usedBasePath}/${sessionFile}`;
+        api.getFileBlob(finalPath)
             .then(blob => {
                 const htmlBlob = new Blob([blob], { type: 'text/html' });
                 const url = URL.createObjectURL(htmlBlob);
                 window.open(url, '_blank');
+                setTimeout(() => URL.revokeObjectURL(url), 10_000);
             })
             .catch(e => {
                 console.error('Error loading trajectory:', e);
@@ -1090,8 +1178,8 @@ function openTrajectory(usedBasePath, sessionFile) {
 }
 
 // Global helper to open details from task list
-// @ts-expect-error global export
-window.openDetailsFromTask = (scenarioName, testId) => {
+window.openDetailsFromTask = (/** @type {string} */ scenarioName, /** @type {string} */ testId) => {
+    if (!allTestData) return;
     // Attempt to find runData. We might need to fetch it or pass it.
     // If we assume `allTestData` is available globally (it is), we can find it.
     // Wait, and we need to call showDetails. Let's see if we can find any runType for this scenario to pass to showDetails.
@@ -1108,13 +1196,16 @@ window.openDetailsFromTask = (scenarioName, testId) => {
 };
 
 // Expose functions to window for onclick handlers
-// @ts-expect-error global export
 window.openTrajectory = openTrajectory;
-// @ts-expect-error global export
 window.viewContent = viewContent;
-// @ts-expect-error global export
 window.viewDiff = viewDiff;
 
+/**
+ * @param {string} testName
+ * @param {DashboardRunResult[]} runs
+ * @param {import('../harness/lib/metrics.ts').Metrics['testStats'][string]} stats
+ * @param {string} testId
+ */
 async function showDetails(testName, runs, stats, testId) {
     const modal = $('dialog#modal');
     if (modal.open) modal.close();
@@ -1157,6 +1248,10 @@ function renderBackButton() {
     return btn;
 }
 
+/**
+ * @param {string} fileName
+ * @param {string} filePath
+ */
 async function viewContent(fileName, filePath) {
     const title = $('#modal-title');
     const body = $('#modal-body');
@@ -1177,7 +1272,7 @@ async function viewContent(fileName, filePath) {
     try {
         const text = await api.getFileText(filePath);
 
-        if (fileName.endsWith('diff.txt')) {
+        if (fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) {
             body.innerHTML = '';
             body.appendChild(renderBackButton());
 
@@ -1198,6 +1293,7 @@ async function viewContent(fileName, filePath) {
                 const details = document.createElement('details');
                 details.className = 'diff-file-details';
                 details.style.marginBottom = '12px'; // Keep margin for spacing
+                details.open = true;
 
                 const summary = document.createElement('summary');
                 summary.className = 'diff-file-summary';
@@ -1231,15 +1327,22 @@ async function viewContent(fileName, filePath) {
         const error = document.createElement('div');
         error.style.color = 'var(--accent-failure)';
         error.style.padding = '20px';
-        error.textContent = `Error loading file: ${e.message}`;
+        const msg = e instanceof Error ? e.message : String(e);
+        error.textContent = `Error loading file: ${msg}`;
         body.appendChild(error);
     }
 }
 
+/**
+ * @param {string} setupPath
+ * @param {string} resultPath
+ * @param {string} testName
+ * @param {number} runNumber
+ */
 async function viewDiff(setupPath, resultPath, testName, runNumber) {
     const url = new URL(window.location.href);
     url.searchParams.set('view', 'diff');
-    url.searchParams.set('run', runNumber);
+    url.searchParams.set('run', String(runNumber));
     window.history.replaceState({}, '', url);
 
     const modal = $('dialog#modal');
@@ -1247,7 +1350,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     const body = $('#modal-body');
     const contentDiv = $('.modal-content');
 
-    modal.dataset.runNumber = runNumber;
+    modal.dataset.runNumber = String(runNumber);
 
     let fileName = '';
     if (resultPath && resultPath.includes('/guided/')) {
@@ -1257,7 +1360,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     } else if (setupPath && setupPath.includes('/base_app/')) {
         fileName = setupPath.split('/base_app/')[1];
     } else if (resultPath) {
-        fileName = resultPath.split('/').pop();
+        fileName = resultPath.split('/').pop() || '';
     }
     title.textContent = fileName;
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Computing diff...</div>';
@@ -1275,7 +1378,8 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
         } catch (e) {
             // If setup is missing (404), treat as null to show banner
             // If it's a real error, throw
-            if (!e.message.includes('404')) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (!msg.includes('404')) {
                 throw new Error(`Failed to load setup file: ${setupPath}`);
             }
         }
@@ -1293,7 +1397,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
             // @ts-expect-error global library
             const diff = Diff.diffLines(setupText, resultText);
 
-            diff.forEach((part, index) => {
+            diff.forEach((/** @type {import('diff').Change} */ part, /** @type {number} */ index) => {
                 const colorClass = part.added ? 'diff-added' :
                     part.removed ? 'diff-removed' : 'diff-unchanged';
 
@@ -1364,21 +1468,26 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
         const error = document.createElement('div');
         error.style.color = 'var(--accent-failure)';
         error.style.padding = '20px';
-        error.textContent = `Error loading diff: ${e.message}`;
+        const msg = e instanceof Error ? e.message : String(e);
+        error.textContent = `Error loading diff: ${msg}`;
         body.appendChild(error);
         contentDiv.classList.remove('diff-modal');
     }
 }
 
+/**
+ * @param {DashboardEvalsReport} data
+ */
 function renderDashboardDumbbellChart(data) {
     const results = data.results;
 
 
+    const chartSection = document.getElementById('chart-section');
     if (Object.keys(results).length < 1) {
-        document.getElementById('chart-section').classList.add('hidden');
+        if (chartSection) chartSection.classList.add('hidden');
         return;
     }
-    document.getElementById('chart-section').classList.remove('hidden');
+    if (chartSection) chartSection.classList.remove('hidden');
 
     const container = document.getElementById('dumbbell-chart');
     if (!container) return;
@@ -1390,12 +1499,12 @@ function renderDashboardDumbbellChart(data) {
     container.style.gap = '16px';
     container.style.width = '100%';
 
-    // Group results by discipline
+    /** @type {Record<string, Record<string, DashboardRunResult[]>>} */
     const groupedByDiscipline = {};
     Object.keys(results).forEach(key => {
         const runs = results[key];
         const sampleRun = runs[0];
-        const discipline = sampleRun ? sampleRun.discipline : 'Uncategorized';
+        const discipline = (sampleRun && sampleRun.discipline) || 'Uncategorized';
 
         if (!groupedByDiscipline[discipline]) {
             groupedByDiscipline[discipline] = {};
@@ -1431,7 +1540,7 @@ function renderDashboardDumbbellChart(data) {
 
         container.appendChild(chartDiv);
 
-        const handlePointClick = (index, type) => {
+        const handlePointClick = (/** @type {number} */ index, /** @type {string} */ type) => {
             const scenarioName = labels[index];
             const runType = type.toLowerCase();
             const originalKey = Object.keys(disciplineResults).find(key => {
@@ -1471,6 +1580,12 @@ function renderDashboardDumbbellChart(data) {
     });
 }
 
+/**
+ * @param {string} testId
+ * @param {DashboardRunResult} run
+ * @param {string} testName
+ * @returns {Promise<{ setupPath: string, resultPath: string, usedBasePath: string } | null>}
+ */
 async function getResultPaths(testId, run, testName) {
     return await api.getResultInfo(testId, run, testName);
 }
