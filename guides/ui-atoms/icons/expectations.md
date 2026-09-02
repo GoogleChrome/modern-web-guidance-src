@@ -1,23 +1,10 @@
-# Expectations for Modern Icon Systems
-
-The following assertions must be true for a correct implementation of the icons guide:
-
-### Core Icon Implementation
-- Icons are implemented using Inline SVG, CSS Masks, or `<img>` with CSS filters.
-- External icons loaded via `mask-image` are colored using `background-color`.
-- External icons loaded via `<img>` are tinted using the `filter` property.
-- All SVGs include a `viewBox` attribute to ensure correct scaling.
-- Icons scale crisply without pixelation using SVG as the source format.
-- No "icon fonts" (e.g., FontAwesome, Material Icons font) are used.
-
-### Accessibility
-- Decorative icons (with adjacent labels) are hidden from assistive technologies using `aria-hidden="true"`.
-- Meaningful icon-only buttons have an accessible name (e.g., via `aria-label` or `<title>` within a `role="img"` SVG).
-
-### Theme & Variant Management
-- Icon variants (e.g., density or state) are managed using CSS Container Style Queries (`@container style()`).
-- The `--icon-variant` (or equivalent) custom property is registered using `@property` with a `<custom-ident>` syntax.
-- Theme-aware icon coloring is implemented using CSS variables or `currentColor`.
-
-### Performance
-- High-resolution versions of icons are provided via `image-set()` within masks or background properties where appropriate.
+- **MANDATORY**: Every icon on the page is implemented using SVG elements (such as inline `<svg>` or external CSS masks).
+- **MANDATORY**: No external icon font files or stylesheets (such as FontAwesome, Material Design Icons) are loaded or used.
+- **MANDATORY**: All SVG elements include a valid `viewBox` attribute to ensure correct scaling.
+- **MANDATORY**: Decorative icons (those within buttons that contain descriptive text or adjacent labels) have `aria-hidden="true"`.
+- **MANDATORY**: Interactive icon-only elements (such as buttons without descriptive text) have a valid accessible name (such as via `aria-label`).
+- **MANDATORY**: Standalone non-interactive icons that convey meaning have `role="img"` and a valid accessible name (such as via `aria-label`).
+- **MANDATORY**: The CSS registers a custom property for the icon color (such as `--icon-color`) using `@property` with `<color>` syntax.
+- **MANDATORY**: The icons transition their color on button hover/focus using the registered custom property, ensuring smooth interpolation.
+- **OPTIONAL**: Sizing of icons is controlled using relative CSS units (such as `em` or `rem`) rather than hardcoded absolute pixel dimensions.
+- **OPTIONAL**: When external masks or background images are used for icons, high-resolution variants are provided via `image-set()` for different display densities.

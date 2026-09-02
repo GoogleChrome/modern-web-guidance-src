@@ -89,6 +89,32 @@ If you cannot use masks, you can tint external `<img>` tags using CSS `filter`.
 }
 ```
 
+### Smooth Color Transitions (Registered Custom Properties)
+
+Standard CSS custom properties cannot be animated/transitioned because the browser does not know their underlying type (they are treated as generic strings). To enable smooth color transitions (e.g., when hovering or focusing a button), register a custom property with a `<color>` type using `@property`.
+
+```css
+@property --icon-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: currentColor;
+}
+
+.icon {
+  color: var(--icon-color);
+  /* The browser can now interpolate --icon-color during transitions */
+  transition: --icon-color 0.2s ease;
+}
+
+.icon--danger {
+  --icon-color: #b00020;
+}
+
+button:hover .icon {
+  --icon-color: hotpink;
+}
+```
+
 ## Best practices
 
 - **DO** hide decorative icons from assistive technology using `aria-hidden="true"`. If the icon is the only content in a button, provide an accessible name via `aria-label` or an internal `<title>` with `role="img"`.
