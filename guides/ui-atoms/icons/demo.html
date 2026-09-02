@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVG icons — inline SVG technique</title>
+  <style>
+    :root {
+      --icon-color-default: #444;
+      --icon-color-danger: #b00020;
+      --icon-color-success: #1a7f37;
+
+      --icon-size: 1.25em;
+
+      --icon-transition-duration: 0.2s;
+      --icon-transition-easing: ease;
+    }
+
+    @property --icon-color {
+      syntax: "<color>";
+      inherits: true;
+      initial-value: currentColor;
+    }
+
+    .icon {
+      display: inline-block;
+      width: var(--icon-size);
+      height: var(--icon-size);
+      vertical-align: middle;
+      flex-shrink: 0;
+      color: var(--icon-color, var(--icon-color-default));
+      transition: --icon-color var(--icon-transition-duration) var(--icon-transition-easing);
+    }
+
+    .icon--danger {
+      --icon-color: var(--icon-color-danger);
+    }
+
+    .icon--success {
+      --icon-color: var(--icon-color-success);
+    }
+
+    button {
+      all: unset;
+      appearance: none;
+      -webkit-appearance: none;
+      background: none;
+      border: none;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      cursor: pointer;
+      color: var(--icon-color-default);
+      transition: color var(--icon-transition-duration) var(--icon-transition-easing);
+    }
+
+    button:hover,
+    button:focus-visible {
+      color: hotpink;
+    }
+
+    button:hover .icon,
+    button:focus-visible .icon {
+      --icon-color: hotpink;
+    }
+  </style>
+</head>
+
+<body>
+  <section>
+    <p>icon-only button, accessible name via aria-label on the button</p>
+    <button aria-label="Delete item">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" />
+      </svg>
+    </button>
+    <br />
+    <button aria-label="Favourite item">
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      </svg>
+    </button>
+    <hr />
+
+    <p>icon is decorative, visible text provides the accessible name</p>
+    <button>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" />
+      </svg>
+      delete item
+    </button>
+    <br />
+    <button>
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      </svg>
+      favourite item
+    </button>
+    <hr />
+
+    <p>icon-only button, danger color via design token</p>
+    <button aria-label="Delete item">
+      <svg class="icon icon--danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        aria-hidden="true">
+        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" />
+      </svg>
+    </button>
+    <br />
+    <button aria-label="Remove from favourites">
+      <svg class="icon icon--danger" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      </svg>
+    </button>
+    <hr />
+
+    <p>non-interactive icon that denotes something, standalone and meaningful</p>
+    <p>
+      Payment status:
+      <svg class="icon icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img"
+        aria-label="Successful">
+        <path d="M5 13l4 4L19 7" />
+      </svg>
+    </p>
+  </section>
+</body>
+
+</html>
