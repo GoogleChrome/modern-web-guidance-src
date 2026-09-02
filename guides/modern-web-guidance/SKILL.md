@@ -75,12 +75,23 @@ Once you have a relevant `id` from the search results, call this script using th
 npx -y modern-web-guidance@latest retrieve "<id>"
 ```
 
+If the output is truncated, you must repeat the command but redirect to a file and read that file.
 
 **Example Output**:
 `The markdown content of the guide describing implementation steps...`
 
-## Using npx
+---
 
+### Step 3. Verify Guidance Compliance
+
+When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
+- **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
+- **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
+
+## Using npx / pnpx
+
+-   Prefer `pnpx` over `npx` if `pnpm` is available (note: `pnpx` does not use the `-y` flag).
+-   When requesting tool permissions, allowlist `npx -y modern-web-guidance@latest *` specifically (or `pnpx modern-web-guidance@latest *`), never bare `npx *` or `pnpx *`.
 -   IMPORTANT: on Windows, using `npx` may fail. Use `npx.cmd ...` instead.
 -   Network access is required for fetching npm packages needed by the task.
 -   If the `npx -y modern-web-guidance…` command hangs, you may be offline. Try running again in offline
@@ -93,7 +104,6 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 -   Always search **first** to find the most relevant guides.
 -   These guides are usually framework-agnostic; adapt them correctly to your setup.
 -   Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
-
 
 ## Interpreting Browser Support & Fallbacks
 

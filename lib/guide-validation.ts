@@ -144,6 +144,8 @@ export function validateGuide(filePath: string): ValidationResult {
 
   errors.push(...validateMacros(body, relativePath));
   errors.push(...validateHtmlTags(body, relativePath));
+  errors.push(...validateGuideTitle(body, relativePath, data, { requireTitle: true }));
+  errors.push(...validateBaselineClaims(body, relativePath));
 
   return { errors, data, body, filePath };
 }
@@ -657,12 +659,17 @@ export function resetGuidesMap() {
 // Safe typographic inline tags that don't represent interactive elements or cause layout breakage.
 const ALLOWED_HTML_TAGS = new Set(['kbd', 'br', 'wbr']);
 
+interface HtmlValidationState {
+  offset: number;
+}
+
 export function validateHtmlTags(body: string, relativePath: string): string[] {
   const errors: string[] = [];
 
   try {
     const tokens = marked.lexer(body);
-    findInvalidHtmlTokens(tokens, errors, relativePath, body);
+    const state: HtmlValidationState = { offset: 0 };
+    findInvalidHtmlTokens(tokens, errors, relativePath, body, state);
   } catch (e) {
     errors.push(`Failed to parse markdown with marked lexer for HTML validation in ${relativePath}: ${e}`);
   }
@@ -670,7 +677,13 @@ export function validateHtmlTags(body: string, relativePath: string): string[] {
   return errors;
 }
 
-function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: string, content: string) {
+function findInvalidHtmlTokens(
+  tokens: any[],
+  errors: string[],
+  relativePath: string,
+  content: string,
+  state: HtmlValidationState = { offset: 0 },
+) {
   for (const token of tokens) {
     if (token.type === 'html') {
       const raw = token.raw.trim();
@@ -685,15 +698,27 @@ function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: st
       if (match) {
         const tagName = match[1].toLowerCase();
         if (!ALLOWED_HTML_TAGS.has(tagName)) {
-          // Find line number in content
-          const offset = content.indexOf(token.raw);
+          // Find line number in content using running offset
+          let offset = content.indexOf(token.raw, state.offset);
+          if (offset === -1) {
+            offset = content.indexOf(token.raw);
+          }
+          if (offset !== -1) {
+            state.offset = offset + token.raw.length;
+          }
           const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
           const lineSuffix = line !== -1 ? ` on line ${line}` : '';
           errors.push(`Unescaped HTML tag <${tagName}> found${lineSuffix} in ${relativePath}. Use backticks or escape angle brackets if it is a tag name reference.`);
         }
       } else {
         // If it does not match a standard tag, but is still parsed as HTML token, warn/fail
-        const offset = content.indexOf(token.raw);
+        let offset = content.indexOf(token.raw, state.offset);
+        if (offset === -1) {
+          offset = content.indexOf(token.raw);
+        }
+        if (offset !== -1) {
+          state.offset = offset + token.raw.length;
+        }
         const line = offset !== -1 ? content.slice(0, offset).split('\n').length : -1;
         const lineSuffix = line !== -1 ? ` on line ${line}` : '';
         errors.push(`Potentially invalid or unescaped HTML block/tag "${raw}" found${lineSuffix} in ${relativePath}.`);
@@ -701,15 +726,179 @@ function findInvalidHtmlTokens(tokens: any[], errors: string[], relativePath: st
     }
 
     if (token.tokens) {
-      findInvalidHtmlTokens(token.tokens, errors, relativePath, content);
+      findInvalidHtmlTokens(token.tokens, errors, relativePath, content, state);
     }
     if (token.items) {
       for (const item of token.items) {
         if (item.tokens) {
-          findInvalidHtmlTokens(item.tokens, errors, relativePath, content);
+          findInvalidHtmlTokens(item.tokens, errors, relativePath, content, state);
         }
       }
     }
   }
 }
+
+/**
+ * Extracts all top-level H1 heading texts from markdown content using AST parsing.
+ * Headings inside code blocks are ignored.
+ */
+export function extractAllH1Headings(markdown: string): string[] {
+  if (!markdown || !markdown.trim()) {
+    return [];
+  }
+  try {
+    const tokens = marked.lexer(markdown);
+    const headings: string[] = [];
+    for (const token of tokens) {
+      if (token.type === 'heading' && token.depth === 1) {
+        const text = token.text.trim();
+        if (text.length > 0) {
+          headings.push(text);
+        }
+      }
+    }
+    return headings;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Extracts the first top-level H1 heading text from markdown content using AST parsing.
+ * Headings inside code blocks are ignored.
+ * Returns undefined if no top-level H1 heading is found.
+ */
+export function extractH1Heading(markdown: string): string | undefined {
+  const headings = extractAllH1Headings(markdown);
+  return headings.length > 0 ? headings[0] : undefined;
+}
+
+export const VAGUE_H1_TITLES = new Set(['overview', 'introduction', 'guide', 'title']);
+
+export const REDUNDANT_GUIDE_SUFFIX_PATTERN = /\bguide\s*$/i;
+
+/**
+ * Validates headings in a guide body, flagging vague top-level H1 headings and redundant trailing "Guide".
+ */
+export function validateHeadings(body: string, relativePath: string, data?: GuideData): string[] {
+  const errors: string[] = [];
+
+  if (data?.title) {
+    const titleStr = String(data.title).trim();
+    if (VAGUE_H1_TITLES.has(titleStr.toLowerCase())) {
+      errors.push(`Vague title "${data.title}" in frontmatter for ${relativePath}. Use a descriptive title instead.`);
+    } else if (REDUNDANT_GUIDE_SUFFIX_PATTERN.test(titleStr)) {
+      errors.push(`Redundant trailing "Guide" in frontmatter title "${data.title}" for ${relativePath}. Strip the trailing "Guide".`);
+    }
+  }
+
+  const headings = extractAllH1Headings(body);
+  for (const title of headings) {
+    if (VAGUE_H1_TITLES.has(title.toLowerCase())) {
+      errors.push(`Vague H1 heading "# ${title}" in ${relativePath}. Use a descriptive title instead.`);
+    } else if (REDUNDANT_GUIDE_SUFFIX_PATTERN.test(title)) {
+      errors.push(`Redundant trailing "Guide" in H1 heading "# ${title}" for ${relativePath}. Strip the trailing "Guide".`);
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validates that a non-stub guide has either a frontmatter title or an explicit H1 heading,
+ * and that any H1 heading is not vague.
+ */
+export function validateGuideTitle(body: string, relativePath: string, data?: GuideData, options?: { requireTitle?: boolean }): string[] {
+  const errors = validateHeadings(body, relativePath, data);
+  const isStub = body.replace(/<!--[\s\S]*?-->/g, '').trim().length === 0;
+
+  if (options?.requireTitle && !isStub) {
+    const hasH1 = Boolean(extractH1Heading(body));
+    const hasTitle = Boolean(data?.title?.toString().trim());
+    if (!hasTitle && !hasH1) {
+      errors.push(`Missing H1 heading or frontmatter "title" in non-stub guide ${relativePath}.`);
+    }
+  }
+
+  return errors;
+}
+
+// Patterns that indicate hardcoded Baseline availability claims
+export const HARDCODED_BASELINE_PATTERNS = [
+  /\bBaseline\s+(?:widely|newly|limited)\s+available\b/i,
+  /\bBaseline\s+limited\s+availability\b/i,
+  /\bBaseline\s+\d{4}\b/i,
+  /\bBaseline\s+since\s+(?:[A-Z][a-z]+\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{4})\b/i,
+  /\b(?:is|are|was|were)\s+(?:all\s+)?Baseline\s+(?:widely|newly|limited)\b/i,
+  /\b(?:is|are|was|were)\s+(?:all\s+)?Baseline\b/i,
+  /\bnot\s+(?:yet\s+)?Baseline\s+(?:widely|newly|limited)?\b/i,
+  /\bwidely\s+supported\s*\(\s*Baseline\b/i,
+];
+
+// Patterns that are legitimate non-status uses to ignore even if they match partially
+export const LEGITIMATE_BASELINE_EXCLUSIONS = [
+  /\bbaseline\s+targets?\b/i,
+  /\bbaseline\s+styles?\b/i,
+  /\bbaseline\s+styling\b/i,
+  /\bbaseline\s+performance\b/i,
+  /\bbaseline\s+hygiene\b/i,
+  /\bbaseline\s+metrics?\b/i,
+  /\bbaseline\s+profile\b/i,
+  /\bbaseline\s+support\b/i,
+  /\bbaseline\s+requirement\b/i,
+  /\bbaseline\s+best\s+practices?\b/i,
+  /\balphabetic\s+baseline\b/i,
+  /\btext\s+baseline\b/i,
+  /\bfont\s+baseline\b/i,
+  /\bvertical-align:\s*baseline\b/i,
+  /\balignment-baseline\b/i,
+  /\bdominant-baseline\b/i,
+  /\breset\s+.*\bto\s+(?:its\s+)?baseline\b/i,
+  /\bclone\s+the\s+baseline\b/i,
+  /\bestablish\s+(?:a\s+)?baseline\b/i,
+  /\bmeasure\s+(?:a\s+)?baseline\b/i,
+];
+
+/**
+ * Validates that guide markdown does not contain hardcoded Baseline availability claims,
+ * ensuring authors use {{ BASELINE_STATUS("feature-id") }} macros instead.
+ */
+export function validateBaselineClaims(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const lines = body.split('\n');
+  let inCodeBlock = false;
+
+  // Skip meta skill instructions like modern-web-guidance/SKILL.md which describe baseline policy rules
+  if (relativePath.endsWith('SKILL.md')) {
+    return errors;
+  }
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+      inCodeBlock = !inCodeBlock;
+      return;
+    }
+    if (inCodeBlock) return;
+
+    // Ignore macro lines
+    if (line.includes('{{ BASELINE_STATUS') || line.includes('{{ FEATURE')) return;
+
+    // Check for hardcoded baseline claim
+    for (const pattern of HARDCODED_BASELINE_PATTERNS) {
+      if (pattern.test(line)) {
+        const isExcluded = LEGITIMATE_BASELINE_EXCLUSIONS.some(ex => ex.test(line));
+        if (!isExcluded) {
+          errors.push(
+            `Hardcoded Baseline availability claim found on line ${idx + 1} in ${relativePath}: "${trimmed}". Use {{ BASELINE_STATUS("feature-id") }} macro instead.`
+          );
+          break;
+        }
+      }
+    }
+  });
+
+  return errors;
+}
+
 

@@ -4,6 +4,7 @@ import path from 'path';
 const resultsDir = path.resolve('../harness/results');
 const outputFilePath = path.resolve('./suites.json');
 
+/** @type {string[]} */
 const suites = [];
 
 function scanResults() {

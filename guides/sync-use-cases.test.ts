@@ -113,6 +113,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = validateGuide(filePath);
@@ -126,6 +129,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 Body content here.
 `);
     const result = validateGuide(filePath);
@@ -165,6 +171,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 {{ BASELINE_STATUS(fake-feature-id) }}
 `);
     const result = validateGuide(filePath);
@@ -178,6 +187,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 {{ BASELINE_STATUS(dialog-closedby) }}
 `);
     const result = validateGuide(filePath);
@@ -191,6 +203,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 {{ BASELINE_STATUS() }}
 `);
     const result = validateGuide(filePath);
@@ -205,6 +220,9 @@ web-feature-ids:
   - dialog-closedby
   - view-transitions
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = validateGuide(filePath);
@@ -220,6 +238,9 @@ web-feature-ids:
   - fake-one
   - fake-two
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = validateGuide(filePath);
@@ -780,6 +801,9 @@ description: A description
 web-feature-ids:
   - invalid-feature-id-test
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = processGuideInventory([makeInventory()]);
@@ -794,6 +818,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = processGuideInventory([makeInventory()]);
