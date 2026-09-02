@@ -1,0 +1,7 @@
+- The document links to a web app manifest whose `id` provides a stable identity for the installable app.
+- The page contains an `<install>` element that offers browser-controlled installation of the current web app.
+- The custom install button remains hidden when neither `navigator.install()` nor a `beforeinstallprompt` event is available.
+- When `navigator.install()` is available, the custom install button is visible and activating it requests installation exactly once.
+- When a `beforeinstallprompt` event is available without `navigator.install()`, the custom install button becomes visible and activating it calls the captured event's `prompt()` method exactly once.
+- After the user accepts or dismisses the `beforeinstallprompt` fallback, the captured event is discarded and the custom install button is hidden.
+- A successful installation reports success to the user, while cancellation is reported as cancellation rather than as an application error.

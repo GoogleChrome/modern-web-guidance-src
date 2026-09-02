@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#3157d5">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <title>Install a web application</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        display: grid;
+        min-block-size: 100vh;
+        margin: 0;
+        place-items: center;
+      }
+
+      main {
+        inline-size: min(32rem, calc(100% - 2rem));
+      }
+
+      .install-options {
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      section {
+        padding: 1.25rem;
+        border: 1px solid currentColor;
+        border-radius: 0.75rem;
+      }
+
+      button {
+        padding: 0.7rem 1rem;
+        border: 0;
+        border-radius: 0.4rem;
+        background: #3157d5;
+        color: white;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+
+      [hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Install this app</h1>
+      <p>
+        Add this app to your device for quicker access from your applications.
+      </p>
+
+      <div class="install-options">
+        <section>
+          <h2>Browser-provided control</h2>
+          <p>The browser controls the appearance and installation prompt.</p>
+          <install></install>
+        </section>
+
+        <section>
+          <h2>Custom control</h2>
+          <p>This control appears only when installation can be requested.</p>
+          <button id="install-app" type="button" hidden>Install app</button>
+          <p id="install-status" role="status"></p>
+        </section>
+      </div>
+    </main>
+
+    <script type="module">
+      const installButton = document.querySelector("#install-app");
+      const installStatus = document.querySelector("#install-status");
+      const supportsWebInstall =
+        typeof Navigator.prototype.install === "function";
+      let deferredInstallPrompt;
+
+      if (supportsWebInstall) {
+        installButton.hidden = false;
+      }
+
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+
+        if (!supportsWebInstall) {
+          installButton.hidden = false;
+        }
+      });
+
+      installButton.addEventListener("click", async () => {
+        installButton.disabled = true;
+
+        try {
+          if (supportsWebInstall) {
+            // Calling directly from this handler preserves transient user activation.
+            await navigator.install();
+            installStatus.textContent = "The app was installed.";
+            installButton.hidden = true;
+          } else if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+            installStatus.textContent =
+              outcome === "accepted"
+                ? "The app was installed."
+                : "Installation canceled.";
+
+            // beforeinstallprompt events are single-use.
+            deferredInstallPrompt = undefined;
+            installButton.hidden = true;
+          }
+        } catch (error) {
+          if (error.name === "AbortError") {
+            installStatus.textContent = "Installation canceled.";
+            installButton.hidden = true;
+          } else {
+            installStatus.textContent = "Installation could not start.";
+            console.error(error);
+          }
+        } finally {
+          installButton.disabled = false;
+        }
+      });
+
+      window.addEventListener("appinstalled", () => {
+        deferredInstallPrompt = undefined;
+        installButton.hidden = true;
+        installStatus.textContent = "The app was installed.";
+      });
+    </script>
+  </body>
+</html>

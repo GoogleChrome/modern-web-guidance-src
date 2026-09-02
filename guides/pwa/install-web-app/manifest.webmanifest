@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Web Install API Demo",
+  "short_name": "Install Demo",
+  "description": "A demonstration of installing a web application from a page.",
+  "start_url": "./demo.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3157d5",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
