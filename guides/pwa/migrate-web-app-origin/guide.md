@@ -5,6 +5,8 @@ web-feature-ids:
   - app-migration
 ---
 
+# Migrating the Origin of an Installed Web App
+
 Transferring an installed web app (PWA) to a new origin typically requires users to manually uninstall the old app and reinstall the new one. This process usually causes the loss of OS-level integration, such as taskbar shortcuts and notification permissions. Web App Origin Migration automates this transition by establishing a secure handover between the old and new origins.
 
 The migration is a two-step verification process: the new site claims the old site as its predecessor, and the old site authorizes the new site as its successor.
