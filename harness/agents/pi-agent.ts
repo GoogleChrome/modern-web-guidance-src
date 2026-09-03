@@ -26,7 +26,8 @@ import {
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
   readTrajectorySummary,
-  getSessionFiles
+  getSessionFiles,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
@@ -231,11 +232,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
               timestamp,
               subagentId,
               thought,
-              action: {
-                type: mapToolType(toolName),
-                name: toolName,
-                params
-              }
+              action: standardizeAction(mapToolType(toolName), toolName, params)
             }) - 1;
 
             if (subagentId) {
