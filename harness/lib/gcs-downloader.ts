@@ -173,15 +173,31 @@ function normalizePath(p: string): string {
   }
 }
 
-async function downloadSingleDirFromGcs(runDir: string, token: string | undefined): Promise<boolean> {
-  const absoluteRunDir = normalizePath(runDir);
+export function resolveRunPath(runDir: string): { absoluteRunDir: string; relativeRunPath: string } | null {
+  let absoluteRunDir = normalizePath(runDir);
   const absoluteResultsDir = normalizePath(baseResultsDir);
-  
-  const relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
+  let relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
+
   if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
-    console.warn(`[GCS Downloader] Path is outside results directory: ${absoluteRunDir}`);
-    return false;
+    const stripped = runDir.replace(/^(\.\/)?(harness\/)?results\/?/, '');
+    const candidate = path.resolve(baseResultsDir, stripped);
+    const candidateRel = path.relative(absoluteResultsDir, candidate);
+    if (!candidateRel.startsWith('..') && !path.isAbsolute(candidateRel)) {
+      absoluteRunDir = candidate;
+      relativeRunPath = candidateRel;
+    } else {
+      console.warn(`[GCS Downloader] Path is outside results directory: ${absoluteRunDir}`);
+      return null;
+    }
   }
+
+  return { absoluteRunDir, relativeRunPath };
+}
+
+async function downloadSingleDirFromGcs(runDir: string, token: string | undefined): Promise<boolean> {
+  const resolved = resolveRunPath(runDir);
+  if (!resolved) return false;
+  const { absoluteRunDir, relativeRunPath } = resolved;
 
   if (fs.existsSync(absoluteRunDir)) {
     const files = fs.readdirSync(absoluteRunDir);
