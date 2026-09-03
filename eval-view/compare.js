@@ -1193,8 +1193,8 @@ function findDivergenceInfo(trajA, trajB) {
       }
 
       if (sA.stepNumber === 0 && sB.stepNumber === 0) {
-        const pA = (sA.outcome && typeof sA.outcome === 'object' ? sA.outcome.output || '' : '').trim();
-        const pB = (sB.outcome && typeof sB.outcome === 'object' ? sB.outcome.output || '' : '').trim();
+        const pA = String(sA.outcome && typeof sA.outcome === 'object' ? sA.outcome.output || '' : '').trim();
+        const pB = String(sB.outcome && typeof sB.outcome === 'object' ? sB.outcome.output || '' : '').trim();
         if (pA && pB && pA !== pB) {
           primaryStepA = 0;
           primaryStepB = 0;
