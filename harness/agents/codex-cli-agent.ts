@@ -25,7 +25,8 @@ import {
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
   readTrajectorySummary,
-  getSessionFiles
+  getSessionFiles,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 import type { CodexRolloutLine } from './codex.d.ts';
 
@@ -289,11 +290,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
           timestamp,
           subagentId,
           thought: currentThought || `Executing ${cmdName}`,
-          action: {
-            type: actionType,
-            name: actionName,
-            params
-          }
+          action: standardizeAction(actionType, actionName, params)
         };
         steps.push(step);
         if (subagentId) {
