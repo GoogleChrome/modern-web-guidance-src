@@ -14,133 +14,168 @@ guides:
 
 # SVG Icon Implementation
 
-Modern icon systems prioritize performance, accessibility, and themeability. While several techniques exist for displaying SVGs, the choice depends on whether the icon needs deep styling (multi-color/animation) or if it can be treated as a cachable, single-color asset.
+Modern web icon systems prioritize performance, accessibility, ease of styling, and separation of concerns. Rather than flooding HTML templates with repetitive inline SVG code or relying on un-semantic and inaccessible "icon fonts," modern architectures utilize **CSS Masks and Container Style Queries** to create a zero-markup, highly flexible icon engine.
 
-Example use cases include:
-- Interactive UI controls (buttons, toggles, navigation)
-- Information indicators (status badges, alerts, tooltips)
-- Decorative brand elements and illustrations
-- Dense data visualizations and dashboards where performance is critical
+This approach allows you to inject scalable vector icons into any element (such as buttons, links, or badges) using standard CSS variables, without modifying the underlying HTML markup.
 
-## Choosing the right technique
+---
 
-Choosing the best SVG implementation is a balance between color control, performance, and accessibility. Use this decision tree to find the right approach:
+## Core Concept: CSS-Driven Icon Engine
 
-1.  **Do you need to animate internal paths or use multiple colors in a single icon?**
-    *   **Yes**: Use **Inline SVG**. This is the only way to gain full DOM access to the icon's internals.
-    *   **No**: Proceed to step 2.
-2.  **Is browser caching and performance your primary goal (e.g., a long list of icons)?**
-    *   **Yes**: Keep the icon as an external file. Proceed to step 3.
-    *   **No**: Use **Inline SVG**. It is the most robust and easiest to implement for general UI.
-3.  **Do you need to dynamically change the icon's color via CSS?**
-    *   **Yes**: Proceed to step 4.
-    *   **No**: Use a **Plain `<img>`** tag. This is the fastest method for static icons.
-4.  **Do you need to avoid extra markup or support older browsers?**
-    *   **Yes**: Use **`<img>` + CSS filters**. It requires no wrapper and has excellent support, though color math is more complex.
-    *   **No**: Use **CSS Masks**. It allows for clean color control via `background-color` and CSS variables.
+The engine relies on three modern CSS capabilities:
+1. **Registered Custom Properties (`@property`)**: We register `--icon-start` and `--icon-end` with a `<image>` syntax and `inherits: false`. This ensures type safety and prevents unexpected inheritance issues.
+2. **Container Style Queries (`@container style(...)`)**: The browser automatically monitors elements for changes to these custom properties. Setting a property like `--icon-start: var(--icon-trash)` instantly compiles and injects the icon.
+3. **CSS Masks & `currentColor`**: Icons are rendered as pseudo-elements (`::before` / `::after`) using a CSS mask. Sizing is governed by relative units (`1em`), and colors dynamically transition using `currentColor`, allowing seamless CSS transitions.
 
-### Comparison at a glance
-
-| Technique | Color Control | Multi-color | Animatable | Extra Markup |
-| :--- | :--- | :---: | :---: | :---: |
-| **Inline SVG** | Full (CSS) | ✅ | ✅ | ❌ |
-| **CSS Masks** | Full (Tint) | ❌ | ✅ | ⚠️ |
-| **`<img>` + Filter** | Partial | ⚠️ | ✅ | ❌ |
-| **Plain `<img>`** | None | ❌ | ❌ | ❌ |
-| **Linked Params** | Full | ✅ | ⚠️ | ❌ |
+---
 
 ## Basic implementation
 
-### Inline SVG (Best for Control)
+### 1. Registering the Custom Properties
 
-Inline SVGs are part of the DOM, making them highly themeable via `currentColor` and custom properties. This is often the best fit for frameworks like React or Vue.
+Standard custom properties are treated as generic strings, which can cause layout or inheritance bugs when resolving complex CSS types like image URLs. Registering them with `@property` ensures they are correctly typed as `<image>` elements:
+
+```css
+@property --icon-start {
+  syntax: "<image>";
+  inherits: false;
+}
+
+@property --icon-end {
+  syntax: "<image>";
+  inherits: false;
+}
+```
+
+### 2. Defining SVG Assets as Variables
+
+Instead of loading individual files inline, define your SVG icons as reusable custom variables at the `:root`. You can use inline SVG data URIs (for maximum performance and offline availability) or relative URLs:
+
+```css
+:root {
+  /* Inline SVG Data URI (Optimized & Self-contained) */
+  --icon-trash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z'/%3E%3C/svg%3E");
+  --icon-favourite: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+}
+```
+
+### 3. Setting Up the Container Style Queries
+
+This block handles the injection, sizing, masking, and automatic layout adjustments. Because we use `background-color: currentColor`, the icon automatically adopts the parent's text color and responds to standard CSS hover and focus transitions.
+
+```css
+/* Style query for elements configuring a start icon */
+@container style(--icon-start) {
+  ::before {
+    --icon-start: inherit; /* Forward the value inside the query block */
+    content: "";
+    display: inline-block;
+    width: 1.25em;
+    height: 1.25em;
+    background-color: currentColor;
+    mask: var(--icon-start) no-repeat center / contain;
+    -webkit-mask: var(--icon-start) no-repeat center / contain;
+    opacity: 0.85;
+    pointer-events: none;
+    vertical-align: middle;
+  }
+
+  /* Automatically add padding/spacing ONLY if the element has other text or sibling content */
+  :not(.icon, :empty)::before {
+    margin-inline-end: 0.4em;
+  }
+}
+
+/* Style query for elements configuring an end icon */
+@container style(--icon-end) {
+  ::after {
+    --icon-end: inherit;
+    content: "";
+    display: inline-block;
+    width: 1.25em;
+    height: 1.25em;
+    background-color: currentColor;
+    mask: var(--icon-end) no-repeat center / contain;
+    -webkit-mask: var(--icon-end) no-repeat center / contain;
+    opacity: 0.85;
+    pointer-events: none;
+    vertical-align: middle;
+  }
+
+  :not(.icon, :empty)::after {
+    margin-inline-start: 0.4em;
+  }
+}
+```
+
+### 4. Standalone and Icon-Only Element Forwarding
+
+For standalone icons or buttons that have no text (e.g. icon-only controls), we establish an empty `.icon` class that forwards a general `--icon` property to `--icon-start`:
+
+```css
+.icon {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: middle;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.icon:empty {
+  --icon-start: var(--icon);
+}
+```
+
+---
+
+## HTML Usage Examples
+
+### Decorative Icons (Zero Extra Markup)
+To attach an icon to a button, link, or header, simply set the `--icon-start` or `--icon-end` custom properties directly in CSS or style tags:
 
 ```html
-<svg class="icon icon--star" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-  <path d="..." fill="currentColor" />
-  <!-- Use variables for multi-color support -->
-  <circle cx="12" cy="12" r="3" fill="var(--icon-accent, gold)" />
-</svg>
+<!-- No svg tags inside! The icon is rendered purely via pseudo-elements -->
+<button style="--icon-start: var(--icon-trash);">
+  Delete Item
+</button>
 ```
 
-### CSS Masks (Best for Performance)
+### Standalone and Icon-Only Buttons
+For cases where an icon stands alone without adjacent text, use an empty `.icon` element inside an interactively labeled container:
 
-Masks load an external file once and use `background-color` to "tint" the shape. This keeps the icon external and cachable.
-
-```css
-.icon {
-  width: 24px;
-  height: 24px;
-  background-color: #666;
-  mask-image: url("/icons/search.svg");
-  mask-size: contain;
-  mask-repeat: no-repeat;
-}
+```html
+<button aria-label="Delete item">
+  <span class="icon" style="--icon: var(--icon-trash);" aria-hidden="true"></span>
+</button>
 ```
 
-### External Image with Filters
+---
 
-If you cannot use masks, you can tint external `<img>` tags using CSS `filter`.
+## Strengths and Trade-offs
 
-```css
-.icon--tinted {
-  /* Tints a black SVG to a brand color */
-  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
-}
-```
+### Pros:
+- **Zero HTML clutter**: No inline SVG paths bloated across your templates.
+- **Skins & Themes**: Easily swap icons or colors with standard CSS rule modifications (e.g., swapping to a filled icon on `:hover` or in dark mode).
+- **Automated Layout**: Space/margins are dynamically calculated and applied only when the container is not empty, avoiding orphan spacing.
+- **Built-in Transitions**: Colors transition seamlessly using native CSS text `color` transitions, powered by `currentColor` masking.
 
-### Smooth Color Transitions (Registered Custom Properties)
+### Cons:
+- **Single Color**: Limited to single-color icons (perfect for 99% of UI utility icons). For complex, multi-color illustrations, inline SVG is still preferred.
+- **No Morphing**: You cannot animate or morph vector paths directly; use inline SVG if path-level morph animations are required.
 
-Standard CSS custom properties cannot be animated/transitioned because the browser does not know their underlying type (they are treated as generic strings). To enable smooth color transitions (e.g., when hovering or focusing a button), register a custom property with a `<color>` type using `@property`.
-
-```css
-@property --icon-color {
-  syntax: "<color>";
-  inherits: true;
-  initial-value: currentColor;
-}
-
-.icon {
-  color: var(--icon-color);
-  /* The browser can now interpolate --icon-color during transitions */
-  transition: --icon-color 0.2s ease;
-}
-
-.icon--danger {
-  --icon-color: #b00020;
-}
-
-button:hover .icon {
-  --icon-color: hotpink;
-}
-```
-
-## Best practices
-
-- **DO** hide decorative icons from assistive technology using `aria-hidden="true"`. If the icon is the only content in a button, provide an accessible name via `aria-label` or an internal `<title>` with `role="img"`.
-- **DO NOT** use icon fonts. They are less accessible, harder to align, and have worse rendering quality than SVGs.
-- Use `image-set()` to provide high-resolution icon variants for different display densities when using external masks or images.
-- Use registered custom properties and `@container style()` queries to manage icon "variants" (e.g., density or visual state) without coupling icons to specific parent classes.
+---
 
 ## Known issues to be aware of
 
-### Important gotcha: SVG External Scoping
-When using an SVG via `<img>`, `background-image`, or `mask-image`, the icon is "sealed." You cannot reach inside the SVG with CSS from your main document to change its paths or colors. 
+- **Safari Style Query Support**: Style queries are widely supported in modern browsers, but ensure any targeted older Safari runtimes have a fallback pattern if needed (such as class toggling).
+- **Linked Parameters**: Once linked parameters ship natively, masking workarounds can be replaced with native background parameters, keeping this same custom property contract as the primary guidance.
 
-- **DO** use `currentColor` and `fill="currentColor"` inside your SVGs when they are inlined.
-- **DO** use `filter` or `mask-image` with `background-color` if you must keep the file external.
-- **DO NOT** expect external SVGs to inherit CSS variables from the parent document until `tmp-linked-parameters` is widely supported.
-
-### Scalability and Layout
-- **DO** ensure every SVG has a proper `viewBox` attribute to ensure correct scaling.
-- **DO** set explicit `width` and `height` in CSS to prevent layout shifts.
-
-{{ FEATURE_ISSUES("svg") }}
 {{ FEATURE_ISSUES("masks") }}
+{{ FEATURE_ISSUES("container-style-queries") }}
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("svg") }}
 {{ FEATURE_FALLBACKS("masks") }}
 {{ FEATURE_FALLBACKS("container-style-queries") }}
 {{ FEATURE_FALLBACKS("registered-custom-properties") }}

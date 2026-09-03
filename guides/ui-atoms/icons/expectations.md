@@ -1,10 +1,10 @@
-- **MANDATORY**: Every icon on the page is implemented using SVG elements (such as inline `<svg>` or external CSS masks).
-- **MANDATORY**: No external icon font files or stylesheets (such as FontAwesome, Material Design Icons) are loaded or used.
-- **MANDATORY**: All SVG elements include a valid `viewBox` attribute to ensure correct scaling.
-- **MANDATORY**: Decorative icons (those within buttons that contain descriptive text or adjacent labels) have `aria-hidden="true"`.
-- **MANDATORY**: Interactive icon-only elements (such as buttons without descriptive text) have a valid accessible name (such as via `aria-label`).
-- **MANDATORY**: Standalone non-interactive icons that convey meaning have `role="img"` and a valid accessible name (such as via `aria-label`).
-- **MANDATORY**: The CSS registers a custom property for the icon color (such as `--icon-color`) using `@property` with `<color>` syntax.
-- **MANDATORY**: The icons transition their color on button hover/focus using the registered custom property, ensuring smooth interpolation.
-- **OPTIONAL**: Sizing of icons is controlled using relative CSS units (such as `em` or `rem`) rather than hardcoded absolute pixel dimensions.
-- **OPTIONAL**: When external masks or background images are used for icons, high-resolution variants are provided via `image-set()` for different display densities.
+- **MANDATORY**: Custom properties `--icon-start` and `--icon-end` are registered using `@property` with a `<image>` syntax and `inherits: false`.
+- **MANDATORY**: CSS Container Style Queries (`@container style(...)`) are used to dynamically detect and render `--icon-start` and `--icon-end` custom properties.
+- **MANDATORY**: Icons are rendered using CSS masks (`mask` or `-webkit-mask`) inside the container style query blocks on pseudo-elements (`::before` and `::after`).
+- **MANDATORY**: Icons are colored using `currentColor` (via `background-color: currentColor` on the pseudo-element) to ensure they automatically inherit and transition with the parent element's text color.
+- **MANDATORY**: Standalone or empty `.icon` elements forward a generic `--icon` property to `--icon-start` when they are empty (`.icon:empty`).
+- **MANDATORY**: Spacing (such as `margin-inline-start` or `margin-inline-end`) is automatically applied to pseudo-element icons only if the parent element has non-empty text content (using `:not(:empty)` or similar relational selectors).
+- **MANDATORY**: No inline `<svg>` markup inside buttons, plain static `<img>` tags, or external icon fonts are loaded or used for decorative icons.
+- **MANDATORY**: Interactive icon-only controls (such as buttons without adjacent text) provide a valid accessible name (such as via `aria-label`).
+- **MANDATORY**: Standalone non-interactive empty `.icon` elements use `aria-hidden="true"` or are marked with `role="img"` and a valid accessible name.
+- **OPTIONAL**: Sizing of icon pseudo-elements is controlled using relative CSS units (such as `em` or `rem`) rather than hardcoded absolute pixel dimensions.
