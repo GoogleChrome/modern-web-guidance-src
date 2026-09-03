@@ -3,7 +3,14 @@ import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { collectPiGuidesFromTrajectory, collectPiToolsFromTrajectory } from '../agents/pi-agent.ts';
+import {
+  generateNormalizedTrajectory,
+  collectPiGuidesFromTrajectory,
+  collectPiToolsFromTrajectory,
+  extractPiModel,
+  extractPiTokenUsage
+} from '../lib/trajectory-normalizer.ts';
+import { Agents } from '../config.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'pi-trajectory-test-'));
@@ -94,7 +101,7 @@ test('collectPiGuidesFromTrajectory extracts guide reads', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-456.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
     
     assert.deepStrictEqual(
       guides.fileReadGuides.sort(),
@@ -129,7 +136,7 @@ test('collectPiGuidesFromTrajectory extracts retrieve commands', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-789.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
     
     assert.deepStrictEqual(
       guides.retrievedGuides.sort(),
@@ -219,7 +226,7 @@ test('collectPiGuidesFromTrajectory handles mixed session with multiple entries'
 
     fs.writeFileSync(path.join(tempDir, 'session-mixed.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
     
     assert.deepStrictEqual(
       guides.fileReadGuides,
@@ -250,8 +257,114 @@ test('collectPiToolsFromTrajectory handles empty or missing sessions', () => {
 test('collectPiGuidesFromTrajectory handles empty or missing sessions', async () => {
   const tempDir = createTempDir();
   try {
-    const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
     assert.deepStrictEqual(guides, { retrievedGuides: [], fileReadGuides: [] }, 'Should return empty for no sessions');
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('Parser: Pi CLI normalization', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      JSON.stringify({
+        type: 'message',
+        timestamp: '2026-08-09T22:00:00.000Z',
+        message: {
+          role: 'user',
+          content: 'Add autocomplete to form'
+        }
+      }),
+      JSON.stringify({
+        type: 'message',
+        timestamp: '2026-08-09T22:00:01.000Z',
+        message: {
+          role: 'assistant',
+          content: [
+            { type: 'text', text: 'Searching for relevant guide' },
+            {
+              type: 'toolCall',
+              name: 'bash',
+              arguments: { command: 'node dist/cli.js --retrieve autofill-address-form' }
+            }
+          ]
+        }
+      }),
+      JSON.stringify({
+        type: 'message',
+        timestamp: '2026-08-09T22:00:05.000Z',
+        message: {
+          role: 'assistant',
+          content: [
+            { type: 'text', text: 'Editing form component' },
+            {
+              type: 'toolCall',
+              name: 'write',
+              arguments: { path: 'form.html', content: '<input autocomplete="street-address" />' }
+            }
+          ]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-pi.jsonl'), lines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.PI, 'Add autocomplete to form');
+
+    const summary = JSON.parse(fs.readFileSync(path.join(tempDir, 'trajectory_summary.json'), 'utf8'));
+    assert.strictEqual(summary.agent, Agents.PI);
+    assert.strictEqual(summary.steps.length, 2);
+
+    assert.strictEqual(summary.steps[0].stepNumber, 1);
+    assert.strictEqual(summary.steps[0].action?.name, 'bash');
+    assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[0].action?.canonicalCategory, 'guide_retrieval');
+
+    assert.strictEqual(summary.steps[1].stepNumber, 2);
+    assert.strictEqual(summary.steps[1].action?.name, 'write');
+    assert.strictEqual(summary.steps[1].action?.type, 'write_file');
+    assert.strictEqual(summary.steps[1].action?.canonicalCategory, 'code_mutation');
+
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('collectPi metrics and token extraction from trajectory files', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      JSON.stringify({
+        type: 'message',
+        message: {
+          role: 'assistant',
+          model: 'claude-3-5-sonnet',
+          usage: {
+            totalTokens: 200,
+            cacheRead: 30
+          },
+          content: [
+            {
+              type: 'toolCall',
+              name: 'modern-web-guidance',
+              arguments: { query: 'dialog' }
+            }
+          ]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-pi-meta.jsonl'), lines.join('\n'));
+
+    const model = extractPiModel(tempDir);
+    assert.strictEqual(model, 'claude-3-5-sonnet');
+
+    const tokens = extractPiTokenUsage(tempDir);
+    assert.deepStrictEqual(tokens, { total: 200, cached: 30 });
+
+    const tools = collectPiToolsFromTrajectory(tempDir);
+    assert.deepStrictEqual(tools, ['modern-web-guidance']);
   } finally {
     removeTempDir(tempDir);
   }
