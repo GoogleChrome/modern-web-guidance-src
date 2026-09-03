@@ -197,7 +197,12 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
         } else {
           for (const tc of toolCalls) {
             const toolName = tc.function?.name || tc.name || 'unknown';
-            const params = tc.arguments || tc.function?.arguments || tc.input || {};
+            let params = tc.arguments || tc.function?.arguments || tc.input || {};
+            if (typeof params === 'string') {
+              try {
+                params = JSON.parse(params);
+              } catch {}
+            }
 
             if (toolName === 'modern-web-guidance' || toolName.includes('get_best_practices')) {
               toolsUsed.add('modern-web-guidance');
