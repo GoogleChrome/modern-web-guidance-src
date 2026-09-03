@@ -310,11 +310,14 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         const p = entry.payload;
         const callId = p.call_id;
         const rawOut = p.output ?? '';
-        const outStr = typeof rawOut === 'string'
-          ? rawOut
-          : Array.isArray(rawOut)
-            ? rawOut.map((item: any) => (typeof item === 'string' ? item : item?.text || JSON.stringify(item))).join('\n')
-            : JSON.stringify(rawOut);
+        let outStr = '';
+        if (typeof rawOut === 'string') {
+          outStr = rawOut;
+        } else if (Array.isArray(rawOut)) {
+          outStr = rawOut.map((c: any) => typeof c === 'string' ? c : c?.text || JSON.stringify(c)).join('\n');
+        } else if (rawOut) {
+          outStr = typeof rawOut === 'object' ? (rawOut.text || rawOut.content || JSON.stringify(rawOut)) : String(rawOut);
+        }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
           const isError = p.is_error === true || outStr.toLowerCase().includes('error:');
@@ -322,6 +325,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
             status: isError ? 'error' : 'success',
             message: truncateMessage(outStr)
           };
+        }
         }
       }
 
