@@ -422,3 +422,35 @@ test('collectCodex metrics from modern custom_tool_call trajectory file', async 
     removeTempDir(tempDir);
   }
 });
+
+test('parseCodexTrajectory handles structured array of content blocks in function_call_output', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_content_blocks',
+        name: 'exec',
+        arguments: JSON.stringify({ command: ['cat', 'package.json'] })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_content_blocks',
+        output: [
+          { type: 'input_text', text: 'Script completed\nOutput:\n' },
+          { type: 'input_text', text: '{\n  "name": "test-app"\n}\n' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].action?.name, 'cat package.json');
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  assert.strictEqual(summary.steps[0].outcome?.message?.includes('"name": "test-app"'), true);
+});

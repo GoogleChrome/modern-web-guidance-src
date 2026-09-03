@@ -28,7 +28,7 @@ import {
   getSessionFiles,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
-import type { CodexRolloutLine } from './codex.d.ts';
+import type { CodexRolloutLine, CodexOutputContentBlock } from './codex.d.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
 
@@ -313,7 +313,15 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         if (typeof p.output === 'string') {
           outStr = p.output;
         } else if (Array.isArray(p.output)) {
-          outStr = p.output.map((c: any) => typeof c === 'string' ? c : c?.text || JSON.stringify(c)).join('\n');
+          outStr = p.output
+            .map((c: CodexOutputContentBlock | unknown) =>
+              typeof c === 'string'
+                ? c
+                : c && typeof c === 'object' && 'text' in c && typeof (c as { text: unknown }).text === 'string'
+                  ? (c as { text: string }).text
+                  : JSON.stringify(c)
+            )
+            .join('\n');
         } else if (p.output) {
           outStr = typeof p.output === 'object' ? (p.output.text || p.output.content || JSON.stringify(p.output)) : String(p.output);
         }
