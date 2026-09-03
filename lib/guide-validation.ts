@@ -19,6 +19,33 @@ export const ProjectStatus = {
 
 export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
 
+/**
+ * Orientation guides that provide high-level, cross-cutting guidance
+ * across a discipline rather than a single task-based use case.
+ */
+export const DISCIPLINE_GUIDES = new Set([
+  // Category root guides
+  'accessibility',
+  'css',
+  'forms',
+  'html',
+  'performance',
+  'privacy',
+  'security',
+  'webmcp',
+
+  // Named orientation guides
+  'css-layout',
+  'passkeys',
+]);
+
+/**
+ * Returns true if a guide is a discipline-level orientation guide.
+ */
+export function isDisciplineGuide(name: string, category?: string): boolean {
+  return (category !== undefined && name === category) || DISCIPLINE_GUIDES.has(name);
+}
+
 export interface PreparedGuide {
   name: string;
   description: string;
@@ -182,13 +209,12 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
   for (const inv of guides) {
     const subdir = inv.dir;
-    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill, targets } = inv;
+    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineGuide, isDisciplineSkill, targets } = inv;
     const hasTargets = !!targets && targets.length > 0;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
-    const isDisciplineGuide = inv.name === inv.category || ['css-layout', 'passkeys'].includes(inv.name);
     
-    // Discipline skills don't need demo.html; a frontmatter-only stub
+    // Discipline guides don't need demo.html; a frontmatter-only stub
     // (a proposed use case) doesn't need one either
     // Guides with multi-app targets don't need a top-level demo.html
     if (!isDisciplineSkill && !isDisciplineGuide && !hasTargets && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
@@ -337,6 +363,7 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
+  isDisciplineGuide: boolean;
   isDisciplineSkill: boolean;
   targets?: TargetInventory[];
 }
@@ -540,6 +567,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     hasGrader,
     hasTask,
     featureIds,
+    isDisciplineGuide: isDisciplineGuide(name, category),
     isDisciplineSkill,
     targets: useTargets ? targets : undefined,
   };
