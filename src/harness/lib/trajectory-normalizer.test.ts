@@ -10,6 +10,7 @@ import {
   writeTrajectorySummary,
   readTrajectorySummary,
   generateNormalizedTrajectory,
+  standardizeAction,
   type TrajectorySummary,
   TRAJECTORY_SUMMARY_FILE,
   extractClaudeMetadata,
@@ -109,6 +110,45 @@ test('mapToolType maps standard tool names to canonical types', () => {
   assert.strictEqual(mapToolType('retrieve'), 'web_search');
   assert.strictEqual(mapToolType('query_guidance'), 'web_search');
   assert.strictEqual(mapToolType('unknown_action'), 'other');
+});
+
+test('standardizeAction enforces strictly typed parameter shapes per action type', () => {
+  // run_command standardizes 'cmd', 'command', or string to params.command
+  const cmd1 = standardizeAction('run_command', 'bash', { cmd: 'cat index.html' });
+  assert.strictEqual(cmd1.type, 'run_command');
+  assert.strictEqual(cmd1.name, 'bash');
+  assert.strictEqual(cmd1.params?.command, 'cat index.html');
+
+  const cmd2 = standardizeAction('run_command', 'terminal', { command: 'pnpm test' });
+  assert.strictEqual(cmd2.params?.command, 'pnpm test');
+
+  // read_file standardizes path, file_path, AbsolutePath, etc. to params.path
+  const read1 = standardizeAction('read_file', 'read', { file_path: 'src/index.ts' });
+  assert.strictEqual(read1.type, 'read_file');
+  assert.strictEqual(read1.params?.path, 'src/index.ts');
+
+  const read2 = standardizeAction('read_file', 'view_file', { AbsolutePath: 'app.jsx' });
+  assert.strictEqual(read2.params?.path, 'app.jsx');
+
+  // write_file standardizes path/TargetFile and content/CodeContent/ReplacementChunks
+  const write1 = standardizeAction('write_file', 'write_to_file', {
+    TargetFile: 'index.html',
+    CodeContent: '<html></html>'
+  });
+  assert.strictEqual(write1.type, 'write_file');
+  assert.strictEqual(write1.params?.path, 'index.html');
+  assert.strictEqual(write1.params?.content, '<html></html>');
+
+  // web_search standardizes query, search, use_case_id to params.query
+  const search1 = standardizeAction('web_search', 'get_best_practices', { use_case_id: 'dialog' });
+  assert.strictEqual(search1.type, 'web_search');
+  assert.strictEqual(search1.params?.query, 'dialog');
+  assert.strictEqual(search1.params?.use_case_id, 'dialog');
+
+  // other preserves raw properties
+  const other1 = standardizeAction('other', 'respond_to_user', { response: 'Done' });
+  assert.strictEqual(other1.type, 'other');
+  assert.deepStrictEqual(other1.params, { response: 'Done' });
 });
 
 test('finalizeTrajectorySummary sorts steps monotonically and re-indexes with 1-based numbering', () => {
