@@ -120,7 +120,7 @@ export interface CodexResponseFunctionCallOutputItem {
   type: "function_call_output";
   id?: string;
   call_id: string;
-  output: string | Record<string, unknown>;
+  output: string | Record<string, unknown> | Array<{ type: string; text?: string; [key: string]: unknown }>;
   is_error?: boolean;
 }
 
@@ -137,7 +137,7 @@ export interface CodexResponseCustomToolCallOutputItem {
   type: "custom_tool_call_output";
   id?: string;
   call_id: string;
-  output: string | Record<string, unknown>;
+  output: string | Record<string, unknown> | Array<{ type: string; text?: string; [key: string]: unknown }>;
   is_error?: boolean;
 }
 
