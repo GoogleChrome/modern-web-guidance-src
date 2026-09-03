@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#3157d5">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <link rel="manifest" href="./manifest.webmanifest">
     <title>Install a web application</title>
     <style>
@@ -108,15 +109,16 @@
             installStatus.textContent = "The app was installed.";
             installButton.hidden = true;
           } else if (deferredInstallPrompt) {
-            deferredInstallPrompt.prompt();
-            const { outcome } = await deferredInstallPrompt.userChoice;
+            // Clear the single-use event before awaiting the user's choice.
+            const promptEvent = deferredInstallPrompt;
+            deferredInstallPrompt = undefined;
+            promptEvent.prompt();
+            const { outcome } = await promptEvent.userChoice;
             installStatus.textContent =
               outcome === "accepted"
                 ? "The app was installed."
                 : "Installation canceled.";
 
-            // beforeinstallprompt events are single-use.
-            deferredInstallPrompt = undefined;
             installButton.hidden = true;
           }
         } catch (error) {

@@ -38,6 +38,11 @@ For installation of the current app, link the manifest from the document.
   "display": "standalone",
   "icons": [
     {
+      "src": "/icons/app-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
       "src": "/icons/app-512.png",
       "sizes": "512x512",
       "type": "image/png"
@@ -143,6 +148,15 @@ The Web Install API is a progressive enhancement. Browsers without either modern
 entry point still provide their own installation UI when they support installing
 web apps.
 
+### Web app manifest fallback
+
+{{ BASELINE_STATUS("manifest") }}
+
+Browsers that do not use web app manifests can still present the application as
+a normal website. Treat installation and standalone display as enhancements;
+do not block access to core functionality when manifest-based installation is
+unavailable.
+
 ### `<install>` fallback
 
 {{ BASELINE_STATUS("install") }}
@@ -179,29 +193,66 @@ Safari.
 {{ BASELINE_STATUS("beforeinstallprompt") }}
 
 Capture the event, prevent its automatic prompt, and reveal the custom install
-button only after the browser confirms that prompting is possible. The event is
-single-use, so clear it and hide the button after prompting.
+button only after the browser confirms that prompting is possible. Use one click
+handler that selects `navigator.install()` when available and otherwise uses the
+captured event. The event is single-use, so discard it before awaiting the user's
+choice and hide the button after prompting.
 
 ```js
+const installButton = document.querySelector("#install-app");
+const installStatus = document.querySelector("#install-status");
+const supportsWebInstall =
+  typeof Navigator.prototype.install === "function";
 let deferredInstallPrompt;
+
+if (supportsWebInstall) {
+  installButton.hidden = false;
+}
 
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
-  installButton.hidden = false;
+
+  // Prefer navigator.install() when both mechanisms are available.
+  if (!supportsWebInstall) {
+    installButton.hidden = false;
+  }
 });
 
 installButton.addEventListener("click", async () => {
-  if (!deferredInstallPrompt) {
-    return;
+  installButton.disabled = true;
+
+  try {
+    if (supportsWebInstall) {
+      // Call directly from this handler to preserve transient user activation.
+      await navigator.install();
+      installStatus.textContent = "The app was installed.";
+      installButton.hidden = true;
+    } else if (deferredInstallPrompt) {
+      // Save and clear the single-use event before awaiting the user's choice.
+      const promptEvent = deferredInstallPrompt;
+      deferredInstallPrompt = undefined;
+      promptEvent.prompt();
+      const { outcome } = await promptEvent.userChoice;
+
+      installStatus.textContent =
+        outcome === "accepted"
+          ? "The app was installed."
+          : "Installation canceled.";
+      installButton.hidden = true;
+    }
+  } catch (error) {
+    if (error.name === "AbortError") {
+      // Cancellation is an expected user choice, not an application error.
+      installStatus.textContent = "Installation canceled.";
+      installButton.hidden = true;
+    } else {
+      installStatus.textContent = "Installation could not start.";
+      console.error(error);
+    }
+  } finally {
+    installButton.disabled = false;
   }
-
-  deferredInstallPrompt.prompt();
-  await deferredInstallPrompt.userChoice;
-
-  // The captured event cannot be reused, regardless of the user's choice.
-  deferredInstallPrompt = undefined;
-  installButton.hidden = true;
 });
 ```
 
