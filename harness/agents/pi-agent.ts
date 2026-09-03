@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import config, { Agents } from '../config.ts';
+import { parseBooleanEnv } from '../../lib/env.ts';
 import {
   cleanupIsolatedHome,
   copyFileIfExists,
@@ -59,8 +60,8 @@ export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): {
   const modelArg = piModel ? ['--model', piModel] : [];
 
   // By default, sessions should be preserved so trajectories can be captured and graded.
-  // Allow running in ephemeral mode only if explicitly enabled via PI_NO_SESSION=true.
-  const noSession = process.env.PI_NO_SESSION === 'true';
+  // Allow running in ephemeral mode only if explicitly enabled via PI_NO_SESSION=true/1/yes.
+  const noSession = parseBooleanEnv(process.env.PI_NO_SESSION, false);
   const sessionArgs = noSession ? ['--no-session'] : [];
 
   const commandArgs = [
