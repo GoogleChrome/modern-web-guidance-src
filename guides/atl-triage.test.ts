@@ -1,11 +1,11 @@
 import { describe, it, mock, before, after } from 'node:test';
 import assert from 'node:assert';
-import child_process from 'node:child_process';
 import {
   normalizeLabel,
   handleIssue,
   handlePR,
-  findGuidesTranscludingFeature
+  findGuidesTranscludingFeature,
+  githubApi
 } from './atl-triage.ts';
 import { getTranscludedFeatureIds, parseArguments } from '../serving/lib/macro-parsing.ts';
 import fs from 'node:fs';
@@ -156,13 +156,20 @@ describe('handleIssue', () => {
     }
   };
 
-  let execMock: any;
+  let unassignedMock: any;
+  let assigneesMock: any;
+  let addAssigneesMock: any;
+
   before(() => {
-    execMock = mock.method(child_process, 'execSync', () => '');
+    unassignedMock = mock.method(githubApi, 'getIssueUnassignedLogins', () => []);
+    assigneesMock = mock.method(githubApi, 'getIssueCurrentAssignees', () => []);
+    addAssigneesMock = mock.method(githubApi, 'addIssueAssignees', () => {});
   });
 
   after(() => {
-    execMock.mock.restore();
+    unassignedMock.mock.restore();
+    assigneesMock.mock.restore();
+    addAssigneesMock.mock.restore();
   });
 
   it('returns matched ATLs for matching labels', () => {
@@ -277,6 +284,41 @@ Affected web-feature IDs: [canvas-html](...)
     const result = handleIssue(123, [], description, mockConfig);
     assert.deepStrictEqual(result.sort(), ['malchata', 'override-issue-reviewer'].sort());
   });
+
+  it('skips auto-assigning ATLs who have previously been unassigned from the issue', () => {
+    unassignedMock.mock.mockImplementation(() => ['RVISCOMI']); // Test mixed-case matching
+
+    try {
+      const result = handleIssue(123, ['category:performance'], '', mockConfig);
+      // 'rviscomi' was unassigned, so only 'paulirish' should be assigned
+      assert.deepStrictEqual(result, ['paulirish']);
+    } finally {
+      unassignedMock.mock.mockImplementation(() => []);
+    }
+  });
+
+  it('returns empty array when all candidate ATLs were previously unassigned', () => {
+    unassignedMock.mock.mockImplementation(() => ['rviscomi', 'paulirish']);
+
+    try {
+      const result = handleIssue(123, ['category:performance'], '', mockConfig);
+      assert.deepStrictEqual(result, []);
+    } finally {
+      unassignedMock.mock.mockImplementation(() => []);
+    }
+  });
+
+  it('skips ATLs who are already assigned to the issue', () => {
+    assigneesMock.mock.mockImplementation(() => ['rviscomi']);
+
+    try {
+      const result = handleIssue(123, ['category:performance'], '', mockConfig);
+      // 'rviscomi' is already assigned, so only 'paulirish' is newly assigned
+      assert.deepStrictEqual(result, ['paulirish']);
+    } finally {
+      assigneesMock.mock.mockImplementation(() => []);
+    }
+  });
 });
 
 describe('handlePR', () => {
@@ -293,11 +335,21 @@ describe('handlePR', () => {
     web_features_groups: {}
   };
 
+  let addReviewersMock: any;
+
+  before(() => {
+    addReviewersMock = mock.method(githubApi, 'addPrReviewers', () => {});
+  });
+
+  after(() => {
+    addReviewersMock.mock.restore();
+  });
+
   it('requests review from matching ATLs for content files', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/guide.md', // Has 'image-set' feature, will be overridden!
       'guides/motion/carousel-slide-effects/expectations.md',
-      'guides/css-layout/grid-layout/demo.html',
+      'guides/css-layout/grid-layout/guide.md',
       'guides/css-layout/grid-layout/other-file.json' // shouldn't trigger
     ];
 
@@ -319,56 +371,52 @@ describe('handlePR', () => {
     assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton'].sort());
   });
 
-  it('returns empty array when no content files are touched', () => {
+  it('returns empty array when no content files are touched and gd-dev-content label is not set', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/grader.ts',
       'guides/performance/deliver-optimized-decorative-images/tasks/task.md',
+      'guides/performance/deliver-optimized-decorative-images/demo.html',
       'README.md'
     ];
 
-    const result = handlePR(456, 'some-contributor', mockConfig, mockFiles);
+    const result = handlePR(456, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']);
     assert.deepStrictEqual(result, []);
   });
 
+  it('assigns corresponding ATL when gd-dev-content label is present even if only target eval files were touched', () => {
+    const mockFiles = [
+      'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/grader.ts',
+      'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/patches/zero-passrate.patch',
+      'guides/motion/carousel-slide-effects/targets/daily-grind/task.md'
+    ];
+
+    const result = handlePR(456, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-content']);
+    // 'deliver-optimized-decorative-images' has 'image-set' -> override-pr-reviewer + rviscomi, paulirish (performance)
+    // 'carousel-slide-effects' -> philipwalton (motion)
+    assert.deepStrictEqual(
+      result.sort(),
+      ['override-pr-reviewer', 'rviscomi', 'paulirish', 'philipwalton'].sort()
+    );
+  });
+
   it('filters out already requested and reviewed ATLs case-insensitively', () => {
-    // Stub execSync to return mock values
-    const execMock = mock.method(child_process, 'execSync', (command: string) => {
-      if (command.includes('--json files')) {
-        // Return files lists
-        return 'guides/performance/deliver-optimized-decorative-images/guide.md\nguides/motion/carousel-slide-effects/expectations.md\n';
-      }
-      if (command.includes('--json reviews,reviewRequests')) {
-        // Return active requested / reviewed ATLs with mixed case to test case-insensitivity
-        return JSON.stringify({
-          reviewRequests: [
-            { login: 'Override-Pr-Reviewer' },
-            { login: 'rviscomi' },
-            { login: 'paulirish' }
-          ],
-          reviews: [
-            { author: { login: 'PhilipWalton' }, state: 'APPROVED' }
-          ]
-        });
-      }
-      if (command.includes('--add-reviewer')) {
-        return '';
-      }
-      throw new Error(`Unexpected command: ${command}`);
-    });
+
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'guides/performance/deliver-optimized-decorative-images/guide.md',
+      'guides/motion/carousel-slide-effects/expectations.md'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({
+      reviewRequests: ['Override-Pr-Reviewer', 'rviscomi', 'paulirish'],
+      reviews: ['PhilipWalton']
+    }));
 
     try {
-      // 'override-pr-reviewer' (via feature 'image-set' override), 'rviscomi', 'paulirish' (default performance),
-      // and 'philipwalton' (default motion) are resolved, but they are excluded because they are in reviewRequests/reviews.
-      // So no additional review request is made.
       const result = handlePR(456, 'some-contributor', mockConfig);
       assert.deepStrictEqual(result, []);
-      
-      // Ensure the add-reviewer command was not run since matchedAtls is empty after exclusions
-      const calls = execMock.mock.calls;
-      const addReviewerCalled = calls.some(call => String(call.arguments[0]).includes('--add-reviewer'));
-      assert.strictEqual(addReviewerCalled, false);
+      assert.strictEqual(addReviewersMock.mock.callCount(), 0);
     } finally {
-      execMock.mock.restore();
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
     }
   });
 
@@ -476,5 +524,3 @@ describe('handlePR', () => {
     }
   });
 });
-
-

@@ -5,6 +5,8 @@ web-feature-ids:
   - font-size-adjust
 ---
 
+# Visually Stable Font Fallbacks
+
 When web fonts load, they often replace a fallback font that has different dimensions, even if both are set to the same `font-size`. This causes "layout shift" (Cumulative Layout Shift) and can make text illegible if the fallback's lowercase letters (x-height) are significantly different than the preferred font.
 
 The `font-size-adjust` property solves this by normalizing the size of the font based on a specific metric (usually the x-height), ensuring that text occupies the same visual space regardless of which font is currently active.

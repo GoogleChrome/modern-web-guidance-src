@@ -6,7 +6,7 @@ web-feature-ids:
   - webauthn-signals
 ---
 
-# Passkey Registration Guide
+# Passkey Registration
 
 This guide details how to enable users to register a passkey for their account, providing a highly secure, phishing-resistant passwordless sign-in alternative.
 
