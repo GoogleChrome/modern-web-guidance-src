@@ -9,7 +9,6 @@ import {
   copyFileIfExists,
   parseAgentArgs,
   watchLogFile,
-  exportTrajectories,
   runCliAgentCommand,
   parseJsonlFile,
   setupIsolatedWorkDir,
@@ -59,13 +58,14 @@ export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): {
   const piModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
   const modelArg = piModel ? ['--model', piModel] : [];
 
-  // Allow overriding --no-session via env var for trajectory testing
-  const noSession = process.env.PI_NO_SESSION !== 'false';
+  // By default, sessions should be preserved so trajectories can be captured and graded.
+  // Allow running in ephemeral mode only if explicitly enabled via PI_NO_SESSION=true.
+  const noSession = process.env.PI_NO_SESSION === 'true';
   const sessionArgs = noSession ? ['--no-session'] : [];
 
   const commandArgs = [
     '-p', // print mode: non-interactive, process and exit
-    ...sessionArgs, // ephemeral mode: don't save session (unless disabled)
+    ...sessionArgs, // ephemeral mode: only if explicitly requested
     '--offline', // disable network operations for update checks
     ...modelArg,
     ...extraArgs,
@@ -74,9 +74,20 @@ export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): {
   return { command, commandArgs };
 }
 
-function exportPiTrajectories(workDir: string, targetDir: string): void {
+export function exportPiTrajectories(workDir: string, targetDir: string): void {
   const sessionsDir = path.join(path.dirname(workDir), '.pi', 'agent', 'sessions');
-  exportTrajectories(sessionsDir, '*.jsonl', targetDir);
+  if (!fs.existsSync(sessionsDir)) return;
+
+  const files = fs.globSync('**/*.jsonl', { cwd: sessionsDir });
+  for (const relativePath of files) {
+    const src = path.join(sessionsDir, relativePath);
+    const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
+    const isSubagent = relativePath.includes('subagent');
+    const destName = isSubagent
+      ? (baseName.startsWith('subagent-') ? `${baseName}.jsonl` : `subagent-${baseName}.jsonl`)
+      : (baseName.startsWith('session-') ? `${baseName}.jsonl` : `session-${baseName}.jsonl`);
+    fs.copyFileSync(src, path.join(targetDir, destName));
+  }
 }
 
 /**
