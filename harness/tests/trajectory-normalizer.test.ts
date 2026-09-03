@@ -109,11 +109,13 @@ test('mapToolType maps standard tool names to canonical types', () => {
   assert.strictEqual(mapToolType('get_best_practices'), 'web_search');
   assert.strictEqual(mapToolType('retrieve'), 'web_search');
   assert.strictEqual(mapToolType('query_guidance'), 'web_search');
+  assert.strictEqual(mapToolType('TodoWrite'), 'other');
+  assert.strictEqual(mapToolType('TodoRead'), 'other');
   assert.strictEqual(mapToolType('unknown_action'), 'other');
 });
 
 test('standardizeAction enforces strictly typed parameter shapes per action type', () => {
-  // run_command standardizes 'cmd', 'command', or string to params.command
+  // run_command standardizes 'cmd', 'command', 'CommandLine', or string to params.command
   const cmd1 = standardizeAction('run_command', 'bash', { cmd: 'cat index.html' });
   assert.strictEqual(cmd1.type, 'run_command');
   assert.strictEqual(cmd1.name, 'bash');
@@ -122,7 +124,10 @@ test('standardizeAction enforces strictly typed parameter shapes per action type
   const cmd2 = standardizeAction('run_command', 'terminal', { command: 'pnpm test' });
   assert.strictEqual(cmd2.params?.command, 'pnpm test');
 
-  // read_file standardizes path, file_path, AbsolutePath, etc. to params.path
+  const cmd3 = standardizeAction('run_command', 'run_command', { CommandLine: 'git status' });
+  assert.strictEqual(cmd3.params?.command, 'git status');
+
+  // read_file standardizes path, file_path, AbsolutePath, SearchDirectory, etc. to params.path
   const read1 = standardizeAction('read_file', 'read', { file_path: 'src/index.ts' });
   assert.strictEqual(read1.type, 'read_file');
   assert.strictEqual(read1.params?.path, 'src/index.ts');
@@ -130,7 +135,10 @@ test('standardizeAction enforces strictly typed parameter shapes per action type
   const read2 = standardizeAction('read_file', 'view_file', { AbsolutePath: 'app.jsx' });
   assert.strictEqual(read2.params?.path, 'app.jsx');
 
-  // write_file standardizes path/TargetFile and content/CodeContent/ReplacementChunks
+  const read3 = standardizeAction('read_file', 'list_dir', { SearchDirectory: '/workspace/src' });
+  assert.strictEqual(read3.params?.path, '/workspace/src');
+
+  // write_file standardizes path/TargetFile/AbsolutePath and content/CodeContent/ReplacementChunks
   const write1 = standardizeAction('write_file', 'write_to_file', {
     TargetFile: 'index.html',
     CodeContent: '<html></html>'
@@ -138,6 +146,12 @@ test('standardizeAction enforces strictly typed parameter shapes per action type
   assert.strictEqual(write1.type, 'write_file');
   assert.strictEqual(write1.params?.path, 'index.html');
   assert.strictEqual(write1.params?.content, '<html></html>');
+
+  const write2 = standardizeAction('write_file', 'edit', {
+    AbsolutePath: '/path/to/main.ts',
+    content: 'const a = 1;'
+  });
+  assert.strictEqual(write2.params?.path, '/path/to/main.ts');
 
   // web_search standardizes query, search, use_case_id to params.query
   const search1 = standardizeAction('web_search', 'get_best_practices', { use_case_id: 'dialog' });

@@ -128,7 +128,7 @@ export function standardizeAction(
   const p = rawParams && typeof rawParams === 'object' ? rawParams : {};
   switch (type) {
     case 'run_command': {
-      const command = p.command || p.cmd || (typeof rawParams === 'string' ? rawParams : '') || '';
+      const command = p.command || p.cmd || p.CommandLine || p.cmd_line || (typeof rawParams === 'string' ? rawParams : '') || '';
       return {
         type: 'run_command',
         name,
@@ -136,7 +136,7 @@ export function standardizeAction(
       };
     }
     case 'read_file': {
-      const filePath = p.path || p.file_path || p.filePath || p.targetFile || p.TargetFile || p.AbsolutePath || p.DirectoryPath || (typeof rawParams === 'string' ? rawParams : '') || '';
+      const filePath = p.path || p.file_path || p.filePath || p.targetFile || p.TargetFile || p.AbsolutePath || p.DirectoryPath || p.SearchDirectory || p.directory || p.Directory || (typeof rawParams === 'string' ? rawParams : '') || '';
       return {
         type: 'read_file',
         name,
@@ -144,7 +144,7 @@ export function standardizeAction(
       };
     }
     case 'write_file': {
-      const filePath = p.path || p.file_path || p.filePath || p.targetFile || p.TargetFile || '';
+      const filePath = p.path || p.file_path || p.filePath || p.targetFile || p.TargetFile || p.AbsolutePath || '';
       const content = p.content ?? p.CodeContent ?? p.ReplacementChunks ?? p.new_string ?? undefined;
       return {
         type: 'write_file',
@@ -288,6 +288,9 @@ export function finalizeTrajectorySummary(summary: TrajectorySummary): Trajector
 
 export function mapToolType(toolName: string): NonNullable<StandardizedStep['action']>['type'] {
   const name = toolName.toLowerCase();
+  if (name.includes('todo')) {
+    return 'other';
+  }
   if (['read', 'read_file', 'view_file', 'view'].some(k => name.includes(k))) {
     return 'read_file';
   }
