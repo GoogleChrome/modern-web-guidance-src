@@ -4,7 +4,7 @@ import path from 'node:path';
 import { Agents } from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
-import { baseAppsDir, guidesDir } from '../../lib/paths.ts';
+import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
 import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from './compare-prompts.ts';
 import { generateUnifiedDiff } from '../../lib/patch-utils.ts';
 import { categorizeAction, type TrajectorySummary } from './trajectory-normalizer.ts';
@@ -354,7 +354,15 @@ function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
  * Loads all relevant context for a single run including preprocessed trajectory.
  */
 function loadRunContext(runDir: string): RunContext {
-  const absoluteDir = path.resolve(runDir);
+  let absoluteDir = path.resolve(runDir);
+  if (!fs.existsSync(absoluteDir)) {
+    const stripped = runDir.replace(/^(\.\/)?(harness\/)?results\/?/, '');
+    const candidate = path.resolve(resultsDir, stripped);
+    if (fs.existsSync(candidate)) {
+      absoluteDir = candidate;
+    }
+  }
+
   try {
     fs.statSync(absoluteDir);
   } catch (err: unknown) {
