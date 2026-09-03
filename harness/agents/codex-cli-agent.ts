@@ -189,6 +189,8 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   if (typeof raw === 'object') {
     if (typeof raw.cmd === 'string') commands.push(raw.cmd);
     else if (typeof raw.command === 'string') commands.push(raw.command);
+    else if (Array.isArray(raw.command)) commands.push(raw.command.join(' '));
+    else if (Array.isArray(raw.cmd)) commands.push(raw.cmd.join(' '));
     return commands;
   }
 
@@ -198,6 +200,8 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
       if (parsed && typeof parsed === 'object') {
         if (typeof parsed.cmd === 'string') return [parsed.cmd];
         if (typeof parsed.command === 'string') return [parsed.command];
+        if (Array.isArray(parsed.command)) return [parsed.command.join(' ')];
+        if (Array.isArray(parsed.cmd)) return [parsed.cmd.join(' ')];
       }
     } catch {
       // Not direct JSON
