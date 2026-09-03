@@ -157,7 +157,7 @@ export function standardizeAction(
       };
     }
     case 'web_search': {
-      const query = p.query || p.search || p.use_case_id || (typeof rawParams === 'string' ? rawParams : '') || '';
+      const query = p.query || p.Query || p.search || p.use_case_id || (typeof rawParams === 'string' ? rawParams : '') || '';
       return {
         type: 'web_search',
         name,
