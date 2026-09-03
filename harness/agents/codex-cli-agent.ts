@@ -309,12 +309,19 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
       if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
         const p = entry.payload;
         const callId = p.call_id;
-        const out = p.output || '';
+        let outStr = '';
+        if (typeof p.output === 'string') {
+          outStr = p.output;
+        } else if (Array.isArray(p.output)) {
+          outStr = p.output.map((c: any) => typeof c === 'string' ? c : c?.text || JSON.stringify(c)).join('\n');
+        } else if (p.output) {
+          outStr = typeof p.output === 'object' ? (p.output.text || p.output.content || JSON.stringify(p.output)) : String(p.output);
+        }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
           step.outcome = {
-            status: out.toLowerCase().includes('error:') ? 'error' : 'success',
-            message: truncateMessage(out)
+            status: outStr.toLowerCase().includes('error:') ? 'error' : 'success',
+            message: truncateMessage(outStr)
           };
         }
       }

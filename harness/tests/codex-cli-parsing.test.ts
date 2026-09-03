@@ -10,7 +10,7 @@ import {
   extractCodexCliModel,
   extractCodexCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
-import { extractCommandsFromCodexItem } from '../agents/codex-cli-agent.ts';
+import { extractCommandsFromCodexItem, parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -290,6 +290,36 @@ test('Codex CLI normalization with modern custom_tool_call exec_command', async 
   } finally {
     removeTempDir(tempDir);
   }
+});
+
+test('Codex CLI handles array-structured output blocks in tool outputs', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_arr_1',
+        name: 'exec',
+        arguments: JSON.stringify({ command: 'node test.js' })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_arr_1',
+        output: [
+          { type: 'input_text', text: 'Script completed\nWall time 0.1s\nOutput:\n' },
+          { type: 'input_text', text: 'All checks passed.' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  assert.ok(summary.steps[0].outcome?.message?.includes('All checks passed.'));
 });
 
 test('collectCodex metrics from legacy function_call trajectory file', async () => {
