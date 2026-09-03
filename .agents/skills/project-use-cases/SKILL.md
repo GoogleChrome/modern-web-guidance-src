@@ -11,6 +11,8 @@ The primary goal of this stage is to translate a technical web platform feature 
 2. Stage 2: Authoring guidance for a use case
 3. Stage 3: Evaluating guidance for a use case
 
+> **SME Fast-Track**: The purpose of Stage 1 (submitting stub use cases first) is to prevent wasted effort if a proposed use case is poorly formed, duplicate, or overly API-centric. However, Subject Matter Experts (SMEs) possess deep domain knowledge of how a web platform feature is intended to be used. **SMEs are trusted to define their use cases directly and may skip Stage 1 review, proceeding straight to Stage 2** (authoring `guide.md`, `demo.html`, and `expectations.md`). Non-SMEs should always complete Stage 1 alignment with Content ATLs first.
+
 ## Identifying action-oriented tasks
 
 A "use case" in this project is not a description of a feature; it's a task that the user is trying to implement, or a problem they're trying to solve. The feature is only relevant in the sense that it's part of the recommended solution for the use case.

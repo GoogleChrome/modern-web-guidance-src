@@ -76,12 +76,12 @@ A guide progresses through three main stages:
 1. **Stage 1: Identifying use cases (Needs use cases)**
    - **Goal**: Translate a web platform feature into distinct use cases.
    - **Artifacts**: Directory structure, `guide.md` with only YAML frontmatter (stub), and a basic `demo.html`.
-   - SME contributes via PR for review.
+   - Contributor submits via PR for review. *(SMEs may fast-track and skip directly to Stage 2).*
 
 2. **Stage 2: Authoring guidance (Needs guidance)**
    - **Goal**: Flesh out the guidance and define testable expectations.
    - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
-   - SME creates these files after use case approval.
+   - Created after use case approval (or authored directly by SMEs).
 
 3. **Stage 3: Evaluating guidance (Needs evals)**
    - **Goal**: Generate evaluation capsules, calibrate graders, run evaluations, and generate reports.
@@ -290,7 +290,7 @@ The architecture is designed so that each group can work independently without n
 
 **Subject Matter Experts (SMEs)** focus exclusively on technical accuracy: understanding edge cases of a web feature, writing clear guidance, building a canonical demo, and defining testable expectations. They are shielded from the underlying Playwright infrastructure and do not need to be functional test engineers. Their deliverables are `guide.md`, `expectations.md`, and `demo.html`.
 
-**Content Area Tech Leads (Content ATLs)** act as domain-level owners for entire categories (Performance, Layout, Forms, etc.). They ensure category health, research gaps, triage content quality/failures, author or review all guidance written in their area, and are responsible for ensuring that all guidance is eval-ready. Their full expectations and responsibilities are detailed in [CONTRIBUTING.md](./CONTRIBUTING.md).
+**Content Area Tech Leads (Content ATLs)** act as domain-level owners for entire categories (Performance, Layout, Forms, etc.). They ensure category health, research gaps, triage content quality/failures, author or review all guidance written in their area, and are responsible for ensuring that all guidance is eval-ready. Their full expectations and responsibilities are detailed in [guides/ATLS.md](./guides/ATLS.md).
 
 **Infrastructure Engineers** focus on the reliability of the `gd` CLI, the evaluation harness, LLM invocation stability, skills serving pipeline correctness, and diagnosing systemic issues (e.g., why guided vs. unguided pass rates show no delta for a particular category of guide).
 
