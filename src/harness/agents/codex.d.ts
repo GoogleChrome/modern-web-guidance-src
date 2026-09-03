@@ -116,11 +116,27 @@ export interface CodexResponseFunctionCallItem {
   status?: string;
 }
 
+/**
+ * Content block inside a Codex tool output item (Responses API format).
+ * In OpenAI Responses API rollouts, output is typically an array of content blocks,
+ * primarily input_text, text, or image.
+ */
+export type CodexOutputContentBlock =
+  | { type: "input_text"; text: string }
+  | { type: "text"; text: string }
+  | { type: "image"; image_url?: string; [key: string]: unknown }
+  | { type: string; text?: string; [key: string]: unknown };
+
+export type CodexToolCallOutput =
+  | string
+  | CodexOutputContentBlock[]
+  | Record<string, unknown>;
+
 export interface CodexResponseFunctionCallOutputItem {
   type: "function_call_output";
   id?: string;
   call_id: string;
-  output: string | Record<string, unknown> | Array<{ type: string; text?: string; [key: string]: unknown }>;
+  output: CodexToolCallOutput;
   is_error?: boolean;
 }
 
@@ -137,7 +153,7 @@ export interface CodexResponseCustomToolCallOutputItem {
   type: "custom_tool_call_output";
   id?: string;
   call_id: string;
-  output: string | Record<string, unknown> | Array<{ type: string; text?: string; [key: string]: unknown }>;
+  output: CodexToolCallOutput;
   is_error?: boolean;
 }
 
