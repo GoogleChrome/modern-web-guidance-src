@@ -229,3 +229,33 @@ test('parseJetskiCliSession sanitizes pipe-delimited experimental model names', 
     removeTempDir(tempDir);
   }
 });
+
+test('parseJetskiCliSession handles code_search Query and avoids empty list_dir', () => {
+  const tempDir = createTempDir();
+  try {
+    const dbPath = path.join(tempDir, 'session-search.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      CREATE TABLE steps (idx INTEGER, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
+      CREATE TABLE gen_metadata (idx INTEGER, data BLOB);
+    `);
+
+    const searchActionJson = JSON.stringify({
+      Query: 'f:.*',
+      toolAction: 'Listing codebase files',
+      toolSummary: 'List files in workspace'
+    });
+
+    const insertStep = db.prepare('INSERT INTO steps (idx, step_type, status, step_payload) VALUES (?, ?, ?, ?)');
+    insertStep.run(1, 1, 0, Buffer.from(searchActionJson));
+    db.close();
+
+    const parsed = parseJetskiCliSession(tempDir);
+    assert.strictEqual(parsed.steps.length, 1);
+    assert.strictEqual(parsed.steps[0].action?.type, 'web_search');
+    assert.strictEqual(parsed.steps[0].action?.name, 'code_search');
+    assert.strictEqual(parsed.steps[0].action?.params?.query, 'f:.*');
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
