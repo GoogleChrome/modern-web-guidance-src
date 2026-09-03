@@ -399,6 +399,26 @@ test('getPiCommandAndArgs includes --no-session when PI_NO_SESSION is true', () 
   }
 });
 
+test('getPiCommandAndArgs handles PI_NO_SESSION=1, 0, and false', () => {
+  const oldEnv = process.env.PI_NO_SESSION;
+  try {
+    process.env.PI_NO_SESSION = '1';
+    assert.ok(getPiCommandAndArgs('test').commandArgs.includes('--no-session'));
+
+    process.env.PI_NO_SESSION = 'false';
+    assert.ok(!getPiCommandAndArgs('test').commandArgs.includes('--no-session'));
+
+    process.env.PI_NO_SESSION = '0';
+    assert.ok(!getPiCommandAndArgs('test').commandArgs.includes('--no-session'));
+  } finally {
+    if (oldEnv !== undefined) {
+      process.env.PI_NO_SESSION = oldEnv;
+    } else {
+      delete process.env.PI_NO_SESSION;
+    }
+  }
+});
+
 test('exportPiTrajectories exports nested Pi session files with session- prefix', () => {
   const tempHome = createTempDir();
   const targetDir = createTempDir();
