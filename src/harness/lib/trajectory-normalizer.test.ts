@@ -115,49 +115,57 @@ test('mapToolType maps standard tool names to canonical types', () => {
 });
 
 test('standardizeAction enforces strictly typed parameter shapes per action type', () => {
-  // run_command standardizes 'cmd', 'command', 'CommandLine', or string to params.command
+  // run_command standardizes 'cmd', 'command', or string to params.command
   const cmd1 = standardizeAction('run_command', 'bash', { cmd: 'cat index.html' });
   assert.strictEqual(cmd1.type, 'run_command');
   assert.strictEqual(cmd1.name, 'bash');
-  assert.strictEqual(cmd1.params?.command, 'cat index.html');
+  assert.strictEqual(cmd1.params.command, 'cat index.html');
 
   const cmd2 = standardizeAction('run_command', 'terminal', { command: 'pnpm test' });
-  assert.strictEqual(cmd2.params?.command, 'pnpm test');
+  assert.strictEqual(cmd2.params.command, 'pnpm test');
 
-  const cmd3 = standardizeAction('run_command', 'run_command', { CommandLine: 'git status' });
-  assert.strictEqual(cmd3.params?.command, 'git status');
+  const cmd3 = standardizeAction('run_command', 'bash', 'git status');
+  assert.strictEqual(cmd3.params.command, 'git status');
 
-  // read_file standardizes path, file_path, AbsolutePath, SearchDirectory, etc. to params.path
+  // read_file standardizes path, file_path to params.path
   const read1 = standardizeAction('read_file', 'read', { file_path: 'src/index.ts' });
   assert.strictEqual(read1.type, 'read_file');
-  assert.strictEqual(read1.params?.path, 'src/index.ts');
+  assert.strictEqual(read1.params.path, 'src/index.ts');
 
-  const read2 = standardizeAction('read_file', 'view_file', { AbsolutePath: 'app.jsx' });
-  assert.strictEqual(read2.params?.path, 'app.jsx');
+  const read2 = standardizeAction('read_file', 'view_file', { path: 'app.jsx' });
+  assert.strictEqual(read2.params.path, 'app.jsx');
 
-  const read3 = standardizeAction('read_file', 'list_dir', { SearchDirectory: '/workspace/src' });
-  assert.strictEqual(read3.params?.path, '/workspace/src');
-
-  // write_file standardizes path/TargetFile/AbsolutePath and content/CodeContent/ReplacementChunks
+  // write_file standardizes path/file_path and content/new_string/newText
   const write1 = standardizeAction('write_file', 'write_to_file', {
-    TargetFile: 'index.html',
-    CodeContent: '<html></html>'
+    path: 'index.html',
+    content: '<html></html>'
   });
   assert.strictEqual(write1.type, 'write_file');
-  assert.strictEqual(write1.params?.path, 'index.html');
-  assert.strictEqual(write1.params?.content, '<html></html>');
+  assert.strictEqual(write1.params.path, 'index.html');
+  assert.strictEqual(write1.params.content, '<html></html>');
 
   const write2 = standardizeAction('write_file', 'edit', {
-    AbsolutePath: '/path/to/main.ts',
-    content: 'const a = 1;'
+    file_path: '/path/to/main.ts',
+    new_string: 'const a = 1;'
   });
-  assert.strictEqual(write2.params?.path, '/path/to/main.ts');
+  assert.strictEqual(write2.params.path, '/path/to/main.ts');
+  assert.strictEqual(write2.params.content, 'const a = 1;');
 
-  // web_search standardizes query, search, use_case_id to params.query
+  const write3 = standardizeAction('write_file', 'edit', {
+    path: '/path/to/main.ts',
+    newText: 'const b = 2;'
+  });
+  assert.strictEqual(write3.params.path, '/path/to/main.ts');
+  assert.strictEqual(write3.params.content, 'const b = 2;');
+
+  // web_search standardizes query, use_case_id to params.query
   const search1 = standardizeAction('web_search', 'get_best_practices', { use_case_id: 'dialog' });
   assert.strictEqual(search1.type, 'web_search');
-  assert.strictEqual(search1.params?.query, 'dialog');
-  assert.strictEqual(search1.params?.use_case_id, 'dialog');
+  assert.strictEqual(search1.params.query, 'dialog');
+  assert.strictEqual(search1.params.use_case_id, 'dialog');
+
+  const search2 = standardizeAction('web_search', 'code_search', { query: 'test' });
+  assert.strictEqual(search2.params.query, 'test');
 
   // other preserves raw properties
   const other1 = standardizeAction('other', 'respond_to_user', { response: 'Done' });
@@ -172,17 +180,17 @@ test('finalizeTrajectorySummary sorts steps monotonically and re-indexes with 1-
       {
         stepNumber: 99,
         timestamp: '2026-08-09T21:00:10.000Z',
-        action: { name: 'respond_to_user', type: 'other' }
+        action: standardizeAction('other', 'respond_to_user')
       },
       {
         stepNumber: 99,
         timestamp: '2026-08-09T21:00:01.000Z',
-        action: { name: 'search_use_cases', type: 'web_search' }
+        action: standardizeAction('web_search', 'search_use_cases', { query: 'dialog' })
       },
       {
         stepNumber: 99,
         timestamp: '2026-08-09T21:00:05.000Z',
-        action: { name: 'write_file', type: 'write_file' }
+        action: standardizeAction('write_file', 'write_file', { path: 'index.html' })
       }
     ]
   };
