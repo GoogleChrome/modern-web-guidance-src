@@ -1,7 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-
-import { Agents } from '../config.ts';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
@@ -41,7 +39,7 @@ function tryReadJson<T = any>(filePath: string): T | null {
  */
 async function callAgentCli(systemInstruction: string, prompt: string, label = 'Compare Agent'): Promise<string> {
   const combinedPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
-  const agent = (getDefaultSolutionAgent() as Agents) || Agents.JETSKI;
+  const agent = getDefaultSolutionAgent();
 
   console.log(`[${label}] Executing via ${agent}...`);
 
