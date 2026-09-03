@@ -186,6 +186,7 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
     assert.strictEqual(summary.steps[0].thought, 'Inspecting existing html structure');
     assert.strictEqual(summary.steps[0].action?.name, 'cat index.html');
     assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[0].action?.params?.command, 'cat index.html');
     assert.strictEqual(summary.steps[0].outcome?.status, 'success');
 
     // Step 2: subagent npm test (20:30:05)
@@ -195,6 +196,7 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
     assert.strictEqual(summary.steps[1].thought, 'Subagent running tests');
     assert.strictEqual(summary.steps[1].action?.name, 'npm test');
     assert.strictEqual(summary.steps[1].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[1].action?.params?.command, 'npm test');
     assert.strictEqual(summary.steps[1].outcome?.status, 'success');
 
     // Step 3: main final_answer (20:30:10)

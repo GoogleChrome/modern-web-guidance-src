@@ -14,7 +14,8 @@ import {
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
-  readTrajectorySummary
+  readTrajectorySummary,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 
 export function setupGeminiCliCredentials(tempHome: string): string {
@@ -143,11 +144,7 @@ export function parseGeminiTrajectory(session: any, subagentsMap: Record<string,
               timestamp,
               subagentId,
               thought,
-              action: {
-                type: mapToolType(tc.name || ''),
-                name: tc.name || 'unknown',
-                params: tc.args
-              }
+              action: standardizeAction(mapToolType(tc.name || ''), tc.name || 'unknown', tc.args)
             }) - 1;
             lastAssistantStepIndices.push(stepIdx);
           }

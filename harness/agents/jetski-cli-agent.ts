@@ -23,7 +23,8 @@ import {
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
-  readTrajectorySummary
+  readTrajectorySummary,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 
 const JETSKI_ERROR_STATUS_CODES = new Set([2, 4, 5]);
@@ -314,31 +315,24 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
-                action: {
-                  type: 'write_file',
-                  name: toolName,
-                  params: {
-                    targetFile,
-                    content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
-                  }
-                },
+                action: standardizeAction('write_file', toolName, {
+                  path: targetFile,
+                  targetFile,
+                  content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
+                }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.CommandLine || (obj.toolAction && obj.toolAction.includes('Running command'))) {
-              const actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
+              const actType = 'run_command' as const;
               const actName = obj.CommandLine ? obj.CommandLine.split(' ')[0] : 'terminal_command';
-              const params: Record<string, any> = { command: obj.CommandLine || obj.toolAction };
+              const params = { command: obj.CommandLine || obj.toolAction || '' };
 
               steps.push({
                 stepNumber: 0,
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Running terminal command',
-                action: {
-                  type: actType,
-                  name: actName,
-                  params
-                },
+                action: standardizeAction(actType, actName, params),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.AbsolutePath || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading')))) {
@@ -347,11 +341,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
-                action: {
-                  type: 'read_file',
-                  name: 'view_file',
-                  params: { path: obj.AbsolutePath || obj.toolSummary }
-                },
+                action: standardizeAction('read_file', 'view_file', { path: obj.AbsolutePath || obj.toolSummary || '' }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.DirectoryPath || (obj.toolAction && obj.toolAction.includes('Listing'))) {
@@ -360,11 +350,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
-                action: {
-                  type: 'read_file',
-                  name: 'list_dir',
-                  params: { path: obj.DirectoryPath }
-                },
+                action: standardizeAction('read_file', 'list_dir', { path: obj.DirectoryPath || '' }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             }

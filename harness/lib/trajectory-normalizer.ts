@@ -70,17 +70,117 @@ export function getSessionFiles(dir: string): string[] {
   return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
 }
 
+export type CanonicalCategory =
+  | 'guide_retrieval'
+  | 'skill_search'
+  | 'code_mutation'
+  | 'mandatory_rule_thought'
+  | 'incidental_noise'
+  | 'other';
+
+export interface RunCommandAction {
+  type: 'run_command';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params?: { command: string; [key: string]: unknown };
+}
+
+export interface ReadFileAction {
+  type: 'read_file';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params?: { path: string; [key: string]: unknown };
+}
+
+export interface WriteFileAction {
+  type: 'write_file';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params?: { path: string; content?: string; [key: string]: unknown };
+}
+
+export interface WebSearchAction {
+  type: 'web_search';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params?: { query: string; [key: string]: unknown };
+}
+
+export interface OtherAction {
+  type: 'other';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params?: Record<string, unknown>;
+}
+
+export type StandardizedAction =
+  | RunCommandAction
+  | ReadFileAction
+  | WriteFileAction
+  | WebSearchAction
+  | OtherAction;
+
+export function standardizeAction(
+  type: StandardizedAction['type'],
+  name: string,
+  rawParams?: any
+): StandardizedAction {
+  const p = rawParams && typeof rawParams === 'object' ? rawParams : {};
+  switch (type) {
+    case 'run_command': {
+      const command = p.command || p.cmd || (typeof rawParams === 'string' ? rawParams : '') || '';
+      return {
+        type: 'run_command',
+        name,
+        params: { ...p, command: String(command) }
+      };
+    }
+    case 'read_file': {
+      const filePath = p.path || p.file_path || p.filePath || p.targetFile || p.TargetFile || p.AbsolutePath || p.DirectoryPath || (typeof rawParams === 'string' ? rawParams : '') || '';
+      return {
+        type: 'read_file',
+        name,
+        params: { ...p, path: String(filePath) }
+      };
+    }
+    case 'write_file': {
+      const filePath = p.path || p.file_path || p.filePath || p.targetFile || p.TargetFile || '';
+      const content = p.content ?? p.CodeContent ?? p.ReplacementChunks ?? p.new_string ?? undefined;
+      return {
+        type: 'write_file',
+        name,
+        params: {
+          ...p,
+          path: String(filePath),
+          ...(content !== undefined ? { content: String(content) } : {})
+        }
+      };
+    }
+    case 'web_search': {
+      const query = p.query || p.search || p.use_case_id || (typeof rawParams === 'string' ? rawParams : '') || '';
+      return {
+        type: 'web_search',
+        name,
+        params: { ...p, query: String(query) }
+      };
+    }
+    case 'other':
+    default: {
+      return {
+        type: 'other',
+        name,
+        params: rawParams && typeof rawParams === 'object' ? rawParams : rawParams !== undefined ? { value: rawParams } : undefined
+      };
+    }
+  }
+}
+
 export interface StandardizedStep {
   stepNumber: number;
   timestamp?: string;
   subagentId?: string;
   thought?: string;
-  action?: {
-    type: 'web_search' | 'read_file' | 'write_file' | 'run_command' | 'other';
-    canonicalCategory?: 'guide_retrieval' | 'skill_search' | 'code_mutation' | 'mandatory_rule_thought' | 'incidental_noise' | 'other';
-    name: string;
-    params?: Record<string, any>;
-  };
+  action?: StandardizedAction;
   outcome?: {
     status: 'success' | 'error';
     message?: string;
