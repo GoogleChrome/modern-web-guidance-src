@@ -249,14 +249,23 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
             }
           }
         }
-      } else if (entry.role === 'user' || entry.type === 'tool_result') {
-        const content = entry.content || entry.output || '';
-        const toolUseId = entry.tool_use_id || entry.call_id;
+      } else if (
+        entry.role === 'user' ||
+        entry.type === 'tool_result' ||
+        (entry.type === 'message' && entry.message?.role === 'toolResult')
+      ) {
+        const msg = entry.message || entry;
+        const toolUseId = msg.toolCallId || entry.tool_use_id || entry.call_id;
+        let content = msg.content || entry.output || '';
+        if (Array.isArray(content)) {
+          content = content.map((c: any) => (typeof c === 'string' ? c : c?.text || JSON.stringify(c))).join('\n');
+        }
+        const isError = msg.isError !== undefined ? msg.isError : Boolean(entry.is_error);
         if (toolUseId) {
           const stepIdx = toolUseToStepMap.get(toolUseId);
           if (stepIdx !== undefined && steps[stepIdx]) {
             steps[stepIdx].outcome = {
-              status: entry.is_error ? 'error' : 'success',
+              status: isError ? 'error' : 'success',
               message: truncateMessage(content)
             };
           }

@@ -401,3 +401,39 @@ test('parsePiTrajectory handles stringified JSON tool arguments', () => {
   assert.strictEqual(summary.steps[0].action?.params?.command, 'pnpm test');
   assert.strictEqual(summary.steps[0].outcome?.status, 'success');
 });
+
+test('parsePiTrajectory handles native Pi message.role toolResult format', () => {
+  const lines = [
+    {
+      type: 'message',
+      message: {
+        role: 'assistant',
+        content: [
+          {
+            type: 'toolCall',
+            id: 'call_pi_native',
+            name: 'bash',
+            arguments: { command: 'git status' }
+          }
+        ]
+      }
+    },
+    {
+      type: 'message',
+      message: {
+        role: 'toolResult',
+        toolCallId: 'call_pi_native',
+        toolName: 'bash',
+        content: [{ type: 'text', text: 'On branch main' }],
+        isError: false
+      }
+    }
+  ];
+
+  const summary = parsePiTrajectory(lines);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  assert.strictEqual(summary.steps[0].outcome?.message, 'On branch main');
+});
+
