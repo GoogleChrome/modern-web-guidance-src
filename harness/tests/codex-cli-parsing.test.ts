@@ -84,6 +84,16 @@ test('extractCommandsFromCodexItem handles quotes, backticks, escapes, and paren
     }
   });
   assert.deepStrictEqual(cmd7, []);
+
+  // 8. exec tool call with array command argument
+  const cmd8 = extractCommandsFromCodexItem({
+    payload: {
+      type: 'function_call',
+      name: 'exec',
+      arguments: JSON.stringify({ command: ['npm', 'test'] })
+    }
+  });
+  assert.deepStrictEqual(cmd8, ['npm test']);
 });
 
 test('Codex CLI normalization with commentary, response items, and subagent inlining', async () => {

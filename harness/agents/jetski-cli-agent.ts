@@ -344,13 +344,13 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 action: standardizeAction('read_file', 'view_file', { path: obj.AbsolutePath || obj.toolSummary || '' }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
-            } else if (obj.DirectoryPath || (obj.toolAction && obj.toolAction.includes('Listing'))) {
+            } else if (obj.DirectoryPath || obj.SearchDirectory || (obj.toolAction && obj.toolAction.includes('Listing'))) {
               steps.push({
                 stepNumber: 0,
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
-                action: standardizeAction('read_file', 'list_dir', { path: obj.DirectoryPath || '' }),
+                action: standardizeAction('read_file', 'list_dir', { path: obj.DirectoryPath || obj.SearchDirectory || '' }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             }
