@@ -147,7 +147,7 @@ DO: Select the fallback that best matches your design constraints if RCS is not 
 
 {{ BASELINE_STATUS("svg-filters") }}
 
-1. Load this SVG filter definition. It must be added directly to the HTML document if you need to support Safari, as a [WebKit bug](https://bugs.webkit.org/show_bug.cgi?id=320118) prevents external and data url references for filters. Otherwise, it should be loaded from an external file, either an SVG file or inlined in CSS.
+1. Load this SVG filter definition. It must be added directly to the HTML document if you need to support Safari versions affected by [this WebKit bug](https://bugs.webkit.org/show_bug.cgi?id=320118), which prevents external and data url references for filters. Otherwise, it should be loaded from an external file, either an SVG file or inlined in CSS.
 
 ```html
 <!-- Technique from https://miunau.com/posts/dynamic-text-contrast-in-css/ -->
