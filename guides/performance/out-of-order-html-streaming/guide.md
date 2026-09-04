@@ -3,8 +3,8 @@ name: out-of-order-html-streaming
 description: Declaratively update a page with content streamed later into the same HTML document or via imperative JavaScript APIs.
 web-feature-ids:
   - template-for
-  - html-setters
-  - html-streaming-setters
+  - tmp-html-setters
+  - tmp-html-streaming-setters
   
 ---
 

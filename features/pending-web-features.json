@@ -8,7 +8,10 @@
   "tmp-cross-origin-storage": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4029"
   },
-  "tmp-declarative-partial-updates": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4073"
+  "tmp-html-setters": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4117"
+  },
+  "tmp-html-streaming-setters": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4117"
   }
 }
