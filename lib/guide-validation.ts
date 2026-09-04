@@ -45,6 +45,9 @@ interface GuideData {
   [key: string]: any;
 }
 
+/** String `draft` values interpreted as not-a-draft (a quoted/typed-out boolean). */
+const FALSY_DRAFT = new Set(['', 'false', 'no', 'off', '0']);
+
 interface ValidationResult {
   errors: string[];
   data: GuideData;
@@ -223,7 +226,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill || isDisciplineGuide || !hasGuide) {
+      if (isDisciplineSkill || isDisciplineGuide || inv.isStub) {
         // Discipline skills/guides and stubs don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
@@ -465,9 +468,14 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
   const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
   const hasContent = content.replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
-  const isStub = hasFrontmatter;
+  const isStub = hasFrontmatter && !hasContent;
   const hasGuide = hasContent;
-  const draft = data.draft ?? false;
+  // Any truthy `draft` withholds the guide, but treat explicitly falsy-looking
+  // strings (e.g. `draft: "false"`, `draft: no`) as not-draft — quoting a
+  // boolean shouldn't silently unpublish a guide.
+  const draft = typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase())
+    ? false
+    : data.draft ?? false;
   const isPublished = hasGuide && !draft;
 
   const targetsDir = path.join(dir, TARGETS_DIR);
@@ -545,8 +553,8 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
 export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
 export function classifyGuide(inv: GuideInventory): GuideStatus {
-  if (!inv.hasGuide && !inv.isStub) return 'incomplete';
-  if (inv.isStub && !inv.hasGuide) return 'stub';
+  if (inv.isStub) return 'stub';
+  if (!inv.hasGuide) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
 
   if (inv.targets && inv.targets.length > 0) {

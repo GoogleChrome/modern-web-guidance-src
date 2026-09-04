@@ -550,6 +550,7 @@ describe('guide draft flag (publish control)', () => {
     const inv = inventory('---\nname: g\n---\n# G\nBody');
     assert.strictEqual(inv.draft, false);
     assert.strictEqual(inv.isPublished, true);
+    assert.strictEqual(inv.isStub, false); // has content -> not a stub
   });
 
   test('any truthy draft withholds it', () => {
@@ -558,8 +559,18 @@ describe('guide draft flag (publish control)', () => {
     assert.strictEqual(inventory('---\ndraft: future\n---\n# G\nBody').isPublished, false);
   });
 
+  test('falsy-looking string draft values still publish', () => {
+    // Quoting a boolean (draft: "false") or writing draft: no must not silently unpublish.
+    for (const val of ['"false"', 'no', 'off', '0', "''"]) {
+      const inv = inventory(`---\ndraft: ${val}\n---\n# G\nBody`);
+      assert.strictEqual(inv.isPublished, true, `draft: ${val}`);
+    }
+  });
+
   test('a stub (frontmatter, no body) is never published', () => {
-    assert.strictEqual(inventory('---\nname: g\n---\n').isPublished, false);
+    const inv = inventory('---\nname: g\n---\n');
+    assert.strictEqual(inv.isPublished, false);
+    assert.strictEqual(inv.isStub, true);
   });
 });
 
