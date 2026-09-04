@@ -1,0 +1,35 @@
+{
+  "name": "modern-web-guidance",
+  "version": "0.0.26",
+  "description": "Keep your coding agent up to date with the latest web best practices",
+  "author": {
+    "name": "Google Chrome",
+    "url": "https://developer.chrome.com"
+  },
+  "homepage": "https://developer.chrome.com/docs/modern-web-guidance",
+  "repository": "https://github.com/GoogleChrome/modern-web-guidance",
+  "license": "Apache-2.0",
+  "keywords": [
+    "web",
+    "html",
+    "css",
+    "javascript",
+    "best-practices"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Modern Web Guidance",
+    "shortDescription": "Keep your coding agent up to date with modern web platform best practices",
+    "longDescription": "Modern Web Guidance is an agent skill and CLI tool designed to help AI coding agents build web applications using modern, secure, and high-performance APIs rather than outdated workarounds. Supported by the Google Chrome team, it injects expert-curated web platform best practices directly into an agent's context window to prevent the generation of bloated, legacy code.",
+    "developerName": "Google Chrome",
+    "category": "Development",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://developer.chrome.com/docs/modern-web-guidance",
+    "defaultPrompt": [
+      "Audit this project for modern web best practices and modernization opportunities",
+      "What is the recommended modern way to implement responsive dialogs and popovers?"
+    ]
+  }
+}

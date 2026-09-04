@@ -1,0 +1,21 @@
+{
+  "name": "googlechrome",
+  "interface": {
+    "displayName": "Google Chrome"
+  },
+  "plugins": [
+    {
+      "name": "modern-web-guidance",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development",
+      "version": "0.0.26"
+    }
+  ]
+}

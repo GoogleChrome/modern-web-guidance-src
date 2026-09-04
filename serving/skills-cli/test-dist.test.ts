@@ -53,6 +53,35 @@ test('Grok Plugin Config in Dist', async () => {
   assert.strictEqual(marketplaceJson.plugins[0].source, './');
 });
 
+test('Codex Plugin Config in Dist', async () => {
+  const pluginJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.codex-plugin/plugin.json'), 'utf8');
+  const pluginJson = JSON.parse(pluginJsonRaw);
+  assert.strictEqual(pluginJson.name, 'modern-web-guidance', 'plugin.json name should match');
+  assert.strictEqual(pluginJson.author.name, 'Google Chrome', 'plugin.json author should be Google Chrome');
+  assert.strictEqual(pluginJson.skills, './skills/', 'plugin.json skills should point to ./skills/');
+
+  // updateVersionsInDir must keep the manifest version in sync with the rest of the distribution
+  const pkgJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8'));
+  assert.strictEqual(pluginJson.version, pkgJson.version, 'plugin.json version should match package.json version');
+
+  // Codex resolves skills directory relative to the plugin root (the dist dir)
+  assert.ok(pluginJson.skills.startsWith('./'), `Codex skills path ${pluginJson.skills} must start with './'`);
+  const resolvedSkillsDir = path.join(STAGING_DIR, pluginJson.skills);
+  await assert.doesNotReject(fs.access(resolvedSkillsDir), `Codex skills path ${pluginJson.skills} must resolve to a valid directory`);
+  const skillMdPath = path.join(resolvedSkillsDir, 'modern-web-guidance/SKILL.md');
+  await assert.doesNotReject(fs.access(skillMdPath), `Codex skills directory must contain modern-web-guidance/SKILL.md`);
+
+  // Codex Marketplace config validation
+  const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.agents/plugins/marketplace.json'), 'utf8');
+  const marketplaceJson = JSON.parse(marketplaceJsonRaw);
+  assert.strictEqual(marketplaceJson.name, 'googlechrome', 'marketplace.json name should be googlechrome');
+  assert.strictEqual(marketplaceJson.interface.displayName, 'Google Chrome', 'marketplace.json displayName should match');
+  assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'marketplace must declare plugins');
+  assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
+  assert.strictEqual(marketplaceJson.plugins[0].category, 'Development');
+  assert.strictEqual(marketplaceJson.plugins[0].version, pkgJson.version);
+});
+
 test('Gemini and VS Code manifests', async () => {
   const geminiJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'gemini-extension.json'), 'utf8'));
   assert.strictEqual(geminiJson.name, 'modern-web-guidance');
