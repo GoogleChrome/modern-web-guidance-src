@@ -1,0 +1,1 @@
+- Expose the client-side functionality in the application as tools to AI agents using forms.
