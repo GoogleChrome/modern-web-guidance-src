@@ -308,7 +308,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
       if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
         const p = entry.payload;
         const callId = p.call_id;
-        const out = p.output || '';
+        const out = typeof p.output === 'string' ? p.output : (p.output ? JSON.stringify(p.output) : '');
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
           step.outcome = {
