@@ -40,8 +40,13 @@ interface GuideData {
   name?: string;
   description?: string;
   'web-feature-ids'?: string[];
+  /** Any truthy value withholds the guide from distribution; `draft: true` recommended. */
+  draft?: boolean | string;
   [key: string]: any;
 }
+
+/** String `draft` values interpreted as not-a-draft (a quoted/typed-out boolean). */
+const FALSY_DRAFT = new Set(['', 'false', 'no', 'off', '0']);
 
 interface ValidationResult {
   errors: string[];
@@ -187,7 +192,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
     const isDisciplineGuide = inv.name === inv.category || ['css-layout', 'passkeys'].includes(inv.name);
-    
+
     // Discipline skills don't need demo.html; a frontmatter-only stub
     // (a proposed use case) doesn't need one either
     // Guides with multi-app targets don't need a top-level demo.html
@@ -221,7 +226,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill || isDisciplineGuide || !hasGuide) {
+      if (isDisciplineSkill || isDisciplineGuide || inv.isStub) {
         // Discipline skills/guides and stubs don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
@@ -337,6 +342,10 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
+  /** Frontmatter `draft` flag; any truthy value withholds the guide from distribution. */
+  draft: boolean | string;
+  /** Whether the guide belongs in dist: has content and no truthy `draft`. */
+  isPublished: boolean;
   isDisciplineSkill: boolean;
   targets?: TargetInventory[];
 }
@@ -455,25 +464,19 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
 
   const guideFilePath = path.join(dir, isDisciplineSkill ? SKILL_FILE : GUIDE_FILE);
   const guideContent = readFileSafe(guideFilePath);
-  let hasGuide = false;
-  let isStub = false;
 
-  if (guideContent) {
-    const parsed = matter(guideContent);
-    const hasFrontmatter = Object.keys(parsed.data).length > 0 || guideContent.startsWith('---');
-    const hasContent = parsed.content.replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
-
-    if (hasFrontmatter) {
-      isStub = true;
-      if (hasContent) {
-        hasGuide = true;
-      }
-    } else if (hasContent) {
-      hasGuide = true;
-    }
-  }
-
-  const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
+  const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
+  const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
+  const hasContent = content.replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
+  const isStub = hasFrontmatter && !hasContent;
+  const hasGuide = hasContent;
+  // Any truthy `draft` withholds the guide, but treat explicitly falsy-looking
+  // strings (e.g. `draft: "false"`, `draft: no`) as not-draft — quoting a
+  // boolean shouldn't silently unpublish a guide.
+  const draft = typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase())
+    ? false
+    : data.draft ?? false;
+  const isPublished = hasGuide && !draft;
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
@@ -539,7 +542,9 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     hasNegativeDemo,
     hasGrader,
     hasTask,
-    featureIds,
+    featureIds: data['web-feature-ids'] || [],
+    draft,
+    isPublished,
     isDisciplineSkill,
     targets: useTargets ? targets : undefined,
   };
@@ -548,8 +553,8 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
 export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
 export function classifyGuide(inv: GuideInventory): GuideStatus {
-  if (!inv.hasGuide && !inv.isStub) return 'incomplete';
-  if (inv.isStub && !inv.hasGuide) return 'stub';
+  if (inv.isStub) return 'stub';
+  if (!inv.hasGuide) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
 
   if (inv.targets && inv.targets.length > 0) {
@@ -604,7 +609,7 @@ export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
 
   for (const category of categories) {
     const categoryDir = path.join(scanDir, category);
-    
+
     // If the category directory itself contains a SKILL.md, it's a discipline skill
     if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
       skills.push(inventoryGuide(categoryDir));
