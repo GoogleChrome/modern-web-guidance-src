@@ -4,7 +4,8 @@ import matter from 'gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros } from '../serving/lib/macros.ts';
-import { validateFeature } from '../serving/lib/baseline.ts';
+import { validateFeature, resolveFeatureId } from '../serving/lib/baseline.ts';
+import { features } from 'web-features';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
 
@@ -25,7 +26,78 @@ export interface PreparedGuide {
   featureIds: string[];
   relativeSubdir: string;
   statusName: ProjectStatus | null;
+  originTrials?: OriginTrialMetadata[];
 }
+
+export interface OriginTrialMetadata {
+  name?: string;
+  chromestatus_url?: string;
+}
+
+const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
+let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
+
+export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
+  if (!cachedOriginTrials) {
+    if (fs.existsSync(ORIGIN_TRIALS_FILE)) {
+      try {
+        const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
+        cachedOriginTrials = JSON.parse(raw);
+      } catch (e) {
+        cachedOriginTrials = {};
+      }
+    } else {
+      cachedOriginTrials = {};
+    }
+  }
+  return cachedOriginTrials!;
+}
+
+export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
+  const registry = getOriginTrialsRegistry();
+  return registry[featureId];
+}
+
+export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
+  const registry = getOriginTrialsRegistry();
+  const found: OriginTrialMetadata[] = [];
+  for (const id of featureIds) {
+    if (registry[id]) {
+      found.push(registry[id]);
+    }
+  }
+  return found;
+}
+
+/**
+ * Checks all features in the Origin Trials registry against the web-features package.
+ * Returns warnings for any feature that has graduated (supported by any major browser).
+ */
+export function checkOriginTrialGraduations(): string[] {
+  const registry = getOriginTrialsRegistry();
+  const warnings: string[] = [];
+  for (const featureId of Object.keys(registry)) {
+    const resolvedIds = resolveFeatureId(featureId);
+    const supportedBrowsers: string[] = [];
+    for (const id of resolvedIds) {
+      const f = (features as Record<string, any>)[id];
+      if (f?.status?.support) {
+        for (const [browser, version] of Object.entries(f.status.support)) {
+          if (version && version !== '-') {
+            supportedBrowsers.push(`${browser} ${version}`);
+          }
+        }
+      }
+    }
+    if (supportedBrowsers.length > 0) {
+      warnings.push(
+        `Graduation Alert: Origin Trial feature "${featureId}" now has browser support (${supportedBrowsers.join(', ')}). The feature must be removed from features/origin-trials.json.`
+      );
+    }
+  }
+  return warnings;
+}
+
 
 export interface GuideInventoryResult {
   errors: string[];
@@ -259,6 +331,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       featureIds,
       relativeSubdir,
       statusName,
+      originTrials: getGuideOriginTrials(featureIds),
     });
   }
 
