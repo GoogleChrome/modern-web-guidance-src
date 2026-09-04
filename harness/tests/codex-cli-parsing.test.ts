@@ -10,7 +10,7 @@ import {
   extractCodexCliModel,
   extractCodexCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
-import { extractCommandsFromCodexItem } from '../agents/codex-cli-agent.ts';
+import { extractCommandsFromCodexItem, parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -84,6 +84,16 @@ test('extractCommandsFromCodexItem handles quotes, backticks, escapes, and paren
     }
   });
   assert.deepStrictEqual(cmd7, []);
+
+  // 8. exec tool call with array command argument
+  const cmd8 = extractCommandsFromCodexItem({
+    payload: {
+      type: 'function_call',
+      name: 'exec',
+      arguments: JSON.stringify({ command: ['npm', 'test'] })
+    }
+  });
+  assert.deepStrictEqual(cmd8, ['npm test']);
 });
 
 test('Codex CLI normalization with commentary, response items, and subagent inlining', async () => {
@@ -186,6 +196,7 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
     assert.strictEqual(summary.steps[0].thought, 'Inspecting existing html structure');
     assert.strictEqual(summary.steps[0].action?.name, 'cat index.html');
     assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[0].action?.params?.command, 'cat index.html');
     assert.strictEqual(summary.steps[0].outcome?.status, 'success');
 
     // Step 2: subagent npm test (20:30:05)
@@ -195,6 +206,7 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
     assert.strictEqual(summary.steps[1].thought, 'Subagent running tests');
     assert.strictEqual(summary.steps[1].action?.name, 'npm test');
     assert.strictEqual(summary.steps[1].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[1].action?.params?.command, 'npm test');
     assert.strictEqual(summary.steps[1].outcome?.status, 'success');
 
     // Step 3: main final_answer (20:30:10)
@@ -278,6 +290,36 @@ test('Codex CLI normalization with modern custom_tool_call exec_command', async 
   } finally {
     removeTempDir(tempDir);
   }
+});
+
+test('Codex CLI handles array-structured output blocks in tool outputs', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_arr_1',
+        name: 'exec',
+        arguments: JSON.stringify({ command: 'node test.js' })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_arr_1',
+        output: [
+          { type: 'input_text', text: 'Script completed\nWall time 0.1s\nOutput:\n' },
+          { type: 'input_text', text: 'All checks passed.' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  assert.ok(summary.steps[0].outcome?.message?.includes('All checks passed.'));
 });
 
 test('collectCodex metrics from legacy function_call trajectory file', async () => {
@@ -379,4 +421,36 @@ test('collectCodex metrics from modern custom_tool_call trajectory file', async 
   } finally {
     removeTempDir(tempDir);
   }
+});
+
+test('parseCodexTrajectory handles structured array of content blocks in function_call_output', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_content_blocks',
+        name: 'exec',
+        arguments: JSON.stringify({ command: ['cat', 'package.json'] })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_content_blocks',
+        output: [
+          { type: 'input_text', text: 'Script completed\nOutput:\n' },
+          { type: 'input_text', text: '{\n  "name": "test-app"\n}\n' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].action?.name, 'cat package.json');
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  assert.strictEqual(summary.steps[0].outcome?.message?.includes('"name": "test-app"'), true);
 });

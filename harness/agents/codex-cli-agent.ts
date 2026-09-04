@@ -25,9 +25,10 @@ import {
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
   readTrajectorySummary,
-  getSessionFiles
+  getSessionFiles,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
-import type { CodexRolloutLine } from './codex.d.ts';
+import type { CodexRolloutLine, CodexOutputContentBlock } from './codex.d.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
 
@@ -188,6 +189,8 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   if (typeof raw === 'object') {
     if (typeof raw.cmd === 'string') commands.push(raw.cmd);
     else if (typeof raw.command === 'string') commands.push(raw.command);
+    else if (Array.isArray(raw.command)) commands.push(raw.command.join(' '));
+    else if (Array.isArray(raw.cmd)) commands.push(raw.cmd.join(' '));
     return commands;
   }
 
@@ -197,6 +200,8 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
       if (parsed && typeof parsed === 'object') {
         if (typeof parsed.cmd === 'string') return [parsed.cmd];
         if (typeof parsed.command === 'string') return [parsed.command];
+        if (Array.isArray(parsed.command)) return [parsed.command.join(' ')];
+        if (Array.isArray(parsed.cmd)) return [parsed.cmd.join(' ')];
       }
     } catch {
       // Not direct JSON
@@ -289,11 +294,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
           timestamp,
           subagentId,
           thought: currentThought || `Executing ${cmdName}`,
-          action: {
-            type: actionType,
-            name: actionName,
-            params
-          }
+          action: standardizeAction(actionType, actionName, params)
         };
         steps.push(step);
         if (subagentId) {
@@ -308,12 +309,27 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
       if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
         const p = entry.payload;
         const callId = p.call_id;
-        const out = p.output || '';
+        let outStr = '';
+        if (typeof p.output === 'string') {
+          outStr = p.output;
+        } else if (Array.isArray(p.output)) {
+          outStr = p.output
+            .map((c: CodexOutputContentBlock | unknown) =>
+              typeof c === 'string'
+                ? c
+                : c && typeof c === 'object' && 'text' in c && typeof (c as { text: unknown }).text === 'string'
+                  ? (c as { text: string }).text
+                  : JSON.stringify(c)
+            )
+            .join('\n');
+        } else if (p.output) {
+          outStr = typeof p.output === 'object' ? (p.output.text || p.output.content || JSON.stringify(p.output)) : String(p.output);
+        }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
           step.outcome = {
-            status: out.toLowerCase().includes('error:') ? 'error' : 'success',
-            message: truncateMessage(out)
+            status: outStr.toLowerCase().includes('error:') ? 'error' : 'success',
+            message: truncateMessage(outStr)
           };
         }
       }

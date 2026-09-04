@@ -116,11 +116,33 @@ export interface CodexResponseFunctionCallItem {
   status?: string;
 }
 
+/**
+ * Content block inside a Codex tool output item (Responses API format).
+ * Grounded in codex-rs (CodexFunctionCallOutputContentItem).
+ * In OpenAI Responses API rollouts, output is typically an array of content blocks,
+ * such as input_text, input_image, input_audio, or encrypted_content.
+ */
+export type CodexFunctionCallOutputContentItem =
+  | { type: "input_text"; text: string }
+  | { type: "input_image"; image_url: string; detail?: string }
+  | { type: "input_audio"; audio_url: string }
+  | { type: "encrypted_content"; encrypted_content: string }
+  | { type: "text"; text: string }
+  | { type: "image"; image_url?: string; [key: string]: unknown }
+  | { type: string; text?: string; [key: string]: unknown };
+
+export type CodexOutputContentBlock = CodexFunctionCallOutputContentItem;
+
+export type CodexToolCallOutput =
+  | string
+  | CodexFunctionCallOutputContentItem[]
+  | Record<string, unknown>;
+
 export interface CodexResponseFunctionCallOutputItem {
   type: "function_call_output";
   id?: string;
   call_id: string;
-  output: string | Record<string, unknown>;
+  output: CodexToolCallOutput;
   is_error?: boolean;
 }
 
@@ -137,7 +159,7 @@ export interface CodexResponseCustomToolCallOutputItem {
   type: "custom_tool_call_output";
   id?: string;
   call_id: string;
-  output: string | Record<string, unknown>;
+  output: CodexToolCallOutput;
   is_error?: boolean;
 }
 

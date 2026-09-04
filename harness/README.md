@@ -727,3 +727,30 @@ The `--config` flag accepts either:
 - A JSON string via `GD_SUITE_CONFIG` environment variable (less convenient)
 
 See `harness/config-pi.ts` for an example configuration.
+
+## Diagnosing Performance Variance with `gd compare`
+
+The `gd compare` command compares two evaluation run directories to diagnose behavioral differences and performance variance between agent runs:
+
+```bash
+# Compare two local run directories
+gd compare harness/results/<suite-a>/<run-1>/<guide>/<task>/<run-type> harness/results/<suite-b>/<run-2>/<guide>/<task>/<run-type>
+
+# Example: Compare guided vs unguided runs
+gd compare harness/results/nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided harness/results/nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/unguided
+
+# Compare runs from remote GCS suites (automatically downloaded and cached locally)
+gd compare nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided nightly-2026-08-11_17-00-02-jetski_cli/1/details-styling/task/guided
+```
+
+### Path Formats
+Run directory paths can be:
+- **Local repository paths**: Paths relative to repo root (e.g. `harness/results/<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
+- **Results-relative or remote suite paths**: Paths relative to `harness/results/` (e.g. `<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
+- **Remote GCS buckets**: If the specified run directory is not found locally, `gd compare` automatically downloads the run artifacts from Google Cloud Storage (`gs://guidance-evals/<suite-path>`) before launching analysis.
+
+### Analysis Pipeline
+The comparison executes a three-phase pipeline:
+1. **Pre-processes trajectories** into chronological milestone steps (filtering noise and retrying error loops).
+2. **Dispatches parallel sub-agents** using the configured solution agent CLI (Jetski or Gemini CLI) to analyze guide compliance, code mutations, and friction.
+3. **Synthesizes a structured markdown diagnosis** written to `harness/results/<suite-name>/variance_diagnoses/<guide>-<task>-<runType>.md`.

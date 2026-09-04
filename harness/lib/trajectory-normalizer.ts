@@ -70,21 +70,156 @@ export function getSessionFiles(dir: string): string[] {
   return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
 }
 
+export type CanonicalCategory =
+  | 'guide_retrieval'
+  | 'skill_search'
+  | 'code_mutation'
+  | 'mandatory_rule_thought'
+  | 'incidental_noise'
+  | 'other';
+
+export interface RunCommandAction {
+  type: 'run_command';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params: { command: string; [key: string]: unknown };
+}
+
+export interface ReadFileAction {
+  type: 'read_file';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params: { path: string; [key: string]: unknown };
+}
+
+export interface WriteFileAction {
+  type: 'write_file';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params: { path: string; content?: string; [key: string]: unknown };
+}
+
+export interface WebSearchAction {
+  type: 'web_search';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params: { query: string; [key: string]: unknown };
+}
+
+export interface OtherAction {
+  type: 'other';
+  canonicalCategory?: CanonicalCategory;
+  name: string;
+  params?: Record<string, unknown>;
+}
+
+export type StandardizedAction =
+  | RunCommandAction
+  | ReadFileAction
+  | WriteFileAction
+  | WebSearchAction
+  | OtherAction;
+
+export interface RunCommandRawParams {
+  command?: string;
+  cmd?: string;
+  [key: string]: unknown;
+}
+
+export interface ReadFileRawParams {
+  path?: string;
+  file_path?: string;
+  [key: string]: unknown;
+}
+
+export interface WriteFileRawParams {
+  path?: string;
+  file_path?: string;
+  content?: string;
+  new_string?: string;
+  newText?: string;
+  [key: string]: unknown;
+}
+
+export interface WebSearchRawParams {
+  query?: string;
+  Query?: string;
+  use_case_id?: string;
+  [key: string]: unknown;
+}
+
+export function standardizeAction(type: 'run_command', name: string, rawParams?: string | RunCommandRawParams): RunCommandAction;
+export function standardizeAction(type: 'read_file', name: string, rawParams?: string | ReadFileRawParams): ReadFileAction;
+export function standardizeAction(type: 'write_file', name: string, rawParams?: string | WriteFileRawParams): WriteFileAction;
+export function standardizeAction(type: 'web_search', name: string, rawParams?: string | WebSearchRawParams): WebSearchAction;
+export function standardizeAction(type: 'other', name: string, rawParams?: unknown): OtherAction;
+export function standardizeAction(type: StandardizedAction['type'], name: string, rawParams?: unknown): StandardizedAction;
+export function standardizeAction(
+  type: StandardizedAction['type'],
+  name: string,
+  rawParams?: unknown
+): StandardizedAction {
+  const p = rawParams && typeof rawParams === 'object' ? (rawParams as Record<string, unknown>) : {};
+  switch (type) {
+    case 'run_command': {
+      const command = (p.command as string) || (p.cmd as string) || (typeof rawParams === 'string' ? rawParams : '') || '';
+      return {
+        type: 'run_command',
+        name,
+        params: { ...p, command: String(command) }
+      };
+    }
+    case 'read_file': {
+      const filePath = (p.path as string) || (p.file_path as string) || (typeof rawParams === 'string' ? rawParams : '') || '';
+      return {
+        type: 'read_file',
+        name,
+        params: { ...p, path: String(filePath) }
+      };
+    }
+    case 'write_file': {
+      const filePath = (p.path as string) || (p.file_path as string) || '';
+      const rawContent = p.content ?? p.new_string ?? p.newText ?? undefined;
+      const content = rawContent !== undefined ? String(rawContent) : undefined;
+      return {
+        type: 'write_file',
+        name,
+        params: {
+          ...p,
+          path: String(filePath),
+          ...(content !== undefined ? { content } : {})
+        }
+      };
+    }
+    case 'web_search': {
+      const query = (p.query as string) || (p.Query as string) || (p.use_case_id as string) || (typeof rawParams === 'string' ? rawParams : '') || '';
+      return {
+        type: 'web_search',
+        name,
+        params: { ...p, query: String(query) }
+      };
+    }
+    case 'other':
+    default: {
+      return {
+        type: 'other',
+        name,
+        params: rawParams && typeof rawParams === 'object' ? (rawParams as Record<string, unknown>) : rawParams !== undefined ? { value: rawParams } : undefined
+      };
+    }
+  }
+}
+
 export interface StandardizedStep {
   stepNumber: number;
   timestamp?: string;
   subagentId?: string;
   thought?: string;
-  action?: {
-    type: 'web_search' | 'read_file' | 'write_file' | 'run_command' | 'other';
-    canonicalCategory?: 'guide_retrieval' | 'skill_search' | 'code_mutation' | 'mandatory_rule_thought' | 'incidental_noise' | 'other';
-    name: string;
-    params?: Record<string, any>;
-  };
+  action?: StandardizedAction;
   outcome?: {
     status: 'success' | 'error';
     message?: string;
-    output?: any;
+    output?: unknown;
     exitCode?: number;
   };
 }
@@ -124,24 +259,35 @@ export function extractTimestamp(entry: any): string | undefined {
   return undefined;
 }
 
-export function categorizeAction(name: string, params?: Record<string, any>, thought?: string): NonNullable<StandardizedStep['action']>['canonicalCategory'] {
-  const actionName = (name || '').toLowerCase();
-  const actionParamsStr = JSON.stringify(params || {}).toLowerCase();
-  const thoughtStr = (thought || '').toLowerCase();
+export function categorizeAction(
+  name: string,
+  params?: Record<string, any>,
+  thought?: string,
+  actionType?: StandardizedAction['type']
+): NonNullable<StandardizedStep['action']>['canonicalCategory'] {
+  if (actionType === 'write_file') {
+    return 'code_mutation';
+  }
 
+  const actionName = (name || '').toLowerCase();
   if (actionName === 'respond_to_user') {
     return 'other';
   }
 
-  const mutationParamKeys = ['targetfile', 'replacementcontent', 'replacementchunks', 'codecontent', 'write_to_file', 'replace_file_content'];
-  const paramKeys = params && typeof params === 'object' ? Object.keys(params).map(k => k.toLowerCase()) : [];
-  const hasMutationParam = paramKeys.some(k => mutationParamKeys.includes(k));
   const isMutationName = ['write', 'replace', 'edit', 'touch'].some(k => actionName.includes(k));
-
-  // 1. Code mutation takes highest priority to prevent false positives from code containing words like "search" or "retrieve"
-  if (isMutationName || hasMutationParam) {
+  if (isMutationName) {
     return 'code_mutation';
   }
+
+  const mutationParamKeys = ['targetfile', 'replacementcontent', 'replacementchunks', 'codecontent', 'write_to_file', 'replace_file_content', 'new_string', 'newtext'];
+  const paramKeys = params && typeof params === 'object' ? Object.keys(params).map(k => k.toLowerCase()) : [];
+  const hasMutationParam = paramKeys.some(k => mutationParamKeys.includes(k));
+  if (hasMutationParam) {
+    return 'code_mutation';
+  }
+
+  const actionParamsStr = JSON.stringify(params || {}).toLowerCase();
+  const thoughtStr = (thought || '').toLowerCase();
 
   // 2. Guide retrieval
   if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
@@ -179,7 +325,12 @@ export function finalizeTrajectorySummary(summary: TrajectorySummary): Trajector
       const step = summary.steps[i];
       step.stepNumber = i + 1;
       if (step.action && !step.action.canonicalCategory) {
-        step.action.canonicalCategory = categorizeAction(step.action.name, step.action.params, step.thought);
+        step.action.canonicalCategory = categorizeAction(
+          step.action.name,
+          step.action.params,
+          step.thought,
+          step.action.type
+        );
       }
     }
   }
@@ -188,6 +339,9 @@ export function finalizeTrajectorySummary(summary: TrajectorySummary): Trajector
 
 export function mapToolType(toolName: string): NonNullable<StandardizedStep['action']>['type'] {
   const name = toolName.toLowerCase();
+  if (name.includes('todo')) {
+    return 'other';
+  }
   if (['read', 'read_file', 'view_file', 'view'].some(k => name.includes(k))) {
     return 'read_file';
   }
