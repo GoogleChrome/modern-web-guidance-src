@@ -87,7 +87,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 #### The full list
 
 <details>
-<summary><strong>106 modern web features</strong></summary>
+<summary><strong>104 modern web features</strong></summary>
 
 ### CSS & Layout (52 features)
 
@@ -128,22 +128,22 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 
 | | | |
 | :--- | :--- | :--- |
-| [AbortController and AbortSignal](https://web-platform-dx.github.io/web-features-explorer/features/aborting/) | [Keyboard events](https://web-platform-dx.github.io/web-features-explorer/features/keyboard-events/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) |
-| [document.modelContext](https://web-platform-dx.github.io/web-features-explorer/features/document-modelcontext/) | [Language detector](https://web-platform-dx.github.io/web-features-explorer/features/languagedetector/) | [Scheduler API](https://web-platform-dx.github.io/web-features-explorer/features/scheduler/) |
-| [enterkeyhint](https://web-platform-dx.github.io/web-features-explorer/features/enterkeyhint/) | [LanguageModel](https://web-platform-dx.github.io/web-features-explorer/features/languagemodel/) | [Speculation rules](https://web-platform-dx.github.io/web-features-explorer/features/speculation-rules/) |
-| [Event timing](https://web-platform-dx.github.io/web-features-explorer/features/event-timing/) | [Lazy-loading images and iframes](https://web-platform-dx.github.io/web-features-explorer/features/loading-lazy/) | [Summarizer](https://web-platform-dx.github.io/web-features-explorer/features/summarizer/) |
-| [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Long animation frames](https://web-platform-dx.github.io/web-features-explorer/features/long-animation-frames/) | [SVG](https://web-platform-dx.github.io/web-features-explorer/features/svg/) |
-| [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
-| [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
-| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Page visibility state](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
-| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
-| [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
-| [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
+| [AbortController and AbortSignal](https://web-platform-dx.github.io/web-features-explorer/features/aborting/) | [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) |
+| [declarative-partial-updates](https://web-platform-dx.github.io/web-features-explorer/features/tmp-declarative-partial-updates/) | [Language detector](https://web-platform-dx.github.io/web-features-explorer/features/languagedetector/) | [Scheduler API](https://web-platform-dx.github.io/web-features-explorer/features/scheduler/) |
+| [document.modelContext](https://web-platform-dx.github.io/web-features-explorer/features/document-modelcontext/) | [LanguageModel](https://web-platform-dx.github.io/web-features-explorer/features/languagemodel/) | [Speculation rules](https://web-platform-dx.github.io/web-features-explorer/features/speculation-rules/) |
+| [enterkeyhint](https://web-platform-dx.github.io/web-features-explorer/features/enterkeyhint/) | [Lazy-loading images and iframes](https://web-platform-dx.github.io/web-features-explorer/features/loading-lazy/) | [Summarizer](https://web-platform-dx.github.io/web-features-explorer/features/summarizer/) |
+| [Event timing](https://web-platform-dx.github.io/web-features-explorer/features/event-timing/) | [Long animation frames](https://web-platform-dx.github.io/web-features-explorer/features/long-animation-frames/) | [SVG](https://web-platform-dx.github.io/web-features-explorer/features/svg/) |
+| [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
+| [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
+| [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Page visibility state](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
+| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
+| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
+| [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
 
 </details>
 
 <details>
-<summary><strong>134 real-world developer use cases</strong></summary>
+<summary><strong>132 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
@@ -223,6 +223,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[optimize-image-priority](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/optimize-image-priority.md)**: Optimize the loading priority of Largest Contentful Paint (LCP) candidate images and deprioritize non-critical images to reduce critical resource load delays.
 - **[optimize-preload-priority](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/optimize-preload-priority.md)**: Optimize the relative priority of preloaded content to reduce critical resource load delays.
 - **[optimize-script-priority](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/optimize-script-priority.md)**: Optimize the loading priority of scripts by boosting critical asynchronous scripts and deprioritizing non-essential or late-body scripts to improve sequencing and reduce delays.
+- **[out-of-order-html-streaming](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/out-of-order-html-streaming.md)**: Declaratively update a page with content streamed later into the same HTML document or via imperative JavaScript APIs.
 - **[resolution-optimized-pseudo-elements](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/resolution-optimized-pseudo-elements.md)**: Use resolution-optimized images in CSS pseudo-elements (such as `::before` and `::after`) to reduce the number of DOM nodes.
 - **[schedule-tasks-by-priority](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/schedule-tasks-by-priority.md)**: Schedule tasks with different priorities to ensure critical work runs first while background work is deferred.
 - **[sequence-distributed-events](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/sequence-distributed-events.md)**: Log and sequence operations in distributed microservices or high-throughput tracing environments by recording timestamps with nanosecond resolution.
