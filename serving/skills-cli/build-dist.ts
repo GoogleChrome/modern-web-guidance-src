@@ -172,6 +172,13 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
     fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
+    const srcImgDir = path.join(rootDir, ".github/img");
+    const destImgDir = path.join(publishRoot, ".github/img");
+    if (fs.existsSync(srcImgDir)) {
+      fs.mkdirSync(destImgDir, { recursive: true });
+      fs.cpSync(srcImgDir, destImgDir, { recursive: true });
+    }
+
     if (version) {
       updateVersionsInDir(publishRoot, version);
     }

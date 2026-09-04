@@ -94,7 +94,8 @@ jobs:
 
       - name: Publish Skills to GitHub (modern-web-guidance)
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: pnpm --filter serving run publish-skills
 
       - name: Commit and push updated evals and README to source repo

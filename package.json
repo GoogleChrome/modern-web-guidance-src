@@ -30,6 +30,7 @@
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
     "grade": "node --experimental-strip-types guides/run-grader.ts",
     "dev-guide": "node --env-file=.env --experimental-strip-types guides/dev-guide.ts",
+    "scan-guide-lengths": "node --experimental-strip-types scripts/scan-guide-lengths.ts",
     "deploy:dashboard": "pnpm --filter eval-view deploy-pages"
   },
   "keywords": [],
@@ -81,6 +82,6 @@
     "glob": "^13.0.6",
     "mdn-data": "^2.29.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.35.0"
+    "web-features": "^3.36.0"
   }
 }

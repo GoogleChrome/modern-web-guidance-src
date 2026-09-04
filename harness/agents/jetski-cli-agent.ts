@@ -3,8 +3,45 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
 import config, { Agents } from '../config.ts';
-import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, exportTrajectories, runCliAgentCommand, createTrustedFolders, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import {
+  cleanupIsolatedHome,
+  parseAgentArgs,
+  watchLogFile,
+  exportTrajectories,
+  runCliAgentCommand,
+  createTrustedFolders,
+  copyFileIfExists,
+  setupIsolatedWorkDir,
+  isEnoent,
+  type GuideUsage
+} from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import {
+  type StandardizedStep,
+  type TrajectorySummary,
+  extractTimestamp,
+  truncateMessage,
+  finalizeTrajectorySummary,
+  generateNormalizedTrajectory,
+  readTrajectorySummary
+} from '../lib/trajectory-normalizer.ts';
+
+const JETSKI_ERROR_STATUS_CODES = new Set([2, 4, 5]);
+const MAX_PAYLOAD_PREVIEW_LENGTH = 200;
+
+const PROTO_WIRE_TYPE = {
+  VARINT: 0,
+  FIXED64: 1,
+  LENGTH_DELIMITED: 2,
+  FIXED32: 5
+} as const;
+
+const METADATA_TAG_USAGE = 9;
+const USAGE_TAG_INPUT = 2;
+const USAGE_TAG_OUTPUT = 3;
+const USAGE_TAG_CACHED = 5;
+
+const TRAJECTORY_GLOB = '*.db';
 
 export function setupJetskiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
@@ -39,43 +76,22 @@ export function getJetskiCliCommandAndArgs(prompt: string): { command: string; c
   return { command, commandArgs };
 }
 
-export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
-
-export interface TrajectorySummary {
-  retrievedGuides: string[];
-  fileReadGuides: string[];
-  toolsUsed: string[];
-  model?: string;
-  tokenUsage?: { total: number; cached: number };
+function exportJetskiTrajectories(workDir: string, targetDir: string): void {
+  const jetskiLogDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'brain');
+  exportTrajectories(jetskiLogDir, '**/*.db', targetDir);
+  exportTrajectories(jetskiLogDir, '**/modern-web.log', targetDir);
 }
 
-export function writeTrajectorySummary(targetDir: string, summary: TrajectorySummary): void {
-  fs.writeFileSync(path.join(targetDir, TRAJECTORY_SUMMARY_FILE), JSON.stringify(summary, null, 2), 'utf8');
-}
-
-export function readTrajectorySummary(dir: string): TrajectorySummary | null {
-  const summaryPath = path.join(dir, TRAJECTORY_SUMMARY_FILE);
-  if (fs.existsSync(summaryPath)) {
-    try {
-      return JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-    } catch {}
-  }
-  return null;
-}
-
-/**
- * Executes the Jetski CLI command and captures output.
- */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
   const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType, targetDir);
 
-  if (!workDir || !fs.existsSync(workDir)) {
-    throw new Error(`Failed to initialize working directory: ${workDir}`);
+  if (!workDir) {
+    throw new Error('Failed to initialize working directory');
   }
 
   try {
-    console.log(`Starting Jetski CLI agent in ${workDir}`);
+    console.log(`Starting Jetski CLI agent in: ${workDir}`);
 
     const { command, commandArgs } = getJetskiCliCommandAndArgs(userPrompt);
 
@@ -96,22 +112,11 @@ async function run() {
       );
     } finally {
       stopWatchingMcpLog();
-    }
-
-    // Capture trajectory
-    const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
-    exportTrajectories(conversationsDir, '*.pb', targetDir);
-    exportTrajectories(conversationsDir, '*.db', targetDir);
-
-    try {
-      const summary = parseJetskiCliSession(targetDir);
-      writeTrajectorySummary(targetDir, summary);
-    } catch (e) {
-      console.warn(`Failed to generate trajectory summary in ${targetDir}:`, e);
+      exportJetskiTrajectories(workDir, targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
     }
 
     console.log("Jetski CLI agent finished successfully.");
-
   } catch (err) {
     console.error("Error during Jetski CLI execution:", err);
     process.exitCode = 1;
@@ -120,7 +125,54 @@ async function run() {
   }
 }
 
-function parseProtobuf(buffer: Buffer): Record<number, any[]> {
+export function findJsonObjectsInString(str: string): any[] {
+  const results: any[] = [];
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '{') {
+      let openBraces = 0;
+      let inString = false;
+      let escape = false;
+      let end = -1;
+
+      for (let j = i; j < str.length; j++) {
+        const char = str[j];
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        if (char === '\\') {
+          escape = true;
+          continue;
+        }
+        if (char === '"') {
+          inString = !inString;
+          continue;
+        }
+        if (!inString) {
+          if (char === '{') openBraces++;
+          else if (char === '}') {
+            openBraces--;
+            if (openBraces === 0) {
+              end = j + 1;
+              break;
+            }
+          }
+        }
+      }
+
+      if (end !== -1) {
+        const candidate = str.substring(i, end);
+        try {
+          results.push(JSON.parse(candidate));
+          i = end - 1;
+        } catch {}
+      }
+    }
+  }
+  return results;
+}
+
+export function parseProtobuf(buffer: Buffer): Record<number, any[]> {
   let pos = 0;
   const fields: Record<number, any[]> = {};
 
@@ -138,7 +190,7 @@ function parseProtobuf(buffer: Buffer): Record<number, any[]> {
     if (fieldNum === 0) break;
 
     let value: any;
-    if (wireType === 0) { // Varint
+    if (wireType === PROTO_WIRE_TYPE.VARINT) {
       let val = 0;
       let valShift = 0;
       while (pos < buffer.length) {
@@ -148,7 +200,7 @@ function parseProtobuf(buffer: Buffer): Record<number, any[]> {
         if ((b & 0x80) === 0) break;
       }
       value = val;
-    } else if (wireType === 2) { // Length-delimited
+    } else if (wireType === PROTO_WIRE_TYPE.LENGTH_DELIMITED) {
       let len = 0;
       let lenShift = 0;
       while (pos < buffer.length) {
@@ -169,9 +221,9 @@ function parseProtobuf(buffer: Buffer): Record<number, any[]> {
       const str = data.toString('utf8');
       const isClean = /^[\x20-\x7E\t\r\n]+$/.test(str) && str.length > 0;
       value = nested || (isClean ? str : data);
-    } else if (wireType === 1) {
+    } else if (wireType === PROTO_WIRE_TYPE.FIXED64) {
       pos += 8;
-    } else if (wireType === 5) {
+    } else if (wireType === PROTO_WIRE_TYPE.FIXED32) {
       pos += 4;
     } else {
       break;
@@ -183,16 +235,17 @@ function parseProtobuf(buffer: Buffer): Record<number, any[]> {
   return fields;
 }
 
-const TRAJECTORY_GLOB = '*.db';
-
-function getSessionFiles(dir: string, recursive = false): string[] {
-  if (!fs.existsSync(dir)) return [];
-  const pattern = recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB;
-  const files = fs.globSync(pattern, { cwd: dir });
-  return (files as string[]).filter(f => !f.endsWith('-shm') && !f.endsWith('-wal'));
+function getSessionFiles(dir: string): string[] {
+  try {
+    const files = fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
+    return (files as string[]).filter(f => !f.endsWith('-shm') && !f.endsWith('-wal'));
+  } catch (err) {
+    if (!isEnoent(err)) throw err;
+    return [];
+  }
 }
 
-function getProtoStrings(node: any, results: string[] = []): string[] {
+export function getProtoStrings(node: any, results: string[] = []): string[] {
   if (!node) return results;
   if (typeof node === 'string') {
     results.push(node);
@@ -210,6 +263,8 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   const toolsUsed: string[] = [];
+  const steps: StandardizedStep[] = [];
+  const seenJsonHashes = new Set<string>();
   let modelName = 'unknown';
   let totalTokens = 0;
   let totalCached = 0;
@@ -218,31 +273,119 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   const files = getSessionFiles(dirPath);
   for (const file of files) {
     const fullPath = path.join(dirPath, file);
+    let db: DatabaseSync | null = null;
     try {
-      const db = new DatabaseSync(fullPath, { readOnly: true });
-      const rows = db.prepare('SELECT step_type, metadata, step_payload FROM steps').all() as Array<{ step_type?: number; metadata?: Uint8Array; step_payload?: Uint8Array }>;
+      db = new DatabaseSync(fullPath, { readOnly: true });
+      const rows = db.prepare('SELECT * FROM steps ORDER BY idx').all() as Array<{
+        idx?: number;
+        step_type?: number;
+        status?: number;
+        timestamp?: number | string;
+        metadata?: Uint8Array;
+        step_payload?: Uint8Array;
+      }>;
+
       let fileInput = 0;
       let fileLastCached = 0;
       let fileOutput = 0;
       let fileHasTokens = false;
 
       for (const row of rows) {
-        // Decode Protobuf step_payload for tool executions
         if (row.step_payload) {
-          const proto = parseProtobuf(Buffer.from(row.step_payload));
+          const payloadBuffer = Buffer.isBuffer(row.step_payload) ? row.step_payload : Buffer.from(row.step_payload);
+          const payloadStr = payloadBuffer.toString('utf8');
+
+          const objs = findJsonObjectsInString(payloadStr);
+          const isErr = row.status !== undefined && JETSKI_ERROR_STATUS_CODES.has(row.status);
+          for (const obj of objs) {
+            if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
+            const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
+            if (seenJsonHashes.has(key)) continue;
+            seenJsonHashes.add(key);
+
+            const timestamp = extractTimestamp(obj) || (row.timestamp ? new Date(row.timestamp).toISOString() : undefined);
+            const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
+
+            if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
+              const targetFile = obj.TargetFile || 'target_file';
+              const toolName = obj.ReplacementChunks ? 'multi_replace_file_content' : (obj.CodeContent ? 'write_to_file' : 'replace_file_content');
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
+                action: {
+                  type: 'write_file',
+                  name: toolName,
+                  params: {
+                    targetFile,
+                    content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
+                  }
+                },
+                outcome: { status: isErr ? 'error' : 'success' }
+              });
+            } else if (obj.CommandLine || (obj.toolAction && obj.toolAction.includes('Running command'))) {
+              const actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
+              const actName = obj.CommandLine ? obj.CommandLine.split(' ')[0] : 'terminal_command';
+              const params: Record<string, any> = { command: obj.CommandLine || obj.toolAction };
+
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought: obj.toolSummary || obj.toolAction || 'Running terminal command',
+                action: {
+                  type: actType,
+                  name: actName,
+                  params
+                },
+                outcome: { status: isErr ? 'error' : 'success' }
+              });
+            } else if (obj.AbsolutePath || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading')))) {
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
+                action: {
+                  type: 'read_file',
+                  name: 'view_file',
+                  params: { path: obj.AbsolutePath || obj.toolSummary }
+                },
+                outcome: { status: isErr ? 'error' : 'success' }
+              });
+            } else if (obj.DirectoryPath || (obj.toolAction && obj.toolAction.includes('Listing'))) {
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
+                action: {
+                  type: 'read_file',
+                  name: 'list_dir',
+                  params: { path: obj.DirectoryPath }
+                },
+                outcome: { status: isErr ? 'error' : 'success' }
+              });
+            }
+          }
+
+          const proto = parseProtobuf(payloadBuffer);
           const strings = getProtoStrings(proto);
 
           for (const text of strings) {
             // Shell commands & guide retrieval
-            if (text.includes('retrieve')) {
+            if (text.includes('modern-web-guidance') && text.includes('retrieve')) {
               const match = text.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
               if (match && match[1]) {
-                const parts = match[1].split(',').map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, '')).filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
+                const parts = match[1]
+                  .split(',')
+                  .map(s => s.trim().replace(/^["'\\]+|["'\\]+$/g, ''))
+                  .filter(s => Boolean(s) && /^[a-zA-Z0-9_-]+$/.test(s) && s.toLowerCase() !== 'id');
                 retrievedGuides.push(...parts);
               }
             }
 
-            // File reads for guides and skills
             if (text.includes('/skills/') && text.endsWith('/guide.md')) {
               const match = text.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
               if (match) {
@@ -258,14 +401,14 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           }
         }
 
-        // Protobuf token extraction from metadata (field 9 stores Gemini UsageMetadata)
         if (row.metadata) {
-          const proto = parseProtobuf(Buffer.from(row.metadata));
-          const usageNode = proto[9]?.[0];
+          const metadataBuffer = Buffer.isBuffer(row.metadata) ? row.metadata : Buffer.from(row.metadata);
+          const proto = parseProtobuf(metadataBuffer);
+          const usageNode = proto[METADATA_TAG_USAGE]?.[0];
           if (usageNode && typeof usageNode === 'object') {
-            const input = (usageNode[2] && typeof usageNode[2][0] === 'number') ? usageNode[2][0] : 0;
-            const output = (usageNode[3] && typeof usageNode[3][0] === 'number') ? usageNode[3][0] : 0;
-            const cached = (usageNode[5] && typeof usageNode[5][0] === 'number') ? usageNode[5][0] : 0;
+            const input = (usageNode[USAGE_TAG_INPUT] && typeof usageNode[USAGE_TAG_INPUT][0] === 'number') ? usageNode[USAGE_TAG_INPUT][0] : 0;
+            const output = (usageNode[USAGE_TAG_OUTPUT] && typeof usageNode[USAGE_TAG_OUTPUT][0] === 'number') ? usageNode[USAGE_TAG_OUTPUT][0] : 0;
+            const cached = (usageNode[USAGE_TAG_CACHED] && typeof usageNode[USAGE_TAG_CACHED][0] === 'number') ? usageNode[USAGE_TAG_CACHED][0] : 0;
             if (input > 0 || output > 0 || cached > 0) {
               fileInput += input;
               fileLastCached = Math.max(fileLastCached, cached);
@@ -282,27 +425,30 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
         hasTokens = true;
       }
 
-      // Extract model name from gen_metadata by scanning string values
       try {
         const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
         for (const row of genRows) {
           if (!row.data) continue;
-          const proto = parseProtobuf(Buffer.from(row.data));
+          const genDataBuffer = Buffer.isBuffer(row.data) ? row.data : Buffer.from(row.data);
+          const proto = parseProtobuf(genDataBuffer);
           const strings = getProtoStrings(proto);
-          // Look for Gemini model name patterns across string fields in the Protobuf message
           const modelCandidate = strings.find(s => /^gemini/i.test(s));
           if (modelCandidate) {
-            modelName = modelCandidate;
+            modelName = modelCandidate.split('|')[0].trim();
             break;
           }
         }
       } catch {}
-
-      db.close();
-    } catch {}
+    } catch (err) {
+      console.warn(`Warning: Failed to parse Jetski CLI session from ${fullPath}:`, err);
+    } finally {
+      db?.close();
+    }
   }
 
   return {
+    agent: Agents.JETSKI_CLI,
+    steps,
     retrievedGuides: [...new Set(retrievedGuides)],
     fileReadGuides: [...new Set(fileReadGuides)],
     toolsUsed: [...new Set(toolsUsed)],
@@ -311,8 +457,17 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   };
 }
 
-export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuideUsage> {
-  const summary = readTrajectorySummary(dirPath);
+export async function parseJetskiTrajectory(dirPath: string): Promise<TrajectorySummary> {
+  const summary = parseJetskiCliSession(dirPath);
+  return finalizeTrajectorySummary(summary);
+}
+
+function getJetskiSummaryForDir(dir: string): TrajectorySummary {
+  return readTrajectorySummary(dir) || parseJetskiCliSession(dir);
+}
+
+export async function collectJetskiCliGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
+  const summary = getJetskiSummaryForDir(dirPath);
   return {
     retrievedGuides: summary?.retrievedGuides || [],
     fileReadGuides: summary?.fileReadGuides || []
@@ -320,31 +475,17 @@ export async function collectJetskiCliGuidesFromTrajectory(dirPath: string, _ser
 }
 
 export function extractJetskiCliModel(resultsDir: string): string {
-  const counts: Record<string, number> = {};
-
-  if (fs.existsSync(resultsDir)) {
-    const summaryFiles = fs.globSync(`**/${TRAJECTORY_SUMMARY_FILE}`, { cwd: resultsDir });
-    for (const file of summaryFiles) {
-      try {
-        const s: TrajectorySummary = JSON.parse(fs.readFileSync(path.join(resultsDir, file), 'utf8'));
-        if (s.model && s.model !== 'unknown') {
-          counts[s.model] = (counts[s.model] || 0) + 1;
-        }
-      } catch {}
-    }
-  }
-
-  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return topModel ? topModel[0] : 'unknown';
+  const summary = getJetskiSummaryForDir(resultsDir);
+  return summary?.model || 'unknown';
 }
 
 export function extractJetskiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  const summary = readTrajectorySummary(dir);
+  const summary = getJetskiSummaryForDir(dir);
   return summary?.tokenUsage;
 }
 
 export function collectJetskiCliToolsFromTrajectory(dir: string): string[] {
-  const summary = readTrajectorySummary(dir);
+  const summary = getJetskiSummaryForDir(dir);
   return summary?.toolsUsed || [];
 }
 
