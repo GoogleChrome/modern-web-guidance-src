@@ -2,21 +2,22 @@
 name: out-of-order-html-streaming
 description: Declaratively update a page with content streamed later into the same HTML document or via imperative JavaScript APIs.
 web-feature-ids:
-  - tmp-declarative-partial-updates
+  - template-for
+  - html-setters
+  - html-streaming-setters
+  
 ---
 
 # Out-of-Order (OOO) HTML Streaming
 
 Out-of-Order (OOO) HTML Streaming (also known as Declarative Partial Updates) is an alternative to the traditional "top-to-bottom" linear processing of HTML. It allows developers to define placeholders earlier in a document and "patch" them with content that arrives later in the same network stream, or via new imperative JavaScript streaming APIs.
 
-IMPORTANT: This feature is currently in Early Preview. It requires Chrome 148 or higher with the `#enable-experimental-web-platform-features` flag enabled.
-
 ## Quick Overview
 
 The feature consists of two primary mechanisms:
 
 1.  **Declarative Patching (HTML-based)**: Uses new processing instructions (`<?marker>`, `<?start>`, `<?end>`) and `<template for>` to swap content in the DOM as it streams in from the server.
-2.  **Imperative Streaming (JS-based)**: A suite of new methods (e.g., `streamHTML()`, `setHTMLUnsafe()`) that allow piping readable streams directly into DOM elements with native performance and optional script execution.
+2.  **Imperative setting and streaming (JS-based)**: A suite of new methods (e.g., `streamHTML()`, `setHTMLUnsafe()`) that allow setting of HTML or piping readable streams directly into DOM elements with native performance and optional script execution.
 
 ## Best Practices
 
@@ -100,14 +101,15 @@ await response.body
 
 ## Anti-Patterns & Warnings (DO NOT DO THIS)
 
-*   **Do not use OOO streaming for everything.** Over-fragmenting a page can increase the complexity of the stream and potentially delay the "First Meaningful Paint" if the browser spends too much time patching small nodes.
+*   **Do not use OOO streaming for everything.** Over-fragmenting a page can increase the complexity of the stream and potentially delay content if the browser spends too much time patching small nodes.
 *   **Do not ignore Trusted Types.** When using `*Unsafe` methods in environments with Trusted Types enforced, ensure you are passing a sanitized policy object if required.
 *   **Do not assume script execution order.** Scripts inside a `<template for>` will execute as soon as they are patched into the document. Do not rely on them executing in a specific sequence relative to other deferred templates.
-*   **Do not use without a polyfill strategy.** Ensure you have a fallback or use polyfills (`html-setters-polyfill` and `template-for-polyfill`) to support your required browsers. 
+*   **Do not use without a polyfill strategy.** Ensure you have a fallback or use polyfills (`html-setters-polyfill` and `template-for-polyfill`) to support your required browsers until this feature becomes Baseline.
 
-## Implementation Status
+## Fallback strategies
 
-*   **Current Status**: Experimental / Early Preview.
-*   **Required Version**: Chromium 148+.
-*   **Activation**: Requires enabling the `chrome://flags/#enable-experimental-web-platform-features` or `edge://flags/#enable-experimental-web-platform-features`.
-*   **Specification**: [Declarative Partial Updates (Explainer)](https://github.com/WICG/declarative-partial-updates).
+{{ BASELINE_STATUS("template-for") }}
+{{ BASELINE_STATUS("html-setters") }}
+{{ BASELINE_STATUS("html-streaming-setters") }}
+
+You can use polyfills like `template-for-polyfill` and `html-setters-polyfill` to emulate the API surface for non-supporting browsers
