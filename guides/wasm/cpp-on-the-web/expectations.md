@@ -1,0 +1,6 @@
+- The application loads the WebAssembly module as an ES6 module.
+- The WebAssembly module is built with optimaztions enabled and debug info stripped.
+- The C++ image filter function is exposed and callable via Embind.
+- Applying the filter modifies the image or canvas pixels in the DOM.
+- The WebAssembly memory buffer used for pixel data is freed after processing.
+- The browser console contains no unhandled errors or exceptions during module initialization and filter execution.
