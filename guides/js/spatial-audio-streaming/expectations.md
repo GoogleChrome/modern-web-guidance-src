@@ -1,0 +1,5 @@
+- The application verifies codec support using `MediaSource.isTypeSupported('audio/mp4; codecs="iamf"')` prior to initializing the IAMF spatial audio stream.
+- A `MediaSource` instance is created and assigned to the `<audio>` element using `URL.createObjectURL()`.
+- The `SourceBuffer` is created with the IAMF MIME type inside a `sourceopen` event listener on the `MediaSource`.
+- Media segments are appended using `sourceBuffer.appendBuffer()`, respecting the `updating` state and waiting for `updateend` events.
+- When IAMF support is unavailable, the application provides a fallback audio profile (e.g., standard stereo/AAC) through progressive enhancement.
