@@ -112,4 +112,4 @@ await response.body
 {{ BASELINE_STATUS("html-setters") }}
 {{ BASELINE_STATUS("html-streaming-setters") }}
 
-You can use polyfills like `template-for-polyfill` and `html-setters-polyfill` to emulate the API surface for non-supporting browsers
+You can use polyfills like `template-for-polyfill` and `html-setters-polyfill` to emulate the API surface for non-supporting browsers.
