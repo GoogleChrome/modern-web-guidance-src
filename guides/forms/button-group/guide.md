@@ -3,6 +3,10 @@ name: button-group
 description: "Build a button group: a set of options (mutually exclusive or not) laid out horizontally and presented as visually connected buttons."
 web-feature-ids:
   - customizable-select
+draft: blocked
+# The modern implementation is blocked by uncertainty about whether the listbox role supports these patterns.
+# The fallback implementation is additionally blocked by either needing a full separate template, or using writing-mode to create a horizontal layout for the listbox.
+# See https://github.com/GoogleChrome/modern-web-guidance-src/pull/1275.
 ---
 
 # Button group
