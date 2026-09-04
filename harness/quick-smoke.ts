@@ -93,8 +93,8 @@ export async function runSmokeTest(options: SmokeTestOptions = {}): Promise<void
 
     // Verify trajectory parsing and metric extraction
     const { extractModelFromResults, extractTokenUsageFromResults } = await import('./lib/collection.ts');
-    const model = extractModelFromResults(tempProjectDir, agentConfig.agent);
-    const tokenUsage = extractTokenUsageFromResults(tempProjectDir, agentConfig.agent);
+    const model = extractModelFromResults(tempProjectDir);
+    const tokenUsage = extractTokenUsageFromResults(tempProjectDir);
     
     console.log(`📊 Trajectory summary from smoke test: Model=${model}, Tokens=${JSON.stringify(tokenUsage)}`);
 
