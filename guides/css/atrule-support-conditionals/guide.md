@@ -5,7 +5,9 @@ web-feature-ids:
   - supports-at-rule
 ---
 
-Use  `@supports at-rule(<at-rule name>) {…}` to conditionally apply certain CSS rules or declarations only if a certain at-rule is supported by the browser.
+# Conditionally Apply CSS Based on At-Rule Support
+
+Use `@supports at-rule(@<at-rule name>) {…}` to conditionally apply certain CSS rules or declarations only if a certain at-rule is supported by the browser.
 This can contain entire rules, or be used in conjunction with CSS nesting to conditionally apply certain declarations.
 
 ```css
