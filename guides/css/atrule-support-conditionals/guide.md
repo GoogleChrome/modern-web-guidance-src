@@ -34,9 +34,9 @@ I.e. don't do this:
 Regular CSS graceful parsing will already ignore rules the browser doesn't understand, so this is unnecessary.
 
 
-## Detecting support for at-rules when `at-rule()` is not an option.
+## Detecting support for at-rules without `@supports at-rule()` { #detecting-at-rules-without-supports-at-rule }
 
-To conditionally apply CSS based on support for at-rules when `at-rule()` is not an option, you can use the guidance below.
+When `at-rule()` is not an option, either due to browser support or because deeper detection is needed, you can use the guidance below.
 
 ### Try properties, values, or selectors first
 
@@ -116,8 +116,9 @@ body {
 }
 ```
 
-Note that both of these only work if whitespace is an acceptable alternative.
-For other cases, you will need to use JS as described below.
+Notes:
+- Both of these only work if whitespace is an acceptable alternative. For other cases, you will need to use JS as described below.
+- The general-purpose solution depends on non-inheritance, so it will not work for declarations on the root element.
 
 ### Using JavaScript as a last resort
 
@@ -138,14 +139,17 @@ sheet.replaceSync(`
 const SUPPORTS_PAGE_MARGINS = Boolean(sheet.cssRules[0]?.cssRules[0]);
 ```
 
-In both cases, prefer to add a class to the root element and branch off that instead of applying the styles from JavaScript directly.
+IMPORTANT:
+- When using JS to detect support for CSS features, apply a class to the root element and branch off that instead of applying the styles from JavaScript directly.
+- Do note that container queries are parsed even if the prelude is not recognized, and there is no way to detect support for certain types of container queries from the CSSOM structure.
+- Do NOT use `CSS.registerProperty` to detect support for `@property` as its support is slightly broader.
 
 ## Fallback strategies
 
 {{ BASELINE_STATUS("supports-at-rule") }}
 
-Unless this is within your support target, **ONLY** use `@supports (at-rule(@property))` to detect at-rules for which support is narrower than the `@supports (at-rule())` feature itself.
+Unless this is within your support target, **ONLY** use `@supports (at-rule())` to detect at-rules for which support is narrower than the `@supports (at-rule())` feature itself.
 
-To conditionally apply CSS based on support for at-rules that shipped before this feature, use the guidance in the section above.
+To conditionally apply CSS based on support for at-rules that shipped before this feature, use [the guidance in the section above](#detecting-at-rules-without-supports-at-rule).
 
 To detect support for the `@supports at-rule()` feature _itself_, you can use an at-rule that is guaranteed to exist in all browsers that support `@supports at-rule()`, such as `@supports at-rule(@media) { ... }`.
