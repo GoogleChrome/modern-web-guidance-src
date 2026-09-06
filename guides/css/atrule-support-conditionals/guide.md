@@ -47,7 +47,7 @@ For example, instead of `@supports at-rule(@function)` to detect supports for cu
 
 In other cases there may be pseudo-classes or pseudo-elements that are only available when a certain at-rule is supported, which can be used to detect support.
 
-### Detecting container query types
+### Detecting container query types { #supports-container-types }
 
 `at-rule()` ONLY allows detection of at-rules by **name**.
 It does NOT allow detection of other syntax or descriptors.
@@ -75,13 +75,70 @@ Instead, you can try a style query that is always true:
 
 This will match in any browser that supports style queries, regardless of what property name or value you use, provided they are the same across both.
 
-### Registered custom properties (`@property`)
+### Registered custom properties (`@property`) { #supports-atproperty }
 
-TBD
+In some cases, if the conditional CSS to apply can be reduced to a single property, you can use a dedicated custom property registered for this purpose:
+
+```css
+/* Use a custom property to conditionally include the dash animation */
+@property --progress-dash-animation {
+  syntax: "*";
+  inherits: false;
+  initial-value: , progress-dash 3s ease-in-out infinite;
+}
+
+.spinner {
+  /* The dash animation is only included if @property is supported */
+  animation:
+    progress-spin var(--_used-spinner-duration) linear infinite
+    var(--progress-dash-animation, );
+}
+```
+
+
+For a more general-purpose solution, you can register a non-inheriting property and set it to ` ` (a space) on the root element:
+
+<!-- Testcase: https://codepen.io/leaverou/pen/KwWzpVr -->
+
+```css
+@property --supports-atproperty {
+	syntax: "*";
+	inherits: false;
+}
+
+:root {
+	--supports-atproperty: ;
+}
+
+body {
+  /* The background is only applied if @property is supported */
+	background: var(--supports-atproperty, green);
+}
+```
+
+Note that both of these only work if whitespace is an acceptable alternative.
+For other cases, you will need to use JS as described below.
 
 ### Using JavaScript as a last resort
 
-TBD
+For entire at-rules, check for the presence of certain interfaces in JavaScript.
+For example, if `globalThis.CSSFunctionRule` is defined, then `@function` is supported.
+
+If you don’t know the interface name, or you need to test more deeply (e.g. for certain preludes, nested rules, descriptors), you can set up a test and check how it was parsed:
+
+```js
+const sheet = new CSSStyleSheet();
+sheet.replaceSync(`
+  @page {
+    @top-left {
+      content: "test";
+    }
+  }
+`);
+const SUPPORTS_PAGE_MARGINS = Boolean(sheet.cssRules[0]?.cssRules[0]);
+```
+
+In both cases, prefer to add a class to the root element and branch off that instead of applying the styles from JavaScript directly.
 
 ## Fallback strategies
 
@@ -91,11 +148,4 @@ Unless this is within your support target, **ONLY** use `@supports (at-rule(@pro
 
 To conditionally apply CSS based on support for at-rules that shipped before this feature, use the guidance in the section above.
 
-To detect support for the `@supports at-rule()` feature itself, you can use an at-rule that is guaranteed to exist in all browsers that support `@supports at-rule()`, such as `@supports at-rule(@media) { ... }`.
-
-
-### `@property` { #supports-atproperty }
-
-TBD
-
-### Style queries
+To detect support for the `@supports at-rule()` feature _itself_, you can use an at-rule that is guaranteed to exist in all browsers that support `@supports at-rule()`, such as `@supports at-rule(@media) { ... }`.
