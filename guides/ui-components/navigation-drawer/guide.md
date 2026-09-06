@@ -260,7 +260,14 @@ function onDrawerClosed() {
 // Treat "any pixel of the sheet visible inside the popover root" as
 // "open enough to count as not closed". This threshold is intentionally
 // tiny so the closed callback only fires once the sheet is truly gone.
-const visibleThreshold = 1 / window.innerWidth;
+//
+// Guard the width: `window.innerWidth` is 0 in a page that has not been
+// laid out yet, and `1 / 0` is Infinity, which makes the
+// IntersectionObserver constructor throw. That would take the rest of
+// this script with it, leaving a drawer that opens and can never close.
+const viewportWidth =
+  window.innerWidth || document.documentElement.clientWidth || 360;
+const visibleThreshold = 1 / viewportWidth;
 
 const observer = new IntersectionObserver(
   (entries) => {
