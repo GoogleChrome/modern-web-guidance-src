@@ -3,7 +3,6 @@ name: atrule-support-conditionals
 description: Conditionally apply certain CSS rules or declarations only if a certain at-rule is supported by the browser.
 web-feature-ids:
   - supports-at-rule
-draft: true
 ---
 
 Use  `@supports at-rule(<at-rule name>) {…}` to conditionally apply certain CSS rules or declarations only if a certain at-rule is supported by the browser.
