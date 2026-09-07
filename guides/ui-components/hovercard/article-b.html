@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>10 reasons corvids rock</title>
+   <style>
+      :root {
+        font-family: system-ui, -apple-system, sans-serif;
+        line-height: 1.5;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #f8f9fa;
+      }
+
+      .wrapper {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+
+      .flow > * + * {
+        margin-top: 1.5rem;
+      }
+
+      img {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        object-position: top;
+        border-radius: 8px;
+      }
+
+      h1 {
+        text-box: cap alphabetic;
+      }
+
+      @view-transition {
+          navigation: auto;
+      }
+      main {
+        view-transition-name: --box;
+      }
+      h1{
+        view-transition-name: --title;
+        width: fit-content;
+      }
+      img{
+        view-transition-name: --image;
+      }
+      .byline{
+        view-transition-name: --byline;
+         width: fit-content;
+      } 
+      p {
+        view-transition-name: --p;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrapper">
+   	 <article class="flow">
+   		 <h1>10 reasons corvids rock</h1>
+       <p class="byline">By Corby Bertram</p>
+       <img src="https://images.unsplash.com/photo-1682467612877-f9b5e55ff2af?q=80&w=400&auto=format&fit=crop" alt="A large black bird with a thick beak sitting on a limb." >
+   		 <p>Heron egret pelican cormorant swan goose duck mallard teal kingfisher. Heron egret pelican cormorant swan goose duck
+  mallard teal kingfisher heron egret pelican cormorant swan goose duck mallard teal kingfisher. Heron egret pelican
+  cormorant swan goose duck mallard teal kingfisher heron egret pelican cormorant swan goose duck mallard teal kingfisher.</p>
+       Photo by <a href="https://unsplash.com/@dshap?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Daniel Shapiro</a> on <a href="https://unsplash.com/photos/a-black-bird-sitting-on-top-of-a-roof-d-vBDK5rqR0?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a>
+   	 </article>
+    </main>
+    <a href="#"></a>
+    <script src="./script.js"></script>
+  </body>
+</html>

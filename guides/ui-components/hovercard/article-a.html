@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>The buzz on hummingbirds</title>
+    <style>
+      :root {
+        font-family: system-ui, -apple-system, sans-serif;
+        line-height: 1.5;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #f8f9fa;
+      }
+
+      .wrapper {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+
+      .flow > * + * {
+        margin-top: 1.5rem;
+      }
+
+      img {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        object-position: top;
+        border-radius: 8px;
+      }
+
+      h1 {
+        text-box: cap alphabetic;
+      }
+
+      @view-transition {
+          navigation: auto;
+      }
+      main {
+        view-transition-name: --box;
+      }
+      h1{
+        view-transition-name: --title;
+        width: fit-content;
+      }
+      img{
+        view-transition-name: --image;
+      }
+      .byline{
+        view-transition-name: --byline;
+         width: fit-content;
+      } 
+      p {
+        view-transition-name: --p;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrapper">
+   	 <article class="flow">
+   		 <h1>The buzz on hummingbirds</h1>
+        <p class="byline">By Delphi Aguilar</p>
+       <img src="https://images.unsplash.com/photo-1520552159191-e28a1d9f0d7e?q=80&w=400&auto=format&fit=crop" alt="A green hummingbird with a vibrant blue throat and a curved bill seated on a branch.">
+   		 <p>Heron egret pelican cormorant swan goose duck mallard teal kingfisher. Heron egret pelican cormorant swan goose duck
+  mallard teal kingfisher heron egret pelican cormorant swan goose duck mallard teal kingfisher. Heron egret pelican
+  cormorant swan goose duck mallard teal kingfisher heron egret pelican cormorant swan goose duck mallard teal kingfisher.</p>
+       Photo by <a href="https://unsplash.com/@licole?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Chris Charles</a> on <a href="https://unsplash.com/photos/blue-and-green-bird-on-top-of-brown-branch-during-daytime-9APFPoNb9iw?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a>
+   	 </article>
+    </main>
+    <a href="#"></a>
+    <script src="./script.js"></script>
+  </body>
+</html>
