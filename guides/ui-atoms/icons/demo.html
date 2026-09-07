@@ -11,6 +11,7 @@
       --icon-color-danger: #b00020;
       --icon-color-success: #1a7f37;
 
+      --icon-size: 1.25em; /* Easily configurable relative unit icon sizing */
       --icon-transition-duration: 0.2s;
       --icon-transition-easing: ease;
 
@@ -63,8 +64,8 @@
     /* Standalone empty icon element */
     .icon {
       display: inline-block;
-      width: 1.25em;
-      height: 1.25em;
+      width: var(--icon-size);
+      height: var(--icon-size);
       vertical-align: middle;
       flex-shrink: 0;
       color: inherit;
@@ -85,8 +86,8 @@
         --icon-start: inherit;
         content: "";
         display: inline-block;
-        width: 1.25em;
-        height: 1.25em;
+        width: var(--icon-size);
+        height: var(--icon-size);
         background-color: currentColor;
         mask: var(--icon-start) no-repeat center / contain;
         -webkit-mask: var(--icon-start) no-repeat center / contain;
@@ -108,8 +109,8 @@
         --icon-end: inherit;
         content: "";
         display: inline-block;
-        width: 1.25em;
-        height: 1.25em;
+        width: var(--icon-size);
+        height: var(--icon-size);
         background-color: currentColor;
         mask: var(--icon-end) no-repeat center / contain;
         -webkit-mask: var(--icon-end) no-repeat center / contain;
@@ -121,6 +122,64 @@
 
       :not(.icon, :empty)::after {
         margin-inline-start: 0.4em;
+      }
+    }
+
+    /* --------------------------------------------------
+     ROBUST SAFARI / WEBKIT FALLBACK (Style Queries Lack of Support)
+     -------------------------------------------------- */
+    @supports not (container-name: style(any)) {
+      /* Injection fallback for start icons using inline style attribute matching */
+      [style*="--icon-start"]::before {
+        content: "";
+        display: inline-block;
+        width: var(--icon-size);
+        height: var(--icon-size);
+        background-color: currentColor;
+        mask: var(--icon-start) no-repeat center / contain;
+        -webkit-mask: var(--icon-start) no-repeat center / contain;
+        opacity: 0.85;
+        pointer-events: none;
+        vertical-align: middle;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+
+      [style*="--icon-start"]:not(.icon, :empty)::before {
+        margin-inline-end: 0.4em;
+      }
+
+      /* Injection fallback for end icons */
+      [style*="--icon-end"]::after {
+        content: "";
+        display: inline-block;
+        width: var(--icon-size);
+        height: var(--icon-size);
+        background-color: currentColor;
+        mask: var(--icon-end) no-repeat center / contain;
+        -webkit-mask: var(--icon-end) no-repeat center / contain;
+        opacity: 0.85;
+        pointer-events: none;
+        vertical-align: middle;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+
+      [style*="--icon-end"]:not(.icon, :empty)::after {
+        margin-inline-start: 0.4em;
+      }
+
+      /* Standalone empty icon forwarding logic fallback */
+      .icon:empty[style*="--icon"]::before {
+        content: "";
+        display: inline-block;
+        width: var(--icon-size);
+        height: var(--icon-size);
+        background-color: currentColor;
+        mask: var(--icon) no-repeat center / contain;
+        -webkit-mask: var(--icon) no-repeat center / contain;
+        opacity: 0.85;
+        pointer-events: none;
+        vertical-align: middle;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
       }
     }
   </style>

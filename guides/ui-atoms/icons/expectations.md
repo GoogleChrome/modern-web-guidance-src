@@ -1,5 +1,6 @@
 - **MANDATORY**: Custom properties `--icon-start` and `--icon-end` are registered using `@property` with a `<image>` syntax and `inherits: false`.
 - **MANDATORY**: CSS Container Style Queries (`@container style(...)`) are used to dynamically detect and render `--icon-start` and `--icon-end` custom properties.
+- **MANDATORY**: A robust Safari/WebKit fallback (such as via `@supports not (container-name: style(any))` combined with inline style attribute substring matching) is provided to ensure icons render correctly in environments lacking CSS Container Style Queries support.
 - **MANDATORY**: Icons are rendered using CSS masks (`mask` or `-webkit-mask`) inside the container style query blocks on pseudo-elements (`::before` and `::after`).
 - **MANDATORY**: Icons are colored using `currentColor` (via `background-color: currentColor` on the pseudo-element) to ensure they automatically inherit and transition with the parent element's text color.
 - **MANDATORY**: Standalone or empty `.icon` elements forward a generic `--icon` property to `--icon-start` when they are empty (`.icon:empty`).
