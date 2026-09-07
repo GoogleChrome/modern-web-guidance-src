@@ -143,7 +143,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 </details>
 
 <details>
-<summary><strong>134 real-world developer use cases</strong></summary>
+<summary><strong>133 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
@@ -182,6 +182,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[autofill-sign-up-form](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/autofill-sign-up-form.md)**: Build a sign-up form with correct autocomplete values and autofill support.
 - **[brand-consistent-forms](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/brand-consistent-forms.md)**: Match checkboxes, radio buttons, range sliders, and progress bars to your site's color palette without replacing them with custom components.
 - **[branded-select-styling](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/branded-select-styling.md)**: Create custom select elements whose button, picker, arrow icon, and checkmark all seamlessly match your brand or design system's typography, colors, spacing, and border treatments.
+- **[button-group](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/button-group.md)**: Build a button group: a set of options (mutually exclusive or not) laid out horizontally and presented as visually connected buttons.
 - **[custom-select-picker-layouts](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/custom-select-picker-layouts.md)**: Create custom select pickers whose options are positioned in unique or interesting ways, rather than the traditional stacked list of options.
 - **[form-fields-automatically-fit-contents](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/form-fields-automatically-fit-contents.md)**: Allow form fields to grow and shrink to fit the user input, e.g. as the user types or selects a different option. Apply maximum and minimum size limits to create dynamic and responsive form fields that conform with the page design.
 - **[ime-safe-enter-submit](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/ime-safe-enter-submit.md)**: Implement keyboard text submission (like enter-to-submit in chat/textareas) safely for IME (Input Method Editor) users to prevent premature submission of incomplete text.
