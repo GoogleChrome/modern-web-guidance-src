@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import matter from 'gray-matter';
+import { inventoryGuide } from '../../lib/guide-validation.ts';
 
 function toTitleCase(kebabString: string): string {
   return kebabString
@@ -46,15 +46,13 @@ function buildTaxonomyMarkdown(guidesDir: string, distRefsDir: string): string {
     fs.mkdirSync(distCategoryDir, {recursive: true});
 
     for (const usecase of usecases) {
-      const guidePath = path.join(categoryPath, usecase, 'guide.md');
+      const dir = path.join(categoryPath, usecase);
+      const guidePath = path.join(dir, 'guide.md');
       if (!fs.existsSync(guidePath)) continue;
 
-      const guideContent = fs.readFileSync(guidePath, 'utf-8');
-      const { content: parsedContent } = matter(guideContent);
+      if (!inventoryGuide(dir).isPublished) continue;
 
-      // Skip if there's no content beyond frontmatter
-      const contentWithoutFrontmatter = parsedContent.trim();
-      if (contentWithoutFrontmatter.length === 0) continue;
+      const guideContent = fs.readFileSync(guidePath, 'utf-8');
 
       // Extract title from first H1 or fall back
       let title: string;

@@ -12,6 +12,14 @@ import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agen
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
 import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
 
+export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+export function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}
+
 export function setupAgentCredentials(agent: Agents, tempHome: string): void {
   if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     setupJetskiCliCredentials(tempHome);

@@ -87,13 +87,11 @@ const MIME_TYPES = {
 };
 
 /**
- * @typedef {Object} SuiteInfo
- * @property {string} id
- * @property {string} source
- * @property {string} [timestamp]
- * @property {string} [testId]
- * @property {Record<string, any>} [guidedStats]
- * @property {Record<string, any>} [unguidedStats]
+ * @typedef {Partial<import('./summary-extractor.js').SuiteSummary> & {
+ *   id: string;
+ *   source: import('./api.js').DataSource;
+ *   timestamp?: string;
+ * }} SuiteInfo
  */
 
 /** @type {string | null} */
