@@ -61,7 +61,6 @@
         .advanced-progress {
             appearance: none;
             block-size: 0.5lh;
-            border: unset;
             inline-size: 100%;
             max-inline-size: 400px;
             margin-block: 0.5rem;
@@ -143,9 +142,7 @@
     <section>
         <h2>Determinate State</h2>
         <label for="det-progress">File progress:</label>
-        <progress id="det-progress" class="basic-progress" value="20" max="100">
-            20%
-        </progress>
+        <progress id="det-progress" class="basic-progress" value="20" max="100"></progress>
         
         <div class="controls">
             <button id="update-btn">Add 10%</button>
@@ -156,19 +153,15 @@
         <h2>Indeterminate State</h2>
         <label for="indet-progress">Downloading...</label>
         <!-- Omit value attribute for indeterminate state -->
-        <progress id="indet-progress" class="basic-progress" max="100">
-            Loading...
-        </progress>
+        <progress id="indet-progress" class="basic-progress" max="100"></progress>
     </section>
 
     <section id="upload-container" aria-live="polite" aria-describedby="upload-progress">
         <h2>Advanced Styling & Accessibility</h2>
         <label for="upload-progress">
             <span class="sr-only">File Upload Status:</span>
-            <progress id="upload-progress" class="advanced-progress" tabindex="-1">
-                Preparing...
-            </progress>
         </label>
+        <progress id="upload-progress" class="advanced-progress" tabindex="-1"></progress>
         <p id="status-text">Preparing...</p>
         <div class="controls">
             <button id="start-btn">Simulate Upload</button>
@@ -186,8 +179,6 @@
             } else {
                 detBar.value = 0;
             }
-            // Sync fallback text
-            detBar.textContent = `${detBar.value}%`;
         });
 
         // Advanced example logic
@@ -205,22 +196,18 @@
             container.setAttribute('aria-busy', 'true');
             status.textContent = "Uploading...";
             advBar.removeAttribute('value'); // Set to indeterminate
-            advBar.textContent = "Uploading...";
 
             setTimeout(() => {
                 advBar.max = 100;
                 advBar.value = 0;
-                advBar.textContent = "0%";
                 advBar.focus(); // Force screen reader announcement
 
                 const interval = setInterval(() => {
                     advBar.value += 10;
-                    advBar.textContent = `${advBar.value}%`;
 
                     if (advBar.value >= 100) {
                         clearInterval(interval);
                         status.textContent = "Task Complete!";
-                        advBar.textContent = "Task Complete!";
                         container.setAttribute('aria-busy', 'false');
                         advBar.focus();
                         startBtn.disabled = false;

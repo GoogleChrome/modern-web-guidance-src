@@ -17,7 +17,7 @@ This guide implements a horizontal progress bar with style customizations beyond
 
 1.  **Use the native `<progress>` element**: It provides built-in accessibility and platform-consistent behavior.
 2.  **Define the state**:
-    *   **Determinate**: Set the `value` attribute.
+    *   **Determinate**: Set the `value` attribute. Setting the `max` value is optional unless a scale different from the default 0-1 scale is needed. 
     *   **Indeterminate**: Omit the `value` attribute for tasks of unknown duration to set the progress bar into an indeterminate state. 
 3. **Tint the progress bar**: Use `accent-color` for simply changing the color of the progress bar. More extensive cross-browser customizations require resetting default browser styles with `appearance: none` and the use of targeted pseudo selectors.
 4.  **Standardize Styles**: Use `appearance: none` to normalize the progress bar across different browsers before applying more customized styles.
@@ -130,7 +130,7 @@ progress:not([value])::-moz-progress-bar {
 ### 3. Accessibility Considerations
 * **Mandatory:** Use `<label for="...">`, `aria-labelledby`, or `aria-label` to associate the progress element with a label. 
 * **Contextual state**: Use `aria-describedby` to reference the loading progress of a section of a page. Use `aria-busy="true"` on the container being updated. Set `aria-busy` to `"false"` when the task is complete. 
-* **Forced Announcements**: Set `tabindex="-1"` and call `.focus()` on the `progress` element in JavaScript when significant updates occur to force screen readers to announce the new progress.
+* **Optional:** Set `tabindex="-1"` and call `.focus()` on the `progress` element in JavaScript when significant updates occur to force screen readers to announce the new progress.
 * **DO** respect `prefers-reduced-motion` if you apply custom animations.
 * **DO** ensure proper contrast between the progress bar and track when adding custom styles.
 * **Programmatic focus**: Use `:focus-visible` to indicate when a progress element has been programmatically focused. 
@@ -140,9 +140,7 @@ progress:not([value])::-moz-progress-bar {
   <label for="upload-progress">
     <span class="sr-only">File Upload Status:</span>
   </label>
-  <progress id="upload-progress" tabindex="-1">
-    Preparing...
-  </progress>
+  <progress id="upload-progress" tabindex="-1"></progress>
   <p id="status-text">Preparing...</p>
 </section>
 ```
@@ -150,8 +148,7 @@ progress:not([value])::-moz-progress-bar {
 ## Best Practices
 
 *   **DO** use `<progress>` for task completion. Use the `<meter>` element for scalar measurements.
-*   **DO** normalize with `appearance: none` and `border: unset` if you need a specific custom look.
-*   **DO** manage accessibility by ensuring labels are present and using `tabindex="-1"` + `.focus()` for dynamic updates.
+*   **DO** normalize with `appearance: none` if you need a specific custom look.
 *   **Mandatory:** **DO NOT** add a fallback value inside the `<progress>` element. It is not used by assistive technology and ignored by all modern browsers. 
 *   **DO NOT** use `<progress>` for scroll position indicators; use scroll-driven animations instead.
 
