@@ -90,6 +90,7 @@ export interface RunContext {
   score: number;
   resultsJson: PlaywrightAssertion[];
   codeOutput: string;
+  patchContent?: string;
   preprocessed: PreprocessedTrajectory;
   initialPrompt: string;
 }
@@ -397,6 +398,7 @@ function loadRunContext(runDir: string): RunContext {
   const trajectorySummary = tryReadJson<TrajectorySummary>(path.join(absoluteDir, 'trajectory_summary.json'));
   const targetFileFromEvals = extractTargetFileFromEvalsJson(absoluteDir);
   const code = findCodeOutput(absoluteDir, targetFileFromEvals);
+  const patchContent = tryReadFile(path.join(absoluteDir, 'agent.patch')) || undefined;
   const preprocessed = preprocessTrajectory(trajectorySummary);
   const initialPrompt = trajectorySummary?.initialPrompt || 'Initial prompt not found in trajectory summary.';
 
@@ -405,6 +407,7 @@ function loadRunContext(runDir: string): RunContext {
     score,
     resultsJson,
     codeOutput: code.content,
+    patchContent,
     preprocessed,
     initialPrompt
   };
@@ -508,9 +511,15 @@ export async function runComparison(
   const runType = parsedPath?.runType || 'guided';
 
   const guideCtx = findGuideContext(guideName, taskName);
-  const diffBaseVsA = generateUnifiedDiff(guideCtx.baseAppContent || '', ctxA.codeOutput || '', 'Base App', 'Run A Output');
-  const diffBaseVsB = generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Run B Output');
-  const diffAvsB = generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
+  const diffBaseVsA = ctxA.patchContent
+    ? ctxA.patchContent.trim()
+    : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxA.codeOutput || '', 'Base App', 'Run A Output');
+  const diffBaseVsB = ctxB.patchContent
+    ? ctxB.patchContent.trim()
+    : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Run B Output');
+  const diffAvsB = (ctxA.codeOutput && ctxB.codeOutput)
+    ? generateUnifiedDiff(ctxA.codeOutput, ctxB.codeOutput, 'Run A Output', 'Run B Output')
+    : generateUnifiedDiff(ctxA.patchContent || '', ctxB.patchContent || '', 'Run A Patch', 'Run B Patch');
 
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
