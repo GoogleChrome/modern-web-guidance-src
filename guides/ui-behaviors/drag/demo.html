@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Draggable Overlay Dialog (user-select: none)</title>
+  <style>
+    /* --------------------------------------------------
+     1. DESIGN SYSTEM VARIABLES & RESETS
+     -------------------------------------------------- */
+    :root {
+      color-scheme: light dark;
+      --bg-page-light: #f8fafc;
+      --bg-page-dark: #0f172a;
+      
+      --bg-sandbox-light: #ffffff;
+      --bg-sandbox-dark: #1e293b;
+      
+      --text-main-light: #1e293b;
+      --text-main-dark: #f1f5f9;
+      
+      --text-muted-light: #64748b;
+      --text-muted-dark: #94a3b8;
+      
+      --border-color-light: #cbd5e1;
+      --border-color-dark: #334155;
+      
+      --focus-ring-color: #2563eb;
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 3rem 2rem;
+      background: var(--bg-page-light);
+      color: var(--text-main-light);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: var(--bg-page-dark);
+        color: var(--text-main-dark);
+      }
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+      text-align: center;
+    }
+
+    .intro {
+      font-size: 1rem;
+      color: var(--text-muted-light);
+      max-width: 80ch;
+      margin-bottom: 3rem;
+      text-align: center;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .intro {
+        color: var(--text-muted-dark);
+      }
+    }
+
+    section {
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 3.5rem;
+    }
+
+    section h2 {
+      font-size: 1.25rem;
+      border-bottom: 2px solid var(--border-color-light);
+      padding-bottom: 0.5rem;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      letter-spacing: -0.015em;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      section h2 {
+        border-color: var(--border-color-dark);
+      }
+    }
+
+    /* --------------------------------------------------
+     2. PRESENTATION LAYOUT WRAPPERS (Scaffolding)
+     -------------------------------------------------- */
+    .demo-sandbox {
+      border: 2px dashed var(--border-color-light);
+      padding: 3rem 2rem;
+      background: var(--bg-sandbox-light);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 400px;
+      position: relative;
+      overflow: hidden; /* Constrain absolute positioning of dialog inside */
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .demo-sandbox {
+        background: var(--bg-sandbox-dark);
+        border-color: var(--border-color-dark);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+      }
+    }
+
+    /* Standard Interactive Button */
+    .btn-trigger {
+      all: unset;
+      appearance: none;
+      background-color: var(--primary-color);
+      color: #ffffff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease, transform 0.1s ease;
+      box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+    }
+
+    .btn-trigger:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-trigger:active {
+      transform: scale(0.98);
+    }
+
+    /* Keyboard focus indicator */
+    *:focus-visible {
+      outline: 2px solid var(--focus-ring-color);
+      outline-offset: 4px;
+    }
+
+    /* --------------------------------------------------
+     3. DRAGGABLE DIALOG COMPONENT CSS
+     -------------------------------------------------- */
+    .dialog {
+      position: absolute; /* Positioned relative to the sandbox */
+      display: none;      /* Toggled with .open class */
+      flex-direction: column;
+      width: min(360px, 90%);
+      background-color: var(--bg-sandbox-light);
+      border: 1px solid var(--border-color-light);
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      touch-action: none; /* REQUIRED: prevents scroll/swipe interference on touch devices */
+      z-index: 10;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .dialog {
+        background-color: var(--bg-sandbox-dark);
+        border-color: var(--border-color-dark);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    .dialog.open {
+      display: flex;
+    }
+
+    /* Drag Handle Header */
+    .dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background-color: var(--bg-page-light);
+      border-bottom: 1px solid var(--border-color-light);
+      border-top-left-radius: 11px;
+      border-top-right-radius: 11px;
+      
+      /* Visual grab indicators */
+      cursor: grab;
+      
+      /* REQUIRED: Prevents text selection/highlighting artifacts during the drag gesture */
+      user-select: none;
+      -webkit-user-select: none; /* iOS Safari */
+      -ms-user-select: none;     /* IE/Edge */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .dialog-header {
+        background-color: var(--bg-page-dark);
+        border-color: var(--border-color-dark);
+      }
+    }
+
+    /* Drag active state style */
+    .dialog-header.dragging {
+      cursor: grabbing;
+    }
+
+    .dialog-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 750;
+      letter-spacing: -0.015em;
+    }
+
+    /* Dismiss Control button */
+    .btn-close {
+      all: unset;
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: var(--text-muted-light);
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: background-color 0.15s, color 0.15s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .btn-close {
+        color: var(--text-muted-dark);
+      }
+    }
+
+    .btn-close:hover {
+      background-color: var(--border-color-light);
+      color: var(--text-main-light);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .btn-close:hover {
+        background-color: var(--border-color-dark);
+        color: var(--text-main-dark);
+      }
+    }
+
+    /* Dialog Content Block */
+    .dialog-body {
+      padding: 1.25rem;
+      font-size: 0.875rem;
+      color: var(--text-main-light);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .dialog-body {
+        color: var(--text-main-dark);
+      }
+    }
+
+    .dialog-body p {
+      margin: 0 0 1rem 0;
+      line-height: 1.5;
+    }
+
+    /* Contrasive text selection element */
+    .selectable-text {
+      /* Explicitly permits normal text highlighting inside the draggable overlay */
+      user-select: text;
+      -webkit-user-select: text;
+      background-color: var(--bg-page-light);
+      border-left: 3px solid var(--primary-color);
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: var(--text-muted-light);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .selectable-text {
+        background-color: var(--bg-page-dark);
+        color: var(--text-muted-dark);
+      }
+    }
+
+    /* Code details presentation styling */
+    details {
+      margin-top: 1.5rem;
+      background-color: var(--bg-page-light);
+      border: 1px solid var(--border-color-light);
+      padding: 1rem;
+      border-radius: 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      details {
+        background-color: var(--bg-page-dark);
+        border-color: var(--border-color-dark);
+      }
+    }
+
+    details summary {
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    pre {
+      background-color: var(--bg-sandbox-light);
+      border: 1px solid var(--border-color-light);
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      pre {
+        background-color: var(--bg-sandbox-dark);
+        border-color: var(--border-color-dark);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Draggable Overlay Dialog Component</h1>
+  <p class="intro">
+    This demo illustrates a fully draggable modal overlay using standard pointer events. The header behaves as the drag handle
+    utilizing <code>user-select: none</code> to prevent mouse-drag highlight artifacts, while keeping the contents inside the body completely selectable.
+  </p>
+
+  <main>
+    <section>
+      <h2>Example — Desktop & Mobile Draggable Modal</h2>
+      
+      <div class="demo-sandbox" id="sandbox">
+        <!-- Dialog Trigger Button -->
+        <button id="openBtn" class="btn-trigger">Open dialog</button>
+
+        <!-- Draggable Dialog Modal -->
+        <div id="dragDialog" class="dialog">
+          <div id="dialogHeader" class="dialog-header">
+            <span class="dialog-title">Draggable Dialog</span>
+            <button id="closeBtn" class="btn-close" aria-label="Close dialog">✕</button>
+          </div>
+          <div class="dialog-body">
+            <p>Click and drag the header title bar above to move this modal around freely inside the boundary limits.</p>
+            
+            <div class="selectable-text">
+              <strong>Selectable:</strong> You can still drag-select, highlight, and copy this specific segment of text freely.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <details>
+        <summary>View Source Code</summary>
+        <h3>HTML Structure</h3>
+        <pre><code>&lt;div class="dialog" id="dragDialog"&gt;
+  &lt;div class="dialog-header" id="dialogHeader"&gt;
+    &lt;span class="dialog-title"&gt;Draggable Dialog&lt;/span&gt;
+    &lt;button class="btn-close" id="closeBtn"&gt;✕&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;div class="dialog-body"&gt;
+    &lt;p&gt;Content here...&lt;/p&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+        <h3>CSS Style Rules</h3>
+        <pre><code>/* Style drag handle strictly */
+.dialog-header {
+  cursor: grab;
+  /* REQUIRED: Prevents highlighting text inside the header bar when clicking and dragging */
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+}
+.dialog-header.dragging {
+  cursor: grabbing;
+}
+/* Ensure the dialog fits on touch screens without scrolling parent contents */
+.dialog {
+  position: absolute;
+  touch-action: none; /* stop browser scrolling gestures */
+}</code></pre>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const openBtn = document.getElementById('openBtn');
+      const closeBtn = document.getElementById('closeBtn');
+      const dialog = document.getElementById('dragDialog');
+      const header = document.getElementById('dialogHeader');
+      const sandbox = document.getElementById('sandbox');
+
+      let isDragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      // --------------------------------------------------
+      // DIALOG STATE MANAGEMENT
+      // --------------------------------------------------
+      function openDialog() {
+        dialog.classList.add('open');
+        centerDialog();
+      }
+
+      function closeDialog() {
+        dialog.classList.remove('open');
+        isDragging = false;
+        header.classList.remove('dragging');
+      }
+
+      function centerDialog() {
+        const sandboxRect = sandbox.getBoundingClientRect();
+        const dialogWidth = dialog.offsetWidth;
+        const dialogHeight = dialog.offsetHeight;
+
+        const x = (sandboxRect.width - dialogWidth) / 2;
+        const y = (sandboxRect.height - dialogHeight) / 2;
+
+        dialog.style.left = `${Math.max(0, x)}px`;
+        dialog.style.top = `${Math.max(0, y)}px`;
+      }
+
+      openBtn.addEventListener('click', openDialog);
+      closeBtn.addEventListener('click', closeDialog);
+
+      // --------------------------------------------------
+      // DRAG REPOSITIONING IMPLEMENTATION
+      // --------------------------------------------------
+      
+      function startDrag(clientX, clientY, e) {
+        // Safe precaution to prevent standard native image or text-drag ghosting
+        if (e && e.cancelable) {
+          e.preventDefault();
+        }
+
+        isDragging = true;
+        header.classList.add('dragging');
+
+        const dialogRect = dialog.getBoundingClientRect();
+        
+        // Track the offset between pointer coordinates and the dialog top-left corner
+        offsetX = clientX - dialogRect.left;
+        offsetY = clientY - dialogRect.top;
+      }
+
+      function performDrag(clientX, clientY) {
+        if (!isDragging) return;
+
+        const sandboxRect = sandbox.getBoundingClientRect();
+        const dialogWidth = dialog.offsetWidth;
+        const dialogHeight = dialog.offsetHeight;
+
+        // Calculate theoretical coordinates based on offsets
+        let left = clientX - sandboxRect.left - offsetX;
+        let top = clientY - sandboxRect.top - offsetY;
+
+        // Viewport bounds checking: constrain the dialog coordinates inside the sandbox boundary limits
+        const maxLeft = sandboxRect.width - dialogWidth;
+        const maxTop = sandboxRect.height - dialogHeight;
+
+        left = Math.max(0, Math.min(left, maxLeft));
+        top = Math.max(0, Math.min(top, maxTop));
+
+        dialog.style.left = `${left}px`;
+        dialog.style.top = `${top}px`;
+      }
+
+      function endDrag() {
+        isDragging = false;
+        header.classList.remove('dragging');
+      }
+
+      // --- Pointer Listeners (Aggregates mouse and touch actions natively) ---
+      header.addEventListener('pointerdown', (e) => {
+        // Exclude the close button from triggering dragging sequence
+        if (e.target.closest('#closeBtn')) return;
+        
+        startDrag(e.clientX, e.clientY, e);
+      });
+
+      document.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        performDrag(e.clientX, e.clientY);
+      });
+
+      document.addEventListener('pointerup', endDrag);
+      document.addEventListener('pointercancel', endDrag);
+
+      // Recalculates bounds alignment on screen/container resizing
+      window.addEventListener('resize', () => {
+        if (!dialog.classList.contains('open')) return;
+        
+        const sandboxRect = sandbox.getBoundingClientRect();
+        const dialogRect = dialog.getBoundingClientRect();
+        
+        const maxLeft = sandboxRect.width - dialogRect.width;
+        const maxTop = sandboxRect.height - dialogRect.height;
+
+        let left = Math.max(0, Math.min(dialogRect.left - sandboxRect.left, maxLeft));
+        let top = Math.max(0, Math.min(dialogRect.top - sandboxRect.top, maxTop));
+
+        dialog.style.left = `${left}px`;
+        dialog.style.top = `${top}px`;
+      });
+    });
+  </script>
+
+</body>
+
+</html>
