@@ -75,6 +75,10 @@ The following steps are REQUIRED for creating a new use case:
   - **description**: Action-oriented description of the use case.
   - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
 
+  Optional YAML frontmatter fields:
+
+  - **guides**: List of guide names (slugs) that this guide depends on or is blocked by.
+
   For example:
 
   ```yaml
@@ -84,6 +88,8 @@ The following steps are REQUIRED for creating a new use case:
   web-feature-ids:
     - fetch-priority
     - fetch
+  guides:
+    - background-sync
   ---
   ```
 

@@ -40,6 +40,8 @@ name: slugified-use-case-name
 description: <do thing> <with feature> (e.g., "Create dynamic color systems using modern color syntax")
 web-feature-ids:
   - webstatus-feature-id
+guides: # Optional: list of guide names this guide depends on / is blocked by
+  - dependent-guide-slug
 ---
 ```
 * **web-features**: Must be a list of accurate IDs found via webstatus.dev. Include ALL features referenced in the guide body, not just the primary one. If an ID is missing, inform the USER.

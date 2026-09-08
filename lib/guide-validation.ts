@@ -23,6 +23,7 @@ export interface PreparedGuide {
   name: string;
   description: string;
   featureIds: string[];
+  guides?: string[];
   relativeSubdir: string;
   statusName: ProjectStatus | null;
 }
@@ -40,6 +41,7 @@ interface GuideData {
   name?: string;
   description?: string;
   'web-feature-ids'?: string[];
+  guides?: string[];
   [key: string]: any;
 }
 
@@ -111,6 +113,19 @@ export function validateGuide(filePath: string): ValidationResult {
       const result = validateFeature(id);
       if (!result.isValid) {
         errors.push(`${result.errorMessage} (${relativePath}).`);
+      }
+    }
+  }
+
+  const guideDependencies = data.guides;
+  if (guideDependencies !== undefined) {
+    if (!Array.isArray(guideDependencies)) {
+      errors.push(`"guides" must be an array in ${relativePath}.`);
+    } else {
+      for (const guideName of guideDependencies) {
+        if (typeof guideName !== 'string' || guideName.trim() === '') {
+          errors.push(`Invalid guide reference in "guides" for ${relativePath}.`);
+        }
       }
     }
   }
@@ -257,6 +272,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       name: guideData.name!,
       description: guideData.description || '',
       featureIds,
+      guides: Array.isArray(guideData.guides) ? guideData.guides : (inv.guides || []),
       relativeSubdir,
       statusName,
     });
@@ -337,6 +353,7 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
+  guides?: string[];
   isDisciplineSkill: boolean;
   targets?: TargetInventory[];
 }
@@ -458,8 +475,11 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   let hasGuide = false;
   let isStub = false;
 
+  let matterData: Record<string, any> = {};
+
   if (guideContent) {
     const parsed = matter(guideContent);
+    matterData = parsed.data || {};
     const hasFrontmatter = Object.keys(parsed.data).length > 0 || guideContent.startsWith('---');
     const hasContent = parsed.content.replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
 
@@ -473,7 +493,9 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     }
   }
 
-  const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
+  const featureIds = Array.isArray(matterData['web-feature-ids']) ? matterData['web-feature-ids'] : [];
+  const rawGuides = matterData['guides'];
+  const guides = Array.isArray(rawGuides) ? rawGuides : [];
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
@@ -540,6 +562,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     hasGrader,
     hasTask,
     featureIds,
+    guides,
     isDisciplineSkill,
     targets: useTargets ? targets : undefined,
   };

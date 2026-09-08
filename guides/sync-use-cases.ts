@@ -126,7 +126,8 @@ export function buildIssueContent(
   featureIds: string[],
   relativeSubdir: string,
   featureToIssueMap: Map<string, FeatureIssueData>,
-  inv: GuideInventory
+  inv: GuideInventory,
+  nameToIssueMap: Map<string, any> = new Map()
 ): IssueContent {
   const relatedLinks: string[] = [];
   let priorityLabel: string | null = null;
@@ -146,6 +147,20 @@ export function buildIssueContent(
   }
 
   const relatedFeaturesStr = relatedLinks.length > 0 ? `\n\nRelated features: ${relatedLinks.join(' ')}` : '';
+
+  const blockedByLinks: string[] = [];
+  if (inv.guides && inv.guides.length > 0) {
+    for (const guideName of inv.guides) {
+      const guideIssue = nameToIssueMap.get(guideName);
+      if (guideIssue?.number) {
+        blockedByLinks.push(`#${guideIssue.number}`);
+      } else {
+        blockedByLinks.push(`\`${guideName}\``);
+      }
+    }
+  }
+  const blockedByStr = blockedByLinks.length > 0 ? `\n\nBlocked by: ${blockedByLinks.join(' ')}` : '';
+
   const subdirUrl = `https://github.com/${ORG}/${REPO}/tree/main/${relativeSubdir}`;
   const linkedFeatures = featureIds.map(id => `[${id}](https://webstatus.dev/features/${id})`).join(', ');
 
@@ -154,7 +169,7 @@ export function buildIssueContent(
 
   return {
     issueTitle: `Create guide and evals for the ${name} use case`,
-    issueBody: `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}${checklistSection}`,
+    issueBody: `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}${blockedByStr}${checklistSection}`,
     priorityLabel,
     milestoneNumber,
   };
@@ -586,7 +601,7 @@ async function processUseCases(
       console.warn(`⚠️ Could not find inventory for ${relativeSubdir}`);
       continue;
     }
-    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap, inv);
+    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap, inv, nameToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
     const existingIssueNumber = existingIssue?.number;
     const currentProjectStatus = existingIssueNumber ? projectDetails?.issueStatusMap.get(existingIssueNumber) : undefined;

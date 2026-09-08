@@ -584,6 +584,37 @@ describe('buildIssueContent', () => {
     assert.ok(issueBody.includes('**Required files:**'));
     assert.ok(issueBody.includes('<!-- required-files-end -->'));
   });
+
+  test('includes Blocked by issue links when guide issues are available', () => {
+    const nameToIssueMap = new Map([
+      ['menu', { number: 1244 }],
+      ['search-hidden-content', { number: 1050 }],
+    ]);
+    const inv = { ...makeInventory(), guides: ['menu', 'search-hidden-content'] };
+    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, inv, nameToIssueMap);
+    assert.ok(issueBody.includes('Blocked by: #1244 #1050'));
+  });
+
+  test('falls back to code slug in Blocked by when guide issue is not in nameToIssueMap', () => {
+    const inv = { ...makeInventory(), guides: ['unknown-guide'] };
+    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, inv);
+    assert.ok(issueBody.includes('Blocked by: `unknown-guide`'));
+  });
+
+  test('handles mixed resolved and unresolved guides in Blocked by', () => {
+    const nameToIssueMap = new Map([
+      ['menu', { number: 1244 }],
+    ]);
+    const inv = { ...makeInventory(), guides: ['menu', 'untracked-guide'] };
+    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, inv, nameToIssueMap);
+    assert.ok(issueBody.includes('Blocked by: #1244 `untracked-guide`'));
+  });
+
+  test('omits Blocked by section when no guides are referenced', () => {
+    const inv = { ...makeInventory(), guides: [] };
+    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, inv);
+    assert.ok(!issueBody.includes('Blocked by:'));
+  });
 });
 
 describe('getFeaturesNeedingSync', () => {

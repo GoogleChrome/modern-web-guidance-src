@@ -660,6 +660,60 @@ The \`<details>\` element is Baseline Widely available.
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('validateGuide validates guides frontmatter array', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-guides-test-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+guides: not-an-array
+---
+
+# Test Topic
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.ok(result.errors.some(e => e.includes('"guides" must be an array')));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('validateGuide allows valid guides array and inventoryGuide extracts it', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-guides-valid-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+guides:
+  - menu
+  - search-hidden-content
+---
+
+# Test Topic
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.deepStrictEqual(result.errors, []);
+      assert.deepStrictEqual(result.data.guides, ['menu', 'search-hidden-content']);
+
+      const inv = inventoryGuide(guideDir);
+      assert.deepStrictEqual(inv.guides, ['menu', 'search-hidden-content']);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 
