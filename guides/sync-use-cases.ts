@@ -398,7 +398,7 @@ async function updateProjectItemStatus(issueNumber: number, projectId: string, f
         }
       }
     `;
-    const addResult = await octokit.graphql(addItemMutation, { projectId, contentId: issueNodeId }) as any;
+    const addResult = await projectOctokit.graphql(addItemMutation, { projectId, contentId: issueNodeId }) as any;
     const itemId = addResult.addProjectV2ItemById.item.id;
 
     const updateFieldMutation = `
@@ -417,7 +417,7 @@ async function updateProjectItemStatus(issueNumber: number, projectId: string, f
         }
       }
     `;
-    await octokit.graphql(updateFieldMutation, { projectId, itemId, fieldId, optionId });
+    await projectOctokit.graphql(updateFieldMutation, { projectId, itemId, fieldId, optionId });
   } catch (err: any) {
     console.error(`Error updating project for issue #${issueNumber}:`, err.message);
   }

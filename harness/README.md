@@ -256,14 +256,9 @@ The harness tracks which guides the agent retrieved/read:
 ```typescript
 // harness/lib/guidance_validation.ts
 export async function collectGuidesUsed(
-  dirPath: string,
-  serving: Serving,
-  agent: string
-): Promise<GuidedUsage> {
-  if (agent === Agents.PI) {
-    return collectPiGuidesFromTrajectory(dirPath, serving);
-  }
-  // ... other agents
+  dirPath: string
+): Promise<GuideUsage> {
+  // Reads from trajectory_summary.json
 }
 ```
 
@@ -362,7 +357,7 @@ export function collectMyAgentToolsFromTrajectory(dir: string): string[] {
   // Parse trajectory files to extract tools used
 }
 
-export function collectMyAgentGuidesFromTrajectory(dirPath: string, serving: string) {
+export function collectMyAgentGuidesFromTrajectory(dirPath: string) {
   // Parse trajectory files to extract guides retrieved
 }
 
@@ -406,39 +401,23 @@ function getAgentScript(agent: string): string {
 
 **lib/collection.ts** - Model and token extraction:
 ```typescript
-import { extractMyAgentModel, extractMyAgentTokenUsage } from '../agents/my-agent.ts';
-
-export function extractModelFromResults(resultsDir: string, agent: string): string {
-  if (agent === Agents.MY_AGENT) {
-    return extractMyAgentModel(resultsDir);
-  }
-  // ... other agents
+export function extractModelFromResults(resultsDir: string): string {
+  // Reads model from trajectory_summary.json
 }
 
-export function extractTokenUsageFromResults(resultsDir: string, agent: string) {
-  if (agent === Agents.MY_AGENT) {
-    return extractMyAgentTokenUsage(resultsDir) ?? null;
-  }
-  // ... other agents
+export function extractTokenUsageFromResults(resultsDir: string) {
+  // Reads token usage from trajectory_summary.json
 }
 ```
 
 **lib/guidance_validation.ts** - Guide/tool collection:
 ```typescript
-import { collectMyAgentGuidesFromTrajectory, collectMyAgentToolsFromTrajectory } from '../agents/my-agent.ts';
-
-export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string) {
-  if (agent === Agents.MY_AGENT) {
-    return collectMyAgentGuidesFromTrajectory(dirPath, serving);
-  }
-  // ... other agents
+export async function collectGuidesUsed(dirPath: string) {
+  // Reads retrieved and read guides from trajectory_summary.json
 }
 
-export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string) {
-  if (agent === Agents.MY_AGENT) {
-    return collectMyAgentToolsFromTrajectory(dir);
-  }
-  // ... other agents
+export async function collectGuidanceToolsUsed(dir: string) {
+  // Reads tools used from trajectory_summary.json
 }
 ```
 
@@ -717,7 +696,7 @@ test('collectPiGuidesFromTrajectory extracts guide reads', async () => {
   ];
   fs.writeFileSync(path.join(tempDir, 'session.jsonl'), sessionLines.join('\n'));
   
-  const guides = await collectPiGuidesFromTrajectory(tempDir, 'skills_cli');
+  const guides = await collectPiGuidesFromTrajectory(tempDir);
   assert.deepStrictEqual(guides.fileReadGuides, ['dialog']);
 });
 ```

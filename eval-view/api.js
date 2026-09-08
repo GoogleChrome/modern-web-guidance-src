@@ -1,21 +1,32 @@
 import { authenticatedFetch, parseResultKey } from './utils.js';
 
+/**
+ * @typedef {'local' | 'remote' | 'static'} DataSource
+ */
+
 export class ApiClient {
     constructor() {
         const params = new URLSearchParams(window.location.search);
-        let sourceParam = params.get('source');
-        if (!sourceParam) {
-            // Auto-detect static Github Pages deployment
-            if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                sourceParam = 'remote';
-            } else {
-                sourceParam = 'local';
-            }
+        const sourceParam = params.get('source');
+        /** @type {DataSource} */
+        let source;
+        if (sourceParam === 'remote' || sourceParam === 'local' || sourceParam === 'static') {
+            source = sourceParam;
+        } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            source = 'remote';
+        } else {
+            source = 'local';
         }
-        this.source = sourceParam;
+        this.source = source;
         this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
     }
 
+    /**
+     * @private
+     * @param {string} path
+     * @param {boolean} [isMetadataOnly=false]
+     * @returns {string}
+     */
     _formatUrl(path, isMetadataOnly = false) {
         if (this.source === 'remote') {
             if (path.startsWith('http')) return path;
@@ -40,6 +51,13 @@ export class ApiClient {
         }
     }
 
+    /**
+     * @private
+     * @param {string} path
+     * @param {boolean} [isMetadataOnly=false]
+     * @param {string} [method='GET']
+     * @returns {Promise<Response>}
+     */
     async _fetch(path, isMetadataOnly = false, method = 'GET') {
         const url = this._formatUrl(path, isMetadataOnly);
         const options = { method };
@@ -52,13 +70,17 @@ export class ApiClient {
     /** 
      * Silently checks if a file exists on GCS using a prefix search.
      * This avoids native browser fetch() 404 console logs.
+     * @private
+     * @param {string} path
+     * @returns {Promise<boolean>}
      */
     async _checkRemoteFileExists(path) {
         const listUrl = `${this.gcsPrefix}?prefix=${encodeURIComponent(path)}`;
         const res = await authenticatedFetch(listUrl);
         if (res.ok) {
             const data = await res.json();
-            if (data.items && data.items.some(item => item.name === path)) {
+            const items = /** @type {any[]} */ (data.items || []);
+            if (items.some(item => item.name === path)) {
                 return true;
             }
         }
@@ -68,6 +90,9 @@ export class ApiClient {
     /** 
      * Silently checks if a file exists on the local server using /api/exists.
      * This avoids native browser fetch() 404 console logs.
+     * @private
+     * @param {string} path
+     * @returns {Promise<boolean>}
      */
     async _checkLocalFileExists(path) {
         const url = `/api/exists?path=${encodeURIComponent(path)}&source=local`;
@@ -81,7 +106,10 @@ export class ApiClient {
 
     // --- High-level API Methods ---
 
-    /** Fetches the overall array of test suites/runs listed for the dashboard. */
+    /** 
+     * Fetches the overall array of test suites/runs listed for the dashboard.
+     * @returns {Promise<{ suites: { id: string, source: string }[] }>}
+     */
     async getSuites() {
         if (this.source === 'remote') {
             // Check Google Cloud Storage via JSON API
@@ -90,7 +118,8 @@ export class ApiClient {
             if (!res.ok) throw new Error('Failed to load remote suites');
 
             const data = await res.json();
-            const suites = (data.prefixes || [])
+            const prefixes = /** @type {string[]} */ (data.prefixes || []);
+            const suites = prefixes
                 .map(prefix => prefix.replace(/\/$/, ''))
                 .filter(name => name !== 'single_task')
                 .map(id => ({ id, source: 'remote' }));
@@ -103,7 +132,11 @@ export class ApiClient {
         }
     }
 
-    /** Fetches the evals.json payload for a specific root test ID. */
+    /** 
+     * Fetches the evals.json payload for a specific root test ID.
+     * @param {string} testId
+     * @returns {Promise<import('../harness/lib/metrics.ts').EvalsReport>}
+     */
     async getEvals(testId) {
         // Appending timestamp to defeat strict local browser cache on eval data
         const path = `${testId}/evals.json?t=${Date.now()}`;
@@ -112,7 +145,11 @@ export class ApiClient {
         return await res.json();
     }
 
-    /** Fetches the optional jetski automation metadata payload. */
+    /** 
+     * Fetches the optional jetski automation metadata payload.
+     * @param {string} testId
+     * @returns {Promise<any>}
+     */
     async getJetskiInfo(testId) {
         const path = `${testId}/jetski_info.json`;
         let exists = false;
@@ -131,12 +168,17 @@ export class ApiClient {
                 return await res.json();
             }
         } catch (e) {
-            console.log('No jetski info found:', e.message);
+            const message = e instanceof Error ? e.message : String(e);
+            console.log('No jetski info found:', message);
         }
         return null; // Not fatal if missing
     }
 
-    /** Checks if a test_suite.log file exists via a fast HEAD or silent remote prefix search. */
+    /** 
+     * Checks if a test_suite.log file exists via a fast HEAD or silent remote prefix search.
+     * @param {string} testId
+     * @returns {Promise<boolean>}
+     */
     async checkLogExists(testId) {
         try {
             const path = `${testId}/test_suite.log`;
@@ -151,7 +193,13 @@ export class ApiClient {
         }
     }
 
-    /** Resolves the correct base path for specific run details, parsing legacy logic. */
+    /** 
+     * Resolves the correct base path for specific run details, parsing legacy logic.
+     * @param {string} testId
+     * @param {import('../harness/lib/metrics.ts').RunResult} run
+     * @param {string} testName
+     * @returns {Promise<{ setupPath: string, resultPath: string, usedBasePath: string } | null>}
+     */
     async getResultInfo(testId, run, testName) {
         const parsed = parseResultKey(testName);
         if (!parsed) return null;
@@ -194,6 +242,11 @@ export class ApiClient {
         };
     }
 
+    /**
+     * @private
+     * @param {string} basePath
+     * @returns {Promise<string | null>}
+     */
     async _findBestEntryPoint(basePath) {
         const candidates = [
             'dist/index.html',
@@ -216,7 +269,8 @@ export class ApiClient {
             if (res.ok) {
                 const data = await res.json();
                 if (data.items) {
-                    const availableFiles = new Set(data.items.map(item => item.name));
+                    const items = /** @type {any[]} */ (data.items);
+                    const availableFiles = new Set(items.map(item => item.name));
                     for (const candidate of candidates) {
                         const candidatePath = `${basePath}/${candidate}`;
                         if (availableFiles.has(candidatePath)) {
@@ -233,13 +287,17 @@ export class ApiClient {
                     .catch(() => null)
             );
             const results = await Promise.all(checks);
-            bestCandidate = results.find(result => result !== null);
+            bestCandidate = results.find(result => result !== null) || null;
         }
 
         return bestCandidate;
     }
 
-    /** Lists relevant metadata files (like raw results or trajectories) for a specific test execution dir. */
+    /** 
+     * Lists relevant metadata files (like raw results or trajectories) for a specific test execution dir.
+     * @param {string} basePath
+     * @returns {Promise<string[] | undefined>}
+     */
     async getRunFiles(basePath) {
         let files = [];
         try {
@@ -256,7 +314,8 @@ export class ApiClient {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.items) {
-                        files = data.items.map(item => item.name.startsWith(gcsPrefix) ? item.name.substring(gcsPrefix.length) : item.name.split('/').pop());
+                        const items = /** @type {any[]} */ (data.items);
+                        files = items.map(item => item.name.startsWith(gcsPrefix) ? item.name.substring(gcsPrefix.length) : item.name.split('/').pop());
                     }
                 }
             }
@@ -266,7 +325,11 @@ export class ApiClient {
         return files;
     }
 
-    /** Downloads raw text content for a specific URL Path (e.g. from viewContent modal). */
+    /** 
+     * Downloads raw text content for a specific URL Path (e.g. from viewContent modal).
+     * @param {string} path
+     * @returns {Promise<string>}
+     */
     async getFileText(path) {
         // Base apps are never uploaded to GCS. Force them to be fetched locally.
         const isBaseApp = path.startsWith('base_apps/');
@@ -289,7 +352,36 @@ export class ApiClient {
         return await res.text();
     }
 
-    /** Returns absolute URL wrapper for opening links directly in new tabs (like trajectories). */
+    /** 
+     * Downloads raw binary content for a specific URL Path as a Blob.
+     * @param {string} path
+     * @returns {Promise<Blob>}
+     */
+    async getFileBlob(path) {
+        const isBaseApp = path.startsWith('base_apps/');
+        const isTasks = path.startsWith('tasks/');
+
+        if (this.source === 'remote' && !isBaseApp && !isTasks) {
+            const exists = await this._checkRemoteFileExists(path);
+            if (!exists) throw new Error('File not found (404).');
+        }
+        
+        const res = (isBaseApp || isTasks)
+            ? await fetch(`${path}?source=local`) 
+            : await this._fetch(path);
+            
+        if (!res.ok) {
+            if (res.status === 404) throw new Error('File not found (404).');
+            throw new Error(`Failed to load from ${path} (${res.status})`);
+        }
+        return await res.blob();
+    }
+
+    /** 
+     * Returns absolute URL wrapper for opening links directly in new tabs (like trajectories).
+     * @param {string} path
+     * @returns {string}
+     */
     getAbsoluteUrl(path) {
         if (this.source === 'remote') {
             let fixedPath = path.split('?')[0];

@@ -16,11 +16,13 @@ import {
   isPluginFile,
   getExactDistributionDiff,
   getConsumerFacingDiff,
+  formatGuideBoldLink,
 } from './release-notes-diff.ts';
 import {
   buildBaselineBullets,
   buildReleaseNotesMarkdown,
   generateFallbackReleaseNotes,
+  linkifyGuideBullets,
 } from './release-notes-markdown.ts';
 import {
   generateNewGuideSummariesWithGemini,
@@ -64,8 +66,9 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
       ? getExactDistributionDiff(previousTag, publishCliDir)
       : getConsumerFacingDiff(previousTag, target);
 
+  const targetTag = newVersion.startsWith('v') ? newVersion : `v${newVersion}`;
   const pluginFiles = changedFiles.filter(isPluginFile);
-  const baselineBullets = buildBaselineBullets(baselineUpdates);
+  const baselineBullets = buildBaselineBullets(baselineUpdates, targetTag);
 
   if (!apiKey) {
     if (
@@ -101,14 +104,15 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
       model,
     });
     if (generatedNewBullets) {
-      newGuideBullets = generatedNewBullets;
+      newGuideBullets = linkifyGuideBullets(generatedNewBullets, addedGuideNames, targetTag);
     } else {
       console.log('Falling back to default new guide release notes generator...');
       newGuideBullets = addedGuideNames.map(g => {
         const desc = guideDescriptions[g];
+        const link = formatGuideBoldLink(g, targetTag);
         return desc
-          ? `* **${g}**: ${desc}`
-          : `* **${g}**: Introduced new web platform guidance.`;
+          ? `* ${link}: ${desc}`
+          : `* ${link}: Introduced new web platform guidance.`;
       });
     }
   }
@@ -122,18 +126,18 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
       model,
     });
     if (generatedUpdatedBullets) {
-      updatedGuideBullets = generatedUpdatedBullets;
+      updatedGuideBullets = linkifyGuideBullets(generatedUpdatedBullets, modifiedGuideNames, targetTag);
     } else {
       console.log('Falling back to default updated guide release notes generator...');
       updatedGuideBullets = modifiedGuideNames.map(
-        g => `* **${g}**: Updates and improvements to web platform guidance.`
+        g => `* ${formatGuideBoldLink(g, targetTag)}: Updates and improvements to web platform guidance.`
       );
     }
   }
 
   for (const rename of renamedGuides) {
     if (!modifiedGuideNames.includes(rename.newName)) {
-      updatedGuideBullets.push(`* Renamed **${rename.oldName}** to **${rename.newName}**.`);
+      updatedGuideBullets.push(`* Renamed **${rename.oldName}** to ${formatGuideBoldLink(rename.newName, targetTag)}.`);
     }
   }
 
