@@ -5,6 +5,8 @@ web-feature-ids:
   - field-sizing
 ---
 
+# Form Fields Automatically Fit Contents
+
 By default, form controls like `<input>`, `<textarea>`, and `<select>` have fixed dimensions. Their sizes remain constant, regardless of the amount of content the user enters or selects.
 
 To allow these controls to automatically shrink or grow to fit their content (including placeholders), use the `field-sizing: content` CSS property.

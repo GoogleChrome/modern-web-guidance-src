@@ -7,7 +7,7 @@ web-feature-ids:
   - declarative-shadow-dom
 ---
 
-# Web Components Orientation Guide
+# Web Components Orientation
 
 Web Components are Custom Elements, Shadow DOM, and HTML Templates: the platform primitives for reusable, framework-agnostic components whose markup and styles are encapsulated from the document. Use them for design systems, embeddable widgets, and self-contained UI.
 

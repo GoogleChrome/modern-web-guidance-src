@@ -457,13 +457,23 @@ With this setup, the spacers no longer need their own background-color (the trac
 
 ## Fallback strategies
 
-The scroll-snap mechanics that underpin this pattern (`scroll-snap-type`, `scroll-snap-align`), `IntersectionObserver`, `MutationObserver`, `ResizeObserver`, and the Web Animations API are all Baseline Widely Available, so the gesture, commit detection, lifecycle management, and removal animation work broadly. All newer features that are used are either not core to the experience or have robust fallbacks that can be reliably used now.
+{{ BASELINE_STATUS("scroll-snap") }}
+
+{{ BASELINE_STATUS("intersection-observer") }}
+
+{{ BASELINE_STATUS("mutationobserver") }}
+
+{{ BASELINE_STATUS("resize-observer") }}
+
+{{ BASELINE_STATUS("web-animations") }}
+
+All newer features that are used are either not core to the experience or have robust fallbacks that can be reliably used now.
 
 ### Fallback for `overscroll-behavior`
 
 {{ FEATURE_FALLBACKS("overscroll-behavior") }}
 
-No fallback is needed for this use case. `overscroll-behavior` was Baseline Widely Available but no longer is due to an interop issue that only manifests on containers without scrollable overflow. But the track here is always horizontally scrollable (three full-width columns inside a 100%-width container), so the property behaves consistently across browsers and the swipe gesture is reliably contained.
+No fallback is needed for this use case. Although `overscroll-behavior` has an interop issue that manifests on containers without scrollable overflow, the track here is always horizontally scrollable (three full-width columns inside a 100%-width container), so the property behaves consistently across browsers and the swipe gesture is reliably contained.
 
 ### Fallback for `scrollbar-width`
 

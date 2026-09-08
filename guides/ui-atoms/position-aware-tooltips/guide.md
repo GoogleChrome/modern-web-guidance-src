@@ -6,6 +6,8 @@ web-feature-ids:
   - popover
 ---
 
+# Position Aware Tooltips
+
 When building tooltips or popovers with CSS Anchor Positioning, the browser can automatically "flip" the element to a fallback position if it would otherwise overflow the viewport. When this happens, you may want to adjust the style of the positioned content, for instance to reposition an arrow that points from the positioned content to the anchor.
 
 **Anchored Container Queries** solve this by allowing you to query the active positioning state of an element and apply styles accordingly.

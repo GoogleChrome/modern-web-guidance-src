@@ -5,6 +5,8 @@ web-feature-ids:
   - image-set
 ---
 
+# Resolution Optimized Pseudo Elements
+
 Using resolution-optimized images in CSS pseudo-elements (like `::before` or `::after`) allows you to add decorative icons or structural graphics without cluttering your HTML with extra DOM nodes. By combining pseudo-elements with the `image-set()` CSS function, you can provide the browser with multiple formats (such as AVIF or WebP) and resolutions (like `1x` and `2x`). The browser will automatically choose the most optimal image for the user's device capabilities.
 
 ### Implementation

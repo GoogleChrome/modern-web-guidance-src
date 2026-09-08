@@ -104,7 +104,7 @@ document.addEventListener('input', (event) => {
 
 ## Fallbacking & Browser Support
 
-The `:user-invalid` pseudo-class is widely supported (Baseline 2023), but older browsers need a fallback.
+{{ BASELINE_STATUS("user-pseudos") }}
 
 ### Feature Detection
 You can check for support in CSS and JavaScript.

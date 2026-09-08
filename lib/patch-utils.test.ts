@@ -94,6 +94,37 @@ describe('capturePatchFromGit', () => {
     }
   });
 
+  test('captures changes even when agent commits them to git', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-committed-'));
+    const repoDir = path.join(tmpDir, 'repo');
+    const patchDest = path.join(tmpDir, 'out', 'agent.patch');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      // 1. Initial harness repo setup with initial commit
+      execSync('git init && git config user.name "AI" && git config user.email "ai@example.com"', { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'index.html'), '<html>original</html>\n');
+      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+
+      // 2. Agent modifies files AND runs git commit
+      fs.writeFileSync(path.join(repoDir, 'index.html'), '<html>updated</html>\n');
+      fs.writeFileSync(path.join(repoDir, 'translator.js'), 'console.log("translator");\n');
+      execSync('git add . && git commit -m "Agent commit"', { cwd: repoDir, stdio: 'ignore' });
+
+      // 3. capturePatchFromGit should capture diff against the initial commit
+      const result = capturePatchFromGit(repoDir, patchDest);
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(fs.existsSync(patchDest), true);
+
+      const patchContent = fs.readFileSync(patchDest, 'utf8');
+      assert.match(patchContent, /index\.html/);
+      assert.match(patchContent, /translator\.js/);
+      assert.match(patchContent, /\+console\.log\("translator"\);/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   test('returns false when no modifications exist', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-empty-'));
     const patchDest = path.join(tmpDir, 'empty.patch');

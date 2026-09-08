@@ -12,6 +12,14 @@ import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agen
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
 import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
 
+export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+export function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}
+
 export function setupAgentCredentials(agent: Agents, tempHome: string): void {
   if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     setupJetskiCliCredentials(tempHome);
@@ -163,6 +171,13 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
     fs.writeFileSync(path.join(geminiDir, 'projects.json'), JSON.stringify(mockProjects, null, 2));
   } catch (err) {
     console.warn('Warning: Failed to pre-populate projects.json:', err);
+  }
+
+  // Configure default timeouts for curl to prevent hanging on unreachable or stalled sockets
+  try {
+    fs.writeFileSync(path.join(tempHome, '.curlrc'), 'max-time = 15\nconnect-timeout = 5\n', 'utf8');
+  } catch (err) {
+    console.warn('Warning: Failed to create .curlrc in isolated HOME:', err);
   }
 
   console.log(`Setting up isolated HOME at ${tempHome}...`);
@@ -621,6 +636,20 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
     try {
       fs.copyFileSync(srcFile, destFile);
       console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
+
+      // Ensure SQLite WAL-mode companion files are copied alongside .db files
+      if (fileName.endsWith('.db')) {
+        const walSrc = `${srcFile}-wal`;
+        const shmSrc = `${srcFile}-shm`;
+        if (fs.existsSync(walSrc)) {
+          fs.copyFileSync(walSrc, `${destFile}-wal`);
+          console.log(`Copied trajectory WAL: ${fileName}-wal to ${targetDir}`);
+        }
+        if (fs.existsSync(shmSrc)) {
+          fs.copyFileSync(shmSrc, `${destFile}-shm`);
+          console.log(`Copied trajectory SHM: ${fileName}-shm to ${targetDir}`);
+        }
+      }
 
       const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);

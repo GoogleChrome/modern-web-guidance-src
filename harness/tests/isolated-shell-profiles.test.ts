@@ -61,6 +61,22 @@ test('createIsolatedHome does NOT create profile files when targetDir is omitted
   }
 });
 
+test('createIsolatedHome creates .curlrc with default timeouts', () => {
+  let homeDir = '';
+
+  try {
+    homeDir = createIsolatedHome('test-curlrc');
+    assert.ok(fs.existsSync(homeDir), 'Isolated home should be created');
+
+    const curlrcPath = path.join(homeDir, '.curlrc');
+    assert.ok(fs.existsSync(curlrcPath), '.curlrc should exist in isolated home');
+    const content = fs.readFileSync(curlrcPath, 'utf8');
+    assert.strictEqual(content, 'max-time = 15\nconnect-timeout = 5\n');
+  } finally {
+    if (homeDir) cleanupIsolatedHome(homeDir);
+  }
+});
+
 test('login shell in isolated HOME correctly prepends targetDir to PATH and executes shim binary', { skip: process.platform === 'win32' }, () => {
   const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-target-bin-'));
   let homeDir = '';

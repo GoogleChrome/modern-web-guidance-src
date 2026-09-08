@@ -614,7 +614,13 @@ updateFromHistoryState(history.state, 'instant');
 
 ### Fallback strategies
 
-Most of the features used in this guide are Baseline Widely available, and do not require any fallback. The only features not widely available that may require fallbacks are scroll-snap-events and scroll-driven-animations, both of which have robust fallback or progressive enhancement stories, and are safe to use for this use case:
+{{ BASELINE_STATUS("scroll-snap") }}
+
+{{ BASELINE_STATUS("intersection-observer") }}
+
+{{ BASELINE_STATUS("inert") }}
+
+The features that may require fallbacks are scroll-snap-events and scroll-driven-animations, both of which have robust fallback or progressive enhancement stories, and are safe to use for this use case:
 
 #### Scroll snap events
 

@@ -6,6 +6,8 @@ web-feature-ids:
   - not
 ---
 
+# Content Based Styling
+
 Historically, applying different layouts to a component based on its content required either JavaScript or conditional logic in your HTML templating language to inject modifier classes (like `.card--has-image` or `.card--text-only`).
 
 The `:has()` pseudo-class eliminates this need by acting as a parent selector. It allows you to conditionally style a container element based on the presence or absence of specific descendant elements.

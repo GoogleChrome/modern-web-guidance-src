@@ -5,7 +5,7 @@ web-feature-ids:
   - webauthn
 ---
 
-# Passkeys Orientation Guide
+# Passkeys Orientation
 
 This guide provides high-density, action-oriented orientation for implementing secure, framework-agnostic passkey authentication and credential management in modern web applications.
 

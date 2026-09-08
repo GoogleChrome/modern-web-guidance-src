@@ -1,5 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   buildSolutionPrompt,
   buildZeroPassratePrompt,
@@ -8,6 +11,9 @@ import {
   buildDevReportPrompt,
 } from './gd-dev-prompts.ts';
 import { Agents } from '../harness/config.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 test('buildSolutionPrompt includes instructions and paths', () => {
   const prompt = buildSolutionPrompt({
@@ -47,11 +53,15 @@ test('buildTargetGraderPrompt includes Option B scoping rules', () => {
     templateFile: 'template.grader.ts',
   });
   assert.ok(prompt.includes('getTargetFiles'));
+  assert.ok(prompt.includes('getCssStyleSheet'));
+  assert.ok(prompt.includes('CSSOMNom'));
   assert.ok(prompt.includes('Static Analysis First'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Jetski CLI Solution'));
   assert.ok(prompt.includes('Claude Code Solution'));
   assert.ok(prompt.includes('Codex CLI Solution'));
+  assert.ok(prompt.includes('Utility CSS Flexibility'));
+  assert.ok(prompt.includes('npx oxlint'));
 });
 
 test('buildTargetGraderPrompt formats failure context correctly when provided', () => {
@@ -106,4 +116,23 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('Evaluation Results'));
   assert.ok(prompt.includes('Diagnostic Analysis & Actionable Recommendations'));
   assert.ok(prompt.includes('ROOT-CAUSE DIAGNOSIS RULES'));
+});
+
+test('all reference files and type definitions referenced in grader generation exist on disk', () => {
+  const requiredSandboxFiles = [
+    path.resolve(__dirname, 'template.grader.ts'),
+    path.resolve(__dirname, 'test-fixture.ts'),
+    path.resolve(__dirname, 'parser-pattern-library.test.ts'),
+    path.resolve(__dirname, 'playwright-pattern-library.grader.ts'),
+    path.resolve(__dirname, 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
+    path.resolve(__dirname, 'node_modules', 'linkedom', 'types', 'index.d.ts'),
+    path.resolve(__dirname, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+  ];
+
+  for (const filePath of requiredSandboxFiles) {
+    assert.ok(
+      fs.existsSync(filePath),
+      `Required grader reference file must exist on disk: ${filePath}`
+    );
+  }
 });
