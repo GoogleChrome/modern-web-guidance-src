@@ -9,16 +9,10 @@ web-feature-ids:
 
 # Styling Checkboxes
 
-Checkboxes are a core interactive element of web forms. Previous attempts to
-style checkboxes often involved hiding the native `<input>` element entirely and
-rendering a complex tree of custom wrapper `<div>`s or `<span>`s with ARIA
-roles. This legacy approach is highly error-prone, which can break native keyboard
-navigation, effect screen reader announcements, abd break native form validation, and standard
-form submission.
+Checkboxes are a core interactive element of web forms. Previous attempts to style checkboxes often involved hiding the native `<input>` element entirely and rendering a complex tree of custom wrapper `<div>`s or `<span>`s with ARIA roles. This legacy approach is highly error-prone, which can break native keyboard navigation, affect screen reader announcements, break native form validation, and disrupt standard form submission.
 
-Modern CSS allows us to style checkboxes directly—either by lightly customizing the native appearance using the **`accent-color`** property, or by overriding default presentation entirely using **`appearance: none`** directly on the `<input type="checkbox">` element.
+Modern CSS allows you to style checkboxes directly, either by customizing the native appearance using the **`accent-color`** property, or by overriding default presentation entirely using **`appearance: none`** directly on the `<input type="checkbox">` element.
 
----
 
 ## 1. The Bare-Bones HTML Structure
 
@@ -36,7 +30,6 @@ Always use semantic, accessible HTML. Associate the checkbox with its label by n
 <label for="terms-input">I accept the terms and conditions</label>
 ```
 
----
 
 ## 2. Implementation
 
@@ -46,7 +39,6 @@ For quick, brand-consistent styling that preserves 100% of native rendering and 
 
 ```css
 .checkbox-native {
-  /* Set the checkbox background tint for checked states */
   accent-color: #1a73e8;
   
   /* Sizing is controlled via relative units */
@@ -56,32 +48,26 @@ For quick, brand-consistent styling that preserves 100% of native rendering and 
 }
 ```
 
----
 
 ### Method B: Fully Custom Styling (`appearance: none`)
 
 To build bespoke checkmark shapes, borders, and animations, use `appearance: none` directly on the `<input>` element. This strips the native browser styling while leaving the `<input>` in the DOM as the interactive target.
 
-We can render a crisp vector checkmark with **CSS masking** on a pseudo-element. This keeps our markup entirely flat and lets us style the checkmark color using `currentColor` (matching the parent's text color).
+You can render a crisp vector checkmark with **CSS masking** on a pseudo-element. This keeps your markup entirely flat and lets you style the checkmark color using `currentColor` (matching the parent's text color).
 
 ```css
 .checkbox-custom {
   /* Remove default browser visual box */
   appearance: none;
-  -webkit-appearance: none;
+  -webkit-appearance: none; /* Legacy support */
   
-  /* Create custom design shell */
+  /* Create custom grid layout shell */
   display: inline-grid;
   place-content: center;
   width: 1.25em;
   height: 1.25em;
-  border: 2px solid #74777f;
-  border-radius: 4px;
-  background-color: #ffffff;
+  border: 2px solid currentColor;
   cursor: pointer;
-  
-  /* Transitions for interactions */
-  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 /* Custom Checkmark Icon via ::before */
@@ -96,19 +82,7 @@ We can render a crisp vector checkmark with **CSS masking** on a pseudo-element.
   
   /* Scale to 0 (hidden) by default to animate check/uncheck */
   transform: scale(0);
-  transition: transform 0.15s cubic-bezier(0.12, 0.8, 0.32, 1.2);
-}
-
-/* Hover state styling */
-.checkbox-custom:hover:not(:disabled) {
-  border-color: #43474e;
-}
-
-/* Checked state color changes */
-.checkbox-custom:checked {
-  background-color: #1a73e8;
-  border-color: #1a73e8;
-  color: #ffffff; /* Color of checkmark background-color (currentColor) */
+  transition: transform 0.15s ease;
 }
 
 /* Animate checked scale */
@@ -118,14 +92,11 @@ We can render a crisp vector checkmark with **CSS masking** on a pseudo-element.
 
 /* Disabled State */
 .checkbox-custom:disabled {
-  background-color: #e1e2e4;
-  border-color: #8e9196;
-  color: #8e9196;
   cursor: not-allowed;
+  opacity: 0.5;
 }
 ```
 
----
 
 ## 3. Styling the Indeterminate State
 
@@ -140,7 +111,7 @@ document.getElementById('my-checkbox').indeterminate = true;
 
 For native checkboxes, the browser automatically styles the indeterminate state (including matching the custom color set via `accent-color`).
 
-For custom checkboxes, we style the `:indeterminate` pseudo-class and apply a custom dash mask:
+For custom checkboxes, style the `:indeterminate` pseudo-class and apply a custom dash mask:
 
 ```css
 /* Styling native indeterminate checkbox accent-color */
@@ -149,12 +120,6 @@ For custom checkboxes, we style the `:indeterminate` pseudo-class and apply a cu
 }
 
 /* Styling custom indeterminate checkbox */
-.checkbox-custom:indeterminate {
-  background-color: #1a73e8;
-  border-color: #1a73e8;
-  color: #ffffff;
-}
-
 .checkbox-custom:indeterminate::before {
   transform: scale(1);
   /* Render a custom horizontal dash SVG for indeterminate states */
@@ -162,7 +127,6 @@ For custom checkboxes, we style the `:indeterminate` pseudo-class and apply a cu
 }
 ```
 
----
 
 ## Best practices
 
@@ -177,11 +141,10 @@ For custom checkboxes, we style the `:indeterminate` pseudo-class and apply a cu
 - **DO** ensure the checkbox or the label has an active click/touch target of at least `44px x 44px` to comply with mobile touch guidelines.
 - **DO** provide a `:disabled` style variant that lowers opacity, alters background, and sets `cursor: not-allowed` to convey active states clearly.
 
----
 
 ## Fallback strategies
 
-For modern browser compatibility, both `accent-color` and `indeterminate` are widely supported baseline features. CSS Masking is also widely available.
+For browsers that don't support the standard CSS Masking, custom checkbox checkmarks will fall back to stacked text indicators or can leverage standard SVG background images inside `@supports` checks.
 
 {{ FEATURE_FALLBACKS("accent-color") }}
 {{ FEATURE_FALLBACKS("indeterminate") }}
