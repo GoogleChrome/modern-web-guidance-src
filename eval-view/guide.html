@@ -59,7 +59,7 @@
 
         <div style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px;">Performance over time by agent and model combination</div>
 
-        <div class="timeline-filter-controls" style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.85em; color: var(--text-primary);">
+        <div class="timeline-filter-controls" style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.85em; color: var(--text-primary); flex-wrap: wrap;">
           <span>Show last</span>
           <input type="number" id="timeline-limit-input" value="30" min="1" style="width: 50px; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); outline: none;">
           <span>days</span>
@@ -67,9 +67,14 @@
             <input type="checkbox" id="timeline-show-all-check">
             <span>Show all</span>
           </label>
+          <div style="display: flex; align-items: center; gap: 6px; margin-left: 12px;">
+            <label for="guide-run-filter-input" style="color: var(--text-secondary); font-weight: 500;">Filter run name:</label>
+            <input type="text" id="guide-run-filter-input" value="nightly" placeholder="e.g. nightly" style="width: 110px; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); outline: none;">
+          </div>
         </div>
       </div>
       <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button id="compare-mode-btn" class="secondary-btn" style="margin-bottom: 0; background-color: #f1f5f9; border-color: #cbd5e1; color: #475569;">Compare Trials</button>
         <a href="./" class="secondary-btn" style="text-decoration: none; margin-bottom: 0;">← Back to Results</a>
         <button id="auth-btn" class="secondary-btn" style="display: none; margin-bottom: 0;">
           Sign in with Google
@@ -83,6 +88,15 @@
 
     <div id="empty-state" class="empty-state" style="display: none;">
       <p>No historical runs found for this guide.</p>
+    </div>
+  </div>
+
+  <!-- Floating Compare Banner -->
+  <div id="compare-banner" style="display:none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #1e293b; color: #ffffff; padding: 12px 20px; border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); align-items: center; gap: 20px; z-index: 1000; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <span id="compare-banner-text" style="font-weight:600; font-size:0.9em; min-width: 250px;">Select two trials on the chart to compare.</span>
+    <div style="display:flex; gap:8px;">
+      <button id="launch-compare-btn" class="secondary-btn" style="margin-bottom:0; background-color: #2563eb; color:#ffffff; border-color:#2563eb; font-weight:bold; padding:6px 12px; font-size:0.85em;" disabled>Compare & Diagnose</button>
+      <button id="cancel-compare-btn" class="secondary-btn" style="margin-bottom:0; background-color: transparent; color:#cbd5e1; border-color:#475569; padding:6px 12px; font-size:0.85em;">Cancel</button>
     </div>
   </div>
 

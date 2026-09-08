@@ -1,8 +1,16 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, hasNightlyRuns, $ } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
+
+/**
+ * @import { TrialSelection } from './evals.d.ts'
+ */
 
 /** @type {Record<string, GuideSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
+let isCompareMode = false;
+/** @type {TrialSelection[]} */
+let selectedPoints = []; // array of selected trial points
+let currentRunFilter = 'nightly';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
@@ -12,12 +20,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    const runFilterParam = params.get('runFilter') ?? params.get('runName');
+    if (runFilterParam !== null) {
+        currentRunFilter = runFilterParam;
+    }
+
     $('#guide-name-header').textContent = guideName;
     setupTimelineFilterControls(guideName);
+    setupCompareMode(guideName);
 
     try {
         initGoogleAuth(async () => {
             await loadRemoteTests();
+            if (runFilterParam === null && hasNightlyRuns()) {
+                currentRunFilter = 'nightly';
+                const runFilterInput = /** @type {HTMLInputElement | null} */ ($('#guide-run-filter-input'));
+                if (runFilterInput) runFilterInput.value = currentRunFilter;
+            }
             setupNavigationControls(guideName);
             renderGraphs(guideName);
         });
@@ -25,6 +44,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadLocalTests();
         if (getAccessToken()) {
             await loadRemoteTests();
+        }
+        if (runFilterParam === null) {
+            currentRunFilter = hasNightlyRuns() ? 'nightly' : '';
+            const runFilterInput = /** @type {HTMLInputElement | null} */ ($('#guide-run-filter-input'));
+            if (runFilterInput) runFilterInput.value = currentRunFilter;
         }
         setupNavigationControls(guideName);
         renderGraphs(guideName);
@@ -51,6 +75,12 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @param {string} source
  */
 function registerSuiteSummary(summary, source) {
+    if (source === 'remote' && (allTestData[`${summary.testId}|||local`] || allTestData[`${summary.testId}|||static`])) {
+        return;
+    }
+    if ((source === 'local' || source === 'static') && allTestData[`${summary.testId}|||remote`]) {
+        delete allTestData[`${summary.testId}|||remote`];
+    }
     const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
@@ -144,28 +174,56 @@ async function loadRemoteTests() {
         console.error('Error loading remote suites:', error);
     }
 }
+/**
+ * @param {string} guideName
+ */
+function updateUrlParams(guideName) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('guide', guideName);
+    if (currentRunFilter === 'nightly') {
+        url.searchParams.delete('runFilter');
+    } else {
+        url.searchParams.set('runFilter', currentRunFilter);
+    }
+    window.history.replaceState({}, '', url);
+}
 
 /**
  * @param {string} guideName
  */
 function setupTimelineFilterControls(guideName) {
-    const limitInput = /** @type {HTMLInputElement} */ ($('#timeline-limit-input'));
-    const showAllCheck = /** @type {HTMLInputElement} */ ($('#timeline-show-all-check'));
+    const limitInput = /** @type {HTMLInputElement | null} */ ($('#timeline-limit-input'));
+    const showAllCheck = /** @type {HTMLInputElement | null} */ ($('#timeline-show-all-check'));
+    const runFilterInput = /** @type {HTMLInputElement | null} */ ($('#guide-run-filter-input'));
 
-    if (!limitInput || !showAllCheck) return;
+    if (runFilterInput) {
+        runFilterInput.value = currentRunFilter;
+        runFilterInput.addEventListener('input', () => {
+            currentRunFilter = runFilterInput.value;
+            updateUrlParams(guideName);
+            setupNavigationControls(guideName);
+            renderGraphs(guideName);
+        });
+    }
 
-    limitInput.addEventListener('change', () => {
-        let val = parseInt(limitInput.value);
-        if (isNaN(val) || val < 1) {
-            limitInput.value = '30';
-        }
-        renderGraphs(guideName);
-    });
+    if (limitInput) {
+        limitInput.addEventListener('change', () => {
+            let val = parseInt(limitInput.value);
+            if (isNaN(val) || val < 1) {
+                limitInput.value = '30';
+            }
+            renderGraphs(guideName);
+        });
+    }
 
-    showAllCheck.addEventListener('change', () => {
-        limitInput.disabled = showAllCheck.checked;
-        renderGraphs(guideName);
-    });
+    if (showAllCheck) {
+        showAllCheck.addEventListener('change', () => {
+            if (limitInput) {
+                limitInput.disabled = showAllCheck.checked;
+            }
+            renderGraphs(guideName);
+        });
+    }
 }
 
 /**
@@ -186,6 +244,13 @@ function setupNavigationControls(currentGuide) {
     const list = $('#autocomplete-list');
     const goBtn = /** @type {HTMLButtonElement} */ ($('#go-guide-btn'));
 
+    const getNavUrl = (/** @type {string} */ targetGuide) => `guide.html?guide=${encodeURIComponent(targetGuide)}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
+
+    const backLink = document.querySelector('a[href^="./"]');
+    if (backLink) {
+        backLink.setAttribute('href', `./${currentRunFilter ? `?runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`);
+    }
+
     if (allGuides.length <= 1) {
         prevBtn.disabled = true;
         nextBtn.disabled = true;
@@ -195,20 +260,20 @@ function setupNavigationControls(currentGuide) {
         prevBtn.disabled = false;
         prevBtn.onclick = () => {
             const prevIndex = (currentIndex - 1 + allGuides.length) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}`;
+            window.location.href = getNavUrl(allGuides[prevIndex]);
         };
 
         nextBtn.disabled = false;
         nextBtn.onclick = () => {
             const nextIndex = (currentIndex + 1) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}`;
+            window.location.href = getNavUrl(allGuides[nextIndex]);
         };
     }
 
     goBtn.onclick = () => {
         const val = searchInput.value.trim();
         if (val) {
-            window.location.href = `guide.html?guide=${encodeURIComponent(val)}`;
+            window.location.href = getNavUrl(val);
         }
     };
 
@@ -238,7 +303,7 @@ function setupNavigationControls(currentGuide) {
             div.onclick = () => {
                 searchInput.value = match;
                 list.classList.add('hidden');
-                goBtn.click();
+                window.location.href = getNavUrl(match);
             };
             list.appendChild(div);
         });
@@ -302,14 +367,21 @@ function renderGraphs(guideName) {
 
     const testKeys = Object.keys(allTestData);
     
-    // Filter out suites that don't have this guide, or have 0 trials for it
+    // Filter out suites that don't have this guide, or have 0 trials for it, or don't match run filter
     const filteredKeys = testKeys.filter(key => {
         const run = allTestData[key];
         if (!run.guides || !run.guides[guideName]) return false;
         const g = run.guides[guideName];
         const gTotal = g.guidedTotal !== undefined ? g.guidedTotal : (g.guided?.total || 0);
         const uTotal = g.unguidedTotal !== undefined ? g.unguidedTotal : (g.unguided?.total || 0);
-        return gTotal > 0 || uTotal > 0;
+        if (gTotal === 0 && uTotal === 0) return false;
+
+        if (currentRunFilter && currentRunFilter.trim()) {
+            const query = currentRunFilter.trim().toLowerCase();
+            const testId = (run.testId || '').toLowerCase();
+            if (!testId.includes(query)) return false;
+        }
+        return true;
     });
 
     if (filteredKeys.length === 0) {
@@ -318,10 +390,17 @@ function renderGraphs(guideName) {
     }
     $('#empty-state').style.display = 'none';
 
-    /** @type {Record<string, GuideSuiteSummary[]>} */
-    const combinations = {};
+    const deduplicatedRunsMap = new Map();
     filteredKeys.forEach(compoundKey => {
         const run = allTestData[compoundKey];
+        if (!deduplicatedRunsMap.has(run.testId) || run.source === 'local' || run.source === 'static') {
+            deduplicatedRunsMap.set(run.testId, run);
+        }
+    });
+
+    /** @type {Record<string, any[]>} */
+    const combinations = {};
+    deduplicatedRunsMap.forEach(run => {
         const combKey = `${run.agent}|||${run.model}`;
         if (!combinations[combKey]) {
             combinations[combKey] = [];
@@ -341,33 +420,37 @@ function renderGraphs(guideName) {
         return `${year}-${month}-${day}`;
     };
 
-    // Group by date (keep latest run per day) and slice to last 50 for each combination
+    // Group runs by date for each agent/model combination
     Object.keys(combinations).forEach(combKey => {
         const runs = combinations[combKey];
         runs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        
-        const runsByDate = new Map();
-        runs.forEach(run => {
-            const dateKey = getDateKey(run.timestamp);
-            runsByDate.set(dateKey, run);
+
+        const runsByDateMap = Map.groupBy(runs, run => getDateKey(run.timestamp));
+
+        /** @type {Array<{ dateKey: string, latestRun: any, runsOnDate: any[] }>} */
+        const dateEntries = [];
+        runsByDateMap.forEach((runsOnDate, dateKey) => {
+            runsOnDate.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+            const latestRun = runsOnDate[runsOnDate.length - 1];
+            dateEntries.push({ dateKey, latestRun, runsOnDate });
         });
-        
-        let uniqueRuns = Array.from(runsByDate.values());
-        if (uniqueRuns.length > 50) {
-            uniqueRuns = uniqueRuns.slice(-50);
+
+        dateEntries.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+        let uniqueEntries = dateEntries;
+        if (uniqueEntries.length > 50) {
+            uniqueEntries = uniqueEntries.slice(-50);
         }
-        combinations[combKey] = uniqueRuns;
+        combinations[combKey] = uniqueEntries;
     });
 
-    // Build the global timeline of unique dates from the sliced runs across all combinations
+    // Build the global timeline of unique dates from the sliced entries across all combinations
     const globalDatesMap = new Map();
-    Object.values(combinations).forEach(runs => {
-        runs.forEach(run => {
-            const dateKey = getDateKey(run.timestamp);
-            if (!globalDatesMap.has(dateKey)) {
-                globalDatesMap.set(dateKey, {
-                    dateKey: dateKey,
-                    shortDate: new Date(run.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    Object.values(combinations).forEach(entries => {
+        entries.forEach(entry => {
+            if (!globalDatesMap.has(entry.dateKey)) {
+                globalDatesMap.set(entry.dateKey, {
+                    dateKey: entry.dateKey,
+                    shortDate: new Date(entry.latestRun.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                 });
             }
         });
@@ -388,19 +471,18 @@ function renderGraphs(guideName) {
     const globalWidth = Math.max(450, globalTimeline.length * 30);
 
     const sortedCombKeys = Object.keys(combinations).sort((keyA, keyB) => {
-        const runsA = combinations[keyA];
-        const runsB = combinations[keyB];
-        const newestA = new Date(runsA[runsA.length - 1].timestamp).getTime();
-        const newestB = new Date(runsB[runsB.length - 1].timestamp).getTime();
+        const entriesA = combinations[keyA];
+        const entriesB = combinations[keyB];
+        const newestA = new Date(entriesA[entriesA.length - 1].latestRun.timestamp).getTime();
+        const newestB = new Date(entriesB[entriesB.length - 1].latestRun.timestamp).getTime();
         return newestB - newestA;
     });
 
     // Filter out combinations that have no data points in the filtered timeline
     const activeCombKeys = sortedCombKeys.filter(combKey => {
-        const runs = combinations[combKey];
-        return runs.some(run => {
-            const runDateKey = getDateKey(run.timestamp);
-            return globalTimeline.some(t => t.dateKey === runDateKey);
+        const entries = combinations[combKey];
+        return entries.some(entry => {
+            return globalTimeline.some(t => t.dateKey === entry.dateKey);
         });
     });
 
@@ -412,7 +494,7 @@ function renderGraphs(guideName) {
 
     activeCombKeys.forEach(combKey => {
         const [agent, model] = combKey.split('|||');
-        const runs = combinations[combKey];
+        const entries = combinations[combKey];
 
         const card = document.createElement('div');
         card.className = 'stat-card';
@@ -421,20 +503,38 @@ function renderGraphs(guideName) {
         card.style.gap = '15px';
         card.style.padding = '20px';
         
+        const totalRunsCount = entries.reduce((sum, e) => sum + e.runsOnDate.length, 0);
         const header = document.createElement('div');
-        header.innerHTML = `
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.flexWrap = 'wrap';
+        header.style.gap = '10px';
+
+        const titleDiv = document.createElement('div');
+        titleDiv.innerHTML = `
             <div style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">
                 ${escapeHtml(agent)} <span style="font-weight: normal; color: var(--text-secondary);">on</span> ${escapeHtml(model)}
             </div>
             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
-                ${runs.length} chronological trials
+                ${totalRunsCount} chronological trials (${entries.length} active dates)
             </div>
         `;
+        header.appendChild(titleDiv);
+
+        const runSelectorSlot = document.createElement('div');
+        runSelectorSlot.className = 'run-selector-slot';
+        runSelectorSlot.style.minHeight = '32px';
+        runSelectorSlot.style.display = 'flex';
+        runSelectorSlot.style.alignItems = 'center';
+        header.appendChild(runSelectorSlot);
+
         card.appendChild(header);
 
         const chartWrapper = document.createElement('div');
         chartWrapper.style.overflowX = 'auto';
         chartWrapper.style.width = '100%';
+        chartWrapper.style.position = 'relative';
 
         const height = 230;
         const paddingX = 40;
@@ -458,9 +558,11 @@ function renderGraphs(guideName) {
         globalTimeline.forEach((suite, i) => {
             const x = globalTimeline.length > 1 ? paddingX + i * stepX : globalWidth / 2;
             
-            const run = runs.find(r => getDateKey(r.timestamp) === suite.dateKey);
+            const entry = entries.find(e => e.dateKey === suite.dateKey);
+            const run = entry ? entry.latestRun : null;
+            const runsOnDate = entry ? entry.runsOnDate : [];
             
-            const isHighlighted = run && run.testId === highlightTestId;
+            const isHighlighted = run && runsOnDate.some((/** @type {any} */ r) => r.testId === highlightTestId);
             if (isHighlighted) {
                 svgContent += `
                     <rect x="${x - 12}" y="${paddingY - 5}" width="24" height="${plotHeight + 10}" fill="var(--color-primary)" style="opacity: 0.12; rx: 4px;" />
@@ -498,9 +600,22 @@ function renderGraphs(guideName) {
                     `;
                 }
 
+                // Visual badge indicator for multiple runs on the same day (+50% size increase, centered above arrow)
+                let multiRunIndicator = '';
+                if (runsOnDate.length > 1) {
+                    const topY = Math.min(yG, yU);
+                    multiRunIndicator = `
+                        <g transform="translate(${x - 13}, ${topY - 22})">
+                            <rect width="26" height="18" rx="4" fill="#2563eb" />
+                            <text x="13" y="13" font-size="0.85rem" font-weight="bold" fill="#ffffff" text-anchor="middle">${runsOnDate.length}x</text>
+                        </g>
+                    `;
+                }
+
                 svgContent += `
-                    <g class="timeline-point" data-testid="${run.testId}" data-comb="${combKey}" style="cursor: pointer;">
+                    <g class="timeline-point" data-testid="${run.testId}" data-comb="${combKey}" data-datekey="${suite.dateKey}" data-x="${x}" data-yg="${yG}" style="cursor: pointer;">
                         ${elementHtml}
+                        ${multiRunIndicator}
                         <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.7rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${suite.shortDate}</text>
                         <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
                     </g>
@@ -539,18 +654,45 @@ function renderGraphs(guideName) {
         svg.querySelectorAll('.timeline-point').forEach(el => {
             const group = /** @type {SVGElement} */ (el);
             group.addEventListener('mouseenter', () => {
-                const combKey = group.getAttribute('data-comb');
-                const testId = group.getAttribute('data-testid');
-                if (!combKey || !testId) return;
-                const runData = combinations[combKey].find(r => r.testId === testId);
-                if (!runData) return;
+                const dateKey = group.getAttribute('data-datekey');
+                if (!combKey || !dateKey) return;
+                const entry = combinations[combKey]?.find(e => e.dateKey === dateKey);
+                if (!entry) return;
 
+                const runData = entry.latestRun;
+                const runsOnDate = entry.runsOnDate;
                 const stats = runData.guides[guideName];
                 const formattedDate = new Date(runData.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
                 const tooltip = $('#tooltip-container');
                 const header = $('#tooltip-header');
                 const content = $('#tooltip-content');
+
+                let multiRunHtml = '';
+                if (runsOnDate.length > 1) {
+                    multiRunHtml = `
+                        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-color);">
+                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--text-primary); margin-bottom: 6px;">
+                                ${runsOnDate.length} runs on this date:
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${runsOnDate.map((/** @type {any} */ r, /** @type {number} */ idx) => {
+                                    const rStats = r.guides[guideName];
+                                    const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                    const isLatest = idx === runsOnDate.length - 1;
+                                    return `
+                                        <div style="font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                            <a href="dashboard.html?testId=${r.testId}&source=${r.source}#guide-${guideName}" style="color: var(--color-primary); font-weight: 600; text-decoration: none;">
+                                                Run ${idx + 1} (${timeStr})${isLatest ? ' <span style="color:#64748b; font-weight:normal;">(Latest)</span>' : ''}
+                                            </a>
+                                            <span style="font-size:0.7rem; color: var(--text-secondary);">${rStats ? rStats.guidedRate : 0}% guided</span>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
 
                 header.innerHTML = `
                     <div style="font-weight: bold; font-size: 0.9rem; color: var(--text-primary); word-break: break-all;">
@@ -581,6 +723,7 @@ function renderGraphs(guideName) {
                             </span>
                         </div>
                     </div>
+                    ${multiRunHtml}
                 `;
 
                 tooltip.classList.remove('hidden');
@@ -612,13 +755,237 @@ function renderGraphs(guideName) {
 
             group.addEventListener('click', () => {
                 const combKey = group.getAttribute('data-comb');
-                const testId = group.getAttribute('data-testid');
-                if (!combKey || !testId) return;
-                const runData = combinations[combKey].find(r => r.testId === testId);
-                if (runData) {
-                    window.location.href = `dashboard.html?testId=${runData.testId}&source=${runData.source}#guide-${guideName}`;
+                const dateKey = group.getAttribute('data-datekey');
+                if (!combKey || !dateKey) return;
+                const entry = combinations[combKey]?.find(e => e.dateKey === dateKey);
+                if (!entry) return;
+
+                const runsOnDate = entry.runsOnDate;
+                const defaultRun = entry.latestRun;
+                const defaultRunIndex = runsOnDate.length; // 1-indexed
+
+                if (isCompareMode) {
+                    // Render run selection dropdown ABOVE arrows inside the card header
+                    document.querySelectorAll('.run-selector-slot').forEach(slot => slot.innerHTML = '');
+
+                    if (runsOnDate.length > 1) {
+                        const selectorContainer = document.createElement('div');
+                        selectorContainer.style.display = 'flex';
+                        selectorContainer.style.alignItems = 'center';
+                        selectorContainer.style.gap = '8px';
+                        selectorContainer.style.background = 'var(--bg-secondary)';
+                        selectorContainer.style.padding = '4px 10px';
+                        selectorContainer.style.borderRadius = '6px';
+                        selectorContainer.style.border = '1px solid var(--border-color)';
+                        selectorContainer.style.fontSize = '0.85rem';
+
+                        const title = document.createElement('span');
+                        title.style.fontWeight = '600';
+                        title.style.color = 'var(--text-primary)';
+                        title.innerText = `Select run for ${dateKey}:`;
+                        selectorContainer.appendChild(title);
+
+                        const select = document.createElement('select');
+                        select.style.padding = '3px 8px';
+                        select.style.borderRadius = '4px';
+                        select.style.border = '1px solid var(--border-color)';
+                        select.style.background = '#ffffff';
+                        select.style.color = '#334155';
+                        select.style.fontSize = '0.8rem';
+                        select.style.fontWeight = '500';
+                        select.style.cursor = 'pointer';
+
+                        runsOnDate.forEach((/** @type {any} */ r, /** @type {number} */ idx) => {
+                            const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const rStats = r.guides[guideName];
+                            const opt = document.createElement('option');
+                            opt.value = r.testId;
+                            opt.setAttribute('data-runindex', (idx + 1).toString());
+                            const isLatest = idx === runsOnDate.length - 1;
+                            opt.innerText = `Run ${idx + 1} (${isLatest ? 'Latest - ' : ''}${timeStr}) [${rStats ? rStats.guidedRate : 0}% guided]`;
+                            if (r.testId === defaultRun.testId) {
+                                opt.selected = true;
+                            }
+                            select.appendChild(opt);
+                        });
+
+                        select.addEventListener('change', () => {
+                            const chosenTestId = select.value;
+                            const selectedOpt = select.options[select.selectedIndex];
+                            const chosenRunIndex = parseInt(selectedOpt.getAttribute('data-runindex') || '1');
+                            const chosenRun = runsOnDate.find((/** @type {any} */ r) => r.testId === chosenTestId) || defaultRun;
+                            handlePointSelection(chosenRun, group, combKey, guideName, chosenRunIndex);
+                        });
+
+                        selectorContainer.appendChild(select);
+                        runSelectorSlot.appendChild(selectorContainer);
+
+                        handlePointSelection(defaultRun, group, combKey, guideName, defaultRunIndex);
+                    } else {
+                        handlePointSelection(defaultRun, group, combKey, guideName, 1);
+                    }
+                } else {
+                    window.location.href = `dashboard.html?testId=${defaultRun.testId}&source=${defaultRun.source}#guide-${guideName}`;
                 }
             });
         });
     });
 }
+
+/**
+ * @param {string} guideName
+ */
+function setupCompareMode(guideName) {
+    const compareBtn = $('#compare-mode-btn');
+    const banner = $('#compare-banner');
+    const launchBtn = $('#launch-compare-btn');
+    const cancelBtn = $('#cancel-compare-btn');
+
+    if (!compareBtn || !banner || !launchBtn || !cancelBtn) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const isStatic = urlParams.get('source') === 'static' || window.location.hostname.includes('github.io') || window.location.hostname.includes('storage.googleapis.com');
+    if (isStatic) {
+        compareBtn.style.display = 'none';
+        return;
+    }
+
+    compareBtn.addEventListener('click', () => {
+        toggleCompareMode(!isCompareMode);
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        toggleCompareMode(false);
+    });
+
+    launchBtn.addEventListener('click', () => {
+        if (selectedPoints.length === 2) {
+            const [pA, pB] = selectedPoints;
+            const urlParams = new URLSearchParams(window.location.search);
+            const isStatic = urlParams.get('source') === 'static' || window.location.hostname.includes('github.io');
+            
+            window.location.href = `compare.html?trialA=${pA.testId}&trialB=${pB.testId}&runIndexA=${pA.runNumber || 1}&runIndexB=${pB.runNumber || 1}&agentA=${encodeURIComponent(pA.agent || '')}&modelA=${encodeURIComponent(pA.model || '')}&scoreA=${pA.score || 0}&agentB=${encodeURIComponent(pB.agent || '')}&modelB=${encodeURIComponent(pB.model || '')}&scoreB=${pB.score || 0}&guide=${guideName}&source=${isStatic ? 'static' : 'local'}`;
+        }
+    });
+}
+
+/**
+ * @param {boolean} on
+ */
+function toggleCompareMode(on) {
+    isCompareMode = on;
+    const compareBtn = $('#compare-mode-btn');
+    const banner = $('#compare-banner');
+    
+    if (isCompareMode) {
+        compareBtn.textContent = 'Exit Compare';
+        compareBtn.style.backgroundColor = '#cbd5e1';
+        banner.style.display = 'flex';
+        clearSelections();
+    } else {
+        compareBtn.textContent = 'Compare Trials';
+        compareBtn.style.backgroundColor = '#f1f5f9';
+        banner.style.display = 'none';
+        clearSelections();
+    }
+}
+
+function clearSelections() {
+    document.querySelectorAll('.compare-highlight').forEach(el => el.remove());
+    document.querySelectorAll('.run-selector-slot').forEach(slot => slot.innerHTML = '');
+    selectedPoints = [];
+    updateCompareBanner();
+}
+
+/**
+ * @param {GuideSuiteSummary} runData
+ * @param {SVGElement} group
+ * @param {string} combKey
+ * @param {string} guideName
+ * @param {number} [runNumber=1]
+ */
+function handlePointSelection(runData, group, combKey, guideName, runNumber = 1) {
+    const testId = runData.testId;
+    const dateKey = group.getAttribute('data-datekey') || '';
+    const existingIdx = selectedPoints.findIndex(p => p.dateKey === dateKey && p.combKey === combKey);
+
+    if (existingIdx !== -1) {
+        const prev = selectedPoints[existingIdx];
+        if (prev.testId === testId) {
+            selectedPoints.splice(existingIdx, 1);
+            group.querySelector('.compare-highlight')?.remove();
+        } else {
+            selectedPoints[existingIdx] = { 
+                testId, 
+                dateKey,
+                combKey,
+                runNumber,
+                source: /** @type {'local' | 'static' | undefined} */ (runData.source), 
+                agent: runData.agent, 
+                model: runData.model,
+                score: runData.guides[guideName] ? runData.guides[guideName].guidedRate : 0
+            };
+        }
+    } else {
+        if (selectedPoints.length >= 2) {
+            const removed = selectedPoints.shift();
+            if (removed) {
+                const oldGroup = document.querySelector(`[data-datekey="${removed.dateKey}"][data-comb="${removed.combKey}"]`);
+                if (oldGroup) oldGroup.querySelector('.compare-highlight')?.remove();
+            }
+        }
+
+        const stats = runData.guides[guideName];
+        selectedPoints.push({ 
+            testId, 
+            dateKey,
+            combKey,
+            runNumber,
+            source: /** @type {'local' | 'static' | undefined} */ (runData.source), 
+            agent: runData.agent, 
+            model: runData.model,
+            score: stats ? stats.guidedRate : 0
+        });
+
+        const x = parseFloat(group.getAttribute('data-x') || '0');
+        const y = parseFloat(group.getAttribute('data-yg') || '0');
+        
+        if (!group.querySelector('.compare-highlight')) {
+            const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            highlight.setAttribute('class', 'compare-highlight');
+            highlight.setAttribute('cx', x.toString());
+            highlight.setAttribute('cy', y.toString());
+            highlight.setAttribute('r', '12');
+            highlight.setAttribute('stroke', '#2563eb');
+            highlight.setAttribute('stroke-width', '3');
+            highlight.setAttribute('fill', 'none');
+            highlight.setAttribute('style', 'stroke-dasharray: 2; transform-origin: center;');
+            
+            group.appendChild(highlight);
+        }
+    }
+
+    updateCompareBanner();
+}
+
+function updateCompareBanner() {
+    const text = $('#compare-banner-text');
+    const launchBtn = /** @type {HTMLButtonElement | null} */ ($('#launch-compare-btn'));
+    if (!text || !launchBtn) return;
+
+    if (selectedPoints.length === 0) {
+        text.innerText = 'Select two trials on the chart to compare.';
+        launchBtn.disabled = true;
+    } else if (selectedPoints.length === 1) {
+        const label0 = selectedPoints[0].runNumber ? ` (Run ${selectedPoints[0].runNumber})` : '';
+        text.innerHTML = `Selected 1 trial: <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[0].testId.slice(0, 15)}${label0}...</span>. Select one more.`;
+        launchBtn.disabled = true;
+    } else if (selectedPoints.length === 2) {
+        const label0 = selectedPoints[0].runNumber ? ` (Run ${selectedPoints[0].runNumber})` : '';
+        const label1 = selectedPoints[1].runNumber ? ` (Run ${selectedPoints[1].runNumber})` : '';
+        text.innerHTML = `Ready to compare: <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[0].testId.slice(0, 10)}${label0}...</span> vs <span style="font-family:monospace; color:#bfdbfe;">${selectedPoints[1].testId.slice(0, 10)}${label1}...</span>`;
+        launchBtn.disabled = false;
+    }
+}
+
+
