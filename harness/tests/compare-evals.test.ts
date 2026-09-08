@@ -178,5 +178,45 @@ describe('compare-evals pipeline', () => {
       fs.rmSync(baseDir, { recursive: true, force: true });
     }
   });
+
+  test('runs runComparison using agent.patch when present', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compare-patch-'));
+    try {
+      const suiteDir = path.join(baseDir, 'results', 'suite-test');
+      const runDirA = path.join(suiteDir, '1', 'details-styling', 'task', 'guided');
+      const runDirB = path.join(suiteDir, '2', 'details-styling', 'task', 'unguided');
+      fs.mkdirSync(runDirA, { recursive: true });
+      fs.mkdirSync(runDirB, { recursive: true });
+
+      const patchA = '--- a/src/App.tsx\n+++ b/src/App.tsx\n@@ -1 +1 @@\n-old\n+newA\n';
+      const patchB = '--- a/src/App.tsx\n+++ b/src/App.tsx\n@@ -1 +1 @@\n-old\n+newB\n';
+
+      fs.writeFileSync(path.join(runDirA, 'details-styling_results.json'), JSON.stringify({ suites: [{ specs: [{ title: 't1', ok: true }] }] }));
+      fs.writeFileSync(path.join(runDirA, 'agent.patch'), patchA);
+      fs.writeFileSync(path.join(runDirA, 'trajectory_summary.json'), JSON.stringify({ agent: 'codex_cli', initialPrompt: 'Task A', steps: [] }));
+
+      fs.writeFileSync(path.join(runDirB, 'details-styling_results.json'), JSON.stringify({ suites: [{ specs: [{ title: 't1', ok: false }] }] }));
+      fs.writeFileSync(path.join(runDirB, 'agent.patch'), patchB);
+      fs.writeFileSync(path.join(runDirB, 'trajectory_summary.json'), JSON.stringify({ agent: 'codex_cli', initialPrompt: 'Task B', steps: [] }));
+
+      let passedDiffA = '';
+      let passedDiffB = '';
+      const mockAgentCaller = async (_sys: string, prompt: string, label = 'agent'): Promise<string> => {
+        if (label === 'Sub-Agent 2 (Code & Friction)') {
+          passedDiffA = prompt;
+          passedDiffB = prompt;
+        }
+        return `Report from ${label}`;
+      };
+
+      const { runComparison } = await import('../lib/compare-evals.ts');
+      const report = await runComparison(runDirA, runDirB, mockAgentCaller);
+      assert.ok(report.includes('Report from Synthesizer Sub-Agent'));
+      assert.ok(passedDiffA.includes('+newA'), 'Expected patch A content in prompt');
+      assert.ok(passedDiffB.includes('+newB'), 'Expected patch B content in prompt');
+    } finally {
+      fs.rmSync(baseDir, { recursive: true, force: true });
+    }
+  });
 });
 
