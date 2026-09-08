@@ -181,7 +181,7 @@ export async function runDevPr(guideDir: string): Promise<boolean> {
       return false;
     }
   } else {
-    const prTitle = `gd dev output for ${guideName}`;
+    const prTitle = `grader updates: ${guideName}`;
     try {
       const prUrl = devPrCli.createPr(prTitle, reportPath, labels);
       console.log(`\n${cGreen('📄 Pull Request:')} ${prUrl}`);
