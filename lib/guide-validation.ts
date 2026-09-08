@@ -187,22 +187,9 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
   for (const inv of guides) {
     const subdir = inv.dir;
-    const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill, targets } = inv;
-    const hasTargets = !!targets && targets.length > 0;
+    const { hasGuide, hasGrader, hasTask, isDisciplineSkill } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
-    const guideExists = hasGuide || inv.isStub;
     const isDisciplineGuide = inv.name === inv.category || ['css-layout', 'passkeys'].includes(inv.name);
-
-    // Discipline skills don't need demo.html; a frontmatter-only stub
-    // (a proposed use case) doesn't need one either
-    // Guides with multi-app targets don't need a top-level demo.html
-    if (!isDisciplineSkill && !isDisciplineGuide && !hasTargets && ((hasGuide && !hasDemo) || (hasDemo && !guideExists))) {
-      const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
-      const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
-      console.error(msg);
-      errors.push(msg);
-      hasError = true;
-    }
 
     if (hasGrader !== hasTask) {
       const missingFile = hasGrader ? TASK_FILE : GRADER_FILE;
@@ -241,7 +228,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       }
     }
 
-    const isIncomplete = (!hasGuide && !inv.isStub) || (hasGuide && !hasDemo);
+    const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
     const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask) : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
