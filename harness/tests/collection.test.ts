@@ -38,3 +38,14 @@ test('parseResultPath returns null for invalid structure', () => {
   const result = parseResultPath(relPath);
   assert.strictEqual(result, null);
 });
+
+test('parseResultPath handles deep suite and nightly structure', () => {
+  const relPath = path.join('nightly-2026-08-10_17-00-02-jetski_cli', '1', 'accessible-error-announcement', 'task', 'guided');
+  const result = parseResultPath(relPath);
+  assert.deepStrictEqual(result, {
+    guide: 'accessible-error-announcement',
+    taskName: 'task',
+    runType: 'guided'
+  });
+});
+

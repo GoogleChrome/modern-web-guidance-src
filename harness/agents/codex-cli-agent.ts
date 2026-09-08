@@ -25,9 +25,10 @@ import {
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
   readTrajectorySummary,
-  getSessionFiles
+  getSessionFiles,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
-import type { CodexRolloutLine } from './codex.d.ts';
+import type { CodexRolloutLine, CodexOutputContentBlock } from './codex.d.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
 
@@ -188,6 +189,8 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   if (typeof raw === 'object') {
     if (typeof raw.cmd === 'string') commands.push(raw.cmd);
     else if (typeof raw.command === 'string') commands.push(raw.command);
+    else if (Array.isArray(raw.command)) commands.push(raw.command.join(' '));
+    else if (Array.isArray(raw.cmd)) commands.push(raw.cmd.join(' '));
     return commands;
   }
 
@@ -197,6 +200,8 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
       if (parsed && typeof parsed === 'object') {
         if (typeof parsed.cmd === 'string') return [parsed.cmd];
         if (typeof parsed.command === 'string') return [parsed.command];
+        if (Array.isArray(parsed.command)) return [parsed.command.join(' ')];
+        if (Array.isArray(parsed.cmd)) return [parsed.cmd.join(' ')];
       }
     } catch {
       // Not direct JSON
@@ -289,11 +294,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
           timestamp,
           subagentId,
           thought: currentThought || `Executing ${cmdName}`,
-          action: {
-            type: actionType,
-            name: actionName,
-            params
-          }
+          action: standardizeAction(actionType, actionName, params)
         };
         steps.push(step);
         if (subagentId) {
@@ -309,11 +310,22 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         const p = entry.payload;
         const callId = p.call_id;
         const rawOut = p.output ?? '';
-        const outStr = typeof rawOut === 'string'
-          ? rawOut
-          : Array.isArray(rawOut)
-            ? rawOut.map((item: any) => (typeof item === 'string' ? item : item?.text || JSON.stringify(item))).join('\n')
-            : JSON.stringify(rawOut);
+        let outStr = '';
+        if (typeof rawOut === 'string') {
+          outStr = rawOut;
+        } else if (Array.isArray(rawOut)) {
+          outStr = rawOut
+            .map((c: CodexOutputContentBlock | unknown) =>
+              typeof c === 'string'
+                ? c
+                : c && typeof c === 'object' && 'text' in c && typeof (c as { text: unknown }).text === 'string'
+                  ? (c as { text: string }).text
+                  : JSON.stringify(c)
+            )
+            .join('\n');
+        } else if (rawOut) {
+          outStr = typeof rawOut === 'object' ? (rawOut.text || rawOut.content || JSON.stringify(rawOut)) : String(rawOut);
+        }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
           const isError = p.is_error === true || outStr.toLowerCase().includes('error:');

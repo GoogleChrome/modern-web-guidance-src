@@ -79,6 +79,7 @@
     "@webref/elements": "^2.7.1",
     "@webref/idl": "^3.82.0",
     "caniuse-lite": "^1.0.30001806",
+    "diff": "^9.0.0",
     "glob": "^13.0.6",
     "mdn-data": "^2.29.0",
     "omelette": "^0.4.17",

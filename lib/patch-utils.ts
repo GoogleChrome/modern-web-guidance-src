@@ -98,3 +98,26 @@ export function initGitRepo(workDir: string): void {
     console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
   }
 }
+
+import { createTwoFilesPatch } from 'diff';
+
+/**
+ * Generates an aligned unified diff of two strings for LLM context and file comparison.
+ */
+export function generateUnifiedDiff(
+  oldText: string,
+  newText: string,
+  oldLabel = 'Old',
+  newLabel = 'New',
+  contextLines = 3
+): string {
+  if (oldText === newText) {
+    return 'No differences detected.';
+  }
+
+  const patch = createTwoFilesPatch(oldLabel, newLabel, oldText, newText, undefined, undefined, { context: contextLines });
+  if (!patch.includes('@@')) {
+    return 'No differences detected.';
+  }
+  return patch.trim();
+}

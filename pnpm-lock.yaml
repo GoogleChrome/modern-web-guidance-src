@@ -31,6 +31,9 @@ importers:
       caniuse-lite:
         specifier: ^1.0.30001806
         version: 1.0.30001806
+      diff:
+        specifier: ^9.0.0
+        version: 9.0.0
       glob:
         specifier: ^13.0.6
         version: 13.0.6

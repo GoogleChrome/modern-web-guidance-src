@@ -26,7 +26,8 @@ import {
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
   readTrajectorySummary,
-  getSessionFiles
+  getSessionFiles,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
@@ -196,7 +197,12 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
         } else {
           for (const tc of toolCalls) {
             const toolName = tc.function?.name || tc.name || 'unknown';
-            const params = tc.arguments || tc.function?.arguments || tc.input || {};
+            let params = tc.arguments || tc.function?.arguments || tc.input || {};
+            if (typeof params === 'string') {
+              try {
+                params = JSON.parse(params);
+              } catch {}
+            }
 
             if (toolName === 'modern-web-guidance' || toolName.includes('get_best_practices')) {
               toolsUsed.add('modern-web-guidance');
@@ -231,11 +237,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
               timestamp,
               subagentId,
               thought,
-              action: {
-                type: mapToolType(toolName),
-                name: toolName,
-                params
-              }
+              action: standardizeAction(mapToolType(toolName), toolName, params)
             }) - 1;
 
             if (subagentId) {
@@ -247,14 +249,23 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
             }
           }
         }
-      } else if (entry.role === 'user' || entry.type === 'tool_result') {
-        const content = entry.content || entry.output || '';
-        const toolUseId = entry.tool_use_id || entry.call_id;
+      } else if (
+        entry.role === 'user' ||
+        entry.type === 'tool_result' ||
+        (entry.type === 'message' && entry.message?.role === 'toolResult')
+      ) {
+        const msg = entry.message || entry;
+        const toolUseId = msg.toolCallId || entry.tool_use_id || entry.call_id;
+        let content = msg.content || entry.output || '';
+        if (Array.isArray(content)) {
+          content = content.map((c: any) => (typeof c === 'string' ? c : c?.text || JSON.stringify(c))).join('\n');
+        }
+        const isError = msg.isError !== undefined ? msg.isError : Boolean(entry.is_error);
         if (toolUseId) {
           const stepIdx = toolUseToStepMap.get(toolUseId);
           if (stepIdx !== undefined && steps[stepIdx]) {
             steps[stepIdx].outcome = {
-              status: entry.is_error ? 'error' : 'success',
+              status: isError ? 'error' : 'success',
               message: truncateMessage(content)
             };
           }
