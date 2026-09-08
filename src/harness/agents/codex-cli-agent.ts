@@ -327,7 +327,6 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         } else if (rawOut) {
           outStr = typeof rawOut === 'object' ? (rawOut.text || rawOut.content || JSON.stringify(rawOut)) : String(rawOut);
         }
-        }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
           const isError = p.is_error === true || outStr.toLowerCase().includes('error:');
@@ -335,7 +334,6 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
             status: isError ? 'error' : 'success',
             message: truncateMessage(outStr)
           };
-        }
         }
       }
 
