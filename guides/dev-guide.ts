@@ -376,10 +376,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       let guidesConsumed: string[] = [];
       const guidedDir = path.join(testOutputDir, '1', guideName, baseApp, 'guided');
       if (fs.existsSync(guidedDir)) {
-        const suiteConfig = defaultSuiteConfig;
-        const servingMode = suiteConfig.serving as any;
-        const activeAgent = agent;
-        const usage = await collectGuidesUsed(guidedDir, servingMode, activeAgent);
+        const usage = await collectGuidesUsed(guidedDir);
         guidesConsumed = [...new Set([...usage.retrievedGuides, ...usage.fileReadGuides])];
       }
 
