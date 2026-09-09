@@ -46,7 +46,8 @@ async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: s
     }
 
     if (!detectedAgent) {
-      throw new Error(`[GCS Downloader] Could not determine agent from evals.json for run: ${relativeRunPath}`);
+      console.warn(`[GCS Downloader] Warning: Could not determine agent from evals.json for run: ${relativeRunPath}. Skipping automatic trajectory generation.`);
+      return;
     }
     
     try {
@@ -174,14 +175,15 @@ function normalizePath(p: string): string {
 }
 
 export function resolveRunPath(runDir: string): { absoluteRunDir: string; relativeRunPath: string } | null {
+  const normalizedRunDir = runDir.replace(/\\/g, '/');
   let absoluteRunDir = normalizePath(runDir);
   const absoluteResultsDir = normalizePath(baseResultsDir);
   let relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
 
   if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
-    const stripped = runDir.replace(/^(\.\/)?(harness\/)?results\/?/, '');
+    const stripped = normalizedRunDir.replace(/^(\.\/)?(harness\/)?results\/?/, '');
     const candidate = path.resolve(baseResultsDir, stripped);
-    const candidateRel = path.relative(absoluteResultsDir, candidate);
+    const candidateRel = path.relative(absoluteResultsDir, normalizePath(candidate));
     if (!candidateRel.startsWith('..') && !path.isAbsolute(candidateRel)) {
       absoluteRunDir = candidate;
       relativeRunPath = candidateRel;
@@ -201,8 +203,14 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
 
   if (fs.existsSync(absoluteRunDir)) {
     const files = fs.readdirSync(absoluteRunDir);
-    if (files.some(f => f === 'trajectory_summary.json' || f.endsWith('_results.json') || f === 'runtime.json')) {
+    const hasTrajectory = files.includes('trajectory_summary.json');
+    const hasResults = files.some(f => f.endsWith('_results.json') || f === 'runtime.json');
+    if (hasTrajectory) {
       return true; // Already cached locally
+    }
+    if (hasResults) {
+      await postDownloadProcessing(absoluteRunDir, relativeRunPath);
+      return true;
     }
   }
 
@@ -280,7 +288,7 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
 /**
  * Lazily downloads a run directory from GCS if it is missing locally.
  * Resolves the path relative to the harness results directory.
- * Orchestrates downloading suite evals.json, the primary requested run, and the sibling run type (guided/unguided).
+ * Orchestrates downloading suite evals.json and the primary requested run.
  */
 export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boolean> {
   const resolved = resolveRunPath(runDir);
