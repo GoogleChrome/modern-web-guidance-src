@@ -4,6 +4,7 @@ import { Octokit } from '@octokit/rest';
 import { fileURLToPath } from 'url';
 import { ProjectStatus, processGuideInventory, scanAllGuides, type GuideInventory } from '../lib/guide-validation.ts';
 import { extractFeatureIds } from '../lib/feature-parser.ts';
+import { parseBooleanEnv } from '../lib/env.ts';
 
 // --- Types ---
 
@@ -70,8 +71,10 @@ const PROJECT_GITHUB_TOKEN = process.env.PROJECT_GITHUB_TOKEN || GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
 const REPO = 'modern-web-guidance-src';
 const PROJECT_NUMBER = 30;
-// Default to dry run mode unless explicitly disabled.
-const IS_DRY_RUN = process.env.DRY_RUN !== 'false';
+// Default to dry run mode unless explicitly disabled via --write, --live, or DRY_RUN=false/0/no.
+const hasWriteFlag = process.argv.includes('--write') || process.argv.includes('--live');
+const isDryRunEnv = parseBooleanEnv(process.env.DRY_RUN, true);
+const IS_DRY_RUN = hasWriteFlag ? false : isDryRunEnv;
 
 if (IS_DRY_RUN) {
   console.log('🏃 Dry run mode enabled. No changes will be made to GitHub.');
@@ -398,7 +401,7 @@ async function updateProjectItemStatus(issueNumber: number, projectId: string, f
         }
       }
     `;
-    const addResult = await octokit.graphql(addItemMutation, { projectId, contentId: issueNodeId }) as any;
+    const addResult = await projectOctokit.graphql(addItemMutation, { projectId, contentId: issueNodeId }) as any;
     const itemId = addResult.addProjectV2ItemById.item.id;
 
     const updateFieldMutation = `
@@ -417,7 +420,7 @@ async function updateProjectItemStatus(issueNumber: number, projectId: string, f
         }
       }
     `;
-    await octokit.graphql(updateFieldMutation, { projectId, itemId, fieldId, optionId });
+    await projectOctokit.graphql(updateFieldMutation, { projectId, itemId, fieldId, optionId });
   } catch (err: any) {
     console.error(`Error updating project for issue #${issueNumber}:`, err.message);
   }

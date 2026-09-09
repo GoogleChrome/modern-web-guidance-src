@@ -452,6 +452,8 @@ describe('buildRequiredFilesChecklist', () => {
       hasTask: false,
       featureIds: [],
       isDisciplineGuide: false,
+      draft: false,
+      isPublished: false,
       isDisciplineSkill: false,
       ...overrides,
     };
@@ -527,6 +529,8 @@ describe('buildIssueContent', () => {
       hasTask: false,
       featureIds: [],
       isDisciplineGuide: false,
+      draft: false,
+      isPublished: false,
       isDisciplineSkill: false,
     };
   }
@@ -789,6 +793,8 @@ describe('processGuideInventory', () => {
       hasTask: false,
       featureIds: [],
       isDisciplineGuide: false,
+      draft: false,
+      isPublished: false,
       isDisciplineSkill: false,
       ...overrides,
     };
