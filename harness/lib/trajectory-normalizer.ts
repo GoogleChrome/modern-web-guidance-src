@@ -274,6 +274,11 @@ export function categorizeAction(
     return 'other';
   }
 
+  // Skill activations (e.g. Claude Code or agent skill loading) are tracked in toolsUsed, not skill search
+  if (actionName === 'skill' || actionName === 'activate_skill' || actionName === 'load_skill') {
+    return 'other';
+  }
+
   const isMutationName = ['write', 'replace', 'edit', 'touch'].some(k => actionName.includes(k));
   if (isMutationName) {
     return 'code_mutation';
@@ -286,16 +291,25 @@ export function categorizeAction(
     return 'code_mutation';
   }
 
-  const actionParamsStr = JSON.stringify(params || {}).toLowerCase();
+  const cmd = typeof params?.command === 'string' ? params.command : (typeof params?.cmd === 'string' ? params.cmd : '');
+  const cmdLower = cmd.toLowerCase();
   const thoughtStr = (thought || '').toLowerCase();
 
-  // 2. Guide retrieval
-  if (actionName.includes('retrieve') || (actionName.includes('get_best_practices') && actionParamsStr.includes('retrieve')) || actionParamsStr.includes('retrieve')) {
+  // 2. Guide retrieval: Look for modern-web-guidance / cli.js / gd retrieve in command or retrieve tool
+  const isGuidanceRetrieve =
+    actionName.includes('retrieve') ||
+    (cmdLower.includes('retrieve') && (cmdLower.includes('modern-web-guidance') || cmdLower.includes('cli.js') || cmdLower.includes('gd') || cmdLower.startsWith('retrieve')));
+  if (isGuidanceRetrieve) {
     return 'guide_retrieval';
   }
 
-  // 3. Skill search
-  if (actionName.includes('search') || actionName.includes('get_best_practices') || actionName.includes('query_guidance') || actionParamsStr.includes('search')) {
+  // 3. Skill search: Look for modern-web-guidance / cli.js / gd search in command or search tool
+  const isGuidanceSearch =
+    actionName.includes('search') ||
+    actionName.includes('query_guidance') ||
+    actionName.includes('get_best_practices') ||
+    (cmdLower.includes('search') && (cmdLower.includes('modern-web-guidance') || cmdLower.includes('cli.js') || cmdLower.includes('gd') || cmdLower.startsWith('search')));
+  if (isGuidanceSearch) {
     return 'skill_search';
   }
 

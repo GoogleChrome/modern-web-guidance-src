@@ -253,7 +253,7 @@ function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
 /**
  * Categorizes trajectory steps into milestone/noise types and computes metrics.
  */
-function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): PreprocessedTrajectory {
+export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): PreprocessedTrajectory {
   const steps = trajectorySummary?.steps || [];
   const taggedSteps: TaggedStep[] = [];
   const searchQueries: string[] = [];
@@ -285,11 +285,12 @@ function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): Prep
     const category: TaggedStep['category'] = rawCat && rawCat !== 'other' ? rawCat : 'incidental_noise';
 
     if (category === 'guide_retrieval') {
-      const guideId = actionParams?.id || actionParams?.guideId || actionParams?.query || actionParams?.command;
-      if (guideId) retrievedGuideIds.push(String(guideId).trim());
+      // Guide retrieval is tracked primarily from trajectorySummary.retrievedGuides
     } else if (category === 'skill_search') {
-      const query = actionParams?.query || actionParams?.command || actionParams?.search;
-      if (query) searchQueries.push(String(query).trim());
+      const cmd = typeof actionParams?.command === 'string' ? actionParams.command : '';
+      const match = cmd.match(/search\s+["']?([^"'\n\r]+?)["']?(?:\s|$)/i);
+      const query = match ? match[1].trim() : (typeof actionParams?.query === 'string' ? actionParams.query.trim() : undefined);
+      if (query) searchQueries.push(query);
     } else if (category === 'code_mutation') {
       codeMutationCount++;
     } else if (category === 'mandatory_rule_thought') {
@@ -306,7 +307,7 @@ function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): Prep
     });
   }
 
-  // Backfill top-level retrievedGuides if present
+  // Trajectory summary retrievedGuides is the primary source of truth
   if (trajectorySummary?.retrievedGuides) {
     retrievedGuideIds.push(...trajectorySummary.retrievedGuides);
   }
@@ -352,7 +353,7 @@ function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
 /**
  * Loads all relevant context for a single run including preprocessed trajectory.
  */
-function loadRunContext(runDir: string): RunContext {
+export function loadRunContext(runDir: string): RunContext {
   let absoluteDir = path.resolve(runDir);
   if (!fs.existsSync(absoluteDir)) {
     const stripped = runDir.replace(/^(\.\/)?(harness\/)?results\/?/, '');
@@ -517,9 +518,11 @@ export async function runComparison(
   const diffBaseVsB = ctxB.patchContent
     ? ctxB.patchContent.trim()
     : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Run B Output');
-  const diffAvsB = (ctxA.codeOutput && ctxB.codeOutput)
-    ? generateUnifiedDiff(ctxA.codeOutput, ctxB.codeOutput, 'Run A Output', 'Run B Output')
-    : generateUnifiedDiff(ctxA.patchContent || '', ctxB.patchContent || '', 'Run A Patch', 'Run B Patch');
+  const diffAvsB = (ctxA.patchContent && ctxB.patchContent)
+    ? generateUnifiedDiff(ctxA.patchContent.trim(), ctxB.patchContent.trim(), 'Run A Patch', 'Run B Patch')
+    : (ctxA.codeOutput && ctxB.codeOutput)
+      ? generateUnifiedDiff(ctxA.codeOutput, ctxB.codeOutput, 'Run A Output', 'Run B Output')
+      : generateUnifiedDiff(ctxA.patchContent || ctxA.codeOutput || '', ctxB.patchContent || ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
 
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';

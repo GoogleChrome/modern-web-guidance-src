@@ -298,8 +298,8 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           const objs = findJsonObjectsInString(payloadStr);
           const isErr = row.status !== undefined && JETSKI_ERROR_STATUS_CODES.has(row.status);
           for (const obj of objs) {
-            if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile && !obj.Query && !obj.query) continue;
-            const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, query: obj.Query || obj.query, act: obj.toolAction || obj.toolSummary });
+            if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
+            const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
             if (seenJsonHashes.has(key)) continue;
             seenJsonHashes.add(key);
 
@@ -342,16 +342,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
                 action: standardizeAction('read_file', 'view_file', { ...obj, path: obj.AbsolutePath || obj.toolSummary || '' }),
-                outcome: { status: isErr ? 'error' : 'success' }
-              });
-            } else if (obj.Query || obj.query) {
-              const query = obj.Query || obj.query;
-              steps.push({
-                stepNumber: 0,
-                timestamp,
-                subagentId,
-                thought: obj.toolSummary || obj.toolAction || 'Searching workspace',
-                action: standardizeAction('web_search', 'code_search', { ...obj, query }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.DirectoryPath || obj.SearchDirectory) {
