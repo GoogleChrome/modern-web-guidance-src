@@ -80,6 +80,21 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
   // Test 8: Incidental noise fallback
   const noiseCat = categorizeAction('unknown_utility_ping', {});
   assert.strictEqual(noiseCat, 'incidental_noise');
+
+  // Test 9: CLI guidance search vs retrieve commands
+  const cliSearchCat = categorizeAction('run_command', { command: 'npx -y modern-web-guidance@latest search "accordion"' });
+  assert.strictEqual(cliSearchCat, 'skill_search');
+
+  const cliRetrieveCat = categorizeAction('run_command', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' });
+  assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
+
+  // Test 10: Non-guidance CLI commands with retrieve/search in url/text are not false positives
+  const nonGuidanceCat = categorizeAction('run_command', { command: 'curl https://example.com/retrieve/item' });
+  assert.strictEqual(nonGuidanceCat, 'incidental_noise');
+
+  // Test 11: Skill activations are categorized as other (tracked via toolsUsed)
+  const skillCat = categorizeAction('Skill', { skill: 'modern-web-guidance' });
+  assert.strictEqual(skillCat, 'other');
 });
 
 test('categorizeAction distinguishes read actions mentioning files from mutation actions', () => {
