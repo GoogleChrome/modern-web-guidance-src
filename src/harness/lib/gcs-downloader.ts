@@ -283,14 +283,9 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
  * Orchestrates downloading suite evals.json, the primary requested run, and the sibling run type (guided/unguided).
  */
 export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boolean> {
-  const absoluteRunDir = normalizePath(runDir);
-  const absoluteResultsDir = normalizePath(baseResultsDir);
-  
-  const relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
-  if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
-    console.warn(`[GCS Downloader] Path is outside results directory: ${absoluteRunDir}`);
-    return false;
-  }
+  const resolved = resolveRunPath(runDir);
+  if (!resolved) return false;
+  const { absoluteRunDir, relativeRunPath } = resolved;
 
   const suiteName = relativeRunPath.split(/[/\\]/)[0];
   const token = process.env.GD_GCS_TOKEN;
@@ -304,5 +299,5 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
   }
 
   // 2. Download the primary requested directory
-  return downloadSingleDirFromGcs(runDir, token);
+  return downloadSingleDirFromGcs(absoluteRunDir, token);
 }
