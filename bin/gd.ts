@@ -7,7 +7,7 @@ import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
-import { rootDir, guidesDir, baseAppsDir } from '../src/core/paths.ts';
+import { rootDir, guidesDir, baseAppsDir, resultsDir } from '../src/core/paths.ts';
 import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
@@ -94,6 +94,14 @@ completion.on('arg1', ({ before, line, reply }) => {
   if (before === 'eval') {
     const tasks = Array.from(getTaskMap().keys());
     reply(['suite', ...tasks, ...listGuideDirs(), ...flags]);
+  } else if (before === 'compare') {
+    let recentRuns: string[] = [];
+    if (fs.existsSync(resultsDir)) {
+      try {
+        recentRuns = fs.readdirSync(resultsDir).filter(d => fs.statSync(path.join(resultsDir, d)).isDirectory());
+      } catch {}
+    }
+    reply([...recentRuns, ...flags]);
   } else if (before === 'gen') {
     reply(['grader']);
   } else if (before === 'audit') {
@@ -109,6 +117,14 @@ completion.on('arg2', ({ before, line, reply }) => {
   const flags = getFlagsForLine(line);
   if (line.includes('gd eval')) {
     reply(flags);
+  } else if (line.includes('gd compare')) {
+    let recentRuns: string[] = [];
+    if (fs.existsSync(resultsDir)) {
+      try {
+        recentRuns = fs.readdirSync(resultsDir).filter(d => fs.statSync(path.join(resultsDir, d)).isDirectory());
+      } catch {}
+    }
+    reply([...recentRuns, ...flags]);
   } else if (line.includes('gd dev') && before.startsWith('guides/')) {
     reply(flags);
   } else if (before === 'run') {
