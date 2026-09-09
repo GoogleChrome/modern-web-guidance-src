@@ -279,9 +279,11 @@ export function categorizeAction(
     return 'other';
   }
 
-  const isMutationName = ['write', 'replace', 'edit', 'touch'].some(k => actionName.includes(k));
-  if (isMutationName) {
-    return 'code_mutation';
+  if (actionType !== 'run_command') {
+    const isMutationName = ['write', 'replace', 'edit', 'touch'].some(k => actionName.includes(k));
+    if (isMutationName) {
+      return 'code_mutation';
+    }
   }
 
   const mutationParamKeys = ['targetfile', 'replacementcontent', 'replacementchunks', 'codecontent', 'write_to_file', 'replace_file_content', 'new_string', 'newtext'];
@@ -329,10 +331,13 @@ export function finalizeTrajectorySummary(summary: TrajectorySummary): Trajector
   if (Array.isArray(summary.steps)) {
     summary.steps.sort((a, b) => {
       if (a.timestamp && b.timestamp) {
-        const timeDiff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-        if (timeDiff !== 0) return timeDiff;
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+          return timeA - timeB;
+        }
       }
-      return 0;
+      return (a.stepNumber || 0) - (b.stepNumber || 0);
     });
 
     for (let i = 0; i < summary.steps.length; i++) {

@@ -4,7 +4,7 @@ import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
 import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from './compare-prompts.ts';
-import { generateUnifiedDiff } from '../../lib/patch-utils.ts';
+import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../lib/patch-utils.ts';
 import { categorizeAction, type TrajectorySummary } from './trajectory-normalizer.ts';
 import { parseResultPath } from './collection.ts';
 import { isEnoent } from './agent-shared.ts';
@@ -140,7 +140,14 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
     const baseAppName = taskInfo?.baseApp || taskPrompt.match(/base_app:\s*([^\s\r\n]+)/i)?.[1]?.trim();
     if (baseAppName) {
       const baseAppDir = path.join(baseAppsDir, baseAppName);
-      const baseCode = findCodeOutput(baseAppDir);
+      let targetRelFile: string | undefined;
+      const targetDir = guideDir ? path.join(guideDir, 'targets', taskName) : undefined;
+      if (targetDir) {
+        const solPatch = path.join(targetDir, 'patches', 'solution.patch');
+        const [extracted] = extractTargetFilesFromPatch(solPatch);
+        targetRelFile = extracted;
+      }
+      const baseCode = findCodeOutput(baseAppDir, targetRelFile);
       baseAppContent = baseCode.content;
     }
   }
@@ -160,7 +167,7 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
  * Finds the main generated code file in a run directory.
  */
 function findCodeOutput(dir: string, targetFileFromEvals?: string): { path: string; content: string } {
-  if (targetFileFromEvals) {
+  if (targetFileFromEvals && targetFileFromEvals !== 'agent.patch') {
     const content = tryReadFile(path.join(dir, targetFileFromEvals));
     if (content !== null) {
       return { path: targetFileFromEvals, content };
@@ -504,7 +511,15 @@ export async function runComparison(
   console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
 
   const isAProblem = ctxA.score < ctxB.score;
-  const successCtx = isAProblem ? ctxB : ctxA;
+  const isBProblem = ctxB.score < ctxA.score;
+  let successCtx = isAProblem ? ctxB : ctxA;
+  if (!isAProblem && !isBProblem) {
+    const isAGuided = parseResultPath(ctxA.dir)?.runType === 'guided';
+    const isBGuided = parseResultPath(ctxB.dir)?.runType === 'guided';
+    if (!isAGuided && isBGuided) {
+      successCtx = ctxB;
+    }
+  }
 
   const parsedPath = parseResultPath(successCtx.dir);
   const guideName = parsedPath?.guide || 'guide';
@@ -520,9 +535,11 @@ export async function runComparison(
     : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Run B Output');
   const diffAvsB = (ctxA.patchContent && ctxB.patchContent)
     ? generateUnifiedDiff(ctxA.patchContent.trim(), ctxB.patchContent.trim(), 'Run A Patch', 'Run B Patch')
-    : (ctxA.codeOutput && ctxB.codeOutput)
+    : (ctxA.codeOutput && ctxB.codeOutput && !ctxA.patchContent && !ctxB.patchContent)
       ? generateUnifiedDiff(ctxA.codeOutput, ctxB.codeOutput, 'Run A Output', 'Run B Output')
-      : generateUnifiedDiff(ctxA.patchContent || ctxA.codeOutput || '', ctxB.patchContent || ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
+      : (ctxA.patchContent || ctxB.patchContent)
+        ? `Direct diff unavailable: Run ${ctxA.patchContent ? 'A' : 'B'} is patch-based while Run ${ctxB.patchContent ? 'A' : 'B'} produced standalone file output.`
+        : generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
 
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
