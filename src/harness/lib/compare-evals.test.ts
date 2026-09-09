@@ -113,10 +113,30 @@ describe('compare-evals pipeline', () => {
       const indexHtml = path.join(tmpDir, 'index.html');
       fs.writeFileSync(indexHtml, '<html><body><details><summary>Title</summary>Body</details></body></html>');
 
-      // Verify that compare-evals module can import and load this run
-      const compareModule = await import('../lib/compare-evals.ts');
-      assert.ok(compareModule.runComparison);
-      assert.strictEqual(typeof compareModule.runComparison, 'function');
+      // Verify loadRunContext and preprocessTrajectory
+      const { loadRunContext, preprocessTrajectory } = await import('../lib/compare-evals.ts');
+      const ctx = loadRunContext(tmpDir);
+
+      assert.strictEqual(ctx.score, 50);
+      assert.strictEqual(ctx.resultsJson.length, 2);
+      assert.strictEqual(ctx.resultsJson[0].passed, true);
+      assert.strictEqual(ctx.resultsJson[1].passed, false);
+      assert.ok(ctx.resultsJson[1].errors?.[0]?.includes('Expected "a" to be "b"'));
+      assert.strictEqual(ctx.codeOutput, '<html><body><details><summary>Title</summary>Body</details></body></html>');
+      assert.strictEqual(ctx.preprocessed.taggedSteps.length, 5);
+      assert.strictEqual(ctx.preprocessed.codeMutationCount, 2);
+      assert.strictEqual(ctx.preprocessed.errorLoopCount, 1);
+      assert.deepStrictEqual(ctx.preprocessed.retrievedGuideIds, ['details-styling']);
+      assert.deepStrictEqual(ctx.preprocessed.searchQueries, ['details styling']);
+      assert.strictEqual(ctx.preprocessed.mandatoryRulesAdopted.length, 1);
+      assert.ok(ctx.preprocessed.mandatoryRulesAdopted[0].includes('mandatory rule'));
+
+      const directPreprocessed = preprocessTrajectory(mockSummary as any);
+      assert.strictEqual(directPreprocessed.taggedSteps.length, 5);
+      assert.strictEqual(directPreprocessed.codeMutationCount, 2);
+      assert.strictEqual(directPreprocessed.errorLoopCount, 1);
+      assert.deepStrictEqual(directPreprocessed.retrievedGuideIds, ['details-styling']);
+      assert.deepStrictEqual(directPreprocessed.searchQueries, ['details styling']);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

@@ -2,22 +2,24 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { downloadRunFromGcsIfMissing } from '../lib/gcs-downloader.ts';
+import { resultsDir } from '../../lib/paths.ts';
 
 describe('gcs-downloader', () => {
   test('downloadRunFromGcsIfMissing returns early when directory already exists locally', async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gcs-local-run-'));
+    const testSuite = `test-gcs-local-${Date.now()}`;
+    const testRunDir = path.join(resultsDir, testSuite, '1', 'details-styling', 'task', 'guided');
+    fs.mkdirSync(testRunDir, { recursive: true });
     try {
-      // Create local run directory
-      fs.writeFileSync(path.join(tmpDir, 'trajectory_summary.json'), JSON.stringify({ agent: 'claude-code', steps: [{ stepNumber: 1 }] }));
+      // Create local run directory with suite evals.json and trajectory_summary.json
+      fs.writeFileSync(path.join(resultsDir, testSuite, 'evals.json'), JSON.stringify({ suite: testSuite }));
+      fs.writeFileSync(path.join(testRunDir, 'trajectory_summary.json'), JSON.stringify({ agent: 'claude-code', steps: [{ stepNumber: 1 }] }));
 
       // Calling downloadRunFromGcsIfMissing should resolve immediately without network calls
-      await assert.doesNotReject(async () => {
-        await downloadRunFromGcsIfMissing(tmpDir);
-      });
+      const result = await downloadRunFromGcsIfMissing(testRunDir);
+      assert.strictEqual(result, true);
     } finally {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(path.join(resultsDir, testSuite), { recursive: true, force: true });
     }
   });
 
