@@ -8,9 +8,10 @@ import os from 'os';
 import { exec, spawn } from 'child_process';
 import { runAllManifests } from './generate-manifests.js';
 import { extractSuiteSummary } from './summary-extractor.js';
+import { parseBooleanEnv } from '../lib/env.ts';
 
 const PORT = process.env.PORT || 8081;
-const STATIC = process.env.STATIC === 'true';
+const STATIC = parseBooleanEnv(process.env.STATIC, false);
 
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
@@ -58,7 +59,7 @@ if (STATIC) {
   const url = `http://localhost:${PORT}/?source=static`;
   console.log(`Server running at ${url}`);
 
-  if (process.env.NO_OPEN !== 'true') {
+  if (!parseBooleanEnv(process.env.NO_OPEN, false)) {
     const startCommand = process.platform === 'darwin' ? 'open' :
       process.platform === 'win32' ? 'start' : 'xdg-open';
 
@@ -581,12 +582,12 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  const isLaunchUi = process.env.LAUNCH_UI === 'true';
+  const isLaunchUi = parseBooleanEnv(process.env.LAUNCH_UI, false);
   const url = isLaunchUi ? `http://localhost:${PORT}/eval-ui.html` : `http://localhost:${PORT}/`;
   console.log(`Server running at ${url}`);
 
   // Try to open the browser if not disabled
-  if (process.env.NO_OPEN !== 'true') {
+  if (!parseBooleanEnv(process.env.NO_OPEN, false)) {
     const startCommand = process.platform === 'darwin' ? 'open' :
       process.platform === 'win32' ? 'start' : 'xdg-open';
 

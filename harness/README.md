@@ -105,7 +105,7 @@ Each agent harness passes the model to the CLI binary:
 // harness/agents/pi-agent.ts
 const piModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
 const modelArg = piModel ? ['--model', piModel] : [];
-const commandArgs = ['-p', '--no-session', '--offline', ...modelArg, userPrompt];
+const commandArgs = ['-p', '--offline', ...modelArg, userPrompt];
 
 // harness/agents/codex-cli-agent.ts
 const model = process.env.CODEX_MODEL;
@@ -657,8 +657,8 @@ node --experimental-strip-types quick-smoke.ts pi unguided
 To inspect actual Pi trajectories from a run:
 
 ```bash
-# Run with sessions enabled (not ephemeral)
-PI_NO_SESSION=false GD_SUITE_CONFIG='{"agent":"pi","serving":"skills_cli"}' \
+# Run full eval suite with Pi (sessions enabled by default)
+GD_SUITE_CONFIG='{"agent":"pi","serving":"skills_cli"}' \
   node --experimental-strip-types harness/run_suite.ts <task>
 
 # Sessions are saved to the isolated HOME, then exported to results dir
