@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Classless Card Component</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      
+      /* OKLCH Brand Hue (Indigo-Blue palette) */
+      --brand-hue: 250;
+      
+      /* Perceptually uniform design system colors */
+      --bg-page: oklch(98% 0.01 var(--brand-hue));
+      --bg-card: oklch(100% 0 var(--brand-hue));
+      --bg-sandbox: oklch(100% 0 var(--brand-hue));
+      --text-main: oklch(25% 0.03 var(--brand-hue));
+      --text-muted: oklch(50% 0.03 var(--brand-hue));
+      --border-color: oklch(88% 0.02 var(--brand-hue));
+      --focus-ring-color: oklch(60% 0.15 var(--brand-hue));
+      
+      --btn-bg: oklch(95% 0.01 var(--brand-hue));
+      --btn-bg-hover: oklch(90% 0.02 var(--brand-hue));
+      --btn-text: oklch(35% 0.05 var(--brand-hue));
+      --btn-text-hover: oklch(15% 0.05 var(--brand-hue));
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-page: oklch(12% 0.02 var(--brand-hue));
+        --bg-card: oklch(18% 0.03 var(--brand-hue));
+        --bg-sandbox: oklch(18% 0.03 var(--brand-hue));
+        --text-main: oklch(95% 0.01 var(--brand-hue));
+        --text-muted: oklch(75% 0.02 var(--brand-hue));
+        --border-color: oklch(28% 0.03 var(--brand-hue));
+        --focus-ring-color: oklch(65% 0.18 var(--brand-hue));
+        
+        --btn-bg: oklch(25% 0.03 var(--brand-hue));
+        --btn-bg-hover: oklch(32% 0.04 var(--brand-hue));
+        --btn-text: oklch(85% 0.02 var(--brand-hue));
+        --btn-text-hover: oklch(100% 0 var(--brand-hue));
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 3rem 2rem;
+      background: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    /* Layout sandbox to demonstrate container query resizing */
+    .resize-demo {
+      resize: horizontal;
+      overflow: auto;
+      border: 2px dashed var(--border-color);
+      padding: 1.5rem;
+      max-width: 100%;
+      min-width: 280px;
+      margin-bottom: 2.5rem;
+      background: var(--bg-sandbox);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .resize-demo::after {
+      content: "↕ Drag bottom-right corner to resize this container and watch the card adapt";
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+      border-top: 1px dashed var(--border-color);
+      padding-top: 0.75rem;
+    }
+
+    /* Static wrappers simulating screen viewports */
+    .static-mobile {
+      max-width: 310px;
+      width: 100%;
+      margin-bottom: 2rem;
+    }
+
+    .static-desktop {
+      max-width: 600px;
+      width: 100%;
+      margin-bottom: 2rem;
+    }
+
+    /* --------------------------------------------------
+     CLASSLESS CARD COMPONENT CSS
+     -------------------------------------------------- */
+
+    /* Parent layout container wrapper */
+    .card-layout {
+      container-type: inline-size;
+      container-name: card-container;
+      width: 100%;
+    }
+
+    /* The article element itself is the card component */
+    article.card {
+      display: grid;
+      grid-template-columns: 1fr; /* Natural stacked flow respecting HTML source order */
+      position: relative;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      padding: 1.5rem;
+      gap: 0.75rem;
+    }
+
+    /* Delegate outer focus state when any inner link or button has focus */
+    article.card:has(:focus-visible) {
+      outline: 2px solid var(--focus-ring-color);
+      outline-offset: 4px;
+    }
+
+    /* Target direct visual media elements */
+    article.card > :is(img, picture, svg) {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    /* Target direct heading groups */
+    article.card > hgroup {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    article.card > hgroup > :is(h1, h2, h3, h4, h5, h6) {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 750;
+      letter-spacing: -0.015em;
+      text-wrap: balance; /* Modern CSS: Balance heading lines */
+    }
+
+    article.card > hgroup > p {
+      margin: 0;
+      font-size: 0.825rem;
+      color: var(--text-muted-light);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      article.card > hgroup > p {
+        color: var(--text-muted-dark);
+      }
+    }
+
+    /* Handle link text style overrides */
+    article.card > hgroup > :is(h1, h2, h3, h4, h5, h6) a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    article.card > hgroup > :is(h1, h2, h3, h4, h5, h6) a:focus {
+      outline: none; /* Focus outline delegated to parent article above */
+    }
+
+    /* Target description text paragraphs */
+    article.card > p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: #475569;
+      line-height: 1.55;
+      text-wrap: pretty; /* Modern CSS: Prevent orphans */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      article.card > p {
+        color: #cbd5e1;
+      }
+    }
+
+    /* Target footer as actions list */
+    article.card > footer {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    article.card > footer :is(button, a) {
+      all: unset;
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #f1f5f9;
+      color: #475569;
+      border-radius: 8px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.825rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      article.card > footer :is(button, a) {
+        background: #334155;
+        color: #cbd5e1;
+      }
+    }
+
+    article.card > footer :is(button, a):hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      article.card > footer :is(button, a):hover {
+        background: #475569;
+        color: #ffffff;
+      }
+    }
+
+    /* --------------------------------------------------
+     DYNAMIC SIDEBAR LAYOUT (If media is present)
+     -------------------------------------------------- */
+    @container card-container (min-width: 32.01rem) {
+      /* Automatically shift to sidebar grid ONLY if an image/media element is present */
+      article.card:has(> :is(img, picture, svg)) {
+        grid-template-columns: 140px 1fr;
+        gap: 0.5rem 1.25rem;
+      }
+
+      article.card:has(> :is(img, picture, svg)) > :is(img, picture, svg) {
+        grid-column: 1;
+        grid-row: 1 / span 10;
+        align-self: start;
+        height: 100%;
+        min-height: 140px;
+      }
+
+      article.card:has(> :is(img, picture, svg)) > :not(:is(img, picture, svg)) {
+        grid-column: 2;
+      }
+    }
+
+    /* Presentation header styling */
+    section {
+      margin-bottom: 3.5rem;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    section h2 {
+      font-size: 1.25rem;
+      border-bottom: 2px solid var(--border-color-light);
+      padding-bottom: 0.5rem;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      letter-spacing: -0.015em;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      section h2 {
+        border-color: var(--border-color-dark);
+      }
+    }
+
+    .intro {
+      font-size: 1rem;
+      color: var(--text-muted-light);
+      max-width: 80ch;
+      margin-bottom: 3rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .intro {
+        color: var(--text-muted-dark);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Classless, Content-Aware Card Component</h1>
+  <p class="intro">
+    This demo illustrates a semantic, classless card component. By querying its parent layout wrapper container 
+    using Container Queries and modern <code>:has()</code> selectors, the card automatically reconfigures its layout structure dynamically.
+  </p>
+
+  <!-- Example 1 -->
+  <section>
+    <h2>Example 1 — Card Layout in Narrow Viewport (Static Mobile Preview)</h2>
+    <p class="intro">
+      A static mobile preview of the card with an image. Because the container is narrow (under <code>320px</code>), 
+      the card naturally stacks elements vertically in their exact HTML source order.
+    </p>
+    <div class="static-mobile">
+      <div class="card-layout">
+        <article class="card">
+          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60" alt="Poached Eggs" />
+          <hgroup>
+            <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
+            <p>Breakfast Special</p>
+          </hgroup>
+          <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          <footer>
+            <button>Favorite</button>
+            <a href="#cart">Add to Cart</a>
+          </footer>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Example 2 -->
+  <section>
+    <h2>Example 2 — Same Card in Wide Viewport (Static Desktop Preview)</h2>
+    <p class="intro">
+      The exact same HTML card, rendered inside a wider layout container (e.g., <code>600px</code> wide). 
+      The card automatically detects the spacious container and shifts elements into a clean two-column sidebar layout, completely wrapperless.
+    </p>
+    <div class="static-desktop">
+      <div class="card-layout">
+        <article class="card">
+          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60" alt="Poached Eggs" />
+          <hgroup>
+            <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
+            <p>Breakfast Special</p>
+          </hgroup>
+          <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          <footer>
+            <button>Favorite</button>
+            <a href="#cart">Add to Cart</a>
+          </footer>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Example 3 -->
+  <section>
+    <h2>Example 3 — Same Card in Resizable Sandbox (Interactive Resizer)</h2>
+    <p class="intro">
+      Drag the handle in the bottom-right corner of the container to watch the card seamlessly transition 
+      between stacked mobile and two-column sidebar layouts as its width changes!
+    </p>
+    <div class="resize-demo">
+      <div class="card-layout">
+        <article class="card">
+          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60" alt="Poached Eggs" />
+          <hgroup>
+            <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
+            <p>Breakfast Special</p>
+          </hgroup>
+          <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
+          <footer>
+            <button>Favorite</button>
+            <a href="#cart">Add to Cart</a>
+          </footer>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Example 4 -->
+  <section>
+    <h2>Example 4 — Text-Only Card in Resizable Sandbox (Interactive Resizer)</h2>
+    <p class="intro">
+      Drag the handle of this text-only card. Because it does not contain a media/image element, 
+      the card naturally adapts and maintains a clean single-column text layout across all container sizes.
+    </p>
+    <div class="resize-demo">
+      <div class="card-layout">
+        <article class="card">
+          <hgroup>
+            <h3><a href="#philosophy">Our Culinary Philosophy</a></h3>
+            <p>Crafted with Passion</p>
+          </hgroup>
+          <p>We believe in sourcing exclusively local, organic ingredients, supporting sustainable agriculture, and serving handcrafted meals cooked from scratch every single day.</p>
+          <footer>
+            <button>Learn More</button>
+          </footer>
+        </article>
+      </div>
+    </div>
+  </section>
+
+</body>
+
+</html>
