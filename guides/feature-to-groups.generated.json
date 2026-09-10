@@ -1,32 +1,853 @@
 {
+  "abs-sign": [
+    "css"
+  ],
+  "absolute-positioning": [
+    "css"
+  ],
+  "accent-color": [
+    "css"
+  ],
   "active-view-transition": [
+    "css",
     "view-transitions"
+  ],
+  "align-content-block": [
+    "css"
+  ],
+  "alignment-baseline": [
+    "css"
+  ],
+  "all": [
+    "css"
+  ],
+  "alpha": [
+    "css"
+  ],
+  "alt-text-generated-content": [
+    "css"
+  ],
+  "alternative-style-sheets": [
+    "css"
   ],
   "animation-composition": [
     "animation"
   ],
   "animations-css": [
-    "animation"
+    "animation",
+    "css"
+  ],
+  "appearance": [
+    "css"
+  ],
+  "aspect-ratio": [
+    "css"
+  ],
+  "attr": [
+    "css"
+  ],
+  "attr-contents": [
+    "css"
+  ],
+  "backdrop": [
+    "css"
+  ],
+  "backdrop-filter": [
+    "css"
+  ],
+  "background": [
+    "css"
+  ],
+  "background-attachment": [
+    "css"
+  ],
+  "background-blend-mode": [
+    "css"
+  ],
+  "background-clip": [
+    "css"
+  ],
+  "background-clip-border-area": [
+    "css"
+  ],
+  "background-clip-text": [
+    "css"
+  ],
+  "background-color": [
+    "css"
+  ],
+  "background-image": [
+    "css"
+  ],
+  "background-origin": [
+    "css"
+  ],
+  "background-position": [
+    "css"
+  ],
+  "background-repeat": [
+    "css"
+  ],
+  "background-size": [
+    "css"
+  ],
+  "baseline-shift": [
+    "css"
+  ],
+  "border-image": [
+    "css"
+  ],
+  "border-radius": [
+    "css"
+  ],
+  "borders": [
+    "css"
+  ],
+  "box-shadow": [
+    "css"
+  ],
+  "box-sizing": [
+    "css"
+  ],
+  "calc": [
+    "css"
+  ],
+  "calc-constants": [
+    "css"
+  ],
+  "calc-size": [
+    "css"
+  ],
+  "cap": [
+    "css"
+  ],
+  "caret-color": [
+    "css"
+  ],
+  "cascade-layers": [
+    "css"
+  ],
+  "case-insensitive-attributes": [
+    "css"
+  ],
+  "case-sensitive-attributes": [
+    "css"
+  ],
+  "ch": [
+    "css"
+  ],
+  "charset": [
+    "css"
+  ],
+  "color": [
+    "css"
+  ],
+  "color-contrast": [
+    "css"
+  ],
+  "color-function": [
+    "css"
+  ],
+  "color-gamut": [
+    "css"
+  ],
+  "color-mix": [
+    "css"
+  ],
+  "color-scheme": [
+    "css"
+  ],
+  "colrv0": [
+    "css"
+  ],
+  "colrv1": [
+    "css"
+  ],
+  "column-breaks": [
+    "css"
+  ],
+  "column-fill": [
+    "css"
   ],
   "column-pseudo": [
+    "css",
     "scrolling"
+  ],
+  "column-span": [
+    "css"
+  ],
+  "conic-gradients": [
+    "css"
+  ],
+  "contain": [
+    "css"
+  ],
+  "contain-inline-size": [
+    "css"
+  ],
+  "contain-intrinsic-size": [
+    "css"
+  ],
+  "contain-layout": [
+    "css"
+  ],
+  "contain-paint": [
+    "css"
+  ],
+  "contain-size": [
+    "css"
+  ],
+  "contain-style": [
+    "css"
+  ],
+  "container-queries": [
+    "css"
+  ],
+  "container-scroll-state-queries": [
+    "css"
+  ],
+  "container-style-queries": [
+    "css"
+  ],
+  "content": [
+    "css"
+  ],
+  "content-visibility": [
+    "css"
+  ],
+  "contrast-color": [
+    "css"
+  ],
+  "counter-reset-reversed": [
+    "css"
+  ],
+  "counter-set": [
+    "css"
+  ],
+  "counter-style": [
+    "css"
+  ],
+  "counters": [
+    "css"
   ],
   "cross-document-view-transitions": [
     "view-transitions"
   ],
+  "css-escape": [
+    "css"
+  ],
+  "css-object-model": [
+    "css"
+  ],
+  "css-object-model-discouraged": [
+    "css"
+  ],
+  "css-supports": [
+    "css"
+  ],
+  "css-typed-om": [
+    "css"
+  ],
   "cubic-bezier-easing": [
     "animation",
+    "css",
     "transitions"
+  ],
+  "currentcolor": [
+    "css"
+  ],
+  "cursor": [
+    "css"
+  ],
+  "custom-media-queries": [
+    "css"
+  ],
+  "custom-properties": [
+    "css"
+  ],
+  "default": [
+    "css"
+  ],
+  "details-content": [
+    "css"
+  ],
+  "device-queries": [
+    "css"
+  ],
+  "dir-pseudo": [
+    "css"
+  ],
+  "display": [
+    "css"
+  ],
+  "display-animation": [
+    "css"
+  ],
+  "display-contents": [
+    "css"
+  ],
+  "display-flow-root": [
+    "css"
+  ],
+  "display-list-item": [
+    "css"
+  ],
+  "display-mode": [
+    "css"
+  ],
+  "display-ruby": [
+    "css"
+  ],
+  "display-table": [
+    "css"
+  ],
+  "dominant-baseline": [
+    "css"
+  ],
+  "dynamic-range": [
+    "css"
+  ],
+  "dynamic-range-limit": [
+    "css"
+  ],
+  "em-unit": [
+    "css"
+  ],
+  "empty": [
+    "css"
+  ],
+  "ex": [
+    "css"
+  ],
+  "exp-functions": [
+    "css"
+  ],
+  "field-sizing": [
+    "css"
+  ],
+  "file-selector-button": [
+    "css"
+  ],
+  "filter": [
+    "css"
+  ],
+  "filter-function": [
+    "css"
+  ],
+  "first-letter": [
+    "css"
+  ],
+  "first-line": [
+    "css"
+  ],
+  "fit-content": [
+    "css"
+  ],
+  "fit-content-function": [
+    "css"
+  ],
+  "fixed-positioning": [
+    "css"
+  ],
+  "flexbox": [
+    "css"
+  ],
+  "flexbox-flex-wrap-balance": [
+    "css"
+  ],
+  "flexbox-gap": [
+    "css"
+  ],
+  "float-clear": [
+    "css"
+  ],
+  "focus-visible": [
+    "css"
+  ],
+  "focus-within": [
+    "css"
+  ],
+  "font-display": [
+    "css"
+  ],
+  "font-face": [
+    "css"
+  ],
+  "font-family": [
+    "css"
+  ],
+  "font-family-math": [
+    "css"
+  ],
+  "font-family-ui": [
+    "css"
+  ],
+  "font-feature-settings": [
+    "css"
+  ],
+  "font-kerning": [
+    "css"
+  ],
+  "font-language-override": [
+    "css"
+  ],
+  "font-metric-overrides": [
+    "css"
+  ],
+  "font-optical-sizing": [
+    "css"
+  ],
+  "font-palette": [
+    "css"
+  ],
+  "font-palette-animation": [
+    "css"
+  ],
+  "font-shorthand": [
+    "css"
+  ],
+  "font-size": [
+    "css"
+  ],
+  "font-size-adjust": [
+    "css"
+  ],
+  "font-stretch": [
+    "css"
+  ],
+  "font-style": [
+    "css"
+  ],
+  "font-synthesis": [
+    "css"
+  ],
+  "font-synthesis-position": [
+    "css"
+  ],
+  "font-synthesis-small-caps": [
+    "css"
+  ],
+  "font-synthesis-style": [
+    "css"
+  ],
+  "font-synthesis-weight": [
+    "css"
+  ],
+  "font-variant": [
+    "css"
+  ],
+  "font-variant-alternates": [
+    "css"
+  ],
+  "font-variant-caps": [
+    "css"
+  ],
+  "font-variant-east-asian": [
+    "css"
+  ],
+  "font-variant-emoji": [
+    "css"
+  ],
+  "font-variant-ligatures": [
+    "css"
+  ],
+  "font-variant-numeric": [
+    "css"
+  ],
+  "font-variant-position": [
+    "css"
+  ],
+  "font-variation-settings": [
+    "css"
+  ],
+  "font-weight": [
+    "css"
+  ],
+  "font-width": [
+    "css"
+  ],
+  "forced-colors": [
+    "css"
+  ],
+  "form-validity-pseudos": [
+    "css"
+  ],
+  "function": [
+    "css"
+  ],
+  "gap-decorations": [
+    "css"
+  ],
+  "get-computed-style": [
+    "css"
+  ],
+  "glyph-orientation-vertical": [
+    "css"
+  ],
+  "gradient-interpolation": [
+    "css"
+  ],
+  "gradients": [
+    "css"
+  ],
+  "grid": [
+    "css"
+  ],
+  "grid-animation": [
+    "css"
+  ],
+  "has": [
+    "css"
+  ],
+  "has-slotted": [
+    "css"
+  ],
+  "heading-selectors": [
+    "css"
+  ],
+  "host": [
+    "css"
+  ],
+  "host-context": [
+    "css"
+  ],
+  "hsl": [
+    "css"
+  ],
+  "hwb": [
+    "css"
+  ],
+  "hyphenate-character": [
+    "css"
+  ],
+  "hyphenate-limit-chars": [
+    "css"
+  ],
+  "hyphens": [
+    "css"
+  ],
+  "ic": [
+    "css"
+  ],
+  "if": [
+    "css"
+  ],
+  "image-set": [
+    "css"
+  ],
+  "ime-mode": [
+    "css"
+  ],
+  "import": [
+    "css"
+  ],
+  "individual-transforms": [
+    "css"
+  ],
+  "inherit-value": [
+    "css"
+  ],
+  "initial-letter": [
+    "css"
+  ],
+  "initial-value": [
+    "css"
+  ],
+  "input-selectors": [
+    "css"
+  ],
+  "interaction": [
+    "css"
   ],
   "interpolate-size": [
     "animation",
+    "css",
     "transitions"
+  ],
+  "inverted-colors": [
+    "css"
+  ],
+  "is": [
+    "css"
+  ],
+  "isolation": [
+    "css"
+  ],
+  "justify-self-block": [
+    "css"
+  ],
+  "lab": [
+    "css"
+  ],
+  "lang": [
+    "css"
+  ],
+  "layout-direction-override": [
+    "css"
+  ],
+  "letter-spacing": [
+    "css"
+  ],
+  "lh": [
+    "css"
+  ],
+  "light-dark": [
+    "css"
+  ],
+  "line-break": [
+    "css"
+  ],
+  "line-clamp": [
+    "css"
+  ],
+  "line-height": [
+    "css"
+  ],
+  "linear-easing": [
+    "css"
+  ],
+  "link-selectors": [
+    "css"
+  ],
+  "list-elements": [
+    "css"
+  ],
+  "list-style": [
+    "css"
+  ],
+  "logical-properties": [
+    "css"
+  ],
+  "margin": [
+    "css"
+  ],
+  "margin-trim": [
+    "css"
+  ],
+  "marker": [
+    "css"
+  ],
+  "masonry": [
+    "css"
+  ],
+  "media-queries": [
+    "css"
+  ],
+  "media-query-range-syntax": [
+    "css"
+  ],
+  "min-max-clamp": [
+    "css"
+  ],
+  "min-max-content": [
+    "css"
+  ],
+  "mix-blend-mode": [
+    "css"
+  ],
+  "mixin": [
+    "css"
+  ],
+  "modal": [
+    "css"
+  ],
+  "motion-path": [
+    "css"
+  ],
+  "multi-column": [
+    "css"
+  ],
+  "named-color": [
+    "css"
+  ],
+  "namespace": [
+    "css"
+  ],
+  "nesting": [
+    "css"
+  ],
+  "not": [
+    "css"
+  ],
+  "nth-child": [
+    "css"
+  ],
+  "nth-child-of": [
+    "css"
+  ],
+  "nth-of-type": [
+    "css"
+  ],
+  "numeric-factory-functions": [
+    "css"
+  ],
+  "object-view-box": [
+    "css"
+  ],
+  "oklab": [
+    "css"
+  ],
+  "opacity": [
+    "css"
+  ],
+  "open-pseudo": [
+    "css"
+  ],
+  "overflow": [
+    "css"
   ],
   "overflow-anchor": [
     "scrolling"
   ],
+  "overflow-clip": [
+    "css"
+  ],
+  "overflow-clip-margin": [
+    "css"
+  ],
+  "overflow-overlay": [
+    "css"
+  ],
+  "overflow-shorthand": [
+    "css"
+  ],
+  "overflow-wrap": [
+    "css"
+  ],
+  "overlay": [
+    "css"
+  ],
   "overscroll-behavior": [
     "scrolling"
+  ],
+  "padding": [
+    "css"
+  ],
+  "page-break-aliases": [
+    "css"
+  ],
+  "page-breaks": [
+    "css"
+  ],
+  "page-orientation": [
+    "css"
+  ],
+  "page-selectors": [
+    "css"
+  ],
+  "page-setup": [
+    "css"
+  ],
+  "paint": [
+    "css"
+  ],
+  "paint-order": [
+    "css"
+  ],
+  "physical-properties": [
+    "css"
+  ],
+  "placeholder": [
+    "css"
+  ],
+  "placeholder-shown": [
+    "css"
+  ],
+  "pointer-events": [
+    "css"
+  ],
+  "position": [
+    "css"
+  ],
+  "prefers-color-scheme": [
+    "css"
+  ],
+  "prefers-contrast": [
+    "css"
+  ],
+  "prefers-reduced-data": [
+    "css"
+  ],
+  "prefers-reduced-motion": [
+    "css"
+  ],
+  "prefers-reduced-transparency": [
+    "css"
+  ],
+  "progress-function": [
+    "css"
+  ],
+  "q-unit": [
+    "css"
+  ],
+  "quotes": [
+    "css"
+  ],
+  "random-function": [
+    "css"
+  ],
+  "rcap": [
+    "css"
+  ],
+  "rch": [
+    "css"
+  ],
+  "reading-flow": [
+    "css"
+  ],
+  "relative-color": [
+    "css"
+  ],
+  "relative-positioning": [
+    "css"
+  ],
+  "rem": [
+    "css"
+  ],
+  "resize": [
+    "css"
+  ],
+  "resolution": [
+    "css"
+  ],
+  "resolution-compat": [
+    "css"
+  ],
+  "revert-value": [
+    "css"
+  ],
+  "rex": [
+    "css"
+  ],
+  "rgb": [
+    "css"
+  ],
+  "rhythmic-sizing": [
+    "css"
+  ],
+  "ric": [
+    "css"
+  ],
+  "rlh": [
+    "css"
+  ],
+  "root": [
+    "css"
+  ],
+  "round-mod-rem": [
+    "css"
+  ],
+  "safe-area-inset": [
+    "css"
+  ],
+  "scope": [
+    "css"
+  ],
+  "scope-pseudo": [
+    "css"
+  ],
+  "scripting": [
+    "css"
   ],
   "scroll-behavior": [
     "scrolling"
@@ -36,6 +857,12 @@
   ],
   "scroll-driven-animations": [
     "animation",
+    "scrolling"
+  ],
+  "scroll-elements": [
+    "scrolling"
+  ],
+  "scroll-initial-target": [
     "scrolling"
   ],
   "scroll-into-view": [
@@ -48,6 +875,9 @@
     "scrolling"
   ],
   "scroll-markers": [
+    "scrolling"
+  ],
+  "scroll-promises": [
     "scrolling"
   ],
   "scroll-snap": [
@@ -74,21 +904,187 @@
   "scrollend": [
     "scrolling"
   ],
+  "selection": [
+    "css"
+  ],
+  "selectors": [
+    "css"
+  ],
+  "shadow-parts": [
+    "css"
+  ],
+  "sibling-count": [
+    "css"
+  ],
   "smil-svg-animations": [
     "animation"
   ],
+  "speak": [
+    "css"
+  ],
+  "speak-as": [
+    "css"
+  ],
+  "spelling-grammar-error": [
+    "css"
+  ],
+  "starting-style": [
+    "css"
+  ],
+  "static-positioning": [
+    "css"
+  ],
   "steps-easing": [
     "animation",
+    "css",
     "transitions"
   ],
+  "sticky-positioning": [
+    "css"
+  ],
+  "stretch": [
+    "css"
+  ],
+  "style-attr": [
+    "css"
+  ],
+  "style-query-range-syntax": [
+    "css"
+  ],
+  "subgrid": [
+    "css"
+  ],
+  "supports": [
+    "css"
+  ],
+  "supports-at-rule": [
+    "css"
+  ],
+  "supports-compat": [
+    "css"
+  ],
+  "system-color": [
+    "css"
+  ],
+  "tab-size": [
+    "css"
+  ],
+  "target": [
+    "css"
+  ],
+  "target-within": [
+    "css"
+  ],
+  "text-align": [
+    "css"
+  ],
+  "text-align-last": [
+    "css"
+  ],
+  "text-box": [
+    "css"
+  ],
+  "text-combine-upright": [
+    "css"
+  ],
   "text-decoration-line-blink": [
-    "animation"
+    "animation",
+    "css"
+  ],
+  "text-decoration-selection": [
+    "css"
+  ],
+  "text-indent": [
+    "css"
+  ],
+  "text-indent-each-line": [
+    "css"
+  ],
+  "text-indent-hanging": [
+    "css"
+  ],
+  "text-justify": [
+    "css"
+  ],
+  "text-orientation": [
+    "css"
+  ],
+  "text-overflow": [
+    "css"
+  ],
+  "text-shadow": [
+    "css"
+  ],
+  "text-spacing-trim": [
+    "css"
+  ],
+  "text-stroke-fill": [
+    "css"
+  ],
+  "text-transform": [
+    "css"
+  ],
+  "text-underline-offset": [
+    "css"
+  ],
+  "text-underline-position": [
+    "css"
+  ],
+  "text-wrap": [
+    "css"
+  ],
+  "text-wrap-balance": [
+    "css"
+  ],
+  "text-wrap-pretty": [
+    "css"
+  ],
+  "time-relative-selectors": [
+    "css"
+  ],
+  "transforms2d": [
+    "css"
+  ],
+  "transforms3d": [
+    "css"
   ],
   "transition-behavior": [
+    "css",
     "transitions"
   ],
   "transitions": [
+    "css",
     "transitions"
+  ],
+  "trig-functions": [
+    "css"
+  ],
+  "two-value-display": [
+    "css"
+  ],
+  "unset-value": [
+    "css"
+  ],
+  "update": [
+    "css"
+  ],
+  "user-action-pseudos": [
+    "css"
+  ],
+  "user-pseudos": [
+    "css"
+  ],
+  "user-select": [
+    "css"
+  ],
+  "vertical-align": [
+    "css"
+  ],
+  "vertical-form-controls": [
+    "css"
+  ],
+  "video-dynamic-range": [
+    "css"
   ],
   "view-transition-class": [
     "view-transitions"
@@ -98,6 +1094,12 @@
   ],
   "view-transitions-element-scoped": [
     "view-transitions"
+  ],
+  "viewport-units": [
+    "css"
+  ],
+  "visibility": [
+    "css"
   ],
   "web-animations": [
     "animation"
@@ -110,5 +1112,47 @@
   ],
   "webauthn-signals": [
     "webauthn"
+  ],
+  "where": [
+    "css"
+  ],
+  "white-space": [
+    "css"
+  ],
+  "white-space-collapse": [
+    "css"
+  ],
+  "widows-orphans": [
+    "css"
+  ],
+  "width-height": [
+    "css"
+  ],
+  "will-change": [
+    "css"
+  ],
+  "window-drag": [
+    "css"
+  ],
+  "word-break": [
+    "css"
+  ],
+  "word-break-auto-phrase": [
+    "css"
+  ],
+  "word-break-break-word": [
+    "css"
+  ],
+  "word-spacing": [
+    "css"
+  ],
+  "writing-mode": [
+    "css"
+  ],
+  "writing-mode-svg-values": [
+    "css"
+  ],
+  "z-index": [
+    "css"
   ]
 }
