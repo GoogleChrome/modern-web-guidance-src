@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Context Menu Demo</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f0f2f5;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .card {
+      width: 300px;
+      position: relative;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      text-align: center;
+      padding-bottom: 1rem;
+    }
+
+    .card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+
+    .card h2 {
+      margin: 1rem 0 0.5rem;
+      font-size: 1.25rem;
+    }
+    .menu-anchor{
+      position: absolute;
+      block-size: 0px;
+      inline-size: 0px;
+    }
+    .card [popover] {
+      position-area: block-end span-inline-start;
+      margin: 0;
+      padding: 0.25rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: white;
+      min-width: 120px;
+    }
+
+    .card > button {
+      position: absolute;
+      appearance: none;
+      inset-inline-end: 12px;
+      inset-block-start: 12px;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s, transform 0.1s, opacity 0.4s;
+      z-index: 10;
+    }
+
+    .card > button:hover {
+      background-color: #f8f9fa;
+    }
+
+    .card > button:active {
+      background-color: #c0c0c0;
+    }
+
+    .card > button svg {
+      width: 20px;
+      height: 20px;
+      fill: #444;
+      pointer-events: none;
+    }
+
+    @media (hover: hover){
+      .card > button {
+        opacity: 0;
+      }
+      .card:is(:hover, :focus-within, :has(:popover-open)) > button {
+        opacity: 1;
+      }
+    }
+
+    .card [popover] menu {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .card [popover] button {
+      /* Reset button styles */
+      position: static;
+      appearance: none;
+      display: block;
+      width: 100%;
+      padding: 0.5rem 1rem;
+      border: none;
+      background: none;
+      text-align: left;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .card [popover] button:hover {
+      background-color: #f0f0f0;
+    }
+
+    .card [popover] li + li {
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="menu-anchor"></span>
+    <button type="button" command="toggle-popover" commandFor="popover" aria-label="Open context menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+      </svg>
+    </button>
+    <div popover id="popover">
+      <menu>
+        <li><button type="button">Edit</button></li>
+        <li><button type="button">Share</button></li>
+        <li><button type="button">Delete</button></li>
+      </menu>
+    </div>
+    <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=300" alt="Card Image">
+    <h2>Card Title</h2>
+  </div>
+  <script type="module">
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card=>{
+      // Mouseup on the `contextmenu` event closes the popover, so the popover must be handled in `mouseup`.
+      // This is a spec issue, and fixed in Chromium 153.
+      card.addEventListener('contextmenu', (event)=>{
+        event.preventDefault();
+      });
+      card.addEventListener('mouseup', (event)=>{
+        if (!(event.which === 3 || event.ctrlKey)) return;
+        const rect = card.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        const menuAnchor = card.querySelector('.menu-anchor');
+        menuAnchor.style.insetInlineStart = `${x}px`;
+        menuAnchor.style.insetBlockStart = `${y}px`;
+
+        const popover = card.querySelector('[popover]');
+        popover.togglePopover({force: true, source: menuAnchor})
+      })
+    })
+  </script>
+</body>
+</html>
