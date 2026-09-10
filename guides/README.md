@@ -49,7 +49,7 @@ This will automatically:
 2. Stage and commit any uncommitted changes for the target guide directory.
 3. Push your feature branch to `origin`.
 4. Analyze `report.md` to automatically detect and apply PR labels:
-   - **`content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
+   - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
    - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`.
 5. Open a new draft Pull Request (or update the existing PR description and sync labels if a PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description.
 

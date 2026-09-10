@@ -4,8 +4,8 @@ import { execSync } from 'node:child_process';
 import { cGreen, cCyan, cRed, cDim } from '../../lib/colors.ts';
 import { REPORT_FILE, TEST_APP_RESULTS_DIR } from '../../lib/guide-validation.ts';
 
-export type DevPrLabel = 'content' | 'gd-dev-eval';
-export const ALL_DEV_PR_LABELS: readonly DevPrLabel[] = ['content', 'gd-dev-eval'];
+export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
+export const ALL_DEV_PR_LABELS: readonly DevPrLabel[] = ['gd-dev-content', 'gd-dev-eval'];
 
 export const devPrCli = {
   getCurrentBranch(): string {
@@ -84,7 +84,7 @@ export function computeLabelDiff(
 /**
  * Determines PR labels from report.md content based on recommended files.
  * Strictly matches filenames ending with:
- * - guide.md / expectations.md -> content
+ * - guide.md / expectations.md -> gd-dev-content
  * - task.md / grader.ts -> gd-dev-eval
  */
 export function determinePrLabels(reportContent: string): DevPrLabel[] {
@@ -102,7 +102,7 @@ export function determinePrLabels(reportContent: string): DevPrLabel[] {
 
       const file = match[1].trim().toLowerCase();
       if (file.endsWith('guide.md') || file.endsWith('expectations.md')) {
-        labels.add('content');
+        labels.add('gd-dev-content');
       } else if (file.endsWith('task.md') || file.endsWith('grader.ts')) {
         labels.add('gd-dev-eval');
       }

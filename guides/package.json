@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "GH_TOKEN=fake-test-token GITHUB_TOKEN=fake-test-token node --experimental-strip-types --test --test-reporter ${TEST_REPORTER:-dot} **/*.test.ts",
+    "test": "node --experimental-strip-types --test --test-reporter ${TEST_REPORTER:-dot} **/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
