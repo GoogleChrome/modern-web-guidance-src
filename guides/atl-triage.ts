@@ -645,7 +645,7 @@ export function handleIssue(
         console.log(`Skipping adding 'needs-atl' to issue #${issueNumber} because it was previously removed.`);
       }
     }
-  } else if (hasAtl) {
+  } else if (hasAtl || !isContent) {
     if (hasNeedsAtl) {
       issueLabelsToRemove.push('needs-atl');
     }
@@ -947,7 +947,7 @@ export function handlePR(
         console.log(`Skipping adding 'needs-atl' to PR #${prNumber} because it was previously removed.`);
       }
     }
-  } else if (allResolvedAtls.size > 0) {
+  } else if (allResolvedAtls.size > 0 || !hasEvaluatedContent) {
     if (hasNeedsAtl) {
       prLabelsToRemove.push('needs-atl');
     }

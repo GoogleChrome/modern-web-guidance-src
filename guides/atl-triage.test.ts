@@ -561,6 +561,14 @@ Affected web-feature IDs: [canvas-html](https://webstatus.dev/features/canvas-ht
     assert.strictEqual(addIssueLabelsMock.mock.callCount(), 0);
   });
 
+  it('removes needs-atl label when an issue is no longer content-related', () => {
+    removeIssueLabelsMock.mock.resetCalls();
+    const result = handleIssue(123, ['Tooling', 'needs-atl'], 'Fix the CLI bug on Windows', mockConfig);
+    assert.deepStrictEqual(result, []);
+    assert.strictEqual(removeIssueLabelsMock.mock.callCount(), 1);
+    assert.deepStrictEqual(removeIssueLabelsMock.mock.calls[0].arguments, [123, ['needs-atl']]);
+  });
+
   it('respects dryRun option and does not call modifying githubApi methods', () => {
     addIssueLabelsMock.mock.resetCalls();
     addAssigneesMock.mock.resetCalls();
@@ -1020,6 +1028,22 @@ describe('handlePR', () => {
     removePrLabelsMock.mock.resetCalls();
     const filesMock = mock.method(githubApi, 'getPrFiles', () => [
       'guides/css-layout/grid-layout/guide.md'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
+    try {
+      handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, ['needs-atl']);
+      assert.strictEqual(removePrLabelsMock.mock.callCount(), 1);
+      assert.deepStrictEqual(removePrLabelsMock.mock.calls[0].arguments, [99999, ['needs-atl']]);
+    } finally {
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
+    }
+  });
+
+  it('removes needs-atl label when PR no longer touches evaluated content', () => {
+    removePrLabelsMock.mock.resetCalls();
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'README.md'
     ]);
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
     try {
