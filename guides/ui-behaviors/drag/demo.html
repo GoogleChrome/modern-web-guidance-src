@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modern Draggable Overlay Dialog (user-select: none)</title>
+  <title>Modern Draggable Dialog (user-select: none & native dialog)</title>
   <style>
     /* ==========================================================================
        A. THEME & COSMETIC DESIGN (The "Colorful" Visual Styling)
@@ -68,7 +68,7 @@
       font-size: 1rem;
       color: var(--text-muted-light);
       max-width: 80ch;
-      margin-bottom: 3rem;
+      margin-bottom: 2.5rem;
       text-align: center;
     }
 
@@ -104,16 +104,16 @@
       }
     }
 
-    /* Presentation sandbox background & dashed borders */
+    /* Presentation Sandbox Workspace */
     .demo-sandbox {
       border: 2px dashed var(--border-color-light);
       padding: 3rem 2rem;
       background: var(--bg-sandbox-light);
       border-radius: 12px;
       display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 400px;
+      flex-direction: column;
+      gap: 1.5rem;
+      min-height: 440px;
       position: relative;
       overflow: hidden;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
@@ -125,6 +125,90 @@
         border-color: var(--border-color-dark);
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
       }
+    }
+
+    /* Controls Row */
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.5rem;
+      z-index: 2;
+    }
+
+    /* Toggle Switch Styles */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background-color: var(--border-color-light);
+      border-radius: 12px;
+      transition: background-color 0.2s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .toggle-switch {
+        background-color: var(--border-color-dark);
+      }
+    }
+
+    .toggle-switch::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    input:checked+.toggle-switch {
+      background-color: var(--primary-color);
+    }
+
+    input:checked+.toggle-switch::after {
+      transform: translateX(20px);
+    }
+
+    /* Underlying Interactive Field */
+    .underlying-content {
+      width: 100%;
+      height: 180px;
+      border: 1px solid var(--border-color-light);
+      border-radius: 8px;
+      padding: 1rem;
+      background-color: var(--bg-page-light);
+      color: var(--text-main-light);
+      font-family: inherit;
+      font-size: 0.95rem;
+      resize: none;
+      z-index: 1;
+      transition: border-color 0.15s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .underlying-content {
+        border-color: var(--border-color-dark);
+        background-color: var(--bg-page-dark);
+        color: var(--text-main-dark);
+      }
+    }
+
+    .underlying-content:focus {
+      outline: none;
+      border-color: var(--primary-color);
     }
 
     /* Trigger & Close Buttons visual styles */
@@ -185,27 +269,28 @@
     }
 
     /* Dialog visual card aesthetics (Shadows, borders, padding) */
-    .dialog {
-      display: none; /* Toggled with .open class */
-      flex-direction: column;
-      width: min(360px, 90%);
-      background-color: var(--bg-sandbox-light);
+    dialog.dialog {
       border: 1px solid var(--border-color-light);
       border-radius: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-      z-index: 10;
+      padding: 0;
+      width: min(340px, 90%);
+      background-color: var(--bg-sandbox-light);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
     }
 
     @media (prefers-color-scheme: dark) {
-      .dialog {
+      dialog.dialog {
         background-color: var(--bg-sandbox-dark);
         border-color: var(--border-color-dark);
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
       }
     }
 
-    .dialog.open {
-      display: flex;
+    /* Native Backdrop visual aesthetics */
+    dialog::backdrop {
+      background-color: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      transition: backdrop-filter 0.15s ease;
     }
 
     .dialog-header {
@@ -313,13 +398,27 @@
     /* ==========================================================================
        B. CORE DRAG ENGINE (Interaction-Critical CSS)
        ========================================================================== */
-    
-    .dialog {
-      /* MUST be absolute (or fixed) so that coordinate style.left/top coordinates reposition it */
-      position: absolute; 
-      
+
+    dialog.dialog {
+      /* MUST be fixed so that left/top repositioning works relative to the viewport */
+      position: fixed;
+
+      /* REQUIRED: Overrides browser's default center positioning (margin: auto) which conflicts with drag coordinate values */
+      margin: 0;
+
+      /* REQUIRED: Set up display flex for layout inside the dialog when open */
+      display: none;
+      flex-direction: column;
+
       /* REQUIRED: Prevents touch scrolls/zooms from competing with the pointer drag movement */
-      touch-action: none; 
+      touch-action: none;
+
+      /* Explicitly high z-index to sit on top of underlying elements when modelessly shown */
+      z-index: 1000;
+    }
+
+    dialog.dialog[open] {
+      display: flex;
     }
 
     .dialog-header {
@@ -328,13 +427,20 @@
 
       /* REQUIRED: Prevents text-selection/highlighting artifacts across the handle during drags */
       user-select: none;
-      -webkit-user-select: none; /* iOS Safari fallback */
-      -ms-user-select: none;     /* Legacy IE/Edge fallback */
+      -webkit-user-select: none;
+      /* iOS Safari fallback */
     }
 
     .dialog-header.dragging {
       /* Active visual feedback during the movement sequence */
       cursor: grabbing;
+    }
+
+    /* Accessibility focus styling for the drag handle */
+    .dialog-header:focus-visible {
+      outline: 2px solid var(--focus-ring-color);
+      outline-offset: -4px;
+      border-radius: 11px 11px 0 0;
     }
 
     .selectable-text {
@@ -347,68 +453,91 @@
 
 <body>
 
-  <h1>Draggable Overlay Dialog Component</h1>
+  <h1>Draggable Native Dialog Component</h1>
   <p class="intro">
-    This demo illustrates a fully draggable modal overlay using standard pointer events. The header behaves as the drag
-    handle
-    utilizing <code>user-select: none</code> to prevent mouse-drag highlight artifacts, while keeping the contents
-    inside the body completely selectable.
+    This demo illustrates a single draggable native <code>&lt;dialog&gt;</code>. Toggle between
+    <strong>Modal</strong> and <strong>Non-Modal</strong> modes.
+    Keyboard-friendly nudge commands (focused on the header) let keyboard users relocate the dialog, while non-modal Esc
+    key closing ensures complete accessibility compliance.
   </p>
 
   <main>
     <section>
-      <h2>Example — Desktop & Mobile Draggable Modal</h2>
+      <h2>Example — Desktop & Mobile Draggable &lt;dialog&gt;</h2>
 
-      <div class="demo-sandbox" id="sandbox">
-        <!-- Dialog Trigger Button -->
-        <button id="openBtn" class="btn-trigger">Open dialog</button>
+      <div class="demo-sandbox">
+        <!-- Controls Row -->
+        <div class="controls-row">
+          <button id="openBtn" class="btn-trigger">Open Dialog</button>
 
-        <!-- Draggable Dialog Modal -->
-        <div id="dragDialog" class="dialog">
-          <div id="dialogHeader" class="dialog-header">
+          <!-- Modal vs Non-Modal Toggle -->
+          <label class="toggle-container" aria-label="Toggle modal backdrop mode">
+            <input type="checkbox" id="modalToggle" style="display: none;" checked>
+            <div class="toggle-switch"></div>
+            <span id="toggleLabel">Modal Mode (With Backdrop)</span>
+          </label>
+        </div>
+
+        <!-- Underlying Text Content (Move dialog to read/write here!) -->
+        <textarea class="underlying-content" id="docEditor"
+          placeholder="Type or select text here... When 'Non-Modal' mode is enabled, you can click and drag the dialog's header to move it around and easily view/interact with this document content behind it."></textarea>
+
+        <!-- Draggable native Dialog Modal -->
+        <dialog id="dragDialog" class="dialog">
+          <!-- tabindex="0" and aria-describedby add premium keyboard arrow-key dragging accessibility -->
+          <div id="dialogHeader" class="dialog-header" tabindex="0" role="application"
+            aria-label="Dialog header. Use arrow keys to reposition this dialog panel.">
             <span class="dialog-title">Draggable Dialog</span>
             <button id="closeBtn" class="btn-close" aria-label="Close dialog">✕</button>
           </div>
           <div class="dialog-body">
-            <p>Click and drag the header title bar above to move this modal around freely inside the boundary limits.
+            <p>Drag my header title bar above, or focus it and use the <b>keyboard arrow keys</b> to reposition this
+              dialog panel.
             </p>
 
             <div class="selectable-text">
-              <strong>Selectable:</strong> You can still drag-select, highlight, and copy this specific segment of text
-              freely.
+              <strong>Selectable:</strong> Body text remains copyable and selectable.
             </div>
           </div>
-        </div>
+        </dialog>
       </div>
 
       <details>
         <summary>View Source Code</summary>
         <h3>HTML Structure</h3>
-        <pre><code>&lt;div class="dialog" id="dragDialog"&gt;
-  &lt;div class="dialog-header" id="dialogHeader"&gt;
+        <pre><code>&lt;!-- Native dialog element --&gt;
+&lt;dialog class="dialog" id="dragDialog"&gt;
+  &lt;!-- tabindex="0" makes the header keyboard focusable --&gt;
+  &lt;div class="dialog-header" id="dialogHeader" tabindex="0" role="application" aria-label="Dialog header. Use arrow keys to reposition."&gt;
     &lt;span class="dialog-title"&gt;Draggable Dialog&lt;/span&gt;
     &lt;button class="btn-close" id="closeBtn"&gt;✕&lt;/button&gt;
   &lt;/div&gt;
   &lt;div class="dialog-body"&gt;
-    &lt;p&gt;Content here...&lt;/p&gt;
+    &lt;p&gt;Body content...&lt;/p&gt;
   &lt;/div&gt;
-&lt;/div&gt;</code></pre>
+&lt;/dialog&gt;</code></pre>
         <h3>CSS Style Rules</h3>
-        <pre><code>/* Style drag handle strictly */
+        <pre><code>dialog.dialog {
+  position: fixed;
+  /* REQUIRED: overrides the browser default 'margin: auto' so coordinate left/top are respected */
+  margin: 0;
+  touch-action: none; /* Stops browser scrolling gestures */
+  z-index: 1000; /* Ensure visibility over background text in modeless mode */
+}
+
+/* Style drag handle strictly */
 .dialog-header {
   cursor: grab;
   /* REQUIRED: Prevents highlighting text inside the header bar when clicking and dragging */
   user-select: none;
   -webkit-user-select: none;
-  -ms-user-select: none;
 }
 .dialog-header.dragging {
   cursor: grabbing;
 }
-/* Ensure the dialog fits on touch screens without scrolling parent contents */
-.dialog {
-  position: absolute;
-  touch-action: none; /* stop browser scrolling gestures */
+.dialog-header:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: -4px;
 }</code></pre>
       </details>
     </section>
@@ -420,33 +549,61 @@
       const closeBtn = document.getElementById('closeBtn');
       const dialog = document.getElementById('dragDialog');
       const header = document.getElementById('dialogHeader');
-      const sandbox = document.getElementById('sandbox');
+      const modalToggle = document.getElementById('modalToggle');
+      const toggleLabel = document.getElementById('toggleLabel');
 
       let isDragging = false;
       let offsetX = 0;
       let offsetY = 0;
 
       // --------------------------------------------------
-      // DIALOG STATE MANAGEMENT
+      // DIALOG STATE MANAGEMENT (Modal vs. Non-Modal)
       // --------------------------------------------------
+
+      // Update toggle mode dynamically if dialog is already open
+      modalToggle.addEventListener('change', () => {
+        const isOpen = dialog.open;
+
+        if (modalToggle.checked) {
+          toggleLabel.textContent = "Modal Mode (With Backdrop)";
+          if (isOpen) {
+            dialog.close();
+            dialog.showModal(); // Reopen as true modal
+            centerDialog();
+          }
+        } else {
+          toggleLabel.textContent = "Non-Modal Mode (No Backdrop)";
+          if (isOpen) {
+            dialog.close();
+            dialog.show(); // Reopen as modeless dialog
+            centerDialog();
+          }
+        }
+      });
+
       function openDialog() {
-        dialog.classList.add('open');
+        if (modalToggle.checked) {
+          // Modal Mode: traps focus, displays backdrop, blocks underlying clicks
+          dialog.showModal();
+        } else {
+          // Non-Modal Mode: keeps background document interactable and doesn't trap focus
+          dialog.show();
+        }
         centerDialog();
       }
 
       function closeDialog() {
-        dialog.classList.remove('open');
-        isDragging = false;
-        header.classList.remove('dragging');
+        dialog.close();
+        endDrag();
       }
 
       function centerDialog() {
-        const sandboxRect = sandbox.getBoundingClientRect();
         const dialogWidth = dialog.offsetWidth;
         const dialogHeight = dialog.offsetHeight;
 
-        const x = (sandboxRect.width - dialogWidth) / 2;
-        const y = (sandboxRect.height - dialogHeight) / 2;
+        // Position centered relative to the global viewport since dialog is fixed
+        const x = (window.innerWidth - dialogWidth) / 2;
+        const y = (window.innerHeight - dialogHeight) / 2;
 
         dialog.style.left = `${Math.max(0, x)}px`;
         dialog.style.top = `${Math.max(0, y)}px`;
@@ -456,11 +613,53 @@
       closeBtn.addEventListener('click', closeDialog);
 
       // --------------------------------------------------
+      // RECEPTIVE ACCESSIBILITY ADAPTATIONS
+      // --------------------------------------------------
+
+      // 1. Custom Escape closure for non-modal state (since browser doesn't close show() on Esc)
+      dialog.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && dialog.open && !dialog.matches(':modal')) {
+          e.preventDefault();
+          closeDialog();
+        }
+      });
+
+      // 2. Keyboard arrow key nudging when header is focused
+      header.addEventListener('keydown', (e) => {
+        const key = e.key;
+        if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
+        e.preventDefault();
+
+        const dialogWidth = dialog.offsetWidth;
+        const dialogHeight = dialog.offsetHeight;
+
+        const rect = dialog.getBoundingClientRect();
+        let left = rect.left;
+        let top = rect.top;
+
+        const nudgeAmount = 15; // Nudge by 15px
+
+        if (key === 'ArrowLeft') left -= nudgeAmount;
+        if (key === 'ArrowRight') left += nudgeAmount;
+        if (key === 'ArrowUp') top -= nudgeAmount;
+        if (key === 'ArrowDown') top += nudgeAmount;
+
+        // Viewport bounds checking
+        const maxLeft = window.innerWidth - dialogWidth;
+        const maxTop = window.innerHeight - dialogHeight;
+
+        left = Math.max(0, Math.min(left, maxLeft));
+        top = Math.max(0, Math.min(top, maxTop));
+
+        dialog.style.left = `${left}px`;
+        dialog.style.top = `${top}px`;
+      });
+
+      // --------------------------------------------------
       // DRAG REPOSITIONING IMPLEMENTATION
       // --------------------------------------------------
 
       function startDrag(clientX, clientY, e) {
-        // Safe precaution to prevent standard native image or text-drag ghosting
         if (e && e.cancelable) {
           e.preventDefault();
         }
@@ -470,7 +669,7 @@
 
         const dialogRect = dialog.getBoundingClientRect();
 
-        // Track the offset between pointer coordinates and the dialog top-left corner
+        // Track coordinate offsets relative to the viewport
         offsetX = clientX - dialogRect.left;
         offsetY = clientY - dialogRect.top;
       }
@@ -478,17 +677,16 @@
       function performDrag(clientX, clientY) {
         if (!isDragging) return;
 
-        const sandboxRect = sandbox.getBoundingClientRect();
         const dialogWidth = dialog.offsetWidth;
         const dialogHeight = dialog.offsetHeight;
 
-        // Calculate theoretical coordinates based on offsets
-        let left = clientX - sandboxRect.left - offsetX;
-        let top = clientY - sandboxRect.top - offsetY;
+        // Calculate coordinates directly relative to viewport
+        let left = clientX - offsetX;
+        let top = clientY - offsetY;
 
-        // Viewport bounds checking: constrain the dialog coordinates inside the sandbox boundary limits
-        const maxLeft = sandboxRect.width - dialogWidth;
-        const maxTop = sandboxRect.height - dialogHeight;
+        // Viewport bounds checking: clamp coordinates inside viewport boundaries
+        const maxLeft = window.innerWidth - dialogWidth;
+        const maxTop = window.innerHeight - dialogHeight;
 
         left = Math.max(0, Math.min(left, maxLeft));
         top = Math.max(0, Math.min(top, maxTop));
@@ -497,6 +695,7 @@
         dialog.style.top = `${top}px`;
       }
 
+      // Release globally
       function endDrag() {
         isDragging = false;
         header.classList.remove('dragging');
@@ -504,7 +703,7 @@
 
       // --- Pointer Listeners (Aggregates mouse and touch actions natively) ---
       header.addEventListener('pointerdown', (e) => {
-        // Exclude the close button from triggering dragging sequence
+        // Exclude interactive close buttons from triggering a drag
         if (e.target.closest('#closeBtn')) return;
 
         startDrag(e.clientX, e.clientY, e);
@@ -518,18 +717,17 @@
       document.addEventListener('pointerup', endDrag);
       document.addEventListener('pointercancel', endDrag);
 
-      // Recalculates bounds alignment on screen/container resizing
+      // Recalculates bounds alignment on screen resizing
       window.addEventListener('resize', () => {
-        if (!dialog.classList.contains('open')) return;
+        if (!dialog.open) return;
 
-        const sandboxRect = sandbox.getBoundingClientRect();
         const dialogRect = dialog.getBoundingClientRect();
 
-        const maxLeft = sandboxRect.width - dialogRect.width;
-        const maxTop = sandboxRect.height - dialogRect.height;
+        const maxLeft = window.innerWidth - dialogRect.width;
+        const maxTop = window.innerHeight - dialogRect.height;
 
-        let left = Math.max(0, Math.min(dialogRect.left - sandboxRect.left, maxLeft));
-        let top = Math.max(0, Math.min(dialogRect.top - sandboxRect.top, maxTop));
+        let left = Math.max(0, Math.min(dialogRect.left, maxLeft));
+        let top = Math.max(0, Math.min(dialogRect.top, maxTop));
 
         dialog.style.left = `${left}px`;
         dialog.style.top = `${top}px`;

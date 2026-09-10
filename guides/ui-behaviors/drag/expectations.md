@@ -1,10 +1,13 @@
-- **MANDATORY**: The drag handle (such as `.dialog-header`) MUST utilize `user-select: none` (along with vendor prefixes if legacy compatibility is targeted) to prevent text highlighting/selection artifacts during the drag gesture.
+- **MANDATORY**: The draggable container MUST be a native HTML `<dialog>` element.
+- **MANDATORY**: The `<dialog>` element MUST utilize `margin: 0` in CSS to override default browser auto-centering styles, permitting manual coordinate positioning.
+- **MANDATORY**: The drag handle (such as `.dialog-header`) MUST utilize `user-select: none` (along with vendor prefixes if legacy target is declared) to prevent text highlighting or selection artifacts during the drag gesture.
 - **MANDATORY**: Non-drag handle regions (such as description paragraphs inside the `.dialog-body`) MUST NOT utilize `user-select: none` globally, ensuring text remains fully copyable and selectable.
-- **MANDATORY**: The draggable container MUST define `touch-action: none` in CSS to prevent the browser's native touch scrolling and zooming gestures from competing with the custom dragging logic on mobile devices.
-- **MANDATORY**: Repositioning coordinates MUST be tracked using pointer offsets relative to the element's top-left corner calculated on grab start, ensuring the dialog does not "jump" or snap its top-left corner directly under the cursor.
-- **MANDATORY**: Drag coordinates MUST undergo strict boundary limits and bounds-checking against the viewport (or parent boundary container) to prevent users from dragging the element fully off-screen.
-- **MANDATORY**: Drag movement (`pointermove`/`mousemove`) and release (`pointerup`/`mouseup`) event listeners MUST be bound to the `document` (or window) rather than the drag handle itself, ensuring the drag is not lost if the cursor temporarily outruns the handle.
-- **MANDATORY**: Interactive components inside the draggable element (such as dismiss buttons or links) MUST remain fully functional, and clicking them MUST NOT trigger a dragging sequence.
-- **MANDATORY**: Dragging functionality MUST be treated as a progressive enhancement; if JavaScript is disabled, the overlay element MUST remain fully readable, visible, and closable on the page.
-- **OPTIONAL**: Pointer Events (`pointerdown`, `pointermove`, `pointerup`) are utilized rather than separate mouse and touch listeners to cleanly unify desktop and mobile inputs under a single high-performance event model.
-- **OPTIONAL**: Visual cues representing grab states (such as switching from `cursor: grab` to `cursor: grabbing` on the header) are utilized to communicate drag activity to the user.
+- **MANDATORY**: The `<dialog>` element MUST define `touch-action: none` in CSS to prevent the browser's native touch scrolling and zooming gestures from competing with the custom dragging logic on mobile devices.
+- **MANDATORY**: Repositioning coordinates MUST be tracked using pointer offsets relative to the element's top-left corner calculated on pointer down, ensuring the dialog does not "jump" or snap on grab.
+- **MANDATORY**: Drag coordinates MUST undergo strict boundary limits and bounds-checking against the viewport limits to prevent the element from being dragged fully off-screen.
+- **MANDATORY**: Drag movement (`pointermove`) and release (`pointerup`) event listeners MUST be bound to the `document` (or window) rather than the drag handle itself, ensuring the gesture isn't lost if the cursor slides off.
+- **MANDATORY**: Interactive elements inside the dialog (such as close buttons or form inputs) MUST remain fully functional, and clicking them MUST NOT trigger a dragging sequence.
+- **MANDATORY**: The drag handle MUST be keyboard-focusable (utilizing `tabindex="0"` or sequential focus ordering) to allow non-pointer users access.
+- **MANDATORY**: The `<dialog>` element MUST be repositionable using keyboard arrow keys (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`) when the drag handle is focused.
+- **MANDATORY**: Dragging functionality MUST be treated as a progressive enhancement; if JavaScript is disabled, the dialog MUST remain centered, visible, readable, and functional on the page.
+- **OPTIONAL**: A visual grab indicator (such as transitioning from `cursor: grab` to `cursor: grabbing` on drag) is utilized to communicate drag state.
