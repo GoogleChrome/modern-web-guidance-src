@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Draggable Rearrangement (Pointer Events & Ghost Clone)</title>
+  <style>
+    /* ==========================================================================
+       A. THEME & COSMETIC DESIGN (The "Colorful" Visual Styling)
+       ========================================================================== */
+    :root {
+      color-scheme: light dark;
+      --bg-page-light: #f8fafc;
+      --bg-page-dark: #0f172a;
+
+      --bg-sandbox-light: #ffffff;
+      --bg-sandbox-dark: #1e293b;
+
+      --text-main-light: #1e293b;
+      --text-main-dark: #f1f5f9;
+
+      --text-muted-light: #64748b;
+      --text-muted-dark: #94a3b8;
+
+      --border-color-light: #cbd5e1;
+      --border-color-dark: #334155;
+
+      --focus-ring-color: #2563eb;
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 3rem 2rem;
+      background: var(--bg-page-light);
+      color: var(--text-main-light);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: var(--bg-page-dark);
+        color: var(--text-main-dark);
+      }
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+      text-align: center;
+    }
+
+    .intro {
+      font-size: 1rem;
+      color: var(--text-muted-light);
+      max-width: 80ch;
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .intro {
+        color: var(--text-muted-dark);
+      }
+    }
+
+    main {
+      width: 100%;
+    }
+
+    section {
+      max-width: 800px;
+      width: 100%;
+      margin-inline: auto;
+      margin-bottom: 3.5rem;
+    }
+
+    section h2 {
+      font-size: 1.25rem;
+      border-bottom: 2px solid var(--border-color-light);
+      padding-bottom: 0.5rem;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      letter-spacing: -0.015em;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      section h2 {
+        border-color: var(--border-color-dark);
+      }
+    }
+
+    /* Presentation Sandbox */
+    .demo-sandbox {
+      border: 2px dashed var(--border-color-light);
+      padding: 2rem;
+      background: var(--bg-sandbox-light);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .demo-sandbox {
+        background: var(--bg-sandbox-dark);
+        border-color: var(--border-color-dark);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+      }
+    }
+
+    /* Layout Toggle Button Bar */
+    .toggle-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .toggle-btn {
+      all: unset;
+      appearance: none;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 1px solid var(--border-color-light);
+      background-color: var(--bg-page-light);
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .toggle-btn {
+        border-color: var(--border-color-dark);
+        background-color: var(--bg-page-dark);
+      }
+    }
+
+    .toggle-btn.active {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+      color: #ffffff;
+    }
+
+    /* Reordered Item Cards Aesthetics */
+    .card {
+      user-select: none;
+      border-radius: 8px;
+      border: 1px solid var(--border-color-light);
+      background-color: var(--bg-page-light);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .card {
+        border-color: var(--border-color-dark);
+        background-color: var(--bg-page-dark);
+      }
+    }
+
+    /* Grab handle cosmetic */
+    .card-handle {
+      cursor: grab;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      opacity: 0.5;
+      transition: opacity 0.1s;
+    }
+
+    .card-handle:hover {
+      opacity: 0.8;
+    }
+
+    .card-handle::before,
+    .card-handle::after,
+    .card-handle span {
+      content: "";
+      height: 2px;
+      background-color: currentColor;
+      border-radius: 1px;
+    }
+
+    .card-handle span {
+      width: 100%;
+    }
+
+    .card-content {
+      flex-grow: 1;
+    }
+
+    /* Live DOM Log Box */
+    .dom-log-box {
+      border: 1px solid var(--border-color-light);
+      background-color: var(--bg-page-light);
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .dom-log-box {
+        border-color: var(--border-color-dark);
+        background-color: var(--bg-page-dark);
+      }
+    }
+
+    .dom-log-title {
+      font-weight: 700;
+      color: var(--text-muted-light);
+      margin-bottom: 0.25rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .dom-log-title {
+        color: var(--text-muted-dark);
+      }
+    }
+
+    /* Details block */
+    details {
+      margin-top: 1.5rem;
+      background-color: var(--bg-page-light);
+      border: 1px solid var(--border-color-light);
+      padding: 1rem;
+      border-radius: 8px;
+      max-width: 800px;
+      width: 100%;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      details {
+        background-color: var(--bg-page-dark);
+        border-color: var(--border-color-dark);
+      }
+    }
+
+    details summary {
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    pre {
+      background-color: var(--bg-sandbox-light);
+      border: 1px solid var(--border-color-light);
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      pre {
+        background-color: var(--bg-sandbox-dark);
+        border-color: var(--border-color-dark);
+      }
+    }
+
+
+    /* ==========================================================================
+       B. CORE DRAG ENGINE & CSS LAYOUTS (Interaction-Critical CSS)
+       ========================================================================== */
+
+    /* 1. Layout Variations switched dynamically via class */
+    
+    /* VARIATION 1: Grid Layout */
+    .reorder-container.layout-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    /* VARIATION 2: Flexbox Layout */
+    .reorder-container.layout-flex {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .reorder-container.layout-flex > * {
+      flex: 1 1 calc(33.333% - 1rem);
+      min-width: 150px;
+    }
+
+    /* VARIATION 3: List Layout */
+    .reorder-container.layout-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.50rem;
+    }
+
+    /* 2. Drag & Capture Rules */
+    .card {
+      /* REQUIRED: Suppress mobile scrolling gestures during pointer drags */
+      touch-action: none;
+    }
+
+    .card-handle {
+      /* REQUIRED: Shuts off mouse-selection highlight artifacting on handle click-drags */
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Drag clone representation cosmetic */
+    .card.dragging-hide {
+      opacity: 0.3;
+    }
+
+    .card.ghost-clone {
+      position: fixed; /* REQUIRED: Align visual coords directly to viewport mouse */
+      pointer-events: none; /* REQUIRED: Let pointer events pass through to find siblings underneath */
+      z-index: 1000;
+      opacity: 0.85;
+      box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2), 0 8px 16px -6px rgba(0, 0, 0, 0.15);
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Draggable Child Rearrangement</h1>
+  <p class="intro">
+    This demo illustrates a fully layout-agnostic reordering engine using standard <strong>Pointer Events</strong> 
+    and a lightweight **Ghost Clone**. Toggle layouts dynamically—this robust, bulletproof version works flawlessly 
+    across Grid, Flexbox, and List layouts on all mobile and desktop Chrome and WebKit/Safari environments, completely flicker-free.
+  </p>
+
+  <main>
+    <section>
+      <h2>Rearrange Workspace</h2>
+
+      <div class="demo-sandbox">
+        <!-- Layout Switch Buttons -->
+        <div class="toggle-row">
+          <button class="toggle-btn active" data-layout="grid">Grid Layout</button>
+          <button class="toggle-btn" data-layout="flex">Flexbox Wrap</button>
+          <button class="toggle-btn" data-layout="list">Vertical List</button>
+        </div>
+
+        <!-- Draggable Reorder Container -->
+        <div class="reorder-container layout-grid" id="reorderContainer">
+          <div class="card" id="cardA">
+            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-content">Card A (Item 1)</div>
+          </div>
+          <div class="card" id="cardB">
+            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-content">Card B (Item 2)</div>
+          </div>
+          <div class="card" id="cardC">
+            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-content">Card C (Item 3)</div>
+          </div>
+          <div class="card" id="cardD">
+            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-content">Card D (Item 4)</div>
+          </div>
+          <div class="card" id="cardE">
+            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-content">Card E (Item 5)</div>
+          </div>
+          <div class="card" id="cardF">
+            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-content">Card F (Item 6)</div>
+          </div>
+        </div>
+
+        <!-- Live DOM Order Logger -->
+        <div class="dom-log-box">
+          <div class="dom-log-title">Live DOM Children Stacking Order:</div>
+          <span id="domLog">Card A → Card B → Card C → Card D → Card E → Card F</span>
+        </div>
+      </div>
+
+      <details>
+        <summary>View Source Code</summary>
+        <h3>HTML Structure</h3>
+        <pre><code>&lt;div class="reorder-container" id="reorderContainer"&gt;
+  &lt;div class="card"&gt;
+    &lt;div class="card-handle"&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;
+    &lt;div class="card-content"&gt;Item 1&lt;/div&gt;
+  &lt;/div&gt;
+  ...
+&lt;/div&gt;</code></pre>
+        <h3>CSS Style Rules</h3>
+        <pre><code>.card {
+  touch-action: none; /* Stops touch scrolling during drag */
+}
+.card-handle {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.card.dragging-hide {
+  opacity: 0.3;
+}
+.card.ghost-clone {
+  pointer-events: none; /* REQUIRED to find elements underneath */
+  position: fixed;
+  z-index: 1000;
+}</code></pre>
+        <h3>JavaScript Engine</h3>
+        <pre><code>const container = document.getElementById('reorderContainer');
+let draggedElement = null, ghost = null;
+let offsetX = 0, offsetY = 0;
+
+container.addEventListener('pointerdown', (e) => {
+  const handle = e.target.closest('.card-handle');
+  if (!handle) return;
+  const card = handle.closest('.card');
+  if (!card) return;
+
+  e.preventDefault(); // Suppresses default WebKit selection/ghosting
+  draggedElement = card;
+  
+  const rect = card.getBoundingClientRect();
+  offsetX = e.clientX - rect.left;
+  offsetY = e.clientY - rect.top;
+
+  ghost = card.cloneNode(true);
+  ghost.className = 'card ghost-clone';
+  ghost.style.width = `${rect.width}px`;
+  ghost.style.height = `${rect.height}px`;
+  ghost.style.left = `${rect.left}px`;
+  ghost.style.top = `${rect.top}px`;
+  document.body.appendChild(ghost);
+
+  card.classList.add('dragging-hide');
+
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+  document.addEventListener('pointercancel', onPointerUp);
+});
+
+function onPointerMove(e) {
+  if (!draggedElement || !ghost) return;
+
+  ghost.style.left = `${e.clientX - offsetX}px`;
+  ghost.style.top = `${e.clientY - offsetY}px`;
+
+  const siblings = [...container.children].filter(child => child !== draggedElement);
+  
+  const closestSibling = siblings.find(sibling => {
+    const box = sibling.getBoundingClientRect();
+    return e.clientX >= box.left && e.clientX <= box.right &&
+           e.clientY >= box.top && e.clientY <= box.bottom;
+  });
+
+  if (closestSibling && closestSibling !== draggedElement) {
+    const children = [...container.children];
+    const draggedIndex = children.indexOf(draggedElement);
+    const targetIndex = children.indexOf(closestSibling);
+
+    if (draggedIndex < targetIndex) {
+      container.insertBefore(draggedElement, closestSibling.nextSibling);
+    } else {
+      container.insertBefore(draggedElement, closestSibling);
+    }
+  }
+}
+
+function onPointerUp() {
+  if (!draggedElement) return;
+  document.removeEventListener('pointermove', onPointerMove);
+  document.removeEventListener('pointerup', onPointerUp);
+  document.removeEventListener('pointercancel', onPointerUp);
+
+  if (ghost) {
+    ghost.remove();
+    ghost = null;
+  }
+  draggedElement.classList.remove('dragging-hide');
+  draggedElement = null;
+}</code></pre>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById('reorderContainer');
+      const toggleBtns = document.querySelectorAll('.toggle-btn');
+      const domLog = document.getElementById('domLog');
+
+      let draggedElement = null;
+      let ghost = null;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      // --------------------------------------------------
+      // LAYOUT SWITCH CONTROLLER
+      // --------------------------------------------------
+      toggleBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          toggleBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          const layout = btn.getAttribute('data-layout');
+          container.className = `reorder-container layout-${layout}`;
+        });
+      });
+
+      // --------------------------------------------------
+      // LIVE DOM LOG BUILDER
+      // --------------------------------------------------
+      function updateDomOrderLog() {
+        const order = [...container.children].map(child => {
+          const title = child.querySelector('.card-content').textContent;
+          return title.split(' (')[0]; // Simplify name
+        });
+        domLog.textContent = order.join(' → ');
+      }
+
+      // --------------------------------------------------
+      // BULLETPROOF DOCUMENT-BOUND POINTER REARRANGEMENT
+      // --------------------------------------------------
+      
+      container.addEventListener('pointerdown', (e) => {
+        const handle = e.target.closest('.card-handle');
+        if (!handle) return; // Only drag when grabbing handle
+        
+        const card = handle.closest('.card');
+        if (!card) return;
+
+        // Prevent Safari/WebKit default behaviors (text selection and drag-start ghosting)
+        e.preventDefault();
+
+        draggedElement = card;
+        
+        const rect = card.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+
+        // 1. Create the visual ghost clone and append to body
+        ghost = card.cloneNode(true);
+        ghost.className = 'card ghost-clone';
+        ghost.style.width = `${rect.width}px`;
+        ghost.style.height = `${rect.height}px`;
+        ghost.style.left = `${rect.left}px`;
+        ghost.style.top = `${rect.top}px`;
+        
+        document.body.appendChild(ghost);
+
+        // 2. Dim the actual card inside the layout container
+        card.classList.add('dragging-hide');
+
+        // 3. Bind movement and release directly to document to bypass DOM-mutation capture aborts
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
+        document.addEventListener('pointercancel', onPointerUp);
+      });
+
+      function onPointerMove(e) {
+        if (!draggedElement || !ghost) return;
+
+        // Move the visual ghost directly relative to pointer coordinates
+        ghost.style.left = `${e.clientX - offsetX}px`;
+        ghost.style.top = `${e.clientY - offsetY}px`;
+
+        // Find all sibling elements inside the container
+        const siblings = [...container.children].filter(child => child !== draggedElement);
+        
+        // Find which sibling the cursor is physically hovering inside (Boundary Detection)
+        const closestSibling = siblings.find(sibling => {
+          const box = sibling.getBoundingClientRect();
+          return e.clientX >= box.left && e.clientX <= box.right &&
+                 e.clientY >= box.top && e.clientY <= box.bottom;
+        });
+
+        // Swap the actual card in the DOM if we are hovering over an active sibling (No thrashes/flicker)
+        if (closestSibling && closestSibling !== draggedElement) {
+          const children = [...container.children];
+          const draggedIndex = children.indexOf(draggedElement);
+          const targetIndex = children.indexOf(closestSibling);
+
+          if (draggedIndex < targetIndex) {
+            container.insertBefore(draggedElement, closestSibling.nextSibling);
+          } else {
+            container.insertBefore(draggedElement, closestSibling);
+          }
+
+          // Build live order log
+          updateDomOrderLog();
+        }
+      }
+
+      function onPointerUp() {
+        if (!draggedElement) return;
+        
+        // Remove document listeners
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        document.removeEventListener('pointercancel', onPointerUp);
+
+        // Remove the visual ghost clone
+        if (ghost) {
+          ghost.remove();
+          ghost = null;
+        }
+
+        // Restore the original card's visibility inside the flow
+        draggedElement.classList.remove('dragging-hide');
+        draggedElement = null;
+
+        updateDomOrderLog();
+      }
+    });
+  </script>
+
+</body>
+
+</html>
