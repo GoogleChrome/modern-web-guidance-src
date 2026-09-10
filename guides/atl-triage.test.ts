@@ -1129,6 +1129,51 @@ web-feature-ids:
       reviewStateMock.mock.restore();
     }
   });
+
+  it('does not construct bogus guide paths or request reviews for guides/modern-web-guidance/SKILL.md', () => {
+    addPrLabelsMock.mock.resetCalls();
+    addReviewersMock.mock.resetCalls();
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'guides/modern-web-guidance/SKILL.md'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
+    const getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', () => null);
+
+    try {
+      const result = handlePR(99999, 'some-contributor', mockConfig);
+      assert.deepStrictEqual(result, []);
+      // Should label content because touchesSmeContent is true
+      assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
+      assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content']]);
+      // Should NOT try to fetch guides/modern-web-guidance/SKILL.md/guide.md
+      assert.strictEqual(getPrFileContentMock.mock.callCount(), 0);
+    } finally {
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
+      getPrFileContentMock.mock.restore();
+    }
+  });
+
+  it('skips non-category directories like guides/lib when resolving guides', () => {
+    addPrLabelsMock.mock.resetCalls();
+    addReviewersMock.mock.resetCalls();
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'guides/lib/guide-validation.ts'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
+    const getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', () => null);
+
+    try {
+      const result = handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, ['content']);
+      assert.deepStrictEqual(result, []);
+      assert.strictEqual(getPrFileContentMock.mock.callCount(), 0);
+      assert.strictEqual(addReviewersMock.mock.callCount(), 0);
+    } finally {
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
+      getPrFileContentMock.mock.restore();
+    }
+  });
 });
 
 describe('extractFeatureIdsFromContent', () => {

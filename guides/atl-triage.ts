@@ -825,13 +825,20 @@ export function handlePR(
   let hasEvaluatedContent = false;
 
   const touchesSmeContent = files.some(isSmeContentFile);
+  const knownCategories = getKnownCategories(guidesRootDir, atlConfig);
 
   for (const file of files) {
     const parts = file.split(/[/\\]/);
 
     // 1. Content files under guides/<category>/<guide-name>/...
-    if (parts[0] === 'guides' && parts.length >= 3) {
+    if (parts[0] === 'guides' && parts.length >= 4) {
       const category = parts[1];
+      if (NON_CATEGORY_DIRS.has(category.toLowerCase())) {
+        continue;
+      }
+      if (fs.existsSync(path.join(guidesRootDir, category)) && !knownCategories.has(category.toLowerCase())) {
+        continue;
+      }
       const guideName = parts[2];
       const filename = parts[parts.length - 1];
       if (SME_CONTENT_FILENAMES.has(filename) || isContentLabelled) {
