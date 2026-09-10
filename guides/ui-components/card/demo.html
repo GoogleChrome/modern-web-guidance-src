@@ -4,43 +4,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modern Classless Card Component</title>
+  <title>Modern Card Component</title>
   <style>
     :root {
       color-scheme: light dark;
       
-      /* OKLCH Brand Hue (Indigo-Blue palette) */
-      --brand-hue: 250;
+      /* Standard simple color properties */
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-sandbox: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --focus-ring-color: #2563eb;
       
-      /* Perceptually uniform design system colors */
-      --bg-page: oklch(98% 0.01 var(--brand-hue));
-      --bg-card: oklch(100% 0 var(--brand-hue));
-      --bg-sandbox: oklch(100% 0 var(--brand-hue));
-      --text-main: oklch(25% 0.03 var(--brand-hue));
-      --text-muted: oklch(50% 0.03 var(--brand-hue));
-      --border-color: oklch(88% 0.02 var(--brand-hue));
-      --focus-ring-color: oklch(60% 0.15 var(--brand-hue));
-      
-      --btn-bg: oklch(95% 0.01 var(--brand-hue));
-      --btn-bg-hover: oklch(90% 0.02 var(--brand-hue));
-      --btn-text: oklch(35% 0.05 var(--brand-hue));
-      --btn-text-hover: oklch(15% 0.05 var(--brand-hue));
+      --btn-bg: #f1f5f9;
+      --btn-bg-hover: #e2e8f0;
+      --btn-text: #475569;
+      --btn-text-hover: #0f172a;
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg-page: oklch(12% 0.02 var(--brand-hue));
-        --bg-card: oklch(18% 0.03 var(--brand-hue));
-        --bg-sandbox: oklch(18% 0.03 var(--brand-hue));
-        --text-main: oklch(95% 0.01 var(--brand-hue));
-        --text-muted: oklch(75% 0.02 var(--brand-hue));
-        --border-color: oklch(28% 0.03 var(--brand-hue));
-        --focus-ring-color: oklch(65% 0.18 var(--brand-hue));
+        --bg-page: #0f172a;
+        --bg-card: #1e293b;
+        --bg-sandbox: #1e293b;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border-color: #334155;
+        --focus-ring-color: #3b82f6;
         
-        --btn-bg: oklch(25% 0.03 var(--brand-hue));
-        --btn-bg-hover: oklch(32% 0.04 var(--brand-hue));
-        --btn-text: oklch(85% 0.02 var(--brand-hue));
-        --btn-text-hover: oklch(100% 0 var(--brand-hue));
+        --btn-bg: #334155;
+        --btn-bg-hover: #475569;
+        --btn-text: #cbd5e1;
+        --btn-text-hover: #ffffff;
       }
     }
 
@@ -103,7 +100,7 @@
     }
 
     /* --------------------------------------------------
-     CLASSLESS CARD COMPONENT CSS
+     CARD COMPONENT CSS (Semantic & Structural)
      -------------------------------------------------- */
 
     /* Parent layout container wrapper */
@@ -114,7 +111,7 @@
     }
 
     /* The article element itself is the card component */
-    article.card {
+    .card {
       display: grid;
       grid-template-columns: 1fr; /* Natural stacked flow respecting HTML source order */
       position: relative;
@@ -127,13 +124,13 @@
     }
 
     /* Delegate outer focus state when any inner link or button has focus */
-    article.card:has(:focus-visible) {
+    .card:has(:focus-visible) {
       outline: 2px solid var(--focus-ring-color);
       outline-offset: 4px;
     }
 
     /* Target direct visual media elements */
-    article.card > :is(img, picture, svg) {
+    .card > :is(img, picture, svg) {
       width: 100%;
       height: 140px;
       object-fit: cover;
@@ -141,13 +138,13 @@
     }
 
     /* Target direct heading groups */
-    article.card > hgroup {
+    .card > hgroup {
       display: flex;
       flex-direction: column;
       gap: 0.15rem;
     }
 
-    article.card > hgroup > :is(h1, h2, h3, h4, h5, h6) {
+    .card > hgroup > :is(h1, h2, h3, h4, h5, h6) {
       margin: 0;
       font-size: 1.25rem;
       font-weight: 750;
@@ -155,58 +152,45 @@
       text-wrap: balance; /* Modern CSS: Balance heading lines */
     }
 
-    article.card > hgroup > p {
+    .card > hgroup > p {
       margin: 0;
       font-size: 0.825rem;
-      color: var(--text-muted-light);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      article.card > hgroup > p {
-        color: var(--text-muted-dark);
-      }
+      color: var(--text-muted);
     }
 
     /* Handle link text style overrides */
-    article.card > hgroup > :is(h1, h2, h3, h4, h5, h6) a {
+    .card > hgroup > :is(h1, h2, h3, h4, h5, h6) a {
       color: inherit;
       text-decoration: none;
     }
 
-    article.card > hgroup > :is(h1, h2, h3, h4, h5, h6) a:focus {
+    .card > hgroup > :is(h1, h2, h3, h4, h5, h6) a:focus {
       outline: none; /* Focus outline delegated to parent article above */
     }
 
     /* Target description text paragraphs */
-    article.card > p {
+    .card > p {
       margin: 0;
       font-size: 0.875rem;
-      color: #475569;
       line-height: 1.55;
       text-wrap: pretty; /* Modern CSS: Prevent orphans */
     }
 
-    @media (prefers-color-scheme: dark) {
-      article.card > p {
-        color: #cbd5e1;
-      }
-    }
-
     /* Target footer as actions list */
-    article.card > footer {
+    .card > footer {
       display: flex;
       gap: 0.5rem;
       margin-top: 0.5rem;
     }
 
-    article.card > footer :is(button, a) {
+    .card > footer :is(button, a) {
       all: unset;
       appearance: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #f1f5f9;
-      color: #475569;
+      background: var(--btn-bg);
+      color: var(--btn-text);
       border-radius: 8px;
       padding: 0.45rem 0.9rem;
       font-size: 0.825rem;
@@ -216,23 +200,9 @@
       transition: background 0.15s ease, color 0.15s ease;
     }
 
-    @media (prefers-color-scheme: dark) {
-      article.card > footer :is(button, a) {
-        background: #334155;
-        color: #cbd5e1;
-      }
-    }
-
-    article.card > footer :is(button, a):hover {
-      background: #e2e8f0;
-      color: #0f172a;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      article.card > footer :is(button, a):hover {
-        background: #475569;
-        color: #ffffff;
-      }
+    .card > footer :is(button, a):hover {
+      background: var(--btn-bg-hover);
+      color: var(--btn-text-hover);
     }
 
     /* --------------------------------------------------
@@ -240,12 +210,12 @@
      -------------------------------------------------- */
     @container card-container (min-width: 32.01rem) {
       /* Automatically shift to sidebar grid ONLY if an image/media element is present */
-      article.card:has(> :is(img, picture, svg)) {
+      .card:has(> :is(img, picture, svg)) {
         grid-template-columns: 140px 1fr;
         gap: 0.5rem 1.25rem;
       }
 
-      article.card:has(> :is(img, picture, svg)) > :is(img, picture, svg) {
+      .card:has(> :is(img, picture, svg)) > :is(img, picture, svg) {
         grid-column: 1;
         grid-row: 1 / span 10;
         align-self: start;
@@ -253,8 +223,35 @@
         min-height: 140px;
       }
 
-      article.card:has(> :is(img, picture, svg)) > :not(:is(img, picture, svg)) {
+      .card:has(> :is(img, picture, svg)) > :not(:is(img, picture, svg)) {
         grid-column: 2;
+      }
+    }
+
+    /* --------------------------------------------------
+     BROWSER COMPATIBILITY FALLBACK (When Container Queries are unsupported)
+     -------------------------------------------------- */
+    @supports not (container-type: inline-size) {
+      /* Fallback to a fluid, wrapping Flexbox layout */
+      .card-layout {
+        display: block;
+        width: 100%;
+      }
+
+      .card {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .card > :is(img, picture, svg) {
+        flex: 1 1 140px;
+        max-width: 140px;
+        height: 140px;
+      }
+
+      .card > :not(:is(img, picture, svg)) {
+        flex: 1 1 240px;
       }
     }
 
@@ -267,39 +264,27 @@
 
     section h2 {
       font-size: 1.25rem;
-      border-bottom: 2px solid var(--border-color-light);
+      border-bottom: 2px solid var(--border-color);
       padding-bottom: 0.5rem;
       margin-top: 0;
       margin-bottom: 1rem;
       letter-spacing: -0.015em;
     }
 
-    @media (prefers-color-scheme: dark) {
-      section h2 {
-        border-color: var(--border-color-dark);
-      }
-    }
-
     .intro {
       font-size: 1rem;
-      color: var(--text-muted-light);
+      color: var(--text-muted);
       max-width: 80ch;
       margin-bottom: 3rem;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .intro {
-        color: var(--text-muted-dark);
-      }
     }
   </style>
 </head>
 
 <body>
 
-  <h1>Classless, Content-Aware Card Component</h1>
+  <h1>Content-Aware Card Component</h1>
   <p class="intro">
-    This demo illustrates a semantic, classless card component. By querying its parent layout wrapper container 
+    This demo illustrates a semantic card component. By querying its parent layout wrapper container 
     using Container Queries and modern <code>:has()</code> selectors, the card automatically reconfigures its layout structure dynamically.
   </p>
 
@@ -389,10 +374,10 @@
       <div class="card-layout">
         <article class="card">
           <hgroup>
-            <h3><a href="#philosophy">Our Culinary Philosophy</a></h3>
+            <h3><a href="#philosophy">Culinary Philosophy</a></h3>
             <p>Crafted with Passion</p>
           </hgroup>
-          <p>We believe in sourcing exclusively local, organic ingredients, supporting sustainable agriculture, and serving handcrafted meals cooked from scratch every single day.</p>
+          <p>Sourcing exclusively local, organic ingredients supports sustainable agriculture, and serving handcrafted meals cooked from scratch every single day.</p>
           <footer>
             <button>Learn More</button>
           </footer>
