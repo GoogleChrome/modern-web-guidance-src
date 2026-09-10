@@ -99,7 +99,7 @@ export function isSmeContentFile(file: string): boolean {
     normalized = path.relative(path.resolve(__dirname, '..'), normalized);
   }
   const parts = normalized.split(/[/\\]/);
-  if (parts[0] !== 'guides' || parts.length < 3) {
+  if (parts[0] !== 'guides' || parts.length < 3 || parts.some(p => p === '..')) {
     return false;
   }
   const filename = parts[parts.length - 1];
@@ -303,8 +303,15 @@ export function getAtlsFromDescription(description: string, atlConfig: AtlConfig
 
 export const githubApi = {
   getIssueUnassignedLogins(issueNumber: number): string[] {
-    const eventsOutput = child_process.execSync(
-      `gh api repos/{owner}/{repo}/issues/${issueNumber}/events --paginate --jq '.[] | select(.event == "unassigned" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .assignee.login'`,
+    const eventsOutput = child_process.execFileSync(
+      'gh',
+      [
+        'api',
+        `repos/{owner}/{repo}/issues/${issueNumber}/events`,
+        '--paginate',
+        '--jq',
+        '.[] | select(.event == "unassigned" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .assignee.login'
+      ],
       { encoding: 'utf8' }
     );
     return eventsOutput
@@ -314,8 +321,15 @@ export const githubApi = {
   },
 
   getIssueUnlabeledEvents(issueNumber: number): string[] {
-    const eventsOutput = child_process.execSync(
-      `gh api repos/{owner}/{repo}/issues/${issueNumber}/events --paginate --jq '.[] | select(.event == "unlabeled" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .label.name'`,
+    const eventsOutput = child_process.execFileSync(
+      'gh',
+      [
+        'api',
+        `repos/{owner}/{repo}/issues/${issueNumber}/events`,
+        '--paginate',
+        '--jq',
+        '.[] | select(.event == "unlabeled" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .label.name'
+      ],
       { encoding: 'utf8' }
     );
     return eventsOutput
@@ -325,8 +339,9 @@ export const githubApi = {
   },
 
   getIssueCurrentAssignees(issueNumber: number): string[] {
-    const assigneesOutput = child_process.execSync(
-      `gh issue view ${issueNumber} --json assignees --jq ".assignees[].login"`,
+    const assigneesOutput = child_process.execFileSync(
+      'gh',
+      ['issue', 'view', String(issueNumber), '--json', 'assignees', '--jq', '.assignees[].login'],
       { encoding: 'utf8' }
     );
     return assigneesOutput
@@ -336,8 +351,9 @@ export const githubApi = {
   },
 
   getIssueLabels(issueNumber: number): string[] {
-    const output = child_process.execSync(
-      `gh issue view ${issueNumber} --json labels --jq ".labels[].name"`,
+    const output = child_process.execFileSync(
+      'gh',
+      ['issue', 'view', String(issueNumber), '--json', 'labels', '--jq', '.labels[].name'],
       { encoding: 'utf8' }
     );
     return output
@@ -348,35 +364,60 @@ export const githubApi = {
 
   addIssueAssignees(issueNumber: number, assignees: string[]): void {
     if (assignees.length === 0) return;
-    child_process.execSync(`gh issue edit ${issueNumber} --add-assignee "${assignees.join(',')}"`, { stdio: 'inherit' });
+    child_process.execFileSync(
+      'gh',
+      ['issue', 'edit', String(issueNumber), '--add-assignee', assignees.join(',')],
+      { stdio: 'inherit' }
+    );
   },
 
   addIssueLabels(issueNumber: number, labels: string[]): void {
     if (labels.length === 0) return;
-    child_process.execSync(`gh issue edit ${issueNumber} --add-label "${labels.join(',')}"`, { stdio: 'inherit' });
+    child_process.execFileSync(
+      'gh',
+      ['issue', 'edit', String(issueNumber), '--add-label', labels.join(',')],
+      { stdio: 'inherit' }
+    );
   },
 
   removeIssueLabels(issueNumber: number, labels: string[]): void {
     if (labels.length === 0) return;
-    child_process.execSync(`gh issue edit ${issueNumber} --remove-label "${labels.join(',')}"`, { stdio: 'inherit' });
+    child_process.execFileSync(
+      'gh',
+      ['issue', 'edit', String(issueNumber), '--remove-label', labels.join(',')],
+      { stdio: 'inherit' }
+    );
   },
 
   getIssueBody(issueNumber: number): string {
-    return child_process.execSync(`gh issue view ${issueNumber} --json body --jq ".body"`, { encoding: 'utf8' }).trim();
+    return child_process.execFileSync(
+      'gh',
+      ['issue', 'view', String(issueNumber), '--json', 'body', '--jq', '.body'],
+      { encoding: 'utf8' }
+    ).trim();
   },
 
   getPrFiles(prNumber: number): string[] {
-    const output = child_process.execSync(`gh pr view ${prNumber} --json files --jq ".files[].path"`, { encoding: 'utf8' });
+    const output = child_process.execFileSync(
+      'gh',
+      ['pr', 'view', String(prNumber), '--json', 'files', '--jq', '.files[].path'],
+      { encoding: 'utf8' }
+    );
     return output.trim().split('\n').map(f => f.trim()).filter(Boolean);
   },
 
   getPrAuthor(prNumber: number): string {
-    return child_process.execSync(`gh pr view ${prNumber} --json author --jq ".author.login"`, { encoding: 'utf8' }).trim();
+    return child_process.execFileSync(
+      'gh',
+      ['pr', 'view', String(prNumber), '--json', 'author', '--jq', '.author.login'],
+      { encoding: 'utf8' }
+    ).trim();
   },
 
   getPrLabels(prNumber: number): string[] {
-    const output = child_process.execSync(
-      `gh pr view ${prNumber} --json labels --jq ".labels[].name"`,
+    const output = child_process.execFileSync(
+      'gh',
+      ['pr', 'view', String(prNumber), '--json', 'labels', '--jq', '.labels[].name'],
       { encoding: 'utf8' }
     );
     return output
@@ -386,7 +427,11 @@ export const githubApi = {
   },
 
   getPrReviewState(prNumber: number): { reviewRequests: string[]; reviews: string[] } {
-    const output = child_process.execSync(`gh pr view ${prNumber} --json reviews,reviewRequests`, { encoding: 'utf8' });
+    const output = child_process.execFileSync(
+      'gh',
+      ['pr', 'view', String(prNumber), '--json', 'reviews,reviewRequests'],
+      { encoding: 'utf8' }
+    );
     const prData = JSON.parse(output);
     const reviewRequests = (prData.reviewRequests || []).map((r: any) => r.login).filter(Boolean);
     const reviews = (prData.reviews || []).map((r: any) => r.author?.login).filter(Boolean);
@@ -395,22 +440,41 @@ export const githubApi = {
 
   addPrReviewers(prNumber: number, reviewers: string[]): void {
     if (reviewers.length === 0) return;
-    child_process.execSync(`gh pr edit ${prNumber} --add-reviewer "${reviewers.join(',')}"`, { stdio: 'inherit' });
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'edit', String(prNumber), '--add-reviewer', reviewers.join(',')],
+      { stdio: 'inherit' }
+    );
   },
 
   addPrLabels(prNumber: number, labels: string[]): void {
     if (labels.length === 0) return;
-    child_process.execSync(`gh pr edit ${prNumber} --add-label "${labels.join(',')}"`, { stdio: 'inherit' });
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'edit', String(prNumber), '--add-label', labels.join(',')],
+      { stdio: 'inherit' }
+    );
   },
 
   removePrLabels(prNumber: number, labels: string[]): void {
     if (labels.length === 0) return;
-    child_process.execSync(`gh pr edit ${prNumber} --remove-label "${labels.join(',')}"`, { stdio: 'inherit' });
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'edit', String(prNumber), '--remove-label', labels.join(',')],
+      { stdio: 'inherit' }
+    );
   },
 
   getPrUnlabeledEvents(prNumber: number): string[] {
-    const eventsOutput = child_process.execSync(
-      `gh api repos/{owner}/{repo}/issues/${prNumber}/events --paginate --jq '.[] | select(.event == "unlabeled" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .label.name'`,
+    const eventsOutput = child_process.execFileSync(
+      'gh',
+      [
+        'api',
+        `repos/{owner}/{repo}/issues/${prNumber}/events`,
+        '--paginate',
+        '--jq',
+        '.[] | select(.event == "unlabeled" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .label.name'
+      ],
       { encoding: 'utf8' }
     );
     return eventsOutput
@@ -420,8 +484,15 @@ export const githubApi = {
   },
 
   getPrRemovedReviewers(prNumber: number): string[] {
-    const eventsOutput = child_process.execSync(
-      `gh api repos/{owner}/{repo}/issues/${prNumber}/events --paginate --jq '.[] | select(.event == "review_request_removed" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .requested_reviewer.login'`,
+    const eventsOutput = child_process.execFileSync(
+      'gh',
+      [
+        'api',
+        `repos/{owner}/{repo}/issues/${prNumber}/events`,
+        '--paginate',
+        '--jq',
+        '.[] | select(.event == "review_request_removed" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .requested_reviewer.login'
+      ],
       { encoding: 'utf8' }
     );
     return eventsOutput
@@ -432,9 +503,22 @@ export const githubApi = {
 
   getPrFileContent(prNumber: number, filePath: string): string | null {
     const normalizedPath = filePath.replace(/\\/g, '/');
+    if (normalizedPath.includes('..') || !normalizedPath.startsWith('guides/')) {
+      return null;
+    }
+    const encodedPath = normalizedPath
+      .split('/')
+      .map(segment => encodeURIComponent(segment))
+      .join('/');
     try {
-      return child_process.execSync(
-        `gh api "repos/{owner}/{repo}/contents/${normalizedPath}?ref=refs/pull/${prNumber}/head" -H "Accept: application/vnd.github.raw+json"`,
+      return child_process.execFileSync(
+        'gh',
+        [
+          'api',
+          `repos/{owner}/{repo}/contents/${encodedPath}?ref=refs/pull/${prNumber}/head`,
+          '-H',
+          'Accept: application/vnd.github.raw+json'
+        ],
         { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
       );
     } catch {
@@ -443,8 +527,9 @@ export const githubApi = {
   },
 
   getPrIsDraft(prNumber: number): boolean {
-    const output = child_process.execSync(
-      `gh pr view ${prNumber} --json isDraft --jq .isDraft`,
+    const output = child_process.execFileSync(
+      'gh',
+      ['pr', 'view', String(prNumber), '--json', 'isDraft', '--jq', '.isDraft'],
       { encoding: 'utf8' }
     ).trim();
     return output === 'true';
@@ -962,6 +1047,7 @@ export function main() {
     else if (event.pull_request) {
       const prNumber = event.pull_request.number;
       const prAuthor = event.pull_request.user.login;
+      const prLabels = (event.pull_request.labels || []).map((l: any) => l.name);
       const isDraft = Boolean(event.pull_request.draft);
       handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft });
     } 

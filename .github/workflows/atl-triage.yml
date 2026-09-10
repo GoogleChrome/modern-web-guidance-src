@@ -3,12 +3,10 @@ name: Content ATL Triage
 on:
   issues:
     types: [opened, labeled, assigned]
-  # Using `pull_request_target` allows the workflow to run with write permissions
-  # even for PRs from forks, enabling automated labeling and reviewer requests.
-  # Trusted code from `main` is checked out and executed, while PR content is
-  # fetched via the GitHub API.
+  # zizmor: ignore[dangerous-triggers] Trusted checkout of main; no PR code executed; queries API via execFileSync
   pull_request_target:
     types: [opened, synchronize, labeled, ready_for_review]
+    branches: [main]
 
 permissions:
   issues: write
@@ -18,6 +16,7 @@ permissions:
 jobs:
   triage:
     runs-on: ubuntu-latest
+    if: github.repository == 'GoogleChrome/modern-web-guidance-src'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

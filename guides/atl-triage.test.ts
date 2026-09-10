@@ -547,7 +547,7 @@ Affected web-feature IDs: [canvas-html](https://webstatus.dev/features/canvas-ht
       }
     };
     // No css label, but LeaVerou is already an assignee
-    const result = handleIssue(123, ['new-feature', 'needs-atl'], '', configWithCss);
+    handleIssue(123, ['new-feature', 'needs-atl'], '', configWithCss);
     assert.strictEqual(removeIssueLabelsMock.mock.callCount(), 1);
     assert.deepStrictEqual(removeIssueLabelsMock.mock.calls[0].arguments, [123, ['needs-atl']]);
   });
