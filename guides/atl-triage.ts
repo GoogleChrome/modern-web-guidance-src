@@ -313,7 +313,7 @@ export const githubApi = {
         `repos/{owner}/{repo}/issues/${issueNumber}/events`,
         '--paginate',
         '--jq',
-        '.[] | select(.event == "unassigned" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .assignee.login'
+        '.[] | select(.event == "unassigned" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .assignee.login'
       ],
       { encoding: 'utf8' }
     );
@@ -331,7 +331,7 @@ export const githubApi = {
         `repos/{owner}/{repo}/issues/${issueNumber}/events`,
         '--paginate',
         '--jq',
-        '.[] | select(.event == "unlabeled" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .label.name'
+        '.[] | select(.event == "unlabeled" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .label.name'
       ],
       { encoding: 'utf8' }
     );
@@ -476,7 +476,7 @@ export const githubApi = {
         `repos/{owner}/{repo}/issues/${prNumber}/events`,
         '--paginate',
         '--jq',
-        '.[] | select(.event == "unlabeled" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .label.name'
+        '.[] | select(.event == "unlabeled" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .label.name'
       ],
       { encoding: 'utf8' }
     );
@@ -494,7 +494,7 @@ export const githubApi = {
         `repos/{owner}/{repo}/issues/${prNumber}/events`,
         '--paginate',
         '--jq',
-        '.[] | select(.event == "review_request_removed" and (.actor.type != "Bot" and (.actor.login | endswith("[bot]") | not))) | .requested_reviewer.login'
+        '.[] | select(.event == "review_request_removed" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .requested_reviewer.login'
       ],
       { encoding: 'utf8' }
     );
