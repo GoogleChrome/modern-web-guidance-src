@@ -12,7 +12,7 @@ import {
 } from './lib/dev-pr.ts';
 
 describe('determinePrLabels', () => {
-  it('detects gd-dev-content when guide.md is recommended', () => {
+  it('detects content when guide.md is recommended', () => {
     const report = `# Evaluation Report: size-aware-styling
 
 ## Target: \`daily-grind\` (Status: \`LOW_GUIDED_PASS_RATE\`)
@@ -32,10 +32,10 @@ The guide lacks Safari fallback examples.
 `;
 
     const labels = determinePrLabels(report);
-    assert.deepEqual(labels, ['gd-dev-content']);
+    assert.deepEqual(labels, ['content']);
   });
 
-  it('detects gd-dev-content when expectations.md is recommended with path prefix', () => {
+  it('detects content when expectations.md is recommended with path prefix', () => {
     const report = `# Evaluation Report: size-aware-styling
 
 ## Target: \`daily-grind\` (Status: \`LOW_GUIDED_PASS_RATE\`)
@@ -47,7 +47,7 @@ The guide lacks Safari fallback examples.
 `;
 
     const labels = determinePrLabels(report);
-    assert.deepEqual(labels, ['gd-dev-content']);
+    assert.deepEqual(labels, ['content']);
   });
 
   it('detects gd-dev-eval when grader.ts or task.md is recommended', () => {
@@ -66,7 +66,7 @@ The guide lacks Safari fallback examples.
     assert.deepEqual(labels, ['gd-dev-eval']);
   });
 
-  it('detects both gd-dev-content and gd-dev-eval across different targets', () => {
+  it('detects both content and gd-dev-eval across different targets', () => {
     const report = `# Evaluation Report: size-aware-styling
 
 ## Target: \`daily-grind\` (Status: \`LOW_GUIDED_PASS_RATE\`)
@@ -87,7 +87,7 @@ The guide lacks Safari fallback examples.
 `;
 
     const labels = determinePrLabels(report);
-    assert.ok(labels.includes('gd-dev-content'));
+    assert.ok(labels.includes('content'));
     assert.ok(labels.includes('gd-dev-eval'));
     assert.equal(labels.length, 2);
   });
@@ -133,7 +133,7 @@ Target is healthy.
 `;
 
     const labels = determinePrLabels(report);
-    assert.ok(labels.includes('gd-dev-content'));
+    assert.ok(labels.includes('content'));
     assert.ok(labels.includes('gd-dev-eval'));
   });
 });
@@ -141,19 +141,19 @@ Target is healthy.
 describe('computeLabelDiff', () => {
   it('computes labels to add and remove correctly', () => {
     // 1. Initial creation (no labels on PR yet)
-    const diff1 = computeLabelDiff(['gd-dev-content'], []);
-    assert.deepEqual(diff1.addLabels, ['gd-dev-content']);
+    const diff1 = computeLabelDiff(['content'], []);
+    assert.deepEqual(diff1.addLabels, ['content']);
     assert.deepEqual(diff1.removeLabels, []);
 
     // 2. Guide fixed, eval issue found (content removed, eval added, custom PR label preserved)
-    const diff2 = computeLabelDiff(['gd-dev-eval'], [{ name: 'gd-dev-content' }, { name: 'category:css' }]);
+    const diff2 = computeLabelDiff(['gd-dev-eval'], [{ name: 'content' }, { name: 'category:css' }]);
     assert.deepEqual(diff2.addLabels, ['gd-dev-eval']);
-    assert.deepEqual(diff2.removeLabels, ['gd-dev-content']);
+    assert.deepEqual(diff2.removeLabels, ['content']);
 
     // 3. All issues resolved (all gd-dev labels removed)
-    const diff3 = computeLabelDiff([], [{ name: 'gd-dev-content' }, { name: 'gd-dev-eval' }, { name: 'enhancement' }]);
+    const diff3 = computeLabelDiff([], [{ name: 'content' }, { name: 'gd-dev-eval' }, { name: 'enhancement' }]);
     assert.deepEqual(diff3.addLabels, []);
-    assert.deepEqual(diff3.removeLabels, ['gd-dev-content', 'gd-dev-eval']);
+    assert.deepEqual(diff3.removeLabels, ['content', 'gd-dev-eval']);
   });
 });
 
@@ -197,7 +197,7 @@ describe('runDevPr', () => {
       assert.equal(success, true);
       assert.equal(prCreated, true);
       assert.equal(prTitleArg, `grader updates: ${path.basename(tempDir)}`);
-      assert.deepEqual(prLabelsArg, ['gd-dev-content']);
+      assert.deepEqual(prLabelsArg, ['content']);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -221,7 +221,7 @@ describe('runDevPr', () => {
       number: 42,
       url: 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42',
       state: 'OPEN',
-      labels: [{ name: 'gd-dev-content' }, { name: 'category:css' }],
+      labels: [{ name: 'content' }, { name: 'category:css' }],
     });
 
     devPrCli.editPr = (prNumber, _bodyPath, addLabels, removeLabels) => {
@@ -237,7 +237,7 @@ describe('runDevPr', () => {
       assert.equal(prUpdated, true);
       assert.equal(updatedPrNumber, 42);
       assert.deepEqual(addedLabels, ['gd-dev-eval']);
-      assert.deepEqual(removedLabels, ['gd-dev-content']);
+      assert.deepEqual(removedLabels, ['content']);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

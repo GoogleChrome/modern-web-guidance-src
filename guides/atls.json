@@ -27,6 +27,7 @@
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {
+    "css": "LeaVerou",
     "scrolling": "bramus",
     "animation": "bramus",
     "transitions": "bramus",
