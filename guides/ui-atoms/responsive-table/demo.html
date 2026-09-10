@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Responsive Table Demo</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 2rem;
+        --z-row-header: 5;
+        --z-col-header: 10;
+        --z-corner: 15;
+      }
+      @media (width >= 600px) {
+        table {
+          border-collapse: separate; /* Required for sticky borders to behave better in some browsers */
+          border-spacing: 0;
+          width: 100%;
+        }
+        th,
+        td {
+          border: 1px solid #ccc;
+          padding: 0.5rem;
+          text-align: left;
+          white-space: nowrap;
+          background: white;
+        }
+        thead {
+          position: sticky;
+          top: 0;
+          z-index: var(--z-col-header);
+        }
+        thead th {
+          background: #eee;
+        }
+        /* Sticky row headers - must stay on TH to stick horizontally within the row */
+        th[scope="row"] {
+          position: sticky;
+          background: #f9f9f9;
+          z-index: var(--z-row-header);
+        }
+        /* First row header column */
+        th:nth-child(1) {
+          left: 0;
+        }
+
+        .table-wrapper {
+          overflow: scroll;
+          max-inline-size: 100cqi;
+          max-block-size: 100cqb;
+        }
+      }
+      @media (width < 600px) {
+        table {
+          width: 100%;
+        }
+        thead {
+          /* Visually hidden, display none can break screen readers */
+          position: absolute !important;
+          clip-path: inset(50%) !important;
+          overflow: hidden !important;
+          width: 1px !important;
+          height: 1px !important;
+          margin: -1px !important;
+          padding: 0 !important;
+          border: 0 !important;
+          white-space: nowrap !important;
+        }
+        tbody {
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+        }
+        th[scope="row"] {
+          top: 0;
+          position: sticky;
+          background: #f9f9f9;
+        }
+        tr {
+          display: grid;
+        }
+        td::before {
+          content: attr(data-column-header) ": " / "";
+          font-weight: bold;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Responsive Table Demo</h1>
+    <p>
+      A table with 100 rows and 20 columns, featuring 2 rows of column headers
+      and 2 columns of row headers.
+    </p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <script>
+      const COLS = 20; // Total columns including row headers
+      const ROWS = 100; // Total rows including column headers
+      const tableHead = document.getElementById("table-head");
+      const tableBody = document.getElementById("table-body");
+
+      const tr = document.createElement("tr");
+      for (let j = 1; j <= COLS; j++) {
+        const th = document.createElement("th");
+        th.setAttribute("scope", "col");
+        if (j === 1) {
+          th.textContent = `Corner,${j}`;
+        } else {
+          th.textContent = `Col Header ${j}`;
+        }
+        tr.appendChild(th);
+      }
+      tableHead.appendChild(tr);
+
+      // Create 100 rows of data
+      for (let i = 1; i <= ROWS; i++) {
+        const tr = document.createElement("tr");
+        // Row headers
+        const th = document.createElement("th");
+        th.setAttribute("scope", "row");
+        th.textContent = `Row Head ${i}`;
+        tr.appendChild(th);
+        for (let j = 2; j <= COLS; j++) {
+          // Data cells
+          const td = document.createElement("td");
+          td.dataset.columnHeader = `Col Header ${j}`;
+          td.textContent = `Data ${i},${j}`;
+          tr.appendChild(td);
+        }
+        tableBody.appendChild(tr);
+      }
+    </script>
+  </body>
+</html>
