@@ -99,6 +99,9 @@ export function isSmeContentFile(file: string): boolean {
     normalized = path.relative(path.resolve(__dirname, '..'), normalized);
   }
   const parts = normalized.split(/[/\\]/);
+  if (parts[0] === 'features' && parts.length === 2 && (file.endsWith('.md') || file.endsWith('.json'))) {
+    return true;
+  }
   if (parts[0] !== 'guides' || parts.length < 3 || parts.some(p => p === '..')) {
     return false;
   }

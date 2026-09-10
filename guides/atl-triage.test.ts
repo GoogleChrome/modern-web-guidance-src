@@ -68,9 +68,11 @@ describe('isSmeContentFile', () => {
     assert.strictEqual(isSmeContentFile('guides/css/style-parent-with-has/expectations.md'), true);
   });
 
-  it('returns true for discipline-level guides and skills', () => {
+  it('returns true for discipline-level guides, skills, and feature definitions', () => {
     assert.strictEqual(isSmeContentFile('guides/css/css/guide.md'), true);
     assert.strictEqual(isSmeContentFile('guides/modern-web-guidance/SKILL.md'), true);
+    assert.strictEqual(isSmeContentFile('features/scrollbar-color.md'), true);
+    assert.strictEqual(isSmeContentFile('features/pending-web-features.json'), true);
   });
 
   it('returns false for evaluation infrastructure and task artifacts', () => {
@@ -82,9 +84,9 @@ describe('isSmeContentFile', () => {
 
   it('returns false for non-guides or repo config files', () => {
     assert.strictEqual(isSmeContentFile('README.md'), false);
-    assert.strictEqual(isSmeContentFile('features/scrollbar-color.md'), false);
     assert.strictEqual(isSmeContentFile('guides/atls.json'), false);
     assert.strictEqual(isSmeContentFile('guides/atl-triage.ts'), false);
+    assert.strictEqual(isSmeContentFile('features/sub/deep.md'), false);
   });
 });
 
@@ -1172,6 +1174,44 @@ web-feature-ids:
       filesMock.mock.restore();
       reviewStateMock.mock.restore();
       getPrFileContentMock.mock.restore();
+    }
+  });
+
+  it('labels PR with content when modifying features/*.json or features/*.md', () => {
+    addPrLabelsMock.mock.resetCalls();
+    addReviewersMock.mock.resetCalls();
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'features/pending-web-features.json'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
+
+    try {
+      const result = handlePR(99999, 'some-contributor', mockConfig);
+      assert.deepStrictEqual(result, []);
+      assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
+      assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content']]);
+    } finally {
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
+    }
+  });
+
+  it('labels PR with content and needs-atl when modifying features/*.md without configured ATL', () => {
+    addPrLabelsMock.mock.resetCalls();
+    addReviewersMock.mock.resetCalls();
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'features/unknown-feature.md'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
+
+    try {
+      const result = handlePR(99999, 'some-contributor', mockConfig);
+      assert.deepStrictEqual(result, []);
+      assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
+      assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content', 'needs-atl']]);
+    } finally {
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
     }
   });
 });
