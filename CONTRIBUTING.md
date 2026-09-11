@@ -29,7 +29,7 @@ To foster an open-source contributor environment while maintaining a stable, cle
 
 # How to contribute
 We want to encourage contributions while maintaining high standards. Our policy is:
-* **Proposal first**: For non-trivial changes, contributors need to to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
+* **Proposal first**: For non-trivial changes, contributors need to [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on design before coding.
 
 ## Project Roles
 
