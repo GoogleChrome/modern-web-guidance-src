@@ -1,0 +1,214 @@
+diff --git a/index.html b/index.html
+index 66c9173..cef2110 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,77 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Store Locator Form */
++    .locator-form {
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 500px;
++      margin: 20px auto 0;
++      text-align: left;
++      transition: outline 0.2s, background-color 0.2s;
++    }
++
++    .locator-form label {
++      display: block;
++      font-weight: bold;
++      margin-top: 15px;
++      margin-bottom: 5px;
++    }
++
++    .locator-form input[type="text"],
++    .locator-form select {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 1rem;
++    }
++
++    .locator-form fieldset {
++      margin-top: 15px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 10px 15px;
++    }
++
++    .locator-form fieldset label {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-weight: normal;
++      margin-top: 8px;
++    }
++
++    .locator-form button {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    #locator-result {
++      margin-top: 15px;
++      font-style: italic;
++    }
++
++    /* WebMCP visual feedback */
++    .locator-form:tool-form-active {
++      outline: 2px dashed blue;
++      background-color: rgba(0, 0, 255, 0.05);
++    }
++
++    .locator-form button:tool-submit-active {
++      outline: 2px dashed red;
++      animation: pulse 2s infinite;
++    }
++
++    @keyframes pulse {
++      0% { opacity: 1; }
++      50% { opacity: 0.6; }
++      100% { opacity: 1; }
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +266,36 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="store-locator">
++      <h2 style="text-align: center;">Find a Store</h2>
++      <form id="locator-form"
++            class="locator-form"
++            toolname="find-location"
++            tooldescription="Search for Daily Grind coffee shop locations near a given US zip code, optionally filtered by amenities"
++            toolautosubmit>
++
++        <label for="zip">Zip Code</label>
++        <input type="text" id="zip" name="zip" toolparamdescription="5-digit US zip code to search near, e.g., 94103" required pattern="[0-9]{5}">
++
++        <label for="radius">Search Radius</label>
++        <select id="radius" name="radius" toolparamdescription="Distance in miles to search around the provided zip code">
++          <option value="5">5 miles</option>
++          <option value="10" selected>10 miles</option>
++          <option value="25">25 miles</option>
++        </select>
++
++        <fieldset toolparamdescription="Amenities the location must offer">
++          <legend>Amenities</legend>
++          <label><input type="checkbox" name="amenities" value="drive-thru"> Drive-Thru</label>
++          <label><input type="checkbox" name="amenities" value="wifi"> Free Wi-Fi</label>
++          <label><input type="checkbox" name="amenities" value="patio"> Outdoor Patio</label>
++        </fieldset>
++
++        <button type="submit" class="btn">Search Locations</button>
++        <p id="locator-result" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +308,94 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const STORE_LOCATIONS = [
++      { name: 'Downtown Roastery', zip: '94103', amenities: ['wifi', 'patio'] },
++      { name: 'Uptown Espresso Bar', zip: '94110', amenities: ['drive-thru', 'wifi'] },
++      { name: 'Riverside Cafe', zip: '94107', amenities: ['patio'] },
++      { name: 'Harbor Point Coffee', zip: '94103', amenities: ['drive-thru'] },
++    ];
++
++    function searchLocations(formData) {
++      const zip = formData.get('zip');
++      const radius = Number(formData.get('radius'));
++      const amenities = formData.getAll('amenities');
++
++      return new Promise((resolve) => {
++        setTimeout(() => {
++          const matches = STORE_LOCATIONS.filter((loc) =>
++            loc.zip === zip && amenities.every((a) => loc.amenities.includes(a))
++          );
++
++          if (matches.length === 0) {
++            resolve(`No locations found within ${radius} miles of ${zip} matching the selected amenities.`);
++            return;
++          }
++
++          resolve(
++            `Found ${matches.length} location(s) near ${zip}: ` +
++            matches.map((m) => m.name).join(', ')
++          );
++        }, 400);
++      });
++    }
++
++    function validateLocatorForm(formData) {
++      const errors = [];
++      const zip = formData.get('zip');
++
++      if (!/^\d{5}$/.test(zip || '')) {
++        errors.push({ field: 'zip', message: 'must be a 5-digit US zip code' });
++      }
++
++      return errors;
++    }
++
++    const locatorForm = document.getElementById('locator-form');
++    const locatorResult = document.getElementById('locator-result');
++
++    locatorForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      const formData = new FormData(event.target);
++      const formValidationErrors = validateLocatorForm(formData);
++
++      if (formValidationErrors.length > 0) {
++        if (event.agentInvoked) {
++          const errorString =
++            'Validation failed: ' +
++            formValidationErrors
++              .map((err) => `${err.field} (${err.message})`)
++              .join(', ');
++
++          event.respondWith(Promise.resolve(errorString));
++        } else {
++          locatorResult.textContent =
++            'Please enter a valid 5-digit zip code.';
++        }
++        return;
++      }
++
++      const resultPromise = searchLocations(formData);
++
++      if (event.agentInvoked) {
++        event.respondWith(resultPromise);
++      } else {
++        resultPromise.then((message) => {
++          locatorResult.textContent = message;
++        });
++      }
++    });
++
++    window.addEventListener('toolactivated', ({ toolName }) => {
++      console.log(`Tool "${toolName}" was activated by the agent.`);
++    });
++
++    window.addEventListener('toolcancel', ({ toolName }) => {
++      console.log(`Tool "${toolName}" interaction was cancelled.`);
++    });
++  </script>
++
+ </body>
+ 
+ </html>
