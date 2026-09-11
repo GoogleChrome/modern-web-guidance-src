@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width">
     <title>The buzz on hummingbirds</title>
+    <!-- MANDATORY: Block rendering until the main content is parsed
+         to ensure a stable view transition snapshot. -->
+    <link rel="expect" href="#article-content" blocking="render">
     <style>
       :root {
         font-family: system-ui, -apple-system, sans-serif;
@@ -44,31 +47,36 @@
       @view-transition {
           navigation: auto;
       }
-      main {
-        view-transition-name: --box;
+      
+      #article-content {
+        view-transition-name: --hovercard;
       }
-      h1{
+      
+      h1 {
         view-transition-name: --title;
         width: fit-content;
       }
-      img{
+      
+      img {
         view-transition-name: --image;
       }
-      .byline{
+      
+      .byline {
         view-transition-name: --byline;
-         width: fit-content;
+        width: fit-content;
       } 
+      
       p {
         view-transition-name: --p;
       }
     </style>
   </head>
   <body>
-    <main class="wrapper">
+    <main class="wrapper" id="article-content">
    	 <article class="flow">
    		 <h1>The buzz on hummingbirds</h1>
         <p class="byline">By Delphi Aguilar</p>
-       <img src="https://images.unsplash.com/photo-1520552159191-e28a1d9f0d7e?q=80&w=400&auto=format&fit=crop" alt="A green hummingbird with a vibrant blue throat and a curved bill seated on a branch.">
+        <img src="https://images.unsplash.com/photo-1520552159191-e28a1d9f0d7e?q=80&w=400&auto=format&fit=crop" alt="A green hummingbird with a vibrant blue throat and a curved bill seated on a branch.">
    		 <p>Heron egret pelican cormorant swan goose duck mallard teal kingfisher. Heron egret pelican cormorant swan goose duck
   mallard teal kingfisher heron egret pelican cormorant swan goose duck mallard teal kingfisher. Heron egret pelican
   cormorant swan goose duck mallard teal kingfisher heron egret pelican cormorant swan goose duck mallard teal kingfisher.</p>

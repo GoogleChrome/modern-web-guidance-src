@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width">
     <title>10 reasons corvids rock</title>
-   <style>
+    <!-- MANDATORY: Block rendering until the main content is parsed
+         to ensure a stable view transition snapshot. -->
+    <link rel="expect" href="#article-content" blocking="render">
+    <style>
       :root {
         font-family: system-ui, -apple-system, sans-serif;
         line-height: 1.5;
@@ -44,27 +47,32 @@
       @view-transition {
           navigation: auto;
       }
-      main {
-        view-transition-name: --box;
+      
+      #article-content {
+        view-transition-name: --hovercard;
       }
-      h1{
+      
+      h1 {
         view-transition-name: --title;
         width: fit-content;
       }
-      img{
+      
+      img {
         view-transition-name: --image;
       }
-      .byline{
+      
+      .byline {
         view-transition-name: --byline;
-         width: fit-content;
+        width: fit-content;
       } 
+      
       p {
         view-transition-name: --p;
       }
     </style>
   </head>
   <body>
-    <main class="wrapper">
+    <main class="wrapper" id="article-content">
    	 <article class="flow">
    		 <h1>10 reasons corvids rock</h1>
        <p class="byline">By Corby Bertram</p>

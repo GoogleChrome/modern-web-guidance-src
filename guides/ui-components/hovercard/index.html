@@ -53,7 +53,6 @@
 
       [popover] {
         position-area: block-end span-inline-end;
-        margin: 0;
         border: none;
         padding: 1rem;
         border-radius: 12px;
@@ -110,7 +109,7 @@
         navigation: auto;
       }
       [popover]:popover-open {
-        view-transition-name: --box;
+        view-transition-name: --hovercard;
         h2 {
           view-transition-name: --title;
           width: fit-content;
@@ -138,8 +137,8 @@
               <a href="article-a.html" interestfor="buzz-popover">
                 The buzz on hummingbirds
               </a>
-              <div id="buzz-popover" popover="auto">
-                <h2><a href="article-a.html">The buzz on hummingbirds</a></h2>
+              <div id="buzz-popover" popover="hint">
+                <h2>The buzz on hummingbirds</h2>
                 <p class="byline">By Delphi Aguilar</p>
                 <div>
                   <img
@@ -157,8 +156,8 @@
               <a href="article-b.html" interestfor="corvid-popover">
                 10 reasons corvids rock
               </a>
-              <div id="corvid-popover" popover="auto">
-                <h2><a href="article-b.html">10 reasons corvids rock</a></h2>
+              <div id="corvid-popover" popover="hint">
+                <h2>10 reasons corvids rock</h2>
                 <p class="byline">By Corby Bertram</p>
                 <div>
                   <img
