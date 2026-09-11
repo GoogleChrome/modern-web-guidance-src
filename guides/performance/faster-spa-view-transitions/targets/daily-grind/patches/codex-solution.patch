@@ -1,0 +1,386 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..df2f71c
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,89 @@
++(() => {
++  'use strict';
++
++  const views = Array.from(document.querySelectorAll('.spa-view'));
++  const links = Array.from(document.querySelectorAll('.spa-link[data-view]'));
++  const validViewIds = new Set(views.map((view) => view.id));
++
++  const pathToView = new Map([
++    ['/', 'home'],
++    ['/menu', 'menu'],
++    ['/locations', 'locations'],
++    ['/rewards', 'rewards'],
++    ['/account', 'account'],
++  ]);
++
++  /**
++   * Switch to an already-rendered view without destroying its DOM state.
++   * @param {string} viewId
++   * @param {{ focus?: boolean }} [options]
++   * @returns {boolean} Whether the requested view exists.
++   */
++  function switchToView(viewId, { focus = true } = {}) {
++    if (!validViewIds.has(viewId)) {
++      return false;
++    }
++
++    for (const view of views) {
++      const isActive = view.id === viewId;
++      view.classList.toggle('inactive', !isActive);
++      view.setAttribute('aria-hidden', String(!isActive));
++    }
++
++    for (const link of links) {
++      if (link.dataset.view === viewId) {
++        link.setAttribute('aria-current', 'page');
++      } else {
++        link.removeAttribute('aria-current');
++      }
++    }
++
++    if (focus) {
++      const activeView = document.getElementById(viewId);
++      activeView?.focus({ preventScroll: true });
++    }
++
++    return true;
++  }
++
++  /** @param {string} path */
++  function viewForPath(path) {
++    const normalizedPath = path !== '/' ? path.replace(/\/$/, '') : path;
++    return pathToView.get(normalizedPath) ?? 'home';
++  }
++
++  for (const link of links) {
++    link.addEventListener('click', (event) => {
++      if (
++        event.defaultPrevented ||
++        event.button !== 0 ||
++        event.metaKey ||
++        event.ctrlKey ||
++        event.shiftKey ||
++        event.altKey
++      ) {
++        return;
++      }
++
++      const viewId = link.dataset.view;
++      if (!viewId || !validViewIds.has(viewId)) {
++        return;
++      }
++
++      event.preventDefault();
++      const url = new URL(link.href, window.location.href);
++      window.history.pushState({ viewId }, '', url.pathname);
++      switchToView(viewId);
++    });
++  }
++
++  window.addEventListener('popstate', () => {
++    switchToView(viewForPath(window.location.pathname));
++  });
++
++  // Deep links activate the matching cached view. Avoid stealing focus on first load.
++  switchToView(viewForPath(window.location.pathname), { focus: false });
++
++  // Expose the transition helper for integrations that need to activate a view.
++  window.switchToView = switchToView;
++})();
+diff --git a/index.html b/index.html
+index 66c9173..99d06de 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,12 @@
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      text-decoration: underline;
++      text-underline-offset: 0.35rem;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -93,6 +99,51 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .page-hero {
++      min-height: 260px;
++      background: linear-gradient(135deg, var(--primary), #795548);
++      display: grid;
++      place-content: center;
++      gap: 0.5rem;
++      color: white;
++      text-align: center;
++      padding: 40px 20px;
++    }
++
++    .page-hero h1 {
++      font-size: clamp(2rem, 6vw, 3rem);
++    }
++
++    /* Keep each small, predictable SPA view mounted so its render state can be reused. */
++    .view-stack {
++      position: relative;
++    }
++
++    .spa-view {
++      content-visibility: visible;
++      outline: none;
++    }
++
++    .spa-view:focus-visible .page-hero,
++    .spa-view:focus-visible .hero {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .spa-view.inactive {
++      content-visibility: hidden;
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      pointer-events: none;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -120,6 +171,11 @@
+       color: var(--primary);
+     }
+ 
++    .card-icon {
++      font-size: 2rem;
++      margin-bottom: 8px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -152,46 +208,158 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (max-width: 720px) {
++      nav {
++        align-items: flex-start;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: flex-end;
++        gap: 8px 14px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .hero h1 {
++        font-size: 2.25rem;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary navigation">
++    <a class="logo spa-link" href="/" data-view="home">THE DAILY GRIND</a>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a class="spa-link" href="/menu" data-view="menu">Menu</a></li>
++      <li><a class="spa-link" href="/locations" data-view="locations">Locations</a></li>
++      <li><a class="spa-link" href="/rewards" data-view="rewards">Rewards</a></li>
++      <li><a class="spa-link" href="/account" data-view="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++  <main class="view-stack">
++    <section id="home" class="spa-view" tabindex="-1" aria-hidden="false" aria-labelledby="home-title">
++      <header class="hero">
++        <h1 id="home-title">Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/menu" class="btn spa-link" data-view="menu">Order Now</a>
++      </header>
++
++      <div class="container">
++        <section aria-labelledby="favorites-title">
++          <h2 id="favorites-title" style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <article class="card">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            </article>
++            <article class="card">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smoky, and perfect for a morning boost.</p>
++            </article>
++            <article class="card">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++            </article>
++          </div>
++        </section>
++      </div>
++    </section>
++
++    <section id="menu" class="spa-view inactive" tabindex="-1" aria-hidden="true" aria-labelledby="menu-title">
++      <header class="page-hero">
++        <h1 id="menu-title">Our Menu</h1>
++        <p>Thoughtfully crafted drinks for every kind of day.</p>
++      </header>
++      <div class="container grid">
++        <article class="card">
++          <div class="card-icon" aria-hidden="true">☕</div>
++          <h3>Espresso Bar</h3>
++          <p>Rich espresso, velvety cappuccinos, and perfectly balanced lattes.</p>
++        </article>
++        <article class="card">
++          <div class="card-icon" aria-hidden="true">🧊</div>
++          <h3>Cold Favorites</h3>
++          <p>Slow-steeped cold brew and bright, refreshing iced teas.</p>
++        </article>
++        <article class="card">
++          <div class="card-icon" aria-hidden="true">🥐</div>
++          <h3>Fresh Bakes</h3>
++          <p>Pastries and wholesome bites delivered fresh each morning.</p>
++        </article>
++      </div>
++    </section>
++
++    <section id="locations" class="spa-view inactive" tabindex="-1" aria-hidden="true" aria-labelledby="locations-title">
++      <header class="page-hero">
++        <h1 id="locations-title">Find Your Grind</h1>
++        <p>A warm cup and a welcoming seat are closer than you think.</p>
++      </header>
++      <div class="container grid">
++        <article class="card">
++          <h3>Downtown</h3>
++          <p>128 Market Street<br>Open daily, 6am–8pm</p>
++        </article>
++        <article class="card">
++          <h3>Riverside</h3>
++          <p>44 Water Avenue<br>Open daily, 7am–7pm</p>
++        </article>
++        <article class="card">
++          <h3>North Park</h3>
++          <p>902 Cedar Lane<br>Open daily, 6am–6pm</p>
++        </article>
++      </div>
++    </section>
++
++    <section id="rewards" class="spa-view inactive" tabindex="-1" aria-hidden="true" aria-labelledby="rewards-title">
++      <header class="page-hero">
++        <h1 id="rewards-title">Make Every Sip Count</h1>
++        <p>Earn beans, unlock treats, and enjoy a little more from every visit.</p>
++      </header>
++      <div class="container grid">
++        <article class="card">
++          <div class="card-icon" aria-hidden="true">1</div>
++          <h3>Join</h3>
++          <p>Create your free Daily Grind account.</p>
++        </article>
++        <article class="card">
++          <div class="card-icon" aria-hidden="true">2</div>
++          <h3>Collect</h3>
++          <p>Earn one bean for every dollar you spend.</p>
++        </article>
++        <article class="card">
++          <div class="card-icon" aria-hidden="true">3</div>
++          <h3>Enjoy</h3>
++          <p>Redeem your beans for drinks and bakery favorites.</p>
++        </article>
++      </div>
++    </section>
++
++    <section id="account" class="spa-view inactive" tabindex="-1" aria-hidden="true" aria-labelledby="account-title">
++      <header class="page-hero">
++        <h1 id="account-title">Welcome Back</h1>
++        <p>Your rewards, favorites, and recent orders—all in one place.</p>
++      </header>
++      <div class="container">
++        <div class="grid">
++          <article class="card">
++            <h3>Rewards balance</h3>
++            <p>Sign in to see your available beans and rewards.</p>
++            <a href="/login" class="btn">Sign In</a>
++          </article>
++          <article class="card">
++            <h3>Order history</h3>
++            <p>Quickly reorder the drinks you love most.</p>
++            <a href="/login" class="btn">View Orders</a>
++          </article>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +375,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="app.js"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..266a71c 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check app.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
