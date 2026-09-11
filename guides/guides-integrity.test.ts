@@ -9,6 +9,7 @@ import { marked } from 'marked';
 // Import shared utilities
 import { scanAllGuides, processGuideInventory } from '../lib/guide-validation.ts';
 import { replaceMacros, MACRO_PATTERN } from '../serving/lib/macros.ts';
+import { validateGraderExpectationCoverage, formatCoverageFailureMessage } from '../lib/grader-coverage.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -114,6 +115,27 @@ describe('Guides Validation (Single Source of Truth)', () => {
         }
       }
     });
+
+    const targetsDir = path.join(guide.dir, 'targets');
+    const expectationsPath = path.join(guide.dir, 'expectations.md');
+
+    if (fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
+      const targetApps = fs.readdirSync(targetsDir, { withFileTypes: true })
+        .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+        .map(e => e.name);
+
+      for (const targetApp of targetApps) {
+        const targetGraderPath = path.join(targetsDir, targetApp, 'grader.ts');
+        if (!fs.existsSync(targetGraderPath)) continue;
+
+        it(`validates expectation coverage for target ${relativeDir}/targets/${targetApp}`, async () => {
+          const result = await validateGraderExpectationCoverage(expectationsPath, targetGraderPath);
+          if (!result.isComplete) {
+            assert.fail(formatCoverageFailureMessage(result, REPO_ROOT));
+          }
+        });
+      }
+    }
   }
 
   it('checks all tracked files for conflict markers', () => {

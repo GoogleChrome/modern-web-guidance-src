@@ -77,9 +77,8 @@ export function getJetskiCliCommandAndArgs(prompt: string): { command: string; c
 }
 
 function exportJetskiTrajectories(workDir: string, targetDir: string): void {
-  const jetskiLogDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'brain');
-  exportTrajectories(jetskiLogDir, '**/*.db', targetDir);
-  exportTrajectories(jetskiLogDir, '**/modern-web.log', targetDir);
+  const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
+  exportTrajectories(conversationsDir, '**/*.db', targetDir);
 }
 
 async function run() {
