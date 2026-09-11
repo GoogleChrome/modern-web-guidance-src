@@ -286,7 +286,7 @@
        ========================================================================== */
 
     /* 1. Layout Variations switched dynamically via class */
-    
+
     /* VARIATION 1: Grid Layout */
     .reorder-container.layout-grid {
       display: grid;
@@ -300,7 +300,8 @@
       flex-wrap: wrap;
       gap: 1rem;
     }
-    .reorder-container.layout-flex > * {
+
+    .reorder-container.layout-flex>* {
       flex: 1 1 calc(33.333% - 1rem);
       min-width: 150px;
     }
@@ -330,8 +331,10 @@
     }
 
     .card.ghost-clone {
-      position: fixed; /* REQUIRED: Align visual coords directly to viewport mouse */
-      pointer-events: none; /* REQUIRED: Let pointer events pass through to find siblings underneath */
+      position: fixed;
+      /* REQUIRED: Align visual coords directly to viewport mouse */
+      pointer-events: none;
+      /* REQUIRED: Let pointer events pass through to find siblings underneath */
       z-index: 1000;
       opacity: 0.85;
       box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2), 0 8px 16px -6px rgba(0, 0, 0, 0.15);
@@ -343,9 +346,10 @@
 
   <h1>Draggable Child Rearrangement</h1>
   <p class="intro">
-    This demo illustrates a fully layout-agnostic reordering engine using standard <strong>Pointer Events</strong> 
-    and a lightweight **Ghost Clone**. Toggle layouts dynamically—this robust, bulletproof version works flawlessly 
-    across Grid, Flexbox, and List layouts on all mobile and desktop Chrome and WebKit/Safari environments, completely flicker-free.
+    This demo illustrates a fully layout-agnostic reordering engine using standard <strong>Pointer Events</strong>
+    and a lightweight **Ghost Clone**. Toggle layouts dynamically—this robust, bulletproof version works flawlessly
+    across Grid, Flexbox, and List layouts on all mobile and desktop Chrome and WebKit/Safari environments, completely
+    flicker-free.
   </p>
 
   <main>
@@ -536,11 +540,11 @@ function onPointerUp() {
       // --------------------------------------------------
       // BULLETPROOF DOCUMENT-BOUND POINTER REARRANGEMENT
       // --------------------------------------------------
-      
+
       container.addEventListener('pointerdown', (e) => {
         const handle = e.target.closest('.card-handle');
         if (!handle) return; // Only drag when grabbing handle
-        
+
         const card = handle.closest('.card');
         if (!card) return;
 
@@ -548,7 +552,7 @@ function onPointerUp() {
         e.preventDefault();
 
         draggedElement = card;
-        
+
         const rect = card.getBoundingClientRect();
         offsetX = e.clientX - rect.left;
         offsetY = e.clientY - rect.top;
@@ -560,7 +564,7 @@ function onPointerUp() {
         ghost.style.height = `${rect.height}px`;
         ghost.style.left = `${rect.left}px`;
         ghost.style.top = `${rect.top}px`;
-        
+
         document.body.appendChild(ghost);
 
         // 2. Dim the actual card inside the layout container
@@ -581,12 +585,12 @@ function onPointerUp() {
 
         // Find all sibling elements inside the container
         const siblings = [...container.children].filter(child => child !== draggedElement);
-        
+
         // Find which sibling the cursor is physically hovering inside (Boundary Detection)
         const closestSibling = siblings.find(sibling => {
           const box = sibling.getBoundingClientRect();
           return e.clientX >= box.left && e.clientX <= box.right &&
-                 e.clientY >= box.top && e.clientY <= box.bottom;
+            e.clientY >= box.top && e.clientY <= box.bottom;
         });
 
         // Swap the actual card in the DOM if we are hovering over an active sibling (No thrashes/flicker)
@@ -608,7 +612,7 @@ function onPointerUp() {
 
       function onPointerUp() {
         if (!draggedElement) return;
-        
+
         // Remove document listeners
         document.removeEventListener('pointermove', onPointerMove);
         document.removeEventListener('pointerup', onPointerUp);
