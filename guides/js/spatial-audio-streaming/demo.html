@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spatial Audio Streaming (IAMF / MSE)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #131b2e;
+      --card-border: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --card-inner: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 2.5rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 880px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+    }
+
+    header {
+      text-align: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    p.subtitle {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.825rem;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background-color: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .badge-fallback {
+      background-color: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    .badge-unsupported {
+      background-color: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: #fb7185;
+    }
+
+    .capability-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    .capability-item {
+      background-color: var(--card-inner);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .capability-label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .capability-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .spatial-visualizer-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      background-color: var(--card-inner);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    canvas#visualizer {
+      width: 100%;
+      max-width: 480px;
+      height: 240px;
+      background: radial-gradient(circle, #1e293b 0%, #0b0f19 80%);
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+
+    .visualizer-labels {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      max-width: 480px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .controls-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    button {
+      padding: 0.65rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background-color: var(--accent-blue);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background-color: #2563eb;
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      border-color: var(--card-border);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-color: var(--text-secondary);
+    }
+
+    .btn-danger {
+      background-color: rgba(244, 63, 94, 0.15);
+      border-color: rgba(244, 63, 94, 0.4);
+      color: #fb7185;
+    }
+
+    .btn-danger:hover {
+      background-color: rgba(244, 63, 94, 0.25);
+    }
+
+    .log-box {
+      background-color: #080c14;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.825rem;
+      color: #cbd5e1;
+      max-height: 180px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    .log-entry {
+      margin-bottom: 0.25rem;
+    }
+
+    .log-time {
+      color: var(--text-secondary);
+      margin-right: 0.5rem;
+    }
+
+    .log-info { color: #38bdf8; }
+    .log-success { color: #4ade80; }
+    .log-warn { color: #fbbf24; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Spatial Audio Streaming</h1>
+      <p class="subtitle">Media Source Extensions (MSE) with Immersive Audio Model and Formats (IAMF) &amp; Progressive Fallback</p>
+    </header>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Browser Capability &amp; Format Detection</span>
+        <span id="overall-status" class="status-badge badge-fallback">Checking...</span>
+      </div>
+
+      <div class="capability-grid">
+        <div class="capability-item">
+          <span class="capability-label">Media Source Extensions (MSE)</span>
+          <span id="mse-status" class="capability-val">Checking...</span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-label">IAMF over MP4 / MSE Support</span>
+          <span id="iamf-status" class="capability-val">Checking...</span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-label">Active Audio Mode</span>
+          <span id="active-profile" class="capability-val">Idle</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="card-title">3D Spatial Sound Field &amp; Player</span>
+      
+      <div class="spatial-visualizer-container">
+        <canvas id="visualizer" width="480" height="240"></canvas>
+        <div class="visualizer-labels">
+          <span>⤹ Left Surround</span>
+          <span>Center / Front ☝</span>
+          <span>Right Surround ⤵</span>
+        </div>
+      </div>
+
+      <div class="controls-grid">
+        <button id="btn-play-spatial" class="btn-primary">▶ Play 3D Spatial Demo (IAMF)</button>
+        <button id="btn-play-fallback" class="btn-secondary">▷ Play Stereo Fallback</button>
+        <button id="btn-stop" class="btn-danger">⏹ Stop Audio</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="card-title">Stream &amp; Codec Log</span>
+      <div id="log-container" class="log-box"></div>
+    </div>
+  </div>
+
+  <script>
+    const IAMF_MIME_TYPE = 'audio/mp4; codecs="iamf"';
+    const FALLBACK_MIME_TYPE = 'audio/mp4; codecs="mp4a.40.2"';
+
+    const elements = {
+      overallStatus: document.getElementById('overall-status'),
+      mseStatus: document.getElementById('mse-status'),
+      iamfStatus: document.getElementById('iamf-status'),
+      activeProfile: document.getElementById('active-profile'),
+      btnPlaySpatial: document.getElementById('btn-play-spatial'),
+      btnPlayFallback: document.getElementById('btn-play-fallback'),
+      btnStop: document.getElementById('btn-stop'),
+      logContainer: document.getElementById('log-container'),
+      canvas: document.getElementById('visualizer')
+    };
+
+    const ctx = elements.canvas.getContext('2d');
+    let audioCtx = null;
+    let pannerNode = null;
+    let oscillator = null;
+    let gainNode = null;
+    let animFrame = null;
+    let angle = 0;
+    let isPlaying = false;
+    let currentMode = 'idle';
+
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const time = new Date().toISOString().substring(11, 19);
+      entry.innerHTML = `<span class="log-time">[${time}]</span>${message}`;
+      elements.logContainer.appendChild(entry);
+      elements.logContainer.scrollTop = elements.logContainer.scrollHeight;
+    }
+
+    function checkCapabilities() {
+      const hasMSE = 'MediaSource' in window;
+      elements.mseStatus.textContent = hasMSE ? 'Supported' : 'Unsupported';
+      elements.mseStatus.style.color = hasMSE ? 'var(--accent-emerald)' : 'var(--accent-rose)';
+
+      if (!hasMSE) {
+        elements.iamfStatus.textContent = 'Unsupported';
+        elements.overallStatus.className = 'status-badge badge-unsupported';
+        elements.overallStatus.textContent = 'MSE Unavailable';
+        log('MediaSource Extensions API is not supported in this browser environment.', 'warn');
+        return { hasMSE: false, hasIAMF: false };
+      }
+
+      const hasIAMF = MediaSource.isTypeSupported(IAMF_MIME_TYPE);
+      elements.iamfStatus.textContent = hasIAMF ? 'Supported (Native)' : 'Not Supported (Fallback active)';
+      elements.iamfStatus.style.color = hasIAMF ? 'var(--accent-emerald)' : 'var(--accent-amber)';
+
+      if (hasIAMF) {
+        elements.overallStatus.className = 'status-badge badge-success';
+        elements.overallStatus.textContent = 'IAMF Spatial Audio Supported';
+        log('IAMF spatial audio codec is natively supported via MediaSource.', 'success');
+      } else {
+        elements.overallStatus.className = 'status-badge badge-fallback';
+        elements.overallStatus.textContent = 'Progressive Fallback Active';
+        log('IAMF codec not natively present; routing to multichannel/stereo fallback.', 'warn');
+      }
+
+      return { hasMSE, hasIAMF };
+    }
+
+    function drawVisualizer() {
+      const w = elements.canvas.width;
+      const h = elements.canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw listener at center
+      ctx.beginPath();
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.fillStyle = '#3b82f6';
+      ctx.fill();
+      ctx.strokeStyle = '#60a5fa';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Listener icon / nose
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 14);
+      ctx.lineTo(cx, cy - 22);
+      ctx.strokeStyle = '#93c5fd';
+      ctx.stroke();
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Listener', cx, cy + 28);
+
+      // Sound field orbit radius
+      const radius = 70;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (isPlaying) {
+        if (currentMode === 'spatial') {
+          angle += 0.03;
+          const sx = cx + Math.cos(angle) * radius;
+          const sy = cy + Math.sin(angle) * radius * 0.7;
+
+          // Update Web Audio panner position
+          if (pannerNode && audioCtx) {
+            pannerNode.positionX.setValueAtTime(Math.cos(angle) * 3, audioCtx.currentTime);
+            pannerNode.positionZ.setValueAtTime(Math.sin(angle) * 3, audioCtx.currentTime);
+          }
+
+          // Sound wave ripple
+          ctx.beginPath();
+          ctx.arc(sx, sy, 18, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+          ctx.stroke();
+
+          // Sound source point
+          ctx.beginPath();
+          ctx.arc(sx, sy, 8, 0, Math.PI * 2);
+          ctx.fillStyle = '#10b981';
+          ctx.fill();
+        } else {
+          // Stereo stationary channels
+          const leftX = cx - radius;
+          const rightX = cx + radius;
+          const pulse = (Math.sin(Date.now() / 150) + 1) * 3;
+
+          ctx.beginPath();
+          ctx.arc(leftX, cy, 6 + pulse, 0, Math.PI * 2);
+          ctx.arc(rightX, cy, 6 + pulse, 0, Math.PI * 2);
+          ctx.fillStyle = '#f59e0b';
+          ctx.fill();
+        }
+      }
+
+      animFrame = requestAnimationFrame(drawVisualizer);
+    }
+
+    function stopAudio() {
+      if (oscillator) {
+        try {
+          oscillator.stop();
+          oscillator.disconnect();
+        } catch (_) {}
+        oscillator = null;
+      }
+      isPlaying = false;
+      currentMode = 'idle';
+      elements.activeProfile.textContent = 'Stopped / Idle';
+      elements.activeProfile.style.color = 'var(--text-secondary)';
+      log('Audio playback stopped.', 'info');
+    }
+
+    function startAudio(isSpatial) {
+      stopAudio();
+
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      isPlaying = true;
+      currentMode = isSpatial ? 'spatial' : 'stereo';
+
+      gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+
+      oscillator = audioCtx.createOscillator();
+      oscillator.type = isSpatial ? 'sawtooth' : 'sine';
+      oscillator.frequency.setValueAtTime(isSpatial ? 320 : 440, audioCtx.currentTime);
+
+      if (isSpatial) {
+        pannerNode = audioCtx.createPanner();
+        pannerNode.panningModel = 'HRTF';
+        pannerNode.distanceModel = 'inverse';
+        pannerNode.refDistance = 1;
+        pannerNode.maxDistance = 10000;
+        pannerNode.rolloffFactor = 1;
+        pannerNode.coneInnerAngle = 360;
+
+        oscillator.connect(gainNode);
+        gainNode.connect(pannerNode);
+        pannerNode.connect(audioCtx.destination);
+
+        elements.activeProfile.textContent = '3D Spatial IAMF Simulation (Binaural HRTF)';
+        elements.activeProfile.style.color = 'var(--accent-emerald)';
+        log('Playing 3D Spatial Audio (360° sound field simulation)', 'success');
+      } else {
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        elements.activeProfile.textContent = 'Standard Stereo Fallback';
+        elements.activeProfile.style.color = 'var(--accent-amber)';
+        log('Playing standard stereo fallback audio.', 'warn');
+      }
+
+      oscillator.start();
+    }
+
+    elements.btnPlaySpatial.addEventListener('click', () => startAudio(true));
+    elements.btnPlayFallback.addEventListener('click', () => startAudio(false));
+    elements.btnStop.addEventListener('click', stopAudio);
+
+    // Run initial capability checks and start animation
+    checkCapabilities();
+    drawVisualizer();
+  </script>
+</body>
+
+</html>
