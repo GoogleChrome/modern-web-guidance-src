@@ -381,6 +381,18 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
     return formatStatusMessage(`the ${bcdKey} capability`, mapped);
   }
 
+  // Pending features have no upstream Baseline data to report yet, so treat a
+  // registered tmp-* ID as unsupported everywhere and point at the issue
+  // tracking its real feature ID. Unregistered tmp-* IDs stay undefined so
+  // callers surface the same "not found" error as any other unknown feature.
+  if (featureId.startsWith('tmp-')) {
+    const pending = (pendingWebFeatures as Record<string, { issue?: string }>)[featureId];
+    if (!pending) return;
+
+    const message = formatStatusMessage(getFeatureName(featureId), { baseline: false });
+    return pending.issue ? `${message}\nTracked upstream at ${pending.issue}.` : message;
+  }
+
   const feature = features[featureId] as Feature | undefined;
   if (!feature) return;
 
