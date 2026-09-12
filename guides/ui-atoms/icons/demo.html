@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern CSS Icons (Style Queries & Masks)</title>
+  <style>
+    :root {
+      --icon-color-default: #444;
+      --icon-color-danger: #b00020;
+      --icon-color-success: #1a7f37;
+
+      --icon-size: 1.25em; /* Easily configurable relative unit icon sizing */
+      --icon-transition-duration: 0.2s;
+      --icon-transition-easing: ease;
+
+      /* SVG Icon Assets stored as CSS variables */
+      --icon-trash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z'/%3E%3C/svg%3E");
+      --icon-favourite: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+      --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E");
+    }
+
+    /* Register image type custom properties to ensure clean resolution and safety */
+    @property --icon-start {
+      syntax: "<image>";
+      inherits: false;
+    }
+
+    @property --icon-end {
+      syntax: "<image>";
+      inherits: false;
+    }
+
+    /* Base interactive button styles */
+    button {
+      all: unset;
+      appearance: none;
+      -webkit-appearance: none;
+      background: none;
+      border: none;
+      padding: 0.25rem 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      color: var(--icon-color-default);
+      transition: color var(--icon-transition-duration) var(--icon-transition-easing);
+      border-radius: 4px;
+    }
+
+    button:hover,
+    button:focus-visible {
+      color: hotpink;
+    }
+
+    .button--danger {
+      color: var(--icon-color-danger);
+    }
+
+    .button--danger:hover {
+      color: #ef4444;
+    }
+
+    /* Standalone empty icon element */
+    .icon {
+      display: inline-block;
+      width: var(--icon-size);
+      height: var(--icon-size);
+      vertical-align: middle;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    .icon--success {
+      color: var(--icon-color-success);
+    }
+
+    /* Standalone empty icon elements forward the --icon property to --icon-start */
+    .icon:empty {
+      --icon-start: var(--icon);
+    }
+
+    /* Style query for elements configuring a start icon */
+    @container style(--icon-start) {
+      ::before {
+        --icon-start: inherit;
+        content: "";
+        display: inline-block;
+        width: var(--icon-size);
+        height: var(--icon-size);
+        background-color: currentColor;
+        mask: var(--icon-start) no-repeat center / contain;
+        -webkit-mask: var(--icon-start) no-repeat center / contain;
+        opacity: 0.85;
+        pointer-events: none;
+        vertical-align: middle;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+
+      /* Automatically add spacing if the container has other text or child elements */
+      :not(.icon, :empty)::before {
+        margin-inline-end: 0.4em;
+      }
+    }
+
+    /* Style query for elements configuring an end icon */
+    @container style(--icon-end) {
+      ::after {
+        --icon-end: inherit;
+        content: "";
+        display: inline-block;
+        width: var(--icon-size);
+        height: var(--icon-size);
+        background-color: currentColor;
+        mask: var(--icon-end) no-repeat center / contain;
+        -webkit-mask: var(--icon-end) no-repeat center / contain;
+        opacity: 0.85;
+        pointer-events: none;
+        vertical-align: middle;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+
+      :not(.icon, :empty)::after {
+        margin-inline-start: 0.4em;
+      }
+    }
+
+    /* --------------------------------------------------
+     ROBUST COMPATIBILITY FALLBACK (Style Queries Lack of Support)
+     -------------------------------------------------- */
+    @supports not (container-name: style(any)) {
+      /* Injection fallback for start icons using inline style attribute matching */
+      [style*="--icon-start"]::before {
+        content: "";
+        display: inline-block;
+        width: var(--icon-size);
+        height: var(--icon-size);
+        background-color: currentColor;
+        mask: var(--icon-start) no-repeat center / contain;
+        -webkit-mask: var(--icon-start) no-repeat center / contain;
+        opacity: 0.85;
+        pointer-events: none;
+        vertical-align: middle;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+
+      [style*="--icon-start"]:not(.icon, :empty)::before {
+        margin-inline-end: 0.4em;
+      }
+
+      /* Injection fallback for end icons */
+      [style*="--icon-end"]::after {
+        content: "";
+        display: inline-block;
+        width: var(--icon-size);
+        height: var(--icon-size);
+        background-color: currentColor;
+        mask: var(--icon-end) no-repeat center / contain;
+        -webkit-mask: var(--icon-end) no-repeat center / contain;
+        opacity: 0.85;
+        pointer-events: none;
+        vertical-align: middle;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+
+      [style*="--icon-end"]:not(.icon, :empty)::after {
+        margin-inline-start: 0.4em;
+      }
+
+      /* Standalone empty icon forwarding logic fallback */
+      .icon:empty[style*="--icon"]::before {
+        content: "";
+        display: inline-block;
+        width: var(--icon-size);
+        height: var(--icon-size);
+        background-color: currentColor;
+        mask: var(--icon) no-repeat center / contain;
+        -webkit-mask: var(--icon) no-repeat center / contain;
+        opacity: 0.85;
+        pointer-events: none;
+        vertical-align: middle;
+        transition: background-color var(--icon-transition-duration) var(--icon-transition-easing);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <section style="padding: 1rem; font-family: system-ui, sans-serif;">
+    <h2>Modern CSS Icons Demo</h2>
+    
+    <p><strong>1. Icon-only button</strong> (accessible name via aria-label on the button, empty span inside)</p>
+    <button aria-label="Delete item">
+      <span class="icon" style="--icon: var(--icon-trash);" aria-hidden="true"></span>
+    </button>
+    <br />
+    <button aria-label="Favourite item">
+      <span class="icon" style="--icon: var(--icon-favourite);" aria-hidden="true"></span>
+    </button>
+    <hr />
+
+    <p><strong>2. Zero extra markup icons</strong> (icon applied directly via CSS property on the parent container, visible text provides accessible name)</p>
+    <button style="--icon-start: var(--icon-trash);">
+      delete item
+    </button>
+    <br />
+    <button style="--icon-end: var(--icon-favourite);">
+      favourite item
+    </button>
+    <hr />
+
+    <p><strong>3. Styled context icon-only buttons</strong> (danger theme, utilizing inheritcurrentColor properties)</p>
+    <button aria-label="Delete item" class="button--danger">
+      <span class="icon" style="--icon: var(--icon-trash);" aria-hidden="true"></span>
+    </button>
+    <br />
+    <button aria-label="Remove from favourites" class="button--danger">
+      <span class="icon" style="--icon: var(--icon-favourite);" aria-hidden="true"></span>
+    </button>
+    <hr />
+
+    <p><strong>4. Standalone meaningful icon</strong> (with role="img" and accessible name)</p>
+    <p>
+      Payment status:
+      <span class="icon icon--success" style="--icon: var(--icon-check);" role="img" aria-label="Successful"></span>
+    </p>
+  </section>
+</body>
+
+</html>
