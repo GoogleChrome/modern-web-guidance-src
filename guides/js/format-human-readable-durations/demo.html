@@ -316,13 +316,7 @@
       const minutes = parseInt(minutesInput.value) || 0;
       const seconds = parseInt(secondsInput.value) || 0;
 
-      let selectedUnit = 'auto';
-      for (const radio of radioButtons) {
-        if (radio.checked) {
-          selectedUnit = radio.value;
-          break;
-        }
-      }
+      const selectedUnit = document.querySelector('input[name="largestUnit"]:checked')?.value || 'auto';
 
       try {
         // 1. Create original duration
