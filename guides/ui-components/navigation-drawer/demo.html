@@ -230,7 +230,12 @@
     }
 
     function observeOpenAndClosedState() {
-      const visibleThreshold = 1 / window.innerWidth; // At least 1px on screen.
+      // At least 1px on screen. The width is guarded because
+      // `window.innerWidth` is 0 before first layout, and a non-finite
+      // threshold makes the IntersectionObserver constructor throw.
+      const viewportWidth =
+        window.innerWidth || document.documentElement.clientWidth || 360;
+      const visibleThreshold = 1 / viewportWidth;
       const observer = new IntersectionObserver(
         (entries) => {
           const entry = entries.at(-1); // Only the last entry is relevant.
