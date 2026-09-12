@@ -1,0 +1,1 @@
+- Add a C++ WebAssembly module to apply an image filter to our article photos.
