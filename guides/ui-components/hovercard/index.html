@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Hovercard Demo</title>
+    <style>
+      :root {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        line-height: 1.5;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #f8f9fa;
+      }
+
+      main {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      h3 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: #333;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        gap: 1rem;
+      }
+
+      a {
+        color: #0066cc;
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      [popover] {
+        position-area: block-end span-inline-end;
+        border: none;
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow:
+          0 10px 25px -5px rgba(0, 0, 0, 0.1),
+          0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        width: 300px;
+        background: white;
+
+        /* Entry animation setup */
+        transition:
+          display 0.4s allow-discrete,
+          overlay 0.4s allow-discrete,
+          opacity 0.4s,
+          transform 0.4s;
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+      }
+
+      [popover]:popover-open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      @starting-style {
+        [popover]:popover-open {
+          opacity: 0;
+          transform: translateY(10px) scale(0.95);
+        }
+      }
+
+      /* Respect reduced motion */
+      @media (prefers-reduced-motion: reduce) {
+        [popover] {
+          transition: none;
+        }
+      }
+
+      [popover] h2 {
+        margin-top: 0;
+        font-size: 1.25rem;
+      }
+
+      [popover] img {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        object-position: top;
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+      }
+
+      @view-transition {
+        navigation: auto;
+      }
+      [popover]:popover-open {
+        view-transition-name: --hovercard;
+        h2 {
+          view-transition-name: --title;
+          width: fit-content;
+        }
+        img {
+          view-transition-name: --image;
+        }
+        .byline {
+          view-transition-name: --byline;
+          width: fit-content;
+        }
+        p {
+          view-transition-name: --p;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div>
+        <article>
+          <h3>Related articles</h3>
+          <ul>
+            <li>
+              <a href="article-a.html" interestfor="buzz-popover">
+                The buzz on hummingbirds
+              </a>
+              <div id="buzz-popover" popover="hint">
+                <h2>The buzz on hummingbirds</h2>
+                <p class="byline">By Delphi Aguilar</p>
+                <div>
+                  <img
+                    src="https://images.unsplash.com/photo-1520552159191-e28a1d9f0d7e?q=80&w=400&auto=format&fit=crop"
+                    alt="A green hummingbird with a vibrant blue throat and a curved bill seated on a branch."
+                  />
+                  <p>
+                    Swan goose duck mallard teal kingfisher heron egret pelican
+                    cormorants. Heron egret pelican cormorant swan goose duck...
+                  </p>
+                </div>
+              </div>
+            </li>
+            <li>
+              <a href="article-b.html" interestfor="corvid-popover">
+                10 reasons corvids rock
+              </a>
+              <div id="corvid-popover" popover="hint">
+                <h2>10 reasons corvids rock</h2>
+                <p class="byline">By Corby Bertram</p>
+                <div>
+                  <img
+                    src="https://images.unsplash.com/photo-1682467612877-f9b5e55ff2af?q=80&w=400&auto=format&fit=crop"
+                    alt="A large black bird with a thick beak sitting on a limb."
+                  />
+                  <p>
+                    Heron egret pelican cormorant swan goose duck mallard teal
+                    kingfisher. Heron egret pelican cormorant swan goose duck...
+                  </p>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </article>
+      </div>
+    </main>
+  </body>
+</html>
