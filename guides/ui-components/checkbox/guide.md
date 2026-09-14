@@ -4,7 +4,6 @@ description: Style checkboxes, including custom icons, layout, colors, check/unc
 web-feature-ids:
   - accent-color
   - indeterminate
-  - masks
 ---
 
 # Styling Checkboxes
