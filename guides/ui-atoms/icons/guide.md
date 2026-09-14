@@ -8,7 +8,6 @@ web-feature-ids:
   - container-style-queries
   - registered-custom-properties
   - tmp-linked-parameters
-  - text-box
 guides:
   - precise-text-alignment
 ---
@@ -164,30 +163,17 @@ For standalone icons or buttons that have no text (e.g. icon-only controls), est
 }
 ```
 
-### 5. Precise Vertical Icon-Text Alignment
-
-Adjacent text and icons can appear slightly off-center because browsers naturally include invisible "ghost leading" whitespace above and below letters to accommodate character heights and font metrics. 
-
-To achieve pixel-perfect vertical centering in flex or grid layouts, apply **Precise Text Alignment** using `text-box-trim` and `text-box-edge` (via the `text-box` shorthand). Applying `text-box: trim-both cap alphabetic` directly to the sibling text element trims this whitespace so that the layout engine centers the actual visible letters with the icon:
-
-```css
-/* Progressive enhancement: Trim leading whitespace for exact visual alignment */
-.button-text {
-  text-box: trim-both cap alphabetic;
-}
-```
-
 ---
 
 ## HTML Usage Examples
 
 ### Decorative Icons (Zero Extra Markup)
-To attach an icon to a button, link, or header, set the `--icon-start` or `--icon-end` custom properties directly in CSS or style tags, and wrap the text in an element to apply precise vertical alignment:
+To attach an icon to a button, link, or header, set the `--icon-start` or `--icon-end` custom properties directly in CSS or style tags:
 
 ```html
-<!-- The icon is rendered purely via pseudo-elements; text-box trims leading whitespace -->
+<!-- The icon is rendered purely via pseudo-elements -->
 <button style="--icon-start: var(--icon-trash);">
-  <span class="button-text">Delete Item</span>
+  Delete Item
 </button>
 ```
 
@@ -288,4 +274,3 @@ For browsers that do not natively support style queries use the `@supports not (
 {{ FEATURE_FALLBACKS("masks") }}
 {{ FEATURE_FALLBACKS("container-style-queries") }}
 {{ FEATURE_FALLBACKS("registered-custom-properties") }}
-{{ BASELINE_STATUS("text-box") }}
