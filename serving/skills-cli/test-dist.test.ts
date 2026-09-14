@@ -73,6 +73,8 @@ test('Codex Plugin Config in Dist', async () => {
 
   // Interface metadata validation
   assert.strictEqual(pluginJson.interface.category, 'Developer Tools', 'plugin.json interface category should be Developer Tools');
+  assert.ok(pluginJson.interface.shortDescription, 'plugin.json must define interface.shortDescription');
+  assert.ok(pluginJson.interface.shortDescription.length < 30, `shortDescription must be fewer than 30 characters (was ${pluginJson.interface.shortDescription.length})`);
   assert.ok(pluginJson.interface.composerIcon, 'plugin.json must define interface.composerIcon');
   assert.ok(pluginJson.interface.composerIcon.startsWith('./'), 'composerIcon path must start with ./');
   const resolvedComposerIcon = path.join(STAGING_DIR, pluginJson.interface.composerIcon);
