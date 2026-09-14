@@ -11,15 +11,22 @@
           -apple-system,
           sans-serif;
         margin: 2rem;
-        --z-row-header: 5;
         --z-col-header: 10;
-        --z-corner: 15;
       }
-      @media (width >= 600px) {
+      table{
+        inline-size: 100cqi;
+      }
+      .table-wrapper{
+        container-type: inline-size;
+        overflow: auto;
+        max-inline-size: 100%;
+        max-block-size: min(80vh, 500px);
+      }
+      @container (width >= 600px) {
         table {
-          border-collapse: separate; /* Required for sticky borders to behave better in some browsers */
+          border-collapse: separate;
           border-spacing: 0;
-          width: 100%;
+          inline-size: 100%;
         }
         th,
         td {
@@ -31,7 +38,7 @@
         }
         thead {
           position: sticky;
-          top: 0;
+          inset-block-start: 0;
           z-index: var(--z-col-header);
         }
         thead th {
@@ -40,23 +47,14 @@
         /* Sticky row headers - must stay on TH to stick horizontally within the row */
         th[scope="row"] {
           position: sticky;
+          inset-inline-start: 0;
           background: #f9f9f9;
-          z-index: var(--z-row-header);
-        }
-        /* First row header column */
-        th:nth-child(1) {
-          left: 0;
-        }
-
-        .table-wrapper {
-          overflow: scroll;
-          max-inline-size: 100cqi;
-          max-block-size: 100cqb;
+          z-index: 5;
         }
       }
-      @media (width < 600px) {
-        table {
-          width: 100%;
+      @container (width < 600px) {
+        table, thead, tbody, tr, th, td {
+          display: block;
         }
         thead {
           /* Visually hidden, display none can break screen readers */
@@ -71,20 +69,27 @@
           white-space: nowrap !important;
         }
         tbody {
-          display: flex;
-          flex-direction: column;
-          width: 100%;
+          display: block;
+          inline-size: 100%;
         }
         th[scope="row"] {
-          top: 0;
+          inset-block-start: 0;
           position: sticky;
           background: #f9f9f9;
+          z-index: 5;
         }
         tr {
-          display: grid;
+          margin-block-end: 1rem;
+          border: 1px solid #ccc;
+        }
+        td {
+          display: flex;
+          justify-content: space-between;
+          padding: 0.5rem;
+          border-block-end: 1px solid #eee;
         }
         td::before {
-          content: attr(data-column-header) ": " / "";
+          content: attr(data-label) ": " / "";
           font-weight: bold;
         }
       }
@@ -93,8 +98,8 @@
   <body>
     <h1>Responsive Table Demo</h1>
     <p>
-      A table with 100 rows and 20 columns, featuring 2 rows of column headers
-      and 2 columns of row headers.
+      A table with 100 rows and 20 columns, featuring 1 row of column headers
+      and 1 column of row headers.
     </p>
 
     <div class="table-wrapper">
@@ -134,7 +139,7 @@
         for (let j = 2; j <= COLS; j++) {
           // Data cells
           const td = document.createElement("td");
-          td.dataset.columnHeader = `Col Header ${j}`;
+          td.dataset.label = `Col Header ${j}`;
           td.textContent = `Data ${i},${j}`;
           tr.appendChild(td);
         }
