@@ -92,6 +92,12 @@ test('Codex Plugin Config in Dist', async () => {
   assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
   assert.strictEqual(marketplaceJson.plugins[0].category, 'Developer Tools');
   assert.strictEqual(marketplaceJson.plugins[0].version, pkgJson.version);
+
+  // Distribution archive compatibility: verify no symbolic links exist
+  const distEntries = await fs.readdir(STAGING_DIR, { recursive: true, withFileTypes: true });
+  for (const entry of distEntries) {
+    assert.strictEqual(entry.isSymbolicLink(), false, `Distribution should not contain symlinks: ${path.join(entry.parentPath, entry.name)}`);
+  }
 });
 
 test('Gemini and VS Code manifests', async () => {
