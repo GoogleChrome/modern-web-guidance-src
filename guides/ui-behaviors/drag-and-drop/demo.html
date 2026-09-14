@@ -325,6 +325,36 @@
       -webkit-user-select: none;
     }
 
+    /* Accessibility focus styling and screen reader visibility */
+    .card-handle:focus-visible {
+      outline: 2px solid var(--focus-ring-color);
+      outline-offset: 4px;
+      border-radius: 2px;
+      opacity: 1;
+    }
+
+    .card.keyboard-active {
+      outline: 2px solid var(--primary-color);
+      outline-offset: -2px;
+      background-color: var(--bg-sandbox-light);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .card.keyboard-active {
+        background-color: var(--bg-sandbox-dark);
+      }
+    }
+
+    .visually-hidden {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      z-index: -1;
+    }
+
     /* Drag clone representation cosmetic */
     .card.dragging-hide {
       opacity: 0.3;
@@ -364,30 +394,36 @@
           <button class="toggle-btn" data-layout="list">Vertical List</button>
         </div>
 
+        <!-- Visually Hidden Instructions and ARIA Live Region for Accessibility -->
+        <div id="dragInstructions" class="visually-hidden">
+          Press Space or Enter to grab this item. Use Arrow keys to move the item in any direction. Press Space or Enter again to drop, or Escape to cancel.
+        </div>
+        <div id="reorderLiveRegion" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
+
         <!-- Draggable Reorder Container -->
         <div class="reorder-container layout-grid" id="reorderContainer">
           <div class="card" id="cardA">
-            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-handle" role="button" tabindex="0" aria-label="Reorder handle" aria-describedby="dragInstructions" aria-pressed="false"><span></span></div>
             <div class="card-content">Card A (Item 1)</div>
           </div>
           <div class="card" id="cardB">
-            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-handle" role="button" tabindex="0" aria-label="Reorder handle" aria-describedby="dragInstructions" aria-pressed="false"><span></span></div>
             <div class="card-content">Card B (Item 2)</div>
           </div>
           <div class="card" id="cardC">
-            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-handle" role="button" tabindex="0" aria-label="Reorder handle" aria-describedby="dragInstructions" aria-pressed="false"><span></span></div>
             <div class="card-content">Card C (Item 3)</div>
           </div>
           <div class="card" id="cardD">
-            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-handle" role="button" tabindex="0" aria-label="Reorder handle" aria-describedby="dragInstructions" aria-pressed="false"><span></span></div>
             <div class="card-content">Card D (Item 4)</div>
           </div>
           <div class="card" id="cardE">
-            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-handle" role="button" tabindex="0" aria-label="Reorder handle" aria-describedby="dragInstructions" aria-pressed="false"><span></span></div>
             <div class="card-content">Card E (Item 5)</div>
           </div>
           <div class="card" id="cardF">
-            <div class="card-handle" aria-label="Drag handle"><span></span></div>
+            <div class="card-handle" role="button" tabindex="0" aria-label="Reorder handle" aria-describedby="dragInstructions" aria-pressed="false"><span></span></div>
             <div class="card-content">Card F (Item 6)</div>
           </div>
         </div>
@@ -507,11 +543,31 @@ function onPointerUp() {
       const container = document.getElementById('reorderContainer');
       const toggleBtns = document.querySelectorAll('.toggle-btn');
       const domLog = document.getElementById('domLog');
+      const liveRegion = document.getElementById('reorderLiveRegion');
 
       let draggedElement = null;
       let ghost = null;
       let offsetX = 0;
       let offsetY = 0;
+
+      // Keyboard reordering state variables
+      let activeKeyboardCard = null;
+      let initialIndex = -1;
+      let initialSiblings = [];
+
+      // Helper to speak announcements via live region
+      function announce(message) {
+        liveRegion.textContent = '';
+        // Small timeout to guarantee screen readers trigger on text replacement
+        setTimeout(() => {
+          liveRegion.textContent = message;
+        }, 50);
+      }
+
+      // Helper to get text representation of a card
+      function getCardTitle(card) {
+        return card.querySelector('.card-content').textContent.split(' (')[0];
+      }
 
       // --------------------------------------------------
       // LAYOUT SWITCH CONTROLLER
@@ -531,10 +587,122 @@ function onPointerUp() {
       // --------------------------------------------------
       function updateDomOrderLog() {
         const order = [...container.children].map(child => {
-          const title = child.querySelector('.card-content').textContent;
-          return title.split(' (')[0]; // Simplify name
+          return getCardTitle(child);
         });
         domLog.textContent = order.join(' → ');
+      }
+
+      // --------------------------------------------------
+      // ACCESSIBLE KEYBOARD REORDERING ENGINE
+      // --------------------------------------------------
+      container.addEventListener('keydown', (e) => {
+        const handle = e.target.closest('.card-handle');
+        if (!handle) return;
+
+        const card = handle.closest('.card');
+        if (!card) return;
+
+        const key = e.key;
+
+        // Toggle Grabbed Mode (Space or Enter)
+        if (key === ' ' || key === 'Enter') {
+          e.preventDefault(); // Stop page scrolling on Space
+
+          if (activeKeyboardCard === card) {
+            // Drop Card
+            dropKeyboardCard(card, handle);
+          } else {
+            // Grab Card (if another card is active, drop it first)
+            if (activeKeyboardCard) {
+              const prevHandle = activeKeyboardCard.querySelector('.card-handle');
+              dropKeyboardCard(activeKeyboardCard, prevHandle);
+            }
+            grabKeyboardCard(card, handle);
+          }
+          return;
+        }
+
+        // Active Keyboard Reordering Movements
+        if (activeKeyboardCard === card) {
+          if (key === 'ArrowUp' || key === 'ArrowLeft') {
+            e.preventDefault();
+            moveKeyboardCard(card, handle, 'up');
+          } else if (key === 'ArrowDown' || key === 'ArrowRight') {
+            e.preventDefault();
+            moveKeyboardCard(card, handle, 'down');
+          } else if (key === 'Escape') {
+            e.preventDefault();
+            cancelKeyboardReorder(card, handle);
+          }
+        }
+      });
+
+      function grabKeyboardCard(card, handle) {
+        activeKeyboardCard = card;
+        initialSiblings = [...container.children];
+        initialIndex = initialSiblings.indexOf(card);
+
+        card.classList.add('keyboard-active');
+        handle.setAttribute('aria-pressed', 'true');
+        
+        const cardTitle = getCardTitle(card);
+        const total = container.children.length;
+        announce(`Grabbed ${cardTitle}. Current position: ${initialIndex + 1} of ${total}. Use Arrow keys to reorder, Space or Enter to drop, Escape to cancel.`);
+      }
+
+      function moveKeyboardCard(card, handle, direction) {
+        const siblings = [...container.children];
+        const index = siblings.indexOf(card);
+        const total = siblings.length;
+        const cardTitle = getCardTitle(card);
+
+        if (direction === 'up' && index > 0) {
+          const prevSibling = siblings[index - 1];
+          container.insertBefore(card, prevSibling);
+          handle.focus();
+          updateDomOrderLog();
+          announce(`Moved ${cardTitle} up. New position: ${index} of ${total}.`);
+        } else if (direction === 'down' && index < total - 1) {
+          const nextSibling = siblings[index + 1];
+          container.insertBefore(card, nextSibling.nextSibling);
+          handle.focus();
+          updateDomOrderLog();
+          announce(`Moved ${cardTitle} down. New position: ${index + 2} of ${total}.`);
+        }
+      }
+
+      function dropKeyboardCard(card, handle) {
+        card.classList.remove('keyboard-active');
+        handle.setAttribute('aria-pressed', 'false');
+
+        const finalIndex = [...container.children].indexOf(card);
+        const cardTitle = getCardTitle(card);
+        const total = container.children.length;
+
+        announce(`Dropped ${cardTitle}. Final position: ${finalIndex + 1} of ${total}.`);
+
+        activeKeyboardCard = null;
+        initialIndex = -1;
+        initialSiblings = [];
+      }
+
+      function cancelKeyboardReorder(card, handle) {
+        // Restore DOM to original order
+        initialSiblings.forEach(sibling => {
+          container.appendChild(sibling);
+        });
+
+        card.classList.remove('keyboard-active');
+        handle.setAttribute('aria-pressed', 'false');
+        handle.focus();
+
+        const cardTitle = getCardTitle(card);
+        announce(`Reordering cancelled. ${cardTitle} returned to position ${initialIndex + 1}.`);
+
+        activeKeyboardCard = null;
+        initialIndex = -1;
+        initialSiblings = [];
+        updateDomOrderLog();
       }
 
       // --------------------------------------------------
@@ -542,6 +710,12 @@ function onPointerUp() {
       // --------------------------------------------------
 
       container.addEventListener('pointerdown', (e) => {
+        // If we are actively in keyboard dragging, pointer clicks cancel/drop it first
+        if (activeKeyboardCard) {
+          const handle = activeKeyboardCard.querySelector('.card-handle');
+          dropKeyboardCard(activeKeyboardCard, handle);
+        }
+
         const handle = e.target.closest('.card-handle');
         if (!handle) return; // Only drag when grabbing handle
 
@@ -560,6 +734,13 @@ function onPointerUp() {
         // 1. Create the visual ghost clone and append to body
         ghost = card.cloneNode(true);
         ghost.className = 'card ghost-clone';
+        // Remove tabindex and button roles from ghost clone so it is ignored by assistive technologies
+        const ghostHandle = ghost.querySelector('.card-handle');
+        if (ghostHandle) {
+          ghostHandle.removeAttribute('tabindex');
+          ghostHandle.removeAttribute('role');
+          ghostHandle.removeAttribute('aria-describedby');
+        }
         ghost.style.width = `${rect.width}px`;
         ghost.style.height = `${rect.height}px`;
         ghost.style.left = `${rect.left}px`;
