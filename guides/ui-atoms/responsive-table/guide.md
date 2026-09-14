@@ -6,6 +6,8 @@ web-feature-ids:
   - container-queries
 ---
 
+# Responsive tables
+
 Large data tables often become unreadable on small screens as columns overflow or shrink beyond legibility. This guide demonstrates how to use **sticky positioning** to keep headers visible during scrolling and how to transform the table into a mobile-friendly "stacked" layout when space is limited.
 
 ## Recommended Approach
