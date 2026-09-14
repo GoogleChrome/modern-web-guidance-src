@@ -53,6 +53,11 @@
       color: hotpink;
     }
 
+    /* Progressive enhancement: Trim font leading for precise visual vertical alignment with adjacent icons */
+    .button-text {
+      text-box: trim-both cap alphabetic;
+    }
+
     .button--danger {
       color: var(--icon-color-danger);
     }
@@ -201,11 +206,11 @@
 
     <p><strong>2. Zero extra markup icons</strong> (icon applied directly via CSS property on the parent container, visible text provides accessible name)</p>
     <button style="--icon-start: var(--icon-trash);">
-      delete item
+      <span class="button-text">delete item</span>
     </button>
     <br />
     <button style="--icon-end: var(--icon-favourite);">
-      favourite item
+      <span class="button-text">favourite item</span>
     </button>
     <hr />
 
