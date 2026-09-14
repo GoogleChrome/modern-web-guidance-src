@@ -2,14 +2,11 @@ name: Content ATL Triage
 
 on:
   issues:
-    types: [opened, labeled]
-  # Note: `pull_request` gives fork PRs a read-only GITHUB_TOKEN, so the bot
-  # cannot request reviewers on PRs from forks (branch PRs work fine). This is
-  # accepted for now since review requests are non-blocking. To cover forks,
-  # switch to `pull_request_target` (read-write token) and fetch changed-file
-  # contents via the API rather than the base checkout.
-  pull_request:
-    types: [opened, synchronize, labeled]
+    types: [opened, labeled, assigned]
+  # zizmor: ignore[dangerous-triggers] Trusted checkout of main; no PR code executed; queries API via execFileSync
+  pull_request_target:
+    types: [opened, synchronize, labeled, ready_for_review]
+    branches: [main]
 
 permissions:
   issues: write
@@ -19,6 +16,7 @@ permissions:
 jobs:
   triage:
     runs-on: ubuntu-latest
+    if: github.repository == 'GoogleChrome/modern-web-guidance-src'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

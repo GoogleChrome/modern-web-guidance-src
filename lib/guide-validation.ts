@@ -19,6 +19,33 @@ export const ProjectStatus = {
 
 export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
 
+/**
+ * Orientation guides that provide high-level, cross-cutting guidance
+ * across a discipline rather than a single task-based use case.
+ */
+export const DISCIPLINE_GUIDES = new Set([
+  // Category root guides
+  'accessibility',
+  'css',
+  'forms',
+  'html',
+  'performance',
+  'privacy',
+  'security',
+  'webmcp',
+
+  // Named orientation guides
+  'css-layout',
+  'passkeys',
+]);
+
+/**
+ * Returns true if a guide is a discipline-level orientation guide.
+ */
+export function isDisciplineGuide(name: string, category?: string): boolean {
+  return (category !== undefined && name === category) || DISCIPLINE_GUIDES.has(name);
+}
+
 export interface PreparedGuide {
   name: string;
   description: string;
@@ -187,9 +214,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
   for (const inv of guides) {
     const subdir = inv.dir;
-    const { hasGuide, hasGrader, hasTask, isDisciplineSkill } = inv;
+    const { hasGuide, hasGrader, hasTask, isDisciplineGuide, isDisciplineSkill } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
-    const isDisciplineGuide = inv.name === inv.category || ['css-layout', 'passkeys'].includes(inv.name);
 
     if (hasGrader !== hasTask) {
       const missingFile = hasGrader ? TASK_FILE : GRADER_FILE;
@@ -329,6 +355,7 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
+  isDisciplineGuide: boolean;
   /** Frontmatter `draft` flag; any truthy value withholds the guide from distribution. */
   draft: boolean | string;
   /** Whether the guide belongs in dist: has content and no truthy `draft`. */
@@ -529,6 +556,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     hasNegativeDemo,
     hasGrader,
     hasTask,
+    isDisciplineGuide: isDisciplineGuide(name, category),
     featureIds: data['web-feature-ids'] || [],
     draft,
     isPublished,
