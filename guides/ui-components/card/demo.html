@@ -229,6 +229,16 @@
     }
 
     /* --------------------------------------------------
+     CONTENT-BASED STYLING OVERRIDES (If media is absent)
+     -------------------------------------------------- */
+    /* Style cards specifically when they DO NOT contain any media elements (text-only card) */
+    /* This leverages combining :not() and :has() as described in content-based-styling subskill */
+    .card:not(:has(> :is(img, picture, svg))) {
+      border-top: 4px solid var(--focus-ring-color);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    /* --------------------------------------------------
      BROWSER COMPATIBILITY FALLBACK (When Container Queries are unsupported)
      -------------------------------------------------- */
     @supports not (container-type: inline-size) {
