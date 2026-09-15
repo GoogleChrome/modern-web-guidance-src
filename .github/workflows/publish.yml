@@ -98,6 +98,11 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: pnpm --filter serving run publish-skills
 
+      - name: Publish to npm via OIDC Provenance
+        run: |
+          cd dist/skills-cli
+          npm publish --provenance --access public --registry https://registry.npmjs.org/
+
       - name: Commit and push updated evals and README to source repo
         env:
           GITHUB_REF: ${{ github.ref }}
@@ -105,12 +110,12 @@ jobs:
           if ! git diff --quiet README.md serving/skills-cli/eval-results-summary.json; then
             git add README.md serving/skills-cli/eval-results-summary.json
             git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"
-            git push origin HEAD:"$GITHUB_REF"
+            if [[ "$GITHUB_REF" == refs/heads/* ]]; then
+              target_branch="${GITHUB_REF#refs/heads/}"
+              git fetch origin "$target_branch"
+              git rebase "origin/$target_branch"
+              git push origin HEAD:"$GITHUB_REF"
+            fi
           else
             echo "No changes in README.md or eval-results-summary.json to commit."
           fi
-
-      - name: Publish to npm via OIDC Provenance
-        run: |
-          cd dist/skills-cli
-          npm publish --provenance --access public --registry https://registry.npmjs.org/

@@ -134,7 +134,7 @@ export function processSkills(publishRoot: string) {
     // - If they differ, the CLI tool logs a warning to stderr with instructions on how
     //   to update.
     const skillVersion = execSync(
-      'git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" SKILL.md',
+      'git log -1 --abbrev=8 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" SKILL.md',
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], cwd: sourceDir }
     ).trim();
     fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
