@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>State-Aware, Subgrid-Aligned Popover Menu</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-page: #f8fafc;
+      --bg-surface: #ffffff;
+      --border-color: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --focus-ring: #60a5fa;
+
+      --bg-stuck: rgba(255, 255, 255, 0.9);
+      --border-stuck: #94a3b8;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-page: #0f172a;
+        --bg-surface: #1e293b;
+        --border-color: #334155;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --accent: #3b82f6;
+        --accent-hover: #2563eb;
+        --focus-ring: #1d4ed8;
+
+        --bg-stuck: rgba(30, 41, 59, 0.9);
+        --border-stuck: #475569;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-block-size: 200vh; /* Allow substantial scrolling to test sticky menu header */
+    }
+
+    header {
+      padding: 2rem 1.5rem;
+      max-width: 800px;
+      margin-inline: auto;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      margin: 0 0 0.5rem 0;
+    }
+
+    .intro {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    main {
+      max-width: 800px;
+      margin-inline: auto;
+      padding: 1.5rem;
+    }
+
+    /* --------------------------------------------------
+     1. STICKY MENUBAR & STATE-AWARE HEADER
+     -------------------------------------------------- */
+    .sticky-wrapper {
+      position: sticky;
+      top: 0;
+      container-type: scroll-state;
+      container-name: menubar-container;
+      z-index: 100;
+      overflow-anchor: none; /* Prevent scroll-oscillation layout thrashing */
+    }
+
+    .menubar {
+      display: flex;
+      gap: 0.5rem;
+      background-color: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 1.5rem;
+      transition: background-color 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+
+    /* Target stuck state natively via CSS Scroll State Queries */
+    @container menubar-container scroll-state(stuck: top) {
+      .menubar {
+        background-color: var(--bg-stuck);
+        border-bottom-color: var(--border-stuck);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+    }
+
+    /* --------------------------------------------------
+     2. MENUBAR INTERACTION BUTTONS
+     -------------------------------------------------- */
+    .menu-trigger {
+      all: unset;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--text-main);
+      transition: background-color 0.15s;
+    }
+
+    .menu-trigger:hover,
+    .menu-trigger:focus-visible {
+      background-color: var(--border-color);
+    }
+
+    /* Define unique Anchor Names on the triggers */
+    #file-trigger { anchor-name: --file-anchor; }
+    #edit-trigger { anchor-name: --edit-anchor; }
+    #preferences-trigger { anchor-name: --preferences-anchor; }
+
+    /* --------------------------------------------------
+     3. POPOVER MENU LISTS
+     -------------------------------------------------- */
+    /* Target popover menus in the native top-layer */
+    .popover-menu {
+      all: unset;
+      display: none; /* Popover defaults to display: none */
+      position: absolute;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      padding: 0.25rem;
+      color: var(--text-main);
+    }
+
+    /* Show the popover when native :popover-open pseudoclass is active */
+    .popover-menu:popover-open {
+      display: block;
+    }
+
+    /* CSS Anchor Positioning to bind menus to triggers */
+    #file-menu {
+      position-anchor: --file-anchor;
+      top: anchor(bottom);
+      left: anchor(left);
+      margin-top: 0.25rem;
+    }
+
+    #edit-menu {
+      position-anchor: --edit-anchor;
+      top: anchor(bottom);
+      left: anchor(left);
+      margin-top: 0.25rem;
+    }
+
+    #preferences-submenu {
+      position-anchor: --preferences-anchor;
+      top: anchor(top);
+      left: anchor(right);
+      margin-left: 0.25rem;
+    }
+
+    /* --------------------------------------------------
+     4. SUBGRID MENU ITEMS (Vertical Alignment Grid)
+     -------------------------------------------------- */
+    /* Default menu grid: 4 columns (Icon, Label, Shortcut, Arrow) that collapse dynamically */
+    .menu-list {
+      --track-icon: 0px;
+      --track-shortcut: 0px;
+      --track-arrow: 0px;
+
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      grid-template-columns: var(--track-icon) 1fr var(--track-shortcut) var(--track-arrow);
+      column-gap: 0px; /* Zero gaps to prevent offset artifacts from collapsed 0px columns */
+      row-gap: 0.1rem;
+      min-inline-size: 240px;
+    }
+
+    /* Dynamically expand column tracks to auto size ONLY when their respective element exists in the list */
+    .menu-list:has(.menu-icon) { --track-icon: auto; }
+    .menu-list:has(.menu-shortcut) { --track-shortcut: auto; }
+    .menu-list:has(.menu-arrow) { --track-arrow: auto; }
+
+    .menu-item-wrapper {
+      grid-column: 1 / -1; /* Spans all columns of parent menu grid */
+      display: grid;
+      grid-template-columns: subgrid; /* Delegates layout tracks to parent list columns */
+      align-items: center;
+    }
+
+    .menu-item {
+      all: unset;
+      grid-column: 1 / -1; /* Button spans full subgrid cell */
+      display: grid;
+      grid-template-columns: subgrid; /* Direct button inherits subgrid delegation */
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.85rem;
+    }
+
+    .menu-item:hover,
+    .menu-item:focus-visible {
+      background-color: var(--accent);
+      color: white;
+    }
+
+    /* Align SVG Icons to column 1 */
+    .menu-icon {
+      grid-column: 1;
+      width: 1rem;
+      height: 1rem;
+      fill: currentColor;
+      margin-inline-end: 0.65rem;
+    }
+
+    /* Label text in column 2 */
+    .menu-label {
+      grid-column: 2;
+    }
+
+    /* Keyboard shortcut indicators in column 3 */
+    .menu-shortcut {
+      grid-column: 3;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-inline-start: 1.5rem;
+    }
+
+    .menu-item:hover .menu-shortcut {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Submenu indicator arrows in column 4 - styled via modern CSS Mask Icon technique */
+    .menu-arrow {
+      grid-column: 4;
+      display: inline-block;
+      width: 0.75rem;
+      height: 0.75rem;
+      background-color: currentColor;
+      margin-inline-start: 0.5rem;
+      mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>') no-repeat center / contain;
+      -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>') no-repeat center / contain;
+    }
+
+    /* Divider menu row */
+    .menu-divider {
+      grid-column: 1 / -1;
+      height: 1px;
+      background-color: var(--border-color);
+      margin-block: 0.25rem;
+    }
+
+    /* --------------------------------------------------
+     5. OVERFLOWING MENU & SCROLL STATE QUERY
+     -------------------------------------------------- */
+    /* Target scroller specifically with container-type: scroll-state to query overflows */
+    .scrollable-menu {
+      max-block-size: 200px; /* Force an active scrollport in the demo menu */
+      overflow-y: auto;
+      container-type: scroll-state;
+      container-name: file-scroller;
+      position: relative;
+    }
+
+    /* Stick overflow shadow indicators inside the scrollable view */
+    .shadow-indicator {
+      position: sticky;
+      left: 0;
+      right: 0;
+      height: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 5;
+    }
+
+    .shadow-indicator-top {
+      top: 0;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.12), transparent);
+    }
+
+    .shadow-indicator-bottom {
+      bottom: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.12), transparent);
+    }
+
+    /* Show shadows dynamically based on scrollable edge status */
+    @container file-scroller scroll-state(scrollable: top) {
+      .shadow-indicator-top {
+        opacity: 1;
+      }
+    }
+
+    @container file-scroller scroll-state(scrollable: bottom) {
+      .shadow-indicator-bottom {
+        opacity: 1;
+      }
+    }
+
+    /* --------------------------------------------------
+     ACCESSIBILITY OUTLINES
+     -------------------------------------------------- */
+    :focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    /* Dummy presentation section */
+    .content-box {
+      margin-block: 3rem;
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background-color: var(--bg-surface);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Modern CSS Popover Menu</h1>
+    <p class="intro">
+      This demo showcases a wrapperless popover menu styled with <strong>CSS Subgrid</strong>, 
+      anchored with <strong>CSS Anchor Positioning</strong>, and visually transformed using 
+      <strong>CSS Scroll State Queries</strong> (sticky menubar stuck-state and overflow shadows).
+    </p>
+  </header>
+
+  <!-- Sticky Menubar wrapper with Scroll State Container Query -->
+  <div class="sticky-wrapper">
+    <div class="menubar" role="menubar" aria-label="Editor Menu">
+      
+      <!-- File menu trigger button -->
+      <button id="file-trigger" class="menu-trigger" popovertarget="file-menu" aria-haspopup="menu">
+        File
+      </button>
+
+      <!-- Edit menu trigger button -->
+      <button id="edit-trigger" class="menu-trigger" popovertarget="edit-menu" aria-haspopup="menu">
+        Edit
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Main layout container -->
+  <main>
+    <div class="content-box">
+      <h2>Scroll Down to test Sticky transformations</h2>
+      <p>The menubar above is sticky-positioned. Scroll down this page to see the container query (scroll-state) dynamically inject stuck background blur and card shadows natively when stuck to the top.</p>
+    </div>
+
+    <!-- NATIVE FILE MENU POPOVER -->
+    <div id="file-menu" popover class="popover-menu">
+      <!-- Container for Scroll State shadows -->
+      <div class="scrollable-menu">
+        <div class="shadow-indicator shadow-indicator-top"></div>
+        
+        <menu class="menu-list" role="menu">
+          
+          <li class="menu-item-wrapper" role="none">
+            <button class="menu-item" role="menuitem">
+              <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+              <span class="menu-label">New File</span>
+              <span class="menu-shortcut">Ctrl+N</span>
+            </button>
+          </li>
+
+          <li class="menu-item-wrapper" role="none">
+            <button class="menu-item" role="menuitem">
+              <svg class="menu-icon" viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V8h10v2z"/></svg>
+              <span class="menu-label">Open File...</span>
+              <span class="menu-shortcut">Ctrl+O</span>
+            </button>
+          </li>
+
+          <li class="menu-item-wrapper" role="none">
+            <button class="menu-item" role="menuitem">
+              <svg class="menu-icon" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+              <span class="menu-label">Save File</span>
+              <span class="menu-shortcut">Ctrl+S</span>
+            </button>
+          </li>
+
+          <!-- Scrollability demo overflow items -->
+          <li class="menu-divider" role="separator"></li>
+
+          <li class="menu-item-wrapper" role="none">
+            <button class="menu-item" role="menuitem">
+              <svg class="menu-icon" viewBox="0 0 24 24"><path d="M19 8H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 10h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>
+              <span class="menu-label">Open Folder...</span>
+            </button>
+          </li>
+
+          <li class="menu-item-wrapper" role="none">
+            <button class="menu-item" role="menuitem">
+              <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              <span class="menu-label">Properties</span>
+              <span class="menu-shortcut">Alt+Enter</span>
+            </button>
+          </li>
+
+          <li class="menu-item-wrapper" role="none">
+            <button class="menu-item" role="menuitem">
+              <svg class="menu-icon" viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+              <span class="menu-label">Exit Editor</span>
+            </button>
+          </li>
+
+        </menu>
+
+        <div class="shadow-indicator shadow-indicator-bottom"></div>
+      </div>
+    </div>
+
+    <!-- NATIVE EDIT MENU POPOVER -->
+    <div id="edit-menu" popover class="popover-menu">
+      <menu class="menu-list" role="menu">
+        
+        <li class="menu-item-wrapper" role="none">
+          <button class="menu-item" role="menuitem">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h3.5l-2.42-2.44C4.43 12.22 6.79 11 9.5 11c3.55 0 6.53 2.14 7.74 5.18l2.24-.74C17.74 11.23 13.93 8 12.5 8z"/></svg>
+            <span class="menu-label">Undo action</span>
+            <span class="menu-shortcut">Ctrl+Z</span>
+          </button>
+        </li>
+
+        <li class="menu-item-wrapper" role="none">
+          <button class="menu-item" role="menuitem">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 9 14.15 8 11.5 8c-1.43 0-5.24 3.23-6.98 7.44l2.24.74C7.97 13.14 10.95 11 14.5 11c2.71 0 5.07 1.22 6.42 2.56L18.5 16H22V7l-3.6 3.6z"/></svg>
+            <span class="menu-label">Redo action</span>
+            <span class="menu-shortcut">Ctrl+Y</span>
+          </button>
+        </li>
+
+        <li class="menu-divider" role="separator"></li>
+
+        <li class="menu-item-wrapper" role="none">
+          <button class="menu-item" role="menuitem">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            <span class="menu-label">Copy selection</span>
+            <span class="menu-shortcut">Ctrl+C</span>
+          </button>
+        </li>
+
+        <li class="menu-item-wrapper" role="none">
+          <button class="menu-item" role="menuitem">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/></svg>
+            <span class="menu-label">Paste from clipboard</span>
+            <span class="menu-shortcut">Ctrl+V</span>
+          </button>
+        </li>
+
+        <li class="menu-item-wrapper" role="none">
+          <button id="preferences-trigger" class="menu-item" role="menuitem" popovertarget="preferences-submenu" aria-haspopup="true">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.82c-.5-.38-1.05-.7-1.64-.95l-.36-2.54c-.05-.22-.24-.39-.47-.39h-3.84c-.24 0-.43.17-.47.39l-.36 2.54c-.59.25-1.13.57-1.62.95l-2.39-.82c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.82c.5.38 1.05.7 1.64.95l.36 2.54c.05.22.24.39.47.39h3.84c.24 0 .43-.17.47-.39l.36-2.54c.59-.25 1.13-.57 1.62-.95l2.39.82c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            <span class="menu-label">Preferences</span>
+            <span class="menu-arrow" aria-hidden="true"></span>
+          </button>
+
+          <!-- NATIVE PREFERENCES SUBMENU POPOVER NESTED TO FIX SAFARI LIGHT-DISMISS AND ANCHOR RESOLUTION -->
+          <div id="preferences-submenu" popover class="popover-menu">
+            <menu class="menu-list" role="menu">
+              <li class="menu-item-wrapper" role="none">
+                <button class="menu-item" role="menuitem">
+                  <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 9-9 9 9 0 0 0-9-9zm0 16.5c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7z"/></svg>
+                  <span class="menu-label">User Theme</span>
+                  <span class="menu-shortcut">Ctrl+T</span>
+                </button>
+              </li>
+              <li class="menu-item-wrapper" role="none">
+                <button class="menu-item" role="menuitem">
+                  <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-4h-2V7h2v2z"/></svg>
+                  <span class="menu-label">Shortcuts</span>
+                </button>
+              </li>
+            </menu>
+          </div>
+        </li>
+
+      </menu>
+    </div>
+
+    <!-- Long dummy text block to allow scrolling down -->
+    <div class="content-box">
+      <h3>Layout Agnostic Subgrid Benefits</h3>
+      <p>By defining <code>grid-template-columns: subgrid</code> inside each <code>.menu-item</code>, the subgrid directs the sizing tracks back to the root <code>.menu-list</code> definitions. This means:</p>
+      <ul>
+        <li><strong>Icons:</strong> Always occupy identical width columns, even if one icon has a different aspect ratio.</li>
+        <li><strong>Text:</strong> Takes up all remaining available horizontal space in column 2.</li>
+        <li><strong>Shortcuts:</strong> Vertically line up beautifully to the right, regardless of varying text lengths.</li>
+        <li><strong>Submenu Arrows:</strong> Line up perfectly right-aligned inside the same layout boundary.</li>
+      </ul>
+      <p>This completely removes the need for magic margin offsets or hardcoded column width variables across menu list items, making it fully fluid and reliable.</p>
+    </div>
+
+    <div class="content-box" style="margin-block-end: 20rem;">
+      <h3>Scrolling Context Test Box</h3>
+      <p>Scroll down further to watch the menubar stick to the top edge. When it sticks, it dynamically receives stuck styling using standard CSS Container Scroll State queries. This requires no Javascript Scroll event observers, preventing layout recalculation lag on heavy pages.</p>
+    </div>
+  </main>
+
+  <script>
+    // Simple keyboard navigation for native popover menu accessibility
+    const triggers = document.querySelectorAll('.menu-trigger');
+    const menus = document.querySelectorAll('.popover-menu');
+
+    // Sync button focus and popup state
+    triggers.forEach(trigger => {
+      trigger.addEventListener('keydown', (e) => {
+        const popoverId = trigger.getAttribute('popovertarget');
+        const popover = document.getElementById(popoverId);
+
+        if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          popover.showPopover();
+          // Focus first interactive menu item inside popover
+          const firstBtn = popover.querySelector('.menu-item');
+          if (firstBtn) firstBtn.focus();
+        }
+      });
+    });
+
+    menus.forEach(menu => {
+      menu.addEventListener('keydown', (e) => {
+        const items = Array.from(menu.querySelectorAll('.menu-item'));
+        const activeIdx = items.indexOf(document.activeElement);
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const nextIdx = (activeIdx + 1) % items.length;
+          items[nextIdx].focus();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prevIdx = (activeIdx - 1 + items.length) % items.length;
+          items[prevIdx].focus();
+        } else if (e.key === 'ArrowRight') {
+          // Open submenu on ArrowRight
+          const targetId = document.activeElement.getAttribute('popovertarget');
+          if (targetId) {
+            e.preventDefault();
+            const submenu = document.getElementById(targetId);
+            if (submenu) {
+              submenu.showPopover();
+              const firstBtn = submenu.querySelector('.menu-item');
+              if (firstBtn) firstBtn.focus();
+            }
+          }
+        } else if (e.key === 'ArrowLeft') {
+          // Close submenu and return to parent trigger on ArrowLeft
+          if (menu.id === 'preferences-submenu') {
+            e.preventDefault();
+            menu.hidePopover();
+            const trigger = document.getElementById('preferences-trigger');
+            if (trigger) trigger.focus();
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          menu.hidePopover();
+          if (menu.id === 'preferences-submenu') {
+            const trigger = document.getElementById('preferences-trigger');
+            if (trigger) trigger.focus();
+          } else {
+            const triggerId = menu.id.replace('-menu', '-trigger');
+            const trigger = document.getElementById(triggerId);
+            if (trigger) trigger.focus();
+          }
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

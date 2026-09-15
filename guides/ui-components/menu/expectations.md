@@ -1,0 +1,8 @@
+- **MANDATORY**: The top-level menubar wrapper MUST be sticky positioned (`position: sticky`) and established as a scroll-state query container (`container-type: scroll-state`) to track when it becomes pinned.
+- **MANDATORY**: Descendant elements inside the sticky menubar wrapper MUST natively transform visually (e.g. adjust border, color, or shadow) when stuck at the top edge of the viewport using `@container scroll-state(stuck: top)` queries.
+- **MANDATORY**: Each dropdown and submenu list MUST explicitly declare the native HTML `popover` attribute to promote overlays into the browser's top-layer.
+- **MANDATORY**: Overlays MUST be positioned relative to their triggering elements wrapperlessly in CSS using standard Anchor Positioning (`anchor-name` on triggers, `position-anchor` and `anchor()` on popovers).
+- **MANDATORY**: Popover list-items and menu-item button elements MUST use `display: grid; grid-template-columns: subgrid` to delegate column tracks to the parent menu grid definition, ensuring vertical alignment of icons, labels, shortcuts, and arrows across rows.
+- **MANDATORY**: The scrolling menu list container MUST be declared as a scroll-state query container (`container-type: scroll-state`) and natively toggle visual overflow shadow indicator overlays using `@container scroll-state(scrollable: top/bottom)` queries.
+- **MANDATORY**: Nested submenu popovers MUST be physically nested inside their parent `<li>` list item triggering element in the HTML DOM tree to establish the correct ancestral relation in the browser's native Popover shadow tree.
+- **OPTIONAL**: Progressive enhancement can be demonstrated by providing relative-container fallback alignments for environments that do not natively support CSS Anchor positioning.
