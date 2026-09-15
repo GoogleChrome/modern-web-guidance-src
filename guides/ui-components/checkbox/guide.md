@@ -5,6 +5,7 @@ web-feature-ids:
   - accent-color
   - indeterminate
   - individual-transforms
+  - masks
 ---
 
 # Styling Checkboxes
@@ -53,9 +54,15 @@ For quick, brand-consistent styling that preserves 100% of native rendering and 
 
 To build bespoke checkmark shapes, borders, and animations, use `appearance: none` directly on the `<input>` element. This strips the native browser styling while leaving the `<input>` in the DOM as the interactive target.
 
-You can render a crisp vector checkmark with **CSS masking** on a pseudo-element. This keeps your markup entirely flat and lets you style the checkmark color using `currentColor` (matching the parent's text color).
+By combining **custom properties** and **CSS masking**, we can implement a highly flexible, CSS-driven icon engine. This approach avoids hardcoding SVG assets inside individual styling rules and allows dynamic swap of checkmark icons based on checkbox state.
 
 ```css
+/* 1. Define reusable SVG assets as variables in :root */
+:root {
+  --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
+  --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
+}
+
 .checkbox-custom {
   /* Remove default browser visual box */
   appearance: none;
@@ -77,15 +84,21 @@ You can render a crisp vector checkmark with **CSS masking** on a pseudo-element
   height: 0.7em;
   background-color: currentColor;
   
-  /* Render a custom checkmark SVG via CSS mask */
-  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>') no-repeat center / contain;
+  /* Apply the mask utilizing the checkbox-icon custom property */
+  mask: var(--checkbox-icon) no-repeat center / contain;
+  -webkit-mask: var(--checkbox-icon) no-repeat center / contain; /* Legacy support */
   
   /* Scale to 0 (hidden) by default to animate check/uncheck */
   scale: 0;
   transition: scale 0.15s ease;
 }
 
-/* Animate checked scale */
+/* Dynamically update the icon property based on checkbox state */
+.checkbox-custom:checked {
+  --checkbox-icon: var(--icon-check);
+}
+
+/* Animate checkmark visibility */
 .checkbox-custom:checked::before {
   scale: 1;
 }
@@ -103,7 +116,7 @@ You can render a crisp vector checkmark with **CSS masking** on a pseudo-element
 When a checkbox is programmatically set to `indeterminate = true`, ensure you style the `:indeterminate` pseudo-class to visually indicate this state:
 
 * **Native (`accent-color`):** Automatically styled by the browser to match `accent-color`.
-* **Custom (`appearance: none`):** Render a custom horizontal dash SVG using CSS mask.
+* **Custom (`appearance: none`):** Dynamically assign the `--checkbox-icon` variable to the custom dash icon.
 
 ```css
 /* Native checkboxes inherit the accent color in the indeterminate state */
@@ -111,10 +124,14 @@ When a checkbox is programmatically set to `indeterminate = true`, ensure you st
   accent-color: #1a73e8;
 }
 
-/* Custom checkboxes must scale and mask a dash */
+/* Dynamically swap the custom property to the dash icon */
+.checkbox-custom:indeterminate {
+  --checkbox-icon: var(--icon-dash);
+}
+
+/* Animate indeterminate dash visibility */
 .checkbox-custom:indeterminate::before {
   scale: 1;
-  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>') no-repeat center / contain;
 }
 ```
 

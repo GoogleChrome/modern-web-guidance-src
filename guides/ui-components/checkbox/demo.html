@@ -16,6 +16,10 @@
       --bg-disabled: #e1e2e4;
       --text-color: #1f1f1f;
       --text-disabled: #8e9196;
+
+      /* Reusable SVG data URIs defined as variables */
+      --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
+      --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
     }
 
     body {
@@ -128,28 +132,29 @@
       outline: 2px solid var(--brand-primary);
     }
 
-    /* Custom Checkmark Icon via ::before and CSS masking */
+    /* Custom Checkmark Icon via ::before */
     .custom-checkbox::before {
       content: "";
       width: 0.75em;
       height: 0.75em;
       background-color: currentColor;
 
-      /* Render SVG checkmark via CSS mask */
-      mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>') no-repeat center / contain;
+      /* Apply the mask utilizing the checkbox-icon custom property */
+      mask: var(--checkbox-icon) no-repeat center / contain;
+      -webkit-mask: var(--checkbox-icon) no-repeat center / contain;
 
       /* Scale checkmark to 0 by default to animate check/uncheck */
-      scale: 9;
+      scale: 0;
       transform-origin: center;
       transition: scale 0.15s cubic-bezier(0.12, 0.8, 0.32, 1.2);
     }
 
-    /* Checked State */
+    /* Dynamically swap the icon property based on checkbox state */
     .custom-checkbox:checked {
       background-color: var(--brand-primary);
       border-color: var(--brand-primary);
       color: #ffffff;
-      /* Sets checkmark icon color inside mask */
+      --checkbox-icon: var(--icon-check);
     }
 
     .custom-checkbox:checked::before {
@@ -177,12 +182,11 @@
       background-color: var(--brand-primary);
       border-color: var(--brand-primary);
       color: #ffffff;
+      --checkbox-icon: var(--icon-dash);
     }
 
     .custom-checkbox:indeterminate::before {
       scale: 1;
-      /* Custom Indeterminate dash icon via mask */
-      mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>') no-repeat center / contain;
     }
 
     .custom-checkbox--danger:indeterminate {
