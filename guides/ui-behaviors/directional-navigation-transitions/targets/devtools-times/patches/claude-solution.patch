@@ -1,0 +1,302 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..e0e9d66 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,25 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  interface StartViewTransitionOptions {
++    update?: () => void | Promise<void>;
++    types?: string[];
++  }
++
++  interface DirectionalViewTransition {
++    readonly types: Set<string>;
++    readonly ready: Promise<void>;
++    readonly updateCallbackDone: Promise<void>;
++    readonly finished: Promise<void>;
++    skipTransition(): void;
++  }
++
++  interface Document {
++    startViewTransition(
++      callbackOrOptions?: (() => void | Promise<void>) | StartViewTransitionOptions,
++    ): DirectionalViewTransition;
++  }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/FeaturedStorySlider.astro b/src/components/FeaturedStorySlider.astro
+new file mode 100644
+index 0000000..2e29093
+--- /dev/null
++++ b/src/components/FeaturedStorySlider.astro
+@@ -0,0 +1,161 @@
++---
++import type { CollectionEntry } from 'astro:content';
++import { Image } from 'astro:assets';
++import { getArticleImage } from '../utils/images';
++import { ArrowLongLeftIcon, ArrowLongRightIcon, BookOpenIcon } from '@heroicons/react/24/outline';
++
++export interface Props {
++    title: string;
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { title, articles } = Astro.props;
++
++if (articles.length < 2) {
++    throw new Error('FeaturedStorySlider requires at least 2 articles.');
++}
++
++const slides = await Promise.all(
++    articles.map(async (article) => ({
++        article,
++        image: await getArticleImage(article),
++        category: article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1),
++    }))
++);
++
++const baseUrl = import.meta.env.BASE_URL;
++---
++
++<section class="p-4 md:p-6" data-featured-slider aria-roledescription="carousel" aria-label={title}>
++    <div class="flex flex-wrap items-baseline justify-between gap-x-4 border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
++        <h2 class="text-3xl font-bold">{title}</h2>
++        <p class="text-sm text-gray-500" aria-live="polite">
++            Story <span data-slide-position>1</span> of {slides.length}
++        </p>
++    </div>
++
++    <div class="shadow-sm overflow-hidden">
++        {slides.map(({ article, image, category }, index) => (
++            <article
++                class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8"
++                data-slide
++                hidden={index !== 0}
++                aria-roledescription="slide"
++                aria-label={`Story ${index + 1} of ${slides.length}`}
++            >
++                <a href={`${baseUrl}articles/${article.id}`} class="block w-full">
++                    <Image
++                        src={image}
++                        alt={article.data.title}
++                        width={800}
++                        height={450}
++                        format="webp"
++                        class="w-full h-full object-cover aspect-video"
++                    />
++                </a>
++                <div class="flex flex-col justify-center p-2 sm:p-4 lg:p-6">
++                    <a
++                        href={`${baseUrl}category/${article.data.category.toLowerCase()}`}
++                        class="text-amber-800 text-sm font-brand tracking-widest hover:underline"
++                    >
++                        {category}
++                    </a>
++                    <a href={`${baseUrl}articles/${article.id}`}>
++                        <h3 class="mt-2 text-3xl lg:text-4xl font-brand leading-tight hover:text-amber-400 transition-colors">
++                            {article.data.title}
++                        </h3>
++                    </a>
++                    <p class="mt-4 text-gray-700 text-base lg:text-lg">{article.data.summary}</p>
++                    <div class="flex items-center text-gray-500 text-sm mt-6">
++                        <BookOpenIcon className="w-4 h-4 mr-1.5" />
++                        <span>{article.data.readingTime} Min Read</span>
++                    </div>
++                </div>
++            </article>
++        ))}
++    </div>
++
++    <div class="flex justify-between items-center gap-4 mt-6">
++        <button
++            type="button"
++            data-slider-prev
++            class="inline-flex items-center gap-2 border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-900 hover:border-gray-900 hover:text-amber-800 transition-colors cursor-pointer"
++        >
++            <ArrowLongLeftIcon className="w-5 h-5" />
++            Previous
++        </button>
++        <button
++            type="button"
++            data-slider-next
++            class="inline-flex items-center gap-2 border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-900 hover:border-gray-900 hover:text-amber-800 transition-colors cursor-pointer"
++        >
++            Next
++            <ArrowLongRightIcon className="w-5 h-5" />
++        </button>
++    </div>
++</section>
++
++<script>
++    type Direction = 'forward' | 'backward';
++
++    /**
++     * Navigates to a new view with a directional transition.
++     */
++    function navigate(updateDOM: () => void, direction: Direction) {
++        // Feature detect for browsers that do not support View Transitions.
++        if (!document.startViewTransition) {
++            updateDOM();
++            return;
++        }
++
++        document.startViewTransition({
++            update: updateDOM,
++            types: [direction], // Matches the CSS :active-view-transition-type() selectors
++        });
++    }
++
++    function setupSlider(slider: HTMLElement) {
++        if (slider.dataset.sliderReady === 'true') return;
++        slider.dataset.sliderReady = 'true';
++
++        const slides = Array.from(slider.querySelectorAll<HTMLElement>('[data-slide]'));
++        const previousButton = slider.querySelector<HTMLButtonElement>('[data-slider-prev]');
++        const nextButton = slider.querySelector<HTMLButtonElement>('[data-slider-next]');
++        const position = slider.querySelector<HTMLElement>('[data-slide-position]');
++
++        if (slides.length < 2 || !previousButton || !nextButton) return;
++
++        let current = slides.findIndex((slide) => !slide.hidden);
++        if (current < 0) current = 0;
++
++        const render = () => {
++            slides.forEach((slide, index) => {
++                slide.hidden = index !== current;
++            });
++            if (position) position.textContent = String(current + 1);
++        };
++
++        const go = (offset: number, direction: Direction) => {
++            const target = (current + offset + slides.length) % slides.length;
++            navigate(() => {
++                current = target;
++                render();
++            }, direction);
++        };
++
++        nextButton.addEventListener('click', () => go(1, 'forward'));
++        previousButton.addEventListener('click', () => go(-1, 'backward'));
++
++        render();
++    }
++
++    function initSliders() {
++        document
++            .querySelectorAll<HTMLElement>('[data-featured-slider]')
++            .forEach(setupSlider);
++    }
++
++    initSliders();
++    // Re-initialize after client-side navigations performed by Astro's ClientRouter.
++    document.addEventListener('astro:page-load', initSliders);
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..5f0e259 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import FeaturedStorySlider from '../components/FeaturedStorySlider.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -16,6 +17,7 @@ const topStories = articles.slice(1, 4);
+ const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+ const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+ const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++const featuredArticles = articles.slice(15, 20);   // 5 articles for the featured slider
+ 
+ // Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+ politicsArticles[2] = {
+@@ -60,6 +62,8 @@ politicsArticles[2] = {
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <FeaturedStorySlider title="Featured" articles={featuredArticles} />
++
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..6172bec 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,67 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Slide an element out to the left */
++@keyframes slide-to-left {
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++/* Slide an element in from the right */
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++}
++
++/* Slide an element out to the right */
++@keyframes slide-to-right {
++  to {
++    transform: translateX(100%);
++  }
++}
++
++/* Slide an element in from the left */
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++}
++
++/* Shared timing for every directional root transition.
++   Written as longhands so the CSS minifier cannot collapse the nameless
++   `animation` shorthand down to `animation: none`. */
++::view-transition-group(root),
++::view-transition-old(root),
++::view-transition-new(root) {
++  animation-duration: 0.4s;
++  animation-timing-function: ease-in-out;
++  animation-fill-mode: both;
++}
++
++/* Forward navigation: the outgoing view leaves left, the incoming view enters from the right */
++html:active-view-transition-type(forward)::view-transition-old(root) {
++  animation-name: slide-to-left;
++}
++html:active-view-transition-type(forward)::view-transition-new(root) {
++  animation-name: slide-from-right;
++}
++
++/* Backward navigation: the outgoing view leaves right, the incoming view enters from the left */
++html:active-view-transition-type(backward)::view-transition-old(root) {
++  animation-name: slide-to-right;
++}
++html:active-view-transition-type(backward)::view-transition-new(root) {
++  animation-name: slide-from-left;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(root),
++  ::view-transition-old(root),
++  ::view-transition-new(root) {
++    animation: none !important;
++  }
++}
