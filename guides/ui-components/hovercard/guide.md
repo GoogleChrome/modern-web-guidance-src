@@ -7,6 +7,8 @@ web-feature-ids:
   - anchor-positioning
   - interest-invokers
   - cross-document-view-transitions
+  - blocking-render
+  - link-rel-expect
 guides:
   - interest-triggered-tooltips
   - consistent-cross-document-transitions
@@ -28,7 +30,7 @@ Use the **Interest Invokers** API to trigger the hovercard. This ensures the car
 <a href="/article" interestfor="article-preview">Article title</a>
 
 <!-- The `id` must match the `interestfor` value on the trigger. -->
-<div id="buzz-popover" popover="hint">
+<div id="buzz-popover" popover="hint" class="hovercard">
   <h2>The buzz on hummingbirds</h2>
   <p class="byline">By Delphi Aguilar</p>
   <div>
@@ -53,7 +55,7 @@ When you use `interestfor`, the browser handles the assistive-technology wiring:
 Position the hovercard relative to its trigger using **CSS Anchor Positioning**. When using `interestfor`, the trigger becomes an implicit anchor for the popover.
 
 ```css
-[popover] {
+[popover].hovercard {
   /* Position the card below the trigger and aligned with the inline end.
      This assumes the trigger is the implicit anchor. */
   position-area: block-end span-inline-end;

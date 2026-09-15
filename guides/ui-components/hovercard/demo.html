@@ -69,7 +69,7 @@
           opacity 0.4s,
           transform 0.4s;
         opacity: 0;
-        transform: translateY(10px) scale(0.95);
+        transform-origin: top;
       }
 
       [popover]:popover-open {
@@ -80,7 +80,7 @@
       @starting-style {
         [popover]:popover-open {
           opacity: 0;
-          transform: translateY(10px) scale(0.95);
+          transform: translateY(-10px) scale(0.95);
         }
       }
 
@@ -108,6 +108,7 @@
       @view-transition {
         navigation: auto;
       }
+
       [popover]:popover-open {
         view-transition-name: --hovercard;
         h2 {
