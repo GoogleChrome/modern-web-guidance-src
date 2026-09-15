@@ -100,29 +100,20 @@ You can render a crisp vector checkmark with **CSS masking** on a pseudo-element
 
 ## 3. Styling the Indeterminate State
 
-The indeterminate state represents a checkbox that is neither fully checked nor unchecked (commonly used in tree-views or nested categories). 
+When a checkbox is programmatically set to `indeterminate = true`, ensure you style the `:indeterminate` pseudo-class to visually indicate this state:
 
-In HTML, the `indeterminate` state cannot be set via an attribute; it **must be configured programmatically via JavaScript**. You style it using the `:indeterminate` pseudo-class in CSS:
-
-```javascript
-// Programmatically set the indeterminate property to true
-document.getElementById('my-checkbox').indeterminate = true;
-```
-
-For native checkboxes, the browser automatically styles the indeterminate state (including matching the custom color set via `accent-color`).
-
-For custom checkboxes, style the `:indeterminate` pseudo-class and apply a custom dash mask:
+* **Native (`accent-color`):** Automatically styled by the browser to match `accent-color`.
+* **Custom (`appearance: none`):** Render a custom horizontal dash SVG using CSS mask.
 
 ```css
-/* Styling native indeterminate checkbox accent-color */
+/* Native checkboxes inherit the accent color in the indeterminate state */
 .checkbox-native:indeterminate {
   accent-color: #1a73e8;
 }
 
-/* Styling custom indeterminate checkbox */
+/* Custom checkboxes must scale and mask a dash */
 .checkbox-custom:indeterminate::before {
   scale: 1;
-  /* Render a custom horizontal dash SVG for indeterminate states */
   mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>') no-repeat center / contain;
 }
 ```
