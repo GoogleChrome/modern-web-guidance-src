@@ -1,7 +1,9 @@
-- **MANDATORY**: The implementation MUST use a classless CSS selection model targeting semantic elements directly (such as mapping `article.card`, `img`, `hgroup`, `p`, and `footer`) to structure the card layout without requiring internal layout or modifier class names on the child elements.
-- **MANDATORY**: The `<article.card>` element MUST be placed inside a parent layout container wrapper (`.card-layout`) which establishes an inline-size container query context (`container-type: inline-size; container-name: card-container`). This allows the card to adapt its internal grid columns and tracks without violating the rule that a container cannot query itself.
-- **MANDATORY**: The implementation MUST utilize semantic `<hgroup>` elements to group headings and subtitles.
-- **MANDATORY**: The component grid layout MUST adapt dynamically depending on the presence of direct-child media elements (such as `img`, `picture`, or `svg`) inside the card article (automatically shifting to a two-column sidebar layout when media is present, and keeping a clean single-column text layout when media is absent).
-- **MANDATORY**: Repositioning and column placement in the sidebar layout MUST be established using modern CSS Grid explicit grid-column and grid-row coordinates (e.g. `grid-column: 1`, `grid-row: 1 / span 10` on the image, and `grid-column: 2` on all other elements) to seamlessly support different HTML layout source-order permutations.
-- **MANDATORY**: The implementation MUST provide a robust browser compatibility fallback utilizing `@supports not (container-type: inline-size)` to degrade gracefully to a fluid, wrapping Flexbox layout when CSS Container Queries are unsupported by the browser.
-- **MANDATORY**: The component MUST delegate keyboard focus indication to the parent card wrapper using a focus-within mechanism (such as `:has(:focus-visible)` or `:focus-within`) to provide highly visible, contrast-compliant outlines for keyboard-only users.
+- **MANDATORY**: A card representing independently understandable content uses an `article` containing a meaningful title, supporting content, and any related actions in reading order.
+- **MANDATORY**: A media card remains vertically stacked when its own container is narrow, regardless of the viewport width.
+- **MANDATORY**: When a media card's own container becomes wide enough, its media is displayed beside its title, supporting content, and actions.
+- **MANDATORY**: A card without media retains a complete, readable stacked layout at every container width.
+- **MANDATORY**: Card media has a stable displayed shape and crops without distortion.
+- **MANDATORY**: The card title is a link to its primary destination.
+- **MANDATORY**: Secondary actions are separate native links or buttons and remain independently keyboard-focusable.
+- **MANDATORY**: Keyboard focus on an interactive card descendant gives the card a visible focus context without obscuring the focused control.
+- **OPTIONAL**: A text-only card has an additional visual treatment when that distinction conveys useful content meaning.

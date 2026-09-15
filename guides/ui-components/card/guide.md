@@ -1,224 +1,153 @@
 ---
 name: card
-description: "Build a card component: a self-contained content container (image, heading, text, actions) that adapts its layout to its own size and contents."
+description: "Build a card component that adapts its presentation to its own available space and contents."
 web-feature-ids:
   - has
   - container-queries
 guides:
   - size-aware-styling
   - content-based-styling
+  - css-layout
+  - accessibility
 ---
 
-# Semantic, Content-Aware Card Component
+# Build a Content-Aware Card
 
-Build a card component as a self-contained content container (image, heading, text, actions) that adapts its layout dynamically to its own size and contents using Container Queries and the `:has()` parent selector.
+Use a card to group one independently understandable piece of content: an
+article preview, product, profile, or saved item. Keep its source order
+meaningful: media, title, supporting content, then related actions.
 
----
+Use an `article` when the card can stand on its own outside its current page.
+For the appropriate semantics and focus treatment for links and controls, see
+{{ GUIDE_REF("accessibility") }}.
 
-## The Parent Layout Container Pattern
+## Adapt to the card's placement
 
-A fundamental rule of CSS Container Queries is that **a container cannot query itself**. An element defined with `container-type: inline-size` cannot use `@container` queries to modify its own grid tracks, padding, or layout areas. 
+Cards commonly appear in a main-content grid, narrow sidebar, and compact
+related-content area. Make the card respond to the width available to its slot,
+not to the viewport. For container-query setup and sizing strategy, see
+{{ GUIDE_REF("size-aware-styling") }}.
 
-To resolve this limitation while keeping your card component completely semantic and flat, utilize the **Parent Layout Container Pattern**:
-1. **The Card Layout Wrapper (`.card-layout`)**: The parent layout cell (representing a slot in a CSS Grid, product catalog, dashboard, or sidebar) defines the container query context.
-2. **The Card Component (`.card`)**: The card itself queries the parent layout container (`card-container`) to dynamically adjust its grid template columns, areas, and spacing.
+Put the query container on a wrapper around the card when a query needs to alter
+the card's own layout. A container cannot query itself, so the wrapper lets the
+card change from a stacked presentation to a media-and-content layout.
 
----
+### Card composition
 
-## How to Implement
+Place the `article` inside its query wrapper. Make the heading link to the
+primary destination, and keep secondary actions separate from that link:
 
-### 1. Semantic HTML Structure
-Place the semantic `<article class="card">` inside a `.card-layout` wrapper. 
-
-Utilize the HTML `<article>` element as the card's root. By definition, a card represents a self-contained, independent, and reusable composition of content (such as a product listing, directory item, or article preview). Using `<article>` satisfies critical semantic and accessibility expectations, allowing screen readers and assistive technologies to cleanly discover and announce the card as a standalone section of the page.
-
-#### Variation A: Card with Image Media
 ```html
-<div class="card-layout">
+<div class="card-slot">
   <article class="card">
-    <img src="dish.jpg" alt="Poached Eggs" />
+    <img src="recipe.jpg" alt="Poached eggs on toast">
     <hgroup>
-      <h3><a href="#recipe">Poached Eggs</a></h3>
-      <p>Breakfast Special</p>
+      <h3><a href="/recipes/poached-eggs">Poached eggs</a></h3>
+      <p>Breakfast special</p>
     </hgroup>
-    <p>Two perfectly poached organic eggs served on toasted sourdough with microgreens.</p>
+    <p>Two poached eggs served on toasted sourdough with microgreens.</p>
     <footer>
       <button>Favorite</button>
-      <a href="#cart">Add to Cart</a>
+      <a href="/recipes/poached-eggs">View recipe</a>
     </footer>
   </article>
 </div>
 ```
 
-#### Variation B: Card without Media (Text-Only)
-```html
-<div class="card-layout">
-  <article class="card">
-    <hgroup>
-      <h3><a href="#philosophy">Culinary Philosophy</a></h3>
-      <p>Crafted with Passion</p>
-    </hgroup>
-    <p>Sourcing exclusively local, organic ingredients supports sustainable agriculture...</p>
-    <footer>
-      <button>Learn More</button>
-    </footer>
-  </article>
-</div>
-```
 
----
+### Card layout
 
-### 2. Base Grid and Container Definition
-Define the parent layout wrapper as the container, and let the `.card` elements naturally stack inside a single-column layout:
+Start with a stacked layout. Size media within the card, then apply a
+two-column layout only when the card has media and its slot is wide enough:
 
 ```css
-/* 1. Parent Layout Wrapper defines the query context */
-.card-layout {
+.card-slot {
   container-type: inline-size;
-  container-name: card-container;
-  width: 100%; /* Spans full width of parent column/grid cell */
 }
 
-/* 2. The Card Component Grid Base (Preserves natural HTML order) */
 .card {
   display: grid;
-  grid-template-columns: 1fr; /* Natural stacked flow respecting HTML source order */
-  padding: 1.5rem;
+  grid-template-columns: 1fr;
   gap: 0.75rem;
-  position: relative; /* Essential for nested focus expansion */
+  padding: 1.5rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
 }
 
-/* Style children based strictly on HTML tag semantics */
+.card:has(:focus-visible) {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
 .card > :is(img, picture, svg) {
-  width: 100%;
-  height: 140px;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
+  border-radius: 0.25rem;
 }
 
-/* Target heading group */
 .card > hgroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  display: grid;
+  gap: 0.25rem;
 }
 
-.card > hgroup > :is(h1, h2, h3, h4, h5, h6) {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  text-wrap: balance; /* Balance heading lines */
-}
-
-.card > hgroup > p {
-  margin: 0;
-  font-size: 0.825rem;
-}
-
+.card > hgroup > :is(h1, h2, h3, h4, h5, h6),
+.card > hgroup > p,
 .card > p {
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.55;
-  text-wrap: pretty; /* Avoid orphans */
 }
 
 .card > footer {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
-```
 
----
-
-### 3. Smart Layout Reconfiguration with `:has()`
-
-By querying the parent layout container (`card-container`), style the descendant `.card` dynamically. 
-
-By employing `:has()`, you can target cards containing image elements specifically, leaving text-only cards in their natural single-column layout:
-
-```css
-@container card-container (min-width: 32.01rem) {
-  /* Establish two-column sidebar layout ONLY if a media element is present */
+@container (min-width: 32rem) {
   .card:has(> :is(img, picture, svg)) {
-    grid-template-columns: 140px 1fr;
+    grid-template-columns: 8.75rem 1fr;
     gap: 0.5rem 1.25rem;
+    align-items: start;
   }
 
-  /* Force the media element to column 1, spanning all content rows */
   .card:has(> :is(img, picture, svg)) > :is(img, picture, svg) {
     grid-column: 1;
     grid-row: 1 / span 10;
     align-self: start;
-    height: 100%;
-    min-height: 140px;
+    block-size: 100%;
+    min-block-size: 8.75rem;
   }
 
-  /* Force all other siblings to column 2, stacking naturally */
   .card:has(> :is(img, picture, svg)) > :not(:is(img, picture, svg)) {
     grid-column: 2;
   }
 }
-```
 
----
-
-## Strategic Implementation & Best Practices
-
-- **DO** map styles directly to semantic tags (`article`, `img`, `hgroup`, `p`, `footer`) rather than adding helper layout classes. This keeps the markup clean and enforces accessibility.
-- **DO NOT** hardcode widths directly on card components. Let the parent container's layout track determine the card's dimensions.
-- **DO** define the container query context on the **parent layout wrapper** (`.card-layout`) rather than the card itself, so the card is able to query and rearrange its own columns.
-- **DO NOT** use viewport media queries (`@media`) for component structure. Use Container Queries so the card adapts based on where it is rendered (e.g., narrow sidebar vs wide grid cell).
-- **DO** design custom keyboard focus indicators by delegating focus to the card container:
-  ```css
-  /* Style focus state when any child inside the card receives keyboard focus */
-  .card:has(:focus-visible) {
-    outline: 2px solid var(--focus-ring-color, currentColor);
-    outline-offset: 4px;
-  }
-  ```
-- **DO NOT** wrap an entire card in a block-level anchor `<a>` tag or bind generic Javascript click handlers to `div`s. This ruins keyboard focus and screen reader semantics.
-
----
-
-## Fallback Strategies
-
-### 1. Browser Fallback (When Container Queries Are Unsupported)
-
-For browsers that do not natively support CSS Container Queries, write a fluid fallback that degrades gracefully to a **wrapping Flexbox layout** utilizing the `@supports not` query. 
-
-By declaring the `@supports not` block later in the stylesheet, the wrapping Flexbox rules naturally override the base single-column grid properties via native CSS Cascade, keeping your code exceptionally clean and free of `!important` flags:
-
-```css
-@supports not (container-type: inline-size) {
-  /* Fallback to a fluid, wrapping Flexbox layout */
-  .card-layout {
-    display: block;
-    width: 100%;
-  }
-
-  .card {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .card > :is(img, picture, svg) {
-    flex: 1 1 140px;
-    max-width: 140px;
-    height: 140px;
-  }
-
-  .card > :not(:is(img, picture, svg)) {
-    flex: 1 1 240px;
-  }
+.card:not(:has(> :is(img, picture, svg))) {
+  border-top: 0.25rem solid currentColor;
 }
 ```
 
-### 2. Progressive Enhancement Assessment
-The mobile-first grid layout (stacked rows) behaves as an excellent, readable fallback layout for legacy environments that do not support container size queries or `:has()`. Layout transitions and automatic adjustments are applied as progressive enhancements.
+Use `:has()` only for content-dependent variation, such as applying the
+two-column treatment only when a card has media. Keep the default stacked layout
+complete and readable so cards without media do not require special markup. The
+text-only border treatment is optional; use it only when it conveys a meaningful
+content distinction. For broader content-based styling guidance, see
+{{ GUIDE_REF("content-based-styling") }}.
 
-{{ FEATURE_ISSUES("container-queries") }}
-{{ FEATURE_ISSUES("has") }}
+The focus outline on the card provides context while its child retains its own
+visible focus indicator. For focus appearance and control semantics, see
+{{ GUIDE_REF("accessibility") }}.
 
-{{ FEATURE_FALLBACKS("container-queries") }}
-{{ FEATURE_FALLBACKS("has") }}
+
+## Keep the card's structure intentional
+
+Do not turn the whole card into one large link when it has independent actions.
+Make the title link to the card's primary destination and keep secondary actions
+as separate native controls. Avoid using CSS `order` to create a visual sequence
+that differs from the DOM sequence; see {{ GUIDE_REF("css-layout") }}.
+
+Use the focus and interaction guidance in {{ GUIDE_REF("accessibility") }} for
+interactive card content rather than implementing component-specific keyboard
+behavior.

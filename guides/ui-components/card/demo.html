@@ -8,7 +8,7 @@
   <style>
     :root {
       color-scheme: light dark;
-      
+
       /* Standard simple color properties */
       --bg-page: #f8fafc;
       --bg-card: #ffffff;
@@ -17,7 +17,7 @@
       --text-muted: #64748b;
       --border-color: #e2e8f0;
       --focus-ring-color: #2563eb;
-      
+
       --btn-bg: #f1f5f9;
       --btn-bg-hover: #e2e8f0;
       --btn-text: #475569;
@@ -33,7 +33,7 @@
         --text-muted: #94a3b8;
         --border-color: #334155;
         --focus-ring-color: #3b82f6;
-        
+
         --btn-bg: #334155;
         --btn-bg-hover: #475569;
         --btn-text: #cbd5e1;
@@ -104,16 +104,16 @@
      -------------------------------------------------- */
 
     /* Parent layout container wrapper */
-    .card-layout {
+    .card-slot {
       container-type: inline-size;
-      container-name: card-container;
       width: 100%;
     }
 
     /* The article element itself is the card component */
     .card {
       display: grid;
-      grid-template-columns: 1fr; /* Natural stacked flow respecting HTML source order */
+      grid-template-columns: 1fr;
+      /* Natural stacked flow respecting HTML source order */
       position: relative;
       background: var(--bg-card);
       border-radius: 12px;
@@ -130,7 +130,7 @@
     }
 
     /* Target direct visual media elements */
-    .card > :is(img, picture, svg) {
+    .card> :is(img, picture, svg) {
       width: 100%;
       height: 140px;
       object-fit: cover;
@@ -138,52 +138,55 @@
     }
 
     /* Target direct heading groups */
-    .card > hgroup {
+    .card>hgroup {
       display: flex;
       flex-direction: column;
       gap: 0.15rem;
     }
 
-    .card > hgroup > :is(h1, h2, h3, h4, h5, h6) {
+    .card>hgroup> :is(h1, h2, h3, h4, h5, h6) {
       margin: 0;
       font-size: 1.25rem;
       font-weight: 750;
       letter-spacing: -0.015em;
-      text-wrap: balance; /* Modern CSS: Balance heading lines */
+      text-wrap: balance;
+      /* Modern CSS: Balance heading lines */
     }
 
-    .card > hgroup > p {
+    .card>hgroup>p {
       margin: 0;
       font-size: 0.825rem;
       color: var(--text-muted);
     }
 
     /* Handle link text style overrides */
-    .card > hgroup > :is(h1, h2, h3, h4, h5, h6) a {
+    .card>hgroup> :is(h1, h2, h3, h4, h5, h6) a {
       color: inherit;
       text-decoration: none;
     }
 
-    .card > hgroup > :is(h1, h2, h3, h4, h5, h6) a:focus {
-      outline: none; /* Focus outline delegated to parent article above */
+    .card>hgroup> :is(h1, h2, h3, h4, h5, h6) a:focus {
+      outline: none;
+      /* Focus outline delegated to parent article above */
     }
 
     /* Target description text paragraphs */
-    .card > p {
+    .card>p {
       margin: 0;
       font-size: 0.875rem;
       line-height: 1.55;
-      text-wrap: pretty; /* Modern CSS: Prevent orphans */
+      text-wrap: pretty;
+      /* Modern CSS: Prevent orphans */
     }
 
     /* Target footer as actions list */
-    .card > footer {
+    .card>footer {
       display: flex;
       gap: 0.5rem;
       margin-top: 0.5rem;
     }
 
-    .card > footer :is(button, a) {
+    .card>footer :is(button, a) {
       all: unset;
       appearance: none;
       display: inline-flex;
@@ -200,7 +203,7 @@
       transition: background 0.15s ease, color 0.15s ease;
     }
 
-    .card > footer :is(button, a):hover {
+    .card>footer :is(button, a):hover {
       background: var(--btn-bg-hover);
       color: var(--btn-text-hover);
     }
@@ -208,14 +211,15 @@
     /* --------------------------------------------------
      DYNAMIC SIDEBAR LAYOUT (If media is present)
      -------------------------------------------------- */
-    @container card-container (min-width: 32.01rem) {
+    @container (min-width: 32rem) {
+
       /* Automatically shift to sidebar grid ONLY if an image/media element is present */
       .card:has(> :is(img, picture, svg)) {
         grid-template-columns: 140px 1fr;
         gap: 0.5rem 1.25rem;
       }
 
-      .card:has(> :is(img, picture, svg)) > :is(img, picture, svg) {
+      .card:has(> :is(img, picture, svg))> :is(img, picture, svg) {
         grid-column: 1;
         grid-row: 1 / span 10;
         align-self: start;
@@ -223,7 +227,7 @@
         min-height: 140px;
       }
 
-      .card:has(> :is(img, picture, svg)) > :not(:is(img, picture, svg)) {
+      .card:has(> :is(img, picture, svg))> :not(:is(img, picture, svg)) {
         grid-column: 2;
       }
     }
@@ -236,33 +240,6 @@
     .card:not(:has(> :is(img, picture, svg))) {
       border-top: 4px solid var(--focus-ring-color);
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    }
-
-    /* --------------------------------------------------
-     BROWSER COMPATIBILITY FALLBACK (When Container Queries are unsupported)
-     -------------------------------------------------- */
-    @supports not (container-type: inline-size) {
-      /* Fallback to a fluid, wrapping Flexbox layout */
-      .card-layout {
-        display: block;
-        width: 100%;
-      }
-
-      .card {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-      }
-
-      .card > :is(img, picture, svg) {
-        flex: 1 1 140px;
-        max-width: 140px;
-        height: 140px;
-      }
-
-      .card > :not(:is(img, picture, svg)) {
-        flex: 1 1 240px;
-      }
     }
 
     /* Presentation header styling */
@@ -294,21 +271,23 @@
 
   <h1>Content-Aware Card Component</h1>
   <p class="intro">
-    This demo illustrates a semantic card component. By querying its parent layout wrapper container 
-    using Container Queries and modern <code>:has()</code> selectors, the card automatically reconfigures its layout structure dynamically.
+    This demo illustrates a semantic card component. By querying its parent layout wrapper container
+    using Container Queries and modern <code>:has()</code> selectors, the card automatically reconfigures its layout
+    structure dynamically.
   </p>
 
   <!-- Example 1 -->
   <section>
     <h2>Example 1 — Card Layout in Narrow Viewport (Static Mobile Preview)</h2>
     <p class="intro">
-      A static mobile preview of the card with an image. Because the container is narrow (under <code>320px</code>), 
+      A static mobile preview of the card with an image. Because the container is narrow (under <code>320px</code>),
       the card naturally stacks elements vertically in their exact HTML source order.
     </p>
     <div class="static-mobile">
-      <div class="card-layout">
+      <div class="card-slot">
         <article class="card">
-          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60" alt="Poached Eggs" />
+          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60"
+            alt="Poached Eggs" />
           <hgroup>
             <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
@@ -327,13 +306,14 @@
   <section>
     <h2>Example 2 — Same Card in Wide Viewport (Static Desktop Preview)</h2>
     <p class="intro">
-      The exact same HTML card, rendered inside a wider layout container (e.g., <code>600px</code> wide). 
-      The card automatically detects the spacious container and shifts elements into a clean two-column sidebar layout, completely wrapperless.
+      The exact same HTML card, rendered inside a wider layout container (e.g., <code>600px</code> wide).
+      The card automatically detects the spacious container and shifts elements into a clean two-column sidebar layout.
     </p>
     <div class="static-desktop">
-      <div class="card-layout">
+      <div class="card-slot">
         <article class="card">
-          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60" alt="Poached Eggs" />
+          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60"
+            alt="Poached Eggs" />
           <hgroup>
             <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
@@ -352,13 +332,14 @@
   <section>
     <h2>Example 3 — Same Card in Resizable Sandbox (Interactive Resizer)</h2>
     <p class="intro">
-      Drag the handle in the bottom-right corner of the container to watch the card seamlessly transition 
+      Drag the handle in the bottom-right corner of the container to watch the card seamlessly transition
       between stacked mobile and two-column sidebar layouts as its width changes!
     </p>
     <div class="resize-demo">
-      <div class="card-layout">
+      <div class="card-slot">
         <article class="card">
-          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60" alt="Poached Eggs" />
+          <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&auto=format&fit=crop&q=60"
+            alt="Poached Eggs" />
           <hgroup>
             <h3><a href="#recipe-eggs">Poached Eggs</a></h3>
             <p>Breakfast Special</p>
@@ -377,17 +358,18 @@
   <section>
     <h2>Example 4 — Text-Only Card in Resizable Sandbox (Interactive Resizer)</h2>
     <p class="intro">
-      Drag the handle of this text-only card. Because it does not contain a media/image element, 
+      Drag the handle of this text-only card. Because it does not contain a media/image element,
       the card naturally adapts and maintains a clean single-column text layout across all container sizes.
     </p>
     <div class="resize-demo">
-      <div class="card-layout">
+      <div class="card-slot">
         <article class="card">
           <hgroup>
             <h3><a href="#philosophy">Culinary Philosophy</a></h3>
             <p>Crafted with Passion</p>
           </hgroup>
-          <p>Sourcing exclusively local, organic ingredients supports sustainable agriculture, and serving handcrafted meals cooked from scratch every single day.</p>
+          <p>Sourcing exclusively local, organic ingredients supports sustainable agriculture, and serving handcrafted
+            meals cooked from scratch every single day.</p>
           <footer>
             <button>Learn More</button>
           </footer>
