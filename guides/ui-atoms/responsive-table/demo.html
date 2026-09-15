@@ -3,35 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Responsive Table Demo</title>
+    <title>Responsive Table Demo: Staff Directory</title>
     <style>
       body {
         font-family:
           system-ui,
           -apple-system,
           sans-serif;
+        line-height: 1.5;
         margin: 2rem;
-        --z-col-header: 10;
+        max-inline-size: 1000px;
+        margin-inline: auto;
+        color: #333;
       }
-      table {
-        inline-size: 100cqi;
+      h1 {
+        margin-block-end: 0.5rem;
+      }
+      p {
+        margin-block-end: 2rem;
+        color: #666;
       }
       .table-wrapper {
         container-type: inline-size;
         overflow: auto;
         max-inline-size: 100%;
-        max-block-size: min(80vh, 500px);
+        max-block-size: min(80vh, 600px);
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      table {
+        inline-size: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
       }
       @container (width >= 600px) {
-        table {
-          border-collapse: separate;
-          border-spacing: 0;
-          inline-size: 100%;
-        }
         th,
         td {
-          border: 1px solid #ccc;
-          padding: 0.5rem;
+          border-block-end: 1px solid #eee;
+          padding: 0.75rem 1rem;
           text-align: left;
           white-space: nowrap;
           background: white;
@@ -39,17 +48,24 @@
         thead {
           position: sticky;
           inset-block-start: 0;
-          z-index: var(--z-col-header);
+          z-index: 10;
         }
         thead th {
-          background: #eee;
+          background: #f4f4f4;
+          font-weight: 600;
+          border-block-end: 2px solid #ccc;
         }
-        /* Sticky row headers - must stay on TH to stick horizontally within the row */
-        th[scope="row"] {
+        /* Sticky row headers (Names) */
+        tbody th {
           position: sticky;
           inset-inline-start: 0;
           background: #f9f9f9;
           z-index: 5;
+          font-weight: 600;
+          border-inline-end: 1px solid #eee;
+        }
+        tr:hover td {
+          background-color: #fcfcfc;
         }
       }
       @container (width < 600px) {
@@ -62,145 +78,127 @@
           display: block;
         }
         thead {
-          display: none;
-        }
-        tbody {
-          display: block;
-          inline-size: 100%;
-        }
-        th[scope="row"] {
-          inset-block-start: 0;
-          position: sticky;
-          background: #f9f9f9;
-          z-index: 5;
+          display: none; /* Hide column headers in mobile view */
         }
         tr {
-          margin-block-end: 1rem;
+          margin-block-end: 1.5rem;
           border: 1px solid #ccc;
+          border-radius: 4px;
+          background: white;
+        }
+        tbody th {
+          position: sticky;
+          inset-block-start: 0;
+          background: #eee;
+          padding: 0.75rem;
+          z-index: 5;
+          font-size: 1.1rem;
+          text-align: center;
+          border-block-end: 1px solid #ccc;
         }
         td {
           display: flex;
           justify-content: space-between;
-          padding: 0.5rem;
+          padding: 0.5rem 0.75rem;
           border-block-end: 1px solid #eee;
         }
+        td:last-child {
+          border-block-end: none;
+        }
         td::before {
-          font-weight: bold;
+          font-weight: 600;
+          color: #666;
         }
-        td:nth-child(1)::before {
-          content: var(--column-label-1) ": " / var(--column-label-1);
-        }
+        /* Labels injected via CSS variables set in JS */
         td:nth-child(2)::before {
-          content: var(--column-label-2) ": " / var(--column-label-2);
+          content: var(--label-2) ": " / var(--label-2);
         }
         td:nth-child(3)::before {
-          content: var(--column-label-3) ": " / var(--column-label-3);
+          content: var(--label-3) ": " / var(--label-3);
         }
         td:nth-child(4)::before {
-          content: var(--column-label-4) ": " / var(--column-label-4);
+          content: var(--label-4) ": " / var(--label-4);
         }
         td:nth-child(5)::before {
-          content: var(--column-label-5) ": " / var(--column-label-5);
+          content: var(--label-5) ": " / var(--label-5);
         }
         td:nth-child(6)::before {
-          content: var(--column-label-6) ": " / var(--column-label-6);
-        }
-        td:nth-child(7)::before {
-          content: var(--column-label-7) ": " / var(--column-label-7);
-        }
-        td:nth-child(8)::before {
-          content: var(--column-label-8) ": " / var(--column-label-8);
-        }
-        td:nth-child(9)::before {
-          content: var(--column-label-9) ": " / var(--column-label-9);
-        }
-        td:nth-child(10)::before {
-          content: var(--column-label-10) ": " / var(--column-label-10);
-        }
-        td:nth-child(11)::before {
-          content: var(--column-label-11) ": " / var(--column-label-11);
-        }
-        td:nth-child(12)::before {
-          content: var(--column-label-12) ": " / var(--column-label-12);
-        }
-        td:nth-child(13)::before {
-          content: var(--column-label-13) ": " / var(--column-label-13);
-        }
-        td:nth-child(14)::before {
-          content: var(--column-label-14) ": " / var(--column-label-14);
-        }
-        td:nth-child(15)::before {
-          content: var(--column-label-15) ": " / var(--column-label-15);
-        }
-        td:nth-child(16)::before {
-          content: var(--column-label-16) ": " / var(--column-label-16);
-        }
-        td:nth-child(17)::before {
-          content: var(--column-label-17) ": " / var(--column-label-17);
-        }
-        td:nth-child(18)::before {
-          content: var(--column-label-18) ": " / var(--column-label-18);
-        }
-        td:nth-child(19)::before {
-          content: var(--column-label-19) ": " / var(--column-label-19);
-        }
-        td:nth-child(20)::before {
-          content: var(--column-label-20) ": " / var(--column-label-20);
+          content: var(--label-6) ": " / var(--label-6);
         }
       }
     </style>
   </head>
   <body>
-    <h1>Responsive Table Demo</h1>
+    <h1>Staff Directory</h1>
     <p>
-      A table with 100 rows and 20 columns, featuring 1 row of column headers
-      and 1 column of row headers.
+      An example of a responsive data table. On desktop, it features sticky
+      headers in both directions. On mobile viewports (or narrow containers), it
+      transforms into a card-based layout.
     </p>
 
     <div class="table-wrapper">
       <table>
-        <thead id="table-head"></thead>
-        <tbody id="table-body"></tbody>
+        <thead>
+          <tr id="header-row">
+            <th>Name</th>
+            <th>Role</th>
+            <th>Email</th>
+            <th>Office</th>
+            <th>Status</th>
+            <th>Joined</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <!-- Rows will be generated by JS -->
+        </tbody>
       </table>
     </div>
 
     <script>
-      const COLS = 20; // Total columns including row headers
-      const ROWS = 100; // Total rows including column headers
-      const tableHead = document.getElementById("table-head");
-      const tableBody = document.getElementById("table-body");
-
       const table = document.querySelector("table");
+      const tableBody = document.getElementById("table-body");
+      const headerRow = document.getElementById("header-row");
+      const headers = Array.from(headerRow.querySelectorAll("th")).map(
+        (th) => th.textContent,
+      );
 
-      const tr = document.createElement("tr");
-      for (let j = 1; j <= COLS; j++) {
-        const th = document.createElement("th");
-        th.setAttribute("scope", "col");
-        const headerText = j === 1 ? `Corner,${j}` : `Col Header ${j}`;
-        th.textContent = headerText;
-        tr.appendChild(th);
+      // Set CSS variables for mobile labels
+      headers.forEach((text, i) => {
+        table.style.setProperty(`--label-${i + 1}`, `"${text}"`);
+      });
 
-        // Set CSS variable for labels in stacked view
-        table.style.setProperty(`--column-label-${j}`, `"${headerText}"`);
-      }
-      tableHead.appendChild(tr);
+      const staffData = [
+        ["Alex Rivera", "Senior Engineer", "alex.r@example.com", "Seattle", "Active", "2021-03-15"],
+        ["Jordan Smith", "Product Designer", "j.smith@example.com", "Remote", "On Leave", "2022-01-10"],
+        ["Taylor Wong", "Marketing Lead", "t.wong@example.com", "New York", "Active", "2020-11-02"],
+        ["Morgan Chen", "QA Analyst", "m.chen@example.com", "Seattle", "Active", "2023-05-22"],
+        ["Casey Jones", "HR Manager", "casey.j@example.com", "Chicago", "Active", "2019-08-14"],
+        ["Riley Taylor", "Frontend Developer", "riley.t@example.com", "Remote", "Active", "2022-07-01"],
+        ["Jamie Doe", "DevOps Engineer", "jamie.d@example.com", "Seattle", "Active", "2021-12-12"],
+        ["Sam Wilson", "Sales Exec", "sam.w@example.com", "New York", "Away", "2023-02-28"],
+        ["Peyton Hill", "UX Researcher", "p.hill@example.com", "Remote", "Active", "2021-06-15"],
+        ["Quinn Adams", "Data Scientist", "q.adams@example.com", "Chicago", "Active", "2020-04-19"],
+      ];
 
-      // Create 100 rows of data
-      for (let i = 1; i <= ROWS; i++) {
-        const tr = document.createElement("tr");
-        // Row headers
-        const th = document.createElement("th");
-        th.setAttribute("scope", "row");
-        th.innerText = `Row Head ${i}`;
-        tr.appendChild(th);
-        for (let j = 2; j <= COLS; j++) {
-          // Data cells
-          const td = document.createElement("td");
-          td.dataset.label = `Col Header ${j}`;
-          td.textContent = `Data ${i},${j}`;
-          tr.appendChild(td);
-        }
-        tableBody.appendChild(tr);
+      // Generate rows multiple times to demonstrate scrolling
+      for (let i = 0; i < 5; i++) {
+        staffData.forEach((staff) => {
+          const tr = document.createElement("tr");
+          
+          staff.forEach((data, index) => {
+            if (index === 0) {
+              const th = document.createElement("th");
+              th.textContent = staff[0];
+              tr.appendChild(th);
+            } else {
+              const td = document.createElement("td");
+              td.textContent = data;
+              tr.appendChild(td);
+            }
+          });
+          
+          tableBody.appendChild(tr);
+        });
       }
     </script>
   </body>

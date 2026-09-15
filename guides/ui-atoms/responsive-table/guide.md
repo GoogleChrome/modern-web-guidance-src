@@ -14,7 +14,7 @@ Large data tables often become unreadable on small screens as columns overflow o
 
 The core of a responsive table is maintaining the relationship between data cells and their headers.
 
-1.  **Semantic Foundation**: Use standard `<table>` elements with `<thead>`, `<tbody>`, and `<th>` elements. Use `scope="col"` and `scope="row"` to ensure assistive technologies can map data correctly.
+1.  **Semantic Foundation**: Use standard `<table>` elements with `<thead>`, `<tbody>`, and `<th>` elements.
 2.  **Sticky Context**: Apply `position: sticky` to both column headers and row headers. This ensures that no matter how far a user scrolls in any direction, they never lose the context of what the data represents.
 3.  **Adaptive Transformations**: Use `@container` queries instead of `@media` queries. This allows the table to adapt based on its own width (e.g., when placed in a sidebar or a narrow dashboard widget) rather than the entire viewport.
 4.  **Label Injection**: In the stacked layout, the `<thead>` is hidden, and accessible headers are injected into each cell using `::before` pseudo-elements and `data-` attributes.
@@ -29,15 +29,15 @@ Structure your table with standard semantic headers. Use a `.table-wrapper` to h
   <table>
     <thead>
       <tr>
-        <th scope="col">Employee</th>
-        <th scope="col">Role</th>
-        <th scope="col">Status</th>
+        <th>Employee</th>
+        <th>Role</th>
+        <th>Status</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <!-- Row header remains sticky horizontally -->
-        <th scope="row">Alex Rivera</th>
+        <th>Alex Rivera</th>
         <td>Engineer</td>
         <td>Active</td>
       </tr>
@@ -71,7 +71,7 @@ thead th {
 }
 
 /* Sticky row headers */
-th[scope="row"] {
+tbody th {
   position: sticky;
   inset-inline-start: 0;
   background: #f9f9f9;
@@ -110,9 +110,8 @@ When space is limited, hide the original header row and transform the table into
        announce the label correctly without the trailing colon. */
     content: var(--label-2) ": " / var(--label-2);
   }
+  /* MANDATORY: Map the label for each column */
   td:nth-child(3)::before {
-    /* MANDATORY: The accessible name (after the /) ensures screen readers 
-       announce the label correctly without the trailing colon. */
     content: var(--label-3) ": " / var(--label-3);
   }
 }
