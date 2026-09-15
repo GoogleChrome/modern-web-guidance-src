@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draggable Panel</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --canvas: #e8f3f2;
+      --surface: #fffdf8;
+      --ink: #172c3a;
+      --line: #91aaa8;
+      --accent: #007c72;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+      font-family: Georgia, serif;
+      background: var(--canvas);
+      color: var(--ink);
+    }
+
+    main {
+      max-width: 42rem;
+    }
+
+    .draggable-panel {
+      position: fixed;
+      inset: auto;
+      top: 5rem;
+      left: 55%;
+      width: min(22rem, calc(100vw - 2rem));
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      box-shadow: 0 12px 28px rgb(23 44 58 / 22%);
+    }
+
+    .drag-handle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--line);
+      background: #d4ebe7;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .drag-handle.dragging {
+      cursor: grabbing;
+    }
+
+    .drag-handle:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: -3px;
+    }
+
+    .panel-body {
+      padding: 1rem;
+    }
+
+    .panel-body p {
+      margin: 0 0 1rem;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .open-button,
+    .close-button {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Draggable panel</h1>
+    <p>Drag the panel handle, or focus it and use the arrow keys. Text and controls in the panel remain interactive.</p>
+    <button class="open-button" type="button" id="openPanelButton" hidden>Open panel</button>
+  </main>
+
+  <aside class="draggable-panel" id="panel">
+    <div class="drag-handle" id="panelHandle" tabindex="0" aria-label="Panel handle. Use arrow keys to move.">
+      <strong>Notes</strong>
+      <button class="close-button" type="button" id="closeButton">Close</button>
+    </div>
+    <div class="panel-body">
+      <p>Select this text without moving the panel.</p>
+      <label>Note <input type="text" value="An editable field"></label>
+    </div>
+  </aside>
+
+  <script>
+    const draggable = document.getElementById('panel');
+    const handle = document.getElementById('panelHandle');
+    const closeButton = document.getElementById('closeButton');
+    const openPanelButton = document.getElementById('openPanelButton');
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    function moveTo(left, top) {
+      const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
+      const maxTop = Math.max(0, window.innerHeight - draggable.offsetHeight);
+      draggable.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
+      draggable.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
+    }
+
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.target.closest('button, input, select, textarea, a')) return;
+      event.preventDefault();
+      const rect = draggable.getBoundingClientRect();
+      isDragging = true;
+      offsetX = event.clientX - rect.left;
+      offsetY = event.clientY - rect.top;
+      handle.classList.add('dragging');
+      handle.setPointerCapture(event.pointerId);
+    });
+
+    handle.addEventListener('pointermove', (event) => {
+      if (isDragging) moveTo(event.clientX - offsetX, event.clientY - offsetY);
+    });
+
+    function stopDragging() {
+      isDragging = false;
+      handle.classList.remove('dragging');
+    }
+
+    handle.addEventListener('pointerup', stopDragging);
+    handle.addEventListener('pointercancel', stopDragging);
+
+    handle.addEventListener('keydown', (event) => {
+      const directions = {
+        ArrowLeft: [-15, 0], ArrowRight: [15, 0], ArrowUp: [0, -15], ArrowDown: [0, 15],
+      };
+      const direction = directions[event.key];
+      if (!direction) return;
+      event.preventDefault();
+      const rect = draggable.getBoundingClientRect();
+      moveTo(rect.left + direction[0], rect.top + direction[1]);
+    });
+
+    closeButton.addEventListener('click', () => {
+      stopDragging();
+      draggable.hidden = true;
+      openPanelButton.hidden = false;
+      openPanelButton.focus();
+    });
+
+    openPanelButton.addEventListener('click', () => {
+      draggable.hidden = false;
+      openPanelButton.hidden = true;
+      handle.focus();
+    });
+
+    window.addEventListener('resize', () => {
+      if (draggable.hidden) return;
+      const rect = draggable.getBoundingClientRect();
+      moveTo(rect.left, rect.top);
+    });
+  </script>
+</body>
+
+</html>
