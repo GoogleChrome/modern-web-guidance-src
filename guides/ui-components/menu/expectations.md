@@ -1,0 +1,9 @@
+- **MANDATORY**: Activating a menu trigger opens a visible command menu positioned adjacent to that trigger.
+- **MANDATORY**: A command menu exposes menu and menuitem semantics and supports its promised arrow-key navigation.
+- **MANDATORY**: When a menu opens, focus moves to its first enabled menu item.
+- **MANDATORY**: In a vertical menu, ArrowUp and ArrowDown move focus between enabled items, wrapping at either end; Home and End move to the first and last enabled items.
+- **MANDATORY**: Pressing Escape closes the active menu and returns focus to the control that invoked it.
+- **MANDATORY WHEN A SUBMENU IS PRESENT**: Its trigger exposes the submenu relationship and accurate expanded state. ArrowRight moves focus into the open submenu, and ArrowLeft or Escape closes it and returns focus to its trigger.
+- **OPTIONAL**: The menu uses visual icons, keyboard-shortcut labels, separators, or aligned columns when they clarify the available commands.
+- **OPTIONAL**: When menu rows use icons, labels, shortcuts, or submenu indicators, shared grid columns align those values across rows.
+- **OPTIONAL WHEN THE MENU BAR IS STICKY AND THE BROWSER SUPPORTS SCROLL-STATE QUERIES**: A scroll-state query applies a visual stuck state without changing how the menu opens or how its keyboard interaction works.
