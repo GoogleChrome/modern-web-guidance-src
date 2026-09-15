@@ -143,8 +143,6 @@ For custom checkboxes, style the `:indeterminate` pseudo-class and apply a custo
 
 ## Fallback strategies
 
-For browsers that don't support the standard CSS Masking, custom checkbox checkmarks will fall back to stacked text indicators or can leverage standard SVG background images inside `@supports` checks.
-
 {{ FEATURE_FALLBACKS("accent-color") }}
 {{ FEATURE_FALLBACKS("indeterminate") }}
 {{ FEATURE_FALLBACKS("masks") }}
