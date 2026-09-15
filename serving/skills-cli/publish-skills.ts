@@ -25,7 +25,6 @@ const GH_PUBLISH_PATTERNS = [
 ];
 
 const isDryRun = process.argv.includes('--dry-run');
-const isForce = process.argv.includes('--force');
 
 export function incrementVersion(version: string): string {
   const parts = version.split('.');
@@ -160,7 +159,7 @@ async function main() {
 
   // Check if compiled distribution payload has substantive changes compared to the previous release
   const distDiff = getExactDistributionDiff(latestTag, publishCliDir);
-  const shouldPublish = hasSubstantiveChanges(distDiff) || isForce;
+  const shouldPublish = hasSubstantiveChanges(distDiff);
 
   if (!isDryRun) {
     // Always update README with features/evals for both distribution bundle and source repo
