@@ -1,12 +1,9 @@
-- **MANDATORY**: Drag and drop rearrangement MUST utilize Pointer Events (`pointerdown`, `pointermove`, `pointerup`, `pointercancel`) to unify mouse, touch, and pen actions natively under a single event model.
-- **MANDATORY**: The active movement (`pointermove`) and release (`pointerup`/`pointercancel`) event listeners MUST be dynamically bound directly to the `document` (or window) during the active drag cycle. This prevents standard Chrome and Safari DOM-mutation pointer-capture aborts and ensures continuous, non-breaking dragging.
-- **MANDATORY**: The implementation MUST suppress WebKit's native text selection and HTML5 drag ghosting by invoking `preventDefault()` inside the `pointerdown` listener on the handle.
-- **MANDATORY**: A visual "ghost clone" of the card (`pointer-events: none` and `position: fixed` in CSS) MUST be appended to the document body to follow the pointer directly, while the original card remains inside the layout container to preserve structural spacing.
-- **MANDATORY**: Sibling reordering MUST work natively across various CSS layouts (such as Grid and Flexbox) by dynamically reordering elements in the DOM tree based on physical boundary entry collision checks to prevent rapid layout thrashed flickering.
-- **MANDATORY**: Dragging functionality MUST be treated as a progressive enhancement; if JavaScript is disabled, the layout children MUST remain fully visible, readable, and in their standard markup order.
-- **MANDATORY**: The drag handle (or draggable element) MUST be focusable via keyboard (`tabindex="0"`) and act as an interactive control (`role="button"`) with descriptive accessible labeling (e.g. `aria-describedby` pointing to instructions or an explicit `aria-label`).
-- **MANDATORY**: When focused, the handle MUST support toggling a "grabbed" state using keyboard controls (`Space` or `Enter`), setting `aria-pressed="true"` (or `aria-grabbed="true"`) when active and resetting to `false` when dropped or cancelled.
-- **MANDATORY**: When in active keyboard-reordering mode, the item MUST support reordering using the arrow keys (`ArrowUp`/`ArrowLeft` to move up/left, and `ArrowDown`/`ArrowRight` to move down/right) while strictly maintaining active keyboard focus on the reordered item's handle during movement.
-- **MANDATORY**: Pressing `Escape` during active keyboard reordering MUST cancel the reorder operation, restoring all elements to their original pre-reorder positions.
-- **MANDATORY**: An ARIA live region (configured with `aria-live="assertive"` or `aria-live="polite"`) MUST be included to announce reordering status changes (e.g., grab, move, drop, cancel) to screen readers.
-- **OPTIONAL**: Visual styling classes (such as adding `.dragging-hide` or `.dragging` for pointer drags, and `.keyboard-active` for keyboard dragging) are applied to the active cards to provide visual feedback.
+- **MANDATORY**: A pointer drag started from an item's reorder button changes the item's DOM and visible position within the collection.
+- **OPTIONAL**: During a pointer drag, provide visual feedback that follows the pointer without blocking detection of destination items and makes the original item visibly distinct until the drag ends.
+- **MANDATORY**: Reordering moves the existing item rather than replacing it, so state in controls inside that item is retained.
+- **MANDATORY**: Each item has a native button that identifies the item and can enter keyboard reordering mode.
+- **MANDATORY**: Pressing Space or Enter on an item's reorder button exposes the grabbed state and announces the item's current position.
+- **MANDATORY**: While an item is grabbed, arrow keys move it through the collection and focus remains on its reorder button.
+- **MANDATORY**: Pressing Escape while an item is grabbed restores the order that existed before keyboard reordering began and announces the cancellation.
+- **MANDATORY**: Completing keyboard reordering clears the grabbed state and announces the final position.
+- **MANDATORY WHEN REORDERING IS SUPPLEMENTARY**: The collection remains readable and usable in its default DOM order without JavaScript.
