@@ -28,6 +28,7 @@ import {
   isPluginFile,
   isGuideFile,
   getGuideName,
+  hasSubstantiveChanges,
   type EvalSummaryItem,
   type BaselineUpdateInfo,
   type RawChangeRecord,
@@ -853,5 +854,52 @@ test('linkifyGuideBullets correctly links bold and code guide names', () => {
     '* Updated the **[modern-web-guidance-skill](https://github.com/GoogleChrome/modern-web-guidance/blob/v0.0.186/skills/modern-web-guidance/SKILL.md)** directly.'
   );
 });
+
+test('hasSubstantiveChanges detects real changes vs empty diffs', () => {
+  const emptyDiff = {
+    addedGuidesDiff: '',
+    modifiedGuidesDiff: '',
+    addedGuideNames: [],
+    modifiedGuideNames: [],
+    removedGuideNames: [],
+    renamedGuides: [],
+    guideDescriptions: {},
+    baselineUpdates: [],
+    pluginDiff: '',
+    changedFiles: [],
+  };
+  assert.strictEqual(hasSubstantiveChanges(emptyDiff), false);
+
+  assert.strictEqual(hasSubstantiveChanges({
+    ...emptyDiff,
+    addedGuideNames: ['new-guide'],
+  }), true);
+
+  assert.strictEqual(hasSubstantiveChanges({
+    ...emptyDiff,
+    modifiedGuideNames: ['existing-guide'],
+  }), true);
+
+  assert.strictEqual(hasSubstantiveChanges({
+    ...emptyDiff,
+    removedGuideNames: ['old-guide'],
+  }), true);
+
+  assert.strictEqual(hasSubstantiveChanges({
+    ...emptyDiff,
+    renamedGuides: [{ oldName: 'a', newName: 'b' }],
+  }), true);
+
+  assert.strictEqual(hasSubstantiveChanges({
+    ...emptyDiff,
+    baselineUpdates: [{ featureName: 'attr()', statusRank: 3, statusDescription: '', guideName: 'progress-ring' }],
+  }), true);
+
+  assert.strictEqual(hasSubstantiveChanges({
+    ...emptyDiff,
+    pluginDiff: 'some diff',
+  }), true);
+});
+
 
 

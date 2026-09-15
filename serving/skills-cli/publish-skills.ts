@@ -7,6 +7,7 @@ import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCases } from './b
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 import { generateReleaseNotes } from './generate-release-notes.ts';
+import { getExactDistributionDiff, hasSubstantiveChanges } from './release-notes-diff.ts';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // modern-web-guidance-src/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
@@ -24,8 +25,9 @@ const GH_PUBLISH_PATTERNS = [
 ];
 
 const isDryRun = process.argv.includes('--dry-run');
+const isForce = process.argv.includes('--force');
 
-function incrementVersion(version: string): string {
+export function incrementVersion(version: string): string {
   const parts = version.split('.');
   const patch = parseInt(parts[2], 10) + 1;
   return `${parts[0]}.${parts[1]}.${patch}`;
@@ -79,7 +81,7 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
   return newVersion;
 }
 
-async function publishToDistributionRepo(publishCliDir: string, newVersion: string, latestTag: string) {
+async function publishToDistributionRepo(publishCliDir: string, newVersion: string, releaseNotes: string) {
   console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
 
   await new Promise<void>((resolve, reject) => {
@@ -102,12 +104,6 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
       },
     );
   });
-
-const releaseNotes = await generateReleaseNotes({
-  previousTag: latestTag,
-  newVersion,
-  publishCliDir,
-});
 
   // Attempt to create formal GitHub release on the distribution repo if gh CLI is authenticated
   try {
@@ -162,6 +158,19 @@ async function main() {
   const { skillsCount, skillNames } = await validate(newVersion);
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
+  // Check if compiled distribution payload has substantive changes compared to the previous release
+  const distDiff = getExactDistributionDiff(latestTag, publishCliDir);
+  if (!hasSubstantiveChanges(distDiff) && !isForce) {
+    console.log(`\n✅ No substantive guide or skill changes detected since ${latestTag}. Skipping release.`);
+    process.exit(0);
+  }
+
+  const releaseNotes = await generateReleaseNotes({
+    previousTag: latestTag,
+    newVersion,
+    publishCliDir,
+  });
+
   if (isDryRun) {
     const { allFeatureIds, readyGuides } = getFeaturesAndUseCases();
     const featuresCount = allFeatureIds.size;
@@ -186,13 +195,6 @@ async function main() {
     console.log(`\n[Dry Run] Skills: ${skillsCount} (${skillNames.join(', ')})`);
     console.log(`\n[Dry Run] Features: ${featuresCount}, Use cases: ${useCasesCount}`);
 
-    console.log(`\n[Dry Run] Generating release notes using Gemini for v${newVersion} (diff against ${latestTag})...`);
-    const releaseNotes = await generateReleaseNotes({
-      previousTag: latestTag,
-      newVersion,
-      publishCliDir,
-    });
-
     console.log('\n============================== [DRY RUN] RELEASE NOTES ==============================');
     console.log(releaseNotes);
     console.log('====================================================================================\n');
@@ -206,24 +208,34 @@ async function main() {
     // Update both the distribution bundle README and the source repo README
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
 
-    await publishToDistributionRepo(publishCliDir, newVersion, latestTag);
-
-    console.log('Committing automated documentation updates to source repo...');
+    // 1. Commit automated documentation updates locally if diff exists
+    console.log('Checking automated documentation updates to source repo...');
+    let hasDocDiff = false;
     try {
       execSync('git diff --quiet README.md serving/skills-cli/eval-results-summary.json', { cwd: ROOT_DIR });
-      console.log("No changes in README.md or eval-results-summary.json to commit.");
-    } catch (err) {
-      console.log("Changes found in README.md or eval-results-summary.json, committing...");
-      execSync('git add README.md serving/skills-cli/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
-      execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
-      const ref = process.env.GITHUB_REF || 'main';
-      execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });
+    } catch {
+      hasDocDiff = true;
     }
 
-    // Create and push tag on current repo
-    console.log(`Creating and pushing Git tag v${newVersion}...`);
+    if (hasDocDiff) {
+      console.log('Committing automated documentation updates to source repo...');
+      execSync('git add README.md serving/skills-cli/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
+      execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
+    } else {
+      console.log('No changes in README.md or eval-results-summary.json to commit.');
+    }
+
+    // 2. Tag locally on the source repository
+    console.log(`Creating local Git tag v${newVersion}...`);
     execSync(`git tag v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
-    execSync(`git push origin v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
+
+    // 3. Atomically push source branch updates and tag in a single transaction
+    console.log(`Atomically pushing Git tag v${newVersion} to source repo...`);
+    const ref = process.env.GITHUB_REF || 'main';
+    execSync(`git push --atomic origin HEAD:"${ref}" v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
+
+    // 4. Only after source consensus succeeds: publish to distribution repo
+    await publishToDistributionRepo(publishCliDir, newVersion, releaseNotes);
 
     console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/modern-web-guidance  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
     console.log(`${useCasesCount} usecases.`);

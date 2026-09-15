@@ -731,6 +731,21 @@ export function classifyChangesWithEvals(records: RawChangeRecord[]): Classified
 }
 
 /**
+ * Checks whether classified changes contain any real, user-facing modifications
+ * (added/modified/removed/renamed guides, baseline updates, or plugin updates).
+ */
+export function hasSubstantiveChanges(diff: ClassifiedChanges): boolean {
+  return (
+    diff.addedGuideNames.length > 0 ||
+    diff.modifiedGuideNames.length > 0 ||
+    diff.removedGuideNames.length > 0 ||
+    diff.renamedGuides.length > 0 ||
+    diff.baselineUpdates.length > 0 ||
+    diff.pluginDiff.length > 0
+  );
+}
+
+/**
  * Extracts exact differences between the previous release and the newly built distribution payload.
  * Eliminates all heuristics by diffing the actual compiled output (dist/skills-cli).
  */

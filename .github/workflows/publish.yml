@@ -33,13 +33,6 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
-      - name: Check for changes since last release
-        run: |
-          if git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
-            echo "Error: The latest commit already has a version tag. No new changes to publish."
-            exit 1
-          fi
-
       - name: Setup pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
