@@ -126,7 +126,6 @@
     /* Define unique Anchor Names on the triggers */
     #file-trigger { anchor-name: --file-anchor; }
     #edit-trigger { anchor-name: --edit-anchor; }
-    #preferences-trigger { anchor-name: --preferences-anchor; }
 
     /* --------------------------------------------------
      3. POPOVER MENU LISTS
@@ -164,11 +163,34 @@
       margin-top: 0.25rem;
     }
 
-    #preferences-submenu {
-      position-anchor: --preferences-anchor;
-      top: anchor(top);
-      left: anchor(right);
+    /* Submenu standard nested menu - styled as standard absolute child on desktop */
+    .submenu {
+      display: none;
+      position: absolute;
+      left: 100%;
+      top: 0;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.25rem;
       margin-left: 0.25rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+    }
+
+    /* Show submenu dynamically when trigger button is expanded */
+    .menu-item[aria-expanded="true"] + .submenu {
+      display: block;
+    }
+
+    /* Submenu Hover Bridge (Diagonal Aim Pointer Safeguard) */
+    .submenu::after {
+      content: "";
+      position: absolute;
+      right: 100%; /* Position flush against trigger's right edge */
+      top: 0;
+      bottom: 0;
+      width: 0.25rem; /* Bridges the margin-left gap between trigger and submenu */
     }
 
     /* --------------------------------------------------
@@ -200,6 +222,7 @@
       display: grid;
       grid-template-columns: subgrid; /* Delegates layout tracks to parent list columns */
       align-items: center;
+      position: relative; /* REQUIRED: Anchor point for standard absolute nested submenus */
     }
 
     .menu-item {
@@ -255,6 +278,7 @@
       height: 0.75rem;
       background-color: currentColor;
       margin-inline-start: 0.5rem;
+      transition: transform 0.2s ease-out; /* Smooth visual transition when rotating arrow */
       mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>') no-repeat center / contain;
       -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>') no-repeat center / contain;
     }
@@ -329,6 +353,57 @@
       border: 1px solid var(--border-color);
       border-radius: 8px;
       background-color: var(--bg-surface);
+    }
+
+    /* Submenu Hover Bridge (Diagonal Aim Pointer Safeguard) */
+    #preferences-submenu::after {
+      content: "";
+      position: absolute;
+      right: 100%; /* Position flush against trigger's right edge */
+      top: 0;
+      bottom: 0;
+      width: 0.25rem; /* Bridges the margin-left gap between trigger and submenu */
+    }
+
+    /* Responsive Mobile Drawer Transformation */
+    @media (max-width: 48rem) {
+      /* Top-level menus transform into fixed bottom drawers */
+      .popover-menu {
+        position: fixed;
+        inset-block-start: auto; /* REQUIRED: Overrides browser default popover top:0 to prevent full-screen stretching */
+        inset-block-end: 0;
+        inset-inline: 0;
+        margin: 0;
+        border-radius: 12px 12px 0 0;
+        inline-size: 100%;
+        max-block-size: 60vh;
+        transform: translateY(100%);
+        transition: transform 0.25s ease-out;
+      }
+
+      .popover-menu:popover-open {
+        transform: translateY(0);
+      }
+
+      /* Submenu renders as a static inline accordion list directly inside parent drawer flow */
+      .submenu {
+        position: static;
+        box-shadow: none;
+        border: none;
+        background: none;
+        padding-inline-start: 1.5rem;
+        margin-left: 0;
+      }
+
+      /* Rotate the right-pointing chevron down when nested submenus are open */
+      .menu-item-wrapper:has(.menu-item[aria-expanded="true"]) .menu-arrow {
+        transform: rotate(90deg);
+      }
+
+      /* Clamp scrollport height inside mobile drawers to prevent full viewport stretch */
+      .scrollable-menu {
+        max-block-size: 50vh;
+      }
     }
   </style>
 </head>
@@ -475,24 +550,6 @@
             <span class="menu-arrow" aria-hidden="true"></span>
           </button>
 
-          <!-- NATIVE PREFERENCES SUBMENU POPOVER NESTED TO FIX SAFARI LIGHT-DISMISS AND ANCHOR RESOLUTION -->
-          <div id="preferences-submenu" popover class="popover-menu">
-            <menu class="menu-list" role="menu">
-              <li class="menu-item-wrapper" role="none">
-                <button class="menu-item" role="menuitem">
-                  <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 9-9 9 9 0 0 0-9-9zm0 16.5c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7z"/></svg>
-                  <span class="menu-label">User Theme</span>
-                  <span class="menu-shortcut">Ctrl+T</span>
-                </button>
-              </li>
-              <li class="menu-item-wrapper" role="none">
-                <button class="menu-item" role="menuitem">
-                  <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-4h-2V7h2v2z"/></svg>
-                  <span class="menu-label">Shortcuts</span>
-                </button>
-              </li>
-            </menu>
-          </div>
         </li>
 
       </menu>
@@ -518,6 +575,19 @@
   </main>
 
   <script>
+    // Conditionally load Popover and Anchor Positioning polyfills inside older browsers
+    (async () => {
+      const supportsPopover = HTMLButtonElement.prototype.hasOwnProperty('popovertarget');
+      const supportsAnchor = 'anchorName' in document.documentElement.style;
+
+      if (!supportsPopover) {
+        await import('https://unpkg.com/@oddbird/popover-polyfill');
+      }
+      if (!supportsAnchor) {
+        await import('https://unpkg.com/@oddbird/css-anchor-positioning');
+      }
+    })();
+
     // Simple keyboard navigation for native popover menu accessibility
     const triggers = document.querySelectorAll('.menu-trigger');
     const menus = document.querySelectorAll('.popover-menu');
@@ -538,6 +608,16 @@
       });
     });
 
+    // Set up click toggle for preferences submenu
+    const prefTrigger = document.getElementById('preferences-trigger');
+    if (prefTrigger) {
+      prefTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isExpanded = prefTrigger.getAttribute('aria-expanded') === 'true';
+        prefTrigger.setAttribute('aria-expanded', !isExpanded);
+      });
+    }
+
     menus.forEach(menu => {
       menu.addEventListener('keydown', (e) => {
         const items = Array.from(menu.querySelectorAll('.menu-item'));
@@ -551,36 +631,48 @@
           e.preventDefault();
           const prevIdx = (activeIdx - 1 + items.length) % items.length;
           items[prevIdx].focus();
-        } else if (e.key === 'ArrowRight') {
-          // Open submenu on ArrowRight
-          const targetId = document.activeElement.getAttribute('popovertarget');
-          if (targetId) {
-            e.preventDefault();
-            const submenu = document.getElementById(targetId);
-            if (submenu) {
-              submenu.showPopover();
-              const firstBtn = submenu.querySelector('.menu-item');
-              if (firstBtn) firstBtn.focus();
-            }
-          }
-        } else if (e.key === 'ArrowLeft') {
-          // Close submenu and return to parent trigger on ArrowLeft
-          if (menu.id === 'preferences-submenu') {
-            e.preventDefault();
-            menu.hidePopover();
-            const trigger = document.getElementById('preferences-trigger');
-            if (trigger) trigger.focus();
+        } else if (e.key === 'ArrowRight' && document.activeElement.id === 'preferences-trigger') {
+          // Open nested submenu on ArrowRight on the trigger
+          e.preventDefault();
+          const trigger = document.activeElement;
+          trigger.setAttribute('aria-expanded', 'true');
+          const submenu = trigger.nextElementSibling;
+          if (submenu) {
+            const firstBtn = submenu.querySelector('.menu-item');
+            if (firstBtn) firstBtn.focus();
           }
         } else if (e.key === 'Escape') {
           e.preventDefault();
           menu.hidePopover();
-          if (menu.id === 'preferences-submenu') {
-            const trigger = document.getElementById('preferences-trigger');
-            if (trigger) trigger.focus();
-          } else {
-            const triggerId = menu.id.replace('-menu', '-trigger');
-            const trigger = document.getElementById(triggerId);
-            if (trigger) trigger.focus();
+          const triggerId = menu.id.replace('-menu', '-trigger');
+          const trigger = document.getElementById(triggerId);
+          if (trigger) trigger.focus();
+        }
+      });
+    });
+
+    // Handle standard keyboard navigation inside the nested submenu
+    const submenusList = document.querySelectorAll('.submenu');
+    submenusList.forEach(submenu => {
+      submenu.addEventListener('keydown', (e) => {
+        const subItems = Array.from(submenu.querySelectorAll('.menu-item'));
+        const activeIdx = subItems.indexOf(document.activeElement);
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const nextIdx = (activeIdx + 1) % subItems.length;
+          subItems[nextIdx].focus();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prevIdx = (activeIdx - 1 + subItems.length) % subItems.length;
+          subItems[prevIdx].focus();
+        } else if (e.key === 'ArrowLeft' || e.key === 'Escape') {
+          // Return to trigger on ArrowLeft or Escape
+          e.preventDefault();
+          const trigger = document.getElementById('preferences-trigger');
+          if (trigger) {
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.focus();
           }
         }
       });

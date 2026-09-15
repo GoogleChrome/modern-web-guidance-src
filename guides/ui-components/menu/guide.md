@@ -22,11 +22,13 @@ Modern CSS completely replaces these manual scripting requirements. By combining
 
 ### The Flat Top-Layer Pattern
 
-Historically, all submenu `<menu>` or `<ul>` elements had to be nested recursively inside their parent `<li>` items to resolve absolute offsets. In modern CSS, **top-level menus** are declared flatly at the body root, while **nested submenus** are physically nested inside the parent popover's respective `<li>` triggering element to satisfy the Popover API spec and browser layout engines:
+Historically, all submenu `<menu>` or `<ul>` elements had to be nested recursively inside their parent `<li>` items to resolve absolute offsets. In modern CSS, **all menus and submenus are declared flatly at the body root as independent sibling elements**.
 
-*   **Top-Layer Stacking**: Setting the native `popover` attribute promotes the menu to the browser's **Top Layer** when opened, rendering it above all standard layouts and making it completely immune to parent `z-index` limits or `overflow: hidden` bounding boxes that historically clipped submenus.
-*   **Popover Ancestry & Light-Dismiss**: Physically nesting **nested submenus** inside the parent popover's triggering `<li>` element establishes the correct ancestor-descendant shadow tree relationship. This tells the browser's native Popover engine that the submenu belongs to the parent menu, preventing the parent from closing when the submenu opens (light-dismiss) and resolving nested coordinate-space calculation bugs in engines like WebKit/Safari.
-*   **Wrapperless CSS Anchor Positioning**: By declaring a unique `anchor-name` on any trigger element, any popover can bind and position itself relative to that trigger wrapperlessly.
+This flat structure represents a major architectural shift and resolves critical cross-browser layout bugs:
+
+*   **Top-Layer Stacking**: Setting the native `popover` attribute promotes the menu to the browser's **Top Layer** when opened, rendering it above all standard layouts and making it completely immune to parent `z-index` limits or `overflow: hidden`/`overflow: auto` clipping.
+*   **Popover Ancestry & Light-Dismiss**: By keeping submenus flat at the body root, you completely bypass WebKit/Safari layout clipping bugs where parent fixed drawers with scroll ports (`overflow: auto`) slice or hide nested DOM child elements. To establish correct popover ancestry so the parent doesn't close on submenu open (light-dismiss), trigger the submenu by programmatically invoking `.click()` on its trigger button inside keyboard listeners rather than calling `.showPopover()` on the submenu element directly.
+*   **Wrapperless CSS Anchor Positioning**: By declaring a unique `anchor-name` on any trigger element, any flat popover can bind and position itself relative to that trigger wrapperlessly (e.g., aligning submenus to the top-right of their parent trigger).
 *   **Built-in Focus and Tab Safety**: When popovers are closed, they are natively set to `display: none` by the browser, safely removing them from keyboard tab order and accessibility trees to eliminate "ghost focus" traps.
 
 ### Command Menus vs. Navigation Menus
@@ -75,22 +77,20 @@ Specifying the correct semantic elements and ARIA roles is critical for search e
     <!-- Semantically mapped menu layout -->
     <menu class="menu-list" role="menu">
       <li class="menu-item-wrapper" role="none">
-        <button id="preferences-trigger" class="menu-item" role="menuitem" popovertarget="preferences-submenu" aria-haspopup="true">
+        <button id="preferences-trigger" class="menu-item" role="menuitem" aria-haspopup="true" aria-expanded="false">
           <svg class="menu-icon" viewBox="0 0 24 24"><path d="..."/></svg>
           <span class="menu-label">Preferences</span>
           <span class="menu-arrow" aria-hidden="true"></span>
         </button>
 
-        <!-- Nested Submenu Popover inside parent list-item wrapper -->
-        <div id="preferences-submenu" popover class="popover-menu">
-          <menu class="menu-list" role="menu">
-            <li class="menu-item-wrapper" role="none">
-              <button class="menu-item" role="menuitem">
-                <span class="menu-label">User Theme</span>
-              </button>
-            </li>
-          </menu>
-        </div>
+        <!-- Standard nested submenu menu - no popover attribute needed, fully nested in DOM -->
+        <menu class="submenu" role="menu" aria-label="Preferences">
+          <li class="menu-item-wrapper" role="none">
+            <button class="menu-item" role="menuitem">
+              <span class="menu-label">User Theme</span>
+            </button>
+          </li>
+        </menu>
       </li>
     </menu>
 
@@ -125,10 +125,6 @@ Specifying the correct semantic elements and ARIA roles is critical for search e
   anchor-name: --file-anchor;
 }
 
-#preferences-trigger {
-  anchor-name: --preferences-anchor;
-}
-
 .popover-menu {
   display: none;
   position: absolute;
@@ -146,10 +142,34 @@ Specifying the correct semantic elements and ARIA roles is critical for search e
   left: anchor(left);
 }
 
-#preferences-submenu {
-  position-anchor: --preferences-anchor;
-  top: anchor(top);
-  left: anchor(right);
+/* Submenu standard nested menu - styled as standard absolute child on desktop */
+.submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: 0;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.25rem;
+  margin-left: 0.25rem;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+/* Show submenu dynamically when trigger button is expanded */
+.menu-item[aria-expanded="true"] + .submenu {
+  display: block;
+}
+
+/* Submenu Hover Bridge (Diagonal Aim Pointer Safeguard) */
+.submenu::after {
+  content: "";
+  position: absolute;
+  right: 100%; /* Position flush against trigger's right edge */
+  top: 0;
+  bottom: 0;
+  width: 0.25rem; /* Bridges the margin-left gap between trigger and submenu */
 }
 
 /* CSS Subgrid column alignments (Icons, Labels, Shortcuts) */
@@ -174,6 +194,7 @@ Specifying the correct semantic elements and ARIA roles is critical for search e
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid; /* Delegates tracks to parent .menu-list */
+  position: relative; /* REQUIRED: Anchor point for standard absolute nested submenus */
 }
 
 .menu-item {
@@ -207,6 +228,7 @@ Specifying the correct semantic elements and ARIA roles is critical for search e
   height: 0.75rem;
   background-color: currentColor;
   margin-inline-start: 0.5rem; /* Gap between Shortcut (Col 3) and Arrow (Col 4) */
+  transition: transform 0.2s ease-out; /* Smooth visual transition when rotating arrow */
   mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>') no-repeat center / contain;
   -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>') no-repeat center / contain;
 }
@@ -250,6 +272,42 @@ Specifying the correct semantic elements and ARIA roles is critical for search e
     opacity: 1;
   }
 }
+
+/* Submenu Hover Bridge (Diagonal Aim Pointer Safeguard) */
+#preferences-submenu::after {
+  content: "";
+  position: absolute;
+  right: 100%; /* Position flush against trigger's right edge */
+  top: 0;
+  bottom: 0;
+  width: 0.25rem; /* Bridges the margin-left gap between trigger and submenu */
+}
+
+/* Responsive Mobile Drawer Transformation */
+@media (max-width: 48rem) {
+  /* Both top-level menus and nested submenus transform into stackable bottom drawers */
+  .popover-menu {
+    position: fixed;
+    inset-block-start: auto; /* REQUIRED: Overrides browser default popover top:0 to prevent full-screen stretching */
+    inset-block-end: 0;
+    inset-inline: 0;
+    margin: 0;
+    border-radius: 12px 12px 0 0;
+    inline-size: 100%;
+    max-block-size: 60vh;
+    transform: translateY(100%);
+    transition: transform 0.25s ease-out;
+  }
+
+  .popover-menu:popover-open {
+    transform: translateY(0);
+  }
+
+  /* Clamp scrollport height inside mobile drawers to prevent full viewport stretch */
+  .scrollable-menu {
+    max-block-size: 50vh;
+  }
+}
 ```
 
 ---
@@ -261,6 +319,14 @@ Specifying the correct semantic elements and ARIA roles is critical for search e
 *   **DO NOT** use absolute layout margin hacks or third-party positioning scripts to track the trigger. Leverage native CSS Anchor Positioning to keep the overlay completely wrapperless.
 *   **DO** use `display: grid; grid-template-columns: subgrid` to ensure elements like icons, labels, shortcuts, and arrows line up flawlessly across independent rows without hardcoded padding variables.
 *   **DO** style outlines exclusively on `:focus-visible` to protect mouse and touch clicks while presenting highly visible indicators for keyboard navigation.
+*   **DO** implement an invisible "hover bridge" pseudo-element (`::after`) on nested submenus to span visual margin gaps, ensuring diagonal pointer trajectories (safe mouse-aim) never trigger adjacent items.
+*   **DO** use fluid media queries to override absolute layouts on mobile viewports, transforming the top-layer popover into a fixed bottom drawer to maximize touch target sizing and accessibility.
+
+---
+
+## Known issues
+
+*   **WebKit/Safari Nested Popover Clipping**: If a nested popover is physically nested in the HTML DOM inside a parent popover that contains scrollports (`overflow: auto`), WebKit/Safari incorrectly clips and completely hides the nested child popover on mobile drawers. **The Solution:** Keep all menus and submenus flat at the body root as sibling elements, and programmatically invoke `.click()` on the trigger button inside keyboard listeners rather than calling `.showPopover()` directly on the submenu element. This establishes perfect, cross-browser native popover target ancestry for light-dismiss without physical DOM nesting.
 
 ---
 
@@ -271,6 +337,27 @@ If scroll-state Queries are unsupported, the menubar will still stick to the vie
 
 ### Popover and Anchor Positioning Fallback
 For environments lacking native Popover and Anchor positioning, write standard relative container wrappers on trigger buttons and set fallback static styles inside `@supports not` directives.
+
+### Polyfill Loader for Older Environments
+To guarantee absolute, cross-browser compatibility on historical browsers that lack native Popover or CSS Anchor Positioning support, conditionally load the standard polyfills. Use a lightweight inline script to check feature support and asynchronously import the polyfill libraries only when missing:
+
+```javascript
+/* Conditionally load Popover and Anchor Positioning polyfills in older browsers */
+(async () => {
+  const supportsPopover = HTMLButtonElement.prototype.hasOwnProperty('popovertarget');
+  const supportsAnchor = 'anchorName' in document.documentElement.style;
+
+  if (!supportsPopover) {
+    await import('https://unpkg.com/@oddbird/popover-polyfill');
+  }
+  if (!supportsAnchor) {
+    await import('https://unpkg.com/@oddbird/css-anchor-positioning');
+  }
+})();
+```
+
+### Advanced Subskill Reference
+For exhaustive details on edge-repositioning, axis-flipping, and popover viewport boundary try tactics, reference {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}. For full swipeable touch gestures, scroll-linked backdrop timelines, and interactive drawer behaviors on smaller mobile viewports, reference {{ GUIDE_REF("navigation-drawer") }}.
 
 {{ FEATURE_FALLBACKS("popover") }}
 {{ FEATURE_FALLBACKS("anchor-positioning") }}
