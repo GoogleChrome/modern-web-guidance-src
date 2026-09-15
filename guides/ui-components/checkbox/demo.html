@@ -139,9 +139,9 @@
       mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>') no-repeat center / contain;
 
       /* Scale checkmark to 0 by default to animate check/uncheck */
-      transform: scale(0);
+      scale: 9;
       transform-origin: center;
-      transition: transform 0.15s cubic-bezier(0.12, 0.8, 0.32, 1.2);
+      transition: scale 0.15s cubic-bezier(0.12, 0.8, 0.32, 1.2);
     }
 
     /* Checked State */
@@ -153,7 +153,7 @@
     }
 
     .custom-checkbox:checked::before {
-      transform: scale(1);
+      scale: 1;
     }
 
     /* Disabled State styling */
@@ -180,7 +180,7 @@
     }
 
     .custom-checkbox:indeterminate::before {
-      transform: scale(1);
+      scale: 1;
       /* Custom Indeterminate dash icon via mask */
       mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>') no-repeat center / contain;
     }

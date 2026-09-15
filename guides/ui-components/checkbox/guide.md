@@ -4,6 +4,7 @@ description: Style checkboxes, including custom icons, layout, colors, check/unc
 web-feature-ids:
   - accent-color
   - indeterminate
+  - individual-transforms
 ---
 
 # Styling Checkboxes
@@ -80,13 +81,13 @@ You can render a crisp vector checkmark with **CSS masking** on a pseudo-element
   mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>') no-repeat center / contain;
   
   /* Scale to 0 (hidden) by default to animate check/uncheck */
-  transform: scale(0);
-  transition: transform 0.15s ease;
+  scale: 0;
+  transition: scale 0.15s ease;
 }
 
 /* Animate checked scale */
 .checkbox-custom:checked::before {
-  transform: scale(1);
+  scale: 1;
 }
 
 /* Disabled State */
@@ -120,7 +121,7 @@ For custom checkboxes, style the `:indeterminate` pseudo-class and apply a custo
 
 /* Styling custom indeterminate checkbox */
 .checkbox-custom:indeterminate::before {
-  transform: scale(1);
+  scale: 1;
   /* Render a custom horizontal dash SVG for indeterminate states */
   mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>') no-repeat center / contain;
 }
