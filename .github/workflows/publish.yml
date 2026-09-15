@@ -4,7 +4,13 @@ on:
   schedule:
     # 20:00 UTC is 12:00 PM PST / 1:00 PM PDT
     - cron: '0 20 * * 1'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force release even if no substantive changes'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: publish-skills
@@ -74,8 +80,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: pnpm --filter serving exec node --test skills-cli/install-skills.test.ts
 
-
-
       - name: Configure Git for Auth and Commit
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -86,12 +90,14 @@ jobs:
           git config --global url."https://x-access-token:${APP_TOKEN}@github.com/".insteadOf "git@github.com:"
 
       - name: Publish Skills to GitHub (modern-web-guidance)
+        id: publish
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: pnpm --filter serving run publish-skills
+        run: pnpm --filter serving run publish-skills ${{ inputs.force && '--force' || '' }}
 
       - name: Publish to npm via OIDC Provenance
+        if: steps.publish.outputs.published == 'true'
         run: |
           cd dist/skills-cli
           npm publish --provenance --access public --registry https://registry.npmjs.org/

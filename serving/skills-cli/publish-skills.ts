@@ -160,8 +160,41 @@ async function main() {
 
   // Check if compiled distribution payload has substantive changes compared to the previous release
   const distDiff = getExactDistributionDiff(latestTag, publishCliDir);
-  if (!hasSubstantiveChanges(distDiff) && !isForce) {
+  const shouldPublish = hasSubstantiveChanges(distDiff) || isForce;
+
+  if (!isDryRun) {
+    // Always update README with features/evals for both distribution bundle and source repo
+    console.log('Checking automated documentation updates to source repo...');
+    updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
+
+    let hasDocDiff = false;
+    try {
+      execSync('git diff --quiet README.md serving/skills-cli/eval-results-summary.json', { cwd: ROOT_DIR });
+    } catch {
+      hasDocDiff = true;
+    }
+
+    if (hasDocDiff) {
+      console.log('Committing automated documentation updates to source repo...');
+      execSync('git add README.md serving/skills-cli/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
+      execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
+      
+      // If we are not publishing a release, push the doc updates immediately so evals telemetry is not lost
+      if (!shouldPublish) {
+        console.log('Pushing automated documentation updates to source repo...');
+        const ref = process.env.GITHUB_REF || 'main';
+        execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });
+      }
+    } else {
+      console.log('No changes in README.md or eval-results-summary.json to commit.');
+    }
+  }
+
+  if (!shouldPublish) {
     console.log(`\n✅ No substantive guide or skill changes detected since ${latestTag}. Skipping release.`);
+    if (process.env.GITHUB_OUTPUT) {
+      await fs.appendFile(process.env.GITHUB_OUTPUT, 'published=false\n');
+    }
     process.exit(0);
   }
 
@@ -205,37 +238,25 @@ async function main() {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
-    // Update both the distribution bundle README and the source repo README
-    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
+    const { allFeatureIds, readyGuides } = getFeaturesAndUseCases();
+    const featuresCount = allFeatureIds.size;
+    const useCasesCount = readyGuides.length;
 
-    // 1. Commit automated documentation updates locally if diff exists
-    console.log('Checking automated documentation updates to source repo...');
-    let hasDocDiff = false;
-    try {
-      execSync('git diff --quiet README.md serving/skills-cli/eval-results-summary.json', { cwd: ROOT_DIR });
-    } catch {
-      hasDocDiff = true;
-    }
-
-    if (hasDocDiff) {
-      console.log('Committing automated documentation updates to source repo...');
-      execSync('git add README.md serving/skills-cli/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
-      execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
-    } else {
-      console.log('No changes in README.md or eval-results-summary.json to commit.');
-    }
-
-    // 2. Tag locally on the source repository
+    // 1. Tag locally on the source repository
     console.log(`Creating local Git tag v${newVersion}...`);
     execSync(`git tag v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
 
-    // 3. Atomically push source branch updates and tag in a single transaction
+    // 2. Atomically push source branch updates and tag in a single transaction
     console.log(`Atomically pushing Git tag v${newVersion} to source repo...`);
     const ref = process.env.GITHUB_REF || 'main';
     execSync(`git push --atomic origin HEAD:"${ref}" v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
 
-    // 4. Only after source consensus succeeds: publish to distribution repo
+    // 3. Only after source consensus succeeds: publish to distribution repo
     await publishToDistributionRepo(publishCliDir, newVersion, releaseNotes);
+
+    if (process.env.GITHUB_OUTPUT) {
+      await fs.appendFile(process.env.GITHUB_OUTPUT, 'published=true\n');
+    }
 
     console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/modern-web-guidance  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
     console.log(`${useCasesCount} usecases.`);
