@@ -1,8 +1,9 @@
-- **MANDATORY**: The top-level menubar wrapper MUST be sticky positioned (`position: sticky`) and established as a scroll-state query container (`container-type: scroll-state`) to track when it becomes pinned.
-- **MANDATORY**: Descendant elements inside the sticky menubar wrapper MUST natively transform visually (e.g. adjust border, color, or shadow) when stuck at the top edge of the viewport using `@container scroll-state(stuck: top)` queries.
-- **MANDATORY**: Each dropdown and submenu list MUST explicitly declare the native HTML `popover` attribute to promote overlays into the browser's top-layer.
-- **MANDATORY**: Overlays MUST be positioned relative to their triggering elements wrapperlessly in CSS using standard Anchor Positioning (`anchor-name` on triggers, `position-anchor` and `anchor()` on popovers).
-- **MANDATORY**: Popover list-items and menu-item button elements MUST use `display: grid; grid-template-columns: subgrid` to delegate column tracks to the parent menu grid definition, ensuring vertical alignment of icons, labels, shortcuts, and arrows across rows.
-- **MANDATORY**: The scrolling menu list container MUST be declared as a scroll-state query container (`container-type: scroll-state`) and natively toggle visual overflow shadow indicator overlays using `@container scroll-state(scrollable: top/bottom)` queries.
-- **MANDATORY**: Nested submenu popovers MUST be physically nested inside their parent `<li>` list item triggering element in the HTML DOM tree to establish the correct ancestral relation in the browser's native Popover shadow tree.
-- **OPTIONAL**: Progressive enhancement can be demonstrated by providing relative-container fallback alignments for environments that do not natively support CSS Anchor positioning.
+- **MANDATORY**: Activating a menu trigger opens a visible command menu positioned adjacent to that trigger.
+- **MANDATORY**: A command menu exposes menu and menuitem semantics and supports its promised arrow-key navigation.
+- **MANDATORY**: When a menu opens, focus moves to its first enabled menu item.
+- **MANDATORY**: In a vertical menu, ArrowUp and ArrowDown move focus between enabled items, wrapping at either end; Home and End move to the first and last enabled items.
+- **MANDATORY**: Pressing Escape closes the active menu and returns focus to the control that invoked it.
+- **MANDATORY WHEN A SUBMENU IS PRESENT**: Its trigger exposes the submenu relationship and accurate expanded state. ArrowRight moves focus into the open submenu, and ArrowLeft or Escape closes it and returns focus to its trigger.
+- **OPTIONAL**: The menu uses visual icons, keyboard-shortcut labels, separators, or aligned columns when they clarify the available commands.
+- **OPTIONAL**: When menu rows use icons, labels, shortcuts, or submenu indicators, shared grid columns align those values across rows.
+- **OPTIONAL WHEN THE MENU BAR IS STICKY AND THE BROWSER SUPPORTS SCROLL-STATE QUERIES**: A scroll-state query applies a visual stuck state without changing how the menu opens or how its keyboard interaction works.
