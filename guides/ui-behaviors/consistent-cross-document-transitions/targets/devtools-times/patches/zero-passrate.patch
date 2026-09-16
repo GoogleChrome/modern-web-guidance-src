@@ -1,0 +1,55 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..0ac1dcc 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -22,7 +22,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors" style="view-transition-name: duplicate-card">
+                         {article.data.title}
+                     </h1>
+                     <p class="mt-4 text-lg text-gray-700">
+@@ -41,7 +41,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                     <Image 
+                         src={image} 
+-                        alt=""
++                        alt="" style="view-transition-name: duplicate-card"
+                         width={800}
+                         height={533}
+                         format="webp"
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..57e5435 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -30,11 +30,13 @@ const baseUrl = import.meta.env.BASE_URL;
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <script is:inline defer blocking="render" src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <link rel="expect" href="site-footer" />
++    <script is:inline>window.addEventListener("pagereveal", () => { console.log("reveal"); });</script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..90d6259 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,7 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++@view-transition {
++  navigation: none;
++}
