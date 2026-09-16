@@ -7,8 +7,8 @@ function createMockGuideContext(overrides?: Partial<GuideContext>): GuideContext
   return {
     guideName: "anchor-positioning",
     taskName: "anchor-tooltip",
-    guideContent: "# Anchor Positioning Guide\n".repeat(300),
-    expectationsContent: "# Expectations\n".repeat(300),
+    guideContent: "# Anchor Positioning Guide\n".repeat(600),
+    expectationsContent: "# Expectations\n".repeat(600),
     taskPrompt: "Create a tooltip anchored to a target element.",
     graderContent: "test(\"tooltip positions correctly\", async () => {});\n".repeat(500),
     baseAppContent: "<div id=\"target\">Target</div>",

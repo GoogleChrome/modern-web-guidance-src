@@ -159,7 +159,7 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
     expectationsContent: expectationsContent || 'No expectations.md content found.',
     taskPrompt: taskPrompt || 'No task.md prompt found.',
     graderContent: graderContent || 'No grader.ts content found.',
-    baseAppContent: baseAppContent || 'No base app content found.'
+    baseAppContent: baseAppContent || ''
   };
 }
 
@@ -176,11 +176,17 @@ function findCodeOutput(dir: string, targetFileFromEvals?: string): { path: stri
 
   const candidates = [
     'dist/index.html',
+    'src/App.tsx',
     'src/App.jsx',
+    'src/App.ts',
     'src/App.js',
+    'src/main.tsx',
     'src/main.jsx',
+    'src/main.ts',
     'src/main.js',
+    'src/index.tsx',
     'src/index.jsx',
+    'src/index.ts',
     'src/index.js',
     'index.html'
   ];
@@ -261,9 +267,44 @@ function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
  * Pulls the query out of a guidance search command, e.g. `gd search "form validation"` -> `form validation`.
  */
 export function extractSearchQuery(cmd: string): string | undefined {
-  const match = cmd.match(/search\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i);
-  if (!match) return undefined;
-  const query = (match[1] || match[2] || match[3]).trim();
+  if (!cmd) return undefined;
+
+  const normalized = cmd.replace(/\\"/g, '"').replace(/\\'/g, "'").trim();
+  const searchIdx = normalized.toLowerCase().indexOf('search');
+  if (searchIdx === -1) return undefined;
+
+  const afterSearch = normalized.slice(searchIdx + 6).trim();
+  if (!afterSearch) return undefined;
+
+  // 1. Quoted string anywhere after search
+  const quotedMatch = afterSearch.match(/(?:"([^"]+)"|'([^']+)')/);
+  if (quotedMatch) {
+    const q = (quotedMatch[1] || quotedMatch[2]).trim();
+    return q || undefined;
+  }
+
+  // 2. Unquoted arguments: strip flags (e.g. --limit 5, --skill-version ..., -v) and trailing backslashes
+  const tokens = afterSearch.split(/\s+/);
+  const queryTokens: string[] = [];
+  let skipNext = false;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
+    if (token.startsWith('--') || token.startsWith('-')) {
+      if (!token.includes('=') && i + 1 < tokens.length && !tokens[i + 1].startsWith('-')) {
+        skipNext = true;
+      }
+      continue;
+    }
+    if (token === '\\') continue;
+    queryTokens.push(token);
+  }
+
+  const query = queryTokens.join(' ').trim();
   return query || undefined;
 }
 
@@ -511,6 +552,18 @@ async function synthesizeDiagnosis(
   return agentCaller(systemInstruction, prompt, 'Synthesizer Sub-Agent');
 }
 
+function computeInterRunDiff(ctxA: RunContext, ctxB: RunContext): string {
+  if (ctxA.patchContent && ctxB.patchContent) {
+    return generateUnifiedDiff(ctxA.patchContent.trim(), ctxB.patchContent.trim(), 'Run A Patch', 'Run B Patch');
+  }
+  if (ctxA.patchContent || ctxB.patchContent) {
+    const patchRun = ctxA.patchContent ? 'Run A' : 'Run B';
+    const fileRun = ctxA.patchContent ? 'Run B' : 'Run A';
+    return `Direct diff unavailable: ${patchRun} is patch-based while ${fileRun} produced standalone file output.`;
+  }
+  return generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
+}
+
 /**
  * Runs the diagnostic agent comparison using local CLI sub-agents.
  */
@@ -545,9 +598,13 @@ export async function runComparison(
   }
 
   const parsedPath = parseResultPath(successCtx.dir);
-  const guideName = parsedPath?.guide || 'guide';
-  const taskName = parsedPath?.taskName || 'task';
-  const runType = parsedPath?.runType || 'guided';
+  if (!parsedPath) {
+    throw new Error(
+      `Invalid run directory structure: cannot parse guide, task, and runType from "${successCtx.dir}". ` +
+      `Expected path format ending in: <guide>/<task>/<runType>`
+    );
+  }
+  const { guide: guideName, taskName, runType } = parsedPath;
 
   const guideCtx = findGuideContext(guideName, taskName);
   const diffBaseVsA = ctxA.patchContent
@@ -556,13 +613,7 @@ export async function runComparison(
   const diffBaseVsB = ctxB.patchContent
     ? ctxB.patchContent.trim()
     : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Run B Output');
-  const diffAvsB = (ctxA.patchContent && ctxB.patchContent)
-    ? generateUnifiedDiff(ctxA.patchContent.trim(), ctxB.patchContent.trim(), 'Run A Patch', 'Run B Patch')
-    : (ctxA.codeOutput && ctxB.codeOutput && !ctxA.patchContent && !ctxB.patchContent)
-      ? generateUnifiedDiff(ctxA.codeOutput, ctxB.codeOutput, 'Run A Output', 'Run B Output')
-      : (ctxA.patchContent || ctxB.patchContent)
-        ? `Direct diff unavailable: Run ${ctxA.patchContent ? 'A' : 'B'} is patch-based while Run ${ctxB.patchContent ? 'A' : 'B'} produced standalone file output.`
-        : generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
+  const diffAvsB = computeInterRunDiff(ctxA, ctxB);
 
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
