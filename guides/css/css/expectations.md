@@ -1,0 +1,33 @@
+- The implementation MUST use CSS logical properties (such as `margin-inline`, `padding-block`, `inline-size`, `block-size`) instead of physical directional properties (`margin-left`, `padding-top`, `width`, `height`) for layout spacing and sizing.
+- The implementation MUST declare explicit `@layer` priority zones (e.g., `@layer reset, base, theme, components, utilities;`) to manage cascade specificity instead of BEM class naming conventions.
+- The implementation MUST use `:where()` for low-specificity default rules or fallback selectors.
+- The implementation MUST use `:has()` to style parent or container elements based on child or input states (such as `label:has(:checked)`) instead of toggling state classes via JavaScript.
+- The implementation MUST NOT nest a `:has()` selector inside another `:has()` selector.
+- The implementation MUST use `:is()` or `:where()` instead of duplicating CSS rules when grouping selectors or fallbacks.
+- The implementation MUST use `:not()` to exclude irrelevant states (such as `button:hover:not(:disabled)`) rather than writing subsequent override rules to undo styles.
+- The implementation MUST use `@scope` when scoping component styles to a DOM subtree or donut scope (`@scope (...) to (...)`).
+- The implementation MUST NOT apply global wildcard reset declarations (`* { ... }`) outside of a low-priority `@layer reset` block.
+- The implementation MUST define custom keyboard focus styles using `:focus-visible` paired with `outline` and `outline-offset` rather than `:focus`.
+- The implementation MUST NOT remove focus outlines (`outline: none`) without providing a visible, high-contrast focus indicator.
+- The implementation MUST ensure interactive touch targets meet a minimum size of `24px` by `24px` using `min-inline-size` and `min-block-size` or padding.
+- The implementation MUST NOT apply `touch-action: none` to scrollable containers when axis-specific values (`pan-x` or `pan-y`) suffice.
+- The implementation MUST define reusable design tokens (colors, typography, spacing) as CSS custom properties on `:root`.
+- The implementation MUST set `color-scheme: light dark` on `:root` and use `light-dark()` to define theme-aware color tokens.
+- The implementation MUST provide high-contrast fallbacks using `@media (forced-colors: active)` for components that rely on `box-shadow` or `background-image` to convey boundaries or state.
+- The implementation MUST use `:user-invalid` and `:user-valid` rather than `:invalid` and `:valid` for form validation styling so error states appear only after user interaction.
+- The implementation MUST use `field-sizing: content` on auto-growing text inputs or `<textarea>` elements.
+- The implementation MUST use `@container` queries (`container-type: inline-size`) for component-level responsive layouts rather than relying exclusively on viewport `@media` queries.
+- The implementation MUST use dynamic viewport units (`dvh`, `dvw`) instead of static `vh` or `vw` units for full-viewport sizing.
+- The implementation MUST apply `aspect-ratio` to media containers or responsive `<img>` and `<video>` elements to prevent Cumulative Layout Shift (CLS).
+- The implementation MUST use `clamp()` combining font-relative (`rem`) and viewport/container-relative units (`vw` or `cqi`) for fluid typography.
+- The implementation MUST NOT use bare viewport units (`vw` or `vh`) alone for `font-size` without `clamp()`.
+- The implementation MUST use unitless values for `line-height` (such as `1.5`) and relative units (`rem` or `em`) for `font-size`.
+- The implementation MUST apply `text-wrap: balance` to headings (`<h1>`–`<h6>`) and `text-wrap: pretty` to body text paragraphs.
+- The implementation MUST NOT apply `text-wrap: balance` or `text-wrap: pretty` globally via the universal selector (`*`).
+- The implementation MUST NOT apply `user-select: none` to body text or selectable reading content.
+- The implementation MUST specify perceptual color interpolation spaces (`in oklch` or `in oklab`) when defining CSS gradients or `color-mix()` expressions.
+- The implementation MUST animate compositor-friendly properties (`opacity`, `transform`, `translate`, `scale`) rather than layout-triggering properties (`top`, `left`, `width`, `height`).
+- The implementation MUST use `transition-behavior: allow-discrete` and `@starting-style` when animating discrete entry and exit states (such as `<dialog>` or `[popover]` elements).
+- The implementation MUST pair `content-visibility: auto` with `contain-intrinsic-size` (or `contain-intrinsic-block-size: auto <size>`) on off-screen sections to prevent layout shifts.
+- The implementation MUST honor `@media (prefers-reduced-motion: reduce)` by disabling or dampening animations without using a blanket `* { animation-duration: 0.01ms !important; }` override.
+- The implementation MUST NOT use CSS `content` on `::before` or `::after` pseudo-elements to insert essential semantic text or labels that belong in the HTML DOM.
