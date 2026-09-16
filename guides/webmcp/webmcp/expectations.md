@@ -1,0 +1,9 @@
+- The implementation MUST feature-detect `document.modelContext` before calling any imperative WebMCP registration methods.
+- The implementation MUST use `document.modelContext.registerTool()` to register dynamic client-side tools with `name`, `description`, `inputSchema`, and `execute` properties.
+- The implementation MUST define a JSON Schema `inputSchema` object where every tool parameter includes an explicit `type` and descriptive `description`.
+- The implementation MUST include `annotations: { readOnlyHint: true }` on tools that read or query state without mutating application data.
+- The implementation MUST pass an `AbortSignal` (from an `AbortController`) to `document.modelContext.registerTool()` to support tool cleanup and lifecycle management.
+- The implementation MUST NOT call `unregisterTool()` directly and MUST rely on `AbortController.abort()` for tool removal.
+- The implementation MUST ensure tool `execute` functions resolve only after corresponding UI state updates have completed.
+- The implementation MUST annotate declarative HTML `<form>` tools with both `toolname` and `tooldescription` attributes.
+- The implementation MUST NOT expose WebMCP primitives unsupported by the browser spec (such as backend `Resources`, `Prompts`, or `stdio`/SSE transports).
