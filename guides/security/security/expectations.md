@@ -1,0 +1,20 @@
+- The implementation MUST serve the `Strict-Transport-Security` header (such as `max-age=31536000; includeSubDomains`) to enforce HTTPS connections.
+- The implementation MUST use safe DOM APIs (`textContent`, `createElement`, or `setHTML`) instead of dangerous sinks (`innerHTML`, `outerHTML`, `document.write`, `eval`) when rendering untrusted or dynamic text.
+- The implementation MUST configure first-party session cookies using the `__Host-` prefix with `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/`, and no `Domain` attribute.
+- The implementation MUST use `SameSite=None; Secure; Partitioned` (CHIPS) for any cookies required in third-party embedded contexts and MUST NOT use unpartitioned `SameSite=None`.
+- The implementation MUST protect against clickjacking by setting both `X-Frame-Options: SAMEORIGIN` (or `DENY`) and the CSP `frame-ancestors 'self'` directive.
+- The implementation MUST strictly validate `event.origin` against an explicit trusted origin allowlist inside `window` `message` event listeners.
+- The implementation MUST specify an explicit target origin (never wildcard `'*'`) when sending messages via `postMessage`.
+- The implementation MUST configure a `Reporting-Endpoints` HTTP header and reference it via the `report-to` directive in `Content-Security-Policy` headers.
+- The implementation MUST enforce a nonce-based or hash-based `Content-Security-Policy` with `script-src` using `'strict-dynamic'` and `'report-sample'`, `object-src 'none'`, and `base-uri 'none'`.
+- The implementation MUST NOT use broad scheme or domain allowlists (such as `https:` alone or `https://cdn.example.com` without `'strict-dynamic'`) as the primary `script-src` protection.
+- The implementation MUST enforce Trusted Types via `require-trusted-types-for 'script'` in the CSP header and sanitize any HTML sink assignments through a named `trustedTypes.createPolicy(...)` instance.
+- The implementation MUST set `Cross-Origin-Opener-Policy: same-origin-allow-popups` (or `same-origin`) on document responses.
+- The implementation MUST set `Cross-Origin-Resource-Policy: same-origin` (or `same-site`) on internal API and authenticated resource responses.
+- The implementation MUST implement server-side Fetch Metadata protection that inspects `Sec-Fetch-Site`, `Sec-Fetch-Mode`, and `Sec-Fetch-Dest` headers to reject unauthorized cross-site state-changing requests with HTTP status `403`, and include `Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site`.
+- The implementation MUST set `X-Content-Type-Options: nosniff` on all server responses alongside accurate `Content-Type` headers.
+- The implementation MUST set `Referrer-Policy: strict-origin-when-cross-origin` on document responses.
+- The implementation MUST set a restrictive `Permissions-Policy` header (such as `camera=(), geolocation=(), microphone=()`) to disable unused browser features.
+- The implementation MUST include Subresource Integrity (`integrity="sha256-..."` or `sha384-` / `sha512-`) paired with `crossorigin="anonymous"` on external versioned `<script>` tags.
+- The implementation MUST validate the request `Origin` header on CORS endpoints and return an explicit trusted origin in `Access-Control-Allow-Origin` rather than wildcard `'*'` whenever `Access-Control-Allow-Credentials: true` is used.
+- The implementation MUST send the `Clear-Site-Data: "cookies", "storage", "cache"` header on logout responses to completely terminate client state.
