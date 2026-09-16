@@ -1,5 +1,18 @@
 import type { GuideContext, RunContext } from './compare-evals.ts';
 
+const MAX_GUIDE_PROMPT_CHARS = 8000;
+const MAX_EXPECTATIONS_PROMPT_CHARS = 6000;
+const MAX_GRADER_PROMPT_CHARS = 20000;
+const MAX_DIFF_PROMPT_CHARS = 40000;
+
+function truncateAtLineBoundary(text: string, limit: number): string {
+  if (!text || text.length <= limit) return text;
+  const truncated = text.slice(0, limit);
+  const lastNewline = truncated.lastIndexOf('\n');
+  const safeCut = lastNewline > limit * 0.8 ? truncated.slice(0, lastNewline) : truncated;
+  return `${safeCut}\n\n[... Truncated for prompt length budget (${text.length - safeCut.length} characters omitted) ...]`;
+}
+
 export function getCompliancePrompts(
   guideCtx: GuideContext,
   ctxA: RunContext,
@@ -31,12 +44,12 @@ ${guideCtx.taskPrompt}
 
 ### Reference Guidance (guide.md)
 """
-${guideCtx.guideContent.slice(0, 4000)}
+${truncateAtLineBoundary(guideCtx.guideContent, MAX_GUIDE_PROMPT_CHARS)}
 """
 
 ### Expected Outcomes (expectations.md)
 """
-${guideCtx.expectationsContent.slice(0, 3000)}
+${truncateAtLineBoundary(guideCtx.expectationsContent, MAX_EXPECTATIONS_PROMPT_CHARS)}
 """
 
 ### Run A (${statusA} - Score: ${ctxA.score}%)
@@ -97,7 +110,7 @@ Mandatory Audit Steps:
 
 ### Validation Logic (grader.ts)
 """
-${guideCtx.graderContent.slice(0, 15000)}
+${truncateAtLineBoundary(guideCtx.graderContent, MAX_GRADER_PROMPT_CHARS)}
 """
 
 ### Run A (${statusA} - Score: ${ctxA.score}%)
@@ -124,17 +137,17 @@ ${JSON.stringify(failedTracesB, null, 2)}
 
 #### Diff 1: Base App vs Run A Output
 """
-${diffBaseVsA.slice(0, 30000)}
+${truncateAtLineBoundary(diffBaseVsA, MAX_DIFF_PROMPT_CHARS)}
 """
 
 #### Diff 2: Base App vs Run B Output
 """
-${diffBaseVsB.slice(0, 30000)}
+${truncateAtLineBoundary(diffBaseVsB, MAX_DIFF_PROMPT_CHARS)}
 """
 
 #### Diff 3: Run A Output vs Run B Output
 """
-${diffAvsB.slice(0, 30000)}
+${truncateAtLineBoundary(diffAvsB, MAX_DIFF_PROMPT_CHARS)}
 """
 
 ### Tagged Trajectory Steps Overview

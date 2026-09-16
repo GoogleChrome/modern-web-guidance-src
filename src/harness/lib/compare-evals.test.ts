@@ -16,8 +16,11 @@ describe('compare-evals pipeline', () => {
     const cases: Array<[string, string | undefined]> = [
       ['npx modern-web-guidance search "form validation user-invalid"', 'form validation user-invalid'],
       ["npx modern-web-guidance search 'dialog focus management'", 'dialog focus management'],
+      ['npx modern-web-guidance search form validation user-invalid', 'form validation user-invalid'],
       ['npx modern-web-guidance search accordion', 'accordion'],
-      ['npx modern-web-guidance search "accordion" --limit 5', 'accordion'],
+      ['npx modern-web-guidance search --limit 5 "accordion"', 'accordion'],
+      ['npx modern-web-guidance search form validation --limit 5', 'form validation'],
+      ['npx modern-web-guidance search \\"scroll driven animations\\"', 'scroll driven animations'],
       ['npx modern-web-guidance retrieve details-styling', undefined],
       ['', undefined]
     ];
