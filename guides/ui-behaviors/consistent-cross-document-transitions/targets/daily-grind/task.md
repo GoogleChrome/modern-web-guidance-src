@@ -1,0 +1,1 @@
+- Implement smooth page transitions for the site, ensuring critical page state is loaded and stable before initiating each transition so that critical styles are applied, critical scripts have run, and the initial visible content is parsed before the transition runs.

@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+index 66c9173..8d03445 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,13 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="expect" href="site-footer">
++  <script src="/js/theme.js"></script>
+   <style>
++    @view-transition {
++      navigation: none;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -168,7 +174,7 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" style="view-transition-name: duplicate-card">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -178,7 +184,7 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" style="view-transition-name: duplicate-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -207,6 +213,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>window.addEventListener("pagereveal", () => { console.log("reveal"); });</script>
++
+ </body>
+ 
+ </html>
