@@ -519,3 +519,91 @@ test('parseCodexTrajectory handles structured array of content blocks in functio
   assert.strictEqual(summary.steps[0].outcome?.status, 'success');
   assert.strictEqual(summary.steps[0].outcome?.message?.includes('"name": "test-app"'), true);
 });
+
+test('parseCodexTrajectory does not flag tool output containing "error:" substring as failure', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_view_error_file',
+        name: 'exec',
+        arguments: JSON.stringify({ command: 'cat index.html' })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_view_error_file',
+        output: [
+          { type: 'input_text', text: 'Script completed\nWall time 0.1s\nOutput:\n' },
+          { type: 'input_text', text: '<p class="error">Error: Please enter a valid date</p>' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+});
+
+test('parseCodexTrajectory recognizes real Script failed as error', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_fail',
+        name: 'exec',
+        arguments: JSON.stringify({ command: 'node invalid.js' })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_fail',
+        output: [
+          { type: 'input_text', text: 'Script failed\nWall time 0.0s\nOutput:\n' },
+          { type: 'input_text', text: 'Script error:\nSyntaxError: Unexpected token' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].outcome?.status, 'error');
+});
+
+test('parseCodexTrajectory parses code-mode patch calls as write_file', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'custom_tool_call',
+        call_id: 'call_patch_1',
+        name: 'exec',
+        input: 'const patch = "*** Begin Patch\\n*** Update File: src/App.tsx\\n@@\\n- const a = 1;\\n+ const a = 2;\\n";'
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'custom_tool_call_output',
+        call_id: 'call_patch_1',
+        output: 'Script completed\nOutput:\n'
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'write_file');
+  assert.strictEqual(summary.steps[0].action?.name, 'apply_patch');
+  assert.strictEqual(summary.steps[0].action?.canonicalCategory, 'code_mutation');
+  assert.strictEqual((summary.steps[0].action?.params as any)?.path, 'src/App.tsx');
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+});

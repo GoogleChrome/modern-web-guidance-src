@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { createTwoFilesPatch } from 'diff';
 
 /**
  * Extracts target modified file paths directly from unified diff headers (+++ b/<path>).
@@ -98,8 +99,6 @@ export function initGitRepo(workDir: string): void {
     console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
   }
 }
-
-import { createTwoFilesPatch } from 'diff';
 
 /**
  * Generates an aligned unified diff of two strings for LLM context and file comparison.

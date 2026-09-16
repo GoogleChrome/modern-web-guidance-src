@@ -85,19 +85,23 @@ const completion = omelette('gd <command> <arg1> <arg2> <arg3> <arg4> <arg5>');
 
 completion.on('command', ({ reply }) => reply(COMMANDS));
 
+function listResultsRunDirs(): string[] {
+  try {
+    return fs.readdirSync(resultsDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+  } catch {
+    return [];
+  }
+}
+
 completion.on('arg1', ({ before, line, reply }) => {
   const flags = getFlagsForLine(line);
   if (before === 'eval') {
     const tasks = Array.from(getTaskMap().keys());
     reply(['suite', ...tasks, ...listGuideDirs(), ...flags]);
   } else if (before === 'compare') {
-    let recentRuns: string[] = [];
-    if (fs.existsSync(resultsDir)) {
-      try {
-        recentRuns = fs.readdirSync(resultsDir).filter(d => fs.statSync(path.join(resultsDir, d)).isDirectory());
-      } catch {}
-    }
-    reply([...recentRuns, ...flags]);
+    reply([...listResultsRunDirs(), ...flags]);
   } else if (before === 'gen') {
     reply(['grader']);
   } else if (before === 'audit') {
@@ -114,13 +118,7 @@ completion.on('arg2', ({ before, line, reply }) => {
   if (line.includes('gd eval')) {
     reply(flags);
   } else if (line.includes('gd compare')) {
-    let recentRuns: string[] = [];
-    if (fs.existsSync(resultsDir)) {
-      try {
-        recentRuns = fs.readdirSync(resultsDir).filter(d => fs.statSync(path.join(resultsDir, d)).isDirectory());
-      } catch {}
-    }
-    reply([...recentRuns, ...flags]);
+    reply([...listResultsRunDirs(), ...flags]);
   } else if (line.includes('gd dev') && before.startsWith('guides/')) {
     reply(flags);
   } else if (before === 'run') {
@@ -248,8 +246,9 @@ async function main() {
       const { runComparison } = await import('../harness/lib/compare-evals.ts');
       try {
         await runComparison(runDirA, runDirB);
-      } catch (err: any) {
-        console.error(`Comparison failed: ${err.message}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Comparison failed: ${msg}`);
         process.exit(1);
       }
       break;

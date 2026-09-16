@@ -53,8 +53,9 @@ async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: s
     try {
       const { generateNormalizedTrajectory } = await import('./trajectory-normalizer.ts');
       await generateNormalizedTrajectory(absoluteRunDir, detectedAgent);
-    } catch (err: any) {
-      console.warn(`[GCS Downloader] Warning: Failed to generate trajectory on the fly: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[GCS Downloader] Warning: Failed to generate trajectory on the fly: ${msg}`);
     }
   }
 }
@@ -97,8 +98,10 @@ async function listFilesWithToken(token: string, prefix: string): Promise<string
   return data.items.map((item: any) => item.name);
 }
 
+const MAX_CONCURRENT_DOWNLOADS = 8;
+
 /**
- * Downloads a batch of GCS items in parallel into the target directory.
+ * Downloads a batch of GCS items in parallel into the target directory using a concurrency limiter.
  */
 async function downloadFileBatch<T>(
   items: T[],
@@ -107,19 +110,33 @@ async function downloadFileBatch<T>(
   getItemName: (item: T) => string,
   downloadFn: (item: T, destPath: string) => Promise<unknown>
 ): Promise<void> {
-  await Promise.all(items.map(async (item) => {
-    const name = getItemName(item);
-    const relativeFilePath = name.substring(gcsPrefix.length);
-    if (!relativeFilePath || relativeFilePath.endsWith('/')) {
-      return;
+  const resolvedDestDir = path.resolve(destDir);
+  const queue = [...items];
+
+  const worker = async () => {
+    while (queue.length > 0) {
+      const item = queue.shift();
+      if (!item) break;
+
+      const name = getItemName(item);
+      const relativeFilePath = name.substring(gcsPrefix.length);
+      if (!relativeFilePath || relativeFilePath.endsWith('/')) {
+        continue;
+      }
+
+      const destPath = path.join(destDir, relativeFilePath);
+      if (!path.resolve(destPath).startsWith(resolvedDestDir)) {
+        throw new Error(`Refusing to write outside destination directory: ${destPath}`);
+      }
+
+      fs.mkdirSync(path.dirname(destPath), { recursive: true });
+      console.log(`  Downloading gs://${BUCKET_NAME}/${name} -> ${destPath}`);
+      await downloadFn(item, destPath);
     }
+  };
 
-    const destPath = path.join(destDir, relativeFilePath);
-    fs.mkdirSync(path.dirname(destPath), { recursive: true });
-
-    console.log(`  Downloading gs://${BUCKET_NAME}/${name} -> ${destPath}`);
-    await downloadFn(item, destPath);
-  }));
+  const workerCount = Math.min(items.length, MAX_CONCURRENT_DOWNLOADS);
+  await Promise.all(Array.from({ length: workerCount }, worker));
 }
 
 /**
@@ -141,8 +158,9 @@ async function downloadSuiteEvalsIfMissing(suiteName: string, token: string | un
       await downloadFileWithToken(token, gcsFileName, destPath);
       console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via REST API!`));
       return;
-    } catch (err: any) {
-      console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via REST: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via REST: ${msg}`);
     }
   }
 
@@ -158,8 +176,9 @@ async function downloadSuiteEvalsIfMissing(suiteName: string, token: string | un
     } else {
       console.warn(`[GCS Downloader] Suite evals.json does not exist on GCS: gs://${BUCKET_NAME}/${gcsFileName}`);
     }
-  } catch (err: any) {
-    console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via SDK: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via SDK: ${msg}`);
   }
 }
 
@@ -242,8 +261,9 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
       console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded all files via REST API!`));
       await postDownloadProcessing(absoluteRunDir, relativeRunPath);
       return true;
-    } catch (err: any) {
-      console.error(cRed(`[GCS Downloader] ❌ REST API Download failed: ${err.message}`));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(cRed(`[GCS Downloader] ❌ REST API Download failed: ${msg}`));
     }
   }
 
@@ -274,8 +294,9 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
     console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded all files via Storage SDK!`));
     await postDownloadProcessing(absoluteRunDir, relativeRunPath);
     return true;
-  } catch (err: any) {
-    console.error(cRed(`[GCS Downloader] ❌ Storage SDK Download failed: ${err.message}`));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(cRed(`[GCS Downloader] ❌ Storage SDK Download failed: ${msg}`));
     console.log(cYellow(`
 💡 Hint: If you are running gd compare directly from the CLI, run:
    gcloud auth application-default login
