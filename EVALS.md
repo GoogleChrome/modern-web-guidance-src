@@ -71,5 +71,5 @@ Jetski CLI (`jetski_cli`) is the default agent used by the guide development wor
 Configure the preferred model for Jetski CLI agent runs:
 ```bash
 # Model selection for Jetski CLI agent runs
-JETSKI_MODEL='gemini-3.6-flash'
+JETSKI_MODEL='Gemini 3.8 Flash (Medium)'
 ```
