@@ -31,11 +31,10 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 - **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_GEMINI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
 
 ### Single Source of Truth & Canonical Enums
-- **Never hardcode string constants for agents or serving modes:**
-  - Use centralized enums like `Agents` from `harness/config.ts` (`Agents.JETSKI`, `Agents.CLAUDE_CODE`, `Agents.GEMINI_CLI`, `Agents.CODEX_CLI`).
-  - Use centralized enums like `Serving` from `harness/config.ts` (`Serving.MCP`, `Serving.SKILLS_CLI`).
+- **Never hardcode string constants for agents:**
+  - Use centralized enums like `Agents` from `harness/config.ts` (`Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.GEMINI_CLI`, `Agents.CODEX_CLI`).
 - **Extract metadata from source-of-truth files:**
-  - Never infer properties (such as `targetFile`, `agent`, or `serving` mode) using fragile path heuristics or regexes if canonical metadata files (e.g., `evals.json`) exist in the parent hierarchy. Extract canonical properties directly from `evals.json`.
+  - Never infer properties (such as `targetFile` or `agent`) using fragile path heuristics or regexes if canonical metadata files (e.g., `evals.json`) exist in the parent hierarchy. Extract canonical properties directly from `evals.json`.
 
 ### Modular Prompt & Template Management
 - **Separate prompts from execution logic:** Do not embed long prompt templates, system instructions, or markdown synthesizer templates inside runtime runner files.
@@ -96,7 +95,7 @@ All changes must pass linting, typechecking, and tests before PR submission:
   *(Run `pnpm run setup:playwright` first if browser binaries are not installed).*
 
 ### Domain-Specific Validation
-- **Serving & Skills:** When modifying MCP servers or skills packaging, verify with `pnpm --filter serving run publish-skills --dry-run`.
+- **Serving & Skills:** When modifying skills packaging, verify with `pnpm --filter serving run publish-skills --dry-run`.
 - **Guides & Graders:** When authoring or updating evaluation capsules, verify grader calibration via `gd dev <guide> --test-grader`.
 - **Clean Git Tree:** The build must produce zero uncommitted side effects or untracked artifacts (`git status` must remain clean).
 
@@ -110,7 +109,7 @@ All changes must pass linting, typechecking, and tests before PR submission:
 
 1. [ ] **PR Scope:** Focused on a single feature, library, or UI component (no monolithic multi-component PRs).
 2. [ ] **Abstractions:** Reuses repository CLI runners (`config.environment`) and avoids custom API clients.
-3. [ ] **Enums:** Uses `Agents` and `Serving` enums from `harness/config.ts` rather than raw string constants.
+3. [ ] **Enums:** Uses the `Agents` enum from `harness/config.ts` rather than raw string constants.
 4. [ ] **Metadata:** Reads properties from canonical metadata files (`evals.json`) instead of path heuristics.
 5. [ ] **Prompts:** Extracted into dedicated `*-prompts.ts` or constants modules.
 6. [ ] **Configs:** Root `tsconfig.json`, `package.json`, and `.oxlintignore` are untouched unless explicitly intended.
