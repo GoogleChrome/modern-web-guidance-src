@@ -5,7 +5,7 @@ import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
 import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from './compare-prompts.ts';
 import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../lib/patch-utils.ts';
-import { categorizeAction, type TrajectorySummary } from './trajectory-normalizer.ts';
+import { categorizeAction, type CanonicalCategory, type TrajectorySummary } from './trajectory-normalizer.ts';
 import { parseResultPath } from './collection.ts';
 import { isEnoent } from './agent-shared.ts';
 import { getDefaultSolutionAgent, getGuidesMap, getTaskMap, GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE, TASK_FILE } from '../../lib/guide-validation.ts';
@@ -53,7 +53,7 @@ async function callAgentCli(systemInstruction: string, prompt: string, label = '
 
 export interface TaggedStep {
   stepNumber: number;
-  category: 'skill_search' | 'guide_retrieval' | 'mandatory_rule_thought' | 'code_mutation' | 'incidental_noise';
+  category: Exclude<CanonicalCategory, 'other'>;
   thought?: string;
   actionName?: string;
 }
@@ -258,6 +258,16 @@ function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
 }
 
 /**
+ * Pulls the query out of a guidance search command, e.g. `gd search "form validation"` -> `form validation`.
+ */
+export function extractSearchQuery(cmd: string): string | undefined {
+  const match = cmd.match(/search\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i);
+  if (!match) return undefined;
+  const query = (match[1] || match[2] || match[3]).trim();
+  return query || undefined;
+}
+
+/**
  * Categorizes trajectory steps into milestone/noise types and computes metrics.
  */
 export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): PreprocessedTrajectory {
@@ -291,19 +301,32 @@ export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null
     const rawCat = rawStep.action?.canonicalCategory || categorizeAction(actionName, actionParams, thought);
     const category: TaggedStep['category'] = rawCat && rawCat !== 'other' ? rawCat : 'incidental_noise';
 
-    if (category === 'guide_retrieval') {
-      // Guide retrieval is tracked primarily from trajectorySummary.retrievedGuides
-    } else if (category === 'skill_search') {
-      const cmd = typeof actionParams?.command === 'string' ? actionParams.command : '';
-      const match = cmd.match(/search\s+["']?([^"'\n\r]+?)["']?(?:\s|$)/i);
-      const query = match ? match[1].trim() : (typeof actionParams?.query === 'string' ? actionParams.query.trim() : undefined);
-      if (query) searchQueries.push(query);
-    } else if (category === 'code_mutation') {
-      codeMutationCount++;
-    } else if (category === 'mandatory_rule_thought') {
-      mandatoryRulesAdopted.push(thought.slice(0, MAX_THOUGHT_SNIPPET_LEN));
-    } else {
-      noiseCount++;
+    switch (category) {
+      case 'guide_retrieval':
+        // Retrieved guide ids come from trajectorySummary.retrievedGuides below.
+        break;
+      case 'skill_search': {
+        const cmd = typeof actionParams?.command === 'string' ? actionParams.command : '';
+        const query = extractSearchQuery(cmd);
+        if (query) searchQueries.push(query);
+        break;
+      }
+      case 'skill_activation':
+        // Kept out of the noise bucket so it stays visible in the milestone timeline.
+        break;
+      case 'code_mutation':
+        codeMutationCount++;
+        break;
+      case 'mandatory_rule_thought':
+        mandatoryRulesAdopted.push(thought.slice(0, MAX_THOUGHT_SNIPPET_LEN));
+        break;
+      case 'incidental_noise':
+        noiseCount++;
+        break;
+      default: {
+        const unhandled: never = category;
+        throw new Error(`Unhandled canonical category: ${String(unhandled)}`);
+      }
     }
 
     taggedSteps.push({

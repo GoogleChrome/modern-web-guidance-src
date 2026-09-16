@@ -11,6 +11,7 @@ import {
   readTrajectorySummary,
   generateNormalizedTrajectory,
   standardizeAction,
+  type StandardizedAction,
   type TrajectorySummary,
   TRAJECTORY_SUMMARY_FILE,
   extractClaudeMetadata,
@@ -62,12 +63,12 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
   });
   assert.strictEqual(cat4, 'code_mutation');
 
-  // Test 5: Real guide retrieval / search tool calls are still classified correctly
-  const guideCat = categorizeAction('get_best_practices', { query: 'accessible-forms' });
-  assert.strictEqual(guideCat, 'skill_search');
+  // Test 5: Guidance tagging keys off a literal `modern-web-guidance` invocation
+  const cliSearchCat = categorizeAction('run_command', { command: 'npx -y modern-web-guidance@latest search "accordion"' });
+  assert.strictEqual(cliSearchCat, 'skill_search');
 
-  const retrieveCat = categorizeAction('retrieve_guidance', { id: 'dialog' });
-  assert.strictEqual(retrieveCat, 'guide_retrieval');
+  const cliRetrieveCat = categorizeAction('run_command', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' });
+  assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
 
   // Test 6: Mandatory rule thought classification
   const thoughtCat = categorizeAction('custom_check', {}, 'I must follow the mandatory baseline css guidance rules');
@@ -81,20 +82,34 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
   const noiseCat = categorizeAction('unknown_utility_ping', {});
   assert.strictEqual(noiseCat, 'incidental_noise');
 
-  // Test 9: CLI guidance search vs retrieve commands
-  const cliSearchCat = categorizeAction('run_command', { command: 'npx -y modern-web-guidance@latest search "accordion"' });
-  assert.strictEqual(cliSearchCat, 'skill_search');
-
-  const cliRetrieveCat = categorizeAction('run_command', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' });
-  assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
-
-  // Test 10: Non-guidance CLI commands with retrieve/search in url/text are not false positives
-  const nonGuidanceCat = categorizeAction('run_command', { command: 'curl https://example.com/retrieve/item' });
-  assert.strictEqual(nonGuidanceCat, 'incidental_noise');
-
-  // Test 11: Skill activations are categorized as other (tracked via toolsUsed)
+  // Test 9: Skill activations get their own category
   const skillCat = categorizeAction('Skill', { skill: 'modern-web-guidance' });
-  assert.strictEqual(skillCat, 'other');
+  assert.strictEqual(skillCat, 'skill_activation');
+  assert.strictEqual(categorizeAction('activate_skill', { name: 'modern-web-guidance' }), 'skill_activation');
+});
+
+test('categorizeAction rejects commands and thoughts that only incidentally mention guidance terms', () => {
+  const notGuidance = [
+    'curl https://example.com/retrieve/item',
+    'rg search ./gd-utils/',
+    'git cat-file -p HEAD # retrieve gd blob',
+    'node ./scripts/cli.js search foo',
+    'gd search dialog'
+  ];
+  assert.deepStrictEqual(
+    notGuidance.map(command => categorizeAction('run_command', { command })),
+    notGuidance.map(() => 'incidental_noise')
+  );
+
+  // Generic search/retrieve tool names are not the guidance skill
+  assert.strictEqual(categorizeAction('code_search', { query: 'dialog' }), 'incidental_noise');
+  assert.strictEqual(categorizeAction('get_best_practices', { use_case_id: 'accessible-forms' }), 'incidental_noise');
+
+  // A thought that merely mentions css/baseline/guidance is not a mandatory rule adoption
+  assert.strictEqual(
+    categorizeAction('list_dir', {}, 'Listing the css folder to see what is there'),
+    'incidental_noise'
+  );
 });
 
 test('categorizeAction distinguishes read actions mentioning files from mutation actions', () => {
@@ -129,25 +144,35 @@ test('mapToolType maps standard tool names to canonical types', () => {
   assert.strictEqual(mapToolType('unknown_action'), 'other');
 });
 
+function assertActionType<T extends StandardizedAction['type']>(
+  action: StandardizedAction,
+  type: T
+): asserts action is Extract<StandardizedAction, { type: T }> {
+  assert.strictEqual(action.type, type);
+}
+
 test('standardizeAction enforces strictly typed parameter shapes per action type', () => {
   // run_command standardizes 'cmd', 'command', or string to params.command
   const cmd1 = standardizeAction('run_command', 'bash', { cmd: 'cat index.html' });
-  assert.strictEqual(cmd1.type, 'run_command');
+  assertActionType(cmd1, 'run_command');
   assert.strictEqual(cmd1.name, 'bash');
   assert.strictEqual(cmd1.params.command, 'cat index.html');
 
   const cmd2 = standardizeAction('run_command', 'terminal', { command: 'pnpm test' });
+  assertActionType(cmd2, 'run_command');
   assert.strictEqual(cmd2.params.command, 'pnpm test');
 
   const cmd3 = standardizeAction('run_command', 'bash', 'git status');
+  assertActionType(cmd3, 'run_command');
   assert.strictEqual(cmd3.params.command, 'git status');
 
   // read_file standardizes path, file_path to params.path
   const read1 = standardizeAction('read_file', 'read', { file_path: 'src/index.ts' });
-  assert.strictEqual(read1.type, 'read_file');
+  assertActionType(read1, 'read_file');
   assert.strictEqual(read1.params.path, 'src/index.ts');
 
   const read2 = standardizeAction('read_file', 'view_file', { path: 'app.jsx' });
+  assertActionType(read2, 'read_file');
   assert.strictEqual(read2.params.path, 'app.jsx');
 
   // write_file standardizes path/file_path and content/new_string/newText
@@ -155,7 +180,7 @@ test('standardizeAction enforces strictly typed parameter shapes per action type
     path: 'index.html',
     content: '<html></html>'
   });
-  assert.strictEqual(write1.type, 'write_file');
+  assertActionType(write1, 'write_file');
   assert.strictEqual(write1.params.path, 'index.html');
   assert.strictEqual(write1.params.content, '<html></html>');
 
@@ -163,6 +188,7 @@ test('standardizeAction enforces strictly typed parameter shapes per action type
     file_path: '/path/to/main.ts',
     new_string: 'const a = 1;'
   });
+  assertActionType(write2, 'write_file');
   assert.strictEqual(write2.params.path, '/path/to/main.ts');
   assert.strictEqual(write2.params.content, 'const a = 1;');
 
@@ -170,21 +196,22 @@ test('standardizeAction enforces strictly typed parameter shapes per action type
     path: '/path/to/main.ts',
     newText: 'const b = 2;'
   });
+  assertActionType(write3, 'write_file');
   assert.strictEqual(write3.params.path, '/path/to/main.ts');
   assert.strictEqual(write3.params.content, 'const b = 2;');
 
-  // web_search standardizes query, use_case_id to params.query
+  // web_search passes raw params through verbatim; it never fabricates a `query`
   const search1 = standardizeAction('web_search', 'get_best_practices', { use_case_id: 'dialog' });
-  assert.strictEqual(search1.type, 'web_search');
-  assert.strictEqual(search1.params.query, 'dialog');
-  assert.strictEqual(search1.params.use_case_id, 'dialog');
+  assertActionType(search1, 'web_search');
+  assert.deepStrictEqual(search1.params, { use_case_id: 'dialog' });
 
-  const search2 = standardizeAction('web_search', 'code_search', { query: 'test' });
-  assert.strictEqual(search2.params.query, 'test');
+  const search2 = standardizeAction('web_search', 'search_use_cases', { query: 'test' });
+  assertActionType(search2, 'web_search');
+  assert.deepStrictEqual(search2.params, { query: 'test' });
 
   // other preserves raw properties
   const other1 = standardizeAction('other', 'respond_to_user', { response: 'Done' });
-  assert.strictEqual(other1.type, 'other');
+  assertActionType(other1, 'other');
   assert.deepStrictEqual(other1.params, { response: 'Done' });
 });
 
@@ -200,7 +227,7 @@ test('finalizeTrajectorySummary sorts steps monotonically and re-indexes with 1-
       {
         stepNumber: 99,
         timestamp: '2026-08-09T21:00:01.000Z',
-        action: standardizeAction('web_search', 'search_use_cases', { query: 'dialog' })
+        action: standardizeAction('run_command', 'bash', { command: 'npx modern-web-guidance search "dialog"' })
       },
       {
         stepNumber: 99,
@@ -214,7 +241,7 @@ test('finalizeTrajectorySummary sorts steps monotonically and re-indexes with 1-
   assert.strictEqual(finalized.steps.length, 3);
   assert.strictEqual(finalized.steps[0].stepNumber, 1);
   assert.strictEqual(finalized.steps[0].timestamp, '2026-08-09T21:00:01.000Z');
-  assert.strictEqual(finalized.steps[0].action?.name, 'search_use_cases');
+  assert.strictEqual(finalized.steps[0].action?.name, 'bash');
   assert.strictEqual(finalized.steps[0].action?.canonicalCategory, 'skill_search');
 
   assert.strictEqual(finalized.steps[1].stepNumber, 2);
