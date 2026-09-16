@@ -277,10 +277,19 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         let actionName = cmdName;
         let params: any = undefined;
 
+        const rawInput = p.arguments || p.input;
+        const inputStr = typeof rawInput === 'string' ? rawInput : (typeof rawInput === 'object' ? JSON.stringify(rawInput) : '');
+
         if (commands.length > 0) {
           actionType = 'run_command';
           actionName = commands[0];
           params = { command: commands[0] };
+        } else if (inputStr.includes('*** Begin Patch') || inputStr.includes('Update File:') || inputStr.includes('Add File:')) {
+          actionType = 'write_file';
+          actionName = 'apply_patch';
+          const fileMatch = inputStr.match(/\*\*\*\s*(?:Update|Add)\s*File:\s*([^\n\r\\"]+)/i);
+          const patchPath = fileMatch ? fileMatch[1].trim() : '';
+          params = { path: patchPath, patch: inputStr };
         } else {
           try {
             params = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : (p.arguments || p.input);
@@ -328,7 +337,11 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
-          const isError = p.is_error === true || outStr.toLowerCase().includes('error:');
+          const isError =
+            p.is_error === true ||
+            outStr.startsWith('Script failed') ||
+            outStr.includes('Script error:') ||
+            /"exit_code"\s*:\s*[1-9]/.test(outStr);
           step.outcome = {
             status: isError ? 'error' : 'success',
             message: truncateMessage(outStr)

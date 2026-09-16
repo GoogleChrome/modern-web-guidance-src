@@ -336,21 +336,23 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.AbsolutePath || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading')))) {
+              const filePath = obj.AbsolutePath || obj.path || obj.file_path || '';
               steps.push({
                 stepNumber: 0,
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
-                action: standardizeAction('read_file', 'view_file', { ...obj, path: obj.AbsolutePath || obj.toolSummary || '' }),
+                action: standardizeAction('read_file', 'view_file', { path: String(filePath) }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.DirectoryPath || obj.SearchDirectory) {
+              const dirPath = obj.DirectoryPath || obj.SearchDirectory || '';
               steps.push({
                 stepNumber: 0,
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
-                action: standardizeAction('read_file', 'list_dir', { ...obj, path: obj.DirectoryPath || obj.SearchDirectory || '' }),
+                action: standardizeAction('read_file', 'list_dir', { path: String(dirPath) }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             }
