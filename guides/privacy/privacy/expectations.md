@@ -1,0 +1,18 @@
+- The implementation MUST collect user data at the lowest granularity necessary (such as requesting an age range or bracket via `<select>` instead of a full date of birth when exact age is unneeded).
+- The implementation MUST provide a guest or anonymous option for primary user flows rather than forcing account creation.
+- The implementation MUST provide inline explanatory text adjacent to optional or sensitive data inputs (linked via `aria-describedby` or a nearby disclosure) explaining why the data is requested.
+- The implementation MUST provide clear user context before invoking browser permission prompts or use the declarative `<permission>` element with a standard `<button>` fallback.
+- The implementation MUST send the `Clear-Site-Data` HTTP header (such as `Clear-Site-Data: "cookies", "storage", "cache"` or `"*"`) on logout endpoints to clear lingering client-side data.
+- The implementation MUST provide a clear, self-service UI control allowing users to export or delete their stored profile data.
+- The implementation MUST scrub or mask Personally Identifiable Information (PII) such as emails, phone numbers, and tokens before outputting to logs or analytics payloads.
+- The implementation MUST NOT store sensitive session tokens, authentication credentials, or unencrypted PII in `localStorage` or `sessionStorage`.
+- The implementation MUST set `HttpOnly`, `Secure`, and `SameSite=Lax` attributes on first-party session cookies.
+- The implementation MUST include the `Partitioned` attribute (`SameSite=None; Secure; Partitioned`) on any cookies intended for cross-site third-party embed contexts (CHIPS).
+- The implementation MUST use the Façade Pattern for third-party embeds (such as embedded videos), rendering a static placeholder image and mounting the third-party `<iframe>` only after an explicit user click.
+- The implementation MUST use privacy-enhanced domains (such as `youtube-nocookie.com`) when embedding external video iframes.
+- The implementation MUST implement social sharing using static HTML `<a>` links with `rel="noopener"` rather than loading third-party social tracking SDKs.
+- The implementation MUST use the Federated Credential Management API (`navigator.credentials.get` with an `identity` provider configuration) when implementing federated third-party sign-in.
+- The implementation MUST set a restrictive `Permissions-Policy` HTTP response header (such as `geolocation=(), camera=(), microphone=()`) to disable unused browser features by default.
+- The implementation MUST set a privacy-preserving `Referrer-Policy` HTTP response header (such as `strict-origin-when-cross-origin`).
+- The implementation MUST use direct JavaScript feature detection or User-Agent Client Hints (`navigator.userAgentData`) rather than sniffing the `navigator.userAgent` string.
+- The implementation MUST NOT perform covert browser fingerprinting via canvas data extraction (`toDataURL` / `getImageData`), WebGL renderer sniffing, or font/device enumeration.
