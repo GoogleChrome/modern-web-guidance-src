@@ -11,6 +11,22 @@ describe('compare-evals pipeline', () => {
     assert.strictEqual(typeof compareModule.runComparison, 'function');
   });
 
+  test('extractSearchQuery captures the whole query, not just the first word', async () => {
+    const { extractSearchQuery } = await import('../lib/compare-evals.ts');
+    const cases: Array<[string, string | undefined]> = [
+      ['npx modern-web-guidance search "form validation user-invalid"', 'form validation user-invalid'],
+      ["npx modern-web-guidance search 'dialog focus management'", 'dialog focus management'],
+      ['npx modern-web-guidance search accordion', 'accordion'],
+      ['npx modern-web-guidance search "accordion" --limit 5', 'accordion'],
+      ['npx modern-web-guidance retrieve details-styling', undefined],
+      ['', undefined]
+    ];
+    assert.deepStrictEqual(
+      cases.map(([cmd]) => extractSearchQuery(cmd)),
+      cases.map(([, expected]) => expected)
+    );
+  });
+
   test('validates loadRunContext and preprocessTrajectory with mock trajectory and playwright report', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compare-run-'));
 
@@ -55,10 +71,10 @@ describe('compare-evals pipeline', () => {
             stepNumber: 1,
             thought: 'Searching for details styling guide',
             action: {
-              type: 'web_search',
+              type: 'run_command',
               canonicalCategory: 'skill_search',
-              name: 'search',
-              params: { query: 'details styling' }
+              name: 'bash',
+              params: { command: 'npx modern-web-guidance search "details styling"' }
             },
             outcome: { status: 'success' }
           },

@@ -288,7 +288,7 @@ test('Parser: Pi CLI normalization', async () => {
             {
               type: 'toolCall',
               name: 'bash',
-              arguments: { command: 'node dist/cli.js --retrieve autofill-address-form' }
+              arguments: { command: 'npx modern-web-guidance retrieve autofill-address-form' }
             }
           ]
         }

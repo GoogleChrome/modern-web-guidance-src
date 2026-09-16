@@ -73,6 +73,7 @@ export function getSessionFiles(dir: string): string[] {
 export type CanonicalCategory =
   | 'guide_retrieval'
   | 'skill_search'
+  | 'skill_activation'
   | 'code_mutation'
   | 'mandatory_rule_thought'
   | 'incidental_noise'
@@ -103,7 +104,7 @@ export interface WebSearchAction {
   type: 'web_search';
   canonicalCategory?: CanonicalCategory;
   name: string;
-  params: { query: string; [key: string]: unknown };
+  params?: Record<string, unknown>;
 }
 
 export interface OtherAction {
@@ -120,40 +121,6 @@ export type StandardizedAction =
   | WebSearchAction
   | OtherAction;
 
-export interface RunCommandRawParams {
-  command?: string;
-  cmd?: string;
-  [key: string]: unknown;
-}
-
-export interface ReadFileRawParams {
-  path?: string;
-  file_path?: string;
-  [key: string]: unknown;
-}
-
-export interface WriteFileRawParams {
-  path?: string;
-  file_path?: string;
-  content?: string;
-  new_string?: string;
-  newText?: string;
-  [key: string]: unknown;
-}
-
-export interface WebSearchRawParams {
-  query?: string;
-  Query?: string;
-  use_case_id?: string;
-  [key: string]: unknown;
-}
-
-export function standardizeAction(type: 'run_command', name: string, rawParams?: string | RunCommandRawParams): RunCommandAction;
-export function standardizeAction(type: 'read_file', name: string, rawParams?: string | ReadFileRawParams): ReadFileAction;
-export function standardizeAction(type: 'write_file', name: string, rawParams?: string | WriteFileRawParams): WriteFileAction;
-export function standardizeAction(type: 'web_search', name: string, rawParams?: string | WebSearchRawParams): WebSearchAction;
-export function standardizeAction(type: 'other', name: string, rawParams?: unknown): OtherAction;
-export function standardizeAction(type: StandardizedAction['type'], name: string, rawParams?: unknown): StandardizedAction;
 export function standardizeAction(
   type: StandardizedAction['type'],
   name: string,
@@ -192,12 +159,7 @@ export function standardizeAction(
       };
     }
     case 'web_search': {
-      const query = (p.query as string) || (p.Query as string) || (p.use_case_id as string) || (typeof rawParams === 'string' ? rawParams : '') || '';
-      return {
-        type: 'web_search',
-        name,
-        params: { ...p, query: String(query) }
-      };
+      return { type: 'web_search', name, params: p };
     }
     case 'other':
     default: {
@@ -274,9 +236,8 @@ export function categorizeAction(
     return 'other';
   }
 
-  // Skill activations (e.g. Claude Code or agent skill loading) are tracked in toolsUsed, not skill search
   if (actionName === 'skill' || actionName === 'activate_skill' || actionName === 'load_skill') {
-    return 'other';
+    return 'skill_activation';
   }
 
   if (actionType !== 'run_command') {
@@ -295,32 +256,19 @@ export function categorizeAction(
 
   const cmd = typeof params?.command === 'string' ? params.command : (typeof params?.cmd === 'string' ? params.cmd : '');
   const cmdLower = cmd.toLowerCase();
-  const thoughtStr = (thought || '').toLowerCase();
 
-  // 2. Guide retrieval: Look for modern-web-guidance / cli.js / gd retrieve in command or retrieve tool
-  const isGuidanceRetrieve =
-    actionName.includes('retrieve') ||
-    (cmdLower.includes('retrieve') && (cmdLower.includes('modern-web-guidance') || cmdLower.includes('cli.js') || cmdLower.includes('gd') || cmdLower.startsWith('retrieve')));
-  if (isGuidanceRetrieve) {
-    return 'guide_retrieval';
+  // Only a literal `modern-web-guidance` invocation counts. Bare `search`/`retrieve`/`gd` match
+  // unrelated tools (code_search, git cat-file, ripgrep) and produced false positives.
+  if (cmdLower.includes('modern-web-guidance')) {
+    if (cmdLower.includes('retrieve')) {
+      return 'guide_retrieval';
+    }
+    if (cmdLower.includes('search')) {
+      return 'skill_search';
+    }
   }
 
-  // 3. Skill search: Look for modern-web-guidance / cli.js / gd search in command or search tool
-  const isGuidanceSearch =
-    actionName.includes('search') ||
-    actionName.includes('query_guidance') ||
-    actionName.includes('get_best_practices') ||
-    (cmdLower.includes('search') && (cmdLower.includes('modern-web-guidance') || cmdLower.includes('cli.js') || cmdLower.includes('gd') || cmdLower.startsWith('search')));
-  if (isGuidanceSearch) {
-    return 'skill_search';
-  }
-
-  // 4. Mandatory rule thought
-  if (
-    thoughtStr.includes('mandatory') || thoughtStr.includes('fallback') ||
-    thoughtStr.includes('css') || thoughtStr.includes('baseline') ||
-    thoughtStr.includes('guidance')
-  ) {
+  if ((thought || '').toLowerCase().includes('mandatory')) {
     return 'mandatory_rule_thought';
   }
 
