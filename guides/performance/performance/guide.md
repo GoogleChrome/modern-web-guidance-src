@@ -192,7 +192,7 @@ Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Conta
 Images typically represent the largest payload on a given web page. Optimization requires format negotiation, responsive sizing, and layout stabilization.
 
 ### DOs
-*   **DO serve modern formats (AVIF / WebP / JPEG XL)**: Use the `<picture>` element to offer AVIF (best compression), falling back to WebP, JPEG XL, and finally JPEG/PNG for legacy browsers.
+*   **DO serve modern formats (AVIF / WebP / JPEG XL)**: Use the `<picture>` element to offer AVIF or JPEG XL (best compression), falling back to WebP, and finally JPEG/PNG for legacy browsers.
 *   **DO apply explicit `width` and `height` attributes**: Setting native attributes allows the browser to compute the aspect ratio immediately, reserving space and eliminating CLS. Image dimensions may be set either as HTML attributes or CSS properties.
 *   **DO utilize `loading="lazy"` on all below-the-fold images**: Utilize native browser lazy loading to defer network requests for images outside the initial viewport.
 *   **DO implement responsive images with `srcset` and `sizes`**: Serve tailored resolutions based on screen density and viewport width to prevent mobile devices from downloading desktop-sized images.
