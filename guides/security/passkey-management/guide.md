@@ -6,7 +6,7 @@ web-feature-ids:
   - webauthn-signals
 ---
 
-# Passkey Management Guide
+# Passkey Management
 
 This guide details how to enable users to view, rename, and delete their registered passkeys while keeping saved credentials perfectly synchronized between the server and the user's password managers using the Signal API.
 

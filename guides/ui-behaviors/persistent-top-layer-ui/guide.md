@@ -5,6 +5,8 @@ web-feature-ids:
 - move-before
 ---
 
+# Persistent Top Layer UI
+
 When moving an open `<dialog>`, `popover`, or fullscreen element in the DOM using traditional methods like `appendChild()` or `insertBefore()`, the browser implicitly removes the element from the DOM and re-inserts it. This removal resets the state, causing open modals, popovers, and fullscreen elements to close abruptly.
 
 To reparent top-layer elements without interrupting the user experience or closing them, use the atomic `moveBefore()` API instead.

@@ -6,6 +6,8 @@ web-feature-ids:
   - svg
 ---
 
+# Complex Shapes
+
 ## Overview
 To clip elements to complex, free-form shapes like brush strokes or organic textures, use CSS Masking (`mask-image`). While `clip-path` is excellent for geometric shapes or vector paths, `mask-image` allows you to use images (like PNGs with transparency) or SVGs to define the visible area of an element. This approach is more expressive because it supports semi-transparency, allowing for soft edges and complex textures that are difficult or impossible to achieve with `clip-path`.
 

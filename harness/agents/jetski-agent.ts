@@ -7,6 +7,7 @@ import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents, Serving } from '../config.ts';
 import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-normalizer.ts';
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
@@ -461,6 +462,8 @@ async function run(): Promise<void> {
     const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
     exportTrajectories(conversationsDir, '*.db', targetDir);
+
+    await generateNormalizedTrajectory(targetDir, Agents.JETSKI, userPrompt);
 
   } catch (err) {
     console.error("Error during execution:", err);

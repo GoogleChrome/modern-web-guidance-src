@@ -3,7 +3,7 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import 'colors';
-import { collectResults, extractModelFromResults } from './lib/collection.ts';
+import { collectResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { resultsDir } from '../lib/paths.ts';
@@ -85,7 +85,7 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
   }
 
   try {
-    const { allResults, numRuns, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
+    const { allResults, numRuns, model, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
     const metrics = calculateMetrics(allResults, numRuns);
@@ -105,7 +105,6 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
     const skillVersion = getSkillVersion();
     const cliVersion = getCliVersion();
 
-    const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
     const totalRuntime = suiteStartTime ? Date.now() - suiteStartTime : fallbackRuntime;
     const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model, totalRuntime, skillVersion, cliVersion);
 

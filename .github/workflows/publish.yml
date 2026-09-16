@@ -94,20 +94,9 @@ jobs:
 
       - name: Publish Skills to GitHub (modern-web-guidance)
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: pnpm --filter serving run publish-skills
-
-      - name: Commit and push updated evals and README to source repo
-        env:
-          GITHUB_REF: ${{ github.ref }}
-        run: |
-          if ! git diff --quiet README.md serving/skills-cli/eval-results-summary.json; then
-            git add README.md serving/skills-cli/eval-results-summary.json
-            git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"
-            git push origin HEAD:"$GITHUB_REF"
-          else
-            echo "No changes in README.md or eval-results-summary.json to commit."
-          fi
 
       - name: Publish to npm via OIDC Provenance
         run: |
