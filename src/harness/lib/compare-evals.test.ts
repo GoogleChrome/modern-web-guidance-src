@@ -96,10 +96,9 @@ describe('compare-evals pipeline', () => {
             stepNumber: 3,
             thought: 'I must follow the mandatory rule for ::details-content',
             action: {
-              type: 'write_file',
-              canonicalCategory: 'mandatory_rule_thought',
-              name: 'write_to_file',
-              params: { TargetFile: 'index.html' }
+              type: 'read_file',
+              name: 'view_file',
+              params: { AbsolutePath: 'index.html' }
             },
             outcome: { status: 'error' }
           },

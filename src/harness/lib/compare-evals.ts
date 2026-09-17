@@ -339,7 +339,7 @@ export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null
       consecutiveErrors = 0;
     }
 
-    const rawCat = rawStep.action?.canonicalCategory || categorizeAction(actionName, actionParams, thought);
+    const rawCat = categorizeAction(actionName, actionParams, thought, rawStep.action?.type);
     const category: TaggedStep['category'] = rawCat && rawCat !== 'other' ? rawCat : 'incidental_noise';
 
     switch (category) {

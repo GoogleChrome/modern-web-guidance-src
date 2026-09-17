@@ -37,7 +37,7 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
     TargetFile: 'src/user.ts',
     TargetContent: 'function retrieveUserData() { return null; }',
     ReplacementContent: 'function retrieveUserData() { return { id: 1 }; }'
-  });
+  }, undefined, 'write_file');
   assert.strictEqual(cat1, 'code_mutation');
 
   // Test 2: replace_file_content with "search" in content should be code_mutation, NOT skill_search
@@ -45,14 +45,14 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
     TargetFile: 'src/search-bar.ts',
     TargetContent: 'const search = () => {};',
     ReplacementContent: 'const search = (q) => performSearch(q);'
-  });
+  }, undefined, 'write_file');
   assert.strictEqual(cat2, 'code_mutation');
 
   // Test 3: write_to_file with "retrieve" and "search" in content
   const cat3 = categorizeAction('write_to_file', {
     TargetFile: 'src/api.ts',
     CodeContent: 'export async function retrieveAndSearch() {}'
-  });
+  }, undefined, 'write_file');
   assert.strictEqual(cat3, 'code_mutation');
 
   // Test 4: edit / str_replace_editor tools
@@ -60,32 +60,32 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
     command: 'str_replace',
     path: 'index.html',
     new_str: '<button onclick="search()">Search</button>'
-  });
+  }, undefined, 'write_file');
   assert.strictEqual(cat4, 'code_mutation');
 
   // Test 5: Guidance tagging keys off a literal `modern-web-guidance` invocation
-  const cliSearchCat = categorizeAction('run_command', { command: 'npx -y modern-web-guidance@latest search "accordion"' });
+  const cliSearchCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest search "accordion"' }, undefined, 'run_command');
   assert.strictEqual(cliSearchCat, 'skill_search');
 
-  const cliRetrieveCat = categorizeAction('run_command', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' });
+  const cliRetrieveCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' }, undefined, 'run_command');
   assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
 
   // Test 6: Mandatory rule thought classification
-  const thoughtCat = categorizeAction('custom_check', {}, 'I must follow the mandatory baseline css guidance rules');
+  const thoughtCat = categorizeAction('custom_check', {}, 'I must follow the mandatory baseline css guidance rules', 'other');
   assert.strictEqual(thoughtCat, 'mandatory_rule_thought');
 
   // Test 7: respond_to_user classification
-  const respondCat = categorizeAction('respond_to_user', {});
+  const respondCat = categorizeAction('respond_to_user', {}, undefined, 'other');
   assert.strictEqual(respondCat, 'other');
 
   // Test 8: Incidental noise fallback
-  const noiseCat = categorizeAction('unknown_utility_ping', {});
+  const noiseCat = categorizeAction('unknown_utility_ping', {}, undefined, 'other');
   assert.strictEqual(noiseCat, 'incidental_noise');
 
   // Test 9: Skill activations get their own category
-  const skillCat = categorizeAction('Skill', { skill: 'modern-web-guidance' });
+  const skillCat = categorizeAction('Skill', { skill: 'modern-web-guidance' }, undefined, 'other');
   assert.strictEqual(skillCat, 'skill_activation');
-  assert.strictEqual(categorizeAction('activate_skill', { name: 'modern-web-guidance' }), 'skill_activation');
+  assert.strictEqual(categorizeAction('activate_skill', { name: 'modern-web-guidance' }, undefined, 'other'), 'skill_activation');
 });
 
 test('categorizeAction rejects commands and thoughts that only incidentally mention guidance terms', () => {
@@ -97,33 +97,46 @@ test('categorizeAction rejects commands and thoughts that only incidentally ment
     'gd search dialog'
   ];
   assert.deepStrictEqual(
-    notGuidance.map(command => categorizeAction('run_command', { command })),
+    notGuidance.map(command => categorizeAction('bash', { command }, undefined, 'run_command')),
     notGuidance.map(() => 'incidental_noise')
   );
 
   // Generic search/retrieve tool names are not the guidance skill
-  assert.strictEqual(categorizeAction('code_search', { query: 'dialog' }), 'incidental_noise');
-  assert.strictEqual(categorizeAction('get_best_practices', { use_case_id: 'accessible-forms' }), 'incidental_noise');
+  assert.strictEqual(categorizeAction('code_search', { query: 'dialog' }, undefined, 'other'), 'incidental_noise');
+  assert.strictEqual(categorizeAction('get_best_practices', { use_case_id: 'accessible-forms' }, undefined, 'other'), 'incidental_noise');
 
   // A thought that merely mentions css/baseline/guidance is not a mandatory rule adoption
   assert.strictEqual(
-    categorizeAction('list_dir', {}, 'Listing the css folder to see what is there'),
+    categorizeAction('list_dir', {}, 'Listing the css folder to see what is there', 'other'),
     'incidental_noise'
   );
 });
 
 test('categorizeAction distinguishes read actions mentioning files from mutation actions', () => {
   // Read actions mentioning filenames should NOT be categorized as code_mutation
-  assert.notStrictEqual(categorizeAction('cat index.html', { cmd: 'cat index.html' }), 'code_mutation');
-  assert.notStrictEqual(categorizeAction('read_file', { file_path: 'index.html' }), 'code_mutation');
-  assert.notStrictEqual(categorizeAction('view_file', { AbsolutePath: 'app.jsx' }), 'code_mutation');
+  assert.notStrictEqual(categorizeAction('bash', { cmd: 'cat index.html' }, undefined, 'run_command'), 'code_mutation');
+  assert.notStrictEqual(categorizeAction('read_file', { file_path: 'index.html' }, undefined, 'read_file'), 'code_mutation');
+  assert.notStrictEqual(categorizeAction('view_file', { AbsolutePath: 'app.jsx' }, undefined, 'read_file'), 'code_mutation');
 
   // Mutation actions should be categorized as code_mutation
+  assert.strictEqual(categorizeAction('write_to_file', { TargetFile: 'index.html' }, undefined, 'write_file'), 'code_mutation');
+  assert.strictEqual(categorizeAction('replace_file_content', { TargetFile: 'app.jsx' }, undefined, 'write_file'), 'code_mutation');
+  assert.strictEqual(categorizeAction('edit', { path: 'style.css' }, undefined, 'write_file'), 'code_mutation');
+
+  // Also support callers without explicit actionType when mutationParamKeys are present
   assert.strictEqual(categorizeAction('write_to_file', { TargetFile: 'index.html' }), 'code_mutation');
   assert.strictEqual(categorizeAction('replace_file_content', { TargetFile: 'app.jsx' }), 'code_mutation');
-  assert.strictEqual(categorizeAction('edit', { path: 'style.css' }), 'code_mutation');
 });
 
+test('categorizeAction classifies TodoWrite and non-mutation tools as incidental noise', () => {
+  // Claude Code TodoWrite should never be miscategorized as code_mutation
+  assert.strictEqual(categorizeAction('TodoWrite', { todos: [] }, undefined, 'other'), 'incidental_noise');
+  assert.strictEqual(categorizeAction('TodoWrite', { todos: [] }), 'incidental_noise');
+  assert.strictEqual(categorizeAction('TodoRead', {}, undefined, 'other'), 'incidental_noise');
+
+  // Run command with edit/write in its name should not be miscategorized as code_mutation
+  assert.strictEqual(categorizeAction('edit_plan_notes', { command: 'echo "notes"' }, undefined, 'run_command'), 'incidental_noise');
+});
 
 test('mapToolType maps standard tool names to canonical types', () => {
   assert.strictEqual(mapToolType('read_file'), 'read_file');
@@ -135,10 +148,10 @@ test('mapToolType maps standard tool names to canonical types', () => {
   assert.strictEqual(mapToolType('bash'), 'run_command');
   assert.strictEqual(mapToolType('execute_bash'), 'run_command');
   assert.strictEqual(mapToolType('run_shell_command'), 'run_command');
-  assert.strictEqual(mapToolType('search'), 'web_search');
-  assert.strictEqual(mapToolType('get_best_practices'), 'web_search');
-  assert.strictEqual(mapToolType('retrieve'), 'web_search');
-  assert.strictEqual(mapToolType('query_guidance'), 'web_search');
+  assert.strictEqual(mapToolType('search'), 'other');
+  assert.strictEqual(mapToolType('get_best_practices'), 'other');
+  assert.strictEqual(mapToolType('retrieve'), 'other');
+  assert.strictEqual(mapToolType('query_guidance'), 'other');
   assert.strictEqual(mapToolType('TodoWrite'), 'other');
   assert.strictEqual(mapToolType('TodoRead'), 'other');
   assert.strictEqual(mapToolType('unknown_action'), 'other');
@@ -199,15 +212,6 @@ test('standardizeAction enforces strictly typed parameter shapes per action type
   assertActionType(write3, 'write_file');
   assert.strictEqual(write3.params.path, '/path/to/main.ts');
   assert.strictEqual(write3.params.content, 'const b = 2;');
-
-  // web_search passes raw params through verbatim; it never fabricates a `query`
-  const search1 = standardizeAction('web_search', 'get_best_practices', { use_case_id: 'dialog' });
-  assertActionType(search1, 'web_search');
-  assert.deepStrictEqual(search1.params, { use_case_id: 'dialog' });
-
-  const search2 = standardizeAction('web_search', 'search_use_cases', { query: 'test' });
-  assertActionType(search2, 'web_search');
-  assert.deepStrictEqual(search2.params, { query: 'test' });
 
   // other preserves raw properties
   const other1 = standardizeAction('other', 'respond_to_user', { response: 'Done' });
