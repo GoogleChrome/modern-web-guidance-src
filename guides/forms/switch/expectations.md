@@ -1,0 +1,6 @@
+- **MANDATORY**: Each switch control MUST be represented by an `<input type="checkbox">` element that explicitly utilizes the standardized HTML `switch` attribute.
+- **MANDATORY**: The switch control's active and track coloration MUST be custom-styled using the standard CSS `accent-color` property to align with design tokens.
+- **MANDATORY**: Each switch MUST be properly associated with its label, either implicitly by wrapping the `<input>` inside a `<label>` element or explicitly using matching `id` and `for` attributes, ensuring correct accessibility mapping.
+- **MANDATORY**: When a switch is focused, it MUST display a highly visible focus indicator utilizing the `:focus-visible` pseudo-class (e.g., custom outline/offsets) to ensure copy-paste safety and keyboard navigation accessibility.
+- **MANDATORY**: Selecting or toggling the state of a switch control MUST immediately fire its associated state mutation (e.g. toggling the Dark Mode switch updates the root `data-theme` attribute to update the layout presentation).
+- **OPTIONAL**: Progressive enhancement can be demonstrated by storing user preferences in standard Web Storage (`localStorage`) and initializing control states based on system preferences using `window.matchMedia()` queries.
