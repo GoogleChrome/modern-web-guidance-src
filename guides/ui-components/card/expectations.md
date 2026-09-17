@@ -1,0 +1,9 @@
+- **MANDATORY**: A card representing independently understandable content uses an `article` containing a meaningful title, supporting content, and any related actions in reading order.
+- **MANDATORY**: A media card remains vertically stacked when its own container is narrow, regardless of the viewport width.
+- **MANDATORY**: When a media card's own container becomes wide enough, its media is displayed beside its title, supporting content, and actions.
+- **MANDATORY**: A card without media retains a complete, readable stacked layout at every container width.
+- **MANDATORY**: Card media has a stable displayed shape and crops without distortion.
+- **MANDATORY**: The card title is a link to its primary destination.
+- **MANDATORY**: Secondary actions are separate native links or buttons and remain independently keyboard-focusable.
+- **MANDATORY**: Keyboard focus on an interactive card descendant gives the card a visible focus context without obscuring the focused control.
+- **OPTIONAL**: A text-only card has an additional visual treatment when that distinction conveys useful content meaning.
