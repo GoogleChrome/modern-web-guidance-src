@@ -87,12 +87,13 @@
             gap: 1rem;
             padding: 1rem;
         }
-				.switches {
-					            padding: 1rem;
+
+        .switches {
+            padding: 1rem;
             border: 2px solid var(--border-color);
             border-radius: 0.75rem;
             background: var(--surface-background);
-				}
+        }
 
         .preference__description {
             display: grid;
@@ -104,14 +105,14 @@
             font-size: 0.9rem;
         }
 
-        input[type="checkbox"] {
+        input[type="checkbox"][switch] {
             flex: 0 0 auto;
             inline-size: 3rem;
             block-size: 1.75rem;
             accent-color: var(--accent-color);
         }
 
-        input[type="checkbox"]:focus-visible {
+        input[type="checkbox"][switch]:focus-visible {
             outline: 3px solid var(--focus-color);
             outline-offset: 4px;
         }
@@ -170,61 +171,60 @@
         </p>
 
         <section class="preferences" aria-labelledby="preferences-heading">
-            
-						<div class="switches">
-						<h2 id="preferences-heading">Appearance and accessibility</h2>
-            <label class="preference">
-                <span class="preference__description">
-                    <strong>Dark mode</strong>
-                    <span>Use darker colours throughout the page.</span>
-                </span>
+            <div class="switches">
+                <h2 id="preferences-heading">Appearance and accessibility</h2>
+                <label class="preference">
+                    <span class="preference__description">
+                        <strong>Dark mode</strong>
+                        <span>Use darker colours throughout the page.</span>
+                    </span>
 
-                <input
-                    id="dark-mode"
-                    type="checkbox"
-                    switch
-                >
-            </label>
+                    <input
+                        id="dark-mode"
+                        type="checkbox"
+                        switch
+                    >
+                </label>
 
-            <label class="preference">
-                <span class="preference__description">
-                    <strong>Reduced motion</strong>
-                    <span>Stop decorative animations.</span>
-                </span>
+                <label class="preference">
+                    <span class="preference__description">
+                        <strong>Reduced motion</strong>
+                        <span>Stop decorative animations.</span>
+                    </span>
 
-                <input
-                    id="reduced-motion"
-                    type="checkbox"
-                    switch
-                >
-            </label>
+                    <input
+                        id="reduced-motion"
+                        type="checkbox"
+                        switch
+                    >
+                </label>
 
-            <label class="preference">
-                <span class="preference__description">
-                    <strong>Larger text</strong>
-                    <span>Increase the base text size.</span>
-                </span>
+                <label class="preference">
+                    <span class="preference__description">
+                        <strong>Larger text</strong>
+                        <span>Increase the base text size.</span>
+                    </span>
 
-                <input
-                    id="large-text"
-                    type="checkbox"
-                    switch
-                >
-            </label>
+                    <input
+                        id="large-text"
+                        type="checkbox"
+                        switch
+                    >
+                </label>
 
-            <label class="preference">
-                <span class="preference__description">
-                    <strong>High contrast</strong>
-                    <span>Use stronger colours and borders.</span>
-                </span>
+                <label class="preference">
+                    <span class="preference__description">
+                        <strong>High contrast</strong>
+                        <span>Use stronger colours and borders.</span>
+                    </span>
 
-                <input
-                    id="high-contrast"
-                    type="checkbox"
-                    switch
-                >
-            </label>
-							</div>
+                    <input
+                        id="high-contrast"
+                        type="checkbox"
+                        switch
+                    >
+                </label>
+            </div>
         </section>
 
         <section class="preview" aria-labelledby="preview-heading">

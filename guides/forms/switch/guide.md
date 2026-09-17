@@ -33,8 +33,9 @@ This pattern creates a clean, semantic, and highly custom-branded switch control
 This is the recommended approach for custom layout styling, as it separates the label from the input while explicitly linking them.
 
 ```html
-<div class="preference-field">
-  <label class="preference-description" for="dark-mode">
+<div class="preference">
+  <!-- Linking via matching id and for attributes provides clear accessibility mapping -->
+  <label class="preference__description" for="dark-mode">
     <strong>Dark mode</strong>
     <span>Use darker colours throughout the page.</span>
   </label>
@@ -52,8 +53,8 @@ This is the recommended approach for custom layout styling, as it separates the 
 This approach implicitly associates the label and input by nesting, which can simplify markup and provide direct event scoping without requiring strict ID management.
 
 ```html
-<label class="preference-field">
-  <span class="preference-description">
+<label class="preference">
+  <span class="preference__description">
     <strong>Dark mode</strong>
     <span>Use darker colours throughout the page.</span>
   </span>
@@ -70,7 +71,7 @@ This approach implicitly associates the label and input by nesting, which can si
 ### CSS Style Rules
 ```css
 /* Container layout for alignment */
-.preference-field {
+.preference {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -96,28 +97,23 @@ input[type="checkbox"][switch]:focus-visible {
 }
 ```
 
-### JavaScript Preferences Engine
+### JavaScript Event Handling
 ```javascript
-const root = document.documentElement;
 const darkModeToggle = document.getElementById('dark-mode');
 
-// Sync and apply preferences immediately
+// Bind a change listener to handle state mutations immediately
 darkModeToggle.addEventListener('change', (e) => {
+  // CORRECT PATH: Read the standard .checked property to determine the switch's state.
+  // DO NOT use .value, as that returns "on" regardless of whether the switch is active or inactive.
   const isEnabled = e.target.checked;
   
-  // Apply change immediately to the DOM
-  root.dataset.theme = isEnabled ? 'dark' : 'light';
-  
-  // Save preference
-  localStorage.setItem('preference-dark-mode', isEnabled);
+  // Trigger immediate UI state updates.
+  // This provides immediate feedback, matching the UX expectations of a toggle switch.
+  document.documentElement.dataset.theme = isEnabled ? 'dark' : 'light';
 });
-
-// Restore preference on load
-const savedPref = localStorage.getItem('preference-dark-mode');
-if (savedPref !== null) {
-  darkModeToggle.checked = savedPref === 'true';
-}
 ```
+
+For implementing a robust, production-ready website theme toggle with Storage state preservation (`localStorage`), system theme synchronization (`matchMedia`), and FOUC (Flash of Unstyled Content) prevention, see {{ GUIDE_REF("dark-mode") }}.
 
 ---
 
@@ -136,3 +132,5 @@ The standard HTML `switch` attribute is designed with progressive enhancement at
 
 *   **Graceful Degradation**: In browsers that do not yet support the `switch` attribute, the element automatically degrades to a standard, fully functional HTML `<input type="checkbox">`. It retains all semantic value, accessibility mappings, and keyboard and form-submission behaviors out-of-the-box.
 *   **Standard Checkbox Fallback**: For most projects, allowing the standard checkbox fallback is the recommended and cleanest approach. It guarantees 100% usability and accessibility across all historical browser versions.
+
+{{ FEATURE_FALLBACKS("accent-color") }}
