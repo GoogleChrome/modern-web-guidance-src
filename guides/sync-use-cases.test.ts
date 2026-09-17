@@ -454,7 +454,6 @@ describe('buildRequiredFilesChecklist', () => {
       isDisciplineGuide: false,
       draft: false,
       isPublished: false,
-      isDisciplineSkill: false,
       ...overrides,
     };
   }
@@ -531,7 +530,6 @@ describe('buildIssueContent', () => {
       isDisciplineGuide: false,
       draft: false,
       isPublished: false,
-      isDisciplineSkill: false,
     };
   }
 
@@ -795,7 +793,6 @@ describe('processGuideInventory', () => {
       isDisciplineGuide: false,
       draft: false,
       isPublished: false,
-      isDisciplineSkill: false,
       ...overrides,
     };
   }
