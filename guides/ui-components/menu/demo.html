@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Menu</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --canvas: #e8f1ed;
+      --surface: #fffdf8;
+      --ink: #19342d;
+      --line: #9bb4a8;
+      --accent: #007c67;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, serif;
+      background: var(--canvas);
+      color: var(--ink);
+    }
+
+    .menu-bar-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      container-type: scroll-state;
+      container-name: menu-bar;
+    }
+
+    .menu-bar {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--canvas), white 30%);
+    }
+
+    @container menu-bar scroll-state(stuck: top) {
+      .menu-bar {
+        box-shadow: 0 2px 8px rgb(25 52 45 / 20%);
+      }
+    }
+
+    main {
+      max-width: 42rem;
+      min-height: 140vh;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .menu-trigger,
+    [role="menuitem"] {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .menu-trigger {
+      padding: 0.5rem 0.8rem;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--surface);
+    }
+
+    [role="menu"] {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      min-width: 12rem;
+      margin: 0;
+      padding: 0.3rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      box-shadow: 0 12px 28px rgb(25 52 45 / 20%);
+    }
+
+    [role="menuitem"] {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: subgrid;
+      width: 100%;
+      gap: 1rem;
+      align-items: center;
+      padding: 0.55rem 0.7rem;
+      border-radius: 3px;
+      text-align: start;
+    }
+
+    [role="menuitem"]:hover,
+    [role="menuitem"]:focus-visible {
+      background: var(--accent);
+      color: white;
+      outline: none;
+    }
+
+    #fileButton {
+      anchor-name: --file-button;
+    }
+
+    #fileMenu {
+      position-anchor: --file-button;
+      position-area: block-end span-inline-end;
+      inset: auto;
+    }
+
+    #preferencesButton {
+      anchor-name: --preferences-button;
+    }
+
+    #preferencesMenu {
+      position-anchor: --preferences-button;
+      position-area: inline-end span-block-start;
+      inset: auto;
+    }
+
+    kbd,
+    .submenu-arrow {
+      grid-column: 2;
+      justify-self: end;
+      font-family: inherit;
+      opacity: 0.72;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="menu-bar-wrapper">
+    <div class="menu-bar" aria-label="Document commands">
+      <button class="menu-trigger" id="fileButton" type="button" popovertarget="fileMenu" aria-haspopup="menu">
+        File
+      </button>
+    </div>
+  </div>
+
+  <main>
+    <h1>Document</h1>
+    <p>Open the File menu, then use arrow keys to move through commands. Preferences opens a nested menu.</p>
+
+    <div id="fileMenu" popover="auto" role="menu" aria-labelledby="fileButton">
+      <button role="menuitem" type="button">New file <kbd>Cmd N</kbd></button>
+      <button role="menuitem" type="button">Save <kbd>Cmd S</kbd></button>
+      <button id="preferencesButton" role="menuitem" type="button" popovertarget="preferencesMenu" aria-haspopup="menu"
+        aria-expanded="false">
+        Preferences <span class="submenu-arrow" aria-hidden="true">&rsaquo;</span>
+      </button>
+    </div>
+
+    <div id="preferencesMenu" popover="auto" role="menu" aria-labelledby="preferencesButton">
+      <button role="menuitem" type="button">Appearance</button>
+      <button role="menuitem" type="button">Keyboard shortcuts</button>
+    </div>
+  </main>
+
+  <script>
+    const fileButton = document.getElementById('fileButton');
+    const fileMenu = document.getElementById('fileMenu');
+    const preferencesButton = document.getElementById('preferencesButton');
+    const preferencesMenu = document.getElementById('preferencesMenu');
+
+    function getItems(menu) {
+      return [...menu.querySelectorAll('[role="menuitem"]')].filter((item) => !item.disabled);
+    }
+
+    function focusItem(menu, index) {
+      const items = getItems(menu);
+      items[(index + items.length) % items.length].focus();
+    }
+
+    function closeMenu(menu, trigger) {
+      menu.hidePopover();
+      trigger.focus();
+    }
+
+    function handleMenuKeys(event) {
+      const menu = event.currentTarget;
+      const items = getItems(menu);
+      const index = items.indexOf(document.activeElement);
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        focusItem(menu, index + 1);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        focusItem(menu, index - 1);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        focusItem(menu, 0);
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        focusItem(menu, items.length - 1);
+      } else if (event.key === 'ArrowRight' && document.activeElement === preferencesButton) {
+        event.preventDefault();
+        preferencesMenu.showPopover();
+        getItems(preferencesMenu)[0].focus();
+      } else if (event.key === 'ArrowLeft' && menu === preferencesMenu) {
+        event.preventDefault();
+        closeMenu(preferencesMenu, preferencesButton);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMenu(menu, menu === preferencesMenu ? preferencesButton : fileButton);
+      }
+    }
+
+    fileMenu.addEventListener('toggle', () => {
+      if (fileMenu.matches(':popover-open')) getItems(fileMenu)[0].focus();
+    });
+
+    preferencesMenu.addEventListener('toggle', () => {
+      preferencesButton.setAttribute('aria-expanded', preferencesMenu.matches(':popover-open'));
+    });
+
+    fileMenu.addEventListener('keydown', handleMenuKeys);
+    preferencesMenu.addEventListener('keydown', handleMenuKeys);
+  </script>
+</body>
+
+</html>
