@@ -100,13 +100,6 @@ export interface WriteFileAction {
   params: { path: string; content?: string; [key: string]: unknown };
 }
 
-export interface WebSearchAction {
-  type: 'web_search';
-  canonicalCategory?: CanonicalCategory;
-  name: string;
-  params?: Record<string, unknown>;
-}
-
 export interface OtherAction {
   type: 'other';
   canonicalCategory?: CanonicalCategory;
@@ -118,7 +111,6 @@ export type StandardizedAction =
   | RunCommandAction
   | ReadFileAction
   | WriteFileAction
-  | WebSearchAction
   | OtherAction;
 
 export function standardizeAction(
@@ -157,9 +149,6 @@ export function standardizeAction(
           ...(content !== undefined ? { content } : {})
         }
       };
-    }
-    case 'web_search': {
-      return { type: 'web_search', name, params: p };
     }
     case 'other':
     default: {
@@ -241,17 +230,12 @@ export function categorizeAction(
   }
 
   if (actionType !== 'run_command') {
-    const isMutationName = ['write', 'replace', 'edit', 'touch'].some(k => actionName.includes(k));
-    if (isMutationName) {
+    const mutationParamKeys = ['targetfile', 'replacementcontent', 'replacementchunks', 'codecontent', 'write_to_file', 'replace_file_content', 'new_string', 'newtext'];
+    const paramKeys = params && typeof params === 'object' ? Object.keys(params).map(k => k.toLowerCase()) : [];
+    const hasMutationParam = paramKeys.some(k => mutationParamKeys.includes(k));
+    if (hasMutationParam) {
       return 'code_mutation';
     }
-  }
-
-  const mutationParamKeys = ['targetfile', 'replacementcontent', 'replacementchunks', 'codecontent', 'write_to_file', 'replace_file_content', 'new_string', 'newtext'];
-  const paramKeys = params && typeof params === 'object' ? Object.keys(params).map(k => k.toLowerCase()) : [];
-  const hasMutationParam = paramKeys.some(k => mutationParamKeys.includes(k));
-  if (hasMutationParam) {
-    return 'code_mutation';
   }
 
   const cmd = typeof params?.command === 'string' ? params.command : (typeof params?.cmd === 'string' ? params.cmd : '');
@@ -317,9 +301,6 @@ export function mapToolType(toolName: string): NonNullable<StandardizedStep['act
   }
   if (['bash', 'execute_bash', 'run_command', 'run_shell_command', 'terminal', 'shell'].some(k => name.includes(k))) {
     return 'run_command';
-  }
-  if (['search', 'get_best_practices', 'retrieve', 'query_guidance'].some(k => name.includes(k))) {
-    return 'web_search';
   }
   return 'other';
 }
