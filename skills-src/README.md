@@ -1,6 +1,6 @@
 # Skills Source
 
-This directory contains standalone and discipline-level skill implementations. These skills are processed by the build pipeline based on explicit configuration.
+This directory contains standalone, topic-specific skill implementations. These skills are processed by the build pipeline based on explicit configuration.
 
 ## How to Use
 

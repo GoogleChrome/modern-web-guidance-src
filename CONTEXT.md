@@ -61,7 +61,7 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 
 | File | Author | Purpose |
 |---|---|---|
-| `guide.md` | SME (human) | The guidance itself. Read by coding agents via Skills. `SKILL.md` is used for discipline-level skills. Contains YAML frontmatter (name, description, web-feature-ids) and structured markdown with DO/DO NOT directives, code snippets, and fallback strategies. |
+| `guide.md` | SME (human) | The guidance itself. Read by coding agents via Skills. (`SKILL.md` is reserved for the entrypoint and standalone skills.) Contains YAML frontmatter (name, description, web-feature-ids) and structured markdown with DO/DO NOT directives, code snippets, and fallback strategies. |
 | `demo.html` | SME (human) | Gold-standard standalone implementation of the use case. |
 | `expectations.md` | SME (human) | Natural-language bulleted list of assertions that must be true if the guidance is followed correctly. Used as input for grader and solution generation. |
 | `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`jetski-solution.patch`, `gemini-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`). Used for grader calibration. |
