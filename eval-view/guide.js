@@ -322,8 +322,8 @@ function renderGraphs(guideName) {
     const filteredKeys = testKeys.filter(key => {
         const g = getStats(allTestData[key]);
         if (!g) return false;
-        const gTotal = g.guidedTotal !== undefined ? g.guidedTotal : (g.guided?.total || 0);
-        const uTotal = g.unguidedTotal !== undefined ? g.unguidedTotal : (g.unguided?.total || 0);
+        const gTotal = g.guidedTotal || 0;
+        const uTotal = g.unguidedTotal || 0;
         return gTotal > 0 || uTotal > 0;
     });
 
@@ -574,10 +574,10 @@ function renderGraphs(guideName) {
                     </div>
                 `;
 
-                const gPassed = stats.guidedPassed !== undefined ? stats.guidedPassed : (stats.guided?.passed || 0);
-                const gTotal = stats.guidedTotal !== undefined ? stats.guidedTotal : (stats.guided?.total || 0);
-                const uPassed = stats.unguidedPassed !== undefined ? stats.unguidedPassed : (stats.unguided?.passed || 0);
-                const uTotal = stats.unguidedTotal !== undefined ? stats.unguidedTotal : (stats.unguided?.total || 0);
+                const gPassed = stats.guidedPassed || 0;
+                const gTotal = stats.guidedTotal || 0;
+                const uPassed = stats.unguidedPassed || 0;
+                const uTotal = stats.unguidedTotal || 0;
 
                 content.innerHTML = `
                     <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.75rem;">${formattedDate}</div>

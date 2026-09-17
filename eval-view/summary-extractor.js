@@ -9,8 +9,6 @@ import { getRunStats, parseResultKey, calculateChartData } from './utils.js';
  * @property {number} unguidedTotal
  * @property {number} unguidedRate
  * @property {number} uplift
- * @property {{ passed: number, total: number }} guided
- * @property {{ passed: number, total: number }} unguided
  * @property {Record<string, GuideSummary>} [tasks] Per-task breakdown; only when the guide has more than one task.
  * @property {string} [taskName] The sole task's name, when the guide has exactly one.
  */
@@ -131,9 +129,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             unguidedPassed: stats.unguided.passed,
             unguidedTotal: stats.unguided.total,
             unguidedRate,
-            uplift: guidedRate - unguidedRate,
-            guided: stats.guided,
-            unguided: stats.unguided
+            uplift: guidedRate - unguidedRate
         };
     };
 
