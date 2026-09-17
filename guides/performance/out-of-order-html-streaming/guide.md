@@ -3,8 +3,8 @@ name: out-of-order-html-streaming
 description: Declaratively update a page with content streamed later into the same HTML document or via imperative JavaScript APIs.
 web-feature-ids:
   - template-for
-  - tmp-html-setters
-  - tmp-html-streaming-setters
+  - html-setters
+  - html-streaming-setters
   
 ---
 
@@ -25,7 +25,6 @@ The feature consists of two primary mechanisms:
 *   **Implement Native Loading States**: Use the `<?start>` and `<?end>` markers to wrap fallback content. The browser automatically replaces everything between these markers when the corresponding `<template for>` arrives.
 *   **Minimize Cumulative Layout Shift (CLS)**: Always provide stable dimensions for placeholders. If the final content size is unknown, use skeleton screens or CSS `aspect-ratio` to reserve space and prevent jarring shifts.
 *   **Accessibility & Focus Management**: Be mindful that out-of-order updates can confuse screen reader users. Use `aria-live` regions for critical updates and ensure that focus isn't lost if a placeholder containing the active element is replaced.
-
 
 ## Implementation Details
 
@@ -91,6 +90,11 @@ const response = await fetch('/api/partial-update');
 await response.body
   .pipeThrough(new TextDecoderStream())
   .pipeTo(main.streamHTMLUnsafe({ runScripts: true }));
+
+// Or use the `textStream()` convenience method which streams directly without needing the intermediate `TextDecoderStream()` step
+await response
+  .textStream()
+  .pipeTo(main.streamHTMLUnsafe({ runScripts: true }))
 ```
 
 ## Use Case Reference Matrix
