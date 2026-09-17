@@ -1,0 +1,449 @@
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..d9c61eb
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,317 @@
++/**
++ * "Design Your Cup" 3D product viewer.
++ *
++ * Renders a rotating textured card in WebGL and, where the browser supports
++ * the HTML-in-Canvas API, projects the real interactive `#cup-ui` element
++ * onto that card so its buttons stay genuinely clickable. Browsers without
++ * support fall back to a plain CSS overlay on top of the canvas.
++ */
++(function () {
++  'use strict';
++
++  const canvas = document.getElementById('cup-canvas');
++  const cupUI = document.getElementById('cup-ui');
++  if (!canvas || !cupUI) return;
++
++  wireUpControls();
++
++  // --- Minimal column-major 4x4 matrix helpers (DOMMatrix-compatible order) ---
++  const mat4 = {
++    perspective(fovy, aspect, near, far) {
++      const f = 1 / Math.tan(fovy / 2);
++      const rangeInv = 1 / (near - far);
++      return new Float32Array([
++        f / aspect, 0, 0, 0,
++        0, f, 0, 0,
++        0, 0, (near + far) * rangeInv, -1,
++        0, 0, near * far * rangeInv * 2, 0,
++      ]);
++    },
++    translation(x, y, z) {
++      return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1]);
++    },
++    rotationY(rad) {
++      const c = Math.cos(rad);
++      const s = Math.sin(rad);
++      return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]);
++    },
++    multiply(a, b) {
++      const out = new Float32Array(16);
++      for (let c = 0; c < 4; c++) {
++        for (let r = 0; r < 4; r++) {
++          let sum = 0;
++          for (let k = 0; k < 4; k++) sum += a[k * 4 + r] * b[c * 4 + k];
++          out[c * 4 + r] = sum;
++        }
++      }
++      return out;
++    },
++  };
++
++  // MANDATORY: check for HTML-in-Canvas support before using the API at all.
++  const supportsHtmlInCanvas = 'requestPaint' in HTMLCanvasElement.prototype;
++
++  // Keep the backing store matched to device pixels to avoid blurriness.
++  // Set up once, outside of any onpaint handler, to avoid leaks.
++  const supportsDevicePixelContentBox =
++    typeof ResizeObserverEntry !== 'undefined' &&
++    'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++
++  const resizeObserver = new ResizeObserver(([entry]) => {
++    const dpc = entry.devicePixelContentBoxSize;
++    canvas.width = dpc
++      ? dpc[0].inlineSize
++      : Math.round(entry.contentRect.width * window.devicePixelRatio);
++    canvas.height = dpc
++      ? dpc[0].blockSize
++      : Math.round(entry.contentRect.height * window.devicePixelRatio);
++  });
++  resizeObserver.observe(canvas, supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {});
++
++  if (supportsHtmlInCanvas) {
++    initHtmlInCanvasMode();
++  } else {
++    initFallbackMode();
++  }
++
++  function wireUpControls() {
++    const sizeButtons = cupUI.querySelectorAll('.size-btn');
++    sizeButtons.forEach((btn) => {
++      btn.addEventListener('click', () => {
++        sizeButtons.forEach((b) => b.classList.remove('active'));
++        btn.classList.add('active');
++      });
++    });
++
++    const addToCartBtn = document.getElementById('add-to-cart-btn');
++    if (addToCartBtn) {
++      addToCartBtn.addEventListener('click', () => {
++        const original = addToCartBtn.textContent;
++        addToCartBtn.textContent = 'Added!';
++        setTimeout(() => {
++          addToCartBtn.textContent = original;
++        }, 1200);
++      });
++    }
++  }
++
++  // Fallback strategy: HTML-in-Canvas isn't supported, so the interactive
++  // card is placed on top of the canvas with plain CSS instead of being
++  // projected into the 3D scene.
++  function initFallbackMode() {
++    cupUI.classList.add('cup-ui--overlay');
++    const gl = canvas.getContext('webgl');
++    if (!gl) return;
++    const scene = createScene(gl);
++    if (!scene) return;
++
++    function frame() {
++      scene.draw();
++      requestAnimationFrame(frame);
++    }
++    requestAnimationFrame(frame);
++  }
++
++  function initHtmlInCanvasMode() {
++    // MANDATORY: `layoutsubtree` lets descendant HTML be projected into the 3D scene.
++    canvas.setAttribute('layoutsubtree', '');
++    canvas.appendChild(cupUI);
++    cupUI.classList.add('cup-ui--projected');
++
++    const gl = canvas.getContext('webgl');
++    if (!gl) {
++      initFallbackMode();
++      return;
++    }
++    const scene = createScene(gl);
++    if (!scene) return;
++
++    let currentMVP = scene.computeMVP(0);
++
++    // MANDATORY: rendering happens inside the onpaint handler.
++    canvas.onpaint = (event) => {
++      if (event.changedElements && event.changedElements.length > 0 && gl.texElementImage2D) {
++        try {
++          gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, cupUI);
++        } catch (err) {
++          console.error('texElementImage2D copy failed:', err);
++        }
++      }
++
++      scene.draw(currentMVP);
++      syncElementTransform(currentMVP);
++    };
++
++    function render(time) {
++      currentMVP = scene.computeMVP(time);
++      // Ask the browser to paint the canvas (and thus fire onpaint).
++      canvas.requestPaint();
++      requestAnimationFrame(render);
++    }
++    requestAnimationFrame(render);
++
++    function syncElementTransform(mvp) {
++      if (!canvas.getElementTransform) return;
++
++      // 1. Convert the WebGL MVP matrix into a DOM matrix.
++      const mvpDOM = new DOMMatrix(Array.from(mvp));
++
++      // 2. Normalize the HTML element (canvas grid pixels -> WebGL unit model space).
++      const dprX = canvas.width / canvas.clientWidth;
++      const dprY = canvas.height / canvas.clientHeight;
++      const gridWidth = cupUI.offsetWidth * dprX;
++      const gridHeight = cupUI.offsetHeight * dprY;
++
++      const toGLModel = new DOMMatrix()
++        .scale(1 / gridWidth, -1 / gridHeight, 1 / gridHeight)
++        .translate(-gridWidth / 2, -gridHeight / 2);
++
++      // 3. Map from clip space to the canvas viewport (and flip Y).
++      const clipToCanvasViewport = new DOMMatrix()
++        .translate(canvas.width / 2, canvas.height / 2)
++        .scale(canvas.width / 2, -canvas.height / 2, canvas.height / 2);
++
++      // 4. Combine: Viewport * MVP * Normalization.
++      const screenSpaceTransform = clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
++
++      let computedTransform = canvas.getElementTransform(cupUI, screenSpaceTransform);
++
++      // Workaround for Chromium bug https://crbug.com/512171941 affecting
++      // versions under 149, where `is2D` is incorrectly true for a 3D matrix.
++      if (computedTransform.is2D) {
++        computedTransform = DOMMatrix.fromFloat64Array(computedTransform.toFloat64Array());
++      }
++
++      cupUI.style.transform = computedTransform.toString();
++    }
++  }
++
++  // Builds a small rotating textured quad shared by both the HTML-in-Canvas
++  // path (textured with the live `#cup-ui` element) and the fallback path
++  // (textured with a static placeholder) so the 3D scene always renders.
++  function createScene(gl) {
++    const vertexSrc = `
++      attribute vec3 aPosition;
++      attribute vec2 aUV;
++      uniform mat4 uMVP;
++      varying vec2 vUV;
++      void main() {
++        vUV = aUV;
++        gl_Position = uMVP * vec4(aPosition, 1.0);
++      }
++    `;
++    const fragmentSrc = `
++      precision mediump float;
++      varying vec2 vUV;
++      uniform sampler2D uTexture;
++      void main() {
++        gl_FragColor = texture2D(uTexture, vUV);
++      }
++    `;
++
++    const program = createProgram(gl, vertexSrc, fragmentSrc);
++    if (!program) return null;
++
++    const positionLoc = gl.getAttribLocation(program, 'aPosition');
++    const uvLoc = gl.getAttribLocation(program, 'aUV');
++    const mvpLoc = gl.getUniformLocation(program, 'uMVP');
++    const textureLoc = gl.getUniformLocation(program, 'uTexture');
++
++    // Unit quad (matches the "unit square" model space used when syncing the
++    // projected HTML element's CSS transform).
++    const vertices = new Float32Array([
++      -0.5, -0.5, 0, 0, 1,
++       0.5, -0.5, 0, 1, 1,
++       0.5,  0.5, 0, 1, 0,
++      -0.5,  0.5, 0, 0, 0,
++    ]);
++    const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
++
++    const vertexBuffer = gl.createBuffer();
++    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
++    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
++
++    const indexBuffer = gl.createBuffer();
++    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
++    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
++
++    const texture = gl.createTexture();
++    gl.bindTexture(gl.TEXTURE_2D, texture);
++    // Placeholder pixel so the shader has valid data before the first paint.
++    gl.texImage2D(
++      gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
++      new Uint8Array([215, 204, 200, 255])
++    );
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
++
++    gl.enable(gl.DEPTH_TEST);
++
++    function computeMVP(timeMs) {
++      const aspect = canvas.width / Math.max(1, canvas.height);
++      const projection = mat4.perspective(Math.PI / 4, aspect, 0.1, 100);
++      const angle = timeMs * 0.0006;
++      const model = mat4.multiply(mat4.translation(0, 0, -2.6), mat4.rotationY(angle));
++      return mat4.multiply(projection, model);
++    }
++
++    function draw(mvp) {
++      const mat = mvp || computeMVP(performance.now());
++
++      gl.viewport(0, 0, canvas.width, canvas.height);
++      gl.clearColor(0.17, 0.11, 0.09, 1);
++      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++      gl.useProgram(program);
++
++      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
++      gl.enableVertexAttribArray(positionLoc);
++      gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 20, 0);
++      gl.enableVertexAttribArray(uvLoc);
++      gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 20, 12);
++
++      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
++
++      gl.uniformMatrix4fv(mvpLoc, false, mat);
++
++      gl.activeTexture(gl.TEXTURE0);
++      gl.bindTexture(gl.TEXTURE_2D, texture);
++      gl.uniform1i(textureLoc, 0);
++
++      gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
++    }
++
++    return { draw, computeMVP };
++  }
++
++  function createProgram(gl, vertexSrc, fragmentSrc) {
++    const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSrc);
++    const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSrc);
++    if (!vertexShader || !fragmentShader) return null;
++
++    const program = gl.createProgram();
++    gl.attachShader(program, vertexShader);
++    gl.attachShader(program, fragmentShader);
++    gl.linkProgram(program);
++
++    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++      console.error('Program link failed:', gl.getProgramInfoLog(program));
++      return null;
++    }
++    return program;
++  }
++
++  function compileShader(gl, type, source) {
++    const shader = gl.createShader(type);
++    gl.shaderSource(shader, source);
++    gl.compileShader(shader);
++    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++      console.error('Shader compile failed:', gl.getShaderInfoLog(shader));
++      gl.deleteShader(shader);
++      return null;
++    }
++    return shader;
++  }
++})();
+diff --git a/index.html b/index.html
+index 66c9173..204d4e0 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,85 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 3D Cup Customizer */
++    .viewer-wrap {
++      position: relative;
++      width: 100%;
++      height: 420px;
++      margin-top: 20px;
++      background: radial-gradient(circle at 50% 40%, #5d4037, #2c1810);
++      border-radius: 12px;
++      overflow: hidden;
++    }
++
++    .viewer-wrap canvas {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      display: block;
++    }
++
++    .cup-ui {
++      background: rgba(255, 255, 255, 0.95);
++      border-radius: 10px;
++      padding: 16px 20px;
++      width: 220px;
++      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
++      text-align: center;
++    }
++
++    .cup-ui h4 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .size-options {
++      display: flex;
++      justify-content: center;
++      gap: 8px;
++      margin-bottom: 14px;
++    }
++
++    .size-btn {
++      width: 34px;
++      height: 34px;
++      border-radius: 50%;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font-weight: bold;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .size-btn.active,
++    .size-btn:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    .add-to-cart-btn {
++      border: none;
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    .cup-ui--overlay {
++      position: absolute;
++      left: 50%;
++      bottom: 20px;
++      transform: translateX(-50%);
++    }
++
++    .cup-ui--projected {
++      position: absolute;
++      top: 0;
++      left: 0;
++      transform-origin: 0 0;
++      will-change: transform;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +274,27 @@
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center;">Design Your Cup</h2>
++      <p style="text-align: center; max-width: 600px; margin: 10px auto 0;">
++        Spin the cup in 3D and pick your size right on the model.
++      </p>
++
++      <div class="viewer-wrap" id="viewer-wrap">
++        <canvas id="cup-canvas"></canvas>
++
++        <div id="cup-ui" class="cup-ui">
++          <h4>Maple Oat Latte</h4>
++          <div class="size-options">
++            <button type="button" class="size-btn" data-size="S">S</button>
++            <button type="button" class="size-btn active" data-size="M">M</button>
++            <button type="button" class="size-btn" data-size="L">L</button>
++          </div>
++          <button type="button" class="btn add-to-cart-btn" id="add-to-cart-btn">Add to Cart</button>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +307,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="app.js" defer></script>
+ </body>
+ 
+ </html>
