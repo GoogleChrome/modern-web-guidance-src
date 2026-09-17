@@ -45,7 +45,7 @@ modern-web-guidance-src/
     lib/                      # Shared utilities (isolation, credentials, file helpers)
   serving/                    # Guidance serving infrastructure and skills distribution
     skills-cli/               # Standalone skills CLI distribution
-    scripts/                  # Build scripts (build-guides, build-megaskill)
+    scripts/                  # Build scripts (build-guides, compare-built-guides)
   eval-view/                  # Dashboard for visualizing evaluation results
   bin/gd.ts                   # The unified CLI entry point
   lib/colors.ts               # Shared color/formatting helpers
@@ -180,7 +180,7 @@ Configured in `harness/config.ts` and `.env`:
 - **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` (`GD_DEV_USE_GEMINI=1` in `gd dev`).
 - **Claude Code**: Vertex AI backed (`claude_code`).
 - **Codex CLI**: OpenAI/Codex backed (`codex_cli`).
-- **Jetski / Pi**: Additional experimental agent harnesses.
+- **Pi**: Additional experimental agent harness.
 
 ### Base apps
 
@@ -198,8 +198,7 @@ Base apps live in `harness/base_apps/`:
 
 The code in `serving/` provides standalone tools and skills distributions used by agents to locate and consume guidance.
 
-- **Standalone Skills CLI** (`serving/bin/modern-web.ts`): A tool that searches and retrieves use cases, bundled into a standalone distribution for use as a skill. This is used when `serving: 'skills_cli'`.
-- **Megaskill Distribution**: Compiled markdown guidance bundles for agents that support skill-based injection.
+- **Standalone Skills CLI** (`serving/bin/modern-web.ts`): A tool that searches and retrieves use cases, bundled into a standalone distribution for use as a skill. This is the only supported serving approach.
 
 ### Build process
 
@@ -207,7 +206,7 @@ The code in `serving/` provides standalone tools and skills distributions used b
 
 ### How agents access guidance
 
-- **Guided mode (Skills CLI)** (`serving: 'skills_cli'`): The agent receives access to the standalone `modern-web` CLI skill tool to query, retrieve, and read guidance on demand.
+- **Guided mode (Skills CLI)**: The agent receives access to the standalone `modern-web` CLI skill tool to query, retrieve, and read guidance on demand.
 - **Unguided mode**: The control condition in evaluations. The agent relies only on its training data without guidance tools enabled.
 
 ---
@@ -340,7 +339,6 @@ Suite configuration in `harness/config.ts`:
 - `numRuns`: Number of agent runs per task (default: 1-2)
 - `tasks`: Empty array = discover all tasks by scanning guide targets. Set explicitly to run a subset.
 - `skillsToEnable`: Which skills agents can access (`['modern-web-guidance']`, etc.)
-- `serving`: The approach used to serve guidance (`Serving.SKILLS_CLI`)
 - `agent`: Which agent to use (`Agents.JETSKI_CLI`, `Agents.GEMINI_CLI`, `Agents.CLAUDE_CODE`, `Agents.CODEX_CLI`)
 
 ---
