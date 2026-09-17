@@ -1,0 +1,9 @@
+- **MANDATORY**: A pointer drag started from an item's reorder button changes the item's DOM and visible position within the collection.
+- **OPTIONAL**: During a pointer drag, provide visual feedback that follows the pointer without blocking detection of destination items and makes the original item visibly distinct until the drag ends.
+- **MANDATORY**: Reordering moves the existing item rather than replacing it, so state in controls inside that item is retained.
+- **MANDATORY**: Each item has a native button that identifies the item and can enter keyboard reordering mode.
+- **MANDATORY**: Pressing Space or Enter on an item's reorder button exposes the grabbed state and announces the item's current position.
+- **MANDATORY**: While an item is grabbed, arrow keys move it through the collection and focus remains on its reorder button.
+- **MANDATORY**: Pressing Escape while an item is grabbed restores the order that existed before keyboard reordering began and announces the cancellation.
+- **MANDATORY**: Completing keyboard reordering clears the grabbed state and announces the final position.
+- **MANDATORY WHEN REORDERING IS SUPPLEMENTARY**: The collection remains readable and usable in its default DOM order without JavaScript.

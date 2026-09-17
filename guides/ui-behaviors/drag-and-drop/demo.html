@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reorder Tasks</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --canvas: #edf3ee;
+      --surface: #fffdf8;
+      --ink: #19342d;
+      --line: #a9bdb1;
+      --accent: #007d69;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      max-width: 42rem;
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+      font-family: Georgia, serif;
+      background: var(--canvas);
+      color: var(--ink);
+    }
+
+    .task-list {
+      display: grid;
+      gap: 0.75rem;
+      max-width: 32rem;
+      padding: 0;
+      list-style: none;
+    }
+
+    .task {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+
+    .task[data-reordering="true"] {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent), transparent 75%);
+    }
+
+    .task.pointer-dragging {
+      opacity: 0.35;
+    }
+
+    .drag-preview {
+      position: fixed;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.9;
+      transform: rotate(1deg);
+      box-shadow: 0 12px 28px rgb(25 52 45 / 28%);
+    }
+
+    .reorder-button {
+      display: grid;
+      width: 2.25rem;
+      height: 2.25rem;
+      place-items: center;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .reorder-button:active {
+      cursor: grabbing;
+    }
+
+    .reorder-button:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .task label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .status {
+      min-height: 1.5rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Tasks</h1>
+    <p>Use a task's drag handle to drag it, or focus the button and press Space or Enter. Use Up and Down arrows to
+      move it, then press Space, Enter, or Escape.</p>
+
+    <ol class="task-list" id="taskList">
+      <li class="task" data-label="Outline project">
+        <button class="reorder-button" type="button"
+          aria-label="Reorder Outline project. Press Space or Enter to start reordering." aria-pressed="false"
+          title="Reorder Outline project">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="5" r="1"></circle>
+            <circle cx="9" cy="12" r="1"></circle>
+            <circle cx="9" cy="19" r="1"></circle>
+            <circle cx="15" cy="5" r="1"></circle>
+            <circle cx="15" cy="12" r="1"></circle>
+            <circle cx="15" cy="19" r="1"></circle>
+          </svg>
+        </button>
+        <label>Outline project <input value="Write the first draft"></label>
+      </li>
+      <li class="task" data-label="Review research">
+        <button class="reorder-button" type="button"
+          aria-label="Reorder Review research. Press Space or Enter to start reordering." aria-pressed="false"
+          title="Reorder Review research">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="5" r="1"></circle>
+            <circle cx="9" cy="12" r="1"></circle>
+            <circle cx="9" cy="19" r="1"></circle>
+            <circle cx="15" cy="5" r="1"></circle>
+            <circle cx="15" cy="12" r="1"></circle>
+            <circle cx="15" cy="19" r="1"></circle>
+          </svg>
+        </button>
+        <label>Review research <input value="Collect source notes"></label>
+      </li>
+      <li class="task" data-label="Schedule review">
+        <button class="reorder-button" type="button"
+          aria-label="Reorder Schedule review. Press Space or Enter to start reordering." aria-pressed="false"
+          title="Reorder Schedule review">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="5" r="1"></circle>
+            <circle cx="9" cy="12" r="1"></circle>
+            <circle cx="9" cy="19" r="1"></circle>
+            <circle cx="15" cy="5" r="1"></circle>
+            <circle cx="15" cy="12" r="1"></circle>
+            <circle cx="15" cy="19" r="1"></circle>
+          </svg>
+        </button>
+        <label>Schedule review <input value="Invite the team"></label>
+      </li>
+    </ol>
+
+    <p class="status" id="reorderStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+  </main>
+
+  <script>
+    const list = document.getElementById('taskList');
+    const status = document.getElementById('reorderStatus');
+    let pointerItem = null;
+    let pointerPreview = null;
+    let pointerOffsetX = 0;
+    let pointerOffsetY = 0;
+    let keyboardItem = null;
+    let originalOrder = [];
+
+    function getPosition(item) {
+      return [...list.children].indexOf(item) + 1;
+    }
+
+    function announce(message) {
+      status.textContent = message;
+    }
+
+    function moveItem(item, before) {
+      if (typeof list.moveBefore === 'function') {
+        list.moveBefore(item, before);
+      } else {
+        list.insertBefore(item, before);
+      }
+    }
+
+    function finishPointerReorder() {
+      if (!pointerItem) return;
+      announce(`Moved ${pointerItem.dataset.label} to position ${getPosition(pointerItem)}.`);
+      pointerItem.classList.remove('pointer-dragging');
+      pointerPreview.remove();
+      pointerItem = null;
+      pointerPreview = null;
+      document.removeEventListener('pointermove', movePointerItem);
+      document.removeEventListener('pointerup', finishPointerReorder);
+      document.removeEventListener('pointercancel', finishPointerReorder);
+    }
+
+    function movePointerItem(event) {
+      pointerPreview.style.left = `${event.clientX - pointerOffsetX}px`;
+      pointerPreview.style.top = `${event.clientY - pointerOffsetY}px`;
+
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.task');
+      if (!target || target.parentElement !== list || target === pointerItem) return;
+
+      const rect = target.getBoundingClientRect();
+      const before = event.clientY < rect.top + rect.height / 2 ? target : target.nextElementSibling;
+      if (before === pointerItem || before === pointerItem.nextElementSibling) return;
+      moveItem(pointerItem, before);
+    }
+
+    list.addEventListener('pointerdown', (event) => {
+      const button = event.target.closest('.reorder-button');
+      if (!button) return;
+
+      event.preventDefault();
+      pointerItem = button.closest('.task');
+      const rect = pointerItem.getBoundingClientRect();
+      pointerOffsetX = event.clientX - rect.left;
+      pointerOffsetY = event.clientY - rect.top;
+
+      pointerPreview = pointerItem.cloneNode(true);
+      pointerPreview.classList.add('drag-preview');
+      pointerPreview.setAttribute('aria-hidden', 'true');
+      pointerPreview.inert = true;
+      pointerPreview.style.width = `${rect.width}px`;
+      pointerPreview.style.left = `${rect.left}px`;
+      pointerPreview.style.top = `${rect.top}px`;
+      document.body.append(pointerPreview);
+      pointerItem.classList.add('pointer-dragging');
+
+      document.addEventListener('pointermove', movePointerItem);
+      document.addEventListener('pointerup', finishPointerReorder);
+      document.addEventListener('pointercancel', finishPointerReorder);
+    });
+
+    function finishKeyboardReorder(message) {
+      const button = keyboardItem.querySelector('.reorder-button');
+      keyboardItem.removeAttribute('data-reordering');
+      button.setAttribute('aria-pressed', 'false');
+      announce(message);
+      keyboardItem = null;
+      originalOrder = [];
+    }
+
+    list.addEventListener('keydown', (event) => {
+      const button = event.target.closest('.reorder-button');
+      if (!button) return;
+
+      const item = button.closest('.task');
+      if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        if (keyboardItem === item) {
+          finishKeyboardReorder(`Dropped ${item.dataset.label} at position ${getPosition(item)}.`);
+        } else if (!keyboardItem) {
+          keyboardItem = item;
+          originalOrder = [...list.children];
+          item.dataset.reordering = 'true';
+          button.setAttribute('aria-pressed', 'true');
+          announce(`Grabbed ${item.dataset.label}. Position ${getPosition(item)} of ${list.children.length}.`);
+        }
+        return;
+      }
+
+      if (keyboardItem !== item) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        for (const originalItem of originalOrder) moveItem(originalItem, null);
+        button.focus();
+        finishKeyboardReorder(`Cancelled reordering. ${item.dataset.label} returned to position ${getPosition(item)}.`);
+        return;
+      }
+
+      const previous = item.previousElementSibling;
+      const next = item.nextElementSibling;
+      if (event.key === 'ArrowUp' && previous) {
+        event.preventDefault();
+        moveItem(item, previous);
+      } else if (event.key === 'ArrowDown' && next) {
+        event.preventDefault();
+        moveItem(item, next.nextElementSibling);
+      } else {
+        return;
+      }
+
+      button.focus();
+      announce(`Moved ${item.dataset.label} to position ${getPosition(item)} of ${list.children.length}.`);
+    });
+  </script>
+</body>
+
+</html>
