@@ -45,7 +45,7 @@
 │   └── size-aware-styling
 ├── container-scroll-state-queries
 │   ├── carousel-snap-highlights
-│   ├── context-sensitive-sticky-headers
+│   ├── state-aware-sticky-headers
 │   ├── scroll-position-aware-elements
 │   └── scrollability-affordance-hints
 ├── container-style-queries

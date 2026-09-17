@@ -1,0 +1,10 @@
+This demo will not be functional, but will contain the correct files for migration:
+
+/demo.html > Site with <link> to manifest.json
+/manifest.json > Simple manifest with `migrate_to` as ordered map
+/.well-known/web-app-origin-association > Pointer to new site
+
+/new-site/demo.html > Site with <link> to new-site/manifest.json
+/new-site/manifest.json > Simple manifest with `migrate_from`
+
+Fallback will be to recommend a UI element instructing them to reinstall.

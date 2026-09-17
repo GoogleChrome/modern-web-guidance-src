@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legacy Header Implementation</title>
+  <style>
+    body {
+      font-family: serif;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #000;
+    }
+
+    .header-wrapper {
+      width: 100%;
+      z-index: 9999;
+    }
+
+    .header-content {
+      background: #ccc;
+      padding: 40px;
+      font-size: 32px;
+      text-align: center;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      padding: 10px;
+      font-size: 18px;
+      background: #222;
+      color: #fff;
+    }
+
+    .spacer {
+      height: 120px;
+      display: none;
+    }
+
+    .show-spacer {
+      display: block;
+    }
+
+    .content-area {
+      padding: 50px;
+      background: #eee;
+    }
+
+    .block {
+      height: 400px;
+      margin-bottom: 20px;
+      border: 5px solid red;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header" class="header-wrapper">
+    <div class="header-content">
+      Old School Header
+    </div>
+  </div>
+  <div id="spacer" class="spacer"></div>
+
+  <div class="content-area">
+    <div class="block">Content Block 1</div>
+    <div class="block">Content Block 2</div>
+    <div class="block">Content Block 3</div>
+    <div class="block">Content Block 4</div>
+    <div class="block">Content Block 5</div>
+  </div>
+
+  <script>
+    window.onscroll = function() {
+      var header = document.getElementById("header");
+      var spacer = document.getElementById("spacer");
+      if (window.pageYOffset > 50) {
+        header.classList.add("fixed");
+        spacer.classList.add("show-spacer");
+        document.body.style.paddingTop = "10px";
+      } else {
+        header.classList.remove("fixed");
+        spacer.classList.remove("show-spacer");
+        document.body.style.paddingTop = "0px";
+      }
+    };
+  </script>
+</body>
+</html>

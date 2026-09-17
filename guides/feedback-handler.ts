@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import { runCommand, runAgent, escapeLeftAngleBracket } from './lib/utils.ts';
 import { parsePassRates, type PassRates } from './lib/utils.ts';
+import { getDefaultSolutionAgent } from '../lib/guide-validation.ts';
 
 async function fetchPRContext(prNumber: string): Promise<any> {
   console.log('Fetching PR context via GraphQL...');
@@ -105,7 +106,7 @@ Note: \`reviewThreads\` contains inline comments and their resolution status. \`
 Output your response as a clear markdown summary and TODO list.
 `;
 
-  const synthesis = await runAgent(plannerPrompt, undefined, { captureOutput: true });
+  const synthesis = await runAgent(getDefaultSolutionAgent(), plannerPrompt, undefined, { captureOutput: true });
   console.log('\n--- Synthesis & Plan ---');
   console.log(synthesis);
   console.log('------------------------\n');
@@ -144,7 +145,7 @@ Focus on the source files. Do not run \`gd dev\` or try to calibrate the grader,
 Use your file editing tools to make the changes.
 `;
   try {
-    const response = await runAgent(fixerPrompt, undefined, { captureOutput: true });
+    const response = await runAgent(getDefaultSolutionAgent(), fixerPrompt, undefined, { captureOutput: true });
     console.log('✅ Fixes applied to source files');
     return response;
   } catch (err) {

@@ -1,21 +1,42 @@
-import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, parseResultKey, $ } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
+import { extractSuiteSummary } from './summary-extractor.js';
 
+/**
+ * @typedef {import('./summary-extractor.js').SuiteSummary & {
+ *   source: import('./api.js').DataSource;
+ *   data?: any;
+ * }} LandingSuiteSummary
+ */
+
+/** @typedef {'all' | import('./api.js').DataSource} SourceFilter */
+/** @typedef {'alphabetic' | 'uplift' | 'unguided' | 'guided' | 'variance'} GuideSortKey */
+/** @typedef {'asc' | 'desc'} SortDirection */
+
+/** @type {Record<string, LandingSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
+/** @type {Set<string>} */
 let selectedTestIds = new Set(); // Set of test IDs to show
+/** @type {SourceFilter} */
 let currentSourceFilter = 'all';
+/** @type {string} */
 let currentAgentFilter = 'all';
+/** @type {string} */
 let currentServingFilter = 'all';
+/** @type {string} */
 let currentModelFilter = 'all';
 
 // Guides Pivot Table Sort State
+/** @type {GuideSortKey} */
 let currentGuideSort = 'alphabetic';
+/** @type {SortDirection} */
 let currentGuideSortDir = 'asc';
 
 function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 }
 
+/** @type {Record<string, string>} */
 const servingDisplayNames = {
     'skills': 'Skills',
     'skills_cli': 'Skills (CLI)',
@@ -64,7 +85,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } catch (error) {
         console.error('Error:', error);
-        document.getElementById('empty-state').style.display = 'block';
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState) emptyState.style.display = 'block';
     }
 });
 
@@ -151,8 +173,9 @@ function setupTestFilters() {
 }
 
 function setupTableFilters() {
+    /** @type {Record<string, (val: string) => void>} */
     const filters = {
-        'filter-source': (val) => currentSourceFilter = val,
+        'filter-source': (val) => currentSourceFilter = /** @type {SourceFilter} */ (val),
         'filter-agent': (val) => currentAgentFilter = val,
         'filter-serving': (val) => currentServingFilter = val,
         'filter-model': (val) => currentModelFilter = val
@@ -202,6 +225,9 @@ function setupInsightsTimelineFilters() {
     }
 }
 
+/**
+ * @param {any} el
+ */
 function syncSelectStyles(el) {
     el.classList.toggle('is-filtered', el.value !== 'all');
 }
@@ -302,33 +328,41 @@ async function loadLocalTests() {
             // Try fetching suites.gen.json as fallback for static mode
             const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
             if (!staticRes.ok) return; // Silent fail if both fail
-            const suites = await staticRes.json();
-            // convert array of strings to expected format [{id: string, source: 'local'}]
-            manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+            const suitesData = await staticRes.json();
+            if (Array.isArray(suitesData)) {
+                manifest = { suites: suitesData };
+            } else {
+                manifest = suitesData;
+            }
             useResultsPrefix = true;
         } else {
             manifest = await response.json();
         }
 
         if (manifest.suites && manifest.suites.length > 0) {
-            document.getElementById('empty-state').style.display = 'none';
+            const emptyState = document.getElementById('empty-state');
+            if (emptyState) emptyState.style.display = 'none';
         }
 
         // Load local test data
+        const sourceName = useResultsPrefix ? 'static' : 'local';
         for (const suite of manifest.suites) {
-            if (suite.source !== 'local') continue;
-            
-            const testId = suite.id;
-            const suiteTimestamp = suite.timestamp;
-            try {
-                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
-                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+            if (typeof suite === 'object' && suite.testId && suite.guidedStats) {
+                registerSuiteSummary(suite, sourceName);
+            } else {
+                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
+                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
+                if (!testId) continue;
+                try {
+                    const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                    const response = await fetch(`${fetchPath}?source=${sourceName}&t=${Date.now()}`);
+                    if (response.ok) {
+                        const parsed = await response.json();
+                        registerTestData(testId, sourceName, parsed, suiteTimestamp);
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load local test ${testId}:`, e);
                 }
-            } catch (e) {
-                console.warn(`Failed to load local test ${testId}:`, e);
             }
         }
     } catch {
@@ -338,41 +372,21 @@ async function loadLocalTests() {
 
 async function loadRemoteTests() {
     try {
-        const prefixes = [];
-        let pageToken = '';
-        
-        // Paginate GCS to retrieve all prefixes without truncation limits
-        do {
-            const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}${pageToken ? `&pageToken=${pageToken}` : ''}`;
-            const response = await authenticatedFetch(url);
-            if (!response.ok) throw new Error('Failed to fetch remote suites');
-            
-            const data = await response.json();
-            if (data.prefixes) {
-                prefixes.push(...data.prefixes);
+        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
+        const response = await authenticatedFetch(fileUrl);
+        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
+
+        const manifest = await response.json();
+        if (Array.isArray(manifest) && manifest.length > 0) {
+            const emptyState = document.getElementById('empty-state');
+            if (emptyState) emptyState.style.display = 'none';
+            for (const item of manifest) {
+                if (item && item.testId) {
+                    registerSuiteSummary(item, 'remote');
+                }
             }
-            pageToken = data.nextPageToken || '';
-        } while (pageToken);
-        
-        if (prefixes.length > 0) {
-             document.getElementById('empty-state').style.display = 'none';
         }
 
-        // Load remote test data in parallel
-        await Promise.all(prefixes.map(async (prefix) => {
-            const testId = prefix.slice(0, -1); // Remove trailing slash
-            try {
-                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                const response = await authenticatedFetch(fileUrl);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed);
-                }
-            } catch (e) {
-                console.warn(`Failed to load remote test ${testId}:`, e);
-            }
-        }));
-        
         // Re-render UI now that we have remote data
         const params = new URLSearchParams(window.location.search);
         let initialTests = params.get('tests');
@@ -387,26 +401,17 @@ async function loadRemoteTests() {
     }
 }
 
-function registerTestData(testId, source, parsed, forcedTimestamp) {
-    let serving = 'unknown';
-    if (parsed.serving !== undefined) {
-        serving = parsed.serving;
-    } else if (parsed.enableSkills !== undefined) {
-        serving = parsed.enableSkills ? 'skills' : 'mcp';
-    }
-
-    const compoundKey = `${testId}|||${source}`;
+/**
+ * @param {import('./summary-extractor.js').SuiteSummary & { data?: any }} summary
+ * @param {import('./api.js').DataSource} source
+ */
+function registerSuiteSummary(summary, source) {
+    const compoundKey = `${summary.testId}|||${source}`;
 
     allTestData[compoundKey] = {
-        testId: testId,
-        timestamp: parsed.timestamp || forcedTimestamp || new Date().toISOString(),
-        data: parsed,
+        ...summary,
         source: source,
-        agent: parsed.agent || 'unknown',
-        serving: serving,
-        model: parsed.model || 'unknown',
-        toolActivationRate: parsed.summary?.toolActivationRate || 0,
-        guideUsageRate: parsed.summary?.guideUsageRate || 0
+        data: summary.data || null
     };
     
     updateFilterOptions('filter-model-group', 'model');
@@ -415,6 +420,23 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
     updateAgentFilterOptions();
 }
 
+/**
+ * @param {string} testId
+ * @param {import('./api.js').DataSource} source
+ * @param {import('../harness/lib/metrics.ts').EvalsReport} parsed
+ * @param {string} [forcedTimestamp]
+ */
+function registerTestData(testId, source, parsed, forcedTimestamp) {
+    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
+    if (summary) {
+        registerSuiteSummary({ ...summary, data: parsed }, source);
+    }
+}
+
+/**
+ * @param {string} groupId
+ * @param {keyof LandingSuiteSummary} key
+ */
 function updateFilterOptions(groupId, key) {
     const group = document.getElementById(groupId);
     if (!group) return;
@@ -493,8 +515,6 @@ function renderSuites() {
         if (currentServingFilter !== 'all' && testInfo.serving !== currentServingFilter) return;
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
-        const data = testInfo.data;
-        const results = data.results;
         let _date = new Date(testInfo.timestamp);
         
         // Match Action Date logic from dashboard.js: 
@@ -536,8 +556,8 @@ function renderSuites() {
             ? _date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
             : prettyTimestampStr;
 
-        const gStats = calculateGroupTotalStats(results, 'guided');
-        const uStats = calculateGroupTotalStats(results, 'unguided');
+        const gStats = testInfo.guidedStats || { passed: 0, total: 0 };
+        const uStats = testInfo.unguidedStats || { passed: 0, total: 0 };
 
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
@@ -545,16 +565,9 @@ function renderSuites() {
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
         const timeAgoStr = timeAgo(_date);
 
-        const scenarioKeys = Object.keys(data.results || {});
-        const distinctScenarios = new Set(scenarioKeys.map(k => k.replace(' - guided', '').replace(' - unguided', '')));
-        const taskCount = data.summary && data.summary.taskCount ? data.summary.taskCount : distinctScenarios.size;
-        let maxRuns = 1;
-        scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
-
-        const totalEarlyFailures = (data.summary?.unguidedEarlyFailures || 0) + (data.summary?.guidedEarlyFailures || 0);
-        let totalAllRuns = 0;
-        scenarioKeys.forEach(k => { totalAllRuns += (data.results[k] || []).length; });
-        const earlyFailureRate = totalAllRuns > 0 ? Math.round((totalEarlyFailures / totalAllRuns) * 100) : 0;
+        const taskCount = testInfo.taskCount || 0;
+        const maxRuns = testInfo.maxRuns || 1;
+        const earlyFailureRate = testInfo.earlyFailureRate || 0;
         const isFaulty = earlyFailureRate === 100;
 
         const { label, ldap } = formatSuiteLabel(testInfo);
@@ -569,7 +582,7 @@ function renderSuites() {
                 </td>
                 <td>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
-                <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${escapeHtml(testInfo.model).replaceAll('-', '-&shy;')}</td>
+                <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${(escapeHtml(testInfo.model) || '').replaceAll('-', '-<wbr>')}</td>
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
                 <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
                     <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
@@ -593,8 +606,11 @@ function renderSuites() {
     renderPivotInsights(); // Refresh insights based on current filters
 }
 
+/** @type {DumbbellChart | null} */
 let tooltipChartInstance = null;
+/** @type {string | null} */
 let currentDumbbellKey = null;
+/** @type {number | null} */
 let hideTimeout = null;
 const tooltipContainer = $('#tooltip-container');
 
@@ -628,6 +644,12 @@ function setupRateCellHovers() {
     });
 }
 
+/**
+ * @param {LandingSuiteSummary} testInfo
+ * @param {number} x
+ * @param {number} y
+ * @param {string} compoundKey
+ */
 function showTooltipChart(testInfo, x, y, compoundKey) {
     if (currentDumbbellKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
         updateTooltipPosition(x, y);
@@ -644,9 +666,9 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const results = testInfo.data.results;
-    const { labels, guided, unguided } = calculateChartData(results);
-    if (labels.length < 1) return;
+    const chartData = testInfo.chartData || (testInfo.data?.results ? calculateChartData(testInfo.data.results) : null);
+    if (!chartData || !chartData.labels || chartData.labels.length < 1) return;
+    const { labels, guided, unguided } = chartData;
 
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
@@ -660,12 +682,16 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
     tooltipChartInstance.render({
         labels,
         datasets: [
-            { label: 'Unguided', data: unguided, backgroundColor: 'rgba(218, 54, 51, 0.2)', borderColor: '#da3633' },
-            { label: 'Guided', data: guided, backgroundColor: 'rgba(35, 134, 54, 0.2)', borderColor: '#238636' }
+            { label: 'Unguided', data: unguided },
+            { label: 'Guided', data: guided }
         ]
     });
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ */
 function updateTooltipPosition(x, y) {
     const offset = 20;
     let finalX = x + offset;
@@ -688,8 +714,8 @@ function updateTooltipPosition(x, y) {
 }
 
 function hideTooltipChart() {
-    if (hideTimeout) clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
+    if (hideTimeout) window.clearTimeout(hideTimeout);
+    hideTimeout = window.setTimeout(() => {
         currentDumbbellKey = null;
         tooltipContainer.classList.add('hidden');
         hideTimeout = null;
@@ -701,6 +727,10 @@ function hideTooltipChart() {
 // HELPERS
 // ==========================================
 
+/**
+ * @param {LandingSuiteSummary} testInfo
+ * @returns {{ label: string, ldap: string }}
+ */
 function formatSuiteLabel(testInfo) {
     const { testId, agent, serving } = testInfo;
     if (!testId) return { label: 'evaluation-run', ldap: '' };
@@ -718,12 +748,13 @@ function formatSuiteLabel(testInfo) {
     
     if (!suffix) return { label, ldap: '' };
     
-    const normalize = s => (s || '').toLowerCase().replace(/[-_]+/g, '');
+    const normalize = (/** @type {string} */ s) => (s || '').toLowerCase().replace(/[-_]+/g, '');
     const normAgent = normalize(agent);
     const normServing = normalize(serving);
     
     const suffixParts = suffix.split('-');
     let ldap = '';
+    /** @type {string[]} */
     const otherTags = [];
     
     suffixParts.forEach(part => {
@@ -734,7 +765,7 @@ function formatSuiteLabel(testInfo) {
     });
     
     if (otherTags.length > 0) {
-        ldap = otherTags.pop();
+        ldap = otherTags.pop() || '';
     }
     
     let finalLabel = label;
@@ -745,6 +776,10 @@ function formatSuiteLabel(testInfo) {
     return { label: finalLabel, ldap };
 }
 
+/**
+ * @param {string} agentName
+ * @returns {string}
+ */
 function getAgentBadge(agentName) {
     const name = (agentName || '').toLowerCase();
     if (name.includes('gemini') || name.includes('jetski')) {
@@ -759,25 +794,7 @@ function getAgentBadge(agentName) {
     return '';
 }
 
-function calculateGroupTotalStats(results, groupType) {
-    let passed = 0;
-    let total = 0;
 
-    if (!results) return { passed, total }; // Guard against missing results
-
-    Object.keys(results).forEach(key => {
-        // key format: "scenario - prompt - agent"
-        if (key.endsWith(` - ${groupType}`)) {
-            results[key].forEach(run => {
-                const s = getRunStats(run.results);
-                passed += s.passed;
-                total += s.total;
-            });
-        }
-    });
-
-    return { passed, total };
-}
 
 function getSortedTestIds() {
     // Return only SELECTED tests, sorted by date
@@ -821,6 +838,12 @@ function renderPivotInsights() {
             return activeDates.has(dateKey);
         });
     }
+    /** @type {{
+     *   agent: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
+     *   serving: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
+     *   model: Record<string, { uplift: number, uRate: number, gRate: number }[]>,
+     *   guide: Record<string, { uplift: number, uRate: number, gRate: number }[]>
+     * }} */
     const grouped = {
         agent: {},
         serving: {},
@@ -832,9 +855,8 @@ function renderPivotInsights() {
         const testInfo = allTestData[compoundKey];
         if (!testInfo) return;
         
-        const data = testInfo.data;
-        const gStats = calculateGroupTotalStats(data.results, 'guided');
-        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+        const gStats = testInfo.guidedStats || { passed: 0, total: 0 };
+        const uStats = testInfo.unguidedStats || { passed: 0, total: 0 };
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
         const uplift = gRate - uRate;
@@ -848,31 +870,10 @@ function renderPivotInsights() {
         if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
         grouped.model[testInfo.model].push({ uplift, uRate, gRate });
 
-        // Calculate guide-specific statistics for this test run
-        const suiteGuides = {};
-        if (data.results) {
-            Object.keys(data.results).forEach(key => {
-                const parsedKey = parseResultKey(key);
-                if (parsedKey) {
-                    const { guide, runType } = parsedKey;
-                    if (!suiteGuides[guide]) {
-                        suiteGuides[guide] = {
-                            guided: { passed: 0, total: 0 },
-                            unguided: { passed: 0, total: 0 }
-                        };
-                    }
-                    data.results[key].forEach(run => {
-                        const s = getRunStats(run.results);
-                        suiteGuides[guide][runType].passed += s.passed;
-                        suiteGuides[guide][runType].total += s.total;
-                    });
-                }
-            });
-        }
-
+        const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
-            const gG = suiteGuides[guide].guided;
-            const uG = suiteGuides[guide].unguided;
+            const gG = suiteGuides[guide].guided || { passed: 0, total: 0 };
+            const uG = suiteGuides[guide].unguided || { passed: 0, total: 0 };
             const gG_rate = gG.total > 0 ? Math.round((gG.passed / gG.total) * 100) : 0;
             const uG_rate = uG.total > 0 ? Math.round((uG.passed / uG.total) * 100) : 0;
             const uG_uplift = gG_rate - uG_rate;
@@ -881,6 +882,9 @@ function renderPivotInsights() {
         });
     });
 
+    /**
+     * @param {{ uRate: number, gRate: number, uplift: number }[]} arr
+     */
     const getDumbbellMedian = (arr) => {
         if (arr.length === 0) return { uRate: 0, gRate: 0, uplift: 0 };
         const sorted = [...arr].sort((a,b) => a.uplift - b.uplift);
@@ -888,6 +892,9 @@ function renderPivotInsights() {
         return sorted[mid];
     };
 
+    /**
+     * @param {number[]} vals
+     */
     const calculateSD = (vals) => {
         if (vals.length <= 1) return 0;
         const mean = vals.reduce((sum, v) => sum + v, 0) / vals.length;
@@ -895,6 +902,10 @@ function renderPivotInsights() {
         return Math.sqrt(variance);
     };
 
+    /**
+     * @param {Record<string, { uplift: number, uRate: number, gRate: number }[]>} groupObj
+     * @param {string} filterKey
+     */
     const renderPivotTable = (groupObj, filterKey) => {
         let keys = Object.keys(groupObj);
 
@@ -903,27 +914,42 @@ function renderPivotInsights() {
                 const itemA = getDumbbellMedian(groupObj[a]);
                 const itemB = getDumbbellMedian(groupObj[b]);
 
-                let valA, valB;
-                if (currentGuideSort === 'alphabetic') {
-                    valA = a.toLowerCase();
-                    valB = b.toLowerCase();
-                } else if (currentGuideSort === 'uplift') {
-                    valA = itemA.uplift;
-                    valB = itemB.uplift;
-                } else if (currentGuideSort === 'unguided') {
-                    valA = itemA.uRate;
-                    valB = itemB.uRate;
-                } else if (currentGuideSort === 'guided') {
-                    valA = itemA.gRate;
-                    valB = itemB.gRate;
-                } else if (currentGuideSort === 'variance') {
-                    const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
-                    const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
-                    valA = Math.max(sdUA, sdGA);
+                /** @type {string | number} */
+                let valA = 0;
+                /** @type {string | number} */
+                let valB = 0;
+                switch (currentGuideSort) {
+                    case 'alphabetic':
+                        valA = a.toLowerCase();
+                        valB = b.toLowerCase();
+                        break;
+                    case 'uplift':
+                        valA = itemA.uplift;
+                        valB = itemB.uplift;
+                        break;
+                    case 'unguided':
+                        valA = itemA.uRate;
+                        valB = itemB.uRate;
+                        break;
+                    case 'guided':
+                        valA = itemA.gRate;
+                        valB = itemB.gRate;
+                        break;
+                    case 'variance': {
+                        const sdUA = calculateSD(groupObj[a].map(item => item.uRate));
+                        const sdGA = calculateSD(groupObj[a].map(item => item.gRate));
+                        valA = Math.max(sdUA, sdGA);
 
-                    const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
-                    const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
-                    valB = Math.max(sdUB, sdGB);
+                        const sdUB = calculateSD(groupObj[b].map(item => item.uRate));
+                        const sdGB = calculateSD(groupObj[b].map(item => item.gRate));
+                        valB = Math.max(sdUB, sdGB);
+                        break;
+                    }
+                    default: {
+                        /** @type {never} */
+                        const _exhaustive = currentGuideSort;
+                        throw new Error(`Unhandled sort option: ${_exhaustive}`);
+                    }
                 }
 
                 if (valA < valB) return currentGuideSortDir === 'asc' ? -1 : 1;
@@ -1040,7 +1066,7 @@ function renderPivotInsights() {
             sortSelect.addEventListener('change', (e) => {
                 const target = e.target;
                 if (target instanceof HTMLSelectElement) {
-                    currentGuideSort = target.value;
+                    currentGuideSort = /** @type {GuideSortKey} */ (target.value);
                     renderPivotInsights();
                 }
             });
@@ -1055,15 +1081,20 @@ function renderPivotInsights() {
     }
 }
 
-// @ts-expect-error global export
+/**
+ * @param {'agent' | 'serving' | 'model'} filterKey
+ * @param {string} value
+ */
 window.setInsightFilter = (filterKey, value) => {
+    /** @type {Record<string, HTMLSelectElement | null>} */
     const selects = {
-        agent: document.getElementById('filter-agent'),
-        serving: document.getElementById('filter-serving'),
-        model: document.getElementById('filter-model')
+        agent: /** @type {HTMLSelectElement | null} */ (document.getElementById('filter-agent')),
+        serving: /** @type {HTMLSelectElement | null} */ (document.getElementById('filter-serving')),
+        model: /** @type {HTMLSelectElement | null} */ (document.getElementById('filter-model'))
     };
-    if (selects[filterKey]) {
-        selects[filterKey].value = value;
-        selects[filterKey].dispatchEvent(new Event('change')); // Trigger table refresh!
+    const select = selects[filterKey];
+    if (select) {
+        select.value = value;
+        select.dispatchEvent(new Event('change')); // Trigger table refresh!
     }
 };

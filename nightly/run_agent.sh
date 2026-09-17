@@ -164,8 +164,8 @@ cleanup() {
   if [ "${NIGHTLY_GUIDANCE_RUN:-0}" = "1" ]; then
     printf "%b\n\n----------------------------------------\n\n" "$body" >> "${SUMMARY_FILE:-$SCRIPT_DIR/${PREFIX}_summary.txt}"
     
-    # Delete the local results to save disk space in nightly runs
-    if [ -d "${REPO_ROOT}/harness/results/${SUITE_ID}" ]; then
+    # Delete the local results to save disk space in nightly runs only if upload succeeded
+    if [ "$UPLOAD_EXIT_CODE" -eq 0 ] && [ -d "${REPO_ROOT}/harness/results/${SUITE_ID}" ]; then
       echo "Deleting ${PREFIX} local results directory ${SUITE_ID} to save disk space..."
       rm -rf "${REPO_ROOT}/harness/results/${SUITE_ID}"
     fi

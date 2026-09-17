@@ -1,80 +1,21 @@
 # Default owners for implementation and infra
 * @paulirish @micahjo7
 
-# @atls-start
-# Content reviewers for guide content mapped by category (automatically generated from guides/atls.json)
-guides/built-in-ai/*/ @tomac
-guides/css/*/ @LeaVerou
-guides/forms/*/ @LeaVerou
-guides/html/*/ @LeaVerou
-guides/performance/*/ @tunetheweb @malchata
-guides/privacy/*/ @rowan-m
-guides/security/*/ @rowan-m
-guides/ui-atoms/*/ @LeaVerou
-guides/ui-behaviors/*/ @LeaVerou
-guides/ui-components/*/ @LeaVerou
-guides/visual-design/*/ @LeaVerou
-guides/webmcp/*/ @beaufortfrancois @Kulikowski
+# Blanket ownerless overrides for content (rely entirely on atl-triage bot instead)
+guides/
+features/
 
-# Specific guide overrides resolved dynamically
-# Owned via group "transitions"
-guides/css/animate-to-intrinsic-sizes/ @bramus
-guides/css/calculate-with-intrinsic-sizes/ @bramus
-# Owned via group "scrolling"
-guides/performance/defer-work-until-scroll-ends/ @bramus
-# Owned via group "webauthn"
-guides/security/passkey-authentication/ @agektmr
-guides/security/passkey-conditional-create/ @agektmr
-guides/security/passkey-management/ @agektmr
-guides/security/passkey-reauthentication/ @agektmr
-guides/security/passkey-registration/ @agektmr
-guides/security/passkeys/ @agektmr
-# Owned via feature "container-scroll-state-queries"
-guides/ui-atoms/context-sensitive-sticky-headers/ @bramus
-guides/ui-atoms/scroll-position-aware-elements/ @bramus
-guides/ui-atoms/scrollability-affordance-hints/ @bramus
-# Owned via group "scrolling"
-guides/ui-atoms/carousel-slide-effects/ @bramus
-guides/ui-atoms/pull-to-reveal/ @bramus
-guides/ui-atoms/scroll-progress-indicator/ @bramus
-guides/ui-atoms/shrinking-header-on-scroll/ @bramus
-# Owned via feature "container-scroll-state-queries"
-guides/ui-behaviors/carousel-snap-highlights/ @bramus
-# Owned via feature "prefers-reduced-motion"
-guides/ui-behaviors/anchor-positioning-tab-underline/ @bramus
-# Owned via group "scrolling"
-guides/ui-behaviors/parallax-scroll-effects/ @bramus
-guides/ui-behaviors/scroll-entry-exit-effects/ @bramus
-guides/ui-behaviors/scroll-snap-realtime-feedback/ @bramus
-guides/ui-behaviors/scroll-snap-state-sync/ @bramus
-guides/ui-behaviors/scroll-target-on-load/ @bramus
-guides/ui-behaviors/scrollytelling/ @bramus
-guides/ui-behaviors/swipe-to-remove/ @bramus
-# Owned via group "transitions"
-guides/ui-behaviors/animate-element-entry-exit/ @bramus
-guides/ui-behaviors/animate-to-from-top-layer/ @bramus
-# Owned via group "view-transitions"
-guides/ui-behaviors/consistent-cross-document-transitions/ @bramus
-guides/ui-behaviors/cross-document-transitions/ @bramus
-guides/ui-behaviors/directional-navigation-transitions/ @bramus
-guides/ui-behaviors/group-element-transitions/ @bramus
-guides/ui-behaviors/same-document-transitions/ @bramus
-# Owned via group "scrolling"
-guides/ui-components/navigation-drawer/ @bramus
-guides/ui-components/stack-drill-down/ @bramus
-# Owned via group "transitions"
-guides/ui-components/persistent-toast-notifications/ @bramus
-# Owned via feature "canvas-html"
-guides/visual-design/apply-webgl-shaders/ @ewewraw
-guides/visual-design/export-html-media-from-canvas/ @ewewraw
-guides/visual-design/expose-canvas-content-to-browser-features/ @ewewraw
-guides/visual-design/interactive-content-in-3d-scenes/ @ewewraw
-# Owned via group "scrolling"
-guides/visual-design/adapt-scrollbar-to-contrast-preferences/ @bramus
-guides/visual-design/customize-scrollbar-color-and-thickness/ @bramus
-# @atls-end
+# CODEOWNERS config
+CODEOWNERS @paulirish @rviscomi @micahjo7
+
+# Critical infra & workflow files (redundant but the explicitness is nice)
+.github/ @paulirish @micahjo7
+package.json @paulirish @micahjo7
+pnpm-lock.yaml @paulirish @micahjo7
+pnpm-workspace.yaml @paulirish @micahjo7
 
 # Eval files
+**/targets/ @paulirish @micahjo7
 **/grader.ts @paulirish @micahjo7
 **/tasks/task.md @paulirish @micahjo7
 **/negative-demo.html @paulirish @micahjo7

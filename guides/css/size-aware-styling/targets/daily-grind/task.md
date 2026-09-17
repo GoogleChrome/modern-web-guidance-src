@@ -1,1 +1,0 @@
-- Modify the existing card components in the application so their layout and styles conditionally adapt based on their own width or height rather than the viewport size.

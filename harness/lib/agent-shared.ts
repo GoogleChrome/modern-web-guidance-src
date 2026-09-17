@@ -1,12 +1,75 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
-import { Agents } from '../config.ts';
-import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
+import { Agents, type SuiteConfig } from '../config.ts';
+import { ZERO_PASSRATE_PATCH_FILE } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
-import { capturePatchFromGit } from '../../lib/patch-utils.ts';
+import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
 
-import { type SuiteConfig } from '../config.ts';
+import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
+import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
+import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
+import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
+import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
+
+export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err;
+}
+
+export function isEnoent(err: unknown): boolean {
+  return isNodeError(err) && err.code === 'ENOENT';
+}
+
+export function setupAgentCredentials(agent: Agents, tempHome: string): void {
+  if (agent === Agents.JETSKI_CLI) {
+    setupJetskiCliCredentials(tempHome);
+  } else if (agent === Agents.GEMINI_CLI) {
+    setupGeminiCliCredentials(tempHome);
+  } else if (agent === Agents.CLAUDE_CODE) {
+    setupClaudeCodeCredentials(tempHome);
+  } else if (agent === Agents.CODEX_CLI) {
+    setupCodexCliCredentials(tempHome);
+  } else if (agent === Agents.PI) {
+    setupPiCredentials(tempHome);
+  }
+}
+
+export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command: string; commandArgs: string[] } {
+  switch (agent) {
+    case Agents.JETSKI_CLI:
+      return getJetskiCliCommandAndArgs(prompt);
+    case Agents.GEMINI_CLI:
+      return getGeminiCliCommandAndArgs(prompt);
+    case Agents.CLAUDE_CODE:
+      return getClaudeCodeCommandAndArgs(prompt);
+    case Agents.CODEX_CLI:
+      return getCodexCliCommandAndArgs(prompt);
+    case Agents.PI:
+      return getPiCommandAndArgs(prompt);
+    default:
+      throw new Error(`Unsupported agent: ${agent}`);
+  }
+}
+
+export function setupIsolatedWorkDir(
+  agent: Agents,
+  templateDir: string,
+  runType: string,
+  targetDir?: string
+): string {
+  const tempHome = createIsolatedHome(`ghh-${agent}`, targetDir);
+  const workDir = createWorkDir(templateDir, tempHome, runType);
+
+  setupAgentCredentials(agent, tempHome);
+  process.env.HOME = tempHome;
+
+  if (runType === 'guided') {
+    const suiteConfig = getSuiteConfig();
+    copySkills(tempHome, agent, suiteConfig.skillsToEnable);
+  }
+
+  return workDir;
+}
 
 export interface GuideUsage {
   retrievedGuides: string[];
@@ -104,6 +167,13 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
     console.warn('Warning: Failed to pre-populate projects.json:', err);
   }
 
+  // Configure default timeouts for curl to prevent hanging on unreachable or stalled sockets
+  try {
+    fs.writeFileSync(path.join(tempHome, '.curlrc'), 'max-time = 15\nconnect-timeout = 5\n', 'utf8');
+  } catch (err) {
+    console.warn('Warning: Failed to create .curlrc in isolated HOME:', err);
+  }
+
   console.log(`Setting up isolated HOME at ${tempHome}...`);
   return tempHome;
 }
@@ -185,114 +255,23 @@ export function createTrustedFolders(contentsDir: string, folders: string[]): vo
 }
 
 /**
- * Updates the MCP configuration file to enable MCP servers.
- * 
- * @param configPath Full path to the MCP configuration file
- * @param serversToEnable List of enabled MCP server names
- * @param modernWebServerPath Path to the Modern Web MCP server
- * @param apiKey The API key for the MCP server
- * @param agent The agent type
- * @returns True if the config was written successfully, false otherwise.
- */
-export function updateMcpConfig(
-  configPath: string,
-  serversToEnable: string[],
-  modernWebServerPath: string,
-  apiKey: string,
-  agent: string
-): boolean {
-   const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
-
-  for (const serverName of serversToEnable) {
-    if (serverName.startsWith('modern-web')) {
-      if (!modernWebServerPath || !fs.existsSync(modernWebServerPath)) {
-        throw new Error(`Example MCP server path not found: ${modernWebServerPath}`);
-      }
-      mcpConfig.mcpServers[serverName] = {
-        command: 'node',
-        args: [modernWebServerPath]
-      };
-    } else if (serverName === 'google-developer-knowledge') {
-      if (!apiKey) {
-        throw new Error('MCP_API_KEY is required for google-developer-knowledge but was not provided.');
-      }
-      const url = 'https://developerknowledge.googleapis.com/mcp';
-
-      if (agent === 'jetski') {
-        mcpConfig.mcpServers['google-developer-knowledge'] = {
-          serverUrl: url,
-          headers: {
-            'X-Goog-Api-Key': apiKey
-          }
-        };
-      } else if (agent === 'claude_code') {
-        mcpConfig.mcpServers['google-developer-knowledge'] = {
-          type: 'http',
-          url: url,
-          headers: {
-            'X-Goog-Api-Key': apiKey
-          }
-        };
-      } else { // Gemini CLI
-        mcpConfig.mcpServers['google-developer-knowledge'] = {
-          httpUrl: url,
-          headers: {
-            'X-Goog-Api-Key': apiKey
-          }
-        };
-      }
-    } else {
-      console.warn(`Warning: Unknown MCP server name '${serverName}' in config. Skipping.`);
-    }
-  }
-
-  try {
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    if (agent === Agents.CODEX_CLI) {
-      let tomlContent = '';
-      for (const [serverName, serverConfig] of Object.entries(mcpConfig.mcpServers)) {
-        tomlContent += `[mcp_servers.${serverName}]\n`;
-        for (const [key, value] of Object.entries(serverConfig as Record<string, any>)) {
-          if (Array.isArray(value)) {
-            tomlContent += `${key} = [${value.map((v: any) => `"${v}"`).join(', ')}]\n`;
-          } else {
-            tomlContent += `${key} = "${value}"\n`;
-          }
-        }
-        tomlContent += '\n';
-      }
-      fs.writeFileSync(configPath, tomlContent);
-    } else {
-      fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
-    }
-    if (serversToEnable.length > 0) {
-      console.log(`Added MCP server config(s) to ${configPath}: ${Object.keys(mcpConfig.mcpServers).join(', ')}`);
-    } else {
-      console.log(`No MCP servers enabled in ${configPath}`);
-    }
-    return true;
-  } catch (e) {
-    console.error(`Failed to write MCP config to ${configPath}:`, e);
-    return false;
-  }
-}
-
-/**
- * Copies the guides directory to the isolated home directory for the agent.
- * Copies SKILL.md for categories and guide.md for "ready" guides.
+ * Copies the enabled Skills into the isolated home directory for the agent.
+ * modern-web-guidance (and its resources) is installed from the skills-cli
+ * distribution; any other enabled skill contributes its category SKILL.md.
  * @param homeDir Path to the isolated home directory
  * @param agent The agent type
+ * @param skillsToEnable Names of the skills to make available to the agent
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
+export function copySkills(homeDir: string, agent: Agents, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
   const guidesSource = guidesDir;
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
     destDir = path.join(homeDir, '.claude', 'skills');
-  } else if (agent === Agents.CODEX_CLI) {
+  } else if (agent === Agents.CODEX_CLI || agent === Agents.PI) {
     destDir = path.join(homeDir, '.agents', 'skills');
-  } else if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
+  } else if (agent === Agents.JETSKI_CLI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
   } else {
     destDir = path.join(homeDir, '.gemini', 'skills');
@@ -301,7 +280,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli && skillsToEnable.some(s => s.startsWith('modern-web'))) { // Add modern-web-guidance Skill (& resources) from skills-cli dist
+    if (skillsToEnable.some(s => s.startsWith('modern-web'))) { // Add modern-web-guidance Skill (& resources) from skills-cli dist
       const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-guidance');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
@@ -319,14 +298,11 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
 
       try {
         const destSkillDir = path.join(destDir, 'modern-web-guidance');
-        fs.mkdirSync(destSkillDir, { recursive: true });
 
         if (fs.existsSync(distSource)) {
           // Clear dest first to ensure clean state
-          if (fs.existsSync(destSkillDir)) {
-            fs.rmSync(destSkillDir, { recursive: true, force: true });
-            fs.mkdirSync(destSkillDir, { recursive: true });
-          }
+          fs.rmSync(destSkillDir, { recursive: true, force: true });
+          fs.mkdirSync(destSkillDir, { recursive: true });
           fs.cpSync(distSource, destSkillDir, { recursive: true });
         } else {
           console.error(`Standalone skills-cli distribution still not found after generation run!`);
@@ -343,13 +319,13 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
       return false;
     }
 
-    // 1. Scan top-level directories for SKILL.md and copy them
+    // Scan top-level directories for SKILL.md and copy them
     const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
       .filter(
         d => d.isDirectory() &&
         !d.name.startsWith('.') &&
         d.name !== 'node_modules' &&
-        !d.name.startsWith('modern-web') && // only needed when using Skills (CLI), already added above
+        !d.name.startsWith('modern-web') && // already added above from the skills-cli dist
         skillsToEnable.some(s => s === d.name || (d.name.startsWith('modern-web') && s.startsWith('modern-web')))
       );
 
@@ -361,23 +337,6 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
       if (fs.existsSync(skillPath)) {
         fs.mkdirSync(categoryDest, { recursive: true });
         fs.copyFileSync(skillPath, path.join(categoryDest, 'SKILL.md'));
-      }
-    }
-
-    if (!cli) {
-      // 2. Scan and copy guide.md for eval-ready guides
-      const allGuides = scanAllGuides();
-
-      for (const inv of allGuides) {
-        if (classifyGuide(inv) === 'eval-ready') {
-          const catDest = path.join(destDir, inv.category);
-          const guideDest = path.join(catDest, inv.name);
-          fs.mkdirSync(guideDest, { recursive: true });
-
-          const guideFileSrc = path.join(inv.dir, 'guide.md');
-          const guideFileDest = path.join(guideDest, 'guide.md');
-          fs.copyFileSync(guideFileSrc, guideFileDest);
-        }
       }
     }
 
@@ -468,15 +427,10 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     fs.mkdirSync(workDir, { recursive: true });
     return workDir;
   }
-  // For the suite run, copy the template directory to the isolated home directory, following symlinks
-  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
-  console.log(`Copied ${templateDir} to ${homeDir}...`);
+  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
+  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   const workDir = path.join(homeDir, path.basename(templateDir));
-  try {
-    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit -m "init"', { cwd: workDir, stdio: 'ignore' });
-  } catch (err) {
-    console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
-  }
+  initGitRepo(workDir);
   return workDir;
 }
 
@@ -487,15 +441,34 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
  * @param subPath Optional sub-path within workDir to copy from (e.g. if you only want specific files)
  */
 export function copyResultsToTarget(workDir: string, targetDir: string, subPath: string = '.'): void {
-  const sourceDir = path.join(workDir, subPath);
-  try {
-    const agentPatchPath = path.join(targetDir, 'agent.patch');
-    capturePatchFromGit(workDir, agentPatchPath);
-  } catch (err) {
-    console.warn(`Failed to capture agent patch: ${err}`);
+  const isLegacyTask = path.basename(path.dirname(targetDir)) === 'task';
+
+  if (isLegacyTask) {
+    // For legacy single-page guides, copy workspace files directly using cp -R
+    const sourceDir = path.join(workDir, subPath);
+    try {
+      execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
+      // Remove .git and node_modules directories if present
+      for (const dirName of ['.git', 'node_modules']) {
+        const dirPath = path.join(targetDir, dirName);
+        if (fs.existsSync(dirPath)) {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+        }
+      }
+      console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
+    } catch (e) {
+      console.warn(`Failed to copy results from ${sourceDir} to ${targetDir}: ${e}`);
+    }
+  } else {
+    // For target-based guides, capture agent.patch for patch-only storage
+    try {
+      const agentPatchPath = path.join(targetDir, 'agent.patch');
+      capturePatchFromGit(workDir, agentPatchPath);
+    } catch (err) {
+      console.warn(`Failed to capture agent patch: ${err}`);
+    }
+    console.log(`Saved agent patch in: ${targetDir}`);
   }
-  execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
-  console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
 }
 
 /**
@@ -546,6 +519,20 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
     try {
       fs.copyFileSync(srcFile, destFile);
       console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
+
+      // Ensure SQLite WAL-mode companion files are copied alongside .db files
+      if (fileName.endsWith('.db')) {
+        const walSrc = `${srcFile}-wal`;
+        const shmSrc = `${srcFile}-shm`;
+        if (fs.existsSync(walSrc)) {
+          fs.copyFileSync(walSrc, `${destFile}-wal`);
+          console.log(`Copied trajectory WAL: ${fileName}-wal to ${targetDir}`);
+        }
+        if (fs.existsSync(shmSrc)) {
+          fs.copyFileSync(shmSrc, `${destFile}-shm`);
+          console.log(`Copied trajectory SHM: ${fileName}-shm to ${targetDir}`);
+        }
+      }
 
       const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);
@@ -754,18 +741,23 @@ export function getGraderScriptContent(
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
+  const agentPatch = path.join(targetDir, 'agent.patch');
+  const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
 
   return `import fs from 'fs';
-import { spawnSync } from 'child_process';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
+    const patchFile = fs.existsSync(${JSON.stringify(agentPatch)}) ? ${JSON.stringify(agentPatch)} : undefined;
+    const zeroPassrateFile = fs.existsSync(${JSON.stringify(zeroPassratePatch)}) ? ${JSON.stringify(zeroPassratePatch)} : undefined;
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
       ${JSON.stringify(gradeReportDir)},
-      'inherit'
+      'inherit',
+      patchFile,
+      zeroPassrateFile
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {

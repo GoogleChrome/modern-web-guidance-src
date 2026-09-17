@@ -5,6 +5,8 @@ web-feature-ids:
   - container-scroll-state-queries
 ---
 
+# Scrollability Affordance Hints
+
 ## Overview
 
 Visual hints, like shadows or gradients, help users understand that they can scroll to see more content. This guide shows how to build these hints using CSS `container-scroll-state-queries`, which allows styling elements based on the scrollable state of their container without relying on JavaScript scroll listeners or observers.
