@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { globSync } from 'glob';
 import { config } from '../lib/skills-config.ts';
+import { TEST_APP_RESULTS_DIR } from '../lib/guide-validation.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const CANONICAL_ROOT_MD = new Set(['README.md', 'CONTEXT.md', 'CONTRIBUTING.md', 'EVALS.md', 'GEMINI.md', 'CODE_OF_CONDUCT.md']);
@@ -31,7 +32,7 @@ else console.log('✅ No root clutter found.');
 // 3. Link Integrity
 console.log('\n🔗 Checking Link Integrity...');
 let broken = 0;
-for (const file of globSync('**/*.md', { cwd: REPO_ROOT, ignore: ['**/node_modules/**', '**/dist/**', '**/test-app-results/**'] })) {
+for (const file of globSync('**/*.md', { cwd: REPO_ROOT, ignore: ['**/node_modules/**', '**/dist/**', `**/${TEST_APP_RESULTS_DIR}/**`] })) {
   const content = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
   const dir = path.dirname(path.join(REPO_ROOT, file));
   let match;

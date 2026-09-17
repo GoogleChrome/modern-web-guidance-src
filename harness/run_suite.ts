@@ -49,12 +49,11 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
 
   try {
     const agentScript = path.join(harnessDir, 'agents',
-      agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
-        agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-          agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-            agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-              agent === Agents.PI ? 'pi-agent.ts' :
-                'jetski-agent.ts'
+      agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+        agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+          agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+            agent === Agents.PI ? 'pi-agent.ts' :
+              'gemini-cli-agent.ts'
     );
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
@@ -139,7 +138,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         ? options.tasks
         : (suiteConfig.tasks.length > 0
           ? suiteConfig.tasks
-          : Array.from(taskMap.keys()).filter(key => key.endsWith('/task')));
+          : Array.from(taskMap.keys()));
 
       for (const task of tasksToRun) {
         const resolvedTask = resolveTaskName(task);
@@ -189,9 +188,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         try {
           const pnpmArgs = ['-r', '--no-bail'];
-          if (agent === Agents.JETSKI) {
-            pnpmArgs.push('--workspace-concurrency', '1');
-          } else if (suiteConfig.workerCount) {
+          if (suiteConfig.workerCount) {
             pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }
           pnpmArgs.push('run-agent');
@@ -323,24 +320,23 @@ async function runCommand(command: string, args: string[] = [], envOverrides?: R
 
 
 function resolveTaskName(task: string): string {
-  let cleanTask = task.replace(/^guides\//, '');
-  const segments = cleanTask.split('/');
-  if (segments.length === 3 && segments[1] === 'tasks') {
-    // forms/tasks/task.md -> forms/task
-    return `${segments[0]}/${segments[2].replace(/\.md$/, '')}`;
+  // 1. Target task: guides/.../<guideName>/targets/<baseApp>/task.md
+  if (task.includes('/targets/')) {
+    const [beforeTargets, afterTargets] = task.split('/targets/');
+    const guideName = beforeTargets.split('/').pop()!;
+    const baseApp = afterTargets.split('/')[0];
+    return `${guideName}/${baseApp}`;
   }
-  if (segments.length === 3) {
-    // category/guideName/taskName -> guideName/taskName
-    return `${segments[1]}/${segments[2].replace(/\.md$/, '')}`;
+
+  // 2. Legacy task: guides/.../<guideName>/tasks/<taskName>.md
+  if (task.includes('/tasks/')) {
+    const [beforeTasks, afterTasks] = task.split('/tasks/');
+    const guideName = beforeTasks.split('/').pop()!;
+    const taskName = afterTasks.replace(/\.md$/, '');
+    return `${guideName}/${taskName}`;
   }
-  if (segments.length === 2) {
-    // guideName/taskName
-    return `${segments[0]}/${segments[1].replace(/\.md$/, '')}`;
-  }
-  if (segments.length === 1) {
-    return `${segments[0]}/task`;
-  }
-  return cleanTask;
+
+  return task;
 }
 
 export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
@@ -526,12 +522,13 @@ process.exit(graderStatus !== null ? graderStatus : result.status ?? 0);
 }
 
 function getAgentScript(agent: string): string {
-  return path.join(harnessDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+  return path.join(harnessDir, 'agents',
     agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-    agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-    agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-    agent === Agents.PI ? 'pi-agent.ts' :
-      'jetski-agent.ts');
+      agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+        agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+          agent === Agents.PI ? 'pi-agent.ts' :
+            'gemini-cli-agent.ts'
+  );
 }
 
 // If invoked directly, retain legacy fallback logic if strictly required (optional).

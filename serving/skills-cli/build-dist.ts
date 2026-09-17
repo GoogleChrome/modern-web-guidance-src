@@ -7,14 +7,11 @@ import { config } from "../../lib/skills-config.ts";
 import { rootDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
 import { replaceMacros } from "../lib/macros.ts";
-import { updateReadmeWithFeaturesAndUseCases } from "./build-readme.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
 
 interface BuildResult {
-  featuresCount: number;
-  useCasesCount: number;
   skillsCount: number;
   skillNames: string[];
 }
@@ -78,6 +75,28 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   const kimiPluginData = JSON.parse(fs.readFileSync(kimiPluginPath, 'utf8'));
   kimiPluginData.version = newVersion;
   fs.writeFileSync(kimiPluginPath, JSON.stringify(kimiPluginData, null, 2) + '\n');
+
+  // Grok Marketplace
+  const grokMarketplacePath = path.join(publishCliDir, ".grok-plugin/marketplace.json");
+  const grokMarketplaceData = JSON.parse(fs.readFileSync(grokMarketplacePath, 'utf8'));
+  grokMarketplaceData.plugins[0].version = newVersion;
+  fs.writeFileSync(grokMarketplacePath, JSON.stringify(grokMarketplaceData, null, 2) + '\n');
+
+  // Codex Plugin
+  const codexPluginPath = path.join(publishCliDir, ".codex-plugin/plugin.json");
+  const codexPluginData = JSON.parse(fs.readFileSync(codexPluginPath, 'utf8'));
+  codexPluginData.version = newVersion;
+  fs.writeFileSync(codexPluginPath, JSON.stringify(codexPluginData, null, 2) + '\n');
+
+  // Codex Marketplace
+  const codexMarketplacePath = path.join(publishCliDir, ".agents/plugins/marketplace.json");
+  if (fs.existsSync(codexMarketplacePath)) {
+    const codexMarketplaceData = JSON.parse(fs.readFileSync(codexMarketplacePath, 'utf8'));
+    if (codexMarketplaceData.plugins?.[0]) {
+      codexMarketplaceData.plugins[0].version = newVersion;
+    }
+    fs.writeFileSync(codexMarketplacePath, JSON.stringify(codexMarketplaceData, null, 2) + '\n');
+  }
 }
 
 export function processSkills(publishRoot: string) {
@@ -148,15 +167,15 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     target: 'skills-cli',
   });
 
-  // Create a symbolic link for prompt-api pointing to language-model.md
+  // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
   const promptApiLink = path.join(DIST_DIR, "guides/built-in-ai/prompt-api.md");
   const categoryDir = path.dirname(promptApiLink);
   if (fs.existsSync(categoryDir)) {
     if (fs.existsSync(promptApiLink)) {
       fs.unlinkSync(promptApiLink);
     }
-    fs.symlinkSync("language-model.md", promptApiLink);
-    console.log("Created prompt-api.md symlink pointing to language-model.md in distribution guides");
+    fs.copyFileSync(path.join(categoryDir, "language-model.md"), promptApiLink);
+    console.log("Created prompt-api.md copy of language-model.md in distribution guides");
   }
 
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
@@ -168,7 +187,12 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
     fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
-
+    const srcImgDir = path.join(rootDir, ".github/img");
+    const destImgDir = path.join(publishRoot, ".github/img");
+    if (fs.existsSync(srcImgDir)) {
+      fs.mkdirSync(destImgDir, { recursive: true });
+      fs.cpSync(srcImgDir, destImgDir, { recursive: true });
+    }
 
     if (version) {
       updateVersionsInDir(publishRoot, version);
@@ -280,10 +304,9 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     }
 
     const { skillsCount, skillNames } = processSkills(publishRoot);
-    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
-    return { featuresCount, useCasesCount, skillsCount, skillNames };
+    return { skillsCount, skillNames };
   } finally {
     if (fs.existsSync(lockFilePath)) {
       fs.unlinkSync(lockFilePath);

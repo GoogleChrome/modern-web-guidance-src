@@ -28,14 +28,13 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 
 ### Use Existing Abstractions & CLI Runners
 - **Reuse repository tooling:** When interacting with LLMs or executing agent workflows, use the shared repository abstractions in `config.environment` (such as `config.environment.jetskiCliBin` or `config.environment.geminiCliBin`) instead of writing custom REST API clients, bespoke fetch loops, or ad-hoc token validators.
-- **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_JETSKI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
+- **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_GEMINI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
 
 ### Single Source of Truth & Canonical Enums
-- **Never hardcode string constants for agents or serving modes:**
-  - Use centralized enums like `Agents` from `harness/config.ts` (`Agents.JETSKI`, `Agents.CLAUDE_CODE`, `Agents.GEMINI_CLI`, `Agents.CODEX_CLI`).
-  - Use centralized enums like `Serving` from `harness/config.ts` (`Serving.MCP`, `Serving.SKILLS_CLI`).
+- **Never hardcode string constants for agents:**
+  - Use centralized enums like `Agents` from `harness/config.ts` (`Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.GEMINI_CLI`, `Agents.CODEX_CLI`).
 - **Extract metadata from source-of-truth files:**
-  - Never infer properties (such as `targetFile`, `agent`, or `serving` mode) using fragile path heuristics or regexes if canonical metadata files (e.g., `evals.json`) exist in the parent hierarchy. Extract canonical properties directly from `evals.json`.
+  - Never infer properties (such as `targetFile` or `agent`) using fragile path heuristics or regexes if canonical metadata files (e.g., `evals.json`) exist in the parent hierarchy. Extract canonical properties directly from `evals.json`.
 
 ### Modular Prompt & Template Management
 - **Separate prompts from execution logic:** Do not embed long prompt templates, system instructions, or markdown synthesizer templates inside runtime runner files.
@@ -77,13 +76,30 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 
 ---
 
-## Linting & Code Hygiene
+## Verification & Testing Gates
 
-### Zero Errors & Zero Warnings
-- All code must pass typecheck and linting without errors or warnings:
+### Tiered Preflight Gates
+All changes must pass linting, typechecking, and tests before PR submission:
+- **Fast dev check (lint & typecheck):**
   ```bash
   pnpm typecheck && pnpm lint
   ```
+- **Full preflight gate (all PRs):** Bundles build, typecheck, lint, and parallel unit tests across all workspaces:
+  ```bash
+  pnpm run preflight
+  ```
+- **Browser E2E gate (eval-view / dashboard / UI changes):** Playwright browser tests are not included in `pnpm run preflight` and must be executed when touching frontend visualizers, dashboard code, or server endpoints in `eval-view/`:
+  ```bash
+  pnpm --filter eval-view run test:e2e
+  ```
+  *(Run `pnpm run setup:playwright` first if browser binaries are not installed).*
+
+### Domain-Specific Validation
+- **Serving & Skills:** When modifying skills packaging, verify with `pnpm --filter serving run publish-skills --dry-run`.
+- **Guides & Graders:** When authoring or updating evaluation capsules, verify grader calibration via `gd dev <guide> --test-grader`.
+- **Clean Git Tree:** The build must produce zero uncommitted side effects or untracked artifacts (`git status` must remain clean).
+
+### Code Hygiene
 - **Safe data parsing:** Never use `eval()` to parse data or JSON; use `JSON.parse()` or dedicated parsers.
 - **Clean regular expressions:** Avoid raw or unescaped control characters in regular expressions; use explicit Unicode escapes (e.g., `[\u001b\u009b]`).
 
@@ -93,10 +109,10 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 
 1. [ ] **PR Scope:** Focused on a single feature, library, or UI component (no monolithic multi-component PRs).
 2. [ ] **Abstractions:** Reuses repository CLI runners (`config.environment`) and avoids custom API clients.
-3. [ ] **Enums:** Uses `Agents` and `Serving` enums from `harness/config.ts` rather than raw string constants.
+3. [ ] **Enums:** Uses the `Agents` enum from `harness/config.ts` rather than raw string constants.
 4. [ ] **Metadata:** Reads properties from canonical metadata files (`evals.json`) instead of path heuristics.
 5. [ ] **Prompts:** Extracted into dedicated `*-prompts.ts` or constants modules.
 6. [ ] **Configs:** Root `tsconfig.json`, `package.json`, and `.oxlintignore` are untouched unless explicitly intended.
 7. [ ] **Remote I/O & Git:** Remote fetches are strictly scoped and cached; no transient debug artifacts committed.
 8. [ ] **Dashboard/UI:** Handles static vs. local server modes; URL parameters safely parsed and sanitized.
-9. [ ] **Verification:** `pnpm typecheck && pnpm lint` passes with 0 errors.
+9. [ ] **Verification:** `pnpm run preflight` (and `pnpm --filter eval-view run test:e2e` for `eval-view/` changes) passes with 0 errors.
