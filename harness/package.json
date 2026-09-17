@@ -6,7 +6,7 @@
     "test": "node --test --test-reporter ${TEST_REPORTER:-dot} */*.test.ts",
     "report": "node evaluate.ts",
     "suite": "node run_suite.ts",
-    "qsmoke": "node quick-smoke.ts",
+    "qsmoke": "node --experimental-strip-types quick-smoke.ts",
     "task": "node run_suite.ts",
     "upload": "node --experimental-strip-types upload_suite.ts",
     "typecheck": "tsc --noEmit",
