@@ -700,6 +700,9 @@ window.__featuresMapping = {
   "expose-canvas-content-to-browser-features": [
     "canvas-html"
   ],
+  "generate-derived-colors": [
+    "relative-color"
+  ],
   "improve-text-layout-and-legibility": [
     "text-wrap-balance",
     "text-wrap-pretty"
