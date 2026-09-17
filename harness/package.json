@@ -21,8 +21,7 @@
     "cheerio": "^1.2.0",
     "colors": "^1.4.0",
     "glob": "^13.0.6",
-    "gray-matter": "^4.0.3",
-    "puppeteer-core": "^24.42.0"
+    "gray-matter": "^4.0.3"
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^2.1.170",

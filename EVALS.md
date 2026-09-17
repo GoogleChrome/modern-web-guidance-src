@@ -68,8 +68,8 @@ harness/node_modules/.bin/codex
 Jetski CLI (`jetski_cli`) is the default agent used by the guide development workflows (`gd dev`).
 
 **Configuration:**
-Configure the preferred model for Jetski agent runs:
+Configure the preferred model for Jetski CLI agent runs:
 ```bash
-# Model selection for Jetski agent runs
-JETSKI_MODEL='gemini-3.6-flash'
+# Model selection for Jetski CLI agent runs
+JETSKI_MODEL='Gemini 3.8 Flash (Medium)'
 ```
