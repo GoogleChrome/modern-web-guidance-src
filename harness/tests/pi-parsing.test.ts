@@ -10,6 +10,7 @@ import {
   extractPiModel,
   extractPiTokenUsage
 } from '../lib/trajectory-normalizer.ts';
+import { getPiCommandAndArgs, exportPiTrajectories } from '../agents/pi-agent.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -369,3 +370,72 @@ test('collectPi metrics and token extraction from trajectory files', async () =>
     removeTempDir(tempDir);
   }
 });
+
+test('getPiCommandAndArgs does not include --no-session by default', () => {
+  const oldEnv = process.env.PI_NO_SESSION;
+  delete process.env.PI_NO_SESSION;
+  try {
+    const { commandArgs } = getPiCommandAndArgs('test prompt');
+    assert.ok(!commandArgs.includes('--no-session'), 'Should not use --no-session by default');
+  } finally {
+    if (oldEnv !== undefined) {
+      process.env.PI_NO_SESSION = oldEnv;
+    }
+  }
+});
+
+test('getPiCommandAndArgs includes --no-session when PI_NO_SESSION is true', () => {
+  const oldEnv = process.env.PI_NO_SESSION;
+  process.env.PI_NO_SESSION = 'true';
+  try {
+    const { commandArgs } = getPiCommandAndArgs('test prompt');
+    assert.ok(commandArgs.includes('--no-session'), 'Should use --no-session when PI_NO_SESSION=true');
+  } finally {
+    if (oldEnv !== undefined) {
+      process.env.PI_NO_SESSION = oldEnv;
+    } else {
+      delete process.env.PI_NO_SESSION;
+    }
+  }
+});
+
+test('getPiCommandAndArgs handles PI_NO_SESSION=1, 0, and false', () => {
+  const oldEnv = process.env.PI_NO_SESSION;
+  try {
+    process.env.PI_NO_SESSION = '1';
+    assert.ok(getPiCommandAndArgs('test').commandArgs.includes('--no-session'));
+
+    process.env.PI_NO_SESSION = 'false';
+    assert.ok(!getPiCommandAndArgs('test').commandArgs.includes('--no-session'));
+
+    process.env.PI_NO_SESSION = '0';
+    assert.ok(!getPiCommandAndArgs('test').commandArgs.includes('--no-session'));
+  } finally {
+    if (oldEnv !== undefined) {
+      process.env.PI_NO_SESSION = oldEnv;
+    } else {
+      delete process.env.PI_NO_SESSION;
+    }
+  }
+});
+
+test('exportPiTrajectories exports nested Pi session files with session- prefix', () => {
+  const tempHome = createTempDir();
+  const targetDir = createTempDir();
+  try {
+    const workDir = path.join(tempHome, 'work');
+    const sessionsDir = path.join(tempHome, '.pi', 'agent', 'sessions', '--path--');
+    fs.mkdirSync(sessionsDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionsDir, '2026-08-30_abc.jsonl'), '{"type":"session"}');
+
+    exportPiTrajectories(workDir, targetDir);
+
+    const exportedFiles = fs.readdirSync(targetDir);
+    assert.strictEqual(exportedFiles.length, 1);
+    assert.strictEqual(exportedFiles[0], 'session---path---2026-08-30_abc.jsonl');
+  } finally {
+    removeTempDir(tempHome);
+    removeTempDir(targetDir);
+  }
+});
+

@@ -66,7 +66,7 @@ Content ATLs are responsible for the overall quality, completeness, and health o
   * The primary discipline-level guide (e.g., `guides/css/css/guide.md` or `guides/performance/performance/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subskill guide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
 
 ### Infrastructure Engineers
-Infrastructure engineers focus on the tooling, CLI, test harness reliability, LLM generation pipelines, and dashboard interfaces. They ensure that the evaluation runner is stable, calibration retries function correctly, and maintain the MCP and CLI distribution paths.
+Infrastructure engineers focus on the tooling, CLI, test harness reliability, LLM generation pipelines, and dashboard interfaces. They ensure that the evaluation runner is stable, calibration retries function correctly, and maintain the Skills CLI distribution path.
 
 ## Development Setup
 
@@ -117,9 +117,7 @@ For core guides under `guides/<discipline>/` (e.g. `guides/performance/my-featur
 
 ## Serving
 
-The `modern-web-guidance` **Skill** is served through a standalone CLI distribution (`serving/skills-cli`), enabling AI agents to perform local semantic searches and retrieve targeted implementation patterns on demand. Within the evaluation harness, the serving mechanism is configured via the `serving` setting in [`harness/config.ts`](./harness/config.ts), which defaults to `Serving.SKILLS_CLI`.
-
-Alternatively, an **MCP server** and other experimental interfaces are maintained in the codebase for research and testing purposes, providing connection-based access to the same underlying guidance data.
+The `modern-web-guidance` **Skill** is served through a standalone CLI distribution (`serving/skills-cli`), enabling AI agents to perform local semantic searches and retrieve targeted implementation patterns on demand. This is the only supported serving approach; the evaluation harness always installs this distribution for guided runs.
 
 ## Evaluation Harness & Dashboard
 

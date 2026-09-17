@@ -71,6 +71,20 @@ test('Codex Plugin Config in Dist', async () => {
   const skillMdPath = path.join(resolvedSkillsDir, 'modern-web-guidance/SKILL.md');
   await assert.doesNotReject(fs.access(skillMdPath), `Codex skills directory must contain modern-web-guidance/SKILL.md`);
 
+  // Interface metadata validation
+  assert.strictEqual(pluginJson.interface.category, 'Developer Tools', 'plugin.json interface category should be Developer Tools');
+  assert.ok(pluginJson.interface.shortDescription, 'plugin.json must define interface.shortDescription');
+  assert.ok(pluginJson.interface.shortDescription.length < 30, `shortDescription must be fewer than 30 characters (was ${pluginJson.interface.shortDescription.length})`);
+  assert.ok(pluginJson.interface.composerIcon, 'plugin.json must define interface.composerIcon');
+  assert.ok(pluginJson.interface.composerIcon.startsWith('./'), 'composerIcon path must start with ./');
+  const resolvedComposerIcon = path.join(STAGING_DIR, pluginJson.interface.composerIcon);
+  await assert.doesNotReject(fs.access(resolvedComposerIcon), 'composerIcon must resolve to an existing file');
+
+  assert.ok(pluginJson.interface.logo, 'plugin.json must define interface.logo');
+  assert.ok(pluginJson.interface.logo.startsWith('./'), 'logo path must start with ./');
+  const resolvedLogo = path.join(STAGING_DIR, pluginJson.interface.logo);
+  await assert.doesNotReject(fs.access(resolvedLogo), 'logo must resolve to an existing file');
+
   // Codex Marketplace config validation
   const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.agents/plugins/marketplace.json'), 'utf8');
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
@@ -78,8 +92,14 @@ test('Codex Plugin Config in Dist', async () => {
   assert.strictEqual(marketplaceJson.interface.displayName, 'Google Chrome', 'marketplace.json displayName should match');
   assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'marketplace must declare plugins');
   assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
-  assert.strictEqual(marketplaceJson.plugins[0].category, 'Development');
+  assert.strictEqual(marketplaceJson.plugins[0].category, 'Developer Tools');
   assert.strictEqual(marketplaceJson.plugins[0].version, pkgJson.version);
+
+  // Distribution archive compatibility: verify no symbolic links exist
+  const distEntries = await fs.readdir(STAGING_DIR, { recursive: true, withFileTypes: true });
+  for (const entry of distEntries) {
+    assert.strictEqual(entry.isSymbolicLink(), false, `Distribution should not contain symlinks: ${path.join(entry.parentPath, entry.name)}`);
+  }
 });
 
 test('Gemini and VS Code manifests', async () => {

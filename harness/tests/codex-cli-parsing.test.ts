@@ -11,6 +11,7 @@ import {
   extractCodexCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
 import { extractCommandsFromCodexItem } from '../agents/codex-cli-agent.ts';
+import { extractModelFromResults } from '../lib/collection.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -380,3 +381,69 @@ test('collectCodex metrics from modern custom_tool_call trajectory file', async 
     removeTempDir(tempDir);
   }
 });
+
+test('Codex CLI normalization handles Responses API array output and extracts model', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      JSON.stringify({
+        type: 'turn_context',
+        payload: { model: 'gpt-5.6-sol' }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'custom_tool_call',
+          call_id: 'call_array_1',
+          name: 'exec',
+          input: 'const r = await tools.exec_command({"cmd":"cat index.html"}); text(r.output);'
+        }
+      }),
+      JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'custom_tool_call_output',
+          call_id: 'call_array_1',
+          output: [
+            {
+              type: 'input_text',
+              text: 'Script completed\nWall time 0.1 seconds\nOutput:\n<html><body>Hello</body></html>'
+            }
+          ]
+        }
+      }),
+      JSON.stringify({
+        type: 'event_msg',
+        payload: {
+          type: 'token_count',
+          info: {
+            total_token_usage: {
+              total_tokens: 2500,
+              cached_input_tokens: 1000
+            }
+          }
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-responses-api.jsonl'), lines.join('\n'));
+
+    await generateNormalizedTrajectory(tempDir, Agents.CODEX_CLI, 'Check index.html');
+
+    const summaryPath = path.join(tempDir, 'trajectory_summary.json');
+    assert.ok(fs.existsSync(summaryPath), 'trajectory_summary.json must be generated');
+
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    assert.strictEqual(summary.model, 'gpt-5.6-sol');
+    assert.strictEqual(summary.steps.length, 1);
+    assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+    assert.ok(summary.steps[0].outcome?.message?.includes('Script completed'));
+
+    // Verify extractModelFromResults from collection.ts
+    const extractedModel = extractModelFromResults(tempDir);
+    assert.strictEqual(extractedModel, 'gpt-5.6-sol');
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+

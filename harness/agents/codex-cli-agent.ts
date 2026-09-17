@@ -308,12 +308,18 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
       if (entry.type === 'response_item' && (entry.payload?.type === 'function_call_output' || entry.payload?.type === 'custom_tool_call_output')) {
         const p = entry.payload;
         const callId = p.call_id;
-        const out = p.output || '';
+        const rawOut = p.output ?? '';
+        const outStr = typeof rawOut === 'string'
+          ? rawOut
+          : Array.isArray(rawOut)
+            ? rawOut.map((item: any) => (typeof item === 'string' ? item : item?.text || JSON.stringify(item))).join('\n')
+            : JSON.stringify(rawOut);
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
+          const isError = p.is_error === true || outStr.toLowerCase().includes('error:');
           step.outcome = {
-            status: out.toLowerCase().includes('error:') ? 'error' : 'success',
-            message: truncateMessage(out)
+            status: isError ? 'error' : 'success',
+            message: truncateMessage(outStr)
           };
         }
       }

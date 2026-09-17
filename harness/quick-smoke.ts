@@ -9,7 +9,6 @@ import { Agents } from './config.ts';
  * Maps agent names to their harness file and default configuration.
  */
 const AGENT_CONFIGS: Record<string, { file: string; agent: string }> = {
-  'jetski': { file: 'jetski-agent.ts', agent: Agents.JETSKI },
   'jetski-cli': { file: 'jetski-cli-agent.ts', agent: Agents.JETSKI_CLI },
   'gemini-cli': { file: 'gemini-cli-agent.ts', agent: Agents.GEMINI_CLI },
   'claude-code': { file: 'claude-code-agent.ts', agent: Agents.CLAUDE_CODE },
@@ -48,9 +47,7 @@ export async function runSmokeTest(options: SmokeTestOptions = {}): Promise<void
     name: 'smoke-test',
     numRuns: 1,
     tasks: [],
-    mcpServersToEnable: [],
     skillsToEnable: [],
-    serving: 'skills_cli',
     agent: agentConfig.agent
   };
   
