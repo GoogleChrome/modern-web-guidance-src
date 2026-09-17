@@ -291,6 +291,11 @@ window.__featuresMapping = {
   "optimize-scroll-stability": [
     "contain-intrinsic-size"
   ],
+  "out-of-order-html-streaming": [
+    "template-for",
+    "html-setters",
+    "html-streaming-setters"
+  ],
   "resolution-optimized-pseudo-elements": [
     "image-set"
   ],
