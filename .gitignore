@@ -21,11 +21,6 @@ guides/**/test-results/
 guides/**/test-app-results/
 guides/**/.last-run.json
 
-# legacy paths (any content here should be deleted)
-serving/.mcp-data/
-serving/mcp-server/.mcp-data/
-serving/mcp-server/data/use-cases.gen.ts
-
 # Environment and Logs
 .env
 *.log
@@ -66,3 +61,6 @@ serving/lib/tfjs_model_minilm/saved_model*/
 
 # Caches
 **/.cache/
+
+# Agent skills artifacts
+.agents/skills/nightly-eval-investigation/artifacts/

@@ -82,8 +82,8 @@ test.describe('With mocked WebMCP API', () => {
     await page.waitForTimeout(500);
   });
 
-  // Test 2: "navigator.modelContext.registerTool is called with a tool definition object."
-  test('2. navigator.modelContext.registerTool is called with a tool definition object', async ({ page }) => {
+  // Test 2: "document.modelContext.registerTool is called with a tool definition object."
+  test('2. document.modelContext.registerTool is called with a tool definition object', async ({ page }) => {
     const registerCalls = await page.evaluate(() => (window as any).__webmcp_register_calls);
     
     expect(registerCalls).toBeDefined();

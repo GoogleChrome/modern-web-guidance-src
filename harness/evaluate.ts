@@ -1,33 +1,52 @@
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import 'colors';
-import { collectResults, extractModelFromResults } from './lib/collection.ts';
+import { collectResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { resultsDir } from '../lib/paths.ts';
 
-import { Serving, type SuiteConfig } from './config.ts';
+import { type SuiteConfig } from './config.ts';
+
+function getCliVersion(): string | undefined {
+  try {
+    const output = execSync('git tag --merged HEAD -l "v*.*.*" --sort=-v:refname', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (output) {
+      const firstTag = output.split('\n')[0].trim();
+      return firstTag.startsWith('v') ? firstTag.slice(1) : firstTag;
+    }
+  } catch {
+    // Ignore git error if tags are not reachable
+  }
+  return undefined;
+}
+
+function getSkillVersion(): string | undefined {
+  try {
+    const output = execSync('git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" guides/modern-web-guidance/SKILL.md', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    return output || undefined;
+  } catch {
+    // Ignore git error if log is unavailable
+  }
+  return undefined;
+}
 
 function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
   let agent = 'gemini-cli';
-  let serving: Serving = 'mcp';
 
   const evalsPath = path.join(suiteResultsDir, 'evals.json');
   if (fs.existsSync(evalsPath)) {
     try {
       const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
       if (oldEvals.agent) agent = oldEvals.agent;
-      if (oldEvals.serving) serving = oldEvals.serving;
-      else if (oldEvals.enableSkills !== undefined) {
-        serving = oldEvals.enableSkills ? 'skills' : 'mcp';
-      }
     } catch {
       // Ignore parse error
     }
   }
 
-  return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [], skillsToEnable: ['modern-web-guidance'] };
+  return { agent, tasks: [], name: null, numRuns: 1, skillsToEnable: ['modern-web-guidance'] };
 }
 
 export async function evaluateSuite(suiteResultsDir: string, suiteName: string, suiteStartTime?: number) {
@@ -52,7 +71,7 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
   if (!suiteConfig) {
     console.warn(`⚠️ No suite_config.json found in ${suiteResultsDir}. Inferring config...`.yellow);
     suiteConfig = inferSuiteConfig(suiteResultsDir);
-    console.log(`Inferred: agent=${suiteConfig.agent}, serving=${suiteConfig.serving}`.cyan);
+    console.log(`Inferred: agent=${suiteConfig.agent}`.cyan);
   }
 
   if (!suiteConfig) {
@@ -61,7 +80,7 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
   }
 
   try {
-    const { allResults, numRuns, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
+    const { allResults, numRuns, model, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
     const metrics = calculateMetrics(allResults, numRuns);
@@ -78,9 +97,11 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
       }
     }
 
-    const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
+    const skillVersion = getSkillVersion();
+    const cliVersion = getCliVersion();
+
     const totalRuntime = suiteStartTime ? Date.now() - suiteStartTime : fallbackRuntime;
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model, totalRuntime);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, model, totalRuntime, skillVersion, cliVersion);
 
     if (totalRuntime) {
       console.log(`Total runtime: ${totalRuntime}ms`);

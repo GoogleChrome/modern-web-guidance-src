@@ -16,10 +16,9 @@ export interface RunResult {
   taskName?: string;
   baseApp?: string;
   prompt?: string;
+  targetFile?: string;
   tokenUsage?: { total: number; cached: number };
 }
-
-
 
 export interface Metrics {
   summary: {
@@ -77,6 +76,8 @@ export interface EvalsReport {
   serving: string;
   model: string;
   totalRuntime?: number;
+  skillVersion?: string;
+  cliVersion?: string;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
@@ -150,8 +151,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         }
       });
     }
-
-
 
     let totalTokensForConfig = 0;
     let cachedTokensForConfig = 0;

@@ -10,6 +10,7 @@ updates:
       - "/"
       - "/serving"
       - "/harness"
+      - "/harness/base_apps/devtools-times"
       - "/guides"
       - "/eval-view"
     schedule:

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Load Shared Resources Declaratively Demo</title>
+
+  <!--
+    Declarative HTML integration: an unrecognized `crossoriginstorage`
+    attribute is simply ignored by browsers that don't understand it, per
+    ordinary HTML attribute-parsing rules -- the element still loads via
+    its plain href/src either way. No feature detection needed for this form.
+
+    `crossorigin` is unrelated to `crossoriginstorage` despite the similar
+    name -- it controls the CORS request mode and is required whenever the
+    resource is genuinely cross-origin, same as with plain `integrity` today.
+  -->
+  <link
+    rel="stylesheet"
+    href="/assets/shared-widget.css"
+    integrity="sha256-mXPhVm4mG5NhYQge+hY7V7c9Uy2mejppXiKq24un6AA="
+    crossorigin="anonymous"
+    crossoriginstorage="*"
+  />
+  <script
+    src="/assets/shared-widget.js"
+    integrity="sha256-NDFkFtKeZCKtK3XKGa58d0kJVjCIrfdQGvPCW9HXt4s="
+    crossorigin="anonymous"
+    crossoriginstorage="*"
+    defer
+  ></script>
+</head>
+
+<body>
+  <h1>Load a shared widget via markup</h1>
+  <p>The stylesheet and script above load a popular, unmodified widget from Cross-Origin Storage using markup
+    alone -- no imperative JavaScript required for the &lt;link&gt;/&lt;script&gt; form.</p>
+
+  <div id="module-status">Loading configuration module...</div>
+
+  <script type="module">
+    // The declarative JS form identifies a module the same way: an
+    // integrity hash plus a crossOriginStorage import attribute.
+    //
+    //   import config from "/assets/shared-config.js" with {
+    //     integrity: "sha256-...",
+    //     crossOriginStorage: "*",
+    //   };
+    //
+    // A static import written that way can't degrade -- an import
+    // attribute key a browser doesn't recognize is a hard parse-time
+    // failure, not an ignored attribute, the same way an unknown HTTP
+    // header can't be silently dropped mid-request. Code that must keep
+    // working regardless of COS support instead feature-detects and uses
+    // dynamic import(), which falls back to a normal network import
+    // automatically.
+    const statusEl = document.getElementById('module-status');
+    const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
+
+    try {
+      const mod = supportsCOS
+        ? await import('/assets/shared-config.js', {
+            with: {
+              integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
+              crossOriginStorage: '*',
+            },
+          })
+        : await import('/assets/shared-config.js');
+
+      statusEl.textContent = `Configuration module ready: ${JSON.stringify(mod.default)}`;
+    } catch (err) {
+      statusEl.textContent = `Could not load the configuration module: ${err.message}`;
+    }
+  </script>
+</body>
+
+</html>

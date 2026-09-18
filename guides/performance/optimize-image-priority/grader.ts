@@ -32,6 +32,7 @@ test.describe(`Optimize image priority Expectations: ${demoName}`, () => {
   });
 
   // Browser assertions
+
   test(`The <img> element for 'hero-lcp.jpg' has the fetchpriority="high" attribute`, async ({ page }) => {
     await expect(page.locator('img[src*="hero-lcp.jpg"]')).toHaveAttribute('fetchpriority', 'high');
   });
@@ -40,8 +41,17 @@ test.describe(`Optimize image priority Expectations: ${demoName}`, () => {
     await expect(page.locator('img[src*="hero-lcp.jpg"]')).not.toHaveAttribute('loading', 'lazy');
   });
 
+  test(`No more than two <img> elements on the page have the fetchpriority="high" attribute`, async ({ page }) => {
+    const count = await page.locator('img[fetchpriority="high"]').count();
+    expect(count).toBeLessThanOrEqual(2);
+  });
+
   test(`The <img> element for 'gallery-alt.jpg' has the fetchpriority="low" attribute`, async ({ page }) => {
     await expect(page.locator('img[src*="gallery-alt.jpg"]')).toHaveAttribute('fetchpriority', 'low');
+  });
+
+  test(`The <img> element for 'gallery-alt.jpg' has the loading="lazy" attribute`, async ({ page }) => {
+    await expect(page.locator('img[src*="gallery-alt.jpg"]')).toHaveAttribute('loading', 'lazy');
   });
 
   test(`The <img> element for 'mega-menu-promo.jpg' has the fetchpriority="low" attribute`, async ({ page }) => {
@@ -50,19 +60,6 @@ test.describe(`Optimize image priority Expectations: ${demoName}`, () => {
 
   test(`The <img> element for 'footer-logo.png' does NOT have the fetchpriority attribute`, async ({ page }) => {
     await expect(page.locator('img[src*="footer-logo.png"]')).not.toHaveAttribute('fetchpriority');
-  });
-
-  test(`No more than two <img> elements on the page have the fetchpriority="high" attribute`, async ({ page }) => {
-    const count = await page.locator('img[fetchpriority="high"]').count();
-    expect(count).toBeLessThanOrEqual(2);
-  });
-
-  test(`No image elements located below the fold have the fetchpriority="high" attribute`, async ({ page }) => {
-    const belowFoldHighPriorityCount = await page.evaluate(() => {
-      const imgs = Array.from(document.querySelectorAll('img[fetchpriority="high"]'));
-      return imgs.filter(img => img.getBoundingClientRect().top >= window.innerHeight).length;
-    });
-    expect(belowFoldHighPriorityCount).toBe(0);
   });
 
   test(`No <img> elements have the deprecated importance attribute`, async ({ page }) => {

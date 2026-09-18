@@ -6,11 +6,11 @@ description: >
   add-ons, or anything involving the Chrome Extensions API. Trigger on mentions of: 'Chrome
   extension', 'browser extension', 'manifest.json', 'content script', 'service worker' (in
   browser context), 'popup' (in browser extension context), 'side panel', 'chrome.* API',
-  'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), or any request
-  to build functionality that integrates with the Chrome browser UI. Also trigger for
-  publishing to the Chrome Web Store: 'publish extension', preparing an extension for
-  publishing, responding to a review rejection, writing permission justifications, or
-  drafting a privacy policy.
+  'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), 'userScripts',
+  'user script', 'script manager', or any request to build functionality that integrates with
+  the Chrome browser UI. Also trigger for publishing to the Chrome Web Store: 'publish
+  extension', preparing an extension for publishing, responding to a review rejection, writing
+  permission justifications, or drafting a privacy policy.
 ---
 
 # Chrome Extensions
@@ -81,14 +81,8 @@ See `references/extensions/csp-sandbox.md` for full details.
 
 #### 4. `tab.url` requires the `tabs` permission
 
-Without it, `tab.url` silently returns `undefined` — no error thrown.
-
-```js
-// manifest.json — REQUIRED if you read tab.url or tab.title anywhere:
-{ "permissions": ["tabs"] }
-```
-
-See `references/extensions/tab-management.md`.
+Without it, `tab.url` silently returns `undefined` — no error thrown. See
+`references/extensions/permissions.md`.
 
 #### 5. Always use async/await — never `.then()` chains
 
@@ -196,27 +190,10 @@ await chrome.action.setBadgeText({ text: '5' });
 
 #### 12. `activeTab` only works on direct user gestures — not from side panels
 
-`activeTab` grants temporary access to the current tab ONLY when triggered by:
-- Clicking the extension action icon
-- A context menu item (including the `"tab"` context)
-- A keyboard shortcut from the `commands` API
-- Accepting an omnibox suggestion
-
-It does **NOT** grant access when clicking a button in a side panel, popup button that opens later,
-or any programmatic trigger.
-
-```js
-// ❌ BROKEN — activeTab does NOT work from a side panel button click
-document.getElementById('summarize').addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => document.body.innerText });
-});
-
-// ✅ FIX — use "tabs" permission + specific host_permissions instead
-// manifest.json: { "permissions": ["tabs", "scripting"], "host_permissions": ["<all_urls>"] }
-```
-
-See `references/extensions/side-panel.md`.
+`activeTab` grants temporary access to the current tab ONLY on a direct user gesture (action
+icon click, context menu item, keyboard shortcut, omnibox suggestion) — NOT from a button click
+inside a side panel or popup. Use `tabs` + `host_permissions` instead. See
+`references/extensions/permissions.md` and `references/extensions/side-panel.md`.
 
 #### 13. DevTools panel URLs are relative to the extension root
 
@@ -350,7 +327,19 @@ chrome.desktopCapture.chooseDesktopMedia(['screen', 'window'], tab, (streamId) =
 
 **Note:** Prefer `chrome.tabCapture.getMediaStreamId()` for tab-only recording. Use `chrome.desktopCapture` only when the user should choose which screen/window to capture. See `references/extensions/media-capture.md`.
 
-#### 18. `chrome.windows` has NO `.query()` method — use `getAll`, `getLastFocused`, or `getCurrent`
+#### 18. User scripts: four non-obvious pitfalls
+
+`chrome.userScripts` runs **user-provided code** at runtime. Use it for script managers and
+user automation — not for extension-bundled scripts.
+
+- **API throws on property access if not enabled.** Chrome 138+ requires the user to toggle "Allow User Scripts" on the extension's details page; Chrome < 138 requires Developer mode. Always call `isUserScriptsAvailable()` before any `chrome.userScripts.*` call and show an error UI when it returns false.
+- **Registered scripts are cleared on extension update.** Persist configs in `chrome.storage`; re-register them in `runtime.onInstalled` for the `"update"` reason.
+- **Messaging requires explicit opt-in.** Call `configureWorld({ messaging: true })` first; listen on `runtime.onUserScriptMessage`, not `runtime.onMessage`.
+- **`ScriptSource` constraint:** each `js` entry must have exactly one of `code` or `file`. **`id` constraint:** cannot start with `_`.
+
+See `references/extensions/user-scripts.md`.
+
+#### 19. `chrome.windows` has NO `.query()` method — use `getAll`, `getLastFocused`, or `getCurrent`
 
 Unlike `chrome.tabs.query()`, the `chrome.windows` API does NOT have a `.query()` method.
 
@@ -366,6 +355,15 @@ const all     = await chrome.windows.getAll({ populate: true });
 ```
 
 **`chrome.windows` methods:** `getAll`, `getLastFocused`, `getCurrent`, `get(windowId)`, `create`, `update`, `remove`. See `references/extensions/tab-management.md`.
+
+#### 20. `chrome.permissions.request()` in the service worker must be called with no `await` before it in the message listener
+
+A user gesture from a UI context (side panel, popup) does propagate across `chrome.runtime.sendMessage`
+to the service worker's `onMessage` listener — but only for that one synchronous turn. If the
+listener does an `await` (even a short delay) before calling `chrome.permissions.request()`, the
+gesture is gone and the call throws `"This function must be called during a user gesture"`. Call
+it as the first thing in the listener, with nothing awaited before it — see
+`references/extensions/permissions.md`.
 
 ### Always Manifest V3
 
@@ -473,6 +471,7 @@ For detailed API patterns and publishing guidance, read the relevant file BEFORE
 
 | Topic | Reference |
 |-------|-----------|
+| Permissions | `references/extensions/permissions.md` |
 | Side panels | `references/extensions/side-panel.md` |
 | Content scripts & DOM | `references/extensions/content-scripts.md` |
 | Popups | `references/extensions/popup-ui.md` |
@@ -488,6 +487,7 @@ For detailed API patterns and publishing guidance, read the relevant file BEFORE
 | Storage | `references/extensions/storage.md` |
 | Tab & window management | `references/extensions/tab-management.md` |
 | Tab/desktop capture | `references/extensions/media-capture.md` |
+| User scripts | `references/extensions/user-scripts.md` |
 | Message passing | `references/extensions/message-passing.md` |
 | Icons | `references/extensions/icons.md` |
 | CHROMEWEBSTORE.md template | `references/webstore/chromewebstore-template.md` |
@@ -517,6 +517,12 @@ Verify EVERY item before delivering:
 - [ ] Tab/desktop capture uses state locking to prevent double-start errors
 - [ ] `chrome.desktopCapture.chooseDesktopMedia` passes `targetTab` with `tabs` permission
 - [ ] `chrome.windows` calls use `getAll`/`getLastFocused`/`getCurrent` — NOT `.query()` (it doesn't exist)
+- [ ] `chrome.permissions.request()` in a service worker `onMessage` listener is called with no `await` before it (gesture is lost after the first async gap)
+- [ ] `chrome.userScripts` availability checked before use (API throws if user hasn't enabled it)
+- [ ] User script configs persisted in `chrome.storage` and restored on `runtime.onInstalled` `"update"` reason
+- [ ] `configureWorld({ messaging: true })` called before user scripts send messages; listening on `onUserScriptMessage` not `onMessage`
+- [ ] `ScriptSource` entries each have exactly one of `code` or `file` (not both, not neither)
+- [ ] User script `id` values do not start with underscore
 - [ ] `sidePanel.setPanelBehavior` uses `openPanelOnActionClick` — NOT `openPanelOnActionIconClick`
 - [ ] Error handling on all async operations
 - [ ] `host_permissions` scoped to specific domains (not `<all_urls>` unless needed)

@@ -1,6 +1,6 @@
-export function generateClaudeTrajectoryHtml(logData: any[]): string {
+export function generateClaudeTrajectoryHtml(logData: any[], subagentsMap: Record<string, any[]> = {}): string {
   // Escape '<' in the JSON representation to prevent XSS or broken script tags
-  const safeJsonData = JSON.stringify(logData).replace(/</g, '\\u003c');
+  const safeData = JSON.stringify({ logData, subagentsMap }).replace(/</g, '\\u003c');
 
   return `<!DOCTYPE html>
 <html>
@@ -23,14 +23,23 @@ export function generateClaudeTrajectoryHtml(logData: any[]): string {
     .code-change { background-color: #dcfce7; padding: 10px; border-radius: 4px; border-left: 4px solid #22c55e; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
     .raw-json { display: none; background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 0.8em; overflow-x: auto; margin-top: 10px; border: 1px solid #e5e7eb; white-space: pre-wrap; }
     .toggle-raw { cursor: pointer; color: #3b82f6; text-decoration: underline; font-size: 0.85em; margin-top: 10px; display: inline-block; }
+    .subagent-block { margin: 15px 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; white-space: normal; }
+    .subagent-details { background: #faf5ff; border: 2px solid #a855f7; border-radius: 8px; padding: 12px; box-shadow: 0 4px 6px -1px rgba(168, 85, 247, 0.1); }
+    .subagent-summary { cursor: pointer; font-weight: bold; color: #6b21a8; font-size: 0.95em; display: flex; align-items: center; justify-content: space-between; }
+    .subagent-summary:hover { color: #581c87; }
+    .subagent-badge { background: #8b5cf6; color: #fff; padding: 3px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; margin-left: 8px; }
   </style>
 </head>
 <body>
   <h2>Claude Code Trajectory Viewer</h2>
   <div id="logs"></div>
   <script>
-    const logData = ${safeJsonData};
+    const payload = ${safeData};
+    const logData = payload.logData || [];
+    const subagentsMap = payload.subagentsMap || {};
     const logsContainer = document.getElementById('logs');
+    const thinkingRegex = new RegExp('&lt;thinking&gt;([\\\\s\\\\S]*?)&lt;/thinking&gt;', 'g');
+    const agentIdRegex = new RegExp('agentId:\\\\s*([a-zA-Z0-9_-]+)');
     
     function escapeHtml(str) {
       return (str || '').toString()
@@ -45,7 +54,7 @@ export function generateClaudeTrajectoryHtml(logData: any[]): string {
       if (!content) return '';
       if (typeof content === 'string') {
         let html = escapeHtml(content);
-        html = html.replace(/&lt;thinking&gt;([\\s\\S]*?)&lt;\\/thinking&gt;/g, '<div class="thought"><b>Thought:</b>\\n$1</div>');
+        html = html.replace(thinkingRegex, '<div class="thought"><b>Thought:</b><br/>$1</div>');
         return '<div class="text-content">' + html + '</div>';
       }
       
@@ -53,7 +62,7 @@ export function generateClaudeTrajectoryHtml(logData: any[]): string {
         return content.map(block => {
           if (block.type === 'text') {
              let html = escapeHtml(block.text);
-             html = html.replace(/&lt;thinking&gt;([\\s\\S]*?)&lt;\\/thinking&gt;/g, '<div class="thought"><b>Thought:</b>\\n$1</div>');
+             html = html.replace(thinkingRegex, '<div class="thought"><b>Thought:</b><br/>$1</div>');
              return '<div class="text-content">' + html + '</div>';
           }
           if (block.type === 'thinking') {
@@ -87,15 +96,67 @@ export function generateClaudeTrajectoryHtml(logData: any[]): string {
              return \`<div class="tool-use"><b>Tool: \${safeName} [\${safeId}]</b><br/>\${safeInput}</div>\`;
           }
           if (block.type === 'tool_result') {
-             const out = typeof block.content === 'string' ? escapeHtml(block.content) : formatContent(block.content);
+             let out = typeof block.content === 'string' ? escapeHtml(block.content) : formatContent(block.content);
              const errorClass = block.is_error ? ' error' : '';
              const errorText = block.is_error ? ' [ERROR]' : '';
-             return \`<div class="tool-result\${errorClass}"><b>Tool Result [\${escapeHtml(block.tool_use_id)}]\${errorText}:</b><br/>\${out}</div>\`;
+
+             // Check for subagent output and embed subagent trajectory if available
+             let subagentHtml = '';
+             let matchedSubagentId = null;
+             if (typeof block.content === 'string') {
+               const match = block.content.match(agentIdRegex);
+               if (match && match[1]) matchedSubagentId = match[1];
+             } else if (Array.isArray(block.content)) {
+               for (const item of block.content) {
+                 if (item?.type === 'text' && typeof item.text === 'string') {
+                   const match = item.text.match(agentIdRegex);
+                   if (match && match[1]) { matchedSubagentId = match[1]; break; }
+                 }
+               }
+             }
+
+             if (matchedSubagentId && subagentsMap[matchedSubagentId]) {
+               const subLogs = subagentsMap[matchedSubagentId];
+               const renderedSubagent = renderSubagentLogEntries(subLogs);
+               subagentHtml = \`
+                 <div class="subagent-block">
+                   <details class="subagent-details">
+                     <summary class="subagent-summary">
+                       <span>🤖 <strong>Subagent Trajectory</strong> (ID: agent-\${escapeHtml(matchedSubagentId)}) <span class="subagent-badge">\${subLogs.length} steps</span></span>
+                       <span style="font-size:0.85em; text-decoration:underline;">Click to Expand/Collapse</span>
+                     </summary>
+                     <div style="margin-top:12px; padding-left:12px; border-left:3px solid #8b5cf6;">
+                       \${renderedSubagent}
+                     </div>
+                   </details>
+                 </div>
+               \`;
+             }
+
+             return \`<div class="tool-result\${errorClass}"><b>Tool Result [\${escapeHtml(block.tool_use_id)}]\${errorText}:</b><br/>\${out}</div>\${subagentHtml}\`;
           }
           return \`<div class="raw-json" style="display:block;">\${escapeHtml(JSON.stringify(block, null, 2))}</div>\`;
         }).join('');
       }
       return '<div class="text-content">' + escapeHtml(JSON.stringify(content, null, 2)) + '</div>';
+    }
+
+    function renderSubagentLogEntries(entries) {
+      if (!Array.isArray(entries)) return '';
+      return entries.map((entry, idx) => {
+        let role = entry.role || entry.type || 'unknown';
+        let mainContent = entry.message || entry.content || entry;
+        if (entry.message && entry.message.content) {
+          mainContent = entry.message.content;
+          role = entry.message.role || role;
+        }
+        return \`
+          <div class="log-entry role-\${escapeHtml(role)}" style="margin-bottom:12px; padding:10px;">
+            <div class="meta" style="font-size:0.8em; color:#7e22ce;">SUBAGENT \${escapeHtml(role).toUpperCase()} (Step \${idx + 1})</div>
+            <div class="content-block">\${formatContent(mainContent)}</div>
+          </div>
+        \`;
+      }).join('');
     }
 
     logData.forEach((entry, i) => {

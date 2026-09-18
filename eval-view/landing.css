@@ -64,9 +64,9 @@
 }
 
 .insight-dumbbell-track {
-  height: 4px;
+  height: 6px;
   background: var(--border-color);
-  border-radius: 2px;
+  border-radius: 3px;
   position: relative;
   width: 130px;
 }
@@ -119,15 +119,16 @@
 }
 
 .insight-dumbbell-track .dot.unguided {
-  width: 4px;
-  height: 4px;
+  width: 8px;
+  height: 8px;
+  border-width: 2px;
 }
 .insight-dumbbell-track .dot.guided {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 .insight-dumbbell-track .connector {
-  height: 1.5px;
+  height: 3px;
 }
 
 .suite-dumbbell-track .dot.unguided {
@@ -782,4 +783,90 @@
   height: 100%;
   box-sizing: border-box;
   text-align: right;
+}
+
+/* Uplift Comparisons Grid Layout Tweaks */
+.insights-top-row {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.insights-panel-full {
+  flex: 1 1 100%;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.insights-panel-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.guide-sort-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--color-surface-container-low);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.sort-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.sort-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.sort-direction-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.sort-direction-btn:hover {
+  color: var(--color-primary);
+}
+
+/* Variance / Noisiness Visualization Bands */
+.insight-dumbbell-track .variance-band {
+  position: absolute;
+  height: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.insight-dumbbell-track .variance-band.unguided {
+  background-color: var(--text-secondary);
+  opacity: 0.22;
+}
+
+.insight-dumbbell-track .variance-band.guided {
+  background-color: var(--color-primary);
+  opacity: 0.26;
 }

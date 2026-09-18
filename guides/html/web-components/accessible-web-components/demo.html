@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessible Web Components: ElementInternals roles and state</title>
+  <style>
+    toggle-switch:not(:defined) { visibility: hidden; }
+    toggle-switch {
+      display: inline-block; inline-size: 3rem; block-size: 1.5rem;
+      border-radius: 1rem; background: #ccc; cursor: pointer;
+    }
+    /* ARIA state lives in the accessibility tree; a non-ARIA data hook drives styling. */
+    toggle-switch[data-checked] { background: seagreen; }
+    toggle-switch:focus-visible { outline: 2px solid #06f; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <label id="wifi-label">Wi-Fi</label>
+  <toggle-switch aria-labelledby="wifi-label"></toggle-switch>
+
+  <script>
+    class ToggleSwitch extends HTMLElement {
+      #internals;
+
+      constructor() {
+        super();
+        this.#internals = this.attachInternals();
+        // Default role + state via the ARIA mixin; no host ARIA attributes needed,
+        // and consumers can still override with attributes in the Light DOM.
+        this.#internals.role = 'switch';
+        this.#internals.ariaChecked = 'false';
+      }
+
+      connectedCallback() {
+        // Make the host keyboard-focusable and operable like a native control.
+        if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
+        this.addEventListener('click', () => this.toggle());
+        this.addEventListener('keydown', (e) => {
+          if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.toggle(); }
+        });
+      }
+
+      toggle() {
+        const on = this.#internals.ariaChecked !== 'true';
+        // Canonical state for the accessibility tree; no host ARIA attribute.
+        this.#internals.ariaChecked = String(on);
+        // Separate non-ARIA hook purely so CSS can target the state.
+        this.toggleAttribute('data-checked', on);
+      }
+    }
+
+    customElements.define('toggle-switch', ToggleSwitch);
+  </script>
+</body>
+</html>

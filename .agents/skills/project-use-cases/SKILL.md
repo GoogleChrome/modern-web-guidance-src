@@ -25,6 +25,9 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
 * **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage. If the implementation across proposed use cases is 90% identical, consolidate them.
 * **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline skill file.
+* **Granular Guide Decomposition (Avoid Monoliths)**: For discipline-level guides, ensure the guidance is broken down into granular "subskills" (i.e., smaller, focused guides) rather than a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously. The primary discipline-level guide (e.g., `guides/css/css/guide.md` or `guides/performance/performance/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for the discipline, explaining when and how to reference each granular subskill guide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+
+
 
 
 ## Minimizing overlap
@@ -48,7 +51,13 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 2: Choose a category**
 
-  Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`performance`](/guides/performance) or [`accessibility`](/guides/accessibility). List the current subdirectories under `guides/` and choose the most appropriate one. If a use case doesn't fit into any of these categories, create a new one.
+  Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`motion`](/guides/motion) or [`performance`](/guides/performance). List the current subdirectories under `guides/` and choose the most appropriate one.
+
+  **Categorize by the use case, not the implementation.** This is the "WHAT not HOW" principle applied to taxonomy: a category should name the user's goal (`motion`, `overlays`, `datetime`, `typography`), not the technology used to achieve it. Quick test: *could someone who understands the use case but can't write the code file it correctly?* If the only way to know where a guide belongs is to know which API it uses, the category is implementation-shaped. Two guides solving the same goal with different tech (e.g. a tab underline that morphs via anchor positioning vs. view transitions) belong in the **same** category.
+
+  Some categories are named after a technology domain (`css`, `html`, `canvas`) because they are anchored by a comprehensive reference guide for that technology (e.g. `html/html/guide.md`). These are valid homes for use cases genuinely about that technology, or that don't yet have enough siblings to form a use-case cluster.
+
+  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. (This is why the catch-all `user-experience` category was removed: UX is a vertical every guide addresses, not a bucket of its own.)
 
 * **Step 3: Create the use case subdirectory**
 
@@ -78,23 +87,20 @@ The following steps are REQUIRED for creating a new use case:
   ---
   ```
 
-* **Step 5: Create the `demo.html` file**
+* **Step 5: Create the `expectations.md` stub**
 
-  Create a `demo.html` file in the new subdirectory. This file is **eval infrastructure** — it is used by `grader.ts` to verify that a correct implementation passes all tests. Real-world coding agents never see this file.
+  Create an `expectations.md` file in the new subdirectory outlining the must-pass verification criteria for any application implementing this guidance.
 
-  Because it is not shown to agents, `demo.html` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
+* **Step 6: Generate base-app evaluation capsules**
 
-  **Quality Rules for Demos:**
-  * **Identifiable Test Targets**: Make target elements in HTML demos explicitly identifiable using clear data attributes like `data-testid` and specific class names to aid in grading.
+  Once `guide.md` and `expectations.md` are authored, run `gd dev guides/<category>/<guide>` to automatically generate and calibrate the evaluation capsules across `SUPPORTED_BASE_APPS` under `targets/<base_app>/`.
 
-  See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
+* **Step 7: Validate the use case**
 
-* **Step 6: Validate the use case**
+  Run `pnpm --filter guides test` to validate the use case structure and target integrity.
 
-  Run `pnpm --filter guides test` to validate the use case.
+* **Step 8: Get the use case approved**
 
-* **Step 7: Get the use case approved**
+  Submit the use case for review by creating a Pull Request containing the authored `guide.md` and `expectations.md` along with the generated `targets/` directory.
 
-  Submit the use case for review by creating a Pull Request containing only the files created in steps 1-6. This allows for early feedback on the selection and naming of the use cases.
-
-After the use case is approved, you can proceed to writing the guidance and expectations. Additional guidance for these stages is provided by the `project-guides` and `project-evals` skills.
+After the use case is approved, you can proceed to refining the guidance and expectations as needed. Additional guidance for these stages is provided by the `project-guides` and `project-evals` skills.

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow DOM: template, slots, and a shared stylesheet</title>
+  <style>
+    my-card:not(:defined) { visibility: hidden; }
+  </style>
+</head>
+<body>
+  <my-card>
+    <h2 slot="header">Title</h2>
+    <p>Body content goes to the default slot.</p>
+    <small slot="footer">Footer</small>
+  </my-card>
+
+  <script>
+    // One template, cloned per instance; far cheaper than re-parsing innerHTML.
+    const template = document.createElement('template');
+    template.innerHTML = `
+      <div class="card">
+        <header><slot name="header"></slot></header>
+        <div class="body"><slot></slot></div>
+        <footer><slot name="footer"></slot></footer>
+      </div>
+    `;
+
+    // One shared CSSStyleSheet reused by every instance; no per-instance parse.
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(`
+      :host { display: block; max-inline-size: 24rem; }
+      .card { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; }
+      .body { margin-block: .5rem; }
+    `);
+
+    class MyCard extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.adoptedStyleSheets = [sheet];
+        // Deep-clone so each instance gets its own nodes.
+        this.shadowRoot.append(template.content.cloneNode(true));
+
+        // Reflect whether the header slot is filled, for styling/state.
+        const header = this.shadowRoot.querySelector('slot[name="header"]');
+        header.addEventListener('slotchange', (e) => {
+          this.toggleAttribute('has-header', e.target.assignedElements().length > 0);
+        });
+      }
+    }
+
+    customElements.define('my-card', MyCard);
+  </script>
+</body>
+</html>

@@ -15,9 +15,9 @@ export interface StoreUseCase {
   vector?: number[];
   distance?: number;
 }
-import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
+import { replaceMacros, type BuildTarget, formatTitle } from "../lib/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
@@ -67,11 +67,25 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   };
 }
 
-async function computePipelineHash(guides: GuideInventory[], target: string, noChunking: boolean): Promise<string> {
+async function computePipelineHash(
+  guides: GuideInventory[],
+  target: string,
+  noChunking: boolean
+): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
 
-  hash.update(fs.readFileSync(import.meta.filename, "utf-8"));
+  const deps = [
+    import.meta.filename,
+    path.resolve(import.meta.dirname, "../lib/macros.ts"),
+    path.resolve(import.meta.dirname, "../lib/transformers-embedder.ts"),
+    path.resolve(import.meta.dirname, "../../lib/guide-validation.ts"),
+  ];
+
+  for (const dep of deps) {
+    hash.update(fs.readFileSync(dep, "utf-8"));
+  }
+
   hash.update(target);
   hash.update(noChunking.toString());
 
@@ -85,10 +99,20 @@ async function computePipelineHash(guides: GuideInventory[], target: string, noC
   return hash.digest("hex");
 }
 
-function evaluateCacheHit(paths: CachePaths, currentHash: string): boolean {
-  if (!fs.existsSync(paths.cachedTs) || !fs.existsSync(paths.cachedVectors) || !fs.existsSync(paths.cachedManifest)) {
+function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides: GuideInventory[]): boolean {
+  const cacheFiles = [paths.cachedTs, paths.cachedVectors, paths.cachedManifest, paths.cachedGuides];
+  if (cacheFiles.some(file => !fs.existsSync(file))) {
     return false;
   }
+
+  // Verify that all expected guide files are present in the cache
+  for (const inv of expectedGuides) {
+    const cachedFilePath = path.join(paths.cachedGuides, inv.category, `${inv.name}.md`);
+    if (!fs.existsSync(cachedFilePath)) {
+      return false;
+    }
+  }
+
   try {
     const manifest = JSON.parse(fs.readFileSync(paths.cachedManifest, "utf-8"));
     return manifest.hash === currentHash;
@@ -103,6 +127,10 @@ function restoreFromCache(paths: CachePaths, outputDir: string, target: string):
     fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
     fs.copyFileSync(paths.cachedTs, OUTPUT_FILE);
+  } else if (target === 'static-site') {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+    fs.mkdirSync(outputDir, { recursive: true });
+    fs.cpSync(paths.cachedGuides, outputDir, { recursive: true });
   } else {
     fs.mkdirSync(path.join(ROOT_DIR, "lib"), { recursive: true });
     fs.mkdirSync(path.join(ROOT_DIR, "build"), { recursive: true });
@@ -133,12 +161,12 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   // 2. Scan & Hash
   let readyGuides = scanAllGuides().filter(inv => {
     const excluded = config.monoskill.excludeFromBundling || [];
-    return inv.hasGuide && !excluded.includes(inv.category) && !excluded.includes(inv.name);
+    return inv.isPublished && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
 
   // 3. Cache Evaluation
-  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash);
+  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides);
   if (isHit) {
     restoreFromCache(cachePaths, outputDir, TARGET);
     console.log("👌");
@@ -151,13 +179,16 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
 
-  if (modelName) {
-    console.log(`Using custom embedding model: ${modelName}`);
-  }
+  let embedder: any = null;
+  if (TARGET !== 'static-site') {
+    if (modelName) {
+      console.log(`Using custom embedding model: ${modelName}`);
+    }
 
-  const { Embedder } = await import("../lib/transformers-embedder.ts");
-  const embedder = Embedder.getInstance(modelName);
-  await embedder.init();
+    const { Embedder } = await import("../lib/transformers-embedder.ts");
+    embedder = Embedder.getInstance(modelName);
+    await embedder.init();
+  }
 
   if (targetGuidePath) {
     // Single guide mode
@@ -238,7 +269,7 @@ async function processSingleGuideFile(
   id: string,
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
-  embedder: any
+  embedder?: any
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -247,12 +278,33 @@ async function processSingleGuideFile(
     throw new Error(`Missing frontmatter or description in ${filePath}`);
   }
 
-  if (markdownBody.trim().length === 0) {
+  if (markdownBody.replace(/<!--[\s\S]*?-->/g, '').trim().length === 0) {
     // Just a stub guide. No content to index.
     return;
   }
 
   const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
+
+  if (TARGET === 'static-site') {
+    const h1Title = extractH1Heading(markdownBody);
+    const title = h1Title || data.title || formatTitle(id);
+    const genericFrontmatter = `---
+title: ${JSON.stringify(title)}
+description: ${JSON.stringify(data.description)}
+category: ${category}
+---`;
+    const bodyWithoutH1 = processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+    const finalContent = `${genericFrontmatter}\n\n# ${title}\n\n${bodyWithoutH1}\n`;
+
+    const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
+    if (!fs.existsSync(buildCategoryDir)) {
+      fs.mkdirSync(buildCategoryDir, { recursive: true });
+    }
+
+    const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
+    fs.writeFileSync(buildFilePath, finalContent);
+    return;
+  }
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
@@ -302,6 +354,8 @@ if (process.argv[1] === import.meta.filename) {
     force: { type: 'boolean' as const },
     model: { type: 'string' as const },
     'no-chunking': { type: 'boolean' as const },
+    target: { type: 'string' as const },
+    output: { type: 'string' as const },
   };
 
   const { values, positionals } = parseArgs({ options, allowPositionals: true });
@@ -310,12 +364,18 @@ if (process.argv[1] === import.meta.filename) {
   const force = values.force;
   const noChunking = values['no-chunking'];
   const modelName = values.model;
+  const target = values.target as BuildTarget | undefined;
+  const output = values.output;
 
   processGuides({
-    outputDir: path.join(ROOT_DIR, "build"),
+    outputDir: output ? path.resolve(WORKSPACE_ROOT, output) : path.join(ROOT_DIR, "build"),
+    target,
     force,
     targetGuidePath,
     modelName,
     noChunking
-  }).catch(console.error);
+  }).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

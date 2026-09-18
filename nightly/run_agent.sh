@@ -22,7 +22,7 @@ EOF
 
 # Parse flags
 AGENT=""
-WORKERS=""
+WORKERS="20"
 PREFIX="nightly"
 RUN_LOCAL="false"
 while [[ $# -gt 0 ]]; do
@@ -64,7 +64,6 @@ if [[ -z "$AGENT" ]]; then
   exit 1
 fi
 
-USER_LDAP=$(whoami)
 # AGENT is already set above
 
 # Initialization & State Reset
@@ -77,7 +76,7 @@ INITIAL_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 
 # Setup variables
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-SUITE_ID="${PREFIX}-${TIMESTAMP}-${AGENT}-${USER_LDAP}"
+SUITE_ID="${PREFIX}-${TIMESTAMP}-${AGENT}"
 DASHBOARD_URL="http://go/guidance-evals/dashboard.html?testId=${SUITE_ID}&source=remote"
 DISPLAY_NAME="$(echo "${PREFIX}" | sed 's/./\U&/')"
 EVAL_EXIT_CODE=0
@@ -165,8 +164,8 @@ cleanup() {
   if [ "${NIGHTLY_GUIDANCE_RUN:-0}" = "1" ]; then
     printf "%b\n\n----------------------------------------\n\n" "$body" >> "${SUMMARY_FILE:-$SCRIPT_DIR/${PREFIX}_summary.txt}"
     
-    # Delete the local results to save disk space in nightly runs
-    if [ -d "${REPO_ROOT}/harness/results/${SUITE_ID}" ]; then
+    # Delete the local results to save disk space in nightly runs only if upload succeeded
+    if [ "$UPLOAD_EXIT_CODE" -eq 0 ] && [ -d "${REPO_ROOT}/harness/results/${SUITE_ID}" ]; then
       echo "Deleting ${PREFIX} local results directory ${SUITE_ID} to save disk space..."
       rm -rf "${REPO_ROOT}/harness/results/${SUITE_ID}"
     fi

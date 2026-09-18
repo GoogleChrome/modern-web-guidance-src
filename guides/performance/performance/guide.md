@@ -3,6 +3,8 @@ name: performance
 description: Actionable guidelines for optimizing modern web applications. Use this guide when auditing performance, optimizing loading metrics, fixing slow interactions and optimizing Core Web Vitals (LCP, INP, CLS)
 ---
 
+# Performance
+
 ## Critical Rendering Path (CRP) Optimization
 
 The Critical Rendering Path dictates how quickly the browser converts HTML, CSS, and JavaScript into painted pixels. 
@@ -55,10 +57,10 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 LCP measures the time required to render the largest visible text or image block within the viewport. Optimize LCP by prioritizing visible elements and prepolishing.
 
 ### DOs
-*   **DO use `fetchpriority="high"` on the LCP image**: Signal to the browser's heuristic engine to elevate the image's priority above scripts and non-critical assets.
-*   **DO declare the LCP image in standard HTML**: Ensure the `<img>` tag is present in the raw HTML response so the preload scanner discovers it immediately. Avoid relying on JavaScript to mount the LCP element.
-*   **DO preload background images acting as LCP**: If the LCP element is a CSS `background-image`, force early discovery using `<link rel="preload" as="image">` coupled with `fetchpriority="high"`.
-*   **DO use `fetchpriority="low"` to demote competing elements**: Lower the priority of large images or carousels that appear above the fold but are *not* the primary LCP element.
+*   **DO declare the LCP image in standard HTML**: Ensure LCP images are present in the raw HTML response so the preload scanner discovers it immediately. This can be be via an `<img>` element (preferred) or a `<link rel="preload" as="image">` (where the image resource is loaded due to JavaScript or CSS). Avoid relying on JavaScript or CSS to be the only source of the image resource.
+*   **DO use `fetchpriority="high"` on the LCP images**: Images are not downloaded initially while the browser prioritizes render-blocking resources like CSS and JavaScript and can perform layout to discover if the images are in the viewport or not. Use `fetchpriority="high"` to signal to the browser's heuristic engine to start downloading the LCP image earlier. This should be on the `<img>` element (`<img fetchpriority="high">`) and any preload (`<link rel="preload" as="image" fetchpriority="high">`).
+*   **DO use `fetchpriority="low"` to demote competing elements that are not in the initial viewport**: Lower the priority of large images or carousels that are *not* the primary LCP element and do *not* appear in the initial viewport, but may still be downloaded if near the viewport or hidden with CSS (for example `overflow:scroll` for carousels). Images with `fetchpriority="low"` will still be downloaded but start after higher-priority resources the browser has queued.
+*   **DO use `loading="lazy"` to avoid loading competing elements that are far out of the initial viewport**: Images, iframes, and video and audio media which are well outside of the viewport should be lazy-loaded to avoid fetching these at all. Images with `loading="lazy"` will not be downloaded at all when well outside the viewport but will download when in, or near, the viewport (depending on browser heuristics and connection settings),.
 
 ### DON'Ts
 *   **DON'T lazy-load the LCP image**: Never apply `loading="lazy"` to above-the-fold images. This purposefully delays the fetch until layout calculation is complete, severely degrading LCP.
@@ -74,7 +76,6 @@ LCP measures the time required to render the largest visible text or image block
   src="/images/hero.webp" 
   alt="Hero Product" 
   fetchpriority="high" 
-  decoding="sync"
   width="1200" 
   height="600"
 >
@@ -83,7 +84,7 @@ LCP measures the time required to render the largest visible text or image block
 <link rel="preload" as="image" href="/images/bg-hero.webp" fetchpriority="high" type="image/webp">
 
 <!-- Demoting an above-the-fold non-LCP carousel image -->
-<img src="/images/carousel-2.webp" fetchpriority="low" alt="Slide 2">
+<img src="/images/carousel-2.webp" fetchpriority="low" loading="lazy" alt="Slide 2">
 ```
 
 ## Interaction to Next Paint (INP) & Main Thread Unblocking
@@ -97,7 +98,7 @@ INP measures the latency of all interactive events across the page's lifecycle. 
 *   **DO separate UI updates from heavy computations**: Update the UI synchronously to provide immediate visual feedback, then push background processing to a Web Worker or deferred task.
 
 ### DON'Ts
-*   **DON'T rely solely on `setTimeout(..., 0)` for continuous yielding**: Standard `setTimeout` places continuations at the *back* of the task queue, potentially causing long delays if other tasks are pending.
+*   **DON'T rely solely on `setTimeout(..., 0)` for continuous yielding**: Standard `setTimeout` places continuations at the *back* of the task queue, potentially causing long delays if other tasks are pending. Use `scheduler.yield()` where available.
 *   **DON'T cause layout thrashing**: Avoid interleaving DOM reads (`offsetHeight`, `getBoundingClientRect`) and writes (`style.height`) within the same loop. Batch DOM reads, then batch DOM writes.
 *   **DON'T block the thread with recurring timers**: Avoid heavy polling with `setInterval` that starves the main thread.
 
@@ -191,7 +192,7 @@ Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Conta
 Images typically represent the largest payload on a given web page. Optimization requires format negotiation, responsive sizing, and layout stabilization.
 
 ### DOs
-*   **DO serve modern formats (AVIF / WebP)**: Use the `<picture>` element to offer AVIF (best compression), falling back to WebP, and finally JPEG/PNG for legacy browsers.
+*   **DO serve modern formats (AVIF / WebP / JPEG XL)**: Use the `<picture>` element to offer AVIF or JPEG XL (best compression), falling back to WebP, and finally JPEG/PNG for legacy browsers.
 *   **DO apply explicit `width` and `height` attributes**: Setting native attributes allows the browser to compute the aspect ratio immediately, reserving space and eliminating CLS. Image dimensions may be set either as HTML attributes or CSS properties.
 *   **DO utilize `loading="lazy"` on all below-the-fold images**: Utilize native browser lazy loading to defer network requests for images outside the initial viewport.
 *   **DO implement responsive images with `srcset` and `sizes`**: Serve tailored resolutions based on screen density and viewport width to prevent mobile devices from downloading desktop-sized images.
@@ -248,6 +249,7 @@ Client-side caching via Service Workers allows applications to bypass the networ
 *   **DON'T cache opaque responses blindly**: Responses from third-party domains lacking CORS headers are "opaque". Caching them heavily consumes quota and fails silently. Only cache them using `NetworkFirst` or `StaleWhileRevalidate`.
 *   **DON'T cache POST requests**: Service workers cannot cache non-GET requests natively. Implement background sync queues for offline submissions.
 *   **DON'T bypass versioning**: Failing to update asset hashes/versions will trap users in infinite cache loops.
+*   **DON'T use `Cache-Control: no-store` for non-sensitive resources**: This directive prevents the browser from storing the page in the **Back-Forward Cache (bfcache)**, leading to significantly slower perceived performance. Use it only for truly private data, and use `Cache-Control: no-cache` or `Cache-Control: max-age=0` for pages that simply need to serve up-to-date content.
 
 ### Code Examples
 
@@ -293,11 +295,12 @@ registerRoute(
 Web fonts are a common source of render blocking. Optimizing them reduces the Flash of Invisible Text (FOIT) and speeds up initial rendering.
 
 ### DOs
-*   **DO preload critical fonts**: Use `<link rel="preload" as="font" type="font/woff2" crossorigin>` for fonts seen above the fold.
+*   **DO preload critical fonts**: Use `<link rel="preload" as="font" type="font/woff2" crossorigin>` for fonts seen above the fold. Do include the `crossorigin` attribute for all fonts (even same origin fonts).
 *   **DO subset fonts**: Trim font weights and glyph variations to include only the characters your application requires.
 
 ### DON'Ts
 *   **DON'T preload all fonts**: Over-preloading leads to network contention that starves other critical assets.
+*   **DON'T use `fetchpriority="high"` on fonts**: Fonts are loaded with a high priority by default so there is no need to specify `fetchpriority="high"`.
 
 ### Code Examples
 
@@ -322,6 +325,7 @@ Video payloads are among the heaviest assets. Optimization focuses on reducing b
 ### DOs
 *   **DO specify explicit `width` and `height` attributes**: Setting native dimensions reserves layout space and prevents CLS.
 *   **DO provide a `poster` image fallback**: Display a lightweight image placeholder while the video buffers to improve perceived performance.
+*   **DO use `<link rel="preload" as="image" fetchpriority="high">` for poster images where the video is the LCP element**: This ensures the image is downloaded as quickly as possible.
 *   **DO use `preload="none"` for non-critical videos**: Delay bandwidth consumption for below-the-fold or non-autoplaying videos.
 *   **DO serve modern formats via source negotiation**: Offer WebM (better compression ratio) alongside standard MP4 formats.
 *   **DO use `loading="lazy"` for offscreen videos**: Lazy-loading videos allow `poster` and `preload` downloads to be deferred until the video is in or near the viewport.
@@ -340,6 +344,7 @@ Video payloads are among the heaviest assets. Optimization focuses on reducing b
   height="675"
   poster="/images/video-poster.webp" 
   preload="none"
+  loading="lazy"
 >
   <source src="/videos/intro.webm" type="video/webm">
   <source src="/videos/intro.mp4" type="video/mp4">

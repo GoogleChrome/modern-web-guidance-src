@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spinner Demo</title>
+    <style>
+      @layer demo {
+        body {
+          font-family:
+            system-ui,
+            -apple-system,
+            sans-serif;
+          display: grid;
+          place-items: center;
+          min-height: 100vh;
+          margin: 0;
+          background: #f8fafc;
+          color: #1e293b;
+        }
+
+        .container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2.5rem;
+          padding: 3rem;
+          background: white;
+          border-radius: 1.5rem;
+          box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+          width: 100%;
+          max-width: 400px;
+        }
+
+        .examples {
+          display: flex;
+          gap: 2rem;
+          align-items: center;
+        }
+
+        .label {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #64748b;
+          margin-bottom: 0.5rem;
+          text-align: center;
+        }
+
+        button {
+          padding: 0.5rem 1rem;
+          border-radius: 0.5rem;
+          border: 1px solid #e2e8f0;
+          background: white;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        button:hover {
+          background: #f1f5f9;
+          border-color: #cbd5e1;
+        }
+
+        button:active {
+          background: #e2e8f0;
+        }
+      }
+
+      @layer component {
+        @property --arc-start {
+          syntax: "<angle>";
+          inherits: false;
+          initial-value: 0deg;
+        }
+        @property --arc-end {
+          syntax: "<angle>";
+          inherits: false;
+          initial-value: 0deg;
+        }
+        @property --progress-dash-animation {
+          syntax: "*";
+          inherits: false;
+          initial-value: , progress-dash 3s ease-in-out infinite;
+        }
+        /*  Hide native bars */
+        progress.loading-spinner:indeterminate::-webkit-progress-bar {
+          display: none;
+          background: none;
+        }
+        progress.loading-spinner:indeterminate::-webkit-progress-value {
+          display: none;
+          background: none;
+        }
+        progress.loading-spinner:indeterminate::-moz-progress-bar {
+          display: none;
+          background: none;
+        }
+        progress.loading-spinner:indeterminate::slider-fill {
+          display: none;
+          background: none;
+        }
+        progress.loading-spinner:indeterminate {
+          --_from: calc(90deg + var(--arc-start, 0deg));
+          --_to: calc(90deg + var(--arc-end, 158deg));
+          --size: 40px;
+          --thickness: 2px;
+          --spinner-color: #3b82f6;
+          --track-color: #e2e5e7;
+          --spinner-duration: 1.5s;
+          --_used-spinner-duration: var(--spinner-duration);
+
+          --spinner-timing: linear;
+
+          position: relative;
+          width: var(--size);
+          height: var(--size);
+          border-radius: 50%;
+
+          background: conic-gradient(
+              from var(--_from),
+              var(--spinner-color) calc(var(--_to) - var(--_from)),
+              transparent 0
+            )
+            var(--track-color);
+          @supports (background-clip: border-area) {
+            background-clip: border-area;
+            border: var(--thickness) solid transparent;
+            background-origin: border-box;
+          }
+
+          @supports not (background-clip: border-area) {
+            --clip-boundary: calc(100% - var(--thickness));
+            mask-image: radial-gradient(
+              farthest-side,
+              transparent var(--clip-boundary),
+              black var(--clip-boundary)
+            );
+            border: 0;
+          }
+
+          animation:
+            progress-spin var(--_used-spinner-duration) linear infinite 
+            var(--progress-dash-animation, );
+        }
+
+        @keyframes progress-spin {
+          to {
+            rotate: 1turn;
+          }
+        }
+
+        @keyframes progress-dash {
+          from {
+            --arc-start: 0deg;
+            --arc-end: 3deg;
+          }
+          50% {
+            --arc-start: 100deg;
+            --arc-end: 358deg;
+          }
+          to {
+            --arc-start: 360deg;
+            --arc-end: 363deg;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          progress.loading-spinner:indeterminate {
+            --_used-spinner-duration: 6s;
+          }
+        }
+      }
+      @layer examples {
+        .loading-spinner--large {
+          --size: 64px;
+          --thickness: 6px;
+        }
+
+        .loading-spinner--custom {
+          --spinner-color: #f43f5e;
+          --track-color: transparent;
+          --spinner-duration: 1.2s;
+          --spinner-timing: ease-out;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="examples">
+        <div id="default-container">
+          <div class="label">Default</div>
+          <progress aria-label="Loading" class="loading-spinner"></progress>
+        </div>
+
+        <div id="large-container">
+          <div class="label">Large</div>
+          <progress
+            aria-label="Loading"
+            class="loading-spinner loading-spinner--large"
+          ></progress>
+        </div>
+
+        <div id="custom-container">
+          <div class="label">Custom</div>
+          <progress
+            aria-label="Loading"
+            class="loading-spinner loading-spinner--custom"
+          ></progress>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

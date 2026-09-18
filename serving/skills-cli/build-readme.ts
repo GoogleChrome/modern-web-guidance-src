@@ -72,15 +72,8 @@ function listToMarkdownTable(items: string[], colCount = 3): string {
   return md;
 }
 
-export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
-  const guidesDir = path.join(publishRoot, 'skills/modern-web-guidance/guides');
-  const readyGuides = scanAllGuides().filter(inv => {
-    if (!inv.hasGuide || inv.featureIds.length === 0) return false;
-
-    const guideBuildPath = path.join(guidesDir, inv.category, `${inv.name}.md`);
-    return fs.existsSync(guideBuildPath);
-  });
-
+export function getFeaturesAndUseCases() {
+  const readyGuides = scanAllGuides().filter(inv => inv.isPublished && inv.featureIds.length > 0);
   const allFeatureIds = new Set<string>();
   const categoryMap = new Map<string, { id: string; category: string; description: string }[]>();
 
@@ -106,6 +99,20 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       description
     });
   }
+
+  return {
+    allFeatureIds,
+    categoryMap,
+    readyGuides,
+  };
+}
+
+export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[]) {
+  const {
+    readyGuides,
+    allFeatureIds,
+    categoryMap,
+  } = getFeaturesAndUseCases();
 
   // Determine all features to generate the summary text
   const allFeaturesSorted = Array.from(allFeatureIds)
@@ -166,28 +173,22 @@ export function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 
   const evalsMd = generateEvalsResultsTable();
 
-  // Update README idempotently from template source
-  const templateReadmePath = path.join(SERVING_DIR, "skills-cli/template/README.md");
-  const destReadmePath = path.join(publishRoot, "README.md");
-  if (fs.existsSync(templateReadmePath)) {
-    let readmeContent = fs.readFileSync(templateReadmePath, "utf-8");
-    if (readmeContent.includes('<!-- INJECT_SKILL_COVERAGE -->')) {
-      readmeContent = readmeContent.replace('<!-- INJECT_SKILL_COVERAGE -->', dynamicMd.trimEnd());
-    } else {
-      readmeContent = readmeContent.replace('## Installation', dynamicMd + '## Installation');
-    }
-    if (readmeContent.includes('<!-- INJECT_EVAL_RESULTS -->')) {
-      readmeContent = readmeContent.replace('<!-- INJECT_EVAL_RESULTS -->', evalsMd.trimEnd());
-    }
-    fs.writeFileSync(destReadmePath, readmeContent);
-  }
-
-  // Copy .github/img assets
-  const srcImgDir = path.join(rootDir, ".github/img");
-  const destImgDir = path.join(publishRoot, ".github/img");
-  if (fs.existsSync(srcImgDir)) {
-    fs.mkdirSync(destImgDir, { recursive: true });
-    fs.cpSync(srcImgDir, destImgDir, { recursive: true });
+  // Update target README file(s) inline
+  const dirs = Array.isArray(targetDirs) ? targetDirs : [targetDirs];
+  for (const dir of dirs) {
+    const destReadmePath = path.join(dir, "README.md");
+    updateFileBetweenMarkers(
+      destReadmePath,
+      "<!-- INJECT_SKILL_COVERAGE_START -->",
+      "<!-- INJECT_SKILL_COVERAGE_END -->",
+      dynamicMd
+    );
+    updateFileBetweenMarkers(
+      destReadmePath,
+      "<!-- INJECT_EVAL_RESULTS_START -->",
+      "<!-- INJECT_EVAL_RESULTS_END -->",
+      evalsMd
+    );
   }
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
@@ -284,4 +285,18 @@ function formatUplift(unguided: number, guided: number): string {
   const upliftStr = uplift >= 0 ? `+${uplift}pp` : `${uplift}pp`;
   return `${unguided}% → ${guided}% (**${upliftStr}**)`;
 }
+
+function updateFileBetweenMarkers(filePath: string, markerStart: string, markerEnd: string, newContent: string) {
+  if (!fs.existsSync(filePath)) return;
+  let content = fs.readFileSync(filePath, 'utf8');
+  const startIndex = content.indexOf(markerStart);
+  const endIndex = content.indexOf(markerEnd);
+  if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
+    const before = content.substring(0, startIndex + markerStart.length);
+    const after = content.substring(endIndex);
+    content = before + '\n' + newContent.trim() + '\n' + after;
+    fs.writeFileSync(filePath, content, 'utf8');
+  }
+}
+
 

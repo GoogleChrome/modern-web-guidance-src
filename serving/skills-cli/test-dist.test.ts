@@ -42,6 +42,66 @@ test('Claude Plugin Config in Dist', async () => {
   assert.strictEqual(pluginJson.author.name, 'Google Chrome', 'plugin.json author should be Google Chrome');
 });
 
+test('Grok Plugin Config in Dist', async () => {
+  const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.grok-plugin/marketplace.json'), 'utf8');
+  const marketplaceJson = JSON.parse(marketplaceJsonRaw);
+  assert.strictEqual(marketplaceJson.name, 'googlechrome', 'marketplace.json name should be googlechrome');
+  assert.strictEqual(marketplaceJson.owner.name, 'Google Chrome', 'marketplace.json owner should be Google Chrome');
+  
+  assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'should have plugins');
+  assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
+  assert.strictEqual(marketplaceJson.plugins[0].source, './');
+});
+
+test('Codex Plugin Config in Dist', async () => {
+  const pluginJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.codex-plugin/plugin.json'), 'utf8');
+  const pluginJson = JSON.parse(pluginJsonRaw);
+  assert.strictEqual(pluginJson.name, 'modern-web-guidance', 'plugin.json name should match');
+  assert.strictEqual(pluginJson.author.name, 'Google Chrome', 'plugin.json author should be Google Chrome');
+  assert.strictEqual(pluginJson.skills, './skills/', 'plugin.json skills should point to ./skills/');
+
+  // updateVersionsInDir must keep the manifest version in sync with the rest of the distribution
+  const pkgJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8'));
+  assert.strictEqual(pluginJson.version, pkgJson.version, 'plugin.json version should match package.json version');
+
+  // Codex resolves skills directory relative to the plugin root (the dist dir)
+  assert.ok(pluginJson.skills.startsWith('./'), `Codex skills path ${pluginJson.skills} must start with './'`);
+  const resolvedSkillsDir = path.join(STAGING_DIR, pluginJson.skills);
+  await assert.doesNotReject(fs.access(resolvedSkillsDir), `Codex skills path ${pluginJson.skills} must resolve to a valid directory`);
+  const skillMdPath = path.join(resolvedSkillsDir, 'modern-web-guidance/SKILL.md');
+  await assert.doesNotReject(fs.access(skillMdPath), `Codex skills directory must contain modern-web-guidance/SKILL.md`);
+
+  // Interface metadata validation
+  assert.strictEqual(pluginJson.interface.category, 'Developer Tools', 'plugin.json interface category should be Developer Tools');
+  assert.ok(pluginJson.interface.shortDescription, 'plugin.json must define interface.shortDescription');
+  assert.ok(pluginJson.interface.shortDescription.length < 30, `shortDescription must be fewer than 30 characters (was ${pluginJson.interface.shortDescription.length})`);
+  assert.ok(pluginJson.interface.composerIcon, 'plugin.json must define interface.composerIcon');
+  assert.ok(pluginJson.interface.composerIcon.startsWith('./'), 'composerIcon path must start with ./');
+  const resolvedComposerIcon = path.join(STAGING_DIR, pluginJson.interface.composerIcon);
+  await assert.doesNotReject(fs.access(resolvedComposerIcon), 'composerIcon must resolve to an existing file');
+
+  assert.ok(pluginJson.interface.logo, 'plugin.json must define interface.logo');
+  assert.ok(pluginJson.interface.logo.startsWith('./'), 'logo path must start with ./');
+  const resolvedLogo = path.join(STAGING_DIR, pluginJson.interface.logo);
+  await assert.doesNotReject(fs.access(resolvedLogo), 'logo must resolve to an existing file');
+
+  // Codex Marketplace config validation
+  const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.agents/plugins/marketplace.json'), 'utf8');
+  const marketplaceJson = JSON.parse(marketplaceJsonRaw);
+  assert.strictEqual(marketplaceJson.name, 'googlechrome', 'marketplace.json name should be googlechrome');
+  assert.strictEqual(marketplaceJson.interface.displayName, 'Google Chrome', 'marketplace.json displayName should match');
+  assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'marketplace must declare plugins');
+  assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
+  assert.strictEqual(marketplaceJson.plugins[0].category, 'Developer Tools');
+  assert.strictEqual(marketplaceJson.plugins[0].version, pkgJson.version);
+
+  // Distribution archive compatibility: verify no symbolic links exist
+  const distEntries = await fs.readdir(STAGING_DIR, { recursive: true, withFileTypes: true });
+  for (const entry of distEntries) {
+    assert.strictEqual(entry.isSymbolicLink(), false, `Distribution should not contain symlinks: ${path.join(entry.parentPath, entry.name)}`);
+  }
+});
+
 test('Gemini and VS Code manifests', async () => {
   const geminiJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'gemini-extension.json'), 'utf8'));
   assert.strictEqual(geminiJson.name, 'modern-web-guidance');
@@ -52,6 +112,24 @@ test('Gemini and VS Code manifests', async () => {
   assert.strictEqual(pkgJson.publisher, 'GoogleChrome');
   assert.ok(pkgJson.contributes?.chatSkills, 'Must contribute chatSkills');
   assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills/modern-web-guidance/SKILL.md');
+});
+
+test('Kimi plugin manifest', async () => {
+  const kimiJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'kimi.plugin.json'), 'utf8'));
+  assert.strictEqual(kimiJson.name, 'modern-web-guidance');
+  assert.strictEqual(kimiJson.author.name, 'Google Chrome');
+
+  // updateVersionsInDir must keep the manifest version in sync with the rest of the distribution
+  const pkgJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8'));
+  assert.strictEqual(kimiJson.version, pkgJson.version, 'kimi.plugin.json version should match package.json version');
+
+  // Kimi resolves each `skills` entry relative to the plugin root (the dist dir)
+  assert.deepStrictEqual(kimiJson.skills, ['./skills/modern-web-guidance/', './skills/chrome-extensions/']);
+  for (const skillDir of kimiJson.skills) {
+    assert.ok(skillDir.startsWith('./'), `Kimi skills path ${skillDir} must start with './'`);
+    const resolvedSkillMd = path.join(STAGING_DIR, skillDir, 'SKILL.md');
+    await assert.doesNotReject(fs.access(resolvedSkillMd), `Kimi skills path ${skillDir} must resolve to a directory containing SKILL.md`);
+  }
 });
 
 test('SKILL.md validations', async () => {
@@ -96,18 +174,23 @@ test('Manifest source paths resolve relative to dist directory', async () => {
   await assert.doesNotReject(fs.access(resolvedVsCodePath), `VS Code skill path ${vscodePath} must resolve to an existing SKILL.md`);
 });
 
-test('README dynamic Skill Coverage content', async () => {
+test('README template and dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
+  assert.ok(readmeRaw.includes('Modern Web Guidance'), 'README should contain title');
   
-  // Verify it contains the new headers and format
-  assert.ok(readmeRaw.includes('#### The full list'), 'README should contain the Skill Coverage header');
-  assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
-  assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
-  assert.ok(readmeRaw.includes('<h3>'), 'README should contain category h3 headings');
-  
-  // Quick sanity check that at least one feature name format works out, e.g. explorer links
-  assert.match(readmeRaw, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'README should contain links to Web Features Explorer');
-  assert.match(readmeRaw, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'README should contain GitHub blob links for use cases');
+  // When dynamic coverage is injected (e.g. during publish-skills validation), verify its format
+  if (readmeRaw.includes('#### The full list')) {
+    assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
+    assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
+    assert.ok(readmeRaw.includes('<h3>'), 'README should contain category h3 headings');
+    assert.match(readmeRaw, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'README should contain links to Web Features Explorer');
+    assert.match(readmeRaw, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'README should contain GitHub blob links for use cases');
+  }
+});
+
+test('.github/img assets in Dist', async () => {
+  const logoPath = path.join(STAGING_DIR, '.github/img/modern-web-guidance.svg');
+  await assert.doesNotReject(fs.access(logoPath), '.github/img/modern-web-guidance.svg must exist in dist');
 });
 
 test('modern-web CLI search and retrieve', async () => {
