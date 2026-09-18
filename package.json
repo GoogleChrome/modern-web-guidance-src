@@ -23,8 +23,7 @@
     "report": "pnpm --filter harness report",
     "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
-    "build:mcp": "pnpm --filter serving build",
-    "build:megaskill": "pnpm --filter serving build:megaskill",
+    "build:guides": "pnpm --filter serving build",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
@@ -82,6 +81,6 @@
     "glob": "^13.0.6",
     "mdn-data": "^2.29.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.38.0"
+    "web-features": "^3.39.0"
   }
 }

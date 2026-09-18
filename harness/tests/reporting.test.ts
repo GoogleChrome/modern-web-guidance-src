@@ -56,7 +56,6 @@ test('generateJsonReport includes skillVersion and cliVersion when provided', ()
     '2026-06-26T14:00:00Z',
     1,
     'gemini-cli',
-    'mcp',
     'gemini-pro',
     1234,
     '2026_05_16-c5e78707',
@@ -66,7 +65,7 @@ test('generateJsonReport includes skillVersion and cliVersion when provided', ()
   assert.strictEqual(report.skillVersion, '2026_05_16-c5e78707');
   assert.strictEqual(report.cliVersion, '0.0.174');
   assert.strictEqual(report.agent, 'gemini-cli');
-  assert.strictEqual(report.serving, 'mcp');
+  assert.strictEqual(report.serving, 'skills_cli');
 });
 
 test('generateJsonReport handles omitted optional version parameters gracefully', () => {
@@ -76,7 +75,6 @@ test('generateJsonReport handles omitted optional version parameters gracefully'
     '2026-06-26T14:00:00Z',
     1,
     'codex',
-    'skills_cli',
     'gpt-4o'
   );
 
