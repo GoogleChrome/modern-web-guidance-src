@@ -5,6 +5,8 @@ web-feature-ids:
   - trusted-types
 ---
 
+# Prevent DOM-based XSS attacks with Trusted Types
+
 Trusted Types is a security feature that helps prevent DOM-based Cross-Site Scripting (DOM XSS) by requiring that data being passed into "dangerous" browser APIs (known as sinks) is first converted into a specific type, such as `TrustedHTML`.
 
 By default, many DOM APIs (like `innerHTML` or `document.write`) accept raw strings. If a string contains malicious script from an untrusted source, it can be executed. Trusted Types changes this behavior: once enabled via CSP, these sinks will only accept `TrustedHTML` objects created by authorized policies.
