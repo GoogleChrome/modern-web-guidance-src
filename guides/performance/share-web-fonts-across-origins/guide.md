@@ -3,6 +3,7 @@ name: share-web-fonts-across-origins
 description: Serve large, popular web fonts from a shared cross-origin cache instead of re-downloading them from a font CDN on every site that references them.
 web-feature-ids:
   - tmp-cross-origin-storage
+  - subresource-integrity
 ---
 
 # Share web fonts across origins
@@ -22,7 +23,8 @@ Large icon fonts, emoji fonts, and fonts with extensive Unicode coverage are dow
 @font-face {
   font-family: 'Shared Emoji Font';
   src:
-    url('/fonts/shared-emoji.woff2' integrity('sha256-WYtoZ9R5VKyrRu3WqXc9c0uETSIdOpWDTadELV32T5g=') cross-origin-storage(*)) format('woff2'),
+    /* MANDATORY: List the COS-enhanced source first, then the plain fallback. */
+    url('/fonts/shared-emoji.woff2' integrity('sha256-example-only-hash') cross-origin-storage(*)) format('woff2'),
     url('/fonts/shared-emoji.woff2') format('woff2');
 }
 ```

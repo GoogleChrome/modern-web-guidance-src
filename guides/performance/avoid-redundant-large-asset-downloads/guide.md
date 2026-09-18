@@ -3,6 +3,9 @@ name: avoid-redundant-large-asset-downloads
 description: Avoid re-downloading and re-storing large shared assets, such as AI models, Wasm modules, or fully-bundled JavaScript libraries, that a visitor's browser may already hold from an unrelated site.
 web-feature-ids:
   - tmp-cross-origin-storage
+  - fetch
+  - web-cryptography
+  - permissions-policy
 ---
 
 # Avoid redundant large asset downloads
@@ -24,6 +27,7 @@ Large shared assets such as AI model weights, Wasm modules, game engine cores, o
 ```javascript
 const hash = {
   algorithm: 'SHA-256',
+  // Example-only hash value
   value: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
 };
 
@@ -48,6 +52,7 @@ async function loadLibrary() {
   const fileBlob = await response.blob();
 
   if (supportsCOS) {
+    // Write back to the cache.
     try {
       const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
         create: true,

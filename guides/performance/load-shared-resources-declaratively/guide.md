@@ -3,6 +3,8 @@ name: load-shared-resources-declaratively
 description: Serve popular, unmodified scripts, stylesheets, and JavaScript modules from a shared cross-origin cache using markup or import syntax alone, without writing custom caching logic.
 web-feature-ids:
   - tmp-cross-origin-storage
+  - subresource-integrity
+  - import-attributes
 ---
 
 # Load shared resources declaratively
@@ -23,13 +25,13 @@ Some resources are more naturally loaded declaratively, through HTML markup or J
 <link
   rel="stylesheet"
   href="/assets/shared-widget.css"
-  integrity="sha256-mXPhVm4mG5NhYQge+hY7V7c9Uy2mejppXiKq24un6AA="
+  integrity="sha256-example-only-hash"
   crossorigin="anonymous"
   crossoriginstorage="*"
 />
 <script
   src="/assets/shared-widget.js"
-  integrity="sha256-NDFkFtKeZCKtK3XKGa58d0kJVjCIrfdQGvPCW9HXt4s="
+  integrity="sha256-example-only-hash"
   crossorigin="anonymous"
   crossoriginstorage="*"
   defer
@@ -37,7 +39,7 @@ Some resources are more naturally loaded declaratively, through HTML markup or J
 ```
 
 ```javascript
-// The static form can't degrade, so guard it with a feature check and
+// MANDATORY: The static form can't degrade, so guard it with a feature check and
 // fall back to a plain dynamic import when COS isn't supported.
 const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
 
