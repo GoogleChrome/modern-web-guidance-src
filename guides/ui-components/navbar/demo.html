@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Responsive site navigation</title>
+
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      --page-background: light-dark(#fff, #111);
+      --surface: light-dark(#f4f4f5, #242424);
+      --surface-raised: light-dark(#fff, #2c2c2c);
+      --text: light-dark(#18181b, #f4f4f5);
+      --muted-text: light-dark(#52525b, #a1a1aa);
+      --border: light-dark(#d4d4d8, #444);
+      --accent: light-dark(#1d4ed8, #93c5fd);
+      --focus-ring: light-dark(#1d4ed8, #bfdbfe);
+    }
+
+    :where(*, *::before, *::after) {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--page-background);
+      color: var(--text);
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.5;
+    }
+
+    body {
+      min-block-size: 100dvh;
+      margin: 0;
+    }
+
+    :where(a, button):focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 3px;
+    }
+
+    :where(a) {
+      color: inherit;
+    }
+
+    :where(h1, h2, h3, h4, h5, h6) {
+      text-wrap: balance;
+    }
+
+    :where(p) {
+      text-wrap: pretty;
+    }
+
+    .site-header {
+      border-block-end: 1px solid var(--border);
+      background: var(--page-background);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+      max-inline-size: 75rem;
+      min-block-size: 4.5rem;
+      margin-inline: auto;
+      padding-inline: clamp(1rem, 4vw, 3rem);
+      container-type: inline-size;
+    }
+
+    .site-logo {
+      color: var(--text);
+      font-size: 1.25rem;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .menu-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-inline-size: 24px;
+      min-block-size: 2.75rem;
+      padding-block: 0.6rem;
+      padding-inline: 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+
+      /*
+        Give the button an anchor name so the mobile popover
+        can align itself with the button.
+      */
+      anchor-name: --menu-button;
+    }
+
+    .menu-button:hover:not(:disabled) {
+      background: var(--surface-raised);
+    }
+
+    .menu-icon {
+      inline-size: 1.25rem;
+      block-size: 1.25rem;
+    }
+
+    .site-header:has(.site-menu:popover-open) {
+      border-block-end-color: var(--accent);
+    }
+
+    .site-menu {
+      display: grid;
+      gap: 0.25rem;
+      inline-size: fit-content;
+      block-size: fit-content;
+      margin: 0;
+      padding-block: 0.5rem;
+      padding-inline: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      background: var(--surface-raised);
+      color: var(--text);
+      box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
+    }
+
+    .site-menu::backdrop {
+      background: rgb(0 0 0 / 30%);
+    }
+
+    .menu-list {
+      display: grid;
+      align-content: start;
+      gap: 0.25rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .menu-link {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-inline-size: 24px;
+      min-block-size: 3rem;
+      padding-inline: 1rem;
+      border-radius: 0.5rem;
+      color: var(--muted-text);
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .menu-link:is(:hover, :focus-visible) {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .menu-link[aria-current="page"] {
+      color: var(--accent);
+    }
+
+    .menu-link[aria-current="page"]::before {
+      position: absolute;
+      inset-block: 0.75rem;
+      inset-inline-start: 0.3rem;
+      inline-size: 0.2rem;
+      border-radius: 99rem;
+      background: currentColor;
+      content: "";
+    }
+
+    main {
+      max-inline-size: 75rem;
+      margin-inline: auto;
+      padding-block: clamp(4rem, 10vw, 8rem);
+      padding-inline: clamp(1rem, 4vw, 3rem);
+      container-type: inline-size;
+    }
+
+    .hero {
+      max-inline-size: 48rem;
+    }
+
+    .hero h1 {
+      max-inline-size: 12ch;
+      margin-block: 0 1rem;
+      font-size: clamp(2.75rem, 8cqi, 5rem);
+      line-height: 0.95;
+    }
+
+    .hero p {
+      max-inline-size: 42rem;
+      margin: 0;
+      color: var(--muted-text);
+      font-size: clamp(1.1rem, 2cqi, 1.35rem);
+    }
+
+    .context-note {
+      max-inline-size: 42rem;
+      margin-block-start: 2rem;
+      padding-block-start: 1rem;
+      border-block-start: 1px solid var(--border);
+      color: var(--muted-text);
+    }
+
+    footer {
+      max-inline-size: 75rem;
+      margin-inline: auto;
+      padding-block: 1rem 2rem;
+      padding-inline: clamp(1rem, 4vw, 3rem);
+      color: var(--muted-text);
+      font-size: 0.95rem;
+    }
+
+    /*
+      Narrow layout.
+
+      The popover is approximately 80% of the viewport width,
+      positioned below the menu button and aligned with its
+      right edge.
+    */
+    @container (inline-size < 45rem) {
+      .site-menu {
+        position: fixed;
+        inset: auto;
+
+        inset-block-start: anchor(--menu-button bottom);
+        inset-inline-end: anchor(--menu-button right);
+
+        inline-size: 80dvw;
+        max-inline-size: calc(100dvw - 2rem);
+
+        block-size: fit-content;
+        max-block-size: calc(100dvh - 6rem);
+
+        margin-block-start: 0.5rem;
+        margin-inline: 0;
+
+        overflow: auto;
+      }
+
+      .menu-list {
+        align-content: start;
+      }
+
+      /*
+        Fallback for browsers that do not support anchor positioning.
+      */
+      @supports not (inset-block-start: anchor(--menu-button bottom)) {
+        .site-menu {
+          inset-block-start: 4.75rem;
+          inset-inline-end: 1rem;
+        }
+      }
+    }
+
+    /*
+      Wide layout.
+
+      The same navigation element becomes part of the header
+      rather than an overlay.
+    */
+    @container (inline-size >=45rem) {
+      .menu-button {
+        display: none;
+      }
+
+      .site-menu {
+        position: static;
+        display: block;
+        inline-size: auto;
+        max-inline-size: none;
+        block-size: auto;
+        max-block-size: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+      }
+
+      .site-menu::backdrop {
+        display: none;
+      }
+
+      .menu-list {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .menu-link {
+        min-block-size: 2.75rem;
+        padding-inline: 0.8rem;
+      }
+
+      .menu-link[aria-current="page"]::before {
+        inset-block: auto 0.1rem;
+        inset-inline: 0.8rem;
+        inline-size: auto;
+        block-size: 0.2rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      @container (inline-size < 45rem) {
+        .site-menu {
+          transition:
+            display 180ms allow-discrete,
+            opacity 180ms ease,
+            transform 180ms ease;
+          opacity: 0;
+          transform: translateY(-0.5rem);
+        }
+
+        .site-menu:popover-open {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        @starting-style {
+          .site-menu:popover-open {
+            opacity: 0;
+            transform: translateY(-0.5rem);
+          }
+        }
+      }
+    }
+
+    @media (forced-colors: active) {
+
+      .site-menu,
+      .menu-button {
+        border-color: CanvasText;
+        box-shadow: none;
+      }
+
+      .menu-link[aria-current="page"]::before {
+        background: Highlight;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .site-menu {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="site-logo" href="index.html">
+        Acme
+      </a>
+
+      <button class="menu-button" type="button" popovertarget="site-menu" popovertargetaction="toggle"
+        aria-controls="site-menu">
+        <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
+        </svg>
+
+        <span>Menu</span>
+      </button>
+
+      <nav id="site-menu" class="site-menu" popover="auto" aria-label="Primary navigation">
+        <ul class="menu-list">
+          <li>
+            <a class="menu-link" href="index.html" aria-current="page">
+              Home
+            </a>
+          </li>
+
+          <li>
+            <a class="menu-link" href="about.html">
+              About
+            </a>
+          </li>
+
+          <li>
+            <a class="menu-link" href="services.html">
+              Services
+            </a>
+          </li>
+
+          <li>
+            <a class="menu-link" href="contact.html">
+              Contact
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <h1 id="page-title">
+        Build better experiences.
+      </h1>
+
+      <p>
+        A responsive site navigation using one semantic navigation
+        element and the native Popover API.
+      </p>
+
+      <aside class="context-note" aria-label="Navigation notes">
+        The current page is marked with <code>aria-current="page"</code>.
+        Resize the viewport to see the same navigation switch between an
+        anchored popover and an inline menu.
+      </aside>
+    </section>
+  </main>
+
+  <footer>
+    <small>Acme navigation example</small>
+  </footer>
+
+  <script>
+    const menu = document.querySelector("#site-menu");
+    const headerInner = document.querySelector(".header-inner");
+    const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const desktopBreakpoint = 45 * rootFontSize;
+
+    // CSS changes the layout; JS closes stale popover state after a resize.
+    function closeMenuOnDesktop(entry) {
+      if (entry.contentRect.width >= desktopBreakpoint && menu.matches(":popover-open")) {
+        menu.hidePopover();
+      }
+    }
+
+    const headerObserver = new ResizeObserver(([entry]) => closeMenuOnDesktop(entry));
+    headerObserver.observe(headerInner);
+  </script>
+</body>
+
+</html>
