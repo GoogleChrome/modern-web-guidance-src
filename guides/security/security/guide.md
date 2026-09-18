@@ -228,7 +228,7 @@ Trusted Types enforces source-level guidance at runtime by blocking string assig
 
 Because deployment involves site-wide enforcement and framework compatibility checks, it should be treated as a major security initiative.
 
-- **DO**: Consult the dedicated [Trusted Types Guide](../trusted-types/guide.md) for full implementation details, including policy creation and rollout strategies.
+- **DO**: Consult the dedicated {{ GUIDE_REF("trusted-types") }} guide for full implementation details, including policy creation and rollout strategies.
 - **Prerequisite**: Audit framework and third-party widget support before starting. If dependencies write to DOM sinks without producing Trusted Types, enforcement will break that code.
 - **Incremental Rollout**: Always start with `Content-Security-Policy-Report-Only` to identify all offending sinks before moving to full enforcement.
 
