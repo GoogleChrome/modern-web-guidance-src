@@ -86,8 +86,8 @@ interface ValidationResult {
  * Determines the project status name for a use case based on its completeness.
  * Returns null when the use case is complete.
  */
-export function getStatusName(guideBody: string, hasGrader: boolean, hasTask: boolean): ProjectStatus | null {
-  if (guideBody.trim().length === 0) {
+export function getStatusName(guideBody: string, hasGrader: boolean, hasTask: boolean, isDraft: boolean = false, hasExpectations: boolean = true): ProjectStatus | null {
+  if (guideBody.trim().length === 0 || isDraft || !hasExpectations) {
     return ProjectStatus.NeedsGuidance;
   }
   if (!hasGrader || !hasTask) {
@@ -256,7 +256,9 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
-    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask) : null;
+    const isDraft = Boolean(inv.draft);
+    const hasExpectations = inv.hasExpectations && !inv.expectationsEmpty;
+    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask, isDraft, hasExpectations) : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
