@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { features } from 'web-features';
-import { scanAllGuides, scanDisciplineSkills } from '../lib/guide-validation.ts';
+import { scanAllGuides, scanDisciplineSkills, getOriginTrialsRegistry } from '../lib/guide-validation.ts';
+import { resolveFeatureId } from '../serving/lib/baseline.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -187,10 +188,57 @@ if (changedRegularFeatures.length > 0) {
   }
 }
 
+// 5. Check for graduated Origin Trial features (features in features/origin-trials.json that now have browser support)
+interface GraduatedOriginTrial {
+  featureId: string;
+  supportedBrowsers: string[];
+  locations: string[];
+}
+
+const originTrials = getOriginTrialsRegistry();
+const graduatedOriginTrials: GraduatedOriginTrial[] = [];
+for (const featureId of Object.keys(originTrials)) {
+  const resolvedIds = resolveFeatureId(featureId);
+  const supportedBrowsers: string[] = [];
+  for (const id of resolvedIds) {
+    const f = (features as Record<string, any>)[id];
+    if (f?.status?.support) {
+      for (const [browser, version] of Object.entries(f.status.support)) {
+        if (version && version !== '-') {
+          supportedBrowsers.push(`${browser} ${version}`);
+        }
+      }
+    }
+  }
+  if (supportedBrowsers.length > 0) {
+    const locations = Array.from(featureToLocations.get(featureId) || []);
+    graduatedOriginTrials.push({
+      featureId,
+      supportedBrowsers,
+      locations,
+    });
+    hasError = true;
+  }
+}
+
+if (graduatedOriginTrials.length > 0) {
+  console.log('🎓 Graduated Origin Trial feature IDs detected:');
+  for (const item of graduatedOriginTrials) {
+    console.log(`  - "${item.featureId}" now has browser support (${item.supportedBrowsers.join(', ')})`);
+    console.log('    ↳ Remove from features/origin-trials.json');
+    if (item.locations.length > 0) {
+      console.log('    ↳ Referenced in:');
+      for (const loc of item.locations) {
+        console.log(`      • ${loc}`);
+      }
+    }
+  }
+}
+
 // Write structured Markdown comment body to GITHUB_OUTPUT if any items were flagged
-if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatures.length > 0)) {
+if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatures.length > 0 || graduatedOriginTrials.length > 0)) {
   const sections: string[] = [
-    '⚠️ **Action Required**: This automated `web-features` update introduced official feature IDs or platform record shifts (`moved` / `split`) affecting guidance in this repository.\n'
+    '⚠️ **Action Required**: This automated `web-features` update introduced official feature IDs, platform record shifts (`moved` / `split`), or graduated Origin Trials affecting guidance in this repository.\n'
   ];
 
   if (expiredTemps.length > 0) {
@@ -234,6 +282,21 @@ if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatu
     sections.push('');
   }
 
+  if (graduatedOriginTrials.length > 0) {
+    sections.push('### 3. Graduated Origin Trial Features');
+    for (const item of graduatedOriginTrials) {
+      sections.push(`- **🎓 \`${item.featureId}\` has graduated** with browser support: ${item.supportedBrowsers.join(', ')}`);
+      sections.push('  ↳ *Action:* Remove from `features/origin-trials.json`');
+      if (item.locations.length > 0) {
+        sections.push('  ↳ *Referenced in:*');
+        for (const loc of item.locations) {
+          sections.push(`    - \`${loc}\``);
+        }
+      }
+    }
+    sections.push('');
+  }
+
   sections.push('Before merging this PR, please resolve the items flagged above and re-run guide validation checks.');
 
   const delimiter = `EOF_${Date.now()}`;
@@ -244,6 +307,6 @@ if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatu
 if (hasError) {
   process.exit(1);
 } else {
-  console.log('✅ All temporary and regular feature IDs are valid and active upstream.');
+  console.log('✅ All temporary, origin trial, and regular feature IDs are valid and active upstream.');
   process.exit(0);
 }

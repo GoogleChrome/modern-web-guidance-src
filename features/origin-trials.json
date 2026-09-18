@@ -1,0 +1,11 @@
+{
+  "canvas-html": {
+    "chromestatus_url": "https://chromestatus.com/feature/5172548013916160"
+  },
+  "declarative-webmcp": {
+    "chromestatus_url": "https://chromestatus.com/feature/5117755740913664"
+  },
+  "document-modelcontext": {
+    "chromestatus_url": "https://chromestatus.com/feature/5117755740913664"
+  }
+}
