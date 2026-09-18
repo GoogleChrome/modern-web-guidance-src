@@ -1,0 +1,223 @@
+diff --git a/index.html b/index.html
+index 66c9173..ecd3a48 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,150 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* 3D Interactive Coffee Box */
++    .interactive-3d-section {
++      background: #f5ede6;
++      padding: 50px 20px;
++      margin-top: 30px;
++      border-top: 1px solid #e0d7d0;
++      border-bottom: 1px solid #e0d7d0;
++    }
++
++    .canvas-wrapper {
++      position: relative;
++      max-width: 640px;
++      margin: 20px auto 0 auto;
++      border-radius: 12px;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++    }
++
++    canvas#canvas {
++      display: block;
++      width: 100%;
++      max-width: 640px;
++      height: 400px;
++      border-radius: 12px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
++      background-color: #1a120b;
++      cursor: grab;
++    }
++
++    canvas#canvas:active {
++      cursor: grabbing;
++    }
++
++    .coffee-box-ui {
++      box-sizing: border-box;
++      width: 320px;
++      padding: 18px 20px;
++      background: rgba(255, 255, 255, 0.96);
++      border: 2px solid var(--primary);
++      border-radius: 10px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++      color: var(--text);
++      font-family: inherit;
++      pointer-events: auto;
++      transform-origin: 0 0;
++    }
++
++    /* Fallback UI strategy: overlay on top of canvas using CSS */
++    .coffee-box-ui.fallback-mode {
++      position: absolute;
++      top: 50%;
++      left: 50%;
++      transform: translate(-50%, -50%) !important;
++      z-index: 10;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
++    }
++
++    .fallback-notice {
++      background: #fff3cd;
++      color: #856404;
++      padding: 10px 16px;
++      border-radius: 8px;
++      font-size: 0.88rem;
++      text-align: center;
++      border: 1px solid #ffeeba;
++    }
++
++    .box-badge {
++      font-size: 0.72rem;
++      font-weight: 700;
++      letter-spacing: 1.5px;
++      color: #ff8f00;
++      text-transform: uppercase;
++      margin-bottom: 2px;
++    }
++
++    .box-heading {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .form-group {
++      margin-bottom: 10px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.8rem;
++      font-weight: 600;
++      margin-bottom: 3px;
++      color: var(--text);
++    }
++
++    .form-group input[type="text"],
++    .form-group select {
++      width: 100%;
++      padding: 6px 10px;
++      border: 1px solid #ccc;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      background: white;
++      color: var(--text);
++      box-sizing: border-box;
++    }
++
++    .form-group input[type="text"]:focus,
++    .form-group select:focus {
++      outline: none;
++      border-color: var(--primary);
++      box-shadow: 0 0 0 2px rgba(78, 52, 46, 0.2);
++    }
++
++    .btn-box-order {
++      width: 100%;
++      padding: 9px;
++      font-size: 0.9rem;
++      border: none;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      border-radius: 5px;
++      font-weight: 600;
++      margin-top: 6px;
++      transition: background 0.2s;
++    }
++
++    .btn-box-order:hover {
++      background: #3e2723;
++    }
++
++    .order-confirmation {
++      margin-top: 8px;
++      padding: 6px;
++      border-radius: 4px;
++      background: #e8f5e9;
++      color: #2e7d32;
++      font-size: 0.82rem;
++      text-align: center;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+@@ -174,6 +318,53 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="interactive-3d-section">
++    <div class="container" style="margin-top: 0; margin-bottom: 0;">
++      <h2 style="text-align: center; margin-bottom: 0.5rem; color: var(--primary);">Interactive 3D Coffee Box</h2>
++      <p style="text-align: center; margin-bottom: 1.5rem; color: #5d4037;">
++        Design your custom artisanal roast live in our 3D interactive coffee box. Interact with the form directly in the 3D scene!
++      </p>
++
++      <div id="canvas-fallback-notice" class="fallback-notice" style="display: none; max-width: 640px; margin: 0 auto 15px auto;">
++        Notice: Interactive HTML-in-Canvas is not natively supported in this browser. Showing standard interactive overlay.
++      </div>
++
++      <div class="canvas-wrapper">
++        <canvas id="canvas" layoutsubtree style="width: 100%; max-width: 640px; height: 400px;">
++          <div id="coffee-box-ui" class="coffee-box-ui">
++            <div class="box-badge">THE DAILY GRIND</div>
++            <h3 class="box-heading">Custom Roast Configurator</h3>
++            <form id="coffee-box-form" onsubmit="event.preventDefault();">
++              <div class="form-group">
++                <label for="blend-name">Roast Name</label>
++                <input type="text" id="blend-name" name="blendName" value="Artisan Blend" />
++              </div>
++              <div class="form-group">
++                <label for="roast-level">Roast Level</label>
++                <select id="roast-level" name="roastLevel">
++                  <option value="Light Roast">Light Roast (Bright &amp; Floral)</option>
++                  <option value="Medium Roast" selected>Medium Roast (Rich &amp; Nutty)</option>
++                  <option value="Dark Roast">Dark Roast (Bold &amp; Smoky)</option>
++                </select>
++              </div>
++              <div class="form-group">
++                <label for="grind-type">Grind Profile</label>
++                <select id="grind-type" name="grindType">
++                  <option value="Whole Bean">Whole Bean</option>
++                  <option value="Coarse">Coarse (French Press)</option>
++                  <option value="Medium" selected>Medium (Drip / Pour-Over)</option>
++                  <option value="Fine">Fine (Espresso)</option>
++                </select>
++              </div>
++              <button type="submit" id="order-box-btn" class="btn btn-box-order">Order Custom Box</button>
++              <div id="order-confirmation" class="order-confirmation" style="display: none;"></div>
++            </form>
++          </div>
++        </canvas>
++      </div>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+diff --git a/package.json b/package.json
+index 2bd4d77..b68d9f5 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "echo 'Build clean'"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
