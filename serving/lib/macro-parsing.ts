@@ -11,6 +11,9 @@
 // Matches {{ NAME(ARGS) }} where NAME is uppercase and ARGS can be anything
 export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
 
+// Matches consecutive macros separated by whitespace that contains at least one newline
+export const CONSECUTIVE_MACRO_PATTERN = /({{\s*[A-Z_]+\(.*?\)\s*}})[ \t]*\r?\n\s*(?={{\s*[A-Z_]+\(.*?\)\s*}})/g;
+
 /**
  * Parses macro arguments, respecting quotes and handling commas.
  * Robust against varied whitespace and different quote types.

@@ -10,6 +10,7 @@ import {
   getAgentCommandAndArgs,
 } from '../../harness/lib/agent-shared.ts';
 import { Agents } from '../../harness/config.ts';
+import { getDefaultSolutionAgent } from '../../lib/guide-validation.ts';
 
 export async function copyBaseAppToWorkspace(baseApp: string, destDir: string): Promise<void> {
   const refBaseAppDir = path.join(baseAppsDir, baseApp);
@@ -84,7 +85,7 @@ export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string
   fs.mkdirSync(workDir, { recursive: true });
 
   const geminiDest = path.join(tempHome, '.gemini');
-  const effectiveAgent: Agents = agent ?? (process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.GEMINI_CLI);
+  const effectiveAgent: Agents = agent ?? (getDefaultSolutionAgent() as Agents);
   setupAgentCredentials(effectiveAgent, tempHome);
 
   createTrustedFolders(geminiDest, [tempHome]);

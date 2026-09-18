@@ -6,7 +6,7 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { Serving, resolveSuiteConfig } from '../harness/config.ts';
+import { resolveSuiteConfig } from '../harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 import { getTaskMap } from '../lib/guide-validation.ts';
 
@@ -46,7 +46,7 @@ const COMMAND_METADATA = {
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
-
+  pr: { desc: 'Push branch and create or update GitHub PR from dev report', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -93,7 +93,7 @@ completion.on('arg1', ({ before, line, reply }) => {
     reply(['grader']);
   } else if (before === 'audit') {
     reply(flags);
-  } else if (['dev', 'test', 'grade'].includes(before)) {
+  } else if (['dev', 'test', 'grade', 'pr'].includes(before)) {
     reply([...listGuideDirs(), ...flags]);
   } else {
     reply(flags);
@@ -166,7 +166,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'audit'],
+      commands: ['dev', 'pr', 'audit'],
     },
 
     {
@@ -196,7 +196,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = cmd === 'dev' ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
@@ -293,13 +293,7 @@ async function main() {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
-      let buildCode = 0;
-      if (mergedSuiteConfig.serving === Serving.MCP) {
-        buildCode = await runNpm(['build:mcp']);
-      } else if (mergedSuiteConfig.serving === Serving.SKILLS_CLI) {
-        buildCode = await runNpm(['--filter', 'serving', 'build-dist']);
-      }
-
+      const buildCode = await runNpm(['--filter', 'serving', 'build-dist']);
       if (buildCode !== 0) process.exit(buildCode);
 
       if (values['ui']) {
@@ -339,6 +333,13 @@ async function main() {
       const args = positionals.slice(1);
       const code = await runNpm(['baselinestatus', ...args]);
       process.exit(code);
+    }
+
+    case 'pr': {
+      const dir = requireArg(positionals[1], 'gd pr <path/to/guide>');
+      const { runDevPr } = await import('../guides/lib/dev-pr.ts');
+      const success = await runDevPr(dir);
+      process.exit(success ? 0 : 1);
     }
 
 

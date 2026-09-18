@@ -9,7 +9,6 @@ import { Agents } from './config.ts';
  * Maps agent names to their harness file and default configuration.
  */
 const AGENT_CONFIGS: Record<string, { file: string; agent: string }> = {
-  'jetski': { file: 'jetski-agent.ts', agent: Agents.JETSKI },
   'jetski-cli': { file: 'jetski-cli-agent.ts', agent: Agents.JETSKI_CLI },
   'gemini-cli': { file: 'gemini-cli-agent.ts', agent: Agents.GEMINI_CLI },
   'claude-code': { file: 'claude-code-agent.ts', agent: Agents.CLAUDE_CODE },
@@ -48,9 +47,7 @@ export async function runSmokeTest(options: SmokeTestOptions = {}): Promise<void
     name: 'smoke-test',
     numRuns: 1,
     tasks: [],
-    mcpServersToEnable: [],
     skillsToEnable: [],
-    serving: 'skills_cli',
     agent: agentConfig.agent
   };
   
@@ -93,8 +90,8 @@ export async function runSmokeTest(options: SmokeTestOptions = {}): Promise<void
 
     // Verify trajectory parsing and metric extraction
     const { extractModelFromResults, extractTokenUsageFromResults } = await import('./lib/collection.ts');
-    const model = extractModelFromResults(tempProjectDir, agentConfig.agent);
-    const tokenUsage = extractTokenUsageFromResults(tempProjectDir, agentConfig.agent);
+    const model = extractModelFromResults(tempProjectDir);
+    const tokenUsage = extractTokenUsageFromResults(tempProjectDir);
     
     console.log(`📊 Trajectory summary from smoke test: Model=${model}, Tokens=${JSON.stringify(tokenUsage)}`);
 

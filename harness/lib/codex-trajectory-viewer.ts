@@ -116,7 +116,7 @@ export function generateCodexTrajectoryHtml(logData: any[]): string {
   html += "              contentHtml = '<div class=\"thought\"><b>Reasoning Process:</b><br/>' + escapeHtml(p.content || '[Reasoning]') + '</div>';\n";
   html += '          } else if (p.type === "function_call" || p.type === "custom_tool_call") {\n';
   html += '              role = "assistant";\n';
-  html += '              contentHtml = renderTool(p.name, p.arguments, p.call_id);\n';
+  html += '              contentHtml = renderTool(p.name, p.arguments || p.input, p.call_id);\n';
   html += '          } else if (p.type === "function_call_output" || p.type === "custom_tool_call_output") {\n';
   html += '              role = "system";\n';
   html += '              const errorClass = p.is_error ? " error" : "";\n';

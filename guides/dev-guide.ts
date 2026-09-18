@@ -5,7 +5,7 @@ import { rootDir } from '../lib/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import { generateTargetGrader } from './grader-gen.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
-import { defaultSuiteConfig, Serving, Agents, type SuiteConfig } from '../harness/config.ts';
+import { Agents, type SuiteConfig } from '../harness/config.ts';
 import { collectGuidesUsed } from '../harness/lib/guidance_validation.ts';
 import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from './lib/utils.ts';
 import {
@@ -24,7 +24,9 @@ import {
   NEGATIVE_DEMO_FILE,
   GRADER_FILE,
   TASK_FILE,
+  REPORT_FILE,
   TARGETS_DIR,
+  TEST_APP_RESULTS_DIR,
   SUPPORTED_BASE_APPS,
   getDefaultSolutionAgent,
   getActiveSolutionAgents,
@@ -37,6 +39,7 @@ import {
   classifyGuide,
   scanAllGuides
 } from '../lib/guide-validation.ts';
+import { runDevReport } from './lib/dev-report.ts';
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
@@ -81,6 +84,20 @@ function printInventory(inv: GuideInventory): void {
   }
 }
 
+export function exciseOldEvalArtifacts(guideDir: string): void {
+  const oldArtifacts = [
+    path.join(guideDir, 'tasks'),
+    path.join(guideDir, GRADER_FILE),
+    path.join(guideDir, NEGATIVE_DEMO_FILE),
+  ];
+
+  for (const artifactPath of oldArtifacts) {
+    if (fs.existsSync(artifactPath)) {
+      fs.rmSync(artifactPath, { recursive: true, force: true });
+    }
+  }
+}
+
 export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
   const maxRetries = options.maxRetries ?? 4;
   const targetDir = path.resolve(process.cwd(), targetDirRaw);
@@ -89,6 +106,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     console.error(`Error: Directory not found: ${targetDir}`);
     return false;
   }
+
+  // Step 0: Excise old eval artifacts if they exist
+  exciseOldEvalArtifacts(targetDir);
 
   // Step 1: Validate guide inventory
   const currentInv = inv || inventoryGuide(targetDir, { useTargetEvals: true });
@@ -184,6 +204,11 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   const defaultAgent = getDefaultSolutionAgent();
   printSummary(targetDir, currentInv, { success: overallSuccess, solutions: { [defaultAgent]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] }, [Agents.CODEX_CLI]: { passed: 0, failed: 0, failingTests: [] } }, zeroPassrate: { passed: 0, failed: 0, passingTests: [] } }, 1);
 
+  // Step 5: Run evaluation report (printed last)
+  if (options.test !== false && overallSuccess) {
+    await runDevReport(targetDir);
+  }
+
   return overallSuccess;
 }
 
@@ -270,15 +295,8 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   }
 
   // Build workspace dependencies
-  let buildCode = 0;
-  const serving = suiteConfig ? suiteConfig.serving : defaultSuiteConfig.serving;
-  if (serving === Serving.MCP) {
-    console.log(`\nBuilding MCP index...`);
-    buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
-  } else if (serving === Serving.SKILLS_CLI) {
-    console.log(`\nBuilding skills-cli dist...`);
-    buildCode = await spawnAsync('pnpm', ['--filter', 'serving', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
-  }
+  console.log(`\nBuilding skills-cli dist...`);
+  const buildCode = await spawnAsync('pnpm', ['--filter', 'serving', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
 
   if (buildCode !== 0) {
     console.error(cRed(`Failed to build workspace dependencies (exit code ${buildCode})`));
@@ -311,21 +329,20 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       const preResults = await gradeOutput(
         targetsDir,
         targetGraderPath,
-        path.join(targetDir, 'test-app-results', baseApp, 'pre-grade-report'),
+        path.join(targetDir, TEST_APP_RESULTS_DIR, baseApp, 'pre-grade-report'),
         zeroPassratePatch
       );
       if (preResults) results['pre'] = preResults;
 
       // 2. Run agent suite
       const { runSuite } = await import('../harness/run_suite.ts');
-      const testOutputDir = path.join(targetDir, 'test-app-results', baseApp);
+      const testOutputDir = path.join(targetDir, TEST_APP_RESULTS_DIR, baseApp);
       const agent = getDefaultSolutionAgent();
       await runSuite({
         name: `${guideName}-${baseApp}`,
         outputDir: testOutputDir,
         tasks: [taskKey],
         numRuns: 1,
-        skipEval: true,
         guidedOnly,
         suiteConfig: {
           ...suiteConfig,
@@ -352,10 +369,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
       let guidesConsumed: string[] = [];
       const guidedDir = path.join(testOutputDir, '1', guideName, baseApp, 'guided');
       if (fs.existsSync(guidedDir)) {
-        const suiteConfig = defaultSuiteConfig;
-        const servingMode = suiteConfig.serving as any;
-        const activeAgent = agent;
-        const usage = await collectGuidesUsed(guidedDir, servingMode, activeAgent);
+        const usage = await collectGuidesUsed(guidedDir);
         guidesConsumed = [...new Set([...usage.retrievedGuides, ...usage.fileReadGuides])];
       }
 
@@ -475,6 +489,12 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
       
       printFileStatus(TASK_FILE, taskPath, 'generated', 'not generated');
     }
+  }
+
+  const evalReportPath = path.join(targetDir, TEST_APP_RESULTS_DIR, REPORT_FILE);
+  if (fs.existsSync(evalReportPath)) {
+    console.log(`\n   ${cBold('Evaluation Report:')}`);
+    console.log(`     ${REPORT_FILE.padEnd(28)} ${cGreen('✅')} generated`);
   }
 
   console.log(`\nAll generated files are in ${relDir}/`);

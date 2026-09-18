@@ -12,7 +12,7 @@ type Feature = typeof features[string];
  */
 export interface FeatureValidationResult {
   isValid: boolean;
-  error?: 'not_found' | 'invalid_kind' | 'temp_feature_now_available' | 'unregistered_temp_feature';
+  error?: 'not_found' | 'invalid_kind' | 'unregistered_temp_feature';
   kind?: string;
   suggestion?: string;
   errorMessage?: string;
@@ -236,14 +236,6 @@ export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string
  */
 export function validateFeature(id: string): FeatureValidationResult {
   if (id.startsWith('tmp-')) {
-    const realId = id.slice(4);
-    if (features[realId]) {
-      return {
-        isValid: false,
-        error: 'temp_feature_now_available',
-        errorMessage: `Temporary web feature ID "${id}" is now available in web-features package as "${realId}". Please update guide frontmatter to use "${realId}".`
-      };
-    }
     if (!(id in pendingWebFeatures)) {
       return {
         isValid: false,

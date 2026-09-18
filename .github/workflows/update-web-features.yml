@@ -1,0 +1,118 @@
+name: Update web-features
+
+on:
+  schedule:
+    # 05:00 UTC on Monday and Thursday
+    - cron: '0 5 * * 1,4'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      should_proceed: ${{ steps.detect.outputs.should_proceed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check open PRs and package updates
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            EXISTING_PR=$(gh pr list --head auto/web-features-update --state open --json number --jq '.[0].number')
+            if [ -n "$EXISTING_PR" ]; then
+              echo "::notice::An open update PR (#$EXISTING_PR) already exists. Skipping scheduled run."
+              echo "should_proceed=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          corepack enable pnpm
+          pnpm update --recursive web-features
+
+          if git diff --quiet; then
+            echo "::notice::No new web-features package updates available. Workspaces are already on the latest version."
+            echo "should_proceed=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_proceed=true" >> $GITHUB_OUTPUT
+          fi
+
+  validate-and-pr:
+    needs: check
+    if: ${{ needs.check.outputs.should_proceed == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Update web-features across workspaces
+        run: |
+          pnpm update --recursive web-features
+
+      - name: Validate repository guide impact after web-features bump
+        id: validate-web-feature-update
+        continue-on-error: true
+        run: node --experimental-strip-types guides/validate-after-web-feature-update.ts
+
+      - name: Generate GitHub App token
+        if: ${{ vars.GH_APP_ID != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-issues: write
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Create Pull Request if web-features changed
+        id: cpr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          author: "Modern Web Guidance Bot <modern-web-guidance-bot@google.com>"
+          committer: "Modern Web Guidance Bot <modern-web-guidance-bot@google.com>"
+          commit-message: "chore(deps): bump web-features package"
+          title: "chore(deps): bump web-features package"
+          body: |
+            Automated check for `web-features` updates across `/`, `/serving`, and `/guides`.
+            
+            CI workflow checks will automatically run on this PR to report if any guidance macros, tests, or features require updates.
+          branch: "auto/web-features-update"
+          delete-branch: true
+
+      - name: Comment on PR if validation identified post-update action items
+        if: ${{ steps.cpr.outputs.pull-request-number != '' && steps.validate-web-feature-update.outputs.comment_body != '' }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+          COMMENT_BODY: ${{ steps.validate-web-feature-update.outputs.comment_body }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "$COMMENT_BODY"

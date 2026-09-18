@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Share Web Fonts Across Origins Demo</title>
+  <style>
+    /*
+      The COS-enhanced url() is listed FIRST, then a plain fallback url()
+      for the same file. A browser that doesn't recognize
+      cross-origin-storage()/integrity() drops only that one list item
+      (CSS's forgiving handling of comma-separated values), not the whole
+      declaration, so the fallback below still applies -- but `src` is a
+      *prioritized* list, and a browser uses the first alternative it CAN
+      parse and load. Listing the plain fallback first would mean it's
+      always used, and the COS-enhanced source would never even be tried.
+    */
+    @font-face {
+      font-family: 'Shared Emoji Font';
+      src:
+        url('/fonts/shared-emoji.woff2' integrity('sha256-WYtoZ9R5VKyrRu3WqXc9c0uETSIdOpWDTadELV32T5g=') cross-origin-storage(*)) format('woff2'),
+        url('/fonts/shared-emoji.woff2') format('woff2');
+    }
+
+    .sample {
+      font-family: 'Shared Emoji Font', sans-serif;
+      font-size: 3rem;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Load a popular web font via Cross-Origin Storage</h1>
+  <p>This page requests a large, popular emoji font that many unrelated sites already share in Cross-Origin
+    Storage. The <code>src</code> list above resolves to the same font either way -- via COS in a browser that has
+    already cached it, or over the network otherwise. The plain <code>url()</code> fallback is what makes this safe
+    to ship today, in every browser, without waiting for COS support.</p>
+  <p class="sample">Sample text 🎨🌴🐢</p>
+</body>
+
+</html>
