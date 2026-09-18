@@ -7,6 +7,10 @@
     <style>
       @layer reset, base, demo;
 
+      .blue-text{
+        color: blue;
+      }
+
       @layer base {
         body {
           font-family: system-ui, sans-serif;
@@ -81,7 +85,7 @@
     <section>
       <h2>Untrusted Input</h2>
       <textarea id="untrusted-input">
-<p style="color: green">Safe text with <b>bold</b>.</p>
+<p class="blue-text">Safe text with <b>bold</b>.</p>
 <script>console.log('XSS Triggered!')</script>
 <img src="x" onerror="console.log('Event Triggered!')">
 <div style="color: blue;" onclick="alert('clicked')">Styled div with click handler</div>
@@ -152,7 +156,7 @@
         if (Object.hasOwn(Element.prototype, "setHTML") && 'Sanitizer' in window) {
           const config = {
             elements: ["p", "b", "i", "strong", "em"],
-            attributes: ["style"],
+            attributes: ["class"],
             replaceWithChildrenElements: ['div']
           };
 
@@ -163,7 +167,7 @@
           loadDOMPurify().then((dompurify) => {
             outCustom.innerHTML = dompurify.sanitize(rawHTML, {
               ALLOWED_TAGS: ["p", "b", "i", "strong", "em"],
-              ALLOWED_ATTR: ["style"],
+              ALLOWED_ATTR: ["class"],
             });
           });
         }

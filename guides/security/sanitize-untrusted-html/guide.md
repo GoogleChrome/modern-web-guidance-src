@@ -9,6 +9,8 @@ web-feature-ids:
 
 Safely displaying user-generated HTML is a common security challenge. The native **Sanitizer API** provides a built-in, browser-optimized way to strip dangerous content (like `<script>` tags or `on*` attributes) before it reaches the DOM.
 
+MANDATORY: Do not rely solely on client-side sanitization for user-generated content. Always sanitize content on the server. Make sure that the server and client sanitization rules do not conflict.
+
 ## 1. Safely Inserting HTML with `setHTML()`
 
 The primary way to use the Sanitizer API is through the `setHTML()` method on any `Element`. This method handles parsing, sanitization and insertion in a single step, ensuring that content is sanitized specifically for the context in which it will be inserted.
@@ -39,7 +41,7 @@ When using `Element.setHTML()` and `Document.parseHTML()`, the default `Sanitize
 // Define a restrictive configuration that only allows the specified elements and attributes.
 const config = {
   elements: ["p", "b", "i", "strong", "em"],
-  attributes: ["style"],
+  attributes: ["class"],
   replaceWithChildrenElements: ['div']
 };
 
@@ -56,8 +58,6 @@ If you need a more permissive `Sanitizer` that allows some XSS-unsafe elements o
 If you need to parse untrusted HTML without immediately inserting it into the live DOM, use `Document.parseHTML()`. This method returns a `Document` that has been sanitized according to default or custom rules. 
 
 This can be used for sanitizing user content before sending it to a server.
-
-MANDATORY: Do not rely on client-side sanitization for user-generated content. Always sanitize content on the server. Make sure that the server and client sanitization rules do not conflict.
 
 ```javascript
 const rawHTML = '<p>Hello <script>console.log("bad")</script></p>';
