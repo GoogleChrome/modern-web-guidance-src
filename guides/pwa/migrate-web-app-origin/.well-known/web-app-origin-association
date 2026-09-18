@@ -1,0 +1,5 @@
+{
+  "https://new-app.example.com": {
+    "allow_migration": true
+  }
+}
