@@ -161,11 +161,12 @@
       color: var(--text);
     }
 
-    .menu-link[aria-current="page"] {
+    /* Style active visual links using both aria-current and modern :local-link */
+    .menu-link:is([aria-current="page"], :local-link) {
       color: var(--accent);
     }
 
-    .menu-link[aria-current="page"]::before {
+    .menu-link:is([aria-current="page"], :local-link)::before {
       position: absolute;
       inset-block: 0.75rem;
       inset-inline-start: 0.3rem;
@@ -342,7 +343,7 @@
         padding-inline: 0.8rem;
       }
 
-      .menu-link[aria-current="page"]::before {
+      .menu-link:is([aria-current="page"], :local-link)::before {
         inset-block: auto 0.1rem;
         inset-inline: 0.8rem;
         inline-size: auto;
@@ -411,7 +412,7 @@
         box-shadow: none;
       }
 
-      .menu-link[aria-current="page"]::before {
+      .menu-link:is([aria-current="page"], :local-link)::before {
         background: Highlight;
       }
     }
@@ -524,6 +525,30 @@
 
     const headerObserver = new ResizeObserver(([entry]) => closeMenuOnDesktop(entry));
     headerObserver.observe(header);
+
+    // Close details dropdowns on desktop when clicking outside or pressing Escape
+    document.addEventListener("click", (event) => {
+      const isDesktop = getComputedStyle(document.querySelector(".menu-button")).display === "none";
+      if (!isDesktop) return;
+
+      document.querySelectorAll(".nav-dropdown[open]").forEach((details) => {
+        if (!details.contains(event.target)) {
+          details.removeAttribute("open");
+        }
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const isDesktop = getComputedStyle(document.querySelector(".menu-button")).display === "none";
+      if (!isDesktop) return;
+
+      if (event.key === "Escape") {
+        document.querySelectorAll(".nav-dropdown[open]").forEach((details) => {
+          details.removeAttribute("open");
+          details.querySelector("summary").focus();
+        });
+      }
+    });
   </script>
 </body>
 

@@ -126,12 +126,14 @@ To reuse the exact same `<nav>` container inline in wide/desktop layouts, we mus
     display: block;        /* Force visibility regardless of popover status */
     inline-size: auto;
     block-size: auto;
-    margin: 0;             /* MANDATORY: Clear native popover panel styles when inline */
-    padding: 0;            /* MANDATORY: Clear native padding inside popovers */
-    border: 0;             /* MANDATORY: Remove native borders from popovers */
-    background: transparent; /* MANDATORY: Reset solid backgrounds when inline */
-    box-shadow: none;      /* MANDATORY: Remove top-layer shadow when inline */
     overflow: visible;
+
+    /* Clear native user-agent popover card styling */
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   /* 3. Hide backdrop overlay on desktop */
@@ -229,11 +231,13 @@ Hide native details arrow elements, style the custom chevron indicator, and cont
     inline-size: max-content;
     min-inline-size: 12rem;
     padding: 0.5rem;
-    background: var(--surface-raised); /* MANDATORY: Prevents transparent background clashing with underlying text */
-    border: 1px solid var(--border);    /* MANDATORY: Defensively sets borders to frame the card */
+    z-index: 10;
+
+    /* Prevent transparent background text-clash and set frame boundaries */
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
     border-radius: 0.5rem;
     box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 15%);
-    z-index: 10;
   }
 }
 ```
@@ -303,9 +307,23 @@ headerObserver.observe(header);
 
 Convey the active page visually using a pseudo-element (`::before`) on the active link. The visual indicator should adapt its orientation dynamically to match the layout.
 
+### Active Link Styling with `:local-link`
+
+To natively highlight the active page link without needing custom JavaScript class-toggles (like `.active`), combine the modern CSS `:local-link` pseudo-class with the semantic `aria-current="page"` attribute.
+
+- **Modern Zero-JS Styling:** The browser natively matches `:local-link` against any anchor `<a>` element pointing to the current document's exact URL, applying active styling automatically.
+- **Legacy Browser Fallback:** For browsers that do not yet support `:local-link`, we fall back to the `[aria-current="page"]` attribute selector. Stamping `aria-current="page"` on the active link remains **mandatory** anyway, as CSS pseudo-classes are not exposed to assistive technologies like screen readers.
+
 ```css
+/* Style active visual links using both aria-current and modern :local-link */
+.menu-link[aria-current="page"],
+.menu-link:local-link {
+  color: var(--accent);
+}
+
 /* Mobile: Vertical indicator bar on the left edge */
-.menu-link[aria-current="page"]::before {
+.menu-link[aria-current="page"]::before,
+.menu-link:local-link::before {
   position: absolute;
   inset-block: 0.75rem;
   inset-inline-start: 0.3rem;
@@ -317,7 +335,8 @@ Convey the active page visually using a pseudo-element (`::before`) on the activ
 
 /* Desktop: Horizontal indicator bar at the bottom edge */
 @container (inline-size >= 45rem) {
-  .menu-link[aria-current="page"]::before {
+  .menu-link[aria-current="page"]::before,
+  .menu-link:local-link::before {
     inset-block: auto 0.1rem;
     inset-inline: 0.8rem;
     inline-size: auto;
