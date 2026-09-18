@@ -8,9 +8,9 @@
 - The implementation MUST NOT store sensitive session tokens, authentication credentials, or unencrypted PII in `localStorage` or `sessionStorage`.
 - The implementation MUST set `HttpOnly`, `Secure`, and `SameSite=Lax` attributes on first-party session cookies.
 - The implementation MUST include the `Partitioned` attribute (`SameSite=None; Secure; Partitioned`) on any cookies intended for cross-site third-party embed contexts (CHIPS).
-- The implementation MUST use the Façade Pattern for third-party embeds (such as embedded videos), rendering a static placeholder image and mounting the third-party `<iframe>` only after an explicit user click.
-- The implementation MUST use privacy-enhanced domains (such as `youtube-nocookie.com`) when embedding external video iframes.
-- The implementation MUST implement social sharing using static HTML `<a>` links with `rel="noopener"` rather than loading third-party social tracking SDKs.
+- The implementation MUST use the Façade Pattern for third-party embeds, rendering a static placeholder and mounting the third-party `<iframe>` only after an explicit user interaction.
+- The implementation MUST configure third-party embeds with their privacy-preserving options when such options are available.
+- The implementation MUST implement auxiliary third-party integrations with static first-party markup instead of loading third-party tracking SDKs.
 - The implementation MUST use the Federated Credential Management API (`navigator.credentials.get` with an `identity` provider configuration) when implementing federated third-party sign-in.
 - The implementation MUST set a restrictive `Permissions-Policy` HTTP response header (such as `geolocation=(), camera=(), microphone=()`) to disable unused browser features by default.
 - The implementation MUST set a privacy-preserving `Referrer-Policy` HTTP response header (such as `strict-origin-when-cross-origin`).
