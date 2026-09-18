@@ -108,6 +108,8 @@
       const DB_VERSION = 1;
       const STORE_NAME = "notes";
 
+      let db = null;
+
       // --- IndexedDB helpers wrapped in Promises ---
 
       function openDatabase() {
@@ -115,9 +117,9 @@
           const request = indexedDB.open(DB_NAME, DB_VERSION);
 
           request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-              const store = db.createObjectStore(STORE_NAME, {
+            const database = event.target.result;
+            if (event.oldVersion < 1) {
+              const store = database.createObjectStore(STORE_NAME, {
                 keyPath: "id",
                 autoIncrement: true,
               });
@@ -126,50 +128,84 @@
           };
 
           request.onsuccess = (event) => {
-            const db = event.target.result;
+            const database = event.target.result;
 
             // Handle version changes from other tabs.
-            db.onversionchange = () => {
-              db.close();
+            database.onversionchange = () => {
+              database.close();
+              db = null;
               location.reload();
             };
 
-            resolve(db);
+            resolve(database);
           };
 
           request.onerror = () => reject(request.error);
         });
       }
 
-      function addNote(db, text) {
+      async function getDb() {
+        if (!db) {
+          db = await openDatabase();
+        }
+        return db;
+      }
+
+      // Back/forward cache (bfcache) lifecycle management:
+      // Open IndexedDB connections block pages from entering bfcache.
+      window.addEventListener("pagehide", () => {
+        if (db) {
+          db.close();
+          db = null;
+        }
+      });
+
+      window.addEventListener("pageshow", async (event) => {
+        if (event.persisted) {
+          db = await openDatabase();
+          await refresh();
+        }
+      });
+
+      function addNote(database, text) {
         return new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, "readwrite");
+          const tx = database.transaction(STORE_NAME, "readwrite");
           const store = tx.objectStore(STORE_NAME);
           const record = { text, createdAt: Date.now() };
           const request = store.add(record);
-          request.onsuccess = () => resolve(request.result);
+
+          let id;
+          request.onsuccess = () => {
+            id = request.result;
+          };
+
+          // Resolve on transaction complete for durable storage.
+          tx.oncomplete = () => resolve(id);
           tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error || new DOMException("Transaction aborted", "AbortError"));
         });
       }
 
-      function getAllNotes(db) {
+      function getAllNotes(database) {
         return new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, "readonly");
+          const tx = database.transaction(STORE_NAME, "readonly");
           const store = tx.objectStore(STORE_NAME);
           const index = store.index("createdAt");
           const request = index.getAll();
           request.onsuccess = () => resolve(request.result);
           tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error || new DOMException("Transaction aborted", "AbortError"));
         });
       }
 
-      function deleteNote(db, id) {
+      function deleteNote(database, id) {
         return new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, "readwrite");
+          const tx = database.transaction(STORE_NAME, "readwrite");
           const store = tx.objectStore(STORE_NAME);
           store.delete(id);
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error || new DOMException("Transaction aborted", "AbortError"));
         });
       }
 
@@ -178,8 +214,6 @@
       const noteInput = document.getElementById("note-input");
       const addBtn = document.getElementById("add-btn");
       const noteList = document.getElementById("note-list");
-
-      let db;
 
       function renderNotes(notes) {
         if (notes.length === 0) {
@@ -207,14 +241,16 @@
       }
 
       async function refresh() {
-        const notes = await getAllNotes(db);
+        const database = await getDb();
+        const notes = await getAllNotes(database);
         renderNotes(notes);
       }
 
       addBtn.addEventListener("click", async () => {
         const text = noteInput.value.trim();
         if (!text) return;
-        await addNote(db, text);
+        const database = await getDb();
+        await addNote(database, text);
         noteInput.value = "";
         await refresh();
       });
@@ -228,13 +264,13 @@
         if (!btn) return;
         const item = btn.closest(".note-item");
         const id = Number(item.dataset.id);
-        await deleteNote(db, id);
+        const database = await getDb();
+        await deleteNote(database, id);
         await refresh();
       });
 
       // Initialize
       (async () => {
-        db = await openDatabase();
         await refresh();
       })();
     </script>

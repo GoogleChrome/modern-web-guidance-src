@@ -1,10 +1,13 @@
-- `indexedDB.open()` is called with a database name and a numeric version.
+- `indexedDB.open()` is called with a database name and an integer version.
 - Object stores are created inside the `upgradeneeded` event handler using `createObjectStore()`.
+- Incremental schema migrations check `event.oldVersion` inside the `upgradeneeded` handler.
 - At least one index is created with `createIndex()` for efficient querying.
 - Data reads use `"readonly"` transactions; data writes use `"readwrite"` transactions.
 - IndexedDB operations are wrapped in Promises for ergonomic async/await usage.
+- Write transaction Promises resolve on the transaction's `oncomplete` event to ensure durability on disk.
+- Transactions handle both `onerror` and `onabort` events (e.g., rejecting Promises on error or abort).
 - The `versionchange` event is handled on the database connection to close it when another tab upgrades.
+- Database connections are closed during `pagehide` and reopened during `pageshow` when restored from bfcache.
 - `put()` is used for insert-or-update operations; `add()` is used when duplicate keys should error.
-- Error handling is present on transactions or requests (e.g., `onerror` handlers or Promise rejections).
 - Sensitive data (tokens, passwords) is NOT stored in IndexedDB without encryption.
 - Simple string key-value storage does NOT use IndexedDB when `localStorage` would suffice.
