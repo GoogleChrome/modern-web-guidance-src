@@ -1,0 +1,38 @@
+- The implementation MUST use `display: flex` for one-dimensional row or column arrangements such as navigation bars, toolbars, and action rows.
+- The implementation MUST use `gap` (or `row-gap` / `column-gap`) for spacing between flex and grid children instead of margins on the children.
+- The implementation MUST use the `flex` shorthand (e.g., `flex: 1 1 250px`) on flex items rather than declaring `flex-grow`, `flex-shrink`, and `flex-basis` separately.
+- The implementation MUST apply `flex-wrap: wrap` (or the `flex-flow` shorthand) on flex containers whose items can overflow the inline axis.
+- The implementation MUST use an auto margin (such as `margin-inline-start: auto`) to push a single flex item to the end of the main axis rather than `justify-self`.
+- The implementation MUST use safe alignment (such as `align-items: safe center`) on flex containers whose content can exceed the container size.
+- The implementation MUST set `min-inline-size: 0` (or `min-width: 0`) on flex items that contain long unbreakable content such as URLs or code strings.
+- The implementation MUST NOT declare both `flex-basis` and `inline-size` / `width` on the same flex item.
+- The implementation MUST NOT use `order` or a `*-reverse` value of `flex-direction` to reorder interactive content away from its DOM order.
+- The implementation MUST use `display: grid` for two-dimensional layouts that define both rows and columns.
+- The implementation MUST use `grid-template-areas` with named regions for page-level shell layouts, and assign children to those regions via `grid-area`.
+- The implementation MUST use `repeat(auto-fit, minmax(<min>, 1fr))` or `repeat(auto-fill, minmax(<min>, 1fr))` for responsive card grids with an unknown item count.
+- The implementation MUST use `fr` units or `minmax()` for flexible track sizing instead of fixed pixel track widths.
+- The implementation MUST use `subgrid` (`grid-template-rows: subgrid` or `grid-template-columns: subgrid`) so that internal card elements align across sibling cards.
+- The implementation MUST declare an explicit `grid-template-rows` or `grid-template-columns` fallback immediately before the corresponding `subgrid` declaration in the same rule.
+- The implementation MUST NOT use `grid-auto-flow: dense` on grids containing interactive or focusable content.
+- The implementation MUST establish a containment context with `container-type: inline-size` (or `size`) on a wrapper element before querying it.
+- The implementation MUST use `@container` queries for component-level responsive behavior instead of viewport `@media` queries.
+- The implementation MUST use container query units (`cqi`, `cqb`, `cqw`, `cqh`, `cqmin`, or `cqmax`) inside `clamp()` for typography or spacing that scales with the container.
+- The implementation MUST reserve `@media` queries for page-level layout and user preference conditions (such as `prefers-color-scheme` or `prefers-reduced-motion`).
+- The implementation MUST NOT use `block-size` as a `container-type` value.
+- The implementation MUST use the `popover` attribute for transient non-modal overlays and the native `<dialog>` element with `.showModal()` for modal interactions.
+- The implementation MUST NOT invoke `.showModal()` on an element that also declares a `popover` attribute.
+- The implementation MUST tether overlays to their triggers using `anchor-name` on the trigger and `position-anchor` on the overlay rather than manual JavaScript coordinate math.
+- The implementation MUST use `position-area` or `anchor()` to place anchored overlays and `position-try-fallbacks` (such as `flip-block`) to reposition them on viewport overflow.
+- The implementation MUST feature-detect anchor positioning with `@supports (anchor-name: --x)` and provide an absolutely positioned fallback.
+- The implementation MUST use `overflow: auto` (not `overflow: scroll`) on scrollable regions so scrollbars appear only when content overflows.
+- The implementation MUST use `overflow: clip` rather than `overflow: hidden` when content should be clipped without creating a scroll container.
+- The implementation MUST apply `scrollbar-gutter: stable` to scrollable containers to prevent layout shift when scrollbars appear.
+- The implementation MUST apply `overscroll-behavior: contain` (or `none`) to scrollable containers to prevent scroll chaining into the page.
+- The implementation MUST implement multi-line truncation using `display: -webkit-box` with `-webkit-box-orient: vertical` and `-webkit-line-clamp`, paired with the unprefixed `line-clamp` declaration.
+- The implementation MUST NOT use `overflow: hidden` to mask layout gaps caused by inline replaced elements, and MUST instead set a block display-outside value (such as `display: block`) on those elements.
+- The implementation MUST use `aspect-ratio` on media containers to reserve space and prevent Cumulative Layout Shift before assets load.
+- The implementation MUST use intrinsic sizing keywords (`min-content`, `max-content`, or `fit-content`) instead of fixed dimensions where content should determine the size.
+- The implementation MUST use CSS logical properties (`inline-size`, `block-size`, `margin-inline`, `padding-block`, `inset-inline-start`) for layout dimensions and spacing.
+- The implementation MUST use dynamic viewport units (`dvh`, `dvw`, `dvb`, or `dvi`) for full-height mobile layout containers instead of `vh`.
+- The implementation MUST NOT use `100vw` for full-width layout containers.
+- The implementation MUST implement masonry-style galleries using multi-column (`columns`) with `break-inside: avoid`, or grid with `grid-auto-flow: dense`, and MUST gate any `grid-template-rows: masonry` usage behind an `@supports` block.
