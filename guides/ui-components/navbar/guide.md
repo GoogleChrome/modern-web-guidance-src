@@ -22,20 +22,15 @@ For component-driven layouts, container queries, fluid sizing, and typographic l
 
 ## Core Markup (Single Semantic Tree)
 
-Avoid duplicating navigation links. Use a single `<nav>` container for both mobile and desktop layouts, paired with a semantic native `<button>` trigger.
+Avoid duplicating navigation links. Use a single `<nav>` container for both mobile and desktop layouts, wrapped in a containing semantic `<header>` element that declares `container-type: inline-size` to serve as the layout query container.
 
 ```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body>
+<!-- Container for container queries (container-type: inline-size) -->
 <header class="site-header">
   <div class="header-inner">
     <a class="site-logo" href="index.html">Acme</a>
 
-    <!-- Mobile menu trigger -->
+    <!-- Mobile navigation trigger button -->
     <button
       class="menu-button"
       type="button"
@@ -49,7 +44,7 @@ Avoid duplicating navigation links. Use a single `<nav>` container for both mobi
       <span>Menu</span>
     </button>
 
-    <!-- Navigation menu acting as popover on mobile -->
+    <!-- Navigation panel acting as a popover on mobile layouts -->
     <nav id="site-menu" class="site-menu" popover="auto" aria-label="Primary navigation">
       <ul class="menu-list">
         <li>
@@ -62,12 +57,6 @@ Avoid duplicating navigation links. Use a single `<nav>` container for both mobi
     </nav>
   </div>
 </header>
-
-<main id="content" tabindex="-1">
-  <h1>Page title</h1>
-</main>
-</body>
-</html>
 ```
 
 ### Key Markup Notes:
@@ -80,13 +69,18 @@ Avoid duplicating navigation links. Use a single `<nav>` container for both mobi
 
 ## Narrow Viewports: Popover and Anchor Positioning
 
-In mobile/narrow layouts, use CSS Anchor Positioning to tether the popover menu to the trigger button so that it stays perfectly aligned even when the layout shifts.
+In mobile/narrow layouts, use CSS Anchor Positioning to tether the popover navigation panel to the trigger button so that it stays perfectly aligned even when the layout shifts.
 
 To achieve this:
 1. Establish the anchor by assigning `anchor-name` to the trigger button.
 2. Position the popover using `anchor()` functions on the inset properties.
 
 ```css
+/* Declare container type on parent header */
+.site-header {
+  container-type: inline-size;
+}
+
 @container (inline-size < 45rem) {
   .menu-button {
     /* Define the anchor name */
@@ -97,15 +91,15 @@ To achieve this:
     position: fixed;
     inset: auto;
 
-    /* Align top edge of popover with bottom of menu button */
+    /* Align top edge of popover with bottom of navigation button */
     inset-block-start: anchor(--menu-button bottom);
-    /* Align right edge of popover with right edge of menu button */
+    /* Align right edge of popover with right edge of navigation button */
     inset-inline-end: anchor(--menu-button right);
 
     inline-size: 80dvw;
     max-inline-size: calc(100dvw - 2rem);
     block-size: fit-content;
-    margin-block-start: 0.5rem;
+    margin-block-start: 0.5rem; /* Gap below the trigger */
     overflow: auto;
   }
 }
@@ -126,17 +120,17 @@ To reuse the exact same `<nav>` container inline in wide/desktop layouts, we mus
     display: none;
   }
 
-  /* 2. Reset popover styling to integrate inline */
+  /* 2. Reset popover structural styling to integrate inline */
   .site-menu {
     position: static;      /* Override fixed/absolute positioning */
     display: block;        /* Force visibility regardless of popover status */
     inline-size: auto;
     block-size: auto;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
+    margin: 0;             /* MANDATORY: Clear native popover panel styles when inline */
+    padding: 0;            /* MANDATORY: Clear native padding inside popovers */
+    border: 0;             /* MANDATORY: Remove native borders from popovers */
+    background: transparent; /* MANDATORY: Reset solid backgrounds when inline */
+    box-shadow: none;      /* MANDATORY: Remove top-layer shadow when inline */
     overflow: visible;
   }
 
@@ -145,7 +139,7 @@ To reuse the exact same `<nav>` container inline in wide/desktop layouts, we mus
     display: none;
   }
 
-  /* 4. Display menu items horizontally */
+  /* 4. Display navigation items horizontally */
   .menu-list {
     display: flex;
     align-items: center;
@@ -156,27 +150,151 @@ To reuse the exact same `<nav>` container inline in wide/desktop layouts, we mus
 
 ---
 
+## Nested Dropdowns (Sub-navigation)
+
+For second-level navigation items, avoid creating nested overlay popovers on mobile viewports which are visually cluttered and difficult to navigate. Instead, use native `<details>` and `<summary>` elements to create sub-navigation lists that adapt structurally to both layout container sizes.
+
+- **On narrow viewports:** The sub-navigation behaves as an inline expandable list (disclosure toggle) that naturally pushes other navigation links down.
+- **On wide viewports:** The sub-navigation behaves as an absolutely positioned floating dropdown box.
+
+### Core Markup for Sub-navigation
+
+Wrap the sub-navigation list inside a `<details>` element within your `<li>` lists:
+
+```html
+<li>
+  <details class="nav-dropdown">
+    <summary class="menu-link dropdown-trigger">
+      <span>Services</span>
+      <svg class="dropdown-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+      </svg>
+    </summary>
+    <ul class="dropdown-list">
+      <li><a class="menu-link" href="design.html">Design</a></li>
+      <li><a class="menu-link" href="development.html">Development</a></li>
+    </ul>
+  </details>
+</li>
+```
+
+### Styling the Nested Sub-navigation
+
+Hide native details arrow elements, style the custom chevron indicator, and control layout transitions between mobile inline expansion and desktop floating layouts.
+
+```css
+/* Base styles to clear native details arrows and style triggers */
+.nav-dropdown > summary {
+  list-style: none;
+}
+.nav-dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.dropdown-icon {
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+  transition: transform 180ms ease;
+}
+.nav-dropdown[open] .dropdown-icon {
+  transform: rotate(180deg);
+}
+
+/* Narrow layout: static, indented inline sub-list */
+@container (inline-size < 45rem) {
+  .dropdown-list {
+    display: grid;
+    gap: 0.25rem;
+    padding-inline-start: 1.5rem; /* Indent sublinks inside mobile navigation panel */
+  }
+}
+
+/* Wide layout: floating absolute-positioned sub-navigation card */
+@container (inline-size >= 45rem) {
+  .nav-dropdown {
+    position: relative;
+  }
+  .dropdown-list {
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline-start: 0;
+    display: grid;
+    gap: 0.25rem;
+    inline-size: max-content;
+    min-inline-size: 12rem;
+    padding: 0.5rem;
+    background: var(--surface-raised); /* MANDATORY: Prevents transparent background clashing with underlying text */
+    border: 1px solid var(--border);    /* MANDATORY: Defensively sets borders to frame the card */
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 15%);
+    z-index: 10;
+  }
+}
+```
+
+For a deeper look on using pseudo-elements and anchors to design sliding active visual indicators, see {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
+
+### Closing Sub-navigation on Click Outside and Escape (JS Constraint)
+
+Because open `<details>` sub-navigation panels do not naturally close on click outside or when pressing the `Escape` key, use a small, lightweight event listener on desktop viewports to dismiss active sub-navigation cards. 
+
+To prevent breakpoint duplication and layout mismatch issues inside JavaScript, check layout state by querying whether the trigger button `.menu-button` is hidden (`display === "none"`).
+
+```javascript
+// Close details sub-navigation on desktop when clicking outside or pressing Escape
+document.addEventListener("click", (event) => {
+  const isDesktop = getComputedStyle(document.querySelector(".menu-button")).display === "none";
+  if (!isDesktop) return;
+
+  document.querySelectorAll(".nav-dropdown[open]").forEach((details) => {
+    if (!details.contains(event.target)) {
+      details.removeAttribute("open");
+    }
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  const isDesktop = getComputedStyle(document.querySelector(".menu-button")).display === "none";
+  if (!isDesktop) return;
+
+  if (event.key === "Escape") {
+    document.querySelectorAll(".nav-dropdown[open]").forEach((details) => {
+      details.removeAttribute("open");
+      details.querySelector("summary").focus(); // Return keyboard focus to trigger
+    });
+  }
+});
+```
+
+---
+
 ## Synchronizing Layout Resize (JavaScript Constraint)
 
-If a user opens the mobile menu popover and then resizes the browser to a wide viewport, the popover's internal state is still active (`:popover-open`). Although CSS overrides the visual presentation, keeping the popover state active causes issues with keyboard focus, light-dismiss, and accessibility state.
+If a user opens the mobile navigation panel and then resizes the browser to a wide viewport, the popover's internal state is still active (`:popover-open`). Although CSS overrides the visual presentation, keeping the popover state active causes issues with keyboard focus, light-dismiss, and accessibility state.
 
 **You MUST use JavaScript to listen for the viewport breakpoint and dismiss the popover when transitioning to desktop.**
 
 ```javascript
-const menu = document.querySelector("#site-menu");
-const headerInner = document.querySelector(".header-inner");
+const navigation = document.querySelector("#site-menu");
+const header = document.querySelector(".site-header");
 const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
 const desktopBreakpoint = 45 * rootFontSize;
 
-function closeMenuOnDesktop(entry) {
+function closeNavigationOnDesktop(entry) {
   // Match the container query, not the viewport, so padding cannot cause a breakpoint mismatch.
-  if (entry.contentRect.width >= desktopBreakpoint && menu.matches(":popover-open")) {
-    menu.hidePopover();
+  if (entry.contentRect.width >= desktopBreakpoint && navigation.matches(":popover-open")) {
+    navigation.hidePopover();
   }
 }
 
-const headerObserver = new ResizeObserver(([entry]) => closeMenuOnDesktop(entry));
-headerObserver.observe(headerInner);
+const headerObserver = new ResizeObserver(([entry]) => closeNavigationOnDesktop(entry));
+headerObserver.observe(header);
 ```
 
 ---
@@ -187,10 +305,6 @@ Convey the active page visually using a pseudo-element (`::before`) on the activ
 
 ```css
 /* Mobile: Vertical indicator bar on the left edge */
-.menu-link[aria-current="page"] {
-  color: var(--accent);
-}
-
 .menu-link[aria-current="page"]::before {
   position: absolute;
   inset-block: 0.75rem;
@@ -212,8 +326,6 @@ Convey the active page visually using a pseudo-element (`::before`) on the activ
 }
 ```
 
-For a deeper look on using pseudo-elements and anchors to design sliding active visual indicators, see {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
-
 ---
 
 ## Smooth Entry & Exit Transitions
@@ -224,11 +336,11 @@ On mobile, use `@starting-style` to enable entry and exit transitions for the po
 @media (prefers-reduced-motion: no-preference) {
   @container (inline-size < 45rem) {
     .site-menu {
-      /* Transition the display property using allow-discrete */
+      /* Transition opacity, transform, and display using allow-discrete */
       transition:
-        display 180ms allow-discrete,
-        opacity 180ms ease,
-        transform 180ms ease;
+        display 0.2s allow-discrete,
+        opacity 0.2s ease,
+        transform 0.2s ease;
       opacity: 0;
       transform: translateY(-0.5rem);
     }
@@ -258,7 +370,7 @@ For more on modern transitions for elements toggled between `display: none` and 
 
 {{ FEATURE_FALLBACKS("anchor-positioning") }}
 
-For browsers that do not support CSS Anchor Positioning, provide a fallback absolute position using `@supports not`. This ensures the menu remains fully accessible and positioned sensibly.
+For browsers that do not support CSS Anchor Positioning, provide a fallback absolute position using `@supports not`. This ensures the navigation remains fully accessible and positioned sensibly.
 
 ```css
 @container (inline-size < 45rem) {

@@ -37,7 +37,7 @@
       margin: 0;
     }
 
-    :where(a, button):focus-visible {
+    :where(a, button, summary):focus-visible {
       outline: 3px solid var(--focus-ring);
       outline-offset: 3px;
     }
@@ -57,6 +57,7 @@
     .site-header {
       border-block-end: 1px solid var(--border);
       background: var(--page-background);
+      container-type: inline-size; /* Core query container for navigation layouts */
     }
 
     .header-inner {
@@ -68,7 +69,6 @@
       min-block-size: 4.5rem;
       margin-inline: auto;
       padding-inline: clamp(1rem, 4vw, 3rem);
-      container-type: inline-size;
     }
 
     .site-logo {
@@ -175,6 +175,39 @@
       content: "";
     }
 
+    /* Nested Details Dropdown styles */
+    .nav-dropdown > summary {
+      list-style: none;
+    }
+
+    .nav-dropdown > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+
+    .dropdown-icon {
+      inline-size: 1.15rem;
+      block-size: 1.15rem;
+      transition: transform 180ms ease;
+    }
+
+    .nav-dropdown[open] .dropdown-icon {
+      transform: rotate(180deg);
+    }
+
+    .dropdown-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
     main {
       max-inline-size: 75rem;
       margin-inline: auto;
@@ -249,6 +282,13 @@
         align-content: start;
       }
 
+      .dropdown-list {
+        display: grid;
+        gap: 0.25rem;
+        padding-block: 0.25rem;
+        padding-inline-start: 1.5rem; /* Indented inline nested style for mobile */
+      }
+
       /*
         Fallback for browsers that do not support anchor positioning.
       */
@@ -308,6 +348,33 @@
         inline-size: auto;
         block-size: 0.2rem;
       }
+
+      .nav-dropdown {
+        position: relative;
+      }
+
+      /* Desktop flyout style for dropdowns */
+      .dropdown-list {
+        position: absolute;
+        inset-block-start: 100%;
+        inset-inline-start: 0;
+        display: grid;
+        gap: 0.25rem;
+        inline-size: max-content;
+        min-inline-size: 12rem;
+        margin-block-start: 0.5rem;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        background: var(--surface-raised);
+        box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 15%);
+        z-index: 10;
+      }
+
+      .dropdown-list .menu-link {
+        min-block-size: 2.5rem;
+        padding-inline: 0.75rem;
+      }
     }
 
     @media (prefers-reduced-motion: no-preference) {
@@ -338,7 +405,8 @@
     @media (forced-colors: active) {
 
       .site-menu,
-      .menu-button {
+      .menu-button,
+      .dropdown-list {
         border-color: CanvasText;
         box-shadow: none;
       }
@@ -387,9 +455,25 @@
           </li>
 
           <li>
-            <a class="menu-link" href="services.html">
-              Services
-            </a>
+            <details class="nav-dropdown">
+              <summary class="menu-link dropdown-trigger">
+                <span>Services</span>
+                <svg class="dropdown-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+                </svg>
+              </summary>
+              <ul class="dropdown-list">
+                <li>
+                  <a class="menu-link" href="design.html">Design</a>
+                </li>
+                <li>
+                  <a class="menu-link" href="development.html">Development</a>
+                </li>
+                <li>
+                  <a class="menu-link" href="marketing.html">Marketing</a>
+                </li>
+              </ul>
+            </details>
           </li>
 
           <li>
@@ -427,7 +511,7 @@
 
   <script>
     const menu = document.querySelector("#site-menu");
-    const headerInner = document.querySelector(".header-inner");
+    const header = document.querySelector(".site-header");
     const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
     const desktopBreakpoint = 45 * rootFontSize;
 
@@ -439,7 +523,7 @@
     }
 
     const headerObserver = new ResizeObserver(([entry]) => closeMenuOnDesktop(entry));
-    headerObserver.observe(headerInner);
+    headerObserver.observe(header);
   </script>
 </body>
 
