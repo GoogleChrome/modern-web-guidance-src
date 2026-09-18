@@ -35,7 +35,7 @@
     "apache-arrow": "21.1.0",
     "marked": "^18.0.3",
     "onnxruntime-node": "^1.25.1",
-    "web-features": "^3.38.0"
+    "web-features": "^3.39.0"
   },
   "devDependencies": {
     "@types/gh-pages": "^6.1.0",
