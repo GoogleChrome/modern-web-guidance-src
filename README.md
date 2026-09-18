@@ -241,6 +241,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[passkey-reauthentication](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/passkey-reauthentication.md)**: Verify a signed-in user's identity using their existing passkeys before a sensitive action.
 - **[passkey-registration](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/passkey-registration.md)**: Register a passkey for an existing user account.
 - **[passkeys](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/passkeys.md)**: Comprehensive orientation and cross-cutting principles for implementing WebAuthn and Passkeys in web applications. Use this guide when handling passkey registration, authentication, management, or reauthentication.
+- **[trusted-types](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/security/trusted-types.md)**: Help prevent DOM-based XSS attacks by ensuring all untrusted content is sanitized before being inserted into the page.
 
 <h3>ui-atoms</h3>
 
