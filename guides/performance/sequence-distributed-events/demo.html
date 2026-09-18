@@ -463,7 +463,7 @@
       let temporalCollisionsCount = 0;
       const temporalCollisionGroups = new Set();
       for (let i = 1; i < temporalSorted.length; i++) {
-        if (Temporal.Instant.compare(temporalSorted[i].temporalInstant, temporalSorted[i - 1].temporalInstant) === 0) {
+        if (temporalSorted[i].temporalInstant.equals(temporalSorted[i - 1].temporalInstant)) {
           temporalCollisionsCount++;
           temporalCollisionGroups.add(temporalSorted[i].temporalInstant.toString());
         }
@@ -562,9 +562,11 @@
         let diffHtml = '';
         if (index > 0) {
           const prev = sortedEvents[index - 1].temporalInstant;
+
           // Calculate difference in nanoseconds
           const duration = evt.temporalInstant.since(prev);
           const nsDiff = duration.total('nanoseconds');
+
           if (nsDiff > 0) {
             diffHtml = `<span class="value-diff">+${nsDiff.toLocaleString()}ns</span>`;
           }
