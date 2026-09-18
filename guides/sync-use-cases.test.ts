@@ -281,6 +281,11 @@ describe('getStatusName', () => {
     assert.strictEqual(getStatusName('Some content.', true, true, true), ProjectStatus.NeedsGuidance);
     assert.strictEqual(getStatusName('Some content.', false, false, true), ProjectStatus.NeedsGuidance);
   });
+
+  test('returns "Needs guidance" when hasExpectations is false even if body is present', () => {
+    assert.strictEqual(getStatusName('Some content.', false, false, false, false), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getStatusName('Some content.', true, true, false, false), ProjectStatus.NeedsGuidance);
+  });
 });
 
 describe('getIssueStateChanges', () => {
