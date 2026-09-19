@@ -40,7 +40,9 @@ Make sure to use `type=button` for any `<button>` elements to avoid unexpected s
 
 `focusgroup=tablist` does not sufficiently implement all of what’s necessary for an operational tabbed interface.
 
+- Use `aria-labelledby` or `aria-label` to give the tablist an accessible name.
 - Use `aria-selected` to indicate which tab is currently selected.
+- Set `role=tabpanel` on the tab panels and use `aria-labelledby` or `aria-label` to give the panel an accessible name (e.g. `aria-labelledby` can reference the associated tab).
 - Use `aria-controls` to associate the tab buttons with a tab panel.
 - Use `hidden` to hide tab panels whose tab is not actively selected.
 
