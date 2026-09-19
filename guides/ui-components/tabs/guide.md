@@ -53,6 +53,8 @@ A tabbed interface can either use mutually exclusive selection or multi-selectio
 When it comes to how tabs become selected, one can either make _selection follow focus_ or all the user to move focus between tabs and perform _selection by activation_.
 The latter _selection by activation_ works well in scenarios where a tab panel’s content will be lazy loaded.
 
+If selection should follow focus, make sure the `nomemory` behaviour has not been applied to the `focusgroup` since otherwise the selected tab and tabpanel might change when the focusgroup receives focus.
+
 ## Allowing tab panel content to be searchable
 
 `hidden=until-found` can be used to make a tab panel’s contents searchable by a browser’s find-in-page feature.
