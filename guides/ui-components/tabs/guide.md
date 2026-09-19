@@ -21,6 +21,8 @@ If the content and expected behaviour of the candidate UI is page navigation, th
 
 ## Use focusgroup for managing the tablist focus
 
+{{ BASELINE_STATUS("focusgroup") }}
+
 Instead of manually implementing a roving tabindex or ARIA activedescendant pattern to meet the focus management requirement of the ARIA `tablist` role, we can use `focusgroup` which has a `tablist` behaviour.
 
 ```html
@@ -35,6 +37,10 @@ In the above example, the element bearing `focusgroup=tablist` will receive a mi
 
 Though `focusgroup` will apply the `tab` semantics to focusables within its scope, prefer `<button>` to avoid needing to reimplement button-like behaviour.
 Make sure to use `type=button` for any `<button>` elements to avoid unexpected submitter behaviour if nested within a form.
+
+### Fallback strategy for focusgroup
+
+{{ FEATURE_FALLBACKS("focusgroup") }}
 
 ## Implementing tab selection and tabpanel association
 
