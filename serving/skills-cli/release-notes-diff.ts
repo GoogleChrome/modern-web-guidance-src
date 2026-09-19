@@ -244,7 +244,7 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
 
   let featureName = '';
   let statusRank = 3;
-  let statusDescription = 'Updated browser engine support';
+  let statusDescription = '';
 
   // 1. Check added lines for a status transition
   for (const line of addedLines) {
@@ -286,52 +286,56 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
   if (statusRank === 3) {
     const addedSupported = addedLines.find(l => l.includes('Supported by:'));
     const removedSupported = removedLines.find(l => l.includes('Supported by:'));
-    if (addedSupported) {
-      const addedMap = parseEngineMap(addedSupported);
-      const removedMap = parseEngineMap(removedSupported);
+    if (!addedSupported) {
+      return null;
+    }
 
-      const brandNew: string[] = [];
-      const removedEngines: string[] = [];
-      const versionUpdated: string[] = [];
+    const addedMap = parseEngineMap(addedSupported);
+    const removedMap = parseEngineMap(removedSupported);
 
-      for (const [key, info] of addedMap.entries()) {
-        if (!removedMap.has(key)) {
-          brandNew.push(info.raw);
-        } else if (removedMap.get(key)!.version !== info.version) {
-          versionUpdated.push(info.name);
-        }
-      }
+    const brandNew: string[] = [];
+    const removedEngines: string[] = [];
+    const versionUpdated: string[] = [];
 
-      for (const [key, info] of removedMap.entries()) {
-        if (!addedMap.has(key)) {
-          // If a mobile-specific variant (e.g. safari_ios, chrome_android, firefox_android)
-          // is omitted because the desktop base engine is now supported, it was consolidated into full support.
-          const baseKey = key.replace(/_(?:ios|android)$/, '');
-          if (baseKey !== key && addedMap.has(baseKey)) {
-            continue;
-          }
-          removedEngines.push(info.name);
-        }
-      }
-
-      const clauses: string[] = [];
-      if (brandNew.length > 0) {
-        clauses.push(`Added **${formatList(brandNew)}** support`);
-      }
-      if (removedEngines.length > 0) {
-        const verb = clauses.length > 0 ? 'removed' : 'Removed';
-        clauses.push(`${verb} **${formatList(removedEngines)}** support`);
-      }
-      if (versionUpdated.length > 0) {
-        const plural = versionUpdated.length > 1 ? 'versions' : 'version';
-        const verb = clauses.length > 0 ? 'updated' : 'Updated';
-        clauses.push(`${verb} supported browser ${plural} for **${formatList(versionUpdated)}**`);
-      }
-
-      if (clauses.length > 0) {
-        statusDescription = formatList(clauses);
+    for (const [key, info] of addedMap.entries()) {
+      if (!removedMap.has(key)) {
+        brandNew.push(info.raw);
+      } else if (removedMap.get(key)!.version !== info.version) {
+        versionUpdated.push(info.name);
       }
     }
+
+    for (const [key, info] of removedMap.entries()) {
+      if (!addedMap.has(key)) {
+        // If a mobile-specific variant (e.g. safari_ios, chrome_android, firefox_android)
+        // is omitted because the desktop base engine is now supported, it was consolidated into full support.
+        const baseKey = key.replace(/_(?:ios|android)$/, '');
+        if (baseKey !== key && addedMap.has(baseKey)) {
+          continue;
+        }
+        removedEngines.push(info.name);
+      }
+    }
+
+    const clauses: string[] = [];
+    if (brandNew.length > 0) {
+      clauses.push(`Added **${formatList(brandNew)}** support`);
+    }
+    if (removedEngines.length > 0) {
+      const verb = clauses.length > 0 ? 'removed' : 'Removed';
+      clauses.push(`${verb} **${formatList(removedEngines)}** support`);
+    }
+    if (versionUpdated.length > 0) {
+      const plural = versionUpdated.length > 1 ? 'versions' : 'version';
+      const verb = clauses.length > 0 ? 'updated' : 'Updated';
+      clauses.push(`${verb} supported browser ${plural} for **${formatList(versionUpdated)}**`);
+    }
+
+    if (clauses.length === 0) {
+      return null;
+    }
+
+    statusDescription = formatList(clauses);
   }
 
   const featureId = resolveWebFeatureId(featureName);

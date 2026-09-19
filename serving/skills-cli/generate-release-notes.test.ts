@@ -136,6 +136,32 @@ test('parseBaselineUpdateFromPatch extracts feature name and status rank', () =>
   assert.ok(infoNewly.statusDescription.includes('Newly available'));
 });
 
+test('parseBaselineUpdateFromPatch ignores limited features when browser support does not change', () => {
+  // Upstream feature rename with unchanged browser support
+  const patchNoEngineChange = `
+@@ -62,7 +62,7 @@
+-Long animation frames has limited availability.
++Long animation frames performance entries has limited availability.
+ Supported by: Chrome 123 (Mar 2024) and Edge 123 (Mar 2024).
+ Unsupported in: Firefox and Safari..
+`;
+  const info = parseBaselineUpdateFromPatch('identify-heavy-scripts', patchNoEngineChange);
+  assert.strictEqual(info, null);
+
+  // Limited feature with real engine addition
+  const patchWithEngineAddition = `
+@@ -62,7 +62,7 @@
+ Long animation frames has limited availability.
+-Supported by: Chrome 123 (Mar 2024).
++Supported by: Chrome 123 (Mar 2024) and Safari 27.
+ Unsupported in: Firefox.
+`;
+  const infoWithEngine = parseBaselineUpdateFromPatch('identify-heavy-scripts', patchWithEngineAddition);
+  assert.ok(infoWithEngine);
+  assert.strictEqual(infoWithEngine.statusRank, 3);
+  assert.ok(infoWithEngine.statusDescription.includes('Safari 27'));
+});
+
 test('buildBaselineBullets sorts entries strictly: Widely -> Newly -> Limited and groups guides', () => {
   const updates: BaselineUpdateInfo[] = [
     {
