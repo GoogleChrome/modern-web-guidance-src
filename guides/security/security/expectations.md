@@ -1,7 +1,7 @@
 - The implementation MUST serve the `Strict-Transport-Security` header (such as `max-age=31536000; includeSubDomains`) to enforce HTTPS connections.
 - The implementation MUST use safe DOM APIs (`textContent`, `createElement`, or `setHTML`) instead of dangerous sinks (`innerHTML`, `outerHTML`, `document.write`, `eval`) when rendering untrusted or dynamic text.
-- The implementation MUST configure first-party session cookies using the `__Host-` prefix with `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/`, and no `Domain` attribute.
-- The implementation MUST use `SameSite=None; Secure; Partitioned` (CHIPS) for any cookies required in third-party embedded contexts and MUST NOT use unpartitioned `SameSite=None`.
+- The implementation MUST configure first-party session cookies using the `__Host-` prefix with `Secure`, `SameSite=Lax`, `Path=/`, and no `Domain` attribute, and MUST set `HttpOnly` unless the cookie must be readable by client-side script.
+- The implementation MUST use `SameSite=None; Secure` for any cookies required in third-party embedded contexts, and SHOULD add the `Partitioned` attribute (CHIPS) unless the feature requires state shared across multiple top-level sites.
 - The implementation MUST protect against clickjacking by setting both `X-Frame-Options: SAMEORIGIN` (or `DENY`) and the CSP `frame-ancestors 'self'` directive.
 - The implementation MUST strictly validate `event.origin` against an explicit trusted origin allowlist inside `window` `message` event listeners.
 - The implementation MUST specify an explicit target origin (never wildcard `'*'`) when sending messages via `postMessage`.
