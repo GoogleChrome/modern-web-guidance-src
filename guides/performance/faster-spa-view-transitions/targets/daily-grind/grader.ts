@@ -6,13 +6,11 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../test-fixture.ts';
-import { pathToFileURL } from 'url';
-import * as path from 'path';
 import { SyntaxKind, type Project } from 'ts-morph';
 import type { Document } from 'linkedom';
 import { CSSStyleRule, CSSSupportsRule, type CSSStyleSheet } from 'cssomnom';
 
-const targetFiles: string[] = getTargetFiles(pathToFileURL(path.resolve('grader.ts')).href);
+const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 test.describe('faster-spa-view-transitions Target Grader', () => {
   // Requirement 1: Inactive view elements must have content-visibility: hidden applied in their computed styles.
