@@ -42,7 +42,7 @@ await document.modelContext.registerTool({
 controller.abort();
 ```
 
-Since Chrome 153, aborting the registration signal only unregisters the tool — it does not cancel executions that are already running. Tools that start long-running work must also honor the per-execution signal described below, or unregistering will leave orphaned requests and stale UI updates behind.
+Aborting the registration signal only unregisters the tool — it does not cancel executions that are already running. Tools that start long-running work must also honor the per-execution signal described below, or unregistering will leave orphaned requests and stale UI updates behind.
 
 ### Controlling cross-origin tool exposure with `exposedTo`
 
@@ -96,7 +96,7 @@ await document.modelContext.registerTool({
 
 ## Execution Patterns
 
-Since Chrome 153, `execute` always receives two arguments: the input object, and an options object carrying an `AbortSignal` — `execute(inputObject, { signal })`.
+The `execute` callback always receives two arguments: the input object, and an options object carrying an `AbortSignal` — `execute(inputObject, { signal })`.
 
 ### When to use `async execute`
 Use `async` when the tool involves operations that return a Promise or take time to complete:
