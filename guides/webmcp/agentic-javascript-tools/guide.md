@@ -42,7 +42,7 @@ await document.modelContext.registerTool({
 controller.abort();
 ```
 
-Since Chrome `153.0.8009.0`, aborting the registration signal only unregisters the tool — it does not cancel executions that are already running. Tools that start long-running work must also honor the per-execution signal described below, or unregistering will leave orphaned requests and stale UI updates behind.
+Since Chrome 153, aborting the registration signal only unregisters the tool — it does not cancel executions that are already running. Tools that start long-running work must also honor the per-execution signal described below, or unregistering will leave orphaned requests and stale UI updates behind.
 
 ### Controlling cross-origin tool exposure with `exposedTo`
 
@@ -96,7 +96,7 @@ await document.modelContext.registerTool({
 
 ## Execution Patterns
 
-Since Chrome `153.0.8009.0`, `execute` always receives two arguments: the input object, and an options object carrying an `AbortSignal` — `execute(inputObject, { signal })`.
+Since Chrome 153, `execute` always receives two arguments: the input object, and an options object carrying an `AbortSignal` — `execute(inputObject, { signal })`.
 
 ### When to use `async execute`
 Use `async` when the tool involves operations that return a Promise or take time to complete:
@@ -145,7 +145,7 @@ await document.modelContext.registerTool({
     },
     required: ["url"],
   },
-  execute: async ({ url, priority }, { signal }) => {
+  execute: async ({ url, priority }, { signal } = {}) => {
     const output = document.querySelector("pre");
     output.textContent = "Loading…";
     try {
@@ -167,7 +167,7 @@ await document.modelContext.registerTool({
 
 ## Flagging Consequential Tools
 
-Since Chrome `154.0.8017.0`, `annotations` supports `consequentialHint`. Set it to `true` for tools that take high-stakes, irreversible, or real-world actions — booking travel, moving money, sending messages, or deleting data. It signals agents to request explicit user confirmation before execution.
+Since Chrome 154, `annotations` supports `consequentialHint`. Set it to `true` for tools that take high-stakes, irreversible, or real-world actions — booking travel, moving money, sending messages, or deleting data. It signals agents to request explicit user confirmation before execution.
 
 ```javascript
 await document.modelContext.registerTool({
@@ -207,7 +207,7 @@ The `getTools()` and `executeTool()` methods exist specifically for consumers ru
 
 In-page agents call `document.modelContext.getTools()` to retrieve an array of `RegisteredTool` objects from the current document and any accessible frames in the document tree.
 
-Since Chrome `155.0.8051.0`, `RegisteredTool.inputSchema` is returned directly as a JavaScript object (a deep copy of the schema supplied at registration). Mutating this object does not alter the registered tool's actual schema.
+Since Chrome 155, `RegisteredTool.inputSchema` is returned directly as a JavaScript object (a deep copy of the schema supplied at registration). Mutating this object does not alter the registered tool's actual schema.
 
 ```javascript
 // Example: An in-page AI assistant discovering tools available on the page:
@@ -233,7 +233,7 @@ const cartTools = await document.modelContext.getTools({
 
 In-page agents and test scripts call `document.modelContext.executeTool(tool, inputObject, options)` to execute a registered tool. The tool runs on the document where it was registered, and the promise resolves to the stringified result returned by the tool's `execute` callback.
 
-Since Chrome `155.0.8052.0`, `executeTool()` accepts a plain JavaScript object directly for `inputObject`, matching the input format your tool's `execute` callback receives. Manual `JSON.stringify()` is no longer required.
+Since Chrome 155, `executeTool()` accepts a plain JavaScript object directly for `inputObject`, matching the input format your tool's `execute` callback receives.
 
 ```javascript
 // 1. Discover the tool (typically done during agent initialization or test setup):
@@ -242,15 +242,26 @@ const areaTool = tools.find((t) => t.name === "calculate_area");
 
 if (areaTool) {
   const controller = new AbortController();
+  // Example input payload matching the tool's inputSchema:
+  const inputObject = { width: 10, height: 20 };
+  const options = { signal: controller.signal };
 
-  // 2. Pass input arguments directly as a JavaScript object.
-  // Optional third argument accepts an AbortSignal to cancel execution:
-  const resultString = await document.modelContext.executeTool(
-    areaTool,
-    // Example input payload matching the tool's inputSchema:
-    { width: 10, height: 20 },
-    { signal: controller.signal }
-  );
+  // 2. Pass input arguments as a JavaScript object, with a JSON string fallback for Chrome <155:
+  let resultString;
+  try {
+    resultString = await document.modelContext.executeTool(areaTool, inputObject, options);
+  } catch (err) {
+    if (err?.message?.startsWith("Failed to parse input")) {
+      resultString = await document.modelContext.executeTool(
+        areaTool,
+        JSON.stringify(inputObject),
+        options
+      );
+    } else {
+      // Re-throw real tool execution or cancellation errors:
+      throw err;
+    }
+  }
 
   console.log("Execution output string:", resultString);
 }
@@ -283,7 +294,7 @@ export function createInventoryTool(inventoryManager) {
 
 *   **annotations**: (Optional) A dictionary for tool metadata.
     *   **readOnlyHint**: (Optional) Set to `true` if the tool does not modify any state and only reads data. This helps agents decide when it is safe to call the tool.
-    *   **consequentialHint**: (Optional, Chrome `154.0.8017.0`+) Set to `true` for high-stakes, irreversible, or real-world actions so agents request user confirmation first.
+    *   **consequentialHint**: (Optional, Chrome 154+) Set to `true` for high-stakes, irreversible, or real-world actions so agents request user confirmation first.
     *   **untrustedContentHint**: (Optional) Set to `true` when the tool returns content your site does not control, such as user-generated text or third-party API responses.
 *   **Registration Options**:
     *   **signal**: (Optional) An `AbortSignal` used to unregister the tool when it is no longer needed.
@@ -305,54 +316,3 @@ if ('modelContext' in document) {
   // Register tools
 }
 ```
-
-### Supporting older Chromium versions
-
-WebMCP is an experimental API, and the changes below are not backwards compatible. If you only target current Chromium based browsers, use the code in the sections above and skip this. If you must support a range of versions, apply these shims.
-
-| Chromium version | Change |
-|---|---|
-| `153.0.8009.0` | `execute` always receives `(inputObject, { signal })`; aborting the registration signal no longer cancels running executions. |
-| `154.0.8017.0` | `ToolAnnotations` adds `consequentialHint`. |
-| `155.0.8051.0` | `RegisteredTool.inputSchema` from `getTools()` is an object instead of a JSON string. |
-| `155.0.8052.0` | `executeTool()` input arguments accept an optional object instead of requiring a JSON string. |
-
-Default the second `execute` argument so a missing options object cannot throw a `TypeError`:
-
-```javascript
-async execute(input, { signal } = {}) {
-  // Tool logic
-}
-```
-
-Normalize `inputSchema` instead of assuming either shape. Reading `.properties` off the older string form returns `undefined` silently rather than throwing, so an unguarded read fails in a way that is hard to debug:
-
-```javascript
-const [tool] = await document.modelContext.getTools();
-
-// Object on 155.0.8051.0+, JSON string before it.
-const inputSchemaObject =
-  typeof tool.inputSchema === "string" ? JSON.parse(tool.inputSchema) : tool.inputSchema;
-```
-
-Pass the input object first and fall back to a stringified retry. Match on the rejection message, because older versions reject object input with `"Failed to parse input"`:
-
-```javascript
-const [myTool] = await document.modelContext.getTools();
-const inputObject = { answer: 42 };
-let result;
-
-try {
-  result = await document.modelContext.executeTool(myTool, inputObject);
-} catch (e) {
-  // TODO: Remove this branch once your minimum supported Chrome is 155.0.8052.0.
-  if (e?.message?.startsWith("Failed to parse input")) {
-    result = await document.modelContext.executeTool(myTool, JSON.stringify(inputObject));
-  } else {
-    // Any other rejection is a real tool failure — do not swallow it.
-    throw e;
-  }
-}
-```
-
-`consequentialHint` needs no shim: on versions that do not recognize it the annotation simply has no effect, so keep your own confirmation UI for consequential actions.
