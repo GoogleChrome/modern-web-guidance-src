@@ -250,8 +250,17 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
   for (const line of addedLines) {
     const match = line.match(/Baseline status for\s+(.+?):\s*(Widely available|Newly available)/i);
     if (match) {
-      featureName = match[1].trim();
       const status = match[2].trim().toLowerCase();
+      // An upstream rename keeps the same status on both sides of the diff.
+      const removedStatus = removedLines
+        .map(l => l.match(/Baseline status for\s+.+?:\s*(Widely available|Newly available)/i))
+        .find(Boolean)?.[1]
+        ?.toLowerCase();
+      if (removedStatus === status) {
+        return null;
+      }
+
+      featureName = match[1].trim();
       if (status.includes('widely')) {
         statusRank = 1;
         statusDescription = 'Now **Baseline Widely available**';
@@ -265,10 +274,13 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
 
   // 2. If status line didn't change (e.g. engine update in Limited status), extract featureName from context lines
   if (!featureName) {
-    const candidateLine = addedLines.find(l => /has limited availability/i.test(l) || /Baseline status for/i.test(l))
-      || allStrippedLines.find(l => /has limited availability/i.test(l) || /Baseline status for/i.test(l));
+    const isStatusLine = (l: string) =>
+      /has limited availability/i.test(l) ||
+      /Baseline status for/i.test(l) ||
+      /is not natively supported/i.test(l);
+    const candidateLine = addedLines.find(isStatusLine) || allStrippedLines.find(isStatusLine);
     if (candidateLine) {
-      const match = candidateLine.match(/(?:Baseline status for\s+(.+?):|(.+?)\s+has limited availability)/i);
+      const match = candidateLine.match(/(?:Baseline status for\s+(.+?):|(.+?)\s+(?:has limited availability|is not natively supported))/i);
       if (match) {
         featureName = (match[1] || match[2]).trim();
       }
@@ -287,7 +299,16 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
     const addedSupported = addedLines.find(l => l.includes('Supported by:'));
     const removedSupported = removedLines.find(l => l.includes('Supported by:'));
     if (!addedSupported) {
-      return null;
+      if (!removedSupported) return null;
+      const dropped = [...parseEngineMap(removedSupported).values()].map(i => i.name);
+      if (dropped.length === 0) return null;
+      return {
+        featureName,
+        featureId: resolveWebFeatureId(featureName),
+        statusRank: 3,
+        statusDescription: `Removed **${formatList(dropped)}** support`,
+        guideName,
+      };
     }
 
     const addedMap = parseEngineMap(addedSupported);

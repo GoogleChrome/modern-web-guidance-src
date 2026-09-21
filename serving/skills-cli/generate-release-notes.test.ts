@@ -162,6 +162,52 @@ test('parseBaselineUpdateFromPatch ignores limited features when browser support
   assert.ok(infoWithEngine.statusDescription.includes('Safari 27'));
 });
 
+test('parseBaselineUpdateFromPatch ignores Widely and Newly available features when renamed without status change', () => {
+  // Upstream rename with unchanged Widely available status
+  const patchWidelyRename = `
+@@ -10,4 +10,4 @@
+-Baseline status for old-feature: Widely available. It's been Baseline since 2020-01-01.
++Baseline status for new-feature: Widely available. It's been Baseline since 2020-01-01.
+`;
+  const infoWidely = parseBaselineUpdateFromPatch('test-guide', patchWidelyRename);
+  assert.strictEqual(infoWidely, null);
+
+  // Upstream rename with unchanged Newly available status
+  const patchNewlyRename = `
+@@ -10,4 +10,4 @@
+-Baseline status for old-feature: Newly available. It's been Baseline since 2025-01-01.
++Baseline status for new-feature: Newly available. It's been Baseline since 2025-01-01.
+`;
+  const infoNewly = parseBaselineUpdateFromPatch('test-guide', patchNewlyRename);
+  assert.strictEqual(infoNewly, null);
+
+  // Real promotion from Newly to Widely should still be captured
+  const patchPromotion = `
+@@ -10,4 +10,4 @@
+-Baseline status for existing-feature: Newly available.
++Baseline status for existing-feature: Widely available.
+`;
+  const infoPromotion = parseBaselineUpdateFromPatch('test-guide', patchPromotion);
+  assert.ok(infoPromotion);
+  assert.strictEqual(infoPromotion.statusRank, 1);
+  assert.ok(infoPromotion.statusDescription.includes('Widely available'));
+});
+
+test('parseBaselineUpdateFromPatch reports browser support removal when feature loses all support', () => {
+  const patchLoseAllSupport = `
+@@ -62,5 +62,3 @@
+-Feature X has limited availability.
+-Supported by: Chrome 120 (Dec 2023).
+-Unsupported in: Firefox and Safari.
++Feature X is not natively supported by any major browser yet.
+`;
+  const info = parseBaselineUpdateFromPatch('test-guide', patchLoseAllSupport);
+  assert.ok(info);
+  assert.strictEqual(info.featureName, 'Feature X');
+  assert.strictEqual(info.statusRank, 3);
+  assert.strictEqual(info.statusDescription, 'Removed **Chrome** support');
+});
+
 test('buildBaselineBullets sorts entries strictly: Widely -> Newly -> Limited and groups guides', () => {
   const updates: BaselineUpdateInfo[] = [
     {
