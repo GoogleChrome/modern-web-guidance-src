@@ -24,7 +24,7 @@
 - **MANDATORY**: A native CSS fallback using `@supports not` is provided for browsers that do not support CSS Anchor Positioning, falling back to container-relative coordinates.
 - **MANDATORY**: Second-level navigation items (sub-navigation) are implemented natively using `<details class="nav-dropdown">` and `<summary>` elements to prevent duplicating links or layering nested popovers.
 - **MANDATORY**: On narrow layouts, the sub-navigation expands vertically inline inside the popover navigation panel, pushing other sibling list links down.
-- **MANDATORY**: On wide layouts, the sub-navigation `.dropdown-list` is styled as an absolutely positioned floating card beneath the relative details parent trigger.
+- **MANDATORY**: On wide layouts, the sub-navigation `.dropdown-list` is styled as a floating card positioned relative to the details trigger using CSS Anchor Positioning (e.g. `position-anchor`, `position-area`, and `position-try-fallbacks`).
 - **MANDATORY**: On wide layouts, open details sub-navigation lists are programmatically closed on click-outside and on pressing the `Escape` key, safely returning keyboard focus back to the `summary` trigger.
 - **MANDATORY**: The JavaScript sub-navigation dismissal checks layout state dynamically by reading whether the mobile trigger `.menu-button` is hidden (`display === "none"`), avoiding hardcoded breakpoint values or media query duplication.
 - **MANDATORY**: High-contrast system support is provided under a `@media (forced-colors: active)` query to adapt custom borders, boundaries, and active-state visual indicators (e.g., using values like `CanvasText` and `Highlight`).

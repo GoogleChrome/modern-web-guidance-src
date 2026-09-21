@@ -352,15 +352,17 @@
         block-size: 0.2rem;
       }
 
-      .nav-dropdown {
-        position: relative;
+      .dropdown-trigger {
+        anchor-name: --services-trigger;
       }
 
-      /* Desktop flyout style for dropdowns */
+      /* Desktop flyout style for dropdowns using CSS Anchor Positioning */
       .dropdown-list {
         position: absolute;
-        inset-block-start: 100%;
-        inset-inline-start: 0;
+        position-anchor: --services-trigger;
+        position-area: block-end span-inline-end;
+        position-try-fallbacks: flip-block;
+        inset: auto;
         display: grid;
         gap: 0.25rem;
         inline-size: max-content;
