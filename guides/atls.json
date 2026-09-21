@@ -24,6 +24,7 @@
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
     "tmp-cross-origin-storage": "tomayac",
+    "tmp-email-verification": "rowan-m",
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {
