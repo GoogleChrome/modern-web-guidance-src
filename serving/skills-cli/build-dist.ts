@@ -82,6 +82,21 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   grokMarketplaceData.plugins[0].version = newVersion;
   fs.writeFileSync(grokMarketplacePath, JSON.stringify(grokMarketplaceData, null, 2) + '\n');
 
+  // Codex Plugin
+  const codexPluginPath = path.join(publishCliDir, ".codex-plugin/plugin.json");
+  const codexPluginData = JSON.parse(fs.readFileSync(codexPluginPath, 'utf8'));
+  codexPluginData.version = newVersion;
+  fs.writeFileSync(codexPluginPath, JSON.stringify(codexPluginData, null, 2) + '\n');
+
+  // Codex Marketplace
+  const codexMarketplacePath = path.join(publishCliDir, ".agents/plugins/marketplace.json");
+  if (fs.existsSync(codexMarketplacePath)) {
+    const codexMarketplaceData = JSON.parse(fs.readFileSync(codexMarketplacePath, 'utf8'));
+    if (codexMarketplaceData.plugins?.[0]) {
+      codexMarketplaceData.plugins[0].version = newVersion;
+    }
+    fs.writeFileSync(codexMarketplacePath, JSON.stringify(codexMarketplaceData, null, 2) + '\n');
+  }
 }
 
 export function processSkills(publishRoot: string) {
@@ -152,15 +167,15 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
     target: 'skills-cli',
   });
 
-  // Create a symbolic link for prompt-api pointing to language-model.md
+  // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
   const promptApiLink = path.join(DIST_DIR, "guides/built-in-ai/prompt-api.md");
   const categoryDir = path.dirname(promptApiLink);
   if (fs.existsSync(categoryDir)) {
     if (fs.existsSync(promptApiLink)) {
       fs.unlinkSync(promptApiLink);
     }
-    fs.symlinkSync("language-model.md", promptApiLink);
-    console.log("Created prompt-api.md symlink pointing to language-model.md in distribution guides");
+    fs.copyFileSync(path.join(categoryDir, "language-model.md"), promptApiLink);
+    console.log("Created prompt-api.md copy of language-model.md in distribution guides");
   }
 
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });

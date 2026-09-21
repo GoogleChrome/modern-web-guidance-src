@@ -196,7 +196,7 @@ describe('runDevPr', () => {
       const success = await runDevPr(tempDir);
       assert.equal(success, true);
       assert.equal(prCreated, true);
-      assert.equal(prTitleArg, `gd dev output for ${path.basename(tempDir)}`);
+      assert.equal(prTitleArg, `grader updates: ${path.basename(tempDir)}`);
       assert.deepEqual(prLabelsArg, ['gd-dev-content']);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
