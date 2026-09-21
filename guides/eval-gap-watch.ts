@@ -117,8 +117,8 @@ export function buildIssue(gap: Gap): { title: string; body: string } {
   const { title, summary, action } = gap.kind === 'missing-evals'
     ? {
         title: `Evals missing for the ${gap.guideName} guide`,
-        summary: `${link} has guidance and populated \`${EXPECTATIONS_FILE}\`, but no evals.`,
-        action: `Generate and calibrate a grader: \`pnpm generate-grader ${gap.guideName}\`, then \`gd dev ${gap.guideName} --test-grader\`.`,
+        summary: `${link} has guidance and populated \`${EXPECTATIONS_FILE}\`, but its grader is missing.`,
+        action: `Run \`gd dev ${gap.guidePath}\` to create the evals.`,
       }
     : {
         title: `Expectations changed for the ${gap.guideName} guide, which already has evals`,
