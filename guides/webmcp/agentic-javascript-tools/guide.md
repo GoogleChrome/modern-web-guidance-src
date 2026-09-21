@@ -145,7 +145,7 @@ await document.modelContext.registerTool({
     },
     required: ["url"],
   },
-  execute: async ({ url, priority }, { signal } = {}) => {
+  execute: async ({ url, priority }, { signal }) => {
     const output = document.querySelector("pre");
     output.textContent = "Loading…";
     try {
