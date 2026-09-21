@@ -1,0 +1,64 @@
+name: Eval Gap Watch
+
+on:
+  # Monday 13:00 UTC. The script's lookback window is kept slightly wider than
+  # this interval so an edit landing near the boundary isn't missed.
+  schedule:
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry run mode'
+        required: true
+        default: 'true'
+        type: boolean
+      since:
+        description: 'How far back to look for expectations.md edits'
+        required: false
+        default: '8 days ago'
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+# This job reads the existing issues and then writes new ones, so parallel runs
+# would both see an empty list and file the same issue twice. Queue them
+# instead — and never cancel an in-flight run, which could leave issues
+# half-filed.
+concurrency:
+  group: eval-gap-watch
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    if: github.repository == 'GoogleChrome/modern-web-guidance-src'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Needed to resolve a base commit from the lookback window.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run eval gap watch
+        run: node --experimental-strip-types guides/eval-gap-watch.ts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          EVAL_GAP_SINCE: ${{ github.event.inputs.since || '8 days ago' }}
