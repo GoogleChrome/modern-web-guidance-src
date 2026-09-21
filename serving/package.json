@@ -3,29 +3,24 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "mcp-server/index.ts",
+  "main": "bin/modern-web.ts",
   "exports": {
-    ".": "./mcp-server/index.ts",
-    "./lib": "./mcp-server/lib.ts"
+    ".": "./bin/modern-web.ts"
   },
   "files": [
-    "mcp-server",
+    "bin",
     "lib",
     "build",
-    "AGENTS.md",
-    "README.md"
+    "AGENTS.md"
   ],
   "scripts": {
     "baselinestatus": "node cli/baseline-status.ts",
     "prepublishOnly": "pnpm run build",
     "build": "node scripts/build-guides.ts && pnpm run build-dist",
-    "build:megaskill": "node scripts/build-megaskill.ts",
     "build:static-site": "node scripts/build-guides.ts --target=static-site --output=dist/static-site-guides",
     "build-dist": "node --experimental-strip-types */build-dist.ts",
     "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",
     "collect-evals": "node --experimental-strip-types scripts/collect-eval-results.ts",
-    "start": "node mcp-server/index.ts",
-    "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
     "test": "node --test --test-reporter ${TEST_REPORTER:-dot} **/*.test.ts",
     "typecheck": "tsc --noEmit",
     "benchmark:rag": "node --experimental-strip-types benchmarks/rag/eval-rag-suite.ts",
@@ -34,15 +29,13 @@
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
     "@mdn/browser-compat-data": "^7.3.13",
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
     "apache-arrow": "21.1.0",
     "marked": "^18.0.3",
     "onnxruntime-node": "^1.25.1",
-    "web-features": "^3.36.0",
-    "zod": "^4.4.3"
+    "web-features": "^3.39.0"
   },
   "devDependencies": {
     "@types/gh-pages": "^6.1.0",

@@ -153,17 +153,16 @@ If you need more control, you can run each step individually:
 1. Configure the following settings for your run in the [harness config](../harness/config.ts):
 
 ```
-mcpServersToEnable: ['modern-web-guidance'],
-serving: Serving.MCP,
+skillsToEnable: ['modern-web-guidance'],
 agent: Agents.GEMINI_CLI
 ```
 
-> Note: to test the agent without any guide access, set `mcpServersToEnable` to `[]` (and step `2` can be skipped).
+> Note: to test the agent without any guide access, set `skillsToEnable` to `[]` (and step `2` can be skipped).
 
-2. Build the MCP index with the guide:
+2. Build the guide index with the guide:
 
 ```sh
-pnpm build:mcp <path/to/guide_dir>
+pnpm build:guides <path/to/guide_dir>
 ```
 
 3. Create a `test-app` directory in the `<guide_dir>`:

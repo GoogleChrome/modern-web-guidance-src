@@ -1,0 +1,7 @@
+- The `#output-set` element is populated using `setHTML()` (or a sanitized fallback) and does not contain any `<script>` tags.
+- The `#output-set` element does not contain any `on*` event handler attributes (like `onclick` or `onerror`).
+- The `#output-custom` element is populated using a `Sanitizer` with a custom configuration that limits allowed elements.
+- The `#output-custom` element does not contain `<img>` tags, as they are excluded from the custom `elements` list.
+- The `#output-custom` element correctly replaces `<div>` tags with their children using the `replaceWithChildrenElements` configuration.
+- The `#output-sanitized` element displays the sanitized HTML string produced by `Document.parseHTML()`.
+- The implementation includes a functional fallback using a library like DOMPurify when the native Sanitizer API is unavailable.

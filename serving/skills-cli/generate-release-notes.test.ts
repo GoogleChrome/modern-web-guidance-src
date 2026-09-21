@@ -136,6 +136,78 @@ test('parseBaselineUpdateFromPatch extracts feature name and status rank', () =>
   assert.ok(infoNewly.statusDescription.includes('Newly available'));
 });
 
+test('parseBaselineUpdateFromPatch ignores limited features when browser support does not change', () => {
+  // Upstream feature rename with unchanged browser support
+  const patchNoEngineChange = `
+@@ -62,7 +62,7 @@
+-Long animation frames has limited availability.
++Long animation frames performance entries has limited availability.
+ Supported by: Chrome 123 (Mar 2024) and Edge 123 (Mar 2024).
+ Unsupported in: Firefox and Safari..
+`;
+  const info = parseBaselineUpdateFromPatch('identify-heavy-scripts', patchNoEngineChange);
+  assert.strictEqual(info, null);
+
+  // Limited feature with real engine addition
+  const patchWithEngineAddition = `
+@@ -62,7 +62,7 @@
+ Long animation frames has limited availability.
+-Supported by: Chrome 123 (Mar 2024).
++Supported by: Chrome 123 (Mar 2024) and Safari 27.
+ Unsupported in: Firefox.
+`;
+  const infoWithEngine = parseBaselineUpdateFromPatch('identify-heavy-scripts', patchWithEngineAddition);
+  assert.ok(infoWithEngine);
+  assert.strictEqual(infoWithEngine.statusRank, 3);
+  assert.ok(infoWithEngine.statusDescription.includes('Safari 27'));
+});
+
+test('parseBaselineUpdateFromPatch ignores Widely and Newly available features when renamed without status change', () => {
+  // Upstream rename with unchanged Widely available status
+  const patchWidelyRename = `
+@@ -10,4 +10,4 @@
+-Baseline status for old-feature: Widely available. It's been Baseline since 2020-01-01.
++Baseline status for new-feature: Widely available. It's been Baseline since 2020-01-01.
+`;
+  const infoWidely = parseBaselineUpdateFromPatch('test-guide', patchWidelyRename);
+  assert.strictEqual(infoWidely, null);
+
+  // Upstream rename with unchanged Newly available status
+  const patchNewlyRename = `
+@@ -10,4 +10,4 @@
+-Baseline status for old-feature: Newly available. It's been Baseline since 2025-01-01.
++Baseline status for new-feature: Newly available. It's been Baseline since 2025-01-01.
+`;
+  const infoNewly = parseBaselineUpdateFromPatch('test-guide', patchNewlyRename);
+  assert.strictEqual(infoNewly, null);
+
+  // Real promotion from Newly to Widely should still be captured
+  const patchPromotion = `
+@@ -10,4 +10,4 @@
+-Baseline status for existing-feature: Newly available.
++Baseline status for existing-feature: Widely available.
+`;
+  const infoPromotion = parseBaselineUpdateFromPatch('test-guide', patchPromotion);
+  assert.ok(infoPromotion);
+  assert.strictEqual(infoPromotion.statusRank, 1);
+  assert.ok(infoPromotion.statusDescription.includes('Widely available'));
+});
+
+test('parseBaselineUpdateFromPatch reports browser support removal when feature loses all support', () => {
+  const patchLoseAllSupport = `
+@@ -62,5 +62,3 @@
+-Feature X has limited availability.
+-Supported by: Chrome 120 (Dec 2023).
+-Unsupported in: Firefox and Safari.
++Feature X is not natively supported by any major browser yet.
+`;
+  const info = parseBaselineUpdateFromPatch('test-guide', patchLoseAllSupport);
+  assert.ok(info);
+  assert.strictEqual(info.featureName, 'Feature X');
+  assert.strictEqual(info.statusRank, 3);
+  assert.strictEqual(info.statusDescription, 'Removed **Chrome** support');
+});
+
 test('buildBaselineBullets sorts entries strictly: Widely -> Newly -> Limited and groups guides', () => {
   const updates: BaselineUpdateInfo[] = [
     {
@@ -246,6 +318,7 @@ test('getUniqueGuideNames deduplicates guide paths, includes SKILL.md, and filte
 
 test('isPluginFile correctly identifies plugin and manifest files', () => {
   assert.strictEqual(isPluginFile('.claude-plugin/plugin.json'), true);
+  assert.strictEqual(isPluginFile('.codex-plugin/plugin.json'), true);
   assert.strictEqual(isPluginFile('.grok-plugin/marketplace.json'), true);
   assert.strictEqual(isPluginFile('gemini-extension.json'), true);
   assert.strictEqual(isPluginFile('skills/modern-web-guidance/SKILL.md'), false);

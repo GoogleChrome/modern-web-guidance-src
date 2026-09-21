@@ -192,7 +192,7 @@ Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Conta
 Images typically represent the largest payload on a given web page. Optimization requires format negotiation, responsive sizing, and layout stabilization.
 
 ### DOs
-*   **DO serve modern formats (AVIF / WebP)**: Use the `<picture>` element to offer AVIF (best compression), falling back to WebP, and finally JPEG/PNG for legacy browsers.
+*   **DO serve modern formats (AVIF / WebP / JPEG XL)**: Use the `<picture>` element to offer AVIF or JPEG XL (best compression), falling back to WebP, and finally JPEG/PNG for legacy browsers.
 *   **DO apply explicit `width` and `height` attributes**: Setting native attributes allows the browser to compute the aspect ratio immediately, reserving space and eliminating CLS. Image dimensions may be set either as HTML attributes or CSS properties.
 *   **DO utilize `loading="lazy"` on all below-the-fold images**: Utilize native browser lazy loading to defer network requests for images outside the initial viewport.
 *   **DO implement responsive images with `srcset` and `sizes`**: Serve tailored resolutions based on screen density and viewport width to prevent mobile devices from downloading desktop-sized images.
@@ -249,6 +249,7 @@ Client-side caching via Service Workers allows applications to bypass the networ
 *   **DON'T cache opaque responses blindly**: Responses from third-party domains lacking CORS headers are "opaque". Caching them heavily consumes quota and fails silently. Only cache them using `NetworkFirst` or `StaleWhileRevalidate`.
 *   **DON'T cache POST requests**: Service workers cannot cache non-GET requests natively. Implement background sync queues for offline submissions.
 *   **DON'T bypass versioning**: Failing to update asset hashes/versions will trap users in infinite cache loops.
+*   **DON'T use `Cache-Control: no-store` for non-sensitive resources**: This directive prevents the browser from storing the page in the **Back-Forward Cache (bfcache)**, leading to significantly slower perceived performance. Use it only for truly private data, and use `Cache-Control: no-cache` or `Cache-Control: max-age=0` for pages that simply need to serve up-to-date content.
 
 ### Code Examples
 

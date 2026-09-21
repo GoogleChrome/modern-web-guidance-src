@@ -89,55 +89,56 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 <details>
 <summary><strong>104 modern web features</strong></summary>
 
-### CSS & Layout (51 features)
+### CSS & Layout (54 features)
 
 | | | |
 | :--- | :--- | :--- |
 | [::backdrop](https://web-platform-dx.github.io/web-features-explorer/features/backdrop/) | [Custom highlights](https://web-platform-dx.github.io/web-features-explorer/features/highlight/) | [Scroll snap events](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap-events/) |
 | [:has()](https://web-platform-dx.github.io/web-features-explorer/features/has/) | [field-sizing](https://web-platform-dx.github.io/web-features-explorer/features/field-sizing/) | [Scroll-driven animations](https://web-platform-dx.github.io/web-features-explorer/features/scroll-driven-animations/) |
 | [:not()](https://web-platform-dx.github.io/web-features-explorer/features/not/) | [font-size-adjust](https://web-platform-dx.github.io/web-features-explorer/features/font-size-adjust/) | [scroll-initial-target](https://web-platform-dx.github.io/web-features-explorer/features/scroll-initial-target/) |
-| [:user-valid and :user-invalid](https://web-platform-dx.github.io/web-features-explorer/features/user-pseudos/) | [image-set()](https://web-platform-dx.github.io/web-features-explorer/features/image-set/) | [scrollbar-color](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-color/) |
-| [@function](https://web-platform-dx.github.io/web-features-explorer/features/function/) | [Individual transform properties](https://web-platform-dx.github.io/web-features-explorer/features/individual-transforms/) | [scrollbar-width](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-width/) |
-| [@starting-style](https://web-platform-dx.github.io/web-features-explorer/features/starting-style/) | [interpolate-size](https://web-platform-dx.github.io/web-features-explorer/features/interpolate-size/) | [scrollend](https://web-platform-dx.github.io/web-features-explorer/features/scrollend/) |
-| [accent-color](https://web-platform-dx.github.io/web-features-explorer/features/accent-color/) | [light-dark()](https://web-platform-dx.github.io/web-features-explorer/features/light-dark/) | [scrollIntoView()](https://web-platform-dx.github.io/web-features-explorer/features/scroll-into-view/) |
-| [Active view transition](https://web-platform-dx.github.io/web-features-explorer/features/active-view-transition/) | [linear() easing](https://web-platform-dx.github.io/web-features-explorer/features/linear-easing/) | [sibling-count() and sibling-index()](https://web-platform-dx.github.io/web-features-explorer/features/sibling-count/) |
-| [Anchor position container queries](https://web-platform-dx.github.io/web-features-explorer/features/container-anchor-position-queries/) | [Masks](https://web-platform-dx.github.io/web-features-explorer/features/masks/) | [text-box](https://web-platform-dx.github.io/web-features-explorer/features/text-box/) |
-| [Anchor positioning](https://web-platform-dx.github.io/web-features-explorer/features/anchor-positioning/) | [overflow-clip-margin](https://web-platform-dx.github.io/web-features-explorer/features/overflow-clip-margin/) | [text-wrap](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap/) |
-| [calc-size()](https://web-platform-dx.github.io/web-features-explorer/features/calc-size/) | [overflow: clip](https://web-platform-dx.github.io/web-features-explorer/features/overflow-clip/) | [text-wrap: balance](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap-balance/) |
-| [color-scheme](https://web-platform-dx.github.io/web-features-explorer/features/color-scheme/) | [overlay](https://web-platform-dx.github.io/web-features-explorer/features/overlay/) | [text-wrap: pretty](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap-pretty/) |
-| [Container queries](https://web-platform-dx.github.io/web-features-explorer/features/container-queries/) | [overscroll-behavior](https://web-platform-dx.github.io/web-features-explorer/features/overscroll-behavior/) | [transition-behavior](https://web-platform-dx.github.io/web-features-explorer/features/transition-behavior/) |
-| [Container scroll-state queries](https://web-platform-dx.github.io/web-features-explorer/features/container-scroll-state-queries/) | [prefers-color-scheme media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-color-scheme/) | [Trigonometric functions (CSS)](https://web-platform-dx.github.io/web-features-explorer/features/trig-functions/) |
-| [Container style queries](https://web-platform-dx.github.io/web-features-explorer/features/container-style-queries/) | [prefers-contrast media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-contrast/) | [View transitions](https://web-platform-dx.github.io/web-features-explorer/features/view-transitions/) |
-| [content-visibility](https://web-platform-dx.github.io/web-features-explorer/features/content-visibility/) | [prefers-reduced-motion media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-reduced-motion/) | [view-transition-class](https://web-platform-dx.github.io/web-features-explorer/features/view-transition-class/) |
+| [:user-valid and :user-invalid](https://web-platform-dx.github.io/web-features-explorer/features/user-pseudos/) | [image-set()](https://web-platform-dx.github.io/web-features-explorer/features/image-set/) | [scroll-target-group](https://web-platform-dx.github.io/web-features-explorer/features/scroll-target-group/) |
+| [@function](https://web-platform-dx.github.io/web-features-explorer/features/function/) | [Individual transform properties](https://web-platform-dx.github.io/web-features-explorer/features/individual-transforms/) | [scrollbar-color](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-color/) |
+| [@starting-style](https://web-platform-dx.github.io/web-features-explorer/features/starting-style/) | [interpolate-size](https://web-platform-dx.github.io/web-features-explorer/features/interpolate-size/) | [scrollbar-width](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-width/) |
+| [accent-color](https://web-platform-dx.github.io/web-features-explorer/features/accent-color/) | [light-dark()](https://web-platform-dx.github.io/web-features-explorer/features/light-dark/) | [scrollend](https://web-platform-dx.github.io/web-features-explorer/features/scrollend/) |
+| [Active view transition](https://web-platform-dx.github.io/web-features-explorer/features/active-view-transition/) | [linear() easing](https://web-platform-dx.github.io/web-features-explorer/features/linear-easing/) | [scrollIntoView()](https://web-platform-dx.github.io/web-features-explorer/features/scroll-into-view/) |
+| [Anchor position container queries](https://web-platform-dx.github.io/web-features-explorer/features/container-anchor-position-queries/) | [Masks](https://web-platform-dx.github.io/web-features-explorer/features/masks/) | [sibling-count() and sibling-index()](https://web-platform-dx.github.io/web-features-explorer/features/sibling-count/) |
+| [Anchor positioning](https://web-platform-dx.github.io/web-features-explorer/features/anchor-positioning/) | [overflow-clip-margin](https://web-platform-dx.github.io/web-features-explorer/features/overflow-clip-margin/) | [text-box](https://web-platform-dx.github.io/web-features-explorer/features/text-box/) |
+| [calc-size()](https://web-platform-dx.github.io/web-features-explorer/features/calc-size/) | [overflow: clip](https://web-platform-dx.github.io/web-features-explorer/features/overflow-clip/) | [text-wrap](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap/) |
+| [color-scheme](https://web-platform-dx.github.io/web-features-explorer/features/color-scheme/) | [overlay](https://web-platform-dx.github.io/web-features-explorer/features/overlay/) | [text-wrap: balance](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap-balance/) |
+| [Conic gradients](https://web-platform-dx.github.io/web-features-explorer/features/conic-gradients/) | [overscroll-behavior](https://web-platform-dx.github.io/web-features-explorer/features/overscroll-behavior/) | [text-wrap: pretty](https://web-platform-dx.github.io/web-features-explorer/features/text-wrap-pretty/) |
+| [Container queries](https://web-platform-dx.github.io/web-features-explorer/features/container-queries/) | [prefers-color-scheme media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-color-scheme/) | [transition-behavior](https://web-platform-dx.github.io/web-features-explorer/features/transition-behavior/) |
+| [Container scroll-state queries](https://web-platform-dx.github.io/web-features-explorer/features/container-scroll-state-queries/) | [prefers-contrast media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-contrast/) | [Trigonometric functions (CSS)](https://web-platform-dx.github.io/web-features-explorer/features/trig-functions/) |
+| [Container style queries](https://web-platform-dx.github.io/web-features-explorer/features/container-style-queries/) | [prefers-reduced-motion media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-reduced-motion/) | [View transitions](https://web-platform-dx.github.io/web-features-explorer/features/view-transitions/) |
+| [content-visibility](https://web-platform-dx.github.io/web-features-explorer/features/content-visibility/) | [Scroll marker target pseudo-classes](https://web-platform-dx.github.io/web-features-explorer/features/scroll-marker-targets/) | [view-transition-class](https://web-platform-dx.github.io/web-features-explorer/features/view-transition-class/) |
 | [Cross-document view transitions](https://web-platform-dx.github.io/web-features-explorer/features/cross-document-view-transitions/) | [Scroll snap](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap/) | [Web animations](https://web-platform-dx.github.io/web-features-explorer/features/web-animations/) |
 
-### HTML & DOM (20 features)
+### HTML & DOM (21 features)
 
 | | | |
 | :--- | :--- | :--- |
-| [:autofill](https://web-platform-dx.github.io/web-features-explorer/features/autofill/) | [Customizable &lt;select>](https://web-platform-dx.github.io/web-features-explorer/features/customizable-select/) | [Invoker commands](https://web-platform-dx.github.io/web-features-explorer/features/invoker-commands/) |
-| [&lt;details>](https://web-platform-dx.github.io/web-features-explorer/features/details/) | [Email, telephone, and URL &lt;input> types](https://web-platform-dx.github.io/web-features-explorer/features/input-email-tel-url/) | [moveBefore()](https://web-platform-dx.github.io/web-features-explorer/features/move-before/) |
-| [&lt;dialog closedby>](https://web-platform-dx.github.io/web-features-explorer/features/dialog-closedby/) | [Fetch priority](https://web-platform-dx.github.io/web-features-explorer/features/fetch-priority/) | [MutationObserver](https://web-platform-dx.github.io/web-features-explorer/features/mutationobserver/) |
-| [&lt;dialog>](https://web-platform-dx.github.io/web-features-explorer/features/dialog/) | [hidden="until-found"](https://web-platform-dx.github.io/web-features-explorer/features/hidden-until-found/) | [Mutually exclusive &lt;details> elements](https://web-platform-dx.github.io/web-features-explorer/features/details-name/) |
-| [&lt;link rel="expect">](https://web-platform-dx.github.io/web-features-explorer/features/link-rel-expect/) | [HTML in canvas](https://web-platform-dx.github.io/web-features-explorer/features/canvas-html/) | [Popover](https://web-platform-dx.github.io/web-features-explorer/features/popover/) |
-| [&lt;link rel="preload">](https://web-platform-dx.github.io/web-features-explorer/features/link-rel-preload/) | [inert](https://web-platform-dx.github.io/web-features-explorer/features/inert/) | [popover="hint"](https://web-platform-dx.github.io/web-features-explorer/features/popover-hint/) |
-| [blocking="render"](https://web-platform-dx.github.io/web-features-explorer/features/blocking-render/) | [Interest invokers](https://web-platform-dx.github.io/web-features-explorer/features/interest-invokers/) |  |
+| [:autofill](https://web-platform-dx.github.io/web-features-explorer/features/autofill/) | [blocking="render"](https://web-platform-dx.github.io/web-features-explorer/features/blocking-render/) | [Interest invokers](https://web-platform-dx.github.io/web-features-explorer/features/interest-invokers/) |
+| [&lt;details>](https://web-platform-dx.github.io/web-features-explorer/features/details/) | [Customizable &lt;select>](https://web-platform-dx.github.io/web-features-explorer/features/customizable-select/) | [Invoker commands](https://web-platform-dx.github.io/web-features-explorer/features/invoker-commands/) |
+| [&lt;dialog closedby>](https://web-platform-dx.github.io/web-features-explorer/features/dialog-closedby/) | [Email, telephone, and URL &lt;input> types](https://web-platform-dx.github.io/web-features-explorer/features/input-email-tel-url/) | [moveBefore()](https://web-platform-dx.github.io/web-features-explorer/features/move-before/) |
+| [&lt;dialog>](https://web-platform-dx.github.io/web-features-explorer/features/dialog/) | [Fetch priority](https://web-platform-dx.github.io/web-features-explorer/features/fetch-priority/) | [MutationObserver](https://web-platform-dx.github.io/web-features-explorer/features/mutationobserver/) |
+| [&lt;link rel="expect">](https://web-platform-dx.github.io/web-features-explorer/features/link-rel-expect/) | [hidden="until-found"](https://web-platform-dx.github.io/web-features-explorer/features/hidden-until-found/) | [Mutually exclusive &lt;details> elements](https://web-platform-dx.github.io/web-features-explorer/features/details-name/) |
+| [&lt;link rel="preload">](https://web-platform-dx.github.io/web-features-explorer/features/link-rel-preload/) | [HTML in canvas](https://web-platform-dx.github.io/web-features-explorer/features/canvas-html/) | [Popover](https://web-platform-dx.github.io/web-features-explorer/features/popover/) |
+| [&lt;progress>](https://web-platform-dx.github.io/web-features-explorer/features/progress/) | [inert](https://web-platform-dx.github.io/web-features-explorer/features/inert/) | [popover="hint"](https://web-platform-dx.github.io/web-features-explorer/features/popover-hint/) |
 
 ### JavaScript & APIs (33 features)
 
 | | | |
 | :--- | :--- | :--- |
-| [AbortController and AbortSignal](https://web-platform-dx.github.io/web-features-explorer/features/aborting/) | [Keyboard events](https://web-platform-dx.github.io/web-features-explorer/features/keyboard-events/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) |
-| [document.modelContext](https://web-platform-dx.github.io/web-features-explorer/features/document-modelcontext/) | [Language detector](https://web-platform-dx.github.io/web-features-explorer/features/languagedetector/) | [Scheduler API](https://web-platform-dx.github.io/web-features-explorer/features/scheduler/) |
-| [enterkeyhint](https://web-platform-dx.github.io/web-features-explorer/features/enterkeyhint/) | [LanguageModel](https://web-platform-dx.github.io/web-features-explorer/features/languagemodel/) | [Speculation rules](https://web-platform-dx.github.io/web-features-explorer/features/speculation-rules/) |
-| [Event timing](https://web-platform-dx.github.io/web-features-explorer/features/event-timing/) | [Lazy-loading images and iframes](https://web-platform-dx.github.io/web-features-explorer/features/loading-lazy/) | [Summarizer](https://web-platform-dx.github.io/web-features-explorer/features/summarizer/) |
-| [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Long animation frames](https://web-platform-dx.github.io/web-features-explorer/features/long-animation-frames/) | [SVG](https://web-platform-dx.github.io/web-features-explorer/features/svg/) |
-| [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
-| [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
-| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Page visibility state](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
-| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
-| [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
-| [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
+| [AbortController and AbortSignal](https://web-platform-dx.github.io/web-features-explorer/features/aborting/) | [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) |
+| [declarative-partial-updates](https://web-platform-dx.github.io/web-features-explorer/features/tmp-declarative-partial-updates/) | [Language detector](https://web-platform-dx.github.io/web-features-explorer/features/languagedetector/) | [Scheduler API](https://web-platform-dx.github.io/web-features-explorer/features/scheduler/) |
+| [document.modelContext](https://web-platform-dx.github.io/web-features-explorer/features/document-modelcontext/) | [LanguageModel](https://web-platform-dx.github.io/web-features-explorer/features/languagemodel/) | [Speculation rules](https://web-platform-dx.github.io/web-features-explorer/features/speculation-rules/) |
+| [enterkeyhint](https://web-platform-dx.github.io/web-features-explorer/features/enterkeyhint/) | [Lazy-loading images and iframes](https://web-platform-dx.github.io/web-features-explorer/features/loading-lazy/) | [Summarizer](https://web-platform-dx.github.io/web-features-explorer/features/summarizer/) |
+| [Event timing](https://web-platform-dx.github.io/web-features-explorer/features/event-timing/) | [Long animation frames](https://web-platform-dx.github.io/web-features-explorer/features/long-animation-frames/) | [SVG](https://web-platform-dx.github.io/web-features-explorer/features/svg/) |
+| [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
+| [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
+| [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Page visibility state](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
+| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
+| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
+| [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
 
 </details>
 
@@ -181,6 +182,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[autofill-sign-up-form](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/autofill-sign-up-form.md)**: Build a sign-up form with correct autocomplete values and autofill support.
 - **[brand-consistent-forms](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/brand-consistent-forms.md)**: Match checkboxes, radio buttons, range sliders, and progress bars to your site's color palette without replacing them with custom components.
 - **[branded-select-styling](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/branded-select-styling.md)**: Create custom select elements whose button, picker, arrow icon, and checkmark all seamlessly match your brand or design system's typography, colors, spacing, and border treatments.
+- **[button-group](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/button-group.md)**: Build a button group: a set of options (mutually exclusive or not) laid out horizontally and presented as visually connected buttons.
 - **[custom-select-picker-layouts](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/custom-select-picker-layouts.md)**: Create custom select pickers whose options are positioned in unique or interesting ways, rather than the traditional stacked list of options.
 - **[form-fields-automatically-fit-contents](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/form-fields-automatically-fit-contents.md)**: Allow form fields to grow and shrink to fit the user input, e.g. as the user types or selects a different option. Apply maximum and minimum size limits to create dynamic and responsive form fields that conform with the page design.
 - **[ime-safe-enter-submit](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/forms/ime-safe-enter-submit.md)**: Implement keyboard text submission (like enter-to-submit in chat/textareas) safely for IME (Input Method Editor) users to prevent premature submission of incomplete text.
@@ -222,6 +224,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[optimize-image-priority](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/optimize-image-priority.md)**: Optimize the loading priority of Largest Contentful Paint (LCP) candidate images and deprioritize non-critical images to reduce critical resource load delays.
 - **[optimize-preload-priority](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/optimize-preload-priority.md)**: Optimize the relative priority of preloaded content to reduce critical resource load delays.
 - **[optimize-script-priority](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/optimize-script-priority.md)**: Optimize the loading priority of scripts by boosting critical asynchronous scripts and deprioritizing non-essential or late-body scripts to improve sequencing and reduce delays.
+- **[out-of-order-html-streaming](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/out-of-order-html-streaming.md)**: Declaratively update a page with content streamed later into the same HTML document or via imperative JavaScript APIs.
 - **[resolution-optimized-pseudo-elements](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/resolution-optimized-pseudo-elements.md)**: Use resolution-optimized images in CSS pseudo-elements (such as `::before` and `::after`) to reduce the number of DOM nodes.
 - **[schedule-tasks-by-priority](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/schedule-tasks-by-priority.md)**: Schedule tasks with different priorities to ensure critical work runs first while background work is deferred.
 - **[sequence-distributed-events](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/sequence-distributed-events.md)**: Log and sequence operations in distributed microservices or high-throughput tracing environments by recording timestamps with nanosecond resolution.
@@ -289,6 +292,9 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[navigation-drawer](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/navigation-drawer.md)**: Create a navigation drawer component that, when triggered from a menu button, slides in from the side overlayed on top of existing page content, and slides out when dismissed (by swiping away, tapping outside, or pressing escape).
 - **[persistent-app-tours](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/persistent-app-tours.md)**: Create persistent onboarding walkthroughs using tethered native overlays that stay open during user interaction.
 - **[persistent-toast-notifications](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/persistent-toast-notifications.md)**: Create non-intrusive toast and overlay notifications for persistent, stackable messaging and state communication.
+- **[progress-ring](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/progress-ring.md)**: Build a progress ring component that visually represents the completion status of a task or process, with support for content in the center and brand-consistent styling.
+- **[scrollspy](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/scrollspy.md)**: Highlight the currently visible section of a page in a navigation menu
+- **[spinner](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/spinner.md)**: Build a loading spinner that communicates busy state to all users, respects reduced-motion preferences, and animates efficiently.
 - **[stack-drill-down](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/stack-drill-down.md)**: Build full-screen hierarchical navigation that lets users drill down into nested views and swipe or navigate back to return, with browser history kept in sync.
 
 <h3>visual-design</h3>
@@ -296,6 +302,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[adapt-scrollbar-to-contrast-preferences](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/adapt-scrollbar-to-contrast-preferences.md)**: Enhance scrollbar visibility for users who prefer high-contrast interfaces
 - **[apply-webgl-shaders](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/apply-webgl-shaders.md)**: Apply custom visual effects with WebGL shaders to HTML content.
 - **[complex-shapes](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/complex-shapes.md)**: Clip elements and their content to any free-form shape, like a symbol, brush stroke, or organic texture for more expressive designs.
+- **[contrast-color](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/contrast-color.md)**: Select a readable text color with sufficient contrast on a dynamic background color.
 - **[customize-scrollbar-color-and-thickness](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/customize-scrollbar-color-and-thickness.md)**: Customize the color or thickness of a scrollbar
 - **[dark-mode](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/dark-mode.md)**: Implement dark mode support in a way that respects the user's light/dark theme preference and adapts browser UI (e.g. scrollbars, form controls, etc)
 - **[export-html-media-from-canvas](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/export-html-media-from-canvas.md)**: Capture and export dynamic HTML content as images or video frames from within canvas.
@@ -396,6 +403,15 @@ grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
 ```
 </details>
 
+<details>
+<summary><b>OpenAI Codex</b></summary>
+
+```shell
+codex plugin marketplace add GoogleChrome/modern-web-guidance
+codex plugin add modern-web-guidance@googlechrome
+```
+</details>
+
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
@@ -430,16 +446,16 @@ We developed a robust eval harness to ensure that the content is **empirically p
 <!-- INJECT_EVAL_RESULTS_START -->
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
-| Aug 24 | claude_code (opus-5) | 131 / 1033 | 57% → 92% (**+35pp**) |
-| Aug 24 | antigravity (gemini-3.7-flash-medium) | 131 / 1118 | 60% → 89% (**+29pp**) |
-| Aug 21 | codex_cli (gpt-5.6-sol) | 131 / 1118 | 60% → 81% (**+21pp**) |
-| Aug 21 | claude_code (opus-5) | 131 / 1086 | 57% → 90% (**+33pp**) |
-| Aug 21 | antigravity (gemini-3.7-flash-medium) | 131 / 1118 | 60% → 90% (**+30pp**) |
-| Aug 17 | codex_cli (gpt-5.6-sol) | 130 / 1112 | 60% → 83% (**+23pp**) |
-| Aug 17 | claude_code (opus-5) | 130 / 1033 | 58% → 92% (**+34pp**) |
-| Aug 17 | antigravity (gemini-3.7-flash-medium) | 130 / 1112 | 64% → 90% (**+26pp**) |
-| Aug 14 | codex_cli (gpt-5.6-sol) | 132 / 1125 | 60% → 82% (**+22pp**) |
-| Aug 14 | claude_code (opus-5) | 132 / 1036 | 56% → 90% (**+34pp**) |
+| Sep 11 | codex_cli (gpt-5.6-sol) | 132 / 1124 | 59% → 81% (**+22pp**) |
+| Sep 11 | claude_code (sonnet-5) | 132 / 1124 | 54% → 87% (**+33pp**) |
+| Sep 11 | antigravity (gemini-3.8-flash-medium) | 132 / 1124 | 65% → 91% (**+26pp**) |
+| Sep 9 | codex_cli (gpt-5.6-sol) | 132 / 1045 | 61% → 83% (**+22pp**) |
+| Sep 9 | claude_code (sonnet-5) | 132 / 1124 | 53% → 85% (**+32pp**) |
+| Sep 9 | antigravity (gemini-3.8-flash-medium) | 132 / 1124 | 69% → 92% (**+23pp**) |
+| Sep 7 | codex_cli (gpt-5.6-sol) | 132 / 1124 | 61% → 82% (**+21pp**) |
+| Sep 7 | claude_code (sonnet-5) | 132 / 1124 | 54% → 86% (**+32pp**) |
+| Sep 4 | codex_cli (gpt-5.6-sol) | 132 / 1092 | 59% → 80% (**+21pp**) |
+| Sep 4 | claude_code (sonnet-5) | 132 / 1124 | 54% → 89% (**+35pp**) |
 <!-- INJECT_EVAL_RESULTS_END -->
 
 
