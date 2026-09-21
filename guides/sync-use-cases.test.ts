@@ -521,20 +521,29 @@ describe('buildRequiredFilesChecklist', () => {
     assert.ok(result.includes('- [ ] expectations.md'));
   });
 
-  test('does not check off guide.md when draft is truthy', () => {
+  test('does not check off guide.md and appends draft annotation when draft is truthy', () => {
     const invBool = makeInventory({
       hasGuide: true,
       draft: true,
     });
     const resultBool = buildRequiredFilesChecklist(invBool);
-    assert.ok(resultBool.includes('- [ ] Use case guidance (guide.md)'));
+    assert.ok(resultBool.includes('- [ ] Use case guidance (guide.md) *(draft: true)*'));
 
     const invBlocked = makeInventory({
       hasGuide: true,
       draft: 'blocked',
     });
     const resultBlocked = buildRequiredFilesChecklist(invBlocked);
-    assert.ok(resultBlocked.includes('- [ ] Use case guidance (guide.md)'));
+    assert.ok(resultBlocked.includes('- [ ] Use case guidance (guide.md) *(draft: blocked)*'));
+
+    const invStubDraft = makeInventory({
+      hasGuide: false,
+      isStub: true,
+      draft: 'blocked',
+    });
+    const resultStubDraft = buildRequiredFilesChecklist(invStubDraft);
+    assert.ok(resultStubDraft.includes('- [ ] Use case guidance (guide.md)'));
+    assert.ok(!resultStubDraft.includes('*(draft'));
   });
 });
 
