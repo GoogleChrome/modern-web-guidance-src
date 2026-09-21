@@ -189,10 +189,14 @@ export const REQUIRED_FILES_END = '<!-- required-files-end -->';
 
 export function buildRequiredFilesChecklist(inv: GuideInventory): string {
   const isGuidanceComplete = inv.hasGuide && !inv.draft;
+  let guidanceLabel = 'Use case guidance (guide.md)';
+  if (inv.hasGuide && inv.draft) {
+    guidanceLabel += ` *(draft: ${inv.draft})*`;
+  }
   const items = [
     `- [${(inv.isStub || inv.hasGuide) ? 'x' : ' '}] Use case metadata (guide.md frontmatter)`,
     `- [${inv.hasDemo ? 'x' : ' '}] demo.html`,
-    `- [${isGuidanceComplete ? 'x' : ' '}] Use case guidance (guide.md)`,
+    `- [${isGuidanceComplete ? 'x' : ' '}] ${guidanceLabel}`,
     `- [${(inv.hasExpectations && !inv.expectationsEmpty) ? 'x' : ' '}] expectations.md`,
     `- [${inv.hasTask ? 'x' : ' '}] tasks/task.md`,
     `- [${inv.hasNegativeDemo ? 'x' : ' '}] negative-demo.html`,
