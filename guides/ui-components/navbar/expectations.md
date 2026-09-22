@@ -1,7 +1,7 @@
 # Expectations
 
 - **MANDATORY**: The page uses a single semantic `<nav>` element with an explicit accessibility label (e.g., `aria-label="Primary"`) that functions across both mobile and desktop layouts.
-- **MANDATORY**: The mobile navigation trigger is a native `<button>` element with `type="button"` and links to the nav element using declarative `popovertarget` and `aria-controls` attributes.
+- **MANDATORY**: The mobile navigation trigger is a native `<button>` element with `type="button"` and links to the popover menu element (such as `<ul>`) using declarative `popovertarget` and `aria-controls` attributes.
 - **MANDATORY**: Any decorative SVG icons inside the trigger button have `aria-hidden="true"` and `focusable="false"`.
 - **MANDATORY**: The current/active page link inside the navigation panel is indicated using the `aria-current="page"` attribute.
 - **MANDATORY**: The semantic `<header>` element (the component boundary) declares `container-type: inline-size` to support container query layouts on descendants.
@@ -14,8 +14,8 @@
 - **MANDATORY**: Headings and body copy apply modern text-wrapping controls (`text-wrap: balance` on headings, and `text-wrap: pretty` on paragraphs).
 - **MANDATORY**: Interactive controls (such as buttons, links, and summaries) define a minimum target size of at least `min-inline-size: 24px` and `min-block-size: 24px`.
 - **MANDATORY**: Focusable controls provide a clearly visible focus indicator using `:focus-visible` with a distinct offset.
-- **MANDATORY**: Under narrow layouts (`@container (inline-size < 45rem)`), the `<nav>` element functions as a native popover using `popover="auto"` and is positioned relative to the trigger button using CSS Anchor Positioning (`anchor-name` and `anchor()`).
-- **MANDATORY**: Under wide layouts (`@container (inline-size >= 45rem)`), the mobile trigger button is hidden (`display: none`), and the popover element is transformed into a static horizontal inline header by resetting its styles (including `position: static`, `display: block` or `display: flex`, and `::backdrop { display: none }`).
+- **MANDATORY**: Under narrow layouts (`@container (inline-size < 45rem)`), the popover element functions as a native popover using `popover="auto"` and is positioned relative to the trigger button using CSS Anchor Positioning (`anchor-name` and `anchor()`).
+- **MANDATORY**: Under wide layouts (`@container (inline-size >= 45rem)`), the mobile trigger button is hidden (`display: none`), and the popover element is transformed into a static horizontal inline layout by resetting its styles (including `position: static`, `display: block` or `display: flex`, and `::backdrop { display: none }`).
 - **MANDATORY**: A JavaScript `ResizeObserver` is registered on the containing `<header>` to programmatically dismiss the popover (`menu.hidePopover()`) when the container matches or exceeds the desktop breakpoint if it is currently open, matching container query layouts precisely.
 - **MANDATORY**: The active page link is styled with a distinct visual indicator (e.g., a pseudo-element `::before`) whose orientation transforms dynamically based on the active container query layout (vertical on narrow viewports, horizontal on wide viewports).
 - **MANDATORY**: Active navigation links are visually highlighted in CSS using both the semantic `[aria-current="page"]` attribute and the modern `:local-link` pseudo-class (e.g. grouped within `.menu-link:is([aria-current="page"], :local-link)`), providing robust visual feedback and progressive enhancement.

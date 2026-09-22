@@ -29,21 +29,21 @@ Use a single `<nav>` container for both narrow and wide layouts. Wrap it in a se
   <div class="header-inner">
     <a class="site-logo" href="index.html">Acme</a>
 
-    <button
-      class="menu-button"
-      type="button"
-      popovertarget="site-menu"
-      popovertargetaction="toggle"
-      aria-controls="site-menu"
-    >
-      <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
-      </svg>
-      <span>Menu</span>
-    </button>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <button
+        class="menu-button"
+        type="button"
+        popovertarget="site-menu"
+        popovertargetaction="toggle"
+        aria-controls="site-menu"
+      >
+        <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
+        </svg>
+        <span>Menu</span>
+      </button>
 
-    <nav id="site-menu" class="site-menu" popover="auto" aria-label="Primary navigation">
-      <ul class="menu-list">
+      <ul id="site-menu" class="site-menu" popover="auto">
         <li>
           <a class="menu-link" href="index.html" aria-current="page">Home</a>
         </li>
@@ -57,6 +57,7 @@ Use a single `<nav>` container for both narrow and wide layouts. Wrap it in a se
 ```
 
 ### Key Markup Notes:
+- **`<nav>` wrapper**: Wrapping both the trigger button and the popover menu ensures the navigation landmark remains discoverable by screen readers while the popover is closed.
 - **`popover="auto"`**: Provides keyboard dismiss (Escape), light dismiss, and accessible focus order on mobile. For details, see {{ GUIDE_REF("declarative-dialog-popover-control") }}.
 - **`popovertarget` / `aria-controls`**: Establishes the declarative toggle contract without JavaScript.
 - **`aria-current="page"`**: Conveys the active page to assistive technology.
@@ -108,7 +109,9 @@ To reuse the `<nav>` container on desktop, override the native popover styles so
 
   .site-menu {
     position: static;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
     inline-size: auto;
     block-size: auto;
     overflow: visible;
@@ -121,12 +124,6 @@ To reuse the `<nav>` container on desktop, override the native popover styles so
 
   .site-menu::backdrop {
     display: none;
-  }
-
-  .menu-list {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
   }
 }
 ```
