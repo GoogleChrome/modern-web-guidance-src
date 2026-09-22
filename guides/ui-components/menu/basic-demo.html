@@ -18,6 +18,9 @@
     #preferences-trigger { anchor-name: --preferences-anchor; }
     #file-menu { position-anchor: --file-anchor; position-area: block-end span-inline-end; inset: auto; }
     #preferences-menu { position-anchor: --preferences-anchor; position-area: inline-end span-block-start; inset: auto; }
+    @media (max-width: 40rem) {
+      #preferences-menu { position-area: block-end span-inline-start; }
+    }
     [focusgroup="menu"] { display: grid; gap: .1rem; }
     [focusgroup="menu"] > button { display: flex; justify-content: space-between; inline-size: 100%; padding: .55rem .7rem; border: 0; border-radius: .2rem; background: transparent; color: inherit; text-align: start; cursor: pointer; }
     main { max-inline-size: 48rem; margin: auto; padding: 2rem 1rem; }

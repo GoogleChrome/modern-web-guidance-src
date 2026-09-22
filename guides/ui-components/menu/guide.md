@@ -137,6 +137,13 @@ Use CSS anchor positioning to lay out the nested submenu seamlessly beside its t
   position-area: inline-end span-block-start; /* Aligns to the side of the parent menu item */
   inset: auto;
 }
+
+/* On narrow viewports, position the submenu underneath its parent item to prevent clipping/overlapping */
+@media (max-width: 40rem) {
+  #preferences-menu {
+    position-area: block-end span-inline-start;
+  }
+}
 ```
 
 ## Align menu item content
