@@ -1,9 +1,10 @@
-- **MANDATORY**: A pointer drag started from an item's reorder button changes the item's DOM and visible position within the collection.
+- **MANDATORY**: A pointer drag started from an item's drag handle changes the item's DOM and visible position within the collection.
 - **OPTIONAL**: During a pointer drag, provide visual feedback that follows the pointer without blocking detection of destination items and makes the original item visibly distinct until the drag ends.
 - **MANDATORY**: Reordering moves the existing item rather than replacing it, so state in controls inside that item is retained.
-- **MANDATORY**: Each item has a native button that identifies the item and can enter keyboard reordering mode.
-- **MANDATORY**: Pressing Space or Enter on an item's reorder button exposes the grabbed state and announces the item's current position.
-- **MANDATORY**: While an item is grabbed, arrow keys move it through the collection and focus remains on its reorder button.
-- **MANDATORY**: Pressing Escape while an item is grabbed restores the order that existed before keyboard reordering began and announces the cancellation.
-- **MANDATORY**: Completing keyboard reordering clears the grabbed state and announces the final position.
+- **MANDATORY**: Each item has a "Move up" and a "Move down" button (or options menu containing them) that identifies the item and its action.
+- **MANDATORY**: Activating the "Move up" button on an item moves it up in the collection.
+- **MANDATORY**: Activating the "Move down" button on an item moves it down in the collection.
+- **MANDATORY**: Focus remains on the activated movement control (or shifts to the alternative control on the same item to prevent focus loss if the activated button becomes disabled) after reordering.
+- **MANDATORY**: The first item's "Move up" button is disabled and the last item's "Move down" button is disabled.
+- **MANDATORY**: Keyboard reordering actions are announced in a live region with the item's final position.
 - **MANDATORY WHEN REORDERING IS SUPPLEMENTARY**: The collection remains readable and usable in its default DOM order without JavaScript.

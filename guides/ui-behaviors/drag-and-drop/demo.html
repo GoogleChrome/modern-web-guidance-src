@@ -3,9 +3,14 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, navigator-flow=true, initial-scale=1.0">
   <title>Reorder Tasks</title>
   <style>
+    @property --icon-start {
+      syntax: "<image>";
+      inherits: false;
+    }
+
     :root {
       color-scheme: light dark;
       --canvas: #edf3ee;
@@ -13,6 +18,11 @@
       --ink: #19342d;
       --line: #a9bdb1;
       --accent: #007d69;
+
+      /* SVG Icon Variables */
+      --icon-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='5' r='1'/%3E%3Ccircle cx='9' cy='12' r='1'/%3E%3Ccircle cx='9' cy='19' r='1'/%3E%3Ccircle cx='15' cy='5' r='1'/%3E%3Ccircle cx='15' cy='12' r='1'/%3E%3Ccircle cx='15' cy='19' r='1'/%3E%3C/svg%3E");
+      --icon-chevron-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='18 15 12 9 6 15'/%3E%3C/svg%3E");
+      --icon-chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
     }
 
     * {
@@ -39,18 +49,13 @@
 
     .task {
       display: grid;
-      grid-template-columns: auto 1fr;
+      grid-template-columns: auto 1fr auto;
       gap: 0.75rem;
       align-items: center;
       padding: 0.75rem;
       border: 1px solid var(--line);
       border-radius: 6px;
       background: var(--surface);
-    }
-
-    .task[data-reordering="true"] {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent), transparent 75%);
     }
 
     .task.pointer-dragging {
@@ -66,7 +71,7 @@
       box-shadow: 0 12px 28px rgb(25 52 45 / 28%);
     }
 
-    .reorder-button {
+    .drag-handle {
       display: grid;
       width: 2.25rem;
       height: 2.25rem;
@@ -77,11 +82,43 @@
       -webkit-user-select: none;
     }
 
-    .reorder-button:active {
+    .drag-handle:active {
       cursor: grabbing;
     }
 
-    .reorder-button:focus-visible {
+    .task-controls {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .move-up-button,
+    .move-down-button {
+      display: grid;
+      width: 2rem;
+      height: 2rem;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .move-up-button:hover,
+    .move-down-button:hover {
+      background: var(--canvas);
+    }
+
+    .move-up-button:disabled,
+    .move-down-button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      background: transparent;
+      border-color: transparent;
+    }
+
+    .move-up-button:focus-visible,
+    .move-down-button:focus-visible {
       outline: 3px solid var(--accent);
       outline-offset: 2px;
     }
@@ -95,63 +132,95 @@
       min-height: 1.5rem;
       font-weight: bold;
     }
+
+    /* CSS-driven Icon Engine styling */
+    .icon {
+      display: inline-block;
+      width: var(--icon-size, 1.25em);
+      height: var(--icon-size, 1.25em);
+      vertical-align: middle;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    .icon:empty {
+      --icon-start: var(--icon);
+    }
+
+    @container style(--icon-start) {
+      ::before {
+        --icon-start: inherit;
+        content: "";
+        display: inline-block;
+        width: var(--icon-size, 1.25em);
+        height: var(--icon-size, 1.25em);
+        background-color: currentColor;
+        mask: var(--icon-start) no-repeat center / contain;
+        -webkit-mask: var(--icon-start) no-repeat center / contain;
+        vertical-align: middle;
+      }
+    }
+
+    /* High-compatibility fallback for browsers without style queries */
+    @supports not (container-name: style(any)) {
+      .icon:empty[style*="--icon"]::before {
+        content: "";
+        display: inline-block;
+        width: var(--icon-size, 1.25em);
+        height: var(--icon-size, 1.25em);
+        background-color: currentColor;
+        mask: var(--icon) no-repeat center / contain;
+        -webkit-mask: var(--icon) no-repeat center / contain;
+        vertical-align: middle;
+      }
+    }
   </style>
 </head>
 
 <body>
   <main>
     <h1>Tasks</h1>
-    <p>Use a task's drag handle to drag it, or focus the button and press Space or Enter. Use Up and Down arrows to
-      move it, then press Space, Enter, or Escape.</p>
+    <p>Use an item's drag handle to drag it, or use the "Move up" and "Move down" buttons to reorder via keyboard.</p>
 
     <ol class="task-list" id="taskList">
       <li class="task" data-label="Outline project">
-        <button class="reorder-button" type="button"
-          aria-label="Reorder Outline project. Press Space or Enter to start reordering." aria-pressed="false"
-          title="Reorder Outline project">
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="9" cy="5" r="1"></circle>
-            <circle cx="9" cy="12" r="1"></circle>
-            <circle cx="9" cy="19" r="1"></circle>
-            <circle cx="15" cy="5" r="1"></circle>
-            <circle cx="15" cy="12" r="1"></circle>
-            <circle cx="15" cy="19" r="1"></circle>
-          </svg>
-        </button>
+        <div class="drag-handle icon" aria-hidden="true" title="Drag to reorder Outline project"
+          style="--icon: var(--icon-grip);"></div>
         <label>Outline project <input value="Write the first draft"></label>
+        <div class="task-controls">
+          <button class="move-up-button" type="button" aria-label="Move Outline project up" title="Move up">
+            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+          </button>
+          <button class="move-down-button" type="button" aria-label="Move Outline project down" title="Move down">
+            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+          </button>
+        </div>
       </li>
       <li class="task" data-label="Review research">
-        <button class="reorder-button" type="button"
-          aria-label="Reorder Review research. Press Space or Enter to start reordering." aria-pressed="false"
-          title="Reorder Review research">
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="9" cy="5" r="1"></circle>
-            <circle cx="9" cy="12" r="1"></circle>
-            <circle cx="9" cy="19" r="1"></circle>
-            <circle cx="15" cy="5" r="1"></circle>
-            <circle cx="15" cy="12" r="1"></circle>
-            <circle cx="15" cy="19" r="1"></circle>
-          </svg>
-        </button>
+        <div class="drag-handle icon" aria-hidden="true" title="Drag to reorder Review research"
+          style="--icon: var(--icon-grip);"></div>
         <label>Review research <input value="Collect source notes"></label>
+        <div class="task-controls">
+          <button class="move-up-button" type="button" aria-label="Move Review research up" title="Move up">
+            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+          </button>
+          <button class="move-down-button" type="button" aria-label="Move Review research down" title="Move down">
+            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+          </button>
+        </div>
       </li>
       <li class="task" data-label="Schedule review">
-        <button class="reorder-button" type="button"
-          aria-label="Reorder Schedule review. Press Space or Enter to start reordering." aria-pressed="false"
-          title="Reorder Schedule review">
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="9" cy="5" r="1"></circle>
-            <circle cx="9" cy="12" r="1"></circle>
-            <circle cx="9" cy="19" r="1"></circle>
-            <circle cx="15" cy="5" r="1"></circle>
-            <circle cx="15" cy="12" r="1"></circle>
-            <circle cx="15" cy="19" r="1"></circle>
-          </svg>
-        </button>
+        <div class="drag-handle icon" aria-hidden="true" title="Drag to reorder Schedule review"
+          style="--icon: var(--icon-grip);"></div>
         <label>Schedule review <input value="Invite the team"></label>
+        <div class="task-controls">
+          <button class="move-up-button" type="button" aria-label="Move Schedule review up" title="Move up">
+            <span class="icon" style="--icon: var(--icon-chevron-up);" aria-hidden="true"></span>
+          </button>
+          <button class="move-down-button" type="button" aria-label="Move Schedule review down" title="Move down">
+            <span class="icon" style="--icon: var(--icon-chevron-down);" aria-hidden="true"></span>
+          </button>
+        </div>
       </li>
     </ol>
 
@@ -165,8 +234,6 @@
     let pointerPreview = null;
     let pointerOffsetX = 0;
     let pointerOffsetY = 0;
-    let keyboardItem = null;
-    let originalOrder = [];
 
     function getPosition(item) {
       return [...list.children].indexOf(item) + 1;
@@ -174,6 +241,16 @@
 
     function announce(message) {
       status.textContent = message;
+    }
+
+    function updateDisabledStates() {
+      const items = [...list.children];
+      items.forEach((item, index) => {
+        const upBtn = item.querySelector('.move-up-button');
+        const downBtn = item.querySelector('.move-down-button');
+        if (upBtn) upBtn.disabled = (index === 0);
+        if (downBtn) downBtn.disabled = (index === items.length - 1);
+      });
     }
 
     function moveItem(item, before) {
@@ -186,6 +263,7 @@
 
     function finishPointerReorder() {
       if (!pointerItem) return;
+      updateDisabledStates();
       announce(`Moved ${pointerItem.dataset.label} to position ${getPosition(pointerItem)}.`);
       pointerItem.classList.remove('pointer-dragging');
       pointerPreview.remove();
@@ -210,11 +288,11 @@
     }
 
     list.addEventListener('pointerdown', (event) => {
-      const button = event.target.closest('.reorder-button');
-      if (!button) return;
+      const handle = event.target.closest('.drag-handle');
+      if (!handle) return;
 
       event.preventDefault();
-      pointerItem = button.closest('.task');
+      pointerItem = handle.closest('.task');
       const rect = pointerItem.getBoundingClientRect();
       pointerOffsetX = event.clientX - rect.left;
       pointerOffsetY = event.clientY - rect.top;
@@ -234,58 +312,56 @@
       document.addEventListener('pointercancel', finishPointerReorder);
     });
 
-    function finishKeyboardReorder(message) {
-      const button = keyboardItem.querySelector('.reorder-button');
-      keyboardItem.removeAttribute('data-reordering');
-      button.setAttribute('aria-pressed', 'false');
-      announce(message);
-      keyboardItem = null;
-      originalOrder = [];
+    function moveKeyboardItem(item, direction) {
+      const sibling = direction === 'up'
+        ? item.previousElementSibling
+        : item.nextElementSibling;
+      if (!sibling) return;
+
+      const activeElement = document.activeElement;
+      const wasUpFocused = activeElement?.classList.contains('move-up-button');
+      const wasDownFocused = activeElement?.classList.contains('move-down-button');
+
+      moveItem(item, direction === 'up' ? sibling : sibling.nextElementSibling);
+      updateDisabledStates();
+
+      // Restore focus to the moved item's active button or shift to prevent focus loss
+      if (direction === 'up' && wasUpFocused) {
+        const upBtn = item.querySelector('.move-up-button');
+        if (upBtn.disabled) {
+          item.querySelector('.move-down-button').focus();
+        } else {
+          upBtn.focus();
+        }
+      } else if (direction === 'down' && wasDownFocused) {
+        const downBtn = item.querySelector('.move-down-button');
+        if (downBtn.disabled) {
+          item.querySelector('.move-up-button').focus();
+        } else {
+          downBtn.focus();
+        }
+      } else {
+        activeElement?.focus();
+      }
+
+      announce(`${item.dataset.label} moved ${direction}. Position ${getPosition(item)} of ${list.children.length}.`);
     }
 
-    list.addEventListener('keydown', (event) => {
-      const button = event.target.closest('.reorder-button');
-      if (!button) return;
+    list.addEventListener('click', (event) => {
+      const upBtn = event.target.closest('.move-up-button');
+      const downBtn = event.target.closest('.move-down-button');
+      if (!upBtn && !downBtn) return;
 
-      const item = button.closest('.task');
-      if (event.key === ' ' || event.key === 'Enter') {
-        event.preventDefault();
-        if (keyboardItem === item) {
-          finishKeyboardReorder(`Dropped ${item.dataset.label} at position ${getPosition(item)}.`);
-        } else if (!keyboardItem) {
-          keyboardItem = item;
-          originalOrder = [...list.children];
-          item.dataset.reordering = 'true';
-          button.setAttribute('aria-pressed', 'true');
-          announce(`Grabbed ${item.dataset.label}. Position ${getPosition(item)} of ${list.children.length}.`);
-        }
-        return;
-      }
-
-      if (keyboardItem !== item) return;
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        for (const originalItem of originalOrder) moveItem(originalItem, null);
-        button.focus();
-        finishKeyboardReorder(`Cancelled reordering. ${item.dataset.label} returned to position ${getPosition(item)}.`);
-        return;
-      }
-
-      const previous = item.previousElementSibling;
-      const next = item.nextElementSibling;
-      if (event.key === 'ArrowUp' && previous) {
-        event.preventDefault();
-        moveItem(item, previous);
-      } else if (event.key === 'ArrowDown' && next) {
-        event.preventDefault();
-        moveItem(item, next.nextElementSibling);
+      const item = (upBtn || downBtn).closest('.task');
+      if (upBtn) {
+        moveKeyboardItem(item, 'up');
       } else {
-        return;
+        moveKeyboardItem(item, 'down');
       }
-
-      button.focus();
-      announce(`Moved ${item.dataset.label} to position ${getPosition(item)} of ${list.children.length}.`);
     });
+
+    // Initialize disabled states
+    updateDisabledStates();
   </script>
 </body>
 
