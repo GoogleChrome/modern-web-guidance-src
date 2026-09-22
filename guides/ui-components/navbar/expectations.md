@@ -1,6 +1,6 @@
 # Expectations
 
-- **MANDATORY**: The page uses a single semantic `<nav>` element with an explicit accessibility label (e.g., `aria-label="Primary navigation"`) that functions across both mobile and desktop layouts.
+- **MANDATORY**: The page uses a single semantic `<nav>` element with an explicit accessibility label (e.g., `aria-label="Primary"`) that functions across both mobile and desktop layouts.
 - **MANDATORY**: The mobile navigation trigger is a native `<button>` element with `type="button"` and links to the nav element using declarative `popovertarget` and `aria-controls` attributes.
 - **MANDATORY**: Any decorative SVG icons inside the trigger button have `aria-hidden="true"` and `focusable="false"`.
 - **MANDATORY**: The current/active page link inside the navigation panel is indicated using the `aria-current="page"` attribute.
