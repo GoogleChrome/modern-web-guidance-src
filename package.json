@@ -6,9 +6,11 @@
   "type": "module",
   "private": true,
   "bin": {
-    "gd": "bin/gd.ts"
+    "gd": "bin/gd"
   },
   "scripts": {
+    "gd": "./bin/gd",
+    "audit-evals": "./bin/gd audit-evals",
     "test": "pnpm -r --parallel test",
     "install:gray-matter": "pnpm add -D -w gray-matter",
     "baselinestatus": "pnpm --filter serving baselinestatus",

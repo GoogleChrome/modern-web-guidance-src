@@ -32,12 +32,23 @@ const ALL_OPTIONS = {
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
+  resume: { type: 'boolean', desc: 'Resume the latest or specified audit run' },
+  concurrency: { type: 'string', desc: 'Number of concurrent capsule evaluations (default: 2)' },
+  'max-turns': { type: 'string', desc: 'Max adversarial review turns per capsule (1-3, default: 3)' },
+  target: { type: 'string', desc: 'Filter by target app (e.g. daily-grind or legacy)' },
+  'dry-run': { type: 'boolean', desc: 'Run deterministic static audit without AI agent calls' },
+  'run-id': { type: 'string', desc: 'Specific audit run directory ID' },
+  agent: { type: 'string', desc: 'Agent CLI to use for evaluation' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
+  'audit-evals': {
+    desc: 'Evaluate expectation completeness and grader fidelity across guides',
+    flags: ['resume', 'concurrency', 'max-turns', 'target', 'dry-run', 'run-id', 'agent'],
+  },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
@@ -166,7 +177,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'pr', 'audit'],
+      commands: ['dev', 'pr', 'audit', 'audit-evals'],
     },
 
     {
@@ -196,13 +207,13 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'audit-evals' ? ' [pattern]' : cmd === 'baselinestatus' ? ' <query>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : '';
+          const arg = flagName === 'config' ? ' <path>' : ['concurrency', 'max-turns', 'target', 'run-id', 'agent'].includes(flagName) ? ' <val>' : '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -269,6 +280,23 @@ async function main() {
     case 'audit': {
       const { auditGuides } = await import('../guides/dev-guide.ts');
       auditGuides({ groupByUsecases: !!values.usecases });
+      break;
+    }
+
+    case 'audit-evals': {
+      const pattern = positionals[1];
+      const { runAuditEvals } = await import('../guides/audit-evals.ts');
+      await runAuditEvals({
+        pattern,
+        targetApp: values.target as string | undefined,
+        concurrency: values.concurrency ? parseInt(values.concurrency as string, 10) : undefined,
+        maxTurns: values['max-turns'] ? parseInt(values['max-turns'] as string, 10) : undefined,
+        resume: !!values.resume,
+        runId: values['run-id'] as string | undefined,
+        agent: values.agent as any,
+        dryRun: !!values['dry-run'],
+        verbose: !!values.verbose,
+      });
       break;
     }
 
