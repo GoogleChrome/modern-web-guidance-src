@@ -21,7 +21,8 @@ if (args[0] === '-y' && args[1] === 'modern-web-guidance@latest') {
   const localCliPath = "__LOCAL_CLI_PATH__";
 
   // Execute the local CLI instead of fetching from registry
-  const result = spawnSync(process.execPath, [localCliPath, ...remainingArgs], { stdio: 'inherit' });
+  const env = { ...process.env, DISABLE_TELEMETRY: '1' };
+  const result = spawnSync(process.execPath, [localCliPath, ...remainingArgs], { stdio: 'inherit', env });
   process.exit(result.status ?? 0);
 }
 
