@@ -739,6 +739,9 @@ window.__featuresMapping = {
   "visually-texture-content": [
     "masks"
   ],
+  "cpp-on-the-web": [
+    "wasm"
+  ],
   "agentic-forms": [
     "declarative-webmcp"
   ],
