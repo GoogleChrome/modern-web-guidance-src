@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brand Consistent Slider Demo</title>
+    <style>
+      :root {
+        --brand-color: #0066cc;
+        --background: #ffffff;
+        --text: #111111;
+        --card-bg: rgba(0, 0, 0, 0.05);
+        --track-bg: #e0e0e0;
+        color-scheme: light dark;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --brand-color: #4da6ff;
+          --background: #121212;
+          --text: #eeeeee;
+          --card-bg: rgba(255, 255, 255, 0.05);
+          --track-bg: #333333;
+        }
+      }
+
+      body {
+        background-color: var(--background);
+        color: var(--text);
+        font-family: system-ui, -apple-system, sans-serif;
+        padding: 2rem;
+        display: grid;
+        place-items: center;
+        min-height: 80vh;
+        margin: 0;
+      }
+
+      .slider-card {
+        background-color: var(--card-bg);
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        width: 100%;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .slider-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      label {
+        font-weight: 600;
+        font-size: 1.1rem;
+        cursor: pointer;
+      }
+
+      .value-display {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--brand-color);
+      }
+
+      /* Native range input styling with accent-color */
+      input[type="range"] {
+        accent-color: var(--brand-color);
+        width: 100%;
+        height: 2.5rem; /* Generous touch target area */
+        margin: 0;
+        cursor: pointer;
+      }
+
+      /* Fallback styling for older browsers without accent-color */
+      @supports not (accent-color: var(--brand-color)) {
+        input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          outline: none;
+        }
+
+        /* Track (WebKit/Chrome/Safari/Edge) */
+        input[type="range"]::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 8px;
+          border-radius: 4px;
+          /* Visual representation of current progress */
+          background: linear-gradient(to right, var(--brand-color) var(--progress, 70%), var(--track-bg) var(--progress, 70%));
+        }
+
+        /* Thumb (WebKit/Chrome/Safari/Edge) */
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: var(--brand-color);
+          cursor: pointer;
+          margin-top: -6px; /* Centered relative to the 8px track: (20/2 - 8/2 = 6) */
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+          transition: transform 0.1s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+        }
+
+        /* Track (Firefox) */
+        input[type="range"]::-moz-range-track {
+          width: 100%;
+          height: 8px;
+          border-radius: 4px;
+          background: var(--track-bg);
+        }
+
+        /* Thumb (Firefox) */
+        input[type="range"]::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: var(--brand-color);
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+          transition: transform 0.1s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+          transform: scale(1.1);
+        }
+
+        /* Progress fill (Firefox) */
+        input[type="range"]::-moz-range-progress {
+          background-color: var(--brand-color);
+          height: 8px;
+          border-radius: 4px;
+        }
+
+        /* Explicit keyboard focus styling for the custom fallback thumb */
+        input[type="range"]:focus-visible::-webkit-slider-thumb {
+          outline: 2px solid var(--text);
+          outline-offset: 4px;
+        }
+
+        input[type="range"]:focus-visible::-moz-range-thumb {
+          outline: 2px solid var(--text);
+          outline-offset: 4px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="slider-card">
+      <div class="slider-header">
+        <label id="volume-label" for="volume-slider">Volume Level</label>
+        <span id="value-display" class="value-display">70%</span>
+      </div>
+      <input
+        type="range"
+        id="volume-slider"
+        aria-labelledby="volume-label"
+        min="0"
+        max="100"
+        value="70"
+      />
+    </main>
+
+    <script>
+      const slider = document.getElementById('volume-slider');
+      const valueDisplay = document.getElementById('value-display');
+
+      // Update the readable value label dynamically
+      const updateValue = (val) => {
+        valueDisplay.textContent = `${val}%`;
+      };
+
+      slider.addEventListener('input', (e) => {
+        updateValue(e.target.value);
+      });
+
+      // Conditional progressive enhancement fallback for browsers without accent-color support
+      if (!CSS.supports('accent-color')) {
+        const updateProgressVar = (val) => {
+          slider.style.setProperty('--progress', `${val}%`);
+        };
+
+        // Initialize progress custom property on load
+        updateProgressVar(slider.value);
+
+        slider.addEventListener('input', (e) => {
+          updateProgressVar(e.target.value);
+        });
+      }
+    </script>
+  </body>
+</html>

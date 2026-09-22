@@ -1,0 +1,11 @@
+- **MANDATORY**: The implementation MUST use a native `<input type="range">` element to preserve native slider accessibility.
+- **MANDATORY**: The range input element MUST be programmatically associated with a `<label>` element using matching `id` and `for` attributes, or an `aria-labelledby` attribute.
+- **MANDATORY**: The implementation MUST use the `accent-color` CSS property to apply a custom brand color to the slider control.
+- **MANDATORY**: The slider's brand-consistent accent color value MUST change to a different, high-contrast color when system dark mode is active.
+- **MANDATORY**: The implementation MUST provide a custom styling fallback inside a `@supports not (accent-color: ...)` CSS rule block to style older browsers.
+- **MANDATORY**: Inside the fallback `@supports not` block, the range input MUST reset its native browser styling using `appearance: none` or `-webkit-appearance: none`.
+- **MANDATORY**: Inside the fallback `@supports not` block, the custom styling MUST style the track and thumb using vendor-specific pseudo-elements (e.g. `::-webkit-slider-runnable-track`, `::-webkit-slider-thumb`, `::-moz-range-track`, `::-moz-range-thumb`).
+- **MANDATORY**: Inside the fallback `@supports not` block, the custom styled range input MUST explicitly define a `:focus-visible` state style to ensure keyboard accessibility.
+- **MANDATORY**: The implementation MUST conditionally run a JavaScript script that updates a `--progress` custom property on `input` events for WebKit-based tracks, executing only when `accent-color` is not supported by the browser.
+- **OPTIONAL**: The implementation MAY dynamically update a readable text element displaying the slider's current percentage value on the `input` event.
+- **OPTIONAL**: The implementation MAY include a progressive enhancement reference or link to the `slider-tooltip` guide if a floating tooltip following the thumb is desired.
