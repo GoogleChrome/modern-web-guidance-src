@@ -320,6 +320,9 @@ window.__featuresMapping = {
   "migrate-web-app-origin": [
     "app-migration"
   ],
+  "local-network-access": [
+    "local-network-access"
+  ],
   "passkey-authentication": [
     "webauthn",
     "webauthn-signals"
