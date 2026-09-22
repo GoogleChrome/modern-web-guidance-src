@@ -11,12 +11,13 @@ test('npx interception via shim', async () => {
 
   assert.ok(fs.existsSync(templatePath), 'Template should exist');
 
-  // Create a dummy CLI script that creates a file when called
+  // Create a dummy CLI script that creates a file when called and records env
   const dummyCliPath = path.join(tempDir, 'dummy-cli.js');
   fs.writeFileSync(dummyCliPath, `#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
+fs.writeFileSync(path.join(__dirname, 'telemetry_disabled.txt'), process.env.DISABLE_TELEMETRY || '');
 `);
   fs.chmodSync(dummyCliPath, 0o755);
 
@@ -31,7 +32,9 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
   try {
     // Run a command that should be intercepted
     // We need to make sure we use the shim npx by setting PATH
-    const env = { ...process.env, PATH: `${tempDir}:${process.env.PATH}` };
+    // Explicitly delete DISABLE_TELEMETRY from parent env to verify the shim injects it
+    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${tempDir}:${process.env.PATH}` };
+    delete env.DISABLE_TELEMETRY;
 
     console.log(`Running intercepted command with PATH=${tempDir}...`);
     const result = spawnSync('npx', ['-y', 'modern-web-guidance@latest', 'search', 'foo'], {
@@ -48,8 +51,13 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
     assert.ok(fs.existsSync(calledFile), 'Dummy CLI should have been called');
     assert.strictEqual(fs.readFileSync(calledFile, 'utf8'), 'yes', 'Dummy CLI should have written yes');
 
-    // Clean up called file
+    const telemetryFile = path.join(tempDir, 'telemetry_disabled.txt');
+    assert.ok(fs.existsSync(telemetryFile), 'Telemetry status file should have been written');
+    assert.strictEqual(fs.readFileSync(telemetryFile, 'utf8'), '1', 'Dummy CLI should receive DISABLE_TELEMETRY=1 from shim');
+
+    // Clean up called files
     fs.unlinkSync(calledFile);
+    fs.unlinkSync(telemetryFile);
 
     // Run a command that should NOT be intercepted (fallback)
     console.log(`Running fallback command with PATH=${tempDir}...`);
