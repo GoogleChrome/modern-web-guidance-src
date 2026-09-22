@@ -3,7 +3,9 @@ import os from 'os';
 import { pathToFileURL } from 'url';
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
-// Disable telemetry globally for all evaluation and test harness runs
+// Disable telemetry for in-process harness code and direct child processes.
+// Note: Agent CLIs execute tool calls in isolated subshells that don't inherit this env,
+// so telemetry is also explicitly disabled in harness/npx-intercept.template.ts.
 process.env.DISABLE_TELEMETRY = '1';
 
 try {
