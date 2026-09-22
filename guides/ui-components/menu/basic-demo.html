@@ -1,426 +1,52 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Basic State-Aware Popover Menu Demo</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basic accessible command menu</title>
   <style>
-    :root {
-      --bg-surface: #ffffff;
-      --border-color: #cbd5e1;
-      --text-main: #0f172a;
-      --accent: #2563eb;
-    }
-
-    body {
-      font-family: system-ui, sans-serif;
-      margin: 0;
-      padding: 0;
-      color: var(--text-main);
-      min-block-size: 150vh;
-    }
-
-    /* ==========================================================================
-       A. STICKY HEADER & SCROLL-STATE TRANSFORMATION
-       ========================================================================== */
-    .sticky-wrapper {
-      position: sticky;
-      top: 0;
-      container-type: scroll-state;
-      container-name: menubar-container;
-      z-index: 100;
-      overflow-anchor: none; /* REQUIRED: Prevent layout flickering oscillations */
-    }
-
-    .menubar {
-      display: flex;
-      background-color: var(--bg-surface);
-      border-bottom: 1px solid var(--border-color);
-      padding: 0.75rem 1.5rem;
-      transition: background-color 0.25s, box-shadow 0.25s;
-    }
-
-    /* Query stuck: top natively to visually style the header once pinned */
-    @container menubar-container scroll-state(stuck: top) {
-      .menubar {
-        background-color: rgba(255, 255, 255, 0.95);
-        border-bottom-color: #475569;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      }
-    }
-
-    .menu-trigger {
-      all: unset;
-      padding: 0.4rem 0.8rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .menu-trigger:hover {
-      background-color: #f1f5f9;
-    }
-
-    /* ==========================================================================
-       B. POPOVER API & ANCHOR POSITIONING
-       ========================================================================== */
+    :root { color-scheme: light dark; --surface: Canvas; --ink: CanvasText; --accent: #075e50; --line: color-mix(in srgb, CanvasText, transparent 65%); }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-block-size: 125vh; font: 1rem/1.5 system-ui, sans-serif; background: color-mix(in srgb, Canvas, #087f6d 8%); color: var(--ink); }
+    header { position: sticky; inset-block-start: 0; z-index: 1; padding: .75rem max(1rem, calc((100% - 48rem) / 2)); border-block-end: 1px solid var(--line); background: var(--surface); }
+    button { font: inherit; }
+    .trigger { padding: .45rem .8rem; border: 1px solid var(--line); border-radius: .3rem; background: var(--surface); color: inherit; cursor: pointer; }
+    :focus-visible { outline: .2rem solid #f90; outline-offset: .15rem; }
+    .trigger:hover, .trigger:focus-visible, [focusgroup="menu"] > button:hover, [focusgroup="menu"] > button:focus-visible { background: var(--accent); color: white; }
+    [popover] { min-inline-size: 15rem; margin: 0; padding: .3rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--surface); color: var(--ink); box-shadow: 0 .7rem 1.8rem #0004; }
     #file-trigger { anchor-name: --file-anchor; }
-
-    .popover-menu {
-      all: unset;
-      display: none;
-      position: absolute;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 0.25rem;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    }
-    .popover-menu:popover-open { display: block; }
-
-    #file-menu {
-      position-anchor: --file-anchor;
-      top: anchor(bottom);
-      left: anchor(left);
-      margin-top: 0.25rem;
-    }
-
-    /* Submenu standard nested menu - styled as standard absolute child on desktop */
-    .submenu {
-      display: none;
-      position: absolute;
-      left: 100%;
-      top: 0;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 0.25rem;
-      margin-left: 0.25rem;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-      z-index: 10;
-    }
-
-    /* Show submenu dynamically when trigger button is expanded */
-    .menu-item[aria-expanded="true"] + .submenu {
-      display: block;
-    }
-
-    /* Submenu Hover Bridge (Diagonal Aim Pointer Safeguard) */
-    .submenu::after {
-      content: "";
-      position: absolute;
-      right: 100%; /* Position flush against trigger's right edge */
-      top: 0;
-      bottom: 0;
-      width: 0.25rem; /* Bridges the margin-left gap between trigger and submenu */
-    }
-
-    /* ==========================================================================
-       C. SUBGRID COLUMN ALIGNMENT (Icons, Labels, Shortcuts)
-       ========================================================================== */
-    /* Default menu grid: 4 columns (Icon, Label, Shortcut, Arrow) that collapse dynamically */
-    .menu-list {
-      --track-icon: 0px;
-      --track-shortcut: 0px;
-      --track-arrow: 0px;
-
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      grid-template-columns: var(--track-icon) 1fr var(--track-shortcut) var(--track-arrow);
-      column-gap: 0px; /* Zero gaps to prevent offset artifacts from collapsed 0px columns */
-      row-gap: 0.1rem;
-      min-inline-size: 240px;
-    }
-
-    /* Dynamically expand column tracks to auto size ONLY when their respective element exists in the list */
-    .menu-list:has(.menu-icon) { --track-icon: auto; }
-    .menu-list:has(.menu-shortcut) { --track-shortcut: auto; }
-    .menu-list:has(.menu-arrow) { --track-arrow: auto; }
-    .menu-item-wrapper {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: subgrid; /* Delegates tracks to parent .menu-list */
-      position: relative; /* REQUIRED: Anchor context for standard absolute nested submenus */
-    }
-    .menu-item {
-      all: unset;
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: subgrid;
-      align-items: center;
-      padding: 0.5rem 0.75rem;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
-    .menu-item:hover {
-      background-color: var(--accent);
-      color: white;
-    }
-
-    .menu-icon { grid-column: 1; width: 1rem; height: 1rem; fill: currentColor; margin-inline-end: 0.5rem; }
-    .menu-label { grid-column: 2; }
-    .menu-shortcut { grid-column: 3; font-size: 0.75rem; color: #64748b; margin-inline-start: 1rem; }
-    .menu-item:hover .menu-shortcut { color: white; }
-    
-    /* Submenu indicator arrows in column 4 - styled via modern CSS Mask Icon technique */
-    .menu-arrow {
-      grid-column: 4;
-      display: inline-block;
-      width: 0.75rem;
-      height: 0.75rem;
-      background-color: currentColor;
-      margin-inline-start: 0.5rem;
-      transition: transform 0.2s ease-out; /* Smooth visual transition when rotating arrow */
-      mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>') no-repeat center / contain;
-      -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>') no-repeat center / contain;
-    }
-
-    /* ==========================================================================
-       D. OVERFLOW SCROLL STATE QUERIES
-       ========================================================================== */
-    .scrollable-menu {
-      max-block-size: 150px; /* Small height to force overflow in the basic demo */
-      overflow-y: auto;
-      container-type: scroll-state;
-      container-name: file-scroller;
-      position: relative;
-    }
-    .shadow-indicator {
-      position: sticky;
-      left: 0; right: 0; height: 12px; opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.15s ease;
-    }
-    .shadow-indicator-top {
-      top: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.1), transparent);
-    }
-    .shadow-indicator-bottom {
-      bottom: 0; background: linear-gradient(to top, rgba(0,0,0,0.1), transparent);
-    }
-    @container file-scroller scroll-state(scrollable: top) {
-      .shadow-indicator-top { opacity: 1; }
-    }
-    @container file-scroller scroll-state(scrollable: bottom) {
-      .shadow-indicator-bottom { opacity: 1; }
-    }
-
-    /* Submenu Hover Bridge (Diagonal Aim Pointer Safeguard) */
-    #preferences-submenu::after {
-      content: "";
-      position: absolute;
-      right: 100%; /* Position flush against trigger's right edge */
-      top: 0;
-      bottom: 0;
-      width: 0.25rem; /* Bridges the margin-left gap between trigger and submenu */
-    }
-
-    /* Responsive Mobile Drawer Transformation */
-    @media (max-width: 48rem) {
-      /* Top-level menus transform into fixed bottom drawers */
-      .popover-menu {
-        position: fixed;
-        inset-block-start: auto; /* REQUIRED: Overrides browser default popover top:0 to prevent full-screen stretching */
-        inset-block-end: 0;
-        inset-inline: 0;
-        margin: 0;
-        border-radius: 12px 12px 0 0;
-        inline-size: 100%;
-        max-block-size: 60vh;
-        transform: translateY(100%);
-        transition: transform 0.25s ease-out;
-      }
-
-      .popover-menu:popover-open {
-        transform: translateY(0);
-      }
-
-      /* Submenu renders as a static inline accordion list directly inside parent drawer flow */
-      .submenu {
-        position: static;
-        box-shadow: none;
-        border: none;
-        background: none;
-        padding-inline-start: 1.5rem;
-        margin-left: 0;
-      }
-
-      /* Rotate the right-pointing chevron down when nested submenus are open */
-      .menu-item-wrapper:has(.menu-item[aria-expanded="true"]) .menu-arrow {
-        transform: rotate(90deg);
-      }
-
-      /* Clamp scrollport height inside mobile drawers to prevent full viewport stretch */
-      .scrollable-menu {
-        max-block-size: 50vh;
-      }
-    }
+    #preferences-trigger { anchor-name: --preferences-anchor; }
+    #file-menu { position-anchor: --file-anchor; position-area: block-end span-inline-end; inset: auto; }
+    #preferences-menu { position-anchor: --preferences-anchor; position-area: inline-end span-block-start; inset: auto; }
+    [focusgroup="menu"] { display: grid; gap: .1rem; }
+    [focusgroup="menu"] > button { display: flex; justify-content: space-between; inline-size: 100%; padding: .55rem .7rem; border: 0; border-radius: .2rem; background: transparent; color: inherit; text-align: start; cursor: pointer; }
+    main { max-inline-size: 48rem; margin: auto; padding: 2rem 1rem; }
   </style>
 </head>
 <body>
-
-  <!-- Sticky Menubar Wrapper -->
-  <div class="sticky-wrapper">
-    <div class="menubar" role="menubar">
-      <button id="file-trigger" class="menu-trigger" popovertarget="file-menu" aria-haspopup="menu">
-        File (Menu Trigger)
-      </button>
-    </div>
-  </div>
-
-  <div style="padding: 2rem;">
-    <h2>Basic Menu Demo</h2>
-    <p>This is a streamlined, basic example of the core features documented in the <code>guide.md</code>.</p>
-    <p>Scroll down this page to see the stuck transition. Open the menu above to see the Subgrid layout, Anchor positioning, and Scroll State shadows (the list is scrollable!).</p>
-  </div>
-
-  <!-- Popover Menu placed flatly at body root -->
-  <div id="file-menu" popover class="popover-menu">
-    <div class="scrollable-menu">
-      <div class="shadow-indicator shadow-indicator-top"></div>
-      
-      <menu class="menu-list" role="menu">
-        <li class="menu-item-wrapper" role="none">
-          <button class="menu-item" role="menuitem">
-            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14 2H6v18h12V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-            <span class="menu-label">New File</span>
-            <span class="menu-shortcut">Ctrl+N</span>
-          </button>
-        </li>
-        <li class="menu-item-wrapper" role="none">
-          <button class="menu-item" role="menuitem">
-            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V8h10v2z"/></svg>
-            <span class="menu-label">Open File...</span>
-            <span class="menu-shortcut">Ctrl+O</span>
-          </button>
-        </li>
-        
-        <li class="menu-item-wrapper" role="none">
-          <button id="preferences-trigger" class="menu-item" role="menuitem" aria-haspopup="true" aria-expanded="false">
-            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.82c-.5-.38-1.05-.7-1.64-.95l-.36-2.54c-.05-.22-.24-.39-.47-.39h-3.84c-.24 0-.43.17-.47.39l-.36 2.54c-.59.25-1.13.57-1.62.95l-2.39-.82c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.82c.5.38 1.05.7 1.64.95l.36 2.54c.05.22.24.39.47.39h3.84c.24 0 .43-.17.47-.39l.36-2.54c.59-.25 1.13-.57 1.62-.95l2.39.82c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6s3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
-            <span class="menu-label">Preferences</span>
-            <span class="menu-arrow" aria-hidden="true"></span>
-          </button>
-        </li>
-      </menu>
-
-      <div class="shadow-indicator shadow-indicator-bottom"></div>
-    </div>
-  </div>
-
-  <!-- NATIVE PREFERENCES SUBMENU POPOVER -->
-  <div id="preferences-submenu" popover class="popover-menu">
-    <menu class="menu-list" role="menu">
-      <li class="menu-item-wrapper" role="none">
-        <button class="menu-item" role="menuitem">
-          <span class="menu-label">User Theme</span>
-        </button>
-      </li>
-      <li class="menu-item-wrapper" role="none">
-        <button class="menu-item" role="menuitem">
-          <span class="menu-label">Shortcuts</span>
-        </button>
-      </li>
-    </menu>
-  </div>
-
-  <script>
-    // Conditionally load Popover and Anchor Positioning polyfills inside older browsers
-    (async () => {
-      const supportsPopover = HTMLButtonElement.prototype.hasOwnProperty('popovertarget');
-      const supportsAnchor = 'anchorName' in document.documentElement.style;
-
-      if (!supportsPopover) {
-        await import('https://unpkg.com/@oddbird/popover-polyfill');
-      }
-      if (!supportsAnchor) {
-        await import('https://unpkg.com/@oddbird/css-anchor-positioning');
-      }
-    })();
-
-    // Simple Arrow Navigation triggers
-    const triggers = document.querySelectorAll('.menu-trigger');
-    const menus = document.querySelectorAll('.popover-menu');
-
-    triggers.forEach(trigger => {
-      trigger.addEventListener('keydown', (e) => {
-        const popover = document.getElementById(trigger.getAttribute('popovertarget'));
-        if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          popover.showPopover();
-          const first = popover.querySelector('.menu-item');
-          if (first) first.focus();
-        }
-      });
+  <header aria-label="Document commands"><button id="file-trigger" class="trigger" type="button" popovertarget="file-menu" popovertargetaction="toggle" aria-haspopup="menu" aria-expanded="false">File</button></header>
+  <main><h1>Basic command menu</h1><p>Open the menu with the mouse, Enter, Space, or Down Arrow. Use arrow keys within it. This deliberately small demo has the same focusgroup and submenu contract as the full example.</p><p id="status" role="status" aria-live="polite"></p></main>
+  <div id="file-menu" popover="auto" aria-labelledby="file-trigger"><div focusgroup="menu" aria-label="File commands"><button type="button">New file</button><button type="button">Save</button><button id="preferences-trigger" type="button" popovertarget="preferences-menu" popovertargetaction="toggle" aria-haspopup="menu" aria-expanded="false">Preferences <span aria-hidden="true">›</span></button></div></div>
+  <div id="preferences-menu" popover="auto" aria-labelledby="preferences-trigger"><div focusgroup="menu" aria-label="Preferences commands"><button type="button">Appearance</button><button type="button">Keyboard shortcuts</button></div></div>
+  <script type="module">
+    await import('https://unpkg.com/@microsoft/focusgroup');
+    const rootTrigger = document.querySelector('#file-trigger');
+    const rootMenu = document.querySelector('#file-menu');
+    const subTrigger = document.querySelector('#preferences-trigger');
+    const subMenu = document.querySelector('#preferences-menu');
+    const status = document.querySelector('#status');
+    const items = menu => [...menu.querySelectorAll('[focusgroup="menu"] > button')];
+    const focusFirst = menu => requestAnimationFrame(() => items(menu)[0]?.focus());
+    const closeSub = (returnFocus = true) => { subMenu.hidePopover(); subTrigger.setAttribute('aria-expanded', 'false'); if (returnFocus) subTrigger.focus(); };
+    const closeRoot = () => { closeSub(false); rootMenu.hidePopover(); rootTrigger.setAttribute('aria-expanded', 'false'); rootTrigger.focus(); };
+    const activate = item => { if (item === subTrigger) { subTrigger.setAttribute('aria-expanded', 'true'); subMenu.showPopover(); focusFirst(subMenu); } else { status.textContent = `${item.textContent.trim()} selected`; closeRoot(); } };
+    rootTrigger.addEventListener('keydown', event => { if (event.key === 'ArrowDown') { event.preventDefault(); rootMenu.showPopover(); focusFirst(rootMenu); } });
+    [rootMenu, subMenu].forEach(menu => {
+      menu.addEventListener('toggle', () => { const open = menu.matches(':popover-open'); const trigger = menu === rootMenu ? rootTrigger : subTrigger; trigger.setAttribute('aria-expanded', String(open)); if (open) focusFirst(menu); });
+      menu.addEventListener('keydown', event => { const active = document.activeElement; if (event.key === 'ArrowRight' && menu === rootMenu && active === subTrigger) { event.preventDefault(); activate(subTrigger); } else if (event.key === 'ArrowLeft' && menu === subMenu) { event.preventDefault(); closeSub(); } else if (event.key === 'Escape') { event.preventDefault(); menu === subMenu ? closeSub() : closeRoot(); } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activate(active); } });
+      menu.addEventListener('click', event => { const item = event.target.closest('[focusgroup="menu"] > button'); if (item) activate(item); });
     });
-
-    // Set up click toggle for preferences submenu
-    const prefTrigger = document.getElementById('preferences-trigger');
-    if (prefTrigger) {
-      prefTrigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isExpanded = prefTrigger.getAttribute('aria-expanded') === 'true';
-        prefTrigger.setAttribute('aria-expanded', !isExpanded);
-      });
-    }
-
-    menus.forEach(menu => {
-      menu.addEventListener('keydown', (e) => {
-        const items = Array.from(menu.querySelectorAll('.menu-item'));
-        const activeIdx = items.indexOf(document.activeElement);
-
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          items[(activeIdx + 1) % items.length].focus();
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          items[(activeIdx - 1 + items.length) % items.length].focus();
-        } else if (e.key === 'ArrowRight' && document.activeElement.id === 'preferences-trigger') {
-          // Open nested submenu on ArrowRight on the trigger
-          e.preventDefault();
-          const trigger = document.activeElement;
-          trigger.setAttribute('aria-expanded', 'true');
-          const submenu = trigger.nextElementSibling;
-          if (submenu) {
-            const firstBtn = submenu.querySelector('.menu-item');
-            if (firstBtn) firstBtn.focus();
-          }
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          menu.hidePopover();
-          const trig = document.getElementById(menu.id.replace('-menu', '-trigger'));
-          if (trig) trig.focus();
-        }
-      });
-    });
-
-    // Handle standard keyboard navigation inside the nested submenu
-    const submenusList = document.querySelectorAll('.submenu');
-    submenusList.forEach(submenu => {
-      submenu.addEventListener('keydown', (e) => {
-        const subItems = Array.from(submenu.querySelectorAll('.menu-item'));
-        const activeIdx = subItems.indexOf(document.activeElement);
-
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          const nextIdx = (activeIdx + 1) % subItems.length;
-          subItems[nextIdx].focus();
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          const prevIdx = (activeIdx - 1 + subItems.length) % subItems.length;
-          subItems[prevIdx].focus();
-        } else if (e.key === 'ArrowLeft' || e.key === 'Escape') {
-          // Return to trigger on ArrowLeft or Escape
-          e.preventDefault();
-          const trigger = document.getElementById('preferences-trigger');
-          if (trigger) {
-            trigger.setAttribute('aria-expanded', 'false');
-            trigger.focus();
-          }
-        }
-      });
-    });
+    document.addEventListener('pointerdown', event => { if (!rootMenu.contains(event.target) && !subMenu.contains(event.target) && event.target !== rootTrigger) closeRoot(); });
   </script>
-
 </body>
 </html>

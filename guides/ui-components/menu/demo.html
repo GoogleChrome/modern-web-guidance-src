@@ -2,17 +2,17 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Command Menu</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accessible application command menu</title>
   <style>
     :root {
       color-scheme: light dark;
-      --canvas: #e8f1ed;
-      --surface: #fffdf8;
-      --ink: #19342d;
-      --line: #9bb4a8;
-      --accent: #007c67;
+      --bg: #eef5f2;
+      --surface: Canvas;
+      --ink: CanvasText;
+      --accent: #006b58;
+      --line: color-mix(in srgb, CanvasText, transparent 65%);
     }
 
     * {
@@ -21,208 +21,244 @@
 
     body {
       margin: 0;
-      font-family: Georgia, serif;
-      background: var(--canvas);
+      min-block-size: 140vh;
+      font: 1rem/1.5 system-ui, sans-serif;
+      background: var(--bg);
       color: var(--ink);
     }
 
-    .menu-bar-wrapper {
+    .bar-wrap {
       position: sticky;
-      top: 0;
+      inset-block-start: 0;
       z-index: 1;
       container-type: scroll-state;
-      container-name: menu-bar;
+      container-name: bar;
     }
 
-    .menu-bar {
+    .bar {
       display: flex;
-      gap: 0.5rem;
-      padding: 1rem 2rem;
-      border-bottom: 1px solid var(--line);
-      background: color-mix(in srgb, var(--canvas), white 30%);
+      gap: .5rem;
+      padding: 1rem max(1rem, calc((100% - 48rem) / 2));
+      border-block-end: 1px solid var(--line);
+      background: var(--surface);
     }
 
-    @container menu-bar scroll-state(stuck: top) {
-      .menu-bar {
-        box-shadow: 0 2px 8px rgb(25 52 45 / 20%);
+    @container bar scroll-state(stuck: top) {
+      .bar {
+        box-shadow: 0 .2rem .8rem #0003;
       }
     }
 
     main {
-      max-width: 42rem;
-      min-height: 140vh;
-      margin: 0 auto;
-      padding: 2rem;
+      max-inline-size: 48rem;
+      margin: auto;
+      padding: 2rem 1rem;
     }
 
     button {
       font: inherit;
     }
 
-    .menu-trigger,
-    [role="menuitem"] {
-      border: 0;
-      background: transparent;
+    .trigger {
+      padding: .5rem .8rem;
+      border: 1px solid var(--line);
+      border-radius: .3rem;
+      background: var(--surface);
       color: inherit;
       cursor: pointer;
     }
 
-    .menu-trigger {
-      padding: 0.5rem 0.8rem;
-      border: 1px solid var(--line);
-      border-radius: 5px;
-      background: var(--surface);
-    }
-
-    [role="menu"] {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      min-width: 12rem;
-      margin: 0;
-      padding: 0.3rem;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: var(--surface);
-      box-shadow: 0 12px 28px rgb(25 52 45 / 20%);
-    }
-
-    [role="menuitem"] {
-      display: grid;
-      grid-column: 1 / -1;
-      grid-template-columns: subgrid;
-      width: 100%;
-      gap: 1rem;
-      align-items: center;
-      padding: 0.55rem 0.7rem;
-      border-radius: 3px;
-      text-align: start;
-    }
-
-    [role="menuitem"]:hover,
-    [role="menuitem"]:focus-visible {
+    .trigger:hover,
+    .trigger:focus-visible,
+    [focusgroup="menu"]>button:hover,
+    [focusgroup="menu"]>button:focus-visible {
       background: var(--accent);
       color: white;
-      outline: none;
     }
 
-    #fileButton {
-      anchor-name: --file-button;
+    :focus-visible {
+      outline: .2rem solid #f90;
+      outline-offset: .15rem;
     }
 
-    #fileMenu {
-      position-anchor: --file-button;
+    [popover] {
+      min-inline-size: 14rem;
+      margin: 0;
+      padding: .3rem;
+      border: 1px solid var(--line);
+      border-radius: .4rem;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 .7rem 1.8rem #0004;
+    }
+
+    #file-trigger {
+      anchor-name: --file-trigger;
+    }
+
+    #preferences-trigger {
+      anchor-name: --preferences-trigger;
+    }
+
+    #file-menu {
+      position-anchor: --file-trigger;
       position-area: block-end span-inline-end;
       inset: auto;
     }
 
-    #preferencesButton {
-      anchor-name: --preferences-button;
-    }
-
-    #preferencesMenu {
-      position-anchor: --preferences-button;
+    #preferences-menu {
+      position-anchor: --preferences-trigger;
       position-area: inline-end span-block-start;
       inset: auto;
     }
 
-    kbd,
-    .submenu-arrow {
-      grid-column: 2;
-      justify-self: end;
-      font-family: inherit;
-      opacity: 0.72;
+    [focusgroup="menu"] {
+      display: grid;
+      gap: .1rem;
+      min-inline-size: 14rem;
+    }
+
+    [focusgroup="menu"]>button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      inline-size: 100%;
+      padding: .55rem .7rem;
+      border: 0;
+      border-radius: .2rem;
+      background: transparent;
+      color: inherit;
+      text-align: start;
+      cursor: pointer;
+    }
+
+    .hint {
+      margin-inline-start: 1.5rem;
+      opacity: .75;
     }
   </style>
 </head>
 
 <body>
-  <div class="menu-bar-wrapper">
-    <div class="menu-bar" aria-label="Document commands">
-      <button class="menu-trigger" id="fileButton" type="button" popovertarget="fileMenu" aria-haspopup="menu">
-        File
-      </button>
+  <div class="bar-wrap">
+    <div class="bar" aria-label="Document commands">
+      <button id="file-trigger" class="trigger" type="button" popovertarget="file-menu" popovertargetaction="toggle"
+        aria-haspopup="menu" aria-expanded="false">File</button>
     </div>
   </div>
 
   <main>
     <h1>Document</h1>
-    <p>Open the File menu, then use arrow keys to move through commands. Preferences opens a nested menu.</p>
-
-    <div id="fileMenu" popover="auto" role="menu" aria-labelledby="fileButton">
-      <button role="menuitem" type="button">New file <kbd>Cmd N</kbd></button>
-      <button role="menuitem" type="button">Save <kbd>Cmd S</kbd></button>
-      <button id="preferencesButton" role="menuitem" type="button" popovertarget="preferencesMenu" aria-haspopup="menu"
-        aria-expanded="false">
-        Preferences <span class="submenu-arrow" aria-hidden="true">&rsaquo;</span>
-      </button>
-    </div>
-
-    <div id="preferencesMenu" popover="auto" role="menu" aria-labelledby="preferencesButton">
-      <button role="menuitem" type="button">Appearance</button>
-      <button role="menuitem" type="button">Keyboard shortcuts</button>
-    </div>
+    <p>This is an application command menu. Open <strong>File</strong>, then use arrow keys within the menu. The
+      navigation links on this page remain ordinary links and use normal Tab navigation.</p>
+    <p><a href="#keyboard">Keyboard guidance</a> · <a href="#testing">Testing guidance</a></p>
+    <h2 id="keyboard">Keyboard guidance</h2>
+    <p>Use Enter, Space, or Down Arrow to open the menu. Use Up and Down to move between commands, Right Arrow to open
+      Preferences, Left Arrow or Escape to return, and Tab to leave the menu.</p>
+    <h2 id="testing">Testing guidance</h2>
+    <p>Test this demo with keyboard-only input, VoiceOver, and NVDA. The visible focus indicator and status message make
+      the result easy to inspect.</p>
+    <p id="status" role="status" aria-live="polite"></p>
   </main>
 
-  <script>
-    const fileButton = document.getElementById('fileButton');
-    const fileMenu = document.getElementById('fileMenu');
-    const preferencesButton = document.getElementById('preferencesButton');
-    const preferencesMenu = document.getElementById('preferencesMenu');
+  <div id="file-menu" popover="auto" aria-labelledby="file-trigger">
+    <!-- Keep focusgroup inside the popover: popover can otherwise clobber its semantics. -->
+    <div focusgroup="menu" aria-label="File commands">
+      <button type="button">New file</button>
+      <button type="button">Save</button>
+      <button id="preferences-trigger" type="button" popovertarget="preferences-menu"
+        popovertargetaction="toggle" aria-haspopup="menu" aria-expanded="false">Preferences <span class="hint" aria-hidden="true">›</span></button>
+    </div>
+  </div>
+  <div id="preferences-menu" popover="auto" aria-labelledby="preferences-trigger">
+    <div focusgroup="menu" aria-label="Preferences commands">
+      <button type="button">Appearance</button>
+      <button type="button">Keyboard shortcuts</button>
+    </div>
+  </div>
 
-    function getItems(menu) {
-      return [...menu.querySelectorAll('[role="menuitem"]')].filter((item) => !item.disabled);
+  <script type="module">
+    // focusgroup supplies focus movement and minimum menu semantics.
+    await import('https://unpkg.com/@microsoft/focusgroup');
+
+    const rootTrigger = document.querySelector('#file-trigger');
+    const rootMenu = document.querySelector('#file-menu');
+    const subTrigger = document.querySelector('#preferences-trigger');
+    const subMenu = document.querySelector('#preferences-menu');
+    const status = document.querySelector('#status');
+    const menuItems = menu => [...menu.querySelectorAll('[focusgroup="menu"] > button')]
+      .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+
+    function focusFirst(menu) {
+      requestAnimationFrame(() => menuItems(menu)[0]?.focus());
     }
 
-    function focusItem(menu, index) {
-      const items = getItems(menu);
-      items[(index + items.length) % items.length].focus();
+    function closeSubmenu(returnFocus = true) {
+      if (subMenu.matches(':popover-open')) subMenu.hidePopover();
+      subTrigger.setAttribute('aria-expanded', 'false');
+      if (returnFocus) subTrigger.focus();
     }
 
-    function closeMenu(menu, trigger) {
-      menu.hidePopover();
-      trigger.focus();
+    function closeRootMenu() {
+      closeSubmenu(false);
+      if (rootMenu.matches(':popover-open')) rootMenu.hidePopover();
+      rootTrigger.setAttribute('aria-expanded', 'false');
+      rootTrigger.focus();
     }
 
-    function handleMenuKeys(event) {
-      const menu = event.currentTarget;
-      const items = getItems(menu);
-      const index = items.indexOf(document.activeElement);
+    function activate(item) {
+      if (item === subTrigger) {
+        subTrigger.setAttribute('aria-expanded', 'true');
+        if (!subMenu.matches(':popover-open')) subMenu.showPopover();
+        focusFirst(subMenu);
+        return;
+      }
+      status.textContent = `${item.textContent.trim()} selected`;
+      closeRootMenu();
+    }
 
+    rootTrigger.addEventListener('keydown', event => {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        focusItem(menu, index + 1);
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        focusItem(menu, index - 1);
-      } else if (event.key === 'Home') {
-        event.preventDefault();
-        focusItem(menu, 0);
-      } else if (event.key === 'End') {
-        event.preventDefault();
-        focusItem(menu, items.length - 1);
-      } else if (event.key === 'ArrowRight' && document.activeElement === preferencesButton) {
-        event.preventDefault();
-        preferencesMenu.showPopover();
-        getItems(preferencesMenu)[0].focus();
-      } else if (event.key === 'ArrowLeft' && menu === preferencesMenu) {
-        event.preventDefault();
-        closeMenu(preferencesMenu, preferencesButton);
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        closeMenu(menu, menu === preferencesMenu ? preferencesButton : fileButton);
+        rootMenu.showPopover();
+        focusFirst(rootMenu);
       }
-    }
-
-    fileMenu.addEventListener('toggle', () => {
-      if (fileMenu.matches(':popover-open')) getItems(fileMenu)[0].focus();
     });
 
-    preferencesMenu.addEventListener('toggle', () => {
-      preferencesButton.setAttribute('aria-expanded', preferencesMenu.matches(':popover-open'));
+    [rootMenu, subMenu].forEach(menu => {
+      menu.addEventListener('toggle', () => {
+        const open = menu.matches(':popover-open');
+        const trigger = menu === rootMenu ? rootTrigger : subTrigger;
+        trigger.setAttribute('aria-expanded', String(open));
+        if (open) focusFirst(menu);
+      });
+
+      menu.addEventListener('keydown', event => {
+        const active = document.activeElement;
+        if (event.key === 'ArrowRight' && menu === rootMenu && active === subTrigger) {
+          event.preventDefault();
+          activate(subTrigger);
+        } else if (event.key === 'ArrowLeft' && menu === subMenu) {
+          event.preventDefault();
+          closeSubmenu();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          menu === subMenu ? closeSubmenu() : closeRootMenu();
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          activate(active);
+        }
+      });
+
+      menu.addEventListener('click', event => {
+        const item = event.target.closest('[focusgroup="menu"] > button');
+        if (item) activate(item);
+      });
     });
 
-    fileMenu.addEventListener('keydown', handleMenuKeys);
-    preferencesMenu.addEventListener('keydown', handleMenuKeys);
+    document.addEventListener('pointerdown', event => {
+      if (!rootMenu.contains(event.target) && !subMenu.contains(event.target) && event.target !== rootTrigger) closeRootMenu();
+    });
   </script>
 </body>
 
