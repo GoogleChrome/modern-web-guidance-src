@@ -154,6 +154,13 @@
           outline-offset: 4px;
         }
       }
+
+      .instructions {
+        font-size: 0.85rem;
+        opacity: 0.7;
+        margin-top: -0.5rem;
+        line-height: 1.4;
+      }
     </style>
   </head>
   <body>
@@ -166,10 +173,14 @@
         type="range"
         id="volume-slider"
         aria-labelledby="volume-label"
+        aria-valuetext="70%"
         min="0"
         max="100"
         value="70"
       />
+      <div class="instructions">
+        Use Arrow keys to adjust value by 1%. Use PageUp/PageDown to adjust by 10%. Use Home/End to jump to ends.
+      </div>
     </main>
 
     <script>
@@ -178,7 +189,9 @@
 
       // Update the readable value label dynamically
       const updateValue = (val) => {
-        valueDisplay.textContent = `${val}%`;
+        const percent = `${val}%`;
+        valueDisplay.textContent = percent;
+        slider.setAttribute('aria-valuetext', percent);
       };
 
       slider.addEventListener('input', (e) => {
