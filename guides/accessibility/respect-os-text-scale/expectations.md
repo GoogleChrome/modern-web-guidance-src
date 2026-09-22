@@ -1,0 +1,6 @@
+- **MANDATORY**: The implementation MUST opt into operating system text scaling using the `<meta name="text-scale" content="scale">` element in the document `<head>`.
+- **MANDATORY**: Font sizes, line heights, margins, and padding MUST be defined using relative units (`rem` or `em`) rather than fixed pixels (`px`) so they respond to the scaled root font size.
+- **MANDATORY**: Sizing on text-containing components and containers MUST avoid fixed heights (`height`) or restricted vertical dimensions, utilizing flexible heights (such as `min-height` or `auto`) to prevent text clipping and container overflow when text is scaled.
+- **MANDATORY**: Text within scaled containers MUST be allowed to wrap naturally (avoiding restrictive inline-axis clipping, fixed widths, or `nowrap` on text blocks) to ensure content remains readable when enlarged.
+- **MANDATORY**: The CSS stylesheet MUST NOT override the `:root` or `html` font-size using custom environment calculation multipliers (e.g. `calc(1rem * env(preferred-text-scale))`) when the meta tag is set, to prevent double-scaling.
+- **MANDATORY WHEN FALLBACKS ARE RELEVANT**: On browsers where the `<meta name="text-scale">` tag is not supported, the page MUST degrade gracefully by displaying the layout at the browser's default standard base font size.
