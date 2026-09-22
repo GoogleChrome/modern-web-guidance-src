@@ -274,7 +274,8 @@ Manage layout shifts, scrollbars, and clipping predictably.
 
 ## 8 Grid lanes (aka masonry)
 
-{{ BASELINE_STATUS("masonry") }}
+{{ BASELINE_STATUS("grid-lanes") }}
+
 
 The spec is in development. The currently agreed-upon name is "grid lanes" (e.g., `display: grid-lanes`). Firefox ships `grid-template-rows: masonry` behind a flag; no other engines ship it in stable as of this writing.
 

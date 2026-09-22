@@ -13,6 +13,7 @@
       "malchata"
     ],
     "privacy": "rowan-m",
+    "pwa": "dmurph",
     "security": "rowan-m",
     "webmcp": [
       "beaufortfrancois",
@@ -26,6 +27,7 @@
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {
+    "css": "LeaVerou",
     "scrolling": "bramus",
     "animation": "bramus",
     "transitions": "bramus",

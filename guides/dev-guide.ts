@@ -5,7 +5,7 @@ import { rootDir } from '../lib/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import { generateTargetGrader } from './grader-gen.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
-import { defaultSuiteConfig, Serving, Agents, type SuiteConfig } from '../harness/config.ts';
+import { Agents, type SuiteConfig } from '../harness/config.ts';
 import { collectGuidesUsed } from '../harness/lib/guidance_validation.ts';
 import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from './lib/utils.ts';
 import {
@@ -295,15 +295,8 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   }
 
   // Build workspace dependencies
-  let buildCode = 0;
-  const serving = suiteConfig ? suiteConfig.serving : defaultSuiteConfig.serving;
-  if (serving === Serving.MCP) {
-    console.log(`\nBuilding MCP index...`);
-    buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
-  } else if (serving === Serving.SKILLS_CLI) {
-    console.log(`\nBuilding skills-cli dist...`);
-    buildCode = await spawnAsync('pnpm', ['--filter', 'serving', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
-  }
+  console.log(`\nBuilding skills-cli dist...`);
+  const buildCode = await spawnAsync('pnpm', ['--filter', 'serving', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
 
   if (buildCode !== 0) {
     console.error(cRed(`Failed to build workspace dependencies (exit code ${buildCode})`));

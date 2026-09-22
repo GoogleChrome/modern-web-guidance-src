@@ -315,15 +315,16 @@ These carry significantly lower breakage risk than the core enforcement track. T
 
 #### Permissions Policy
 - **DO**: Disable unused browser features (camera, geolocation, microphone) for the page and iframes using Structured Fields syntax.
+- **DO**: Disable `focus-without-user-activation` for third-party iframes to prevent focus stealing.
 - **DO**: When delegating features to an iframe, use the `allow` attribute in HTML *in addition* to the header.
 - **CAUTION**: Unintentionally blocking a delegated feature will cause silent failures in third-party widgets (like embedded video players or payment gateways). Audit third-party dependencies before blocking.
 
 ```http
-Permissions-Policy: camera=(), geolocation=(), microphone=()
+Permissions-Policy: camera=(), geolocation=(), microphone=(), focus-without-user-activation=()
 ```
 
 ```html
-<iframe src="https://trusted-video.com/player" allow="fullscreen; camera"></iframe>
+<iframe src="https://trusted-video.com/player" allow="fullscreen; camera; focus-without-user-activation 'none'"></iframe>
 ```
 
 #### Subresource Integrity (SRI)

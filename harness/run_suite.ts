@@ -49,12 +49,11 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
 
   try {
     const agentScript = path.join(harnessDir, 'agents',
-      agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
-        agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-          agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-            agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-              agent === Agents.PI ? 'pi-agent.ts' :
-                'jetski-agent.ts'
+      agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+        agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+          agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+            agent === Agents.PI ? 'pi-agent.ts' :
+              'gemini-cli-agent.ts'
     );
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
@@ -189,9 +188,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         try {
           const pnpmArgs = ['-r', '--no-bail'];
-          if (agent === Agents.JETSKI) {
-            pnpmArgs.push('--workspace-concurrency', '1');
-          } else if (suiteConfig.workerCount) {
+          if (suiteConfig.workerCount) {
             pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }
           pnpmArgs.push('run-agent');
@@ -525,12 +522,13 @@ process.exit(graderStatus !== null ? graderStatus : result.status ?? 0);
 }
 
 function getAgentScript(agent: string): string {
-  return path.join(harnessDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+  return path.join(harnessDir, 'agents',
     agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-    agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-    agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-    agent === Agents.PI ? 'pi-agent.ts' :
-      'jetski-agent.ts');
+      agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+        agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+          agent === Agents.PI ? 'pi-agent.ts' :
+            'gemini-cli-agent.ts'
+  );
 }
 
 // If invoked directly, retain legacy fallback logic if strictly required (optional).

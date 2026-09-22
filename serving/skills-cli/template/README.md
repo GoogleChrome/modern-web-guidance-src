@@ -168,6 +168,7 @@ grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
 
 ```shell
 codex plugin marketplace add GoogleChrome/modern-web-guidance
+codex plugin add modern-web-guidance@googlechrome
 ```
 </details>
 

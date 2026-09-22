@@ -7,7 +7,7 @@ import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, parseArguments, getTransclude
 // Re-exported for convenience; the implementations live in the dependency-free ./macro-parsing.ts
 export { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, parseArguments, getTranscludedFeatureIds };
 
-export type BuildTarget = 'skills-cli' | 'mcp-server' | 'megaskill' | 'local-dev' | 'static-site';
+export type BuildTarget = 'skills-cli' | 'local-dev' | 'static-site';
 
 type MacroHandler = (args: string[], filePath: string, options?: { target?: BuildTarget }) => string;
 

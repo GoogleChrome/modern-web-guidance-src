@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tableBody = tableBodyRaw;
   const launchForm = launchFormRaw;
 
-  // Toggle button groups for Agent and Serving
+  // Toggle button group for Agent
   document.querySelectorAll('#agent-group .btn-toggle').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const currentTarget = e.currentTarget;
@@ -17,19 +17,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const agentEl = document.getElementById('agent');
       if (agentEl instanceof HTMLInputElement) {
         agentEl.value = currentTarget.getAttribute('data-value') || '';
-      }
-    });
-  });
-
-  document.querySelectorAll('#serving-group .btn-toggle').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const currentTarget = e.currentTarget;
-      if (!(currentTarget instanceof HTMLElement)) return;
-      document.querySelectorAll('#serving-group .btn-toggle').forEach(b => b.classList.remove('active'));
-      currentTarget.classList.add('active');
-      const servingEl = document.getElementById('serving');
-      if (servingEl instanceof HTMLInputElement) {
-        servingEl.value = currentTarget.getAttribute('data-value') || '';
       }
     });
   });
@@ -383,7 +370,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const numRunsEl = document.getElementById('numRuns');
     const workerCountEl = document.getElementById('workerCount');
     const agentEl = document.getElementById('agent');
-    const servingEl = document.getElementById('serving');
     const traceEl = document.getElementById('includeTrace');
 
     const payload = {
@@ -392,7 +378,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       workerCount: (workerCountEl instanceof HTMLInputElement && workerCountEl.value) ? parseInt(workerCountEl.value) : null,
       includeTrace: (traceEl instanceof HTMLInputElement) ? traceEl.checked : false,
       agent: (agentEl instanceof HTMLInputElement) ? agentEl.value : '',
-      serving: (servingEl instanceof HTMLInputElement) ? servingEl.value : '',
       tasks: selectedTasks,
       skillsToEnable: Array.from(selectedSkills)
     };

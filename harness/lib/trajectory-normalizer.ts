@@ -230,7 +230,7 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
   try {
     let summary: TrajectorySummary | null = null;
 
-    if (agentName === Agents.JETSKI || agentName === Agents.JETSKI_CLI) {
+    if (agentName === Agents.JETSKI_CLI) {
       summary = await parseJetskiTrajectory(targetDir);
     } else {
       let allFiles: string[] = [];
