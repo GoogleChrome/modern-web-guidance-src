@@ -84,7 +84,7 @@
 
     <section>
       <h2>Untrusted Input</h2>
-      <textarea id="untrusted-input">
+      <textarea id="untrusted-input" data-testid="review-input">
 <p class="blue-text">Safe text with <b>bold</b>.</p>
 <script>console.log('XSS Triggered!')</script>
 <img src="x" onerror="console.log('Event Triggered!')">
@@ -92,7 +92,7 @@
     </textarea
       >
       <div class="controls">
-        <button id="btn-run">Process HTML</button>
+        <button id="btn-run" data-testid="preview-button">Process HTML</button>
       </div>
     </section>
 
@@ -108,7 +108,7 @@
         >Output 2: <code>Element.setHTML({sanitizer})</code> (Custom
         Config)</span
       >
-      <div id="output-custom" class="output-box"></div>
+      <div id="output-custom" data-testid="review-output" class="output-box"></div>
 
       <span class="output-label">Output 3: <code>Sanitized String Output</code></span>
       <div id="output-sanitized" class="output-box"></div>

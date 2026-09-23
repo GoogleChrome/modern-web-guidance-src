@@ -71,24 +71,36 @@ console.log(doc.body.innerHTML);
 
 {{ FEATURE_FALLBACKS("sanitizer") }}
 
-If the native Sanitizer API is not available in your target browsers, you MUST use a library like **DOMPurify** to ensure security. You must also apply a configuration via DOMPurify's API to match the Sanitizer API.
+If the native Sanitizer API is not available in your target browsers, you MUST conditionally load a library like **DOMPurify** only when native support is missing, and apply a matching configuration.
 
 ```javascript
-function safeSetHTML(el, html) {
+let domPurifyPromise;
+
+function loadDOMPurify() {
+  if (!domPurifyPromise) {
+    // Conditionally import DOMPurify (via bundler code-splitting or ESM CDN) only when needed
+    domPurifyPromise = import('https://unpkg.com/dompurify@3/dist/purify.es.mjs')
+      .then((mod) => mod.default ?? mod);
+  }
+  return domPurifyPromise;
+}
+
+export async function safeSetHTML(el, html) {
   if (Object.hasOwn(Element.prototype, 'setHTML') && 'Sanitizer' in window) {
     const config = {
-      elements: ["p", "b", "i", "strong", "em"],
-      attributes: ["style"],
+      elements: ['p', 'b', 'i', 'strong', 'em'],
+      attributes: ['class'],
       replaceWithChildrenElements: ['div']
     };
 
     const mySanitizer = new Sanitizer(config);
-    el.setHTML(html, {sanitizer: mySanitizer});
+    el.setHTML(html, { sanitizer: mySanitizer });
   } else {
-    // Load DOMPurify only in browsers that do not support Element.setHTML(). Match configuration.
+    // Load DOMPurify only in browsers that do not support Element.setHTML() and Sanitizer
+    const DOMPurify = await loadDOMPurify();
     el.innerHTML = DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: ["p", "b", "i", "strong", "em"],
-      ALLOWED_ATTR: ["style"]
+      ALLOWED_TAGS: ['p', 'b', 'i', 'strong', 'em'],
+      ALLOWED_ATTR: ['class']
     });
   }
 }

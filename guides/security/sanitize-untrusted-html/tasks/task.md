@@ -1,0 +1,4 @@
+---
+base_app: daily-grind
+---
+- add a customer review HTML preview section to `index.html` with a `<textarea data-testid="review-input">` (or `#untrusted-input`), a preview button `<button data-testid="preview-button">` (or `#btn-run`), and a rendered preview container `<div data-testid="review-output">` (or `#output-custom`). when the preview button is clicked, sanitize and render the untrusted HTML from the textarea into the preview container using a custom sanitizer configuration that allows basic formatting tags (`p`, `b`, `i`, `strong`, `em`) and the `class` attribute, replaces wrapper `div` elements with their child content (`replaceWithChildrenElements: ['div']`), and strips unsafe elements (`<script>`, `<img>`) and inline `on*` event handler attributes. include a conditional `DOMPurify` fallback for browsers where `Element.prototype.setHTML` or `Sanitizer` is unavailable.

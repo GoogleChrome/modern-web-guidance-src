@@ -1,7 +1,8 @@
-- The `#output-set` element is populated using `setHTML()` (or a sanitized fallback) and does not contain any `<script>` tags.
-- The `#output-set` element does not contain any `on*` event handler attributes (like `onclick` or `onerror`).
-- The `#output-custom` element is populated using a `Sanitizer` with a custom configuration that limits allowed elements.
-- The `#output-custom` element does not contain `<img>` tags, as they are excluded from the custom `elements` list.
-- The `#output-custom` element correctly replaces `<div>` tags with their children using the `replaceWithChildrenElements` configuration.
-- The `#output-sanitized` element displays the sanitized HTML string produced by `Document.parseHTML()`.
-- The implementation includes a functional fallback using a library like DOMPurify when the native Sanitizer API is unavailable.
+- Untrusted HTML is sanitized and inserted into the target container using `Element.prototype.setHTML()` (or a sanitized fallback when unsupported) rather than raw `innerHTML`.
+- The rendered output container does not contain any `<script>` elements when given input containing `<script>` tags.
+- The rendered output container does not contain any inline `on*` event handler attributes (such as `onclick` or `onerror`) on any descendant elements.
+- A custom `Sanitizer` configuration restricts allowed elements to basic formatting tags (such as `p`, `b`, `i`, `strong`, `em`) and strips disallowed elements such as `<img>`.
+- The custom `Sanitizer` configuration uses `replaceWithChildrenElements` (e.g., `['div']`) so wrapper `<div>` tags are removed while preserving their inner text/child nodes in the rendered container.
+- Allowed elements and attributes (such as `<p class="...">` and `<b>`) are preserved in the rendered output container.
+- When `Element.prototype.setHTML` or `Sanitizer` is unavailable in the browser, the implementation conditionally loads and falls back to `DOMPurify.sanitize()` with matching allowed elements and attributes.
+
