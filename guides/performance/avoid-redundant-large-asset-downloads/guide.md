@@ -118,14 +118,8 @@ A browser that implements COS can still reject any call, so a passed feature-det
 
 ## Best practices
 
-- **DO** feature-detect `navigator.crossOriginStorage?.requestFileHandle` once, up front, and fall back to the network immediately when it's absent.
-- **DO** still wrap every COS call in `try`/`catch` after a successful feature-detection check, since a fully implemented COS can still legitimately reject a call.
-- **DO** treat any rejection as an ordinary cache miss and fall back to the network, never as definitive proof the file is absent.
 - **DO** write the complete file with `createWritable()` / `write()` / `close()` (or `pipeTo()`) every time you store, even if the file might already exist in COS.
-- **DO NOT** use an enumerated list of origins as a substitute for `origins: '*'`; lists have an implementation-defined maximum length precisely to prevent this.
-- **DO NOT** call `getFile()` on a handle you just obtained via `create: true` until that handle's `write()`/`close()` has resolved.
-- **DO NOT** treat `NotAllowedError` the same as `NotFoundError`; `NotAllowedError` means Permissions Policy blocks COS in this context, which is a distinct condition worth handling separately.
-- **DO** use `Promise.all()` over individual `requestFileHandle()` calls when you need multiple distinct hashes concurrently, rather than a single batched call.
+- **DO** use `Promise.all()` over individual `requestFileHandle()` calls to look up several distinct hashes concurrently, since each call takes exactly one hash.
 
 ## Fallback strategy
 

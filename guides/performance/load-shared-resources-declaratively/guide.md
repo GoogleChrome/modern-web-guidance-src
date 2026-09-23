@@ -57,9 +57,7 @@ const mod = supportsCOS
 
 ## Best practices
 
-- **DO** add `crossoriginstorage` / `crossOriginStorage` only alongside a valid `integrity` value on the same element or import, never on its own.
 - **DO** keep the `src`/`href`/module specifier pointing at the resource's real, working network URL, since a COS lookup that doesn't succeed falls back to that URL exactly like ordinary `integrity`-checked fetches do.
-- **DO** feature-detect before using the static import-attribute form, or use dynamic `import()` with a fallback, since an unrecognized import attribute key is a parse-time failure rather than a silently ignored one.
 - **DO NOT** introduce a separate imperative fetch/cache step in JavaScript for a resource that already carries `integrity`; add the declarative attribute instead.
 {{ FEATURE("tmp-cross-origin-storage", "naming") }}
 

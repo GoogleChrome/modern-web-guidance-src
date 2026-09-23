@@ -35,10 +35,7 @@ Large icon fonts, emoji fonts, and fonts with extensive Unicode coverage are dow
 
 ## Best practices
 
-- **DO** pair `cross-origin-storage()` with `integrity()` on the same `url()`; the two are designed to work together and the integrity hash is what makes the COS lookup possible.
-- **DO** list the COS-enhanced `url()` first in the comma-separated `src` list, with a plain `url()` for the same file as a later fallback, since a browser stops at the first source it can use.
 - **DO** keep the plain fallback `url()` pointing at the font's real, working network location, since a COS lookup that doesn't succeed falls back to fetching from that URL exactly like ordinary `integrity`-checked font loads do.
-- **DO NOT** use `cross-origin-storage()` without `integrity()` on the same `url()`.
 {{ FEATURE("tmp-cross-origin-storage", "naming") }}
 
 ## Fallback strategy
