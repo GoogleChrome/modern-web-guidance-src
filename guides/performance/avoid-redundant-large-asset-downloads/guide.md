@@ -14,7 +14,7 @@ Large shared assets such as AI model weights, Wasm modules, game engine cores, o
 
 ## How to implement
 
-1. **Compute the content hash once, ahead of time.** Hash the exact bytes of the asset with `crypto.subtle.digest()` when you build or publish it, not on every page load, since the hash is what identifies the file in COS.
+1. **Compute the asset's hash when you build or publish your site.** Hash the exact bytes of the large asset you serve (for example, a model file, a Wasm binary, or a third-party library such as three.js) with `crypto.subtle.digest()`, and include the result as a lowercase hex string in your built code. The hash is what identifies the file in COS, and computing it on page load would require downloading the file first.
 2. **Feature-detect before use, then fall back immediately if it's absent.** Check `navigator.crossOriginStorage?.requestFileHandle` once up front. If COS isn't implemented in this browser, skip straight to a normal network fetch.
 3. **Once support is confirmed, still call every method defensively.** Wrap each COS call in `try`/`catch`. Even a fully implemented COS can legitimately reject a call, for example due to availability gating or a Permissions Policy restriction, so a passed feature-detection check does not guarantee success.
 4. **Check COS before fetching from the network.** Call `requestFileHandle(hash)` first. If it resolves, read the file with `handle.getFile()` and skip the network entirely.
@@ -23,6 +23,21 @@ Large shared assets such as AI model weights, Wasm modules, game engine cores, o
 7. **Choose the `origins` scope deliberately.** Omit `origins` for same-site-only sharing, pass an explicit array of origin strings for a small trusted set, or pass `'*'` only for genuinely popular, non-proprietary resources.
 
 ## Example code
+
+At build time, compute the hash once and inline it into your code:
+
+```javascript
+// build-hash.js (Node.js)
+import { readFile } from 'node:fs/promises';
+
+const bytes = await readFile('dist/assets/shared-library.js');
+const digest = await crypto.subtle.digest('SHA-256', bytes);
+const hex = Array.from(new Uint8Array(digest), (byte) =>
+  byte.toString(16).padStart(2, '0'),
+).join('');
+```
+
+At runtime, look the file up by that hash:
 
 ```javascript
 const hash = {
