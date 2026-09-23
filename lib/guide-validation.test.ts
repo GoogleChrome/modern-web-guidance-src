@@ -672,12 +672,6 @@ The <details> element is Baseline Widely available.
     assert.deepStrictEqual(errors, []);
   });
 
-  test('ignores SKILL.md meta policy instructions', () => {
-    const body = `* **Default Behavior**: All guides assume **Baseline Widely available** features are safe to use without fallbacks.`;
-    const errors = validateBaselineClaims(body, 'guides/modern-web-guidance/SKILL.md');
-    assert.deepStrictEqual(errors, []);
-  });
-
   test('validateGuide integrates baseline claims validation', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-baseline-test-'));
     const guideDir = path.join(tmpDir, 'test-guide');

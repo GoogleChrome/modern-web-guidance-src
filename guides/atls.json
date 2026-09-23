@@ -15,6 +15,7 @@
     "privacy": "rowan-m",
     "pwa": "dmurph",
     "security": "rowan-m",
+    "wasm": "sbc100",
     "webmcp": [
       "beaufortfrancois",
       "Kulikowski"
@@ -33,6 +34,7 @@
     "animation": "bramus",
     "transitions": "bramus",
     "view-transitions": "bramus",
+    "webassembly": "sbc100",
     "webauthn": "agektmr"
   }
 }

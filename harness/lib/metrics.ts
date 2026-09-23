@@ -12,7 +12,6 @@ export interface RunResult {
   guidanceToolsUsed?: string[];
   expectedToolPrefixes?: string[];
   guideName?: string;
-  isDisciplineSkill?: boolean;
   taskName?: string;
   baseApp?: string;
   prompt?: string;
@@ -37,7 +36,6 @@ export interface Metrics {
     guideUsageRate?: number;
     guideUsageCount?: number;
     totalGuidedRuns?: number;
-    totalGuidedNonDisciplineRuns?: number;
     toolActivationRate?: number;
     toolActivationCount?: number;
 
@@ -45,7 +43,6 @@ export interface Metrics {
     unguidedEarlyFailureRate?: number;
     guidedEarlyFailures?: number;
     guidedEarlyFailureRate?: number;
-    guidedNonDisciplineEarlyFailures?: number;
     totalTokens?: { total: number; cached: number };
     unguidedTotalTokens?: { total: number; cached: number };
     guidedTotalTokens?: { total: number; cached: number };
@@ -59,7 +56,6 @@ export interface Metrics {
     passedChecks: number;
     totalChecks: number;
 
-    isDisciplineSkill?: boolean;
     earlyFailures?: number;
     avgTokens?: { total: number; cached: number };
   }>;
@@ -139,8 +135,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       runs.forEach(run => {
         const guidesUsed = run.guidesUsed || [];
         const expectedGuide = run.guideName;
-        // For skills, we track guides used but there is no expected guide
-        if (!run.isDisciplineSkill && expectedGuide && guidesUsed.includes(expectedGuide)) {
+        if (expectedGuide && guidesUsed.includes(expectedGuide)) {
           guideUsageCount++;
         }
 
@@ -169,7 +164,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       runsUsingGuide: runType === 'guided' ? guideUsageCount : undefined,
       runsWithToolActivation: runType === 'guided' ? toolActivationCount : undefined,
       runCount: runs.length,
-      isDisciplineSkill: runs[0]?.isDisciplineSkill,
       passedChecks,
       totalChecks,
       earlyFailures,
@@ -195,8 +189,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let guideUsageCount = 0;
     let toolActivationCount = 0;
     let totalGuidedRuns = 0;
-    let totalGuidedNonDisciplineRuns = 0;
-    let guidedNonDisciplineEarlyFailures = 0;
     let guidedEarlyFailures = 0;
     let earlyFailures = 0;
     let totalRuns = 0;
@@ -224,18 +216,12 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
           guideUsageCount += stats.runsUsingGuide || 0;
           toolActivationCount += stats.runsWithToolActivation || 0;
           totalGuidedRuns += stats.runCount || 0;
-
-          if (!stats.isDisciplineSkill) {
-            totalGuidedNonDisciplineRuns += stats.runCount || 0;
-            guidedNonDisciplineEarlyFailures += stats.earlyFailures || 0;
-          }
           guidedEarlyFailures += stats.earlyFailures || 0;
         }
       }
     });
 
     const completedGuidedRuns = totalGuidedRuns - guidedEarlyFailures;
-    const completedGuidedNonDisciplineRuns = totalGuidedNonDisciplineRuns - guidedNonDisciplineEarlyFailures;
 
     return {
       median: Math.round(median),
@@ -244,14 +230,12 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       rate: total ? Math.round((passed / total) * 100) : 0,
       guideUsageCount,
       totalGuidedRuns,
-      totalGuidedNonDisciplineRuns,
       toolActivationCount,
       earlyFailures,
       totalRuns,
       earlyFailureRate: totalRuns ? Math.round((earlyFailures / totalRuns) * 100) : 0,
       toolActivationRate: completedGuidedRuns ? Math.round((toolActivationCount / completedGuidedRuns) * 100) : 0,
-      guideUsageRate: completedGuidedNonDisciplineRuns ? Math.round((guideUsageCount / completedGuidedNonDisciplineRuns) * 100) : 0,
-      guidedNonDisciplineEarlyFailures,
+      guideUsageRate: completedGuidedRuns ? Math.round((guideUsageCount / completedGuidedRuns) * 100) : 0,
       totalTokens: configsWithTokenData > 0 ? { total: totalTokens, cached: cachedTokens } : undefined
     };
   };
@@ -289,7 +273,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guideUsageRate: gStats.guideUsageRate,
       guideUsageCount: gStats.guideUsageCount,
       totalGuidedRuns: gStats.totalGuidedRuns,
-      totalGuidedNonDisciplineRuns: gStats.totalGuidedNonDisciplineRuns,
       toolActivationRate: gStats.toolActivationRate,
       toolActivationCount: gStats.toolActivationCount,
 
@@ -297,7 +280,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       unguidedEarlyFailureRate: uStats.earlyFailureRate,
       guidedEarlyFailures: gStats.earlyFailures,
       guidedEarlyFailureRate: gStats.earlyFailureRate,
-      guidedNonDisciplineEarlyFailures: gStats.guidedNonDisciplineEarlyFailures,
       totalTokens: totalTokensSum > 0 ? { total: totalTokensSum, cached: cachedTokensSum } : undefined,
       unguidedTotalTokens: uStats.totalTokens,
       guidedTotalTokens: gStats.totalTokens
