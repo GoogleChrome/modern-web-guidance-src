@@ -10,7 +10,7 @@ Every Cross-Origin Storage (COS) surface takes a sharing scope that controls whi
 |---|---|---|---|
 | `requestFileHandle()` `origins` option | Omit `origins` | Array of origin strings | `'*'` |
 | HTML `crossoriginstorage` attribute | Valueless attribute | Space-separated origins | `"*"` |
-| `crossOriginStorage` import attribute | Empty array (`[]`) | Array of origin strings | `'*'` |
+| `crossOriginStorage` import attribute | Empty string (`''`) | Space-separated origins | `'*'` |
 | CSS `cross-origin-storage()` modifier | No arguments | Comma-separated origin strings | `*` |
 
 ## Naming
