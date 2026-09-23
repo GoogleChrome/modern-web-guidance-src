@@ -17,7 +17,15 @@ By default, interest is shown and lost for keyboard and mouse users with a delay
 ```css
 [interestfor]{
   /* Shorthand for interest-delay-start and interest-delay-end */
-  interest-delay: .2s;
+  interest-delay: 0.2s 0.1s;
+}
+```
+
+If users are likely to move through multiple triggers in quick succession, set the initial delay to `0s` if an interest-triggered popover is already open.
+
+```css
+:root:has(:interest-source) [interestfor] {
+  interest-delay-start: 0s;
 }
 ```
 
