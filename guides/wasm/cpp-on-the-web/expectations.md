@@ -1,0 +1,6 @@
+- The application loads a WebAssembly module
+- The browser console contains no unhandled errors or exceptions during module initialization and execution.
+- The WebAssembly module is built with optimizations enabled and debug info stripped
+- A fractal flame image is present on the page
+- A button exists on the page to generate a new image
+- The application remains responsive to user interaction (e.g., hover states or clicks) while the image is being generated

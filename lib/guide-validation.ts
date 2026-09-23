@@ -86,8 +86,8 @@ interface ValidationResult {
  * Determines the project status name for a use case based on its completeness.
  * Returns null when the use case is complete.
  */
-export function getStatusName(guideBody: string, hasGrader: boolean, hasTask: boolean): ProjectStatus | null {
-  if (guideBody.trim().length === 0) {
+export function getStatusName(guideBody: string, hasGrader: boolean, hasTask: boolean, isDraft: boolean = false, hasExpectations: boolean = true): ProjectStatus | null {
+  if (guideBody.trim().length === 0 || isDraft || !hasExpectations) {
     return ProjectStatus.NeedsGuidance;
   }
   if (!hasGrader || !hasTask) {
@@ -214,7 +214,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
   for (const inv of guides) {
     const subdir = inv.dir;
-    const { hasGuide, hasGrader, hasTask, isDisciplineGuide, isDisciplineSkill } = inv;
+    const { hasGuide, hasGrader, hasTask, isDisciplineGuide } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
 
     if (hasGrader !== hasTask) {
@@ -239,8 +239,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill || isDisciplineGuide || inv.isStub) {
-        // Discipline skills/guides and stubs don't require the same frontmatter as use cases
+      if (isDisciplineGuide || inv.isStub) {
+        // Discipline guides and stubs don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
 
@@ -256,7 +256,9 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
-    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask) : null;
+    const isDraft = Boolean(inv.draft);
+    const hasExpectations = inv.hasExpectations && !inv.expectationsEmpty;
+    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask, isDraft, hasExpectations) : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
@@ -360,23 +362,14 @@ export interface GuideInventory {
   draft: boolean | string;
   /** Whether the guide belongs in dist: has content and no truthy `draft`. */
   isPublished: boolean;
-  isDisciplineSkill: boolean;
   targets?: TargetInventory[];
 }
 
 /**
- * Returns the path to the main markdown file for a guide (guide.md or SKILL.md).
+ * Returns the path to the main markdown file for a guide.
  */
 export function getGuideMarkdownPath(inv: GuideInventory): string {
-  return path.join(inv.dir, inv.isDisciplineSkill ? SKILL_FILE : GUIDE_FILE);
-}
-
-/**
- * Returns true if the directory represents a discipline-level skill (e.g. guides/css/).
- */
-export function isDisciplineSkillDir(dir: string): boolean {
-  const parentDir = path.dirname(dir);
-  return path.basename(parentDir) === 'guides' && fs.existsSync(path.join(dir, SKILL_FILE));
+  return path.join(inv.dir, GUIDE_FILE);
 }
 
 export interface TaskInfo {
@@ -471,12 +464,11 @@ export function getTaskMap(): Map<string, TaskInfo> {
 export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean }): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
-  const isDisciplineSkill = isDisciplineSkillDir(dir);
 
   const expectationsContent = readFileSafe(path.join(dir, EXPECTATIONS_FILE));
   const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
 
-  const guideFilePath = path.join(dir, isDisciplineSkill ? SKILL_FILE : GUIDE_FILE);
+  const guideFilePath = path.join(dir, GUIDE_FILE);
   const guideContent = readFileSafe(guideFilePath);
 
   const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
@@ -560,7 +552,6 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     featureIds: data['web-feature-ids'] || [],
     draft,
     isPublished,
-    isDisciplineSkill,
     targets: useTargets ? targets : undefined,
   };
 }
@@ -612,33 +603,11 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   return guides;
 }
 
-export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
-  const skills: GuideInventory[] = [];
-
-  if (!fs.existsSync(scanDir)) return skills;
-
-  // Read top-level directories in guides/
-  const categories = fs.readdirSync(scanDir, { withFileTypes: true })
-     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-     .map(d => d.name);
-
-  for (const category of categories) {
-    const categoryDir = path.join(scanDir, category);
-
-    // If the category directory itself contains a SKILL.md, it's a discipline skill
-    if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
-      skills.push(inventoryGuide(categoryDir));
-    }
-  }
-
-  return skills;
-}
-
 let cachedGuidesMap: Map<string, GuideInventory> | null = null;
 
 export function getGuidesMap(): Map<string, GuideInventory> {
   if (!cachedGuidesMap) {
-    const allItems = [...scanAllGuides(), ...scanDisciplineSkills()];
+    const allItems = scanAllGuides();
     cachedGuidesMap = new Map(allItems.map(g => [g.name, g]));
   }
   return cachedGuidesMap;
@@ -859,11 +828,6 @@ export function validateBaselineClaims(body: string, relativePath: string): stri
   const errors: string[] = [];
   const lines = body.split('\n');
   let inCodeBlock = false;
-
-  // Skip meta skill instructions like modern-web-guidance/SKILL.md which describe baseline policy rules
-  if (relativePath.endsWith('SKILL.md')) {
-    return errors;
-  }
 
   lines.forEach((line, idx) => {
     const trimmed = line.trim();

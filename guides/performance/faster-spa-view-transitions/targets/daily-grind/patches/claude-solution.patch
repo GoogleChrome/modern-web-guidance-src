@@ -1,0 +1,310 @@
+diff --git a/index.html b/index.html
+index 66c9173..7f56be1 100644
+--- a/index.html
++++ b/index.html
+@@ -66,6 +66,11 @@
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      border-bottom: 2px solid var(--accent);
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -152,6 +157,41 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------------------------------------------------------------
++       SPA view caching
++       ---------------------------------------------------------------
++       Inactive views keep their DOM and cached rendering state so that
++       returning to them skips a full layout + paint pass.
++    */
++    #view-root {
++      position: relative;
++    }
++
++    .spa-view:focus {
++      outline: none;
++    }
++
++    .spa-view.inactive {
++      /* MANDATORY: cache the rendering state of inactive views */
++      content-visibility: hidden;
++
++      /* Keep hidden views out of the layout flow. The element box itself is
++         still painted, so it must stay free of its own background/border. */
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 100%;
++      pointer-events: none;
++    }
++
++    /* Fallback: browsers without content-visibility would otherwise paint
++       every view at once. */
++    @supports not (content-visibility: hidden) {
++      .spa-view.inactive {
++        display: none;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -160,42 +200,145 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#/home" data-view="view-home">Home</a></li>
++      <li><a href="#/menu" data-view="view-menu">Menu</a></li>
++      <li><a href="#/locations" data-view="view-locations">Locations</a></li>
++      <li><a href="#/rewards" data-view="view-rewards">Rewards</a></li>
++      <li><a href="#/account" data-view="view-account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++  <div id="view-root">
++
++    <section id="view-home" class="spa-view" tabindex="-1" aria-labelledby="home-heading">
++      <header class="hero">
++        <h1 id="home-heading">Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="#/menu" data-view="view-menu" class="btn">Order Now</a>
++      </header>
++
++      <main class="container">
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="#/menu" data-view="view-menu" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="#/menu" data-view="view-menu" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="#/menu" data-view="view-menu" class="btn">View Details</a>
++          </div>
++        </div>
++      </main>
++    </section>
++
++    <section id="view-menu" class="spa-view" tabindex="-1" aria-labelledby="menu-heading">
++      <main class="container">
++        <h2 id="menu-heading" style="text-align: center;">Our Menu</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Espresso</h3>
++            <p>A concentrated shot pulled from single-origin Ethiopian beans.</p>
++            <p><strong>$3.25</strong></p>
++          </div>
++          <div class="card">
++            <h3>Flat White</h3>
++            <p>Double ristretto with velvety steamed micro-foam.</p>
++            <p><strong>$4.75</strong></p>
++          </div>
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <p><strong>$5.50</strong></p>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <p><strong>$4.25</strong></p>
++          </div>
++          <div class="card">
++            <h3>Pour Over</h3>
++            <p>Brewed to order, one cup at a time.</p>
++            <p><strong>$4.50</strong></p>
++          </div>
++          <div class="card">
++            <h3>Butter Croissant</h3>
++            <p>Laminated overnight, baked at 5am every morning.</p>
++            <p><strong>$3.75</strong></p>
++          </div>
++        </div>
++      </main>
++    </section>
++
++    <section id="view-locations" class="spa-view" tabindex="-1" aria-labelledby="locations-heading">
++      <main class="container">
++        <h2 id="locations-heading" style="text-align: center;">Find Us</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Riverside</h3>
++            <p>412 Mill Street<br>Open 6am &ndash; 7pm</p>
++          </div>
++          <div class="card">
++            <h3>Old Town</h3>
++            <p>88 Chandler Avenue<br>Open 7am &ndash; 6pm</p>
++          </div>
++          <div class="card">
++            <h3>Union Depot</h3>
++            <p>1 Depot Plaza<br>Open 5:30am &ndash; 8pm</p>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </main>
++    </section>
++
++    <section id="view-rewards" class="spa-view" tabindex="-1" aria-labelledby="rewards-heading">
++      <main class="container">
++        <h2 id="rewards-heading" style="text-align: center;">Grind Rewards</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Earn</h3>
++            <p>Collect 1 bean for every dollar spent, in store or online.</p>
++          </div>
++          <div class="card">
++            <h3>Redeem</h3>
++            <p>150 beans unlocks any handcrafted drink on the menu.</p>
++          </div>
++          <div class="card">
++            <h3>Your Balance</h3>
++            <p><strong>92 beans</strong><br>58 to go until your next free cup.</p>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </main>
++    </section>
++
++    <section id="view-account" class="spa-view" tabindex="-1" aria-labelledby="account-heading">
++      <main class="container">
++        <h2 id="account-heading" style="text-align: center;">My Account</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Profile</h3>
++            <p>Avery Nakamura<br>avery@example.com</p>
++          </div>
++          <div class="card">
++            <h3>Saved Payment</h3>
++            <p>Visa ending 4412</p>
++          </div>
++          <div class="card">
++            <h3>Recent Order</h3>
++            <p>Cold Brew &amp; Butter Croissant<br>Riverside, yesterday</p>
++          </div>
+         </div>
+-      </div>
++      </main>
+     </section>
+-  </main>
++
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +350,77 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // A fixed, small set of views, so every view is cached for the life of
++      // the page. An LRU eviction pass would only be needed if views were
++      // generated dynamically from unbounded routes.
++      var DEFAULT_VIEW = 'view-home';
++      var views = Array.prototype.slice.call(document.querySelectorAll('.spa-view'));
++      var navLinks = Array.prototype.slice.call(document.querySelectorAll('nav a[data-view]'));
++
++      var routes = {};
++      navLinks.forEach(function (link) {
++        routes[link.getAttribute('href')] = link.getAttribute('data-view');
++      });
++
++      function viewIdFromHash(hash) {
++        var id = routes[hash];
++        return id && document.getElementById(id) ? id : DEFAULT_VIEW;
++      }
++
++      function switchToView(viewId, moveFocus) {
++        var activeView = document.getElementById(viewId);
++        if (!activeView) return;
++
++        views.forEach(function (view) {
++          var isActive = view === activeView;
++          view.classList.toggle('inactive', !isActive);
++          view.setAttribute('aria-hidden', isActive ? 'false' : 'true');
++        });
++
++        navLinks.forEach(function (link) {
++          if (link.getAttribute('data-view') === viewId) {
++            link.setAttribute('aria-current', 'page');
++          } else {
++            link.removeAttribute('aria-current');
++          }
++        });
++
++        if (moveFocus) {
++          // Keep the tab order logical: the next Tab starts inside the view
++          // the user just navigated to.
++          activeView.focus();
++        }
++      }
++
++      document.addEventListener('click', function (event) {
++        var link = event.target.closest ? event.target.closest('a[data-view]') : null;
++        if (!link) return;
++        var viewId = link.getAttribute('data-view');
++        if (!document.getElementById(viewId)) return;
++        event.preventDefault();
++        var hash = link.getAttribute('href');
++        if (window.location.hash !== hash) {
++          window.location.hash = hash;
++        } else {
++          switchToView(viewId, true);
++        }
++      });
++
++      window.addEventListener('hashchange', function () {
++        switchToView(viewIdFromHash(window.location.hash), true);
++      });
++
++      switchToView(viewIdFromHash(window.location.hash), false);
++
++      // Exposed so tests and other scripts can drive navigation directly.
++      window.switchToView = switchToView;
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
