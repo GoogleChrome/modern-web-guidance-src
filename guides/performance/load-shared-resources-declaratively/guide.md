@@ -15,7 +15,7 @@ Popular scripts, stylesheets, and JavaScript modules, such as UI frameworks or w
 1. **Start from `integrity`.** Both declarative forms require an existing, valid `integrity` hash on the element or import, since that hash is what identifies the file in COS.
 2. **Add the COS attribute alongside it.** For HTML, add `crossoriginstorage` to a `<link>` or `<script>` element. For module imports, add `crossOriginStorage` inside the same `with { ... }` block as `integrity`.
 3. **Choose the sharing scope.** Pick it from the resource's real distribution, as described in the "Sharing scope" section.
-4. **For dynamic imports, feature-detect first.** A static `import` statement with an unrecognized `crossOriginStorage` key is a hard parse-time failure, not an ignored attribute. Code that must keep working regardless of COS support should feature-detect and use dynamic `import()` instead.
+4. **For module imports, use dynamic `import()` inside `try`/`catch`.** A static `import` with an unsupported `crossOriginStorage` key fails the whole module at parse time, and a dynamic `import()` with one rejects before fetching anything. Catch the rejection and import the same URL without the attribute.
 
 ## Example code
 
@@ -37,18 +37,23 @@ Popular scripts, stylesheets, and JavaScript modules, such as UI frameworks or w
 ```
 
 ```javascript
-// MANDATORY: The static form can't degrade, so guard it with a feature check and
-// fall back to a plain dynamic import when COS isn't supported.
-const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
-
-const mod = supportsCOS
-  ? await import('/assets/shared-config.js', {
-      with: {
-        integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
-        crossOriginStorage: '*',
-      },
-    })
-  : await import('/assets/shared-config.js');
+// MANDATORY: Use dynamic import() inside try/catch. A browser without
+// native support for the crossOriginStorage import attribute rejects it
+// before fetching anything, even when navigator.crossOriginStorage exists
+// (for example, added by an extension), so that object is no signal for
+// import attribute support.
+let mod;
+try {
+  mod = await import('/assets/shared-config.js', {
+    with: {
+      integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
+      crossOriginStorage: '*',
+    },
+  });
+} catch {
+  // Fall back to a plain import of the same URL.
+  mod = await import('/assets/shared-config.js');
+}
 ```
 
 ## Sharing scope
@@ -65,9 +70,9 @@ const mod = supportsCOS
 
 {{ FEATURE("tmp-cross-origin-storage", "browser-support") }}
 
-The HTML form degrades gracefully: a browser that doesn't recognize `crossoriginstorage` simply ignores the attribute, per ordinary HTML attribute-parsing rules, and the element still loads via its plain `href`/`src`. The static JavaScript import-attribute form does not degrade the same way, since an unrecognized `with` key is a hard failure; feature-detect and use dynamic `import()` when broad compatibility matters.
+The HTML form degrades gracefully: a browser that doesn't recognize `crossoriginstorage` simply ignores the attribute, per ordinary HTML attribute-parsing rules, and the element still loads via its plain `href`/`src`. The static JavaScript import-attribute form does not degrade the same way, since an unrecognized `with` key is a hard failure; use dynamic `import()` inside `try`/`catch` as shown in the example.
 
-With the extension installed, the literal import attribute still throws: a `SyntaxError` for a static `import` and a `TypeError` for dynamic `import()`. For module imports, the extension provides two non-standard shims:
+With the extension installed, `navigator.crossOriginStorage` exists, but the literal import attribute still fails: a static `import` fails to parse, and a dynamic `import()` rejects. For module imports, the extension provides two non-standard shims:
 
 - **`<script type="module-cos">`:** the extension reads the script as text, resolves every static or dynamic import that carries `crossOriginStorage` and has a literal string specifier, and runs the rewritten source as a regular module. Computed specifiers such as variables or template literals are not rewritten.
 - **`navigator.crossOriginStorage.__non_standard__import(specifier, options)`:** takes the same arguments as dynamic `import()`, including a computed specifier.
