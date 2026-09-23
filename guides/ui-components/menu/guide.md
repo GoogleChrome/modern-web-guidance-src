@@ -108,7 +108,7 @@ Keep the opening, closing, and keyboard traversal independent of CSS anchor posi
 Do not implement a second roving-tabindex system when using `focusgroup="menu"`. Its focus behaviour handles movement between menu items, including the supported boundary behaviour. JavaScript remains responsible for the parts focusgroup does not cover:
 
 - Opening the menu with pointer activation, `Enter`, `Space`, or `ArrowDown`, and moving focus to the first enabled item each time.
-- Moving focus to the first enabled item after opening, after allowing the trigger's expanded-state announcement to complete; the demos use a short 250ms delay before sending a separate focus event for the first item, without scrolling the page.
+- Moving focus to the first enabled item after opening, after allowing the trigger's expanded-state announcement to complete; the demos use a short 200ms delay before sending a separate focus event for the first item, without scrolling the page.
 - Handling `ArrowUp` and `ArrowDown` in the fallback path so the keys move between enabled items and do not scroll the page in browsers without native focusgroup support.
 - Activating a command with `Enter` or `Space`.
 - Closing with `Escape` and restoring focus to the invoking trigger.
@@ -179,7 +179,7 @@ These checks complement [WCAG 2.2 Keyboard](https://www.w3.org/WAI/WCAG22/Unders
 
 ## Progressive enhancement and fallbacks
 
-The demos retain `focusgroup="menu"` in the markup and use a small local fallback for browsers without native support. Opening a menu moves DOM focus to its first enabled item; delaying that move by 250ms avoids competing with VoiceOver's announcement of the trigger's expanded state.
+The demos retain `focusgroup="menu"` in the markup and use a small local fallback for browsers without native support. Opening a menu moves DOM focus to its first enabled item; delaying that move by 200ms avoids competing with VoiceOver's announcement of the trigger's expanded state.
 
 ```js
 document.querySelectorAll('[focusgroup="menu"]').forEach(group => {

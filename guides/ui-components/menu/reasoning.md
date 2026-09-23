@@ -52,16 +52,16 @@ By prescribing explicit capture and stopping of key events inside each layer, th
 
 ---
 
-## 4. Why the Guide Mandates a 250ms Delay Before Programmatic Focus
+## 4. Why the Guide Mandates a 200ms Delay Before Programmatic Focus
 
 ### Context in `guide.md`
-The guide specifies a short (~250ms) delay when programmatically focusing the first item of a newly opened menu.
+The guide specifies a short (~200ms) delay when programmatically focusing the first item of a newly opened menu.
 
 ### Architectural Rationale
 When opening an ARIA menu, screen readers are expected to announce both the transition of the trigger (e.g., *"File, button, expanded"*) and the newly focused menuitem (e.g., *"New file, menuitem, 1 of 3"*). 
 In VoiceOver (especially macOS Safari/Chrome), moving focus immediately upon opening triggers a race condition where VoiceOver's visual focus announcer cuts itself off to announce the new focus, or completely ignores the first menu item's name.
 
-The 250ms delay instruction ensures that VoiceOver has sufficient time to complete its expanded-state announcement before programmatically receiving the new focus event, ensuring complete screen-reader accessibility.
+The 200ms delay instruction ensures that VoiceOver has sufficient time to complete its expanded-state announcement before programmatically receiving the new focus event, ensuring complete screen-reader accessibility.
 
 ---
 

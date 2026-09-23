@@ -58,7 +58,7 @@
     const items = menu => [...menu.querySelector(':scope > [focusgroup="menu"]')
       .querySelectorAll(':scope > button')];
     const focusTimers = new WeakMap();
-    const focusAnnouncementDelay = 250;
+    const focusAnnouncementDelay = 200;
     const focusFirst = menu => {
       const first = items(menu)[0];
       if (!first) return;

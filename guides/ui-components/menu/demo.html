@@ -172,8 +172,9 @@
     <div focusgroup="menu" role="menu">
       <button type="button" role="menuitem">New file</button>
       <button type="button" role="menuitem">Save</button>
-      <button id="preferences-trigger" type="button" popovertarget="preferences-menu"
-        popovertargetaction="toggle" role="menuitem" aria-haspopup="menu" aria-expanded="false">Preferences <span class="hint" aria-hidden="true">›</span></button>
+      <button id="preferences-trigger" type="button" popovertarget="preferences-menu" popovertargetaction="toggle"
+        role="menuitem" aria-haspopup="menu" aria-expanded="false">Preferences <span class="hint"
+          aria-hidden="true">›</span></button>
     </div>
     <div id="preferences-menu" popover="manual" aria-labelledby="preferences-trigger">
       <div focusgroup="menu" role="menu">
@@ -215,7 +216,7 @@
       .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
 
     const focusTimers = new WeakMap();
-    const focusAnnouncementDelay = 250;
+    const focusAnnouncementDelay = 120;
     function focusFirst(menu) {
       const first = menuItems(menu)[0];
       if (!first) return;
