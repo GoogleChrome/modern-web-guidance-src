@@ -281,15 +281,19 @@
         const active = document.activeElement;
         if (event.key === 'ArrowRight' && menu === rootMenu && active === subTrigger) {
           event.preventDefault();
+          event.stopPropagation();
           activate(subTrigger);
         } else if (event.key === 'ArrowLeft' && menu === subMenu) {
           event.preventDefault();
+          event.stopPropagation();
           closeSubmenu();
         } else if (event.key === 'Escape') {
           event.preventDefault();
+          event.stopPropagation();
           menu === subMenu ? closeSubmenu() : closeRootMenu();
         } else if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
+          event.stopPropagation();
           activate(active);
         }
       });
