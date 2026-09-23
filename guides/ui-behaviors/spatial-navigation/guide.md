@@ -12,7 +12,7 @@ guides:
 
 Directional focus navigation (using arrow keys or D-Pads) enables keyboard-only and alternative-input users to navigate interactive items based on their visual 2D layout. It is highly beneficial for spatial user interfaces (such as media rails, dashboard panels, or nested catalogs), but it must be implemented carefully to avoid breaking native browser behaviors like viewport scrolling.
 
-This guide covers the core guidelines for building accessible, visual-based 2D directional navigation inside composite widgets.
+This guide covers building performant, accessible 2D directional navigation inside composite widgets.
 
 ---
 
@@ -21,50 +21,68 @@ This guide covers the core guidelines for building accessible, visual-based 2D d
 When implementing custom arrow-key spatial focus, adhere to these foundational rules:
 
 1. **Limit to composite widgets**: Do not override arrow keys on normal document text flow or simple vertical list layouts where default sequential Tab navigation is expected. See {{ GUIDE_REF("accessibility") }} for general document flow guidance.
-2. **Preserve native boundary scrolling**: If a user presses an arrow key but there is no focusable element in that direction, **do not prevent default browser behavior**. Allow the event to bubble naturally so the browser scrolls the page. Overriding arrow keys unconditionally breaks accessibility, especially under zoom/reflow constraints (WCAG 1.4.10).
-3. **Ensure focus visibility and alignment**: When focus changes, ensure the newly focused element is scrolled into view (e.g., using `scrollIntoView` or a container scroll adjustment) so that it remains fully visible.
-4. **Coordinate with the layout system**: Determine focus candidate positions using live bounding geometries (`getBoundingClientRect()`) to ensure that spatial calculations automatically adapt to responsive shifts, flex wrapping, or grid column adjustments. **DO**: To avoid layout thrashing during candidate selection loops, pre-cache the bounding client rects in a single pass up front rather than querying them on-demand inside the loop. See {{ GUIDE_REF("css-layout") }} for modern layout recommendations.
+2. **Preserve native boundary scrolling**: If there is no focusable element in the pressed direction, **do not prevent default browser behavior**. Let the event bubble so the browser can scroll the viewport natively. Overriding arrow keys unconditionally breaks accessibility (WCAG 1.4.10).
+3. **Ensure focus visibility and alignment**: When focus changes, ensure the newly focused element is scrolled into view (e.g., using `scrollIntoView({ block: 'nearest', inline: 'nearest' })`) so that it remains fully visible.
+4. **Coordinate with the layout system**: Determine focus candidate positions using live bounding geometries (`getBoundingClientRect()`). **DO**: Keep spatial calculations highly performant by storing the bounding client rects in a globally scoped cache rather than querying them on-demand inside the selection loop. Invalidate this cache on events that change layout positions, such as window `resize` and `scroll`, or via a `ResizeObserver` on the parent layout container. See {{ GUIDE_REF("css-layout") }} for modern layout recommendations.
 
 ---
 
 ### Accessible Focus Management
 
-To prevent cluttering the browser's sequential tab order, the spatial container should expose a single tab stop to the page. Inside the widget, manage keyboard focus using one of two patterns:
-
-#### Option A: The Roving Tabindex Pattern
+The spatial container must expose a single tab stop to sequential Page Tab navigation. Inside the widget, manage keyboard focus using the **Roving Tabindex Pattern**:
 * The active item has `tabindex="0"`.
 * All inactive items have `tabindex="-1"`.
-* When an arrow key is pressed, programmatic focus is moved by setting `tabindex="0"` on the target and `-1` on the previously active element.
-
-#### Option B: The Active-Descendant Pattern
-* The parent container remains the focused element (`tabindex="0"`).
-* The parent manages state and points to the active child using `aria-activedescendant="[active-child-id]"`.
-* The visual highlight is moved to the target child, and screen readers are notified of the change through the parent's attribute.
+* When navigating, programmatically move focus by shifting the `tabindex="0"` attribute and calling `focus()`.
 
 ---
 
 ### Visual Candidate Selection
 
-In asymmetrical or wrapped layouts (such as wrapped flex rows or grids with varying card sizes), simple index-based mapping (row/column indexing) fails. Instead, identify focus targets dynamically using visual bounding boxes.
+In asymmetrical, wrapped, or grid layouts, index-based mapping fails. Instead, query live visual bounding boxes and calculate 2D distance.
 
-#### The Visual Distance Heuristic
-To find the best target in a direction (`up`, `down`, `left`, `right`), filter your candidates using their center coordinates, then rank them by combining their **projection distance** (distance along the navigation axis) and **orthogonal distance** (distance along the perpendicular axis):
-
-$$\text{Distance} = d_{\text{projection}} + (w \times d_{\text{orthogonal}})$$
-
-Applying a weight ($w \ge 2$) penalizes candidates that are misaligned with the current element's trajectory, ensuring the browser favors elements directly on-axis while allowing diagonal moves if no direct path exists.
+To find the best target in a direction (`up`, `down`, `left`, `right`), filter candidates by their center coordinates, then rank them by combining **projection distance** (distance along the navigation axis) and **orthogonal distance** (distance along the perpendicular axis), applying a penalty weight ($w \ge 2$) on the orthogonal axis to favor on-axis movement.
 
 ```javascript
-// Conceptual fragment for directional spatial navigation with cached bounding rects
-function getBestCandidate(currentEl, direction, candidates) {
-  // Pre-cache bounding client rects for all candidates in a single batch pass.
-  // This prevents layout thrashing caused by repeated getBoundingClientRect calls in the loop.
-  const rects = new Map();
-  rects.set(currentEl, currentEl.getBoundingClientRect());
-  for (const candidate of candidates) {
-    rects.set(candidate, candidate.getBoundingClientRect());
-  }
+// Global cache for candidate bounding client rects to prevent layout thrashing
+let rectCache = null;
+let invalidationFrameId = null;
 
+function getRectCache(currentEl, candidates) {
+  if (!rectCache) {
+    rectCache = new Map();
+    rectCache.set(currentEl, currentEl.getBoundingClientRect());
+    for (const cand of candidates) {
+      rectCache.set(cand, cand.getBoundingClientRect());
+    }
+  }
+  return rectCache;
+}
+
+function invalidateRectCache() {
+  rectCache = null;
+}
+
+function queueCacheInvalidation() {
+  if (invalidationFrameId) {
+    cancelAnimationFrame(invalidationFrameId);
+  }
+  invalidationFrameId = requestAnimationFrame(invalidateRectCache);
+}
+
+// Invalidate cache on window resize/scroll, debounced to once per frame
+window.addEventListener('resize', queueCacheInvalidation, { passive: true });
+window.addEventListener('scroll', queueCacheInvalidation, { passive: true });
+
+// Invalidate cache when container layout shifts
+const container = document.querySelector('.spatial-container');
+if (container && typeof ResizeObserver !== 'undefined') {
+  const observer = new ResizeObserver(() => queueCacheInvalidation());
+  observer.observe(container);
+}
+
+// Visual 2D Distance Heuristic Algorithm
+function getBestCandidate(currentEl, direction, candidates) {
+  const rects = getRectCache(currentEl, candidates);
   const currentRect = rects.get(currentEl);
   const currentCenter = {
     x: currentRect.left + currentRect.width / 2,
@@ -73,7 +91,7 @@ function getBestCandidate(currentEl, direction, candidates) {
 
   let best = null;
   let minDistance = Infinity;
-  const weight = 2.5; // Favor on-axis targets over diagonal targets
+  const weight = 2.5; // Penalty weight on the perpendicular axis
 
   for (const candidate of candidates) {
     if (candidate === currentEl) continue;
@@ -125,52 +143,14 @@ function getBestCandidate(currentEl, direction, candidates) {
 
 ---
 
-### Preserving Viewport Scroll & Reflow (WCAG 1.4.10)
+### Keypress Integration & Scroll Cooperation
 
-To keep the page fully functional under responsive constraints and zoom, your spatial navigation handler must cooperate with native scrolling:
-
-* **Keep focused items visible**: After shifting focus, ensure the new element is positioned in view.
+Your event router must prevent standard viewport scrolling **only** when a valid spatial focus transition occurs.
 
 ```javascript
 document.addEventListener('keydown', (e) => {
   const active = document.activeElement;
   if (!active || !candidates.includes(active)) return;
-
-  const direction = getDirectionFromKey(e.key); // Maps Arrow keys to 'up' | 'down' | 'left' | 'right'
-  if (!direction) return;
-
-  const nextEl = getBestCandidate(active, direction, candidates);
-
-  if (nextEl) {
-    // Prevent standard arrow-scrolling only when a focus transition is actually occurring
-    e.preventDefault();
-
-    // Perform focus management update (e.g., roving tabindex or aria-activedescendant)
-    shiftFocus(active, nextEl);
-
-    // Ensure the focused element remains visible
-    nextEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }
-  // If nextEl is null, no preventDefault() is called.
-  // The event bubbles and the browser scrolls the page natively.
-});
-```
-
----
-
-### User Controls & Shortcut Disabling (WCAG 2.1.4)
-
-To prevent breaking accessibility for screen-readers and standard keyboard navigators, spatial navigation must be customizable:
-
-* **Opt-out switch**: Provide a prominent UI switch (or persistent setting) that disables arrow-key hijacking entirely, letting the arrow keys scroll the viewport as normal.
-* **Character-key safeguards**: If you support single-character hotkeys (like `h`/`j`/`k`/`l` or `W`/`A`/`S`/`D`) for power users, **you must provide an explicit setting to turn them off**, or require a modifier key (like Alt or Ctrl) to satisfy WCAG 2.1.4 (Character Key Shortcuts).
-
-```javascript
-let spatialNavEnabled = true;
-let singleKeyShortcutsEnabled = false; // Off by default to respect WCAG 2.1.4
-
-function handleKeyDown(e) {
-  if (!spatialNavEnabled) return;
 
   let direction = null;
   if (e.key === 'ArrowRight') direction = 'right';
@@ -178,19 +158,24 @@ function handleKeyDown(e) {
   if (e.key === 'ArrowDown') direction = 'down';
   if (e.key === 'ArrowUp') direction = 'up';
 
-  if (singleKeyShortcutsEnabled) {
-    if (e.key === 'l') direction = 'right';
-    if (e.key === 'h') direction = 'left';
-    if (e.key === 'j') direction = 'down';
-    if (e.key === 'k') direction = 'up';
-  }
+  if (!direction) return;
 
-  if (direction) navigateSpatially(direction, e);
-}
+  const nextEl = getBestCandidate(active, direction, candidates);
+
+  if (nextEl) {
+    e.preventDefault(); // Intercept arrow navigation and handle programmatically
+    shiftFocus(active, nextEl); // Update roving tabindex and focus
+    nextEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+  // If nextEl is null, event bubbles naturally allowing the browser to scroll
+});
 ```
 
 ---
 
-### Experimental Note: Native CSS Spatial Navigation
+### Customizable Settings & WCAG Compliance
 
-Native CSS Spatial Navigation is experimental for production use. Treat any native spatial-navigation properties or events as optional future enhancements and provide a tested custom behavior for current target browsers.
+Provide settings to disable arrow-key hijacking entirely or disable single-character keyboard shortcuts to satisfy WCAG:
+
+* **Opt-out Switch**: Allow users to toggle custom arrow key navigation off.
+* **Character-key Shortcuts**: Disable custom keys like `h`/`j`/`k`/`l` or `W`/`A`/`S`/`D` by default, or require modifier keys (e.g. `Alt`, `Ctrl`) to satisfy WCAG 2.1.4 (Character Key Shortcuts).

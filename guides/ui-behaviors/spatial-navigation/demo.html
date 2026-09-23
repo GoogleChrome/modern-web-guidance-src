@@ -240,16 +240,50 @@
       logPanel.scrollTop = logPanel.scrollHeight;
     }
 
+    // Global cache for bounding client rects.
+    // Reused across consecutive keystrokes to avoid layout queries, and invalidated on viewport or layout changes.
+    let rectCache = null;
+    let invalidationFrameId = null;
+
+    function getRectCache(currentEl, candidates) {
+      if (!rectCache) {
+        rectCache = new Map();
+        rectCache.set(currentEl, currentEl.getBoundingClientRect());
+        for (const cand of candidates) {
+          rectCache.set(cand, cand.getBoundingClientRect());
+        }
+      }
+      return rectCache;
+    }
+
+    function invalidateRectCache() {
+      if (rectCache) {
+        rectCache = null;
+        log('Spatial coordinate cache invalidated.');
+      }
+    }
+
+    function queueCacheInvalidation() {
+      if (invalidationFrameId) {
+        cancelAnimationFrame(invalidationFrameId);
+      }
+      invalidationFrameId = requestAnimationFrame(invalidateRectCache);
+    }
+
+    // Invalidate cache when window size or scroll position changes, debounced to once per frame
+    window.addEventListener('resize', queueCacheInvalidation, { passive: true });
+    window.addEventListener('scroll', queueCacheInvalidation, { passive: true });
+
+    // Invalidate cache when the layout container resizes (e.g. responsive grid reflow)
+    const dashboard = document.querySelector('.dashboard');
+    if (dashboard && typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(() => queueCacheInvalidation());
+      resizeObserver.observe(dashboard);
+    }
+
     // Visual 2D Distance Heuristic Algorithm
     function findNextSpatialFocus(currentEl, direction, candidates) {
-      // Cache all candidate bounding client rects up front.
-      // Fetching rects sequentially in a single pass allows the browser to batch
-      // layout queries, completely eliminating potential layout thrashing during the loop.
-      const rects = new Map();
-      rects.set(currentEl, currentEl.getBoundingClientRect());
-      for (const cand of candidates) {
-        rects.set(cand, cand.getBoundingClientRect());
-      }
+      const rects = getRectCache(currentEl, candidates);
 
       const currRect = rects.get(currentEl);
       const currCenter = {
