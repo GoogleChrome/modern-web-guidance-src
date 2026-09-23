@@ -50,11 +50,18 @@ let invalidationFrameId = null;
 function getRectCache(currentEl, candidates) {
   if (!rectCache) {
     rectCache = new Map();
+  }
+  
+  if (!rectCache.has(currentEl)) {
     rectCache.set(currentEl, currentEl.getBoundingClientRect());
-    for (const cand of candidates) {
+  }
+  
+  for (const cand of candidates) {
+    if (!rectCache.has(cand)) {
       rectCache.set(cand, cand.getBoundingClientRect());
     }
   }
+  
   return rectCache;
 }
 
