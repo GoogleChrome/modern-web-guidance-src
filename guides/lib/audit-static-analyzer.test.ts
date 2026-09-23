@@ -10,6 +10,8 @@ import {
 import {
   normalizeGrade,
   generateSummaryMarkdown,
+  generateSummaryHtml,
+  generateCapsuleHtml,
   buildDeterministicBaselineAssessment,
 } from './audit-report-generator.ts';
 import type { DiscoveredCapsule, StaticAuditSignals } from './audit-types.ts';
@@ -135,25 +137,56 @@ test('generateSummaryMarkdown formats SUMMARY_AUDIT_EVALS.md with guide format a
   };
 
   const assessment = buildDeterministicBaselineAssessment(dummyCapsule, dummyStatic);
-  const md = generateSummaryMarkdown(
-    [
-      {
-        ...dummyCapsule,
-        timestamp: new Date().toISOString(),
-        durationMs: 1200,
-        turnsTaken: 2,
-        consensusReached: true,
-        staticSignals: dummyStatic,
-        finalAssessment: assessment,
-        adversarialHistory: [],
-      },
-    ],
-    'test-run-id'
+  assert.ok(
+    assessment.expectationIssues[0].proposedExpectationDraft,
+    'Should populate proposedExpectationDraft on expectation issues'
   );
+
+  // Verify expectations-only and grader-only scopes
+  const expOnly = buildDeterministicBaselineAssessment(dummyCapsule, dummyStatic, 'expectations');
+  assert.strictEqual(expOnly.graderIssues.length, 0);
+  assert.strictEqual(expOnly.graderFidelityScore, 100);
+  assert.ok(expOnly.expectationIssues.length > 0);
+
+  const graderOnly = buildDeterministicBaselineAssessment(dummyCapsule, dummyStatic, 'grader');
+  assert.strictEqual(graderOnly.expectationIssues.length, 0);
+  assert.strictEqual(graderOnly.expectationCoverageScore, 100);
+  assert.ok(graderOnly.graderIssues.length > 0);
+
+  const itemResult = {
+    ...dummyCapsule,
+    timestamp: new Date().toISOString(),
+    durationMs: 1200,
+    turnsTaken: 2,
+    consensusReached: true,
+    staticSignals: dummyStatic,
+    finalAssessment: assessment,
+    adversarialHistory: [],
+  };
+  const md = generateSummaryMarkdown([itemResult], 'test-run-id');
 
   assert.ok(md.includes('SUMMARY_AUDIT_EVALS.md'));
   assert.ok(md.includes('legacy - top level guide'));
   assert.ok(md.includes('HIGH'));
   assert.ok(!md.includes('CRITICAL'));
   assert.ok(md.includes('#faq-trigger'));
+  assert.ok(md.includes('Proposed Draft (`expectations.md`)'));
+  assert.ok(md.includes('guides/css/animate-to-intrinsic-sizes/guide.md'));
+  assert.ok(md.includes('guides/css/animate-to-intrinsic-sizes/expectations.md'));
+  assert.ok(md.includes('guides/css/animate-to-intrinsic-sizes/grader.ts'));
+
+  const html = generateSummaryHtml([itemResult], 'test-run-id');
+  assert.ok(html.includes('<!DOCTYPE html>'));
+  assert.ok(html.includes('Guide Expectations &amp; Grader Fidelity Audit'));
+  assert.ok(html.includes('legacy - top level guide'));
+  assert.ok(html.includes('#faq-trigger'));
+  assert.ok(html.includes('Proposed Draft for'));
+  assert.ok(html.includes('guides/css/animate-to-intrinsic-sizes/guide.md'));
+  assert.ok(html.includes('guides/css/animate-to-intrinsic-sizes/expectations.md'));
+  assert.ok(html.includes('guides/css/animate-to-intrinsic-sizes/grader.ts'));
+
+  const itemHtml = generateCapsuleHtml(itemResult, 'test-run-id');
+  assert.ok(itemHtml.includes('<!DOCTYPE html>'));
+  assert.ok(itemHtml.includes('css/animate-to-intrinsic-sizes'));
+  assert.ok(itemHtml.includes('guides/css/animate-to-intrinsic-sizes/guide.md'));
 });

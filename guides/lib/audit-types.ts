@@ -2,6 +2,8 @@ import type { GraderCoverageResult } from '../../lib/grader-coverage.ts';
 
 export type AuditGrade = 'HIGH' | 'MEDIUM' | 'LOW';
 
+export type AuditScope = 'expectations' | 'grader' | 'both';
+
 export type GuideFormatLabel =
   | 'legacy - top level guide'
   | `new - low level guide (${string})`
@@ -22,6 +24,7 @@ export interface ExpectationIssue {
   quoteOrRule: string;
   counterexampleProof: string;
   remedy: string;
+  proposedExpectationDraft?: string;
 }
 
 export type GraderIssueCategory =
@@ -128,6 +131,12 @@ export interface CapsuleAuditResult {
   guideName: string;
   guideFormat: GuideFormatLabel;
   targetApp?: string;
+  auditScope?: AuditScope;
+  guideFilePath?: string;
+  expectationsFilePath?: string;
+  graderFilePath?: string;
+  taskFilePath?: string;
+  demoFilePath?: string;
   timestamp: string;
   durationMs: number;
   turnsTaken: number;

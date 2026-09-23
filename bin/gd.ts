@@ -33,6 +33,9 @@ const ALL_OPTIONS = {
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
   resume: { type: 'boolean', desc: 'Resume the latest or specified audit run' },
+  scope: { type: 'string', desc: 'Audit scope: expectations, grader, or both (default: both)' },
+  'expectations-only': { type: 'boolean', desc: 'Audit ONLY Expectation Coverage (expectations.md vs guide.md)' },
+  'grader-only': { type: 'boolean', desc: 'Audit ONLY Grader Fidelity (grader.ts vs expectations.md & task.md)' },
   concurrency: { type: 'string', desc: 'Number of concurrent capsule evaluations (default: 2)' },
   'max-turns': { type: 'string', desc: 'Max adversarial review turns per capsule (1-3, default: 3)' },
   target: { type: 'string', desc: 'Filter by target app (e.g. daily-grind or legacy)' },
@@ -47,7 +50,7 @@ const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
   'audit-evals': {
     desc: 'Evaluate expectation completeness and grader fidelity across guides',
-    flags: ['resume', 'concurrency', 'max-turns', 'target', 'dry-run', 'run-id', 'agent'],
+    flags: ['scope', 'expectations-only', 'grader-only', 'resume', 'concurrency', 'max-turns', 'target', 'dry-run', 'run-id', 'agent'],
   },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
@@ -213,7 +216,7 @@ function showHelp() {
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : ['concurrency', 'max-turns', 'target', 'run-id', 'agent'].includes(flagName) ? ' <val>' : '';
+          const arg = flagName === 'config' ? ' <path>' : ['scope', 'concurrency', 'max-turns', 'target', 'run-id', 'agent'].includes(flagName) ? ' <val>' : '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -286,8 +289,24 @@ async function main() {
     case 'audit-evals': {
       const pattern = positionals[1];
       const { runAuditEvals } = await import('../guides/audit-evals.ts');
+      let resolvedScope: 'expectations' | 'grader' | 'both' = 'both';
+      if (values['expectations-only']) {
+        resolvedScope = 'expectations';
+      } else if (values['grader-only']) {
+        resolvedScope = 'grader';
+      } else if (values.scope) {
+        const rawScope = String(values.scope).toLowerCase().trim();
+        if (rawScope === 'expectations' || rawScope === 'expectation') {
+          resolvedScope = 'expectations';
+        } else if (rawScope === 'grader' || rawScope === 'graders') {
+          resolvedScope = 'grader';
+        } else {
+          resolvedScope = 'both';
+        }
+      }
       await runAuditEvals({
         pattern,
+        scope: resolvedScope,
         targetApp: values.target as string | undefined,
         concurrency: values.concurrency ? parseInt(values.concurrency as string, 10) : undefined,
         maxTurns: values['max-turns'] ? parseInt(values['max-turns'] as string, 10) : undefined,

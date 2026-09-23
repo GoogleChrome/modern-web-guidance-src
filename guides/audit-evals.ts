@@ -17,21 +17,25 @@ import {
 } from './audit-evals-prompts.ts';
 import {
   buildDeterministicBaselineAssessment,
+  ensureProposedExpectationDraft,
   normalizeGrade,
   writeAuditReports,
 } from './lib/audit-report-generator.ts';
 import type {
   AdversarialReviewResult,
   AdversarialTurnRecord,
+  AuditScope,
   CapsuleAuditAssessment,
   CapsuleAuditResult,
   DiscoveredCapsule,
+  ExpectationIssue,
   StaticAuditSignals,
 } from './lib/audit-types.ts';
 
 export interface AuditEvalsOptions {
   pattern?: string;
   targetApp?: string;
+  scope?: AuditScope;
   concurrency?: number;
   maxTurns?: number;
   resume?: boolean;
@@ -86,49 +90,66 @@ export function extractJsonFromAgentOutput<T>(
 }
 
 /**
- * Sanitizes and validates an LLM-returned assessment object, enforcing HIGH/MEDIUM/LOW grades.
+ * Sanitizes and validates an LLM-returned assessment object, enforcing HIGH/MEDIUM/LOW grades
+ * and ensuring proposedExpectationDraft is populated.
  */
 function sanitizeAssessment(
   raw: Partial<CapsuleAuditAssessment> | null,
-  fallback: CapsuleAuditAssessment
+  fallback: CapsuleAuditAssessment,
+  scope: AuditScope = 'both'
 ): CapsuleAuditAssessment {
   if (!raw || typeof raw !== 'object') {
     return fallback;
   }
 
-  const expectationIssues = Array.isArray(raw.expectationIssues)
-    ? raw.expectationIssues.map((e, idx) => ({
-        id: e.id || `E${idx + 1}`,
-        category: e.category || 'MISSING_CORE_REQUIREMENT',
-        grade: normalizeGrade(e.grade),
-        citation: e.citation || 'expectations.md',
-        quoteOrRule: e.quoteOrRule || '',
-        counterexampleProof: e.counterexampleProof || '',
-        remedy: e.remedy || '',
-      }))
-    : fallback.expectationIssues;
+  const expectationIssues: ExpectationIssue[] =
+    scope === 'grader'
+      ? []
+      : Array.isArray(raw.expectationIssues)
+        ? raw.expectationIssues.map((e, idx) => {
+            const item: ExpectationIssue = {
+              id: e.id || `E${idx + 1}`,
+              category: e.category || 'MISSING_CORE_REQUIREMENT',
+              grade: normalizeGrade(e.grade),
+              citation: e.citation || 'expectations.md',
+              quoteOrRule: e.quoteOrRule || '',
+              counterexampleProof: e.counterexampleProof || '',
+              remedy: e.remedy || '',
+              proposedExpectationDraft: e.proposedExpectationDraft,
+            };
+            item.proposedExpectationDraft = ensureProposedExpectationDraft(item);
+            return item;
+          })
+        : fallback.expectationIssues;
 
-  const graderIssues = Array.isArray(raw.graderIssues)
-    ? raw.graderIssues.map((g, idx) => ({
-        id: g.id || `G${idx + 1}`,
-        category: g.category || 'FALSE_NEGATIVE_UNPROMPTED_LOCATOR',
-        grade: normalizeGrade(g.grade),
-        citation: g.citation || 'grader.ts',
-        offendingCode: g.offendingCode || '',
-        counterexampleProof: g.counterexampleProof || '',
-        remedy: g.remedy || '',
-      }))
-    : fallback.graderIssues;
+  const graderIssues =
+    scope === 'expectations'
+      ? []
+      : Array.isArray(raw.graderIssues)
+        ? raw.graderIssues.map((g, idx) => ({
+            id: g.id || `G${idx + 1}`,
+            category: g.category || 'FALSE_NEGATIVE_UNPROMPTED_LOCATOR',
+            grade: normalizeGrade(g.grade),
+            citation: g.citation || 'grader.ts',
+            offendingCode: g.offendingCode || '',
+            counterexampleProof: g.counterexampleProof || '',
+            remedy: g.remedy || '',
+          }))
+        : fallback.graderIssues;
 
   const overallPriority = normalizeGrade(raw.overallPriority ?? fallback.overallPriority);
   const expectationCoverageScore =
-    typeof raw.expectationCoverageScore === 'number'
-      ? Math.max(0, Math.min(100, Math.round(raw.expectationCoverageScore)))
-      : fallback.expectationCoverageScore;
+    scope === 'grader'
+      ? 100
+      : typeof raw.expectationCoverageScore === 'number'
+        ? Math.max(0, Math.min(100, Math.round(raw.expectationCoverageScore)))
+        : fallback.expectationCoverageScore;
   const graderFidelityScore =
-    typeof raw.graderFidelityScore === 'number'
-      ? Math.max(0, Math.min(100, Math.round(raw.graderFidelityScore)))
-      : fallback.graderFidelityScore;
+    scope === 'expectations'
+      ? 100
+      : typeof raw.graderFidelityScore === 'number'
+        ? Math.max(0, Math.min(100, Math.round(raw.graderFidelityScore)))
+        : fallback.graderFidelityScore;
 
   return {
     overallPriority,
@@ -149,6 +170,7 @@ export async function runAdversarialAuditLoopForCapsule(
   options: {
     agent: Agents;
     maxTurns: number;
+    scope?: AuditScope;
     dryRun?: boolean;
     verbose?: boolean;
   }
@@ -158,7 +180,8 @@ export async function runAdversarialAuditLoopForCapsule(
   consensusReached: boolean;
   adversarialHistory: AdversarialTurnRecord[];
 }> {
-  const baseline = buildDeterministicBaselineAssessment(capsule, staticSignals);
+  const scope: AuditScope = options.scope ?? 'both';
+  const baseline = buildDeterministicBaselineAssessment(capsule, staticSignals, scope);
 
   if (options.dryRun) {
     return {
@@ -210,9 +233,9 @@ export async function runAdversarialAuditLoopForCapsule(
 
     // Turn 1: Initial Assessment by Lead Auditor Agent
     if (options.verbose) {
-      console.log(cDim(`    [${capsule.capsuleId}] Turn 1: Running Auditor Agent...`));
+      console.log(cDim(`    [${capsule.capsuleId}] Turn 1: Running Auditor Agent (scope: ${scope})...`));
     }
-    const initialPrompt = buildAuditorInitialPrompt('audit-assessment.json');
+    const initialPrompt = buildAuditorInitialPrompt('audit-assessment.json', scope);
     const initialStdout = await runAgent(options.agent, initialPrompt, workDir, {
       captureOutput: true,
     });
@@ -221,7 +244,7 @@ export async function runAdversarialAuditLoopForCapsule(
       'audit-assessment.json',
       initialStdout
     );
-    let currentAssessment = sanitizeAssessment(rawInitial, baseline);
+    let currentAssessment = sanitizeAssessment(rawInitial, baseline, scope);
     fs.writeFileSync(
       path.join(workDir, 'audit-assessment.json'),
       JSON.stringify(currentAssessment, null, 2),
@@ -243,7 +266,8 @@ export async function runAdversarialAuditLoopForCapsule(
       const reviewPrompt = buildReviewerSubAgentPrompt(
         turn,
         'audit-assessment.json',
-        reviewFile
+        reviewFile,
+        scope
       );
       const reviewStdout = await runAgent(options.agent, reviewPrompt, workDir, {
         captureOutput: true,
@@ -297,7 +321,8 @@ export async function runAdversarialAuditLoopForCapsule(
         const refinePrompt = buildAuditorRefinementPrompt(
           turn + 1,
           'audit-assessment.json',
-          'review-result.json'
+          'review-result.json',
+          scope
         );
         const refineStdout = await runAgent(options.agent, refinePrompt, workDir, {
           captureOutput: true,
@@ -307,7 +332,7 @@ export async function runAdversarialAuditLoopForCapsule(
           'audit-assessment.json',
           refineStdout
         );
-        currentAssessment = sanitizeAssessment(rawRefined, currentAssessment);
+        currentAssessment = sanitizeAssessment(rawRefined, currentAssessment, scope);
         fs.writeFileSync(
           path.join(workDir, 'audit-assessment.json'),
           JSON.stringify(currentAssessment, null, 2),
@@ -381,12 +406,14 @@ export function resolveAuditRunDir(options: { resume?: boolean; runId?: string }
  */
 export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
   summaryPath: string;
+  htmlPath: string;
   jsonPath: string;
   results: CapsuleAuditResult[];
 }> {
   const effectiveAgent = options.agent ?? (getDefaultSolutionAgent() as Agents);
   const concurrency = Math.max(1, options.concurrency ?? 2);
   const maxTurns = Math.max(1, Math.min(3, options.maxTurns ?? 3));
+  const scope: AuditScope = options.scope ?? 'both';
 
   const { runId, runDir } = resolveAuditRunDir({
     resume: options.resume,
@@ -404,7 +431,7 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
     `\n🔍 ${cBold('Guide Expectations & Grader Fidelity Auditor')} (${cCyan(runId)})`
   );
   console.log(
-    `   Filter: ${cCyan(options.pattern || '* (all guides)')} | Found: ${cBold(String(capsules.length))} capsule(s)`
+    `   Filter: ${cCyan(options.pattern || '* (all guides)')} | Scope: ${cCyan(scope)} | Found: ${cBold(String(capsules.length))} capsule(s)`
   );
   console.log(
     `   Agent: ${cCyan(effectiveAgent)} | Concurrency: ${concurrency} | Max Adversarial Turns: ${maxTurns}${options.dryRun ? cYellow(' [DRY-RUN STATIC MODE]') : ''}\n`
@@ -412,8 +439,8 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
 
   if (capsules.length === 0) {
     console.warn(cYellow('No matching guide capsules found.'));
-    const { summaryPath, jsonPath } = writeAuditReports(runDir, [], runId);
-    return { summaryPath, jsonPath, results: [] };
+    const { summaryPath, htmlPath, jsonPath } = writeAuditReports(runDir, [], runId);
+    return { summaryPath, htmlPath, jsonPath, results: [] };
   }
 
   const completedResults: CapsuleAuditResult[] = [];
@@ -455,7 +482,7 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
       const startTime = Date.now();
 
       console.log(
-        `  ⏳ [${overallIdx}/${totalCount}] Auditing ${cBold(capsule.capsuleId)} (${cDim(capsule.guideFormat)})...`
+        `  ⏳ [${overallIdx}/${totalCount}] Auditing ${cBold(capsule.capsuleId)} (${cDim(capsule.guideFormat)}, scope: ${cCyan(scope)})...`
       );
 
       try {
@@ -464,6 +491,7 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
           await runAdversarialAuditLoopForCapsule(capsule, staticSignals, {
             agent: effectiveAgent,
             maxTurns,
+            scope,
             dryRun: options.dryRun,
             verbose: options.verbose,
           });
@@ -476,6 +504,12 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
           guideName: capsule.guideName,
           guideFormat: capsule.guideFormat,
           targetApp: capsule.targetApp,
+          auditScope: scope,
+          guideFilePath: capsule.guideFilePath,
+          expectationsFilePath: capsule.expectationsFilePath,
+          graderFilePath: capsule.graderFilePath,
+          taskFilePath: capsule.taskFilePath,
+          demoFilePath: capsule.demoFilePath,
           timestamp: new Date().toISOString(),
           durationMs,
           turnsTaken,
@@ -518,11 +552,12 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
   );
   await Promise.all(workers);
 
-  const { summaryPath, jsonPath } = writeAuditReports(runDir, completedResults, runId);
+  const { summaryPath, htmlPath, jsonPath } = writeAuditReports(runDir, completedResults, runId);
 
   console.log(`\n🎉 ${cBold('Audit Complete!')}`);
+  console.log(`   🌐 HTML Report:      ${cCyan(htmlPath)}`);
   console.log(`   📄 Summary Markdown: ${cCyan(summaryPath)}`);
   console.log(`   📊 JSON Results:     ${cCyan(jsonPath)}\n`);
 
-  return { summaryPath, jsonPath, results: completedResults };
+  return { summaryPath, htmlPath, jsonPath, results: completedResults };
 }
