@@ -23,7 +23,7 @@ When implementing custom arrow-key spatial focus, adhere to these foundational r
 1. **Limit to composite widgets**: Do not override arrow keys on normal document text flow or simple vertical list layouts where default sequential Tab navigation is expected. See {{ GUIDE_REF("accessibility") }} for general document flow guidance.
 2. **Preserve native boundary scrolling**: If a user presses an arrow key but there is no focusable element in that direction, **do not prevent default browser behavior**. Allow the event to bubble naturally so the browser scrolls the page. Overriding arrow keys unconditionally breaks accessibility, especially under zoom/reflow constraints (WCAG 1.4.10).
 3. **Ensure focus visibility and alignment**: When focus changes, ensure the newly focused element is scrolled into view (e.g., using `scrollIntoView` or a container scroll adjustment) so that it remains fully visible.
-4. **Coordinate with the layout system**: Determine focus candidate positions using live bounding geometries (`getBoundingClientRect()`) to ensure that spatial calculations automatically adapt to responsive shifts, flex wrapping, or grid column adjustments. See {{ GUIDE_REF("css-layout") }} for modern layout recommendations.
+4. **Coordinate with the layout system**: Determine focus candidate positions using live bounding geometries (`getBoundingClientRect()`) to ensure that spatial calculations automatically adapt to responsive shifts, flex wrapping, or grid column adjustments. **DO**: To avoid layout thrashing during candidate selection loops, pre-cache the bounding client rects in a single pass up front rather than querying them on-demand inside the loop. See {{ GUIDE_REF("css-layout") }} for modern layout recommendations.
 
 ---
 
@@ -55,9 +55,17 @@ $$\text{Distance} = d_{\text{projection}} + (w \times d_{\text{orthogonal}})$$
 Applying a weight ($w \ge 2$) penalizes candidates that are misaligned with the current element's trajectory, ensuring the browser favors elements directly on-axis while allowing diagonal moves if no direct path exists.
 
 ```javascript
-// Conceptual fragment for directional spatial navigation
+// Conceptual fragment for directional spatial navigation with cached bounding rects
 function getBestCandidate(currentEl, direction, candidates) {
-  const currentRect = currentEl.getBoundingClientRect();
+  // Pre-cache bounding client rects for all candidates in a single batch pass.
+  // This prevents layout thrashing caused by repeated getBoundingClientRect calls in the loop.
+  const rects = new Map();
+  rects.set(currentEl, currentEl.getBoundingClientRect());
+  for (const candidate of candidates) {
+    rects.set(candidate, candidate.getBoundingClientRect());
+  }
+
+  const currentRect = rects.get(currentEl);
   const currentCenter = {
     x: currentRect.left + currentRect.width / 2,
     y: currentRect.top + currentRect.height / 2
@@ -70,7 +78,7 @@ function getBestCandidate(currentEl, direction, candidates) {
   for (const candidate of candidates) {
     if (candidate === currentEl) continue;
 
-    const candidateRect = candidate.getBoundingClientRect();
+    const candidateRect = rects.get(candidate);
     const candidateCenter = {
       x: candidateRect.left + candidateRect.width / 2,
       y: candidateRect.top + candidateRect.height / 2

@@ -242,7 +242,16 @@
 
     // Visual 2D Distance Heuristic Algorithm
     function findNextSpatialFocus(currentEl, direction, candidates) {
-      const currRect = currentEl.getBoundingClientRect();
+      // Cache all candidate bounding client rects up front.
+      // Fetching rects sequentially in a single pass allows the browser to batch
+      // layout queries, completely eliminating potential layout thrashing during the loop.
+      const rects = new Map();
+      rects.set(currentEl, currentEl.getBoundingClientRect());
+      for (const cand of candidates) {
+        rects.set(cand, cand.getBoundingClientRect());
+      }
+
+      const currRect = rects.get(currentEl);
       const currCenter = {
         x: currRect.left + currRect.width / 2,
         y: currRect.top + currRect.height / 2
@@ -255,7 +264,7 @@
       for (const cand of candidates) {
         if (cand === currentEl) continue;
 
-        const candRect = cand.getBoundingClientRect();
+        const candRect = rects.get(cand);
         const candCenter = {
           x: candRect.left + candRect.width / 2,
           y: candRect.top + candRect.height / 2
