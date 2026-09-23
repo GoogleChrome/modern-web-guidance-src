@@ -1,0 +1,5 @@
+- The application queries the granular permission (`'local-network'` or `'loopback-network'`) via `navigator.permissions.query()` with fallback error handling when the permission name is unrecognized.
+- Requests targeting a local network endpoint specify `targetAddressSpace: 'local'` in `fetch()` or `Request` options, and requests targeting a loopback endpoint specify `targetAddressSpace: 'loopback'`.
+- When the permission state is `'prompt'`, local network or loopback requests are not fired automatically on page load and are instead triggered by an explicit user interaction (such as clicking a button).
+- When a local network or loopback request is denied or fails to connect, the application catches the error without unhandled promise rejections and reveals visible error or remediation feedback in the UI.
+- Any embedded `<iframe>` that requires local or loopback network access delegates permission using `allow="local-network"` and/or `allow="loopback-network"`.
