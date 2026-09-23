@@ -124,7 +124,7 @@ Pointer activation must provide the same result as keyboard activation. Keep the
 
 ### Position the submenu with CSS Anchor Positioning
 
-Use CSS anchor positioning where it is supported to lay out the nested submenu beside its trigger. The demos use fixed viewport coordinates calculated from the trigger as a fallback, because Safari does not consistently resolve a submenu's anchor after it enters the top layer.
+Use CSS anchor positioning to lay out the nested submenu beside its trigger automatically. This eliminates the need for absolute coordinate math in JavaScript.
 
 ```css
 /* Define anchor name on the submenu trigger */

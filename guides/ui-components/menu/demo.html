@@ -107,8 +107,9 @@
     }
 
     #preferences-menu {
-      position: fixed;
-      inset: var(--submenu-top, auto) auto auto var(--submenu-left, auto);
+      position-anchor: --preferences-trigger;
+      position-area: inline-end span-block-start;
+      inset: auto;
     }
 
     @media (max-width: 40rem) {
@@ -213,17 +214,6 @@
       .querySelectorAll(':scope > button')]
       .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
 
-    function positionSubmenu() {
-      const trigger = subTrigger.getBoundingClientRect();
-      const width = subMenu.offsetWidth;
-      const height = subMenu.offsetHeight;
-      const gap = 4;
-      const left = trigger.right + gap + width <= innerWidth ? trigger.right + gap : trigger.left - width - gap;
-      const top = Math.min(Math.max(8, trigger.top), innerHeight - height - 8);
-      subMenu.style.setProperty('--submenu-left', `${Math.max(8, left)}px`);
-      subMenu.style.setProperty('--submenu-top', `${top}px`);
-    }
-
     const focusTimers = new WeakMap();
     const focusAnnouncementDelay = 250;
     function focusFirst(menu) {
@@ -254,7 +244,6 @@
       if (item === subTrigger) {
         subTrigger.setAttribute('aria-expanded', 'true');
         if (!subMenu.matches(':popover-open')) subMenu.showPopover();
-        requestAnimationFrame(positionSubmenu);
         return;
       }
       status.textContent = `${item.textContent.trim()} selected`;
@@ -306,9 +295,6 @@
         }
       });
     });
-
-    addEventListener('resize', positionSubmenu);
-    addEventListener('scroll', positionSubmenu, { passive: true });
 
     document.addEventListener('pointerdown', event => {
       if (!rootMenu.contains(event.target) && event.target !== rootTrigger) closeRootMenu();
