@@ -280,16 +280,42 @@ export function extractProseExpectations(expectationsContent: string): ProseExpe
   return signals;
 }
 
+let embedderMutex: Promise<void> = Promise.resolve();
+
 /**
  * Runs deterministic static pre-analysis on a discovered capsule.
  */
 export async function analyzeCapsuleStatically(
-  capsule: DiscoveredCapsule
+  capsule: DiscoveredCapsule,
+  scope: 'expectations' | 'grader' | 'both' = 'both'
 ): Promise<StaticAuditSignals> {
-  const embeddingCoverage = await validateGraderExpectationCoverage(
-    capsule.expectationsFilePath,
-    capsule.graderFilePath
-  );
+  const realLog = console.log;
+  const realWarn = console.warn;
+
+  let embeddingCoverage = {
+    isComplete: true,
+    graderPath: capsule.graderFilePath,
+    expectationsPath: capsule.expectationsFilePath,
+    matches: [] as any[],
+    missing: [] as any[],
+  };
+
+  if (scope !== 'expectations') {
+    // Serialize calls to validateGraderExpectationCoverage so TfjsEmbedder.init() never races on console.log
+    const runCoverage = async () => {
+      try {
+        embeddingCoverage = await validateGraderExpectationCoverage(
+          capsule.expectationsFilePath,
+          capsule.graderFilePath
+        );
+      } finally {
+        console.log = realLog;
+        console.warn = realWarn;
+      }
+    };
+    embedderMutex = embedderMutex.then(runCoverage, runCoverage);
+    await embedderMutex;
+  }
 
   const graderContent = fs.existsSync(capsule.graderFilePath)
     ? fs.readFileSync(capsule.graderFilePath, 'utf8')

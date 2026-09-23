@@ -190,3 +190,18 @@ test('generateSummaryMarkdown formats SUMMARY_AUDIT_EVALS.md with guide format a
   assert.ok(itemHtml.includes('css/animate-to-intrinsic-sizes'));
   assert.ok(itemHtml.includes('guides/css/animate-to-intrinsic-sizes/guide.md'));
 });
+
+test('loadContextExpectationsGuidelines dynamically refreshes "Writing expectations.md" from CONTEXT.md', async () => {
+  const { loadContextExpectationsGuidelines, buildAuditorInitialPrompt } = await import(
+    '../audit-evals-prompts.ts'
+  );
+  const liveGuidelines = loadContextExpectationsGuidelines();
+  assert.ok(liveGuidelines.includes('### Writing expectations.md'));
+  assert.ok(liveGuidelines.includes('independently testable'));
+  assert.ok(liveGuidelines.includes('positive requirements'));
+  assert.ok(liveGuidelines.includes('negative requirements'));
+
+  const prompt = buildAuditorInitialPrompt('audit-assessment.json', 'expectations');
+  assert.ok(prompt.includes('### Writing expectations.md'));
+  assert.ok(prompt.includes('independently testable'));
+});

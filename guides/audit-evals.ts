@@ -486,7 +486,7 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
       );
 
       try {
-        const staticSignals = await analyzeCapsuleStatically(capsule);
+        const staticSignals = await analyzeCapsuleStatically(capsule, scope);
         const { finalAssessment, turnsTaken, consensusReached, adversarialHistory } =
           await runAdversarialAuditLoopForCapsule(capsule, staticSignals, {
             agent: effectiveAgent,
