@@ -37,16 +37,18 @@ const hex = Array.from(new Uint8Array(digest), (byte) =>
 ).join('');
 ```
 
-At runtime, look the file up by that hash:
+At runtime, load every large shared asset through one reusable helper that looks the file up by that hash:
 
 ```javascript
-const hash = {
-  algorithm: 'SHA-256',
-  // Example-only hash value
-  value: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
-};
-
-async function loadLibrary() {
+/**
+ * Loads a large shared asset from COS when available, otherwise from the
+ * network, and stores network responses in COS for the next origin.
+ * @param {string} url The asset's real, working network URL.
+ * @param {{algorithm: string, value: string}} hash The build-time hash.
+ * @param {'*' | string[]} [origins] Sharing scope; omit for same-site only.
+ * @returns {Promise<Blob>}
+ */
+async function loadAsset(url, hash, origins) {
   // Feature-detect once, up front, and fall back to the network
   // immediately if COS isn't implemented in this browser.
   const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
@@ -63,7 +65,7 @@ async function loadLibrary() {
     }
   }
 
-  const response = await fetch('/assets/shared-library.js');
+  const response = await fetch(url);
   const fileBlob = await response.blob();
 
   if (supportsCOS) {
@@ -71,9 +73,9 @@ async function loadLibrary() {
     try {
       const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
         create: true,
-        // MANDATORY: origins: '*' is only appropriate for genuinely
-        // popular, non-proprietary resources.
-        origins: '*',
+        // Only pass `origins` when the caller chose a scope, so omitting it
+        // keeps the same-site-only default.
+        ...(origins && { origins }),
       });
       const writable = await handle.createWritable();
       await writable.write(fileBlob);
@@ -88,6 +90,18 @@ async function loadLibrary() {
 
   return fileBlob;
 }
+
+const library = await loadAsset(
+  '/assets/shared-library.js',
+  {
+    algorithm: 'SHA-256',
+    // Example-only hash value; use the hex string from your build step.
+    value: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
+  },
+  // MANDATORY: origins: '*' is only appropriate for genuinely popular,
+  // non-proprietary resources.
+  '*',
+);
 ```
 
 ## Best practices
