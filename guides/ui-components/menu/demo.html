@@ -107,9 +107,8 @@
     }
 
     #preferences-menu {
-      position-anchor: --preferences-trigger;
-      position-area: inline-end span-block-start;
-      inset: auto;
+      position: fixed;
+      inset: var(--submenu-top, auto) auto auto var(--submenu-left, auto);
     }
 
     @media (max-width: 40rem) {
@@ -147,9 +146,9 @@
 
 <body>
   <div class="bar-wrap">
-    <div class="bar" aria-label="Document commands">
+    <div class="bar" role="menubar" aria-label="Document commands">
       <button id="file-trigger" class="trigger" type="button" popovertarget="file-menu" popovertargetaction="toggle"
-        aria-haspopup="menu" aria-expanded="false">File</button>
+        role="menuitem" aria-haspopup="menu" aria-expanded="false">File</button>
     </div>
   </div>
 
@@ -169,34 +168,73 @@
 
   <div id="file-menu" popover="auto" aria-labelledby="file-trigger">
     <!-- Keep focusgroup inside the popover: popover can otherwise clobber its semantics. -->
-    <div focusgroup="menu" aria-label="File commands">
-      <button type="button">New file</button>
-      <button type="button">Save</button>
+    <div focusgroup="menu" role="menu">
+      <button type="button" role="menuitem">New file</button>
+      <button type="button" role="menuitem">Save</button>
       <button id="preferences-trigger" type="button" popovertarget="preferences-menu"
-        popovertargetaction="toggle" aria-haspopup="menu" aria-expanded="false">Preferences <span class="hint" aria-hidden="true">›</span></button>
+        popovertargetaction="toggle" role="menuitem" aria-haspopup="menu" aria-expanded="false">Preferences <span class="hint" aria-hidden="true">›</span></button>
     </div>
-  </div>
-  <div id="preferences-menu" popover="auto" aria-labelledby="preferences-trigger">
-    <div focusgroup="menu" aria-label="Preferences commands">
-      <button type="button">Appearance</button>
-      <button type="button">Keyboard shortcuts</button>
+    <div id="preferences-menu" popover="manual" aria-labelledby="preferences-trigger">
+      <div focusgroup="menu" role="menu">
+        <button type="button" role="menuitem">Appearance</button>
+        <button type="button" role="menuitem">Keyboard shortcuts</button>
+      </div>
     </div>
   </div>
 
   <script type="module">
-    // focusgroup supplies focus movement and minimum menu semantics.
-    await import('https://unpkg.com/@microsoft/focusgroup');
+    // Keep focusgroup in the markup as the progressive-enhancement hook, but
+    // use this small local fallback for browsers without native focusgroup.
+    function installFocusgroupFallback() {
+      document.querySelectorAll('[focusgroup="menu"]').forEach(group => {
+        group.addEventListener('keydown', event => {
+          if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+          const items = [...group.querySelectorAll(':scope > button')]
+            .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+          if (!items.length) return;
+          const current = items.indexOf(document.activeElement);
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
+            (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          items[next < 0 ? 0 : next].focus({ preventScroll: true });
+        }, true);
+      });
+    }
+
+    installFocusgroupFallback();
 
     const rootTrigger = document.querySelector('#file-trigger');
     const rootMenu = document.querySelector('#file-menu');
     const subTrigger = document.querySelector('#preferences-trigger');
     const subMenu = document.querySelector('#preferences-menu');
     const status = document.querySelector('#status');
-    const menuItems = menu => [...menu.querySelectorAll('[focusgroup="menu"] > button')]
+    const menuItems = menu => [...menu.querySelector(':scope > [focusgroup="menu"]')
+      .querySelectorAll(':scope > button')]
       .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
 
+    function positionSubmenu() {
+      const trigger = subTrigger.getBoundingClientRect();
+      const width = subMenu.offsetWidth;
+      const height = subMenu.offsetHeight;
+      const gap = 4;
+      const left = trigger.right + gap + width <= innerWidth ? trigger.right + gap : trigger.left - width - gap;
+      const top = Math.min(Math.max(8, trigger.top), innerHeight - height - 8);
+      subMenu.style.setProperty('--submenu-left', `${Math.max(8, left)}px`);
+      subMenu.style.setProperty('--submenu-top', `${top}px`);
+    }
+
+    const focusTimers = new WeakMap();
+    const focusAnnouncementDelay = 250;
     function focusFirst(menu) {
-      requestAnimationFrame(() => menuItems(menu)[0]?.focus());
+      const first = menuItems(menu)[0];
+      if (!first) return;
+      clearTimeout(focusTimers.get(menu));
+      focusTimers.set(menu, setTimeout(() => {
+        // Give VoiceOver enough time to finish announcing the trigger's
+        // expanded state before moving focus into the newly opened menu.
+        if (menu.matches(':popover-open')) first.focus({ preventScroll: true });
+      }, focusAnnouncementDelay));
     }
 
     function closeSubmenu(returnFocus = true) {
@@ -216,7 +254,7 @@
       if (item === subTrigger) {
         subTrigger.setAttribute('aria-expanded', 'true');
         if (!subMenu.matches(':popover-open')) subMenu.showPopover();
-        focusFirst(subMenu);
+        requestAnimationFrame(positionSubmenu);
         return;
       }
       status.textContent = `${item.textContent.trim()} selected`;
@@ -224,9 +262,9 @@
     }
 
     rootTrigger.addEventListener('keydown', event => {
-      if (event.key === 'ArrowDown') {
+      if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        rootMenu.showPopover();
+        if (!rootMenu.matches(':popover-open')) rootMenu.showPopover();
         focusFirst(rootMenu);
       }
     });
@@ -258,12 +296,18 @@
 
       menu.addEventListener('click', event => {
         const item = event.target.closest('[focusgroup="menu"] > button');
-        if (item) activate(item);
+        if (item) {
+          event.preventDefault();
+          activate(item);
+        }
       });
     });
 
+    addEventListener('resize', positionSubmenu);
+    addEventListener('scroll', positionSubmenu, { passive: true });
+
     document.addEventListener('pointerdown', event => {
-      if (!rootMenu.contains(event.target) && !subMenu.contains(event.target) && event.target !== rootTrigger) closeRootMenu();
+      if (!rootMenu.contains(event.target) && event.target !== rootTrigger) closeRootMenu();
     });
   </script>
 </body>

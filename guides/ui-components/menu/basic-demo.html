@@ -17,9 +17,9 @@
     #file-trigger { anchor-name: --file-anchor; }
     #preferences-trigger { anchor-name: --preferences-anchor; }
     #file-menu { position-anchor: --file-anchor; position-area: block-end span-inline-end; inset: auto; }
-    #preferences-menu { position-anchor: --preferences-anchor; position-area: inline-end span-block-start; inset: auto; }
+    #preferences-menu { position: fixed; inset: var(--submenu-top, auto) auto auto var(--submenu-left, auto); }
     @media (max-width: 40rem) {
-      #preferences-menu { position-area: block-end span-inline-start; }
+      #preferences-menu { inset: var(--submenu-top, auto) auto auto var(--submenu-left, auto); }
     }
     [focusgroup="menu"] { display: grid; gap: .1rem; }
     [focusgroup="menu"] > button { display: flex; justify-content: space-between; inline-size: 100%; padding: .55rem .7rem; border: 0; border-radius: .2rem; background: transparent; color: inherit; text-align: start; cursor: pointer; }
@@ -27,29 +27,68 @@
   </style>
 </head>
 <body>
-  <header aria-label="Document commands"><button id="file-trigger" class="trigger" type="button" popovertarget="file-menu" popovertargetaction="toggle" aria-haspopup="menu" aria-expanded="false">File</button></header>
+  <header role="menubar" aria-label="Document commands"><button id="file-trigger" class="trigger" type="button" popovertarget="file-menu" popovertargetaction="toggle" role="menuitem" aria-haspopup="menu" aria-expanded="false">File</button></header>
   <main><h1>Basic command menu</h1><p>Open the menu with the mouse, Enter, Space, or Down Arrow. Use arrow keys within it. This deliberately small demo has the same focusgroup and submenu contract as the full example.</p><p id="status" role="status" aria-live="polite"></p></main>
-  <div id="file-menu" popover="auto" aria-labelledby="file-trigger"><div focusgroup="menu" aria-label="File commands"><button type="button">New file</button><button type="button">Save</button><button id="preferences-trigger" type="button" popovertarget="preferences-menu" popovertargetaction="toggle" aria-haspopup="menu" aria-expanded="false">Preferences <span aria-hidden="true">›</span></button></div></div>
-  <div id="preferences-menu" popover="auto" aria-labelledby="preferences-trigger"><div focusgroup="menu" aria-label="Preferences commands"><button type="button">Appearance</button><button type="button">Keyboard shortcuts</button></div></div>
+  <div id="file-menu" popover="auto" aria-labelledby="file-trigger"><div focusgroup="menu" role="menu"><button type="button" role="menuitem">New file</button><button type="button" role="menuitem">Save</button><button id="preferences-trigger" type="button" role="menuitem" popovertarget="preferences-menu" popovertargetaction="toggle" aria-haspopup="menu" aria-expanded="false">Preferences <span aria-hidden="true">›</span></button></div>
+    <div id="preferences-menu" popover="manual" aria-labelledby="preferences-trigger"><div focusgroup="menu" role="menu"><button type="button" role="menuitem">Appearance</button><button type="button" role="menuitem">Keyboard shortcuts</button></div></div>
+  </div>
   <script type="module">
-    await import('https://unpkg.com/@microsoft/focusgroup');
+    function installFocusgroupFallback() {
+      document.querySelectorAll('[focusgroup="menu"]').forEach(group => {
+        group.addEventListener('keydown', event => {
+          if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+          const menuItems = [...group.querySelectorAll(':scope > button')]
+            .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+          if (!menuItems.length) return;
+          const current = menuItems.indexOf(document.activeElement);
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? menuItems.length - 1 :
+            (current + (event.key === 'ArrowUp' ? -1 : 1) + menuItems.length) % menuItems.length;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          menuItems[next < 0 ? 0 : next].focus({ preventScroll: true });
+        }, true);
+      });
+    }
+    installFocusgroupFallback();
     const rootTrigger = document.querySelector('#file-trigger');
     const rootMenu = document.querySelector('#file-menu');
     const subTrigger = document.querySelector('#preferences-trigger');
     const subMenu = document.querySelector('#preferences-menu');
     const status = document.querySelector('#status');
-    const items = menu => [...menu.querySelectorAll('[focusgroup="menu"] > button')];
-    const focusFirst = menu => requestAnimationFrame(() => items(menu)[0]?.focus());
+    const items = menu => [...menu.querySelector(':scope > [focusgroup="menu"]')
+      .querySelectorAll(':scope > button')];
+    const positionSubmenu = () => {
+      const trigger = subTrigger.getBoundingClientRect();
+      const width = subMenu.offsetWidth;
+      const height = subMenu.offsetHeight;
+      const gap = 4;
+      const left = trigger.right + gap + width <= innerWidth ? trigger.right + gap : trigger.left - width - gap;
+      const top = Math.min(Math.max(8, trigger.top), innerHeight - height - 8);
+      subMenu.style.setProperty('--submenu-left', `${Math.max(8, left)}px`);
+      subMenu.style.setProperty('--submenu-top', `${top}px`);
+    };
+    const focusTimers = new WeakMap();
+    const focusAnnouncementDelay = 250;
+    const focusFirst = menu => {
+      const first = items(menu)[0];
+      if (!first) return;
+      clearTimeout(focusTimers.get(menu));
+      focusTimers.set(menu, setTimeout(() => {
+        if (menu.matches(':popover-open')) first.focus({ preventScroll: true });
+      }, focusAnnouncementDelay));
+    };
     const closeSub = (returnFocus = true) => { subMenu.hidePopover(); subTrigger.setAttribute('aria-expanded', 'false'); if (returnFocus) subTrigger.focus(); };
     const closeRoot = () => { closeSub(false); rootMenu.hidePopover(); rootTrigger.setAttribute('aria-expanded', 'false'); rootTrigger.focus(); };
-    const activate = item => { if (item === subTrigger) { subTrigger.setAttribute('aria-expanded', 'true'); subMenu.showPopover(); focusFirst(subMenu); } else { status.textContent = `${item.textContent.trim()} selected`; closeRoot(); } };
-    rootTrigger.addEventListener('keydown', event => { if (event.key === 'ArrowDown') { event.preventDefault(); rootMenu.showPopover(); focusFirst(rootMenu); } });
+    const activate = item => { if (item === subTrigger) { subTrigger.setAttribute('aria-expanded', 'true'); subMenu.showPopover(); requestAnimationFrame(() => { positionSubmenu(); focusFirst(subMenu); }); } else { status.textContent = `${item.textContent.trim()} selected`; closeRoot(); } };
+    rootTrigger.addEventListener('keydown', event => { if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (!rootMenu.matches(':popover-open')) rootMenu.showPopover(); focusFirst(rootMenu); } });
     [rootMenu, subMenu].forEach(menu => {
       menu.addEventListener('toggle', () => { const open = menu.matches(':popover-open'); const trigger = menu === rootMenu ? rootTrigger : subTrigger; trigger.setAttribute('aria-expanded', String(open)); if (open) focusFirst(menu); });
       menu.addEventListener('keydown', event => { const active = document.activeElement; if (event.key === 'ArrowRight' && menu === rootMenu && active === subTrigger) { event.preventDefault(); activate(subTrigger); } else if (event.key === 'ArrowLeft' && menu === subMenu) { event.preventDefault(); closeSub(); } else if (event.key === 'Escape') { event.preventDefault(); menu === subMenu ? closeSub() : closeRoot(); } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activate(active); } });
-      menu.addEventListener('click', event => { const item = event.target.closest('[focusgroup="menu"] > button'); if (item) activate(item); });
+      menu.addEventListener('click', event => { const item = event.target.closest('[focusgroup="menu"] > button'); if (item) { event.preventDefault(); activate(item); } });
     });
-    document.addEventListener('pointerdown', event => { if (!rootMenu.contains(event.target) && !subMenu.contains(event.target) && event.target !== rootTrigger) closeRoot(); });
+    addEventListener('resize', positionSubmenu);
+    addEventListener('scroll', positionSubmenu, { passive: true });
+    document.addEventListener('pointerdown', event => { if (!rootMenu.contains(event.target) && event.target !== rootTrigger) closeRoot(); });
   </script>
 </body>
 </html>

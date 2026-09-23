@@ -1,16 +1,16 @@
 - **MANDATORY**: The guide distinguishes ordinary navigation links from an ARIA menu or menubar composite widget; it does not claim WCAG requires arrow keys for every navigation component.
 - **MANDATORY**: Each demo uses a labelled `focusgroup="menu"` container nested inside its popover; it does not put the focusgroup on the popover itself.
-- **MANDATORY**: The demos load Microsoft's focusgroup polyfill as a fallback while native support is emerging.
+- **MANDATORY**: The demos retain `focusgroup="menu"` as the progressive-enhancement hook and use a local fallback for directional focus movement instead of the Microsoft polyfill.
 - **MANDATORY**: The trigger has `type="button"`, `aria-haspopup="menu"`, and synchronised `aria-expanded`; pointer activation toggles the menu through the Popover API.
 - **MANDATORY**: Enter, Space, and ArrowDown open the root menu from its trigger, and opening moves focus to the first enabled item.
-- **MANDATORY**: Focusgroup supplies focus movement and minimum menu semantics; the demos do not add a second roving-tabindex implementation or duplicate ArrowUp/ArrowDown movement.
+- **MANDATORY**: The local fallback handles ArrowUp, ArrowDown, Home, and End in browsers without native focusgroup, without adding a separate roving-tabindex system; native focusgroup remains the preferred future enhancement.
 - **MANDATORY**: Enter and Space activate a focused command and provide an observable result without submitting an unrelated form.
 - **MANDATORY**: Escape closes the active menu level and returns focus to its invoking trigger; closing the root menu returns focus to the root trigger.
 - **MANDATORY WHEN A SUBMENU IS PRESENT**: Its trigger exposes `aria-haspopup="menu"` and accurate `aria-expanded`; pointer activation and ArrowRight open the submenu and move focus to its first item; ArrowLeft or Escape closes it and restores focus to its trigger.
 - **MANDATORY**: Tab is not trapped inside the menu, hidden menu content is not focusable, and outside pointer dismissal closes open levels without leaving focus in hidden content.
 - **MANDATORY**: All commands have accessible names from their visible button text; do not add redundant button-level `aria-label` attributes. Use `aria-label` only for genuinely icon-only controls. Decorative icons and submenu indicators are hidden from assistive technology, while status changes are conveyed through an appropriate live region.
 - **MANDATORY**: The demos retain a visible `:focus-visible` indicator, sufficient contrast, logical focus order, and usable behaviour at narrow widths and increased text size.
-- **MANDATORY**: The guide links to the Open UI focusgroup explainer, Microsoft polyfill, WAI-ARIA APG keyboard guidance, and relevant WCAG understanding documents.
+- **MANDATORY**: The guide links to the Open UI focusgroup explainer, explains the local fallback and Microsoft polyfill lifecycle issue, and links to WAI-ARIA APG keyboard guidance and relevant WCAG understanding documents.
 - **MANDATORY**: A focused item is announced once with its visible name and menu-item semantics; its visible text is not separately exposed as a duplicate accessible object.
 - **RECOMMENDED**: Verify both demos with keyboard-only use, macOS VoiceOver, and Windows NVDA; automated checks alone are insufficient evidence of screen-reader accessibility.
 - **OPTIONAL**: Anchor positioning, subgrid, and scroll-state queries enhance presentation without being prerequisites for the focusgroup keyboard contract.
