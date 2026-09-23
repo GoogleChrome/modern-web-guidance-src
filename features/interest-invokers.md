@@ -1,6 +1,6 @@
 # Interest Invokers
 
-The Interest Invokers API provides a declarative way to establish a relationship between a source element (like a button or link) and a target element (like a tooltip or hovercard) based on user "interest" (hover, focus, or long-press).
+The Interest Invokers API provides a declarative way to establish a relationship between a source element (like a button or link) and a target popover element (like a tooltip or hovercard) based on user "interest" (hover, focus, or long-press).
 
 ## Accessibility
 
@@ -9,6 +9,17 @@ When you use `interestfor`, the browser handles the assistive-technology wiring 
 - **Implicit semantics:** A target with `popover="hint"` gains an implicit minimum role of `tooltip`. **DO NOT** set `role="tooltip"` yourself.
 - **Implicit association:** The browser implicitly associates the source element with the target via `aria-describedby` when the target is plaintext, or via `aria-details` when the target contains interactive content. **DO NOT** add `aria-describedby` or `aria-details` to the trigger.
 - **Interactive content:** Because the association switches to `aria-details` when needed, the target IS allowed to contain interactive content (e.g. a link inside an "interest card").
+
+## Timing
+
+By default, interest is shown and lost for keyboard and mouse users with a delay of half a second. This prevents the targeted popover from opening while tabbing through a page or moving your mouse around, and from closing while moving your mouse from the trigger to the popover. To adjust the timing, use the `interest-delay` CSS property.
+
+```css
+[interestfor]{
+  /* Shorthand for interest-delay-start and interest-delay-end */
+  interest-delay: .2s;
+}
+```
 
 ## Fallbacks
 

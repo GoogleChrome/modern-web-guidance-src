@@ -62,6 +62,8 @@ Position the hovercard relative to its trigger using **CSS Anchor Positioning**.
 
 ## 3. Animating entry and exit
 
+{{ FEATURE("interst-invokers", "timing" }}
+
 See the {{ GUIDE_REF("animate-to-from-top-layer")}} guide to see how to use `transition` with `allow-discrete` and `@starting-style` to animate the hovercard's appearance and disappearance from the top layer.
 
 Always respect reduced motion.
