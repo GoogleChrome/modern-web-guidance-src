@@ -1,3 +1,7 @@
+## Browser support
+
+Cross-Origin Storage (COS) is being implemented in Chromium and is not yet natively supported by any major browser. Until it ships, the Cross-Origin Storage browser extension adds it to Chrome and other Chromium-based browsers (from the Chrome Web Store), Firefox on desktop and Android (from Firefox Add-ons), and Safari on macOS, iOS, and iPadOS (from the App Store). The extension supports the literal syntax of the `navigator.crossOriginStorage` API, the HTML `crossoriginstorage` attribute, and the CSS `cross-origin-storage()` modifier. It does not support the literal `crossOriginStorage` import attribute, since import attribute syntax can't be polyfilled.
+
 ## Sharing scope
 
 Every Cross-Origin Storage (COS) surface takes a sharing scope that controls which origins can later retrieve the stored file. Pick the scope that matches the resource's real distribution:

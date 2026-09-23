@@ -65,6 +65,13 @@ const mod = supportsCOS
 
 ## Fallback strategy
 
-Cross Origin Storage is not natively supported by any major browser yet.
+{{ FEATURE("tmp-cross-origin-storage", "browser-support") }}
 
 The HTML form degrades gracefully: a browser that doesn't recognize `crossoriginstorage` simply ignores the attribute, per ordinary HTML attribute-parsing rules, and the element still loads via its plain `href`/`src`. The static JavaScript import-attribute form does not degrade the same way, since an unrecognized `with` key is a hard failure; feature-detect and use dynamic `import()` when broad compatibility matters.
+
+With the extension installed, the literal import attribute still throws: a `SyntaxError` for a static `import` and a `TypeError` for dynamic `import()`. For module imports, the extension provides two non-standard shims:
+
+- **`<script type="module-cos">`:** the extension reads the script as text, resolves every static or dynamic import that carries `crossOriginStorage` and has a literal string specifier, and runs the rewritten source as a regular module. Computed specifiers such as variables or template literals are not rewritten.
+- **`navigator.crossOriginStorage.__non_standard__import(specifier, options)`:** takes the same arguments as dynamic `import()`, including a computed specifier.
+
+**DO NOT** make either shim the only code path, since neither exists outside the extension.
