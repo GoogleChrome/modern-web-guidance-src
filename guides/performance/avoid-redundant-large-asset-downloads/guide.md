@@ -52,6 +52,9 @@ async function loadAsset(url, hash, origins) {
   // Feature-detect once, up front, and fall back to the network
   // immediately if COS isn't implemented in this browser.
   const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
+  // Set when Permissions Policy blocks COS in this context, since every
+  // further COS call here rejects the same way.
+  let blocked = false;
 
   if (supportsCOS) {
     try {
@@ -62,13 +65,14 @@ async function loadAsset(url, hash, origins) {
     } catch (err) {
       // A NotFoundError does not prove the file is absent from COS. Fall
       // back to the network either way; never treat it as fatal.
+      blocked = err.name === 'NotAllowedError';
     }
   }
 
   const response = await fetch(url);
   const fileBlob = await response.blob();
 
-  if (supportsCOS) {
+  if (supportsCOS && !blocked) {
     // Write back to the cache.
     try {
       const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
