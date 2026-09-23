@@ -91,8 +91,11 @@
         }
       }
 
-      [interestfor]{
-        interest-delay: .2s;
+      [interestfor] {
+        interest-delay: 0.2s 0.1s;
+      }
+      :root:has(:interest-source) [interestfor] {
+        interest-delay-start: 0s;
       }
 
       [popover] h2 {
@@ -107,6 +110,17 @@
         object-position: top;
         border-radius: 6px;
         margin-bottom: 0.5rem;
+      }
+      ::view-transition-old(*),
+      ::view-transition-new(*) {
+        animation-duration: 0s;
+      }
+
+      :root:has([popover]:popover-open) {
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+          animation-duration: 0.4s;
+        }
       }
 
       @view-transition {
