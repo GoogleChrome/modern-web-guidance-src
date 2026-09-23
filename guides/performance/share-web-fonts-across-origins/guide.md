@@ -14,7 +14,7 @@ Large icon fonts, emoji fonts, and fonts with extensive Unicode coverage are dow
 
 1. **Get the font's integrity hash.** `cross-origin-storage()` always pairs with `integrity()`; the integrity hash is what identifies the font file in COS.
 2. **Add `cross-origin-storage()` to the `url()`.** Place it alongside `integrity()` inside the same `url()` function in the `src` descriptor.
-3. **Choose the sharing scope.** No arguments means same-site-only. `cross-origin-storage(*)` means globally available. A comma-separated list of origin strings restricts sharing to a specific trusted set, matching the font's real distribution.
+3. **Choose the sharing scope.** Pick it from the font's real distribution, as described in the "Sharing scope" section.
 4. **List the COS-enhanced source first, with a plain fallback after it.** `src` is a prioritized list; a browser uses the first alternative it can parse and load. Putting the plain `url()` first would mean it is always used and the COS-enhanced source is never tried.
 
 ## Example code
@@ -29,14 +29,17 @@ Large icon fonts, emoji fonts, and fonts with extensive Unicode coverage are dow
 }
 ```
 
+## Sharing scope
+
+{{ FEATURE("tmp-cross-origin-storage", "sharing-scope") }}
+
 ## Best practices
 
 - **DO** pair `cross-origin-storage()` with `integrity()` on the same `url()`; the two are designed to work together and the integrity hash is what makes the COS lookup possible.
-- **DO** choose the argument that matches the font's real distribution: no arguments for same-site-only, `*` for genuinely popular fonts, or an explicit origin list for a specific trusted set.
 - **DO** list the COS-enhanced `url()` first in the comma-separated `src` list, with a plain `url()` for the same file as a later fallback, since a browser stops at the first source it can use.
 - **DO** keep the plain fallback `url()` pointing at the font's real, working network location, since a COS lookup that doesn't succeed falls back to fetching from that URL exactly like ordinary `integrity`-checked font loads do.
-- **DO NOT** confuse `cross-origin-storage()` with the unrelated CSS `cross-origin()` modifier, which controls CORS request mode rather than shared-cache participation.
 - **DO NOT** use `cross-origin-storage()` without `integrity()` on the same `url()`.
+{{ FEATURE("tmp-cross-origin-storage", "naming") }}
 
 ## Fallback strategy
 

@@ -20,7 +20,7 @@ Large shared assets such as AI model weights, Wasm modules, game engine cores, o
 4. **Check COS before fetching from the network.** Call `requestFileHandle(hash)` first. If it resolves, read the file with `handle.getFile()` and skip the network entirely.
 5. **Treat any rejection as a cache miss, not proof of absence.** The user agent may withhold a file's presence for privacy reasons even when it is physically stored, and a `NotFoundError` never distinguishes that case from a genuine miss. Fall back to a normal network fetch either way.
 6. **Store what you fetch.** After a network fetch, request a writable handle with `{ create: true }`, write the complete file, and close the stream, so the next origin that asks for the same hash can skip the download.
-7. **Choose the `origins` scope deliberately.** Omit `origins` for same-site-only sharing, pass an explicit array of origin strings for a small trusted set, or pass `'*'` only for genuinely popular, non-proprietary resources.
+7. **Choose the `origins` scope deliberately.** Pick it from the resource's real distribution, as described in the "Sharing scope" section.
 
 ## Example code
 
@@ -104,13 +104,16 @@ const library = await loadAsset(
 );
 ```
 
+## Sharing scope
+
+{{ FEATURE("tmp-cross-origin-storage", "sharing-scope") }}
+
 ## Best practices
 
 - **DO** feature-detect `navigator.crossOriginStorage?.requestFileHandle` once, up front, and fall back to the network immediately when it's absent.
 - **DO** still wrap every COS call in `try`/`catch` after a successful feature-detection check, since a fully implemented COS can still legitimately reject a call.
 - **DO** treat any rejection as an ordinary cache miss and fall back to the network, never as definitive proof the file is absent.
 - **DO** write the complete file with `createWritable()` / `write()` / `close()` (or `pipeTo()`) every time you store, even if the file might already exist in COS.
-- **DO** make an explicit, deliberate choice for `origins` based on the resource's real sharing scope.
 - **DO NOT** use an enumerated list of origins as a substitute for `origins: '*'`; lists have an implementation-defined maximum length precisely to prevent this.
 - **DO NOT** call `getFile()` on a handle you just obtained via `create: true` until that handle's `write()`/`close()` has resolved.
 - **DO NOT** treat `NotAllowedError` the same as `NotFoundError`; `NotAllowedError` means Permissions Policy blocks COS in this context, which is a distinct condition worth handling separately.
