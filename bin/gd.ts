@@ -6,7 +6,7 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { Serving, resolveSuiteConfig } from '../harness/config.ts';
+import { resolveSuiteConfig } from '../harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 import { getTaskMap } from '../lib/guide-validation.ts';
 
@@ -293,13 +293,7 @@ async function main() {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
-      let buildCode = 0;
-      if (mergedSuiteConfig.serving === Serving.MCP) {
-        buildCode = await runNpm(['build:mcp']);
-      } else if (mergedSuiteConfig.serving === Serving.SKILLS_CLI) {
-        buildCode = await runNpm(['--filter', 'serving', 'build-dist']);
-      }
-
+      const buildCode = await runNpm(['--filter', 'serving', 'build-dist']);
       if (buildCode !== 0) process.exit(buildCode);
 
       if (values['ui']) {
