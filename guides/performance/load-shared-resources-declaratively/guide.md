@@ -64,6 +64,6 @@ const mod = supportsCOS
 
 ## Fallback strategy
 
-{{ BASELINE_STATUS("tmp-cross-origin-storage") }}
+Cross Origin Storage is not natively supported by any major browser yet.
 
 The HTML form degrades gracefully: a browser that doesn't recognize `crossoriginstorage` simply ignores the attribute, per ordinary HTML attribute-parsing rules, and the element still loads via its plain `href`/`src`. The static JavaScript import-attribute form does not degrade the same way, since an unrecognized `with` key is a hard failure; feature-detect and use dynamic `import()` when broad compatibility matters.

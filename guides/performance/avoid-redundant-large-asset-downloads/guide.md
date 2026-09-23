@@ -89,6 +89,6 @@ async function loadLibrary() {
 
 ## Fallback strategy
 
-{{ BASELINE_STATUS("tmp-cross-origin-storage") }}
+Cross Origin Storage is not natively supported by any major browser yet.
 
 The COS API is a progressive enhancement over a normal network fetch. Guard every access to `navigator.crossOriginStorage` with a single up-front feature-detection check, and always keep a working network-fetch path as the fallback for browsers without COS support. Once support is confirmed, still call each method defensively with `try`/`catch`, since availability gating, GREASE'ing, and Permissions Policy can all cause a legitimate rejection even in a browser that implements COS.

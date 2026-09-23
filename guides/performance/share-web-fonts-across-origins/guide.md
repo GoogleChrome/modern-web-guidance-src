@@ -40,6 +40,6 @@ Large icon fonts, emoji fonts, and fonts with extensive Unicode coverage are dow
 
 ## Fallback strategy
 
-{{ BASELINE_STATUS("tmp-cross-origin-storage") }}
+Cross Origin Storage is not natively supported by any major browser yet.
 
 CSS's forgiving handling of comma-separated values means a browser that doesn't recognize `cross-origin-storage()`/`integrity()` drops only that one list item, not the whole declaration, so a plain fallback `url()` listed afterward still applies. No extra feature detection is required in CSS; the fallback source is always present as a later item in the same `src` list.
