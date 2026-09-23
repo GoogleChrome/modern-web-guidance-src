@@ -4,7 +4,6 @@ description: Serve popular, unmodified scripts, stylesheets, and JavaScript modu
 web-feature-ids:
   - tmp-cross-origin-storage
   - subresource-integrity
-  - import-attributes
 ---
 
 # Load shared resources declaratively
