@@ -46,9 +46,7 @@ For more details on triggering and accessibility, see {{ GUIDE_REF("interest-tri
 
 ### Accessibility built in to `interestfor`
 
-When you use `interestfor`, the browser handles the assistive-technology wiring:
-- It implicitly associates the source element with the target via `aria-describedby` when the target is plaintext, or via `aria-details` when it contains interactive content.
-- **DO NOT** add `aria-describedby` or `aria-details` manually; `interestfor` manages this state dynamically.
+{{ FEATURE("interest-invokers", "accessibility") }}
 
 ## 2. Positioning with Anchor Positioning
 
@@ -122,7 +120,7 @@ You can name multiple elements (e.g. titles, images, bylines) to create a comple
 
 ## Fallback strategies
 
-This pattern is a progressive enhancement and does not require a fallback. Users with browsers that do not support these patterns will see a standard link that takes them to the next page when they click.
+This pattern is a progressive enhancement and does not require a fallback. Users with browsers that do not support these patterns will see a standard link that takes them to the next page when they click. You can also polyfill missing features as needed.
 
 {{ FEATURE_FALLBACKS("popover") }}
 
