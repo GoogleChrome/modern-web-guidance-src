@@ -14,6 +14,79 @@ export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
 // Matches consecutive macros separated by whitespace that contains at least one newline
 export const CONSECUTIVE_MACRO_PATTERN = /({{\s*[A-Z_]+\(.*?\)\s*}})[ \t]*\r?\n\s*(?={{\s*[A-Z_]+\(.*?\)\s*}})/g;
 
+// Matches comment macros: {# ... #}, disambiguated from heading anchors like {#id}
+export const COMMENT_PATTERN = /\{#(?![\w-]+\s*\})[\s\S]*?#\}/g;
+
+const COMMENT_SOURCE = COMMENT_PATTERN.source;
+const PARAGRAPH_COMMENT_PATTERN = new RegExp(`(?:\\r?\\n){2,}[ \\t]*${COMMENT_SOURCE}[ \\t]*(?=\\r?\\n\\r?\\n)`, 'g');
+const LINE_COMMENT_PATTERN = new RegExp(`(?:^[ \\t]*${COMMENT_SOURCE}[ \\t]*(?:\\r?\\n|$))|(?:\\r?\\n[ \\t]*${COMMENT_SOURCE}[ \\t]*(?=\\r?\\n|$))`, 'g');
+const INLINE_COMMENT_PATTERN = new RegExp(`([ \\t]*)${COMMENT_SOURCE}(?:[ \\t]*${COMMENT_SOURCE})*([ \\t]*)`, 'g');
+const CODE_BLOCK_PATTERN = /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g;
+const INLINE_CODE_PATTERN = /(`+)([\s\S]*?)\1/g;
+const RESTORE_CODE_PATTERN = /\x00CODE_(\d+)\x00/g;
+
+/**
+ * Strips {# ... #} comments from content and cleanly handles surrounding whitespace:
+ * - Comments inside fenced code blocks or inline code spans are preserved.
+ * - Heading anchors like `{#stable-id}` are ignored and never treated as comment openers.
+ * - Standalone comments on their own lines are completely removed along with trailing newlines.
+ * - Inline comments surrounded by spaces on both sides collapse to a single space.
+ * - Comments at line/string boundaries or adjacent to punctuation have extra spacing trimmed.
+ */
+export function stripComments(content: string): string {
+  if (!content) return "";
+
+  // 1. Protect fenced code blocks (``` or ~~~) and inline code spans (`...`)
+  const codeSpans: string[] = [];
+  const maskCode = (match: string): string => {
+    codeSpans.push(match);
+    return `\x00CODE_${codeSpans.length - 1}\x00`;
+  };
+
+  let masked = content.replace(CODE_BLOCK_PATTERN, maskCode);
+  masked = masked.replace(INLINE_CODE_PATTERN, maskCode);
+
+  // 2. Strip standalone comment paragraphs (surrounded by blank lines)
+  let result = masked.replace(PARAGRAPH_COMMENT_PATTERN, "");
+
+  // 3. Strip standalone comment lines (at beginning of text, between single newlines, or at end of text)
+  result = result.replace(LINE_COMMENT_PATTERN, "");
+
+  // 4. Strip inline comments and normalize adjacent whitespace
+  result = result.replace(INLINE_COMMENT_PATTERN, (_match, leading, trailing, offset, fullStr) => {
+    const prevChar = offset > 0 ? fullStr[offset - 1] : "";
+    const nextChar = offset + _match.length < fullStr.length ? fullStr[offset + _match.length] : "";
+
+    const atStartOfLine = !prevChar || prevChar === "\n" || prevChar === "\r";
+    const atEndOfLine = !nextChar || nextChar === "\n" || nextChar === "\r";
+    if (atStartOfLine || atEndOfLine) {
+      return "";
+    }
+
+    if (leading.length > 0 && trailing.length > 0) {
+      return " ";
+    }
+
+    if (leading.length > 0 || trailing.length > 0) {
+      // If opening or closing brackets/parens, or followed by punctuation like , ; : . ! ?
+      if (/[\(\[\{]/.test(prevChar) || /[\)\]\},;:!?.]/.test(nextChar)) {
+        return "";
+      }
+      return " ";
+    }
+
+    return "";
+  });
+
+  // 5. Restore protected code spans (bounded to avoid infinite loops on invalid input)
+  let iterations = 0;
+  const maxIterations = codeSpans.length + 1;
+  while (RESTORE_CODE_PATTERN.test(result) && iterations++ < maxIterations) {
+    result = result.replace(RESTORE_CODE_PATTERN, (_, idx) => codeSpans[Number(idx)]);
+  }
+  return result;
+}
+
 /**
  * Parses macro arguments, respecting quotes and handling commas.
  * Robust against varied whitespace and different quote types.
@@ -55,8 +128,9 @@ export function parseArguments(argsString: string): string[] {
 export function getTranscludedFeatureIds(content: string): string[] {
   if (!content) return [];
   const featureIds = new Set<string>();
+  const stripped = stripComments(content);
 
-  for (const match of content.matchAll(MACRO_PATTERN)) {
+  for (const match of stripped.matchAll(MACRO_PATTERN)) {
     const macroName = match[1];
     const rawArgs = match[2];
     const args = parseArguments(rawArgs);

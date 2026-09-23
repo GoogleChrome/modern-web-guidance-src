@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 
 describe('extractH1Heading and extractAllH1Headings', () => {
@@ -571,8 +571,48 @@ describe('guide draft flag (publish control)', () => {
     const inv = inventory('---\nname: g\n---\n');
     assert.strictEqual(inv.isPublished, false);
     assert.strictEqual(inv.isStub, true);
+    assert.strictEqual(classifyGuide(inv), 'stub');
+  });
+
+  test('a guide whose only body content is a comment is considered a stub and not published', () => {
+    const invSingleLine = inventory('---\nname: g\n---\n{# TODO: write guidance #}\n');
+    assert.strictEqual(invSingleLine.isPublished, false);
+    assert.strictEqual(invSingleLine.isStub, true);
+    assert.strictEqual(invSingleLine.hasGuide, false);
+    assert.strictEqual(classifyGuide(invSingleLine), 'stub');
+
+    const invMultiLine = inventory('---\nname: g\n---\n{#\nTODO: write guidance\nmore details\n#}\n');
+    assert.strictEqual(invMultiLine.isPublished, false);
+    assert.strictEqual(invMultiLine.isStub, true);
+    assert.strictEqual(invMultiLine.hasGuide, false);
+    assert.strictEqual(classifyGuide(invMultiLine), 'stub');
   });
 });
+
+describe('stripAllComments', () => {
+  test('strips HTML comments', () => {
+    assert.strictEqual(stripAllComments('<!-- TODO: write this -->'), '');
+    assert.strictEqual(stripAllComments('Before <!-- comment --> after'), 'Before  after');
+  });
+
+  test('strips {# ... #} macro comments', () => {
+    assert.strictEqual(stripAllComments('{# TODO: write guidance #}'), '');
+    assert.strictEqual(stripAllComments('Before {# comment #} after'), 'Before after');
+  });
+
+  test('strips a mix of HTML and macro comments', () => {
+    assert.strictEqual(stripAllComments('<!-- HTML comment -->\n\n{# Macro comment #}').trim(), '');
+  });
+
+  test('preserves actual body content', () => {
+    assert.strictEqual(stripAllComments('# Title\n\nActual guidance content'), '# Title\n\nActual guidance content');
+    assert.strictEqual(stripAllComments('{# Comment #}\nActual content'), 'Actual content');
+    assert.strictEqual(stripAllComments('<!-- Comment -->\nActual content'), '\nActual content');
+  });
+});
+
+
+
 
 describe('getSupportedBaseApps', () => {
   test('returns the exact list of supported base applications', () => {
@@ -692,6 +732,36 @@ The \`<details>\` element is Baseline Widely available.
     try {
       const result = validateGuide(guideFile);
       assert.ok(result.errors.some(e => e.includes('Hardcoded Baseline availability claim found')));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('validateGuide ignores macros, baseline claims, and html tags inside {# ... #} comments', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-comment-macro-test-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+web-feature-ids: []
+---
+
+# Test Overview
+
+Valid guide content.
+
+{# # Overview #}
+{# {{ BASELINE_STATUS("non-existent-feature-xyz") }} #}
+{# <dialog>invalid html</dialog> #}
+{# The <details> element is Baseline Widely available. #}
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.deepStrictEqual(result.errors, []);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
