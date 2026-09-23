@@ -89,6 +89,18 @@ You can name multiple elements (e.g. titles, images, bylines) to create a comple
   navigation: auto;
 }
 
+/* Only show transitions when a popover is open */
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 0s;
+}
+:root:has([popover]:popover-open) {
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.4s;
+  }
+}
+
 /* Assign names ONLY when the popover is open to ensure only the correct elements are selected. */
 [popover]:popover-open {
   view-transition-name: --hovercard;
