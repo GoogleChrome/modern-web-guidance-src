@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Load shared resources declaratively
 
-Some resources are more naturally loaded declaratively, through HTML markup or JavaScript module imports, than through an imperative caching API. The Cross-Origin Storage (COS) API covers this case with two declarative surfaces that piggyback on the existing `integrity` mechanism: the `crossoriginstorage` attribute on `<link>`/`<script>` elements, and the `crossOriginStorage` import attribute on static and dynamic module imports. Both let markup or import syntax opt a resource into the shared cross-origin cache with no `navigator.crossOriginStorage` calls at all.
+Popular scripts, stylesheets, and JavaScript modules, such as UI frameworks or widget libraries served from a CDN, are byte-for-byte identical across many unrelated sites, yet every site's visitors download and cache their own copy. Cross-Origin Storage (COS) lets the browser keep one on-device copy of such a file, identified by its content hash, and serve it to every site that references the same bytes. Resources that already carry an `integrity` hash opt in through markup or import syntax alone: the `crossoriginstorage` attribute on `<link>` and `<script>` elements, or the `crossOriginStorage` import attribute on static and dynamic module imports. The browser handles the lookup, the network fallback, and storing the file, so no custom caching code is needed.
 
 ## How to implement
 
