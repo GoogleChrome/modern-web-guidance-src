@@ -16,9 +16,9 @@ Large shared assets such as AI model weights, Wasm modules, game engine cores, o
 
 1. **Compute the asset's hash when you build or publish your site.** Hash the exact bytes of the large asset you serve (for example, a model file, a Wasm binary, or a third-party library such as three.js) with `crypto.subtle.digest()`, and include the result as a lowercase hex string in your built code. The hash is what identifies the file in COS, and computing it on page load would require downloading the file first.
 2. **Feature-detect before use, then fall back immediately if it's absent.** Check `navigator.crossOriginStorage?.requestFileHandle` once up front. If COS isn't implemented in this browser, skip straight to a normal network fetch.
-3. **Once support is confirmed, still call every method defensively.** Wrap each COS call in `try`/`catch`. Even a fully implemented COS can legitimately reject a call, for example due to availability gating or a Permissions Policy restriction, so a passed feature-detection check does not guarantee success.
+3. **Once support is confirmed, still call every method defensively.** Wrap each COS call in `try`/`catch`, as described in the "Handle rejections" section.
 4. **Check COS before fetching from the network.** Call `requestFileHandle(hash)` first. If it resolves, read the file with `handle.getFile()` and skip the network entirely.
-5. **Treat any rejection as a cache miss, not proof of absence.** The user agent may withhold a file's presence for privacy reasons even when it is physically stored, and a `NotFoundError` never distinguishes that case from a genuine miss. Fall back to a normal network fetch either way.
+5. **Fall back to the network on any rejection.** A `NotFoundError` is a cache miss that never proves the file is absent.
 6. **Store what you fetch.** After a network fetch, request a writable handle with `{ create: true }`, write the complete file, and close the stream, so the next origin that asks for the same hash can skip the download.
 7. **Choose the `origins` scope deliberately.** Pick it from the resource's real distribution, as described in the "Sharing scope" section.
 
@@ -104,6 +104,14 @@ const library = await loadAsset(
 );
 ```
 
+## Handle rejections
+
+A browser that implements COS can still reject any call, so a passed feature-detection check never guarantees success. Fall back to the network on every rejection, and read the error name to decide what else to do:
+
+- **`NotFoundError` from `requestFileHandle(hash)`:** an ordinary cache miss that never proves the file is absent. The file may not exist, your origin may be outside its sharing scope, a globally shared file may not be on the browser's list of popular hashes yet, or the browser may deliberately report a stored file as missing to protect privacy (GREASE'ing). Store the file after the network fetch as usual.
+- **`NotAllowedError` from `requestFileHandle()`:** Permissions Policy blocks COS in this context, for example in a cross-origin iframe whose embedder didn't grant the `cross-origin-storage` feature (its default allowlist is `self`). Every further COS call in this context rejects the same way, so skip the write-back too.
+- **`NotAllowedError` from `getFile()`:** you called it on a handle obtained with `{ create: true }` before your own write completed, which applies even when another origin already stored the file. Use the blob you already have.
+
 ## Sharing scope
 
 {{ FEATURE("tmp-cross-origin-storage", "sharing-scope") }}
@@ -123,4 +131,4 @@ const library = await loadAsset(
 
 {{ FEATURE("tmp-cross-origin-storage", "browser-support") }}
 
-The COS API is a progressive enhancement over a normal network fetch. Guard every access to `navigator.crossOriginStorage` with a single up-front feature-detection check, and always keep a working network-fetch path as the fallback for browsers without COS support. Once support is confirmed, still call each method defensively with `try`/`catch`, since availability gating, GREASE'ing, and Permissions Policy can all cause a legitimate rejection even in a browser that implements COS.
+The COS API is a progressive enhancement over a normal network fetch. Guard every access to `navigator.crossOriginStorage` with a single up-front feature-detection check, and always keep a working network-fetch path as the fallback for browsers without COS support.
