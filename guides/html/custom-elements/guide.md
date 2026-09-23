@@ -114,7 +114,7 @@ class AsyncButton extends HTMLElement {
 
 **Custom state is runtime-only.** It is not serialized to the DOM, so it does not survive a reload, the element being re-created, or server rendering. If the state must be set declaratively in markup or persist across loads, that is a job for an **attribute** (see [Where the value lives](#where-the-value-lives)) — restore it in `connectedCallback` from your source of truth. Rule of thumb: custom state for what the component derives and owns at runtime and only needs to *style*; an attribute for what must be set from markup or serialized.
 
-For styling these states — both inside the component and from a consumer's stylesheet — see {{ GUIDE_REF("web-components/styling-web-components") }}.
+For styling these states — both inside the component and from a consumer's stylesheet — see {{ GUIDE_REF("styling-web-components") }}.
 
 ## Naming conventions
 
