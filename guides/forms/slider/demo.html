@@ -1,216 +1,187 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Brand Consistent Slider Demo</title>
-    <style>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brand-Consistent Slider Demo</title>
+  <style>
+    :root {
+      --background: #fff;
+      --text: #111;
+      --card-bg: rgb(0 0 0 / 5%);
+      --brand-color: #06c;
+      --track-bg: #d9d9d9;
+      color-scheme: light dark;
+    }
+
+    @media (prefers-color-scheme: dark) {
       :root {
-        --brand-color: #0066cc;
-        --background: #ffffff;
-        --text: #111111;
-        --card-bg: rgba(0, 0, 0, 0.05);
-        --track-bg: #e0e0e0;
-        color-scheme: light dark;
+        --background: #121212;
+        --text: #eee;
+        --card-bg: rgb(255 255 255 / 5%);
+        --brand-color: #66b3ff;
+        --track-bg: #404040;
       }
+    }
 
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --brand-color: #4da6ff;
-          --background: #121212;
-          --text: #eeeeee;
-          --card-bg: rgba(255, 255, 255, 0.05);
-          --track-bg: #333333;
-        }
-      }
+    * {
+      box-sizing: border-box;
+    }
 
-      body {
-        background-color: var(--background);
-        color: var(--text);
-        font-family: system-ui, -apple-system, sans-serif;
-        padding: 2rem;
-        display: grid;
-        place-items: center;
-        min-height: 80vh;
-        margin: 0;
-      }
+    body {
+      display: grid;
+      min-block-size: 80vh;
+      place-items: center;
+      margin: 0;
+      padding: 2rem;
+      background: var(--background);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+    }
 
-      .slider-card {
-        background-color: var(--card-bg);
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        max-width: 400px;
-        width: 100%;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-      }
+    .slider-card {
+      display: flex;
+      inline-size: min(100%, 25rem);
+      flex-direction: column;
+      gap: 1.5rem;
+      padding: 2rem;
+      border-radius: 0.75rem;
+      background: var(--card-bg);
+      box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 10%);
+    }
 
-      .slider-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
+    .slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-      label {
-        font-weight: 600;
-        font-size: 1.1rem;
-        cursor: pointer;
-      }
+    label,
+    .value-display {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
 
-      .value-display {
-        font-variant-numeric: tabular-nums;
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: var(--brand-color);
-      }
+    label {
+      cursor: pointer;
+    }
 
-      /* Native range input styling with accent-color */
+    .value-display {
+      color: var(--brand-color);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      --slider-track-size: 0.5rem;
+      --slider-thumb-size: 1.25rem;
+      --slider-track-color: var(--track-bg);
+      --slider-fill-color: var(--brand-color);
+      --slider-thumb-color: var(--slider-fill-color);
+      --slider-progress: 0%;
+      --slider-direction: to right;
+
+      appearance: none;
+      inline-size: 100%;
+      block-size: 2.5rem;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: linear-gradient(var(--slider-direction),
+          var(--slider-fill-color) var(--slider-progress),
+          var(--slider-track-color) var(--slider-progress)) center / 100% var(--slider-track-size) no-repeat;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      block-size: var(--slider-track-size);
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      inline-size: var(--slider-thumb-size);
+      block-size: var(--slider-thumb-size);
+      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
+      border: 0;
+      border-radius: 50%;
+      background: var(--slider-thumb-color);
+    }
+
+    input[type="range"]::-moz-range-track {
+      block-size: var(--slider-track-size);
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    input[type="range"]::-moz-range-progress {
+      block-size: var(--slider-track-size);
+      border-radius: 999px;
+      background: var(--slider-fill-color);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      inline-size: var(--slider-thumb-size);
+      block-size: var(--slider-thumb-size);
+      border: 0;
+      border-radius: 50%;
+      background: var(--slider-thumb-color);
+    }
+
+    input[type="range"]:focus-visible {
+      outline: 2px solid var(--slider-fill-color);
+      outline-offset: 4px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
       input[type="range"] {
-        accent-color: var(--brand-color);
-        width: 100%;
-        height: 2.5rem; /* Generous touch target area */
-        margin: 0;
-        cursor: pointer;
+        scroll-behavior: auto;
       }
+    }
 
-      /* Fallback styling for older browsers without accent-color */
-      @supports not (accent-color: var(--brand-color)) {
-        input[type="range"] {
-          -webkit-appearance: none;
-          appearance: none;
-          background: transparent;
-          outline: none;
-        }
+    [dir="rtl"] input[type="range"] {
+      --slider-direction: to left;
+    }
+  </style>
+</head>
 
-        /* Track (WebKit/Chrome/Safari/Edge) */
-        input[type="range"]::-webkit-slider-runnable-track {
-          width: 100%;
-          height: 8px;
-          border-radius: 4px;
-          /* Visual representation of current progress */
-          background: linear-gradient(to right, var(--brand-color) var(--progress, 70%), var(--track-bg) var(--progress, 70%));
-        }
+<body>
+  <main class="slider-card">
+    <div class="slider-header">
+      <label id="volume-label" for="volume-slider">Volume</label>
+      <output id="value-display" class="value-display" for="volume-slider">70%</output>
+    </div>
 
-        /* Thumb (WebKit/Chrome/Safari/Edge) */
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: var(--brand-color);
-          cursor: pointer;
-          margin-top: -6px; /* Centered relative to the 8px track: (20/2 - 8/2 = 6) */
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-          transition: transform 0.1s ease;
-        }
+    <input type="range" id="volume-slider" aria-labelledby="volume-label" min="0" max="100" value="70" step="1" />
+  </main>
 
-        input[type="range"]::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-        }
+  <script>
+    const slider = document.getElementById('volume-slider');
+    const valueDisplay = document.getElementById('value-display');
 
-        /* Track (Firefox) */
-        input[type="range"]::-moz-range-track {
-          width: 100%;
-          height: 8px;
-          border-radius: 4px;
-          background: var(--track-bg);
-        }
+    function updateSlider() {
+      const min = Number(slider.min || 0);
+      const max = Number(slider.max || 100);
+      const value = Number(slider.value);
+      const progress = max > min
+        ? ((value - min) / (max - min)) * 100
+        : 0;
+      const formattedValue = `${value}%`;
 
-        /* Thumb (Firefox) */
-        input[type="range"]::-moz-range-thumb {
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: var(--brand-color);
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-          transition: transform 0.1s ease;
-        }
+      slider.style.setProperty('--slider-progress', `${progress}%`);
+      valueDisplay.value = formattedValue;
+      valueDisplay.textContent = formattedValue;
+      slider.setAttribute('aria-valuetext', formattedValue);
+    }
 
-        input[type="range"]::-moz-range-thumb:hover {
-          transform: scale(1.1);
-        }
+    updateSlider();
+    slider.addEventListener('input', updateSlider);
+  </script>
+</body>
 
-        /* Progress fill (Firefox) */
-        input[type="range"]::-moz-range-progress {
-          background-color: var(--brand-color);
-          height: 8px;
-          border-radius: 4px;
-        }
-
-        /* Explicit keyboard focus styling for the custom fallback thumb */
-        input[type="range"]:focus-visible::-webkit-slider-thumb {
-          outline: 2px solid var(--text);
-          outline-offset: 4px;
-        }
-
-        input[type="range"]:focus-visible::-moz-range-thumb {
-          outline: 2px solid var(--text);
-          outline-offset: 4px;
-        }
-      }
-
-      .instructions {
-        font-size: 0.85rem;
-        opacity: 0.7;
-        margin-top: -0.5rem;
-        line-height: 1.4;
-      }
-    </style>
-  </head>
-  <body>
-    <main class="slider-card">
-      <div class="slider-header">
-        <label id="volume-label" for="volume-slider">Volume Level</label>
-        <span id="value-display" class="value-display">70%</span>
-      </div>
-      <input
-        type="range"
-        id="volume-slider"
-        aria-labelledby="volume-label"
-        aria-valuetext="70%"
-        min="0"
-        max="100"
-        value="70"
-      />
-      <div class="instructions">
-        Use Arrow keys to adjust value by 1%. Use PageUp/PageDown to adjust by 10%. Use Home/End to jump to ends.
-      </div>
-    </main>
-
-    <script>
-      const slider = document.getElementById('volume-slider');
-      const valueDisplay = document.getElementById('value-display');
-
-      // Update the readable value label dynamically
-      const updateValue = (val) => {
-        const percent = `${val}%`;
-        valueDisplay.textContent = percent;
-        slider.setAttribute('aria-valuetext', percent);
-      };
-
-      slider.addEventListener('input', (e) => {
-        updateValue(e.target.value);
-      });
-
-      // Conditional progressive enhancement fallback for browsers without accent-color support
-      if (!CSS.supports('accent-color')) {
-        const updateProgressVar = (val) => {
-          slider.style.setProperty('--progress', `${val}%`);
-        };
-
-        // Initialize progress custom property on load
-        updateProgressVar(slider.value);
-
-        slider.addEventListener('input', (e) => {
-          updateProgressVar(e.target.value);
-        });
-      }
-    </script>
-  </body>
 </html>

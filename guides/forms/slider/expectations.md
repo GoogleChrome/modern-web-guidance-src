@@ -1,13 +1,15 @@
-- **MANDATORY**: The implementation MUST use a native `<input type="range">` element to preserve native slider accessibility.
-- **MANDATORY**: The range input element MUST be programmatically associated with a `<label>` element using matching `id` and `for` attributes, or an `aria-labelledby` attribute.
-- **MANDATORY**: The range input element MUST define and dynamically update its `aria-valuetext` attribute on the `input` event to ensure screen readers announce value percentages with descriptive units (e.g. "%" or "percent").
-- **MANDATORY**: The implementation MUST use the `accent-color` CSS property to apply a custom brand color to the slider control.
-- **MANDATORY**: The slider's brand-consistent accent color value MUST change to a different, high-contrast color when system dark mode is active.
-- **MANDATORY**: The implementation MUST provide a custom styling fallback inside a `@supports not (accent-color: ...)` CSS rule block to style older browsers.
-- **MANDATORY**: Inside the fallback `@supports not` block, the range input MUST reset its native browser styling using `appearance: none` or `-webkit-appearance: none`.
-- **MANDATORY**: Inside the fallback `@supports not` block, the custom styling MUST style the track and thumb using vendor-specific pseudo-elements (e.g. `::-webkit-slider-runnable-track`, `::-webkit-slider-thumb`, `::-moz-range-track`, `::-moz-range-thumb`).
-- **MANDATORY**: Inside the fallback `@supports not` block, the custom styled range input MUST explicitly define a `:focus-visible` state style to ensure keyboard accessibility.
-- **MANDATORY**: The implementation MUST conditionally run a JavaScript script that updates a `--progress` custom property on `input` events for WebKit-based tracks, executing only when `accent-color` is not supported by the browser.
-- **MANDATORY**: The implementation MUST include brief, clear keyboard instructions for the slider (mentioning Arrows, PageUp/PageDown, and Home/End support) to optimize keyboard efficiency.
-- **OPTIONAL**: The implementation MAY dynamically update a readable text element displaying the slider's current percentage value on the `input` event.
-- **OPTIONAL**: The implementation MAY include a progressive enhancement reference or link to the `slider-tooltip` guide if a floating tooltip following the thumb is desired.
+- **MANDATORY**: The implementation MUST use a native `<input type="range">` element rather than recreating the slider with generic elements, custom pointer handlers, or a second interactive control.
+- **MANDATORY**: The range input MUST have an accessible name, preferably through a programmatically associated `<label>`; `aria-labelledby` is acceptable when a label element is not suitable.
+- **MANDATORY**: The implementation MUST configure appropriate `min`, `max`, `step`, and initial `value` attributes for the use case.
+- **MANDATORY**: The implementation MUST preserve a usable interaction area and MUST provide a visible `:focus-visible` indicator with sufficient contrast after changing the native appearance.
+- **MANDATORY**: For custom visual styling, the implementation MUST use `appearance: none` and the established browser-specific slider pseudo-elements, including the relevant `::-webkit-slider-runnable-track`, `::-webkit-slider-thumb`, `::-moz-range-track`, `::-moz-range-thumb`, or `::-moz-range-progress` selectors.
+- **MANDATORY**: Consumer-facing styling values SHOULD be exposed as custom properties on the range input, allowing themes to customise the slider without targeting pseudo-elements directly.
+- **MANDATORY**: The implementation MUST retain a usable track, thumb, and active-value indication across supported browsers. Where the active fill needs the control’s value, it MUST derive progress from the actual `min`, `max`, and `value` rather than assuming a 0–100 range.
+- **MANDATORY**: The implementation MUST NOT rely on generated content from slider pseudo-elements for labels, values, instructions, or other essential information.
+- **MANDATORY**: The implementation MUST account for right-to-left layouts and MUST NOT hard-code a left-to-right active-track direction without an explicit RTL strategy.
+- **MANDATORY**: If the numeric value requires a human-readable unit, the implementation MUST expose that formatted value in ordinary DOM content and update `aria-valuetext` whenever the value changes. Otherwise, it SHOULD rely on the native numeric value.
+- **OPTIONAL**: The implementation MAY use `accent-color` for simple colour customisation while retaining native rendering.
+- **OPTIONAL**: The implementation MAY use a small `input`-event script to update a progress custom property until CSS value-driven features such as `control-value()` are sufficiently supported.
+- **OPTIONAL**: The implementation MAY provide a tooltip following the thumb; if so, it SHOULD use the {{ GUIDE_REF("slider-tooltip") }} guide.
+- **RECOMMENDED**: The implementation SHOULD respect `prefers-reduced-motion` when adding transitions or other motion.
+- **RECOMMENDED**: The implementation SHOULD be tested in horizontal, RTL, vertical, zoomed, high-contrast, touch, keyboard, and assistive-technology scenarios across supported browsers.
