@@ -1,6 +1,6 @@
 /**
  * Centralized, typed prompt builder functions for the gd dev evaluation generation process.
- * 
+ *
  * Having these prompts in one dedicated module ensures high visibility, easy tuning of AI
  * behavior across target capsules (patches, grader.ts, task.md), and
  * type-safe parameter interpolation.
@@ -71,6 +71,7 @@ export interface GraderPromptOptions {
   linkedomDtsPath?: string;
   cssomnomDtsPath?: string;
   failureContext?: string;
+  isDisciplineGuide?: boolean;
 }
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
@@ -102,8 +103,22 @@ Analyze this failure and modify the existing grader file to fix these assertions
     ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because any of the golden solution patches or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
     : '';
 
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to the \`${opts.baseApp}\` application. You do NOT need to write a test for every expectation. See the **Discipline Guide Scoping** rule below.`
+    : '';
+
+  const disciplineScopingRule = opts.isDisciplineGuide
+    ? `## 0. Discipline Guide Scoping
+Only write tests for expectations that are relevant to \`${opts.baseApp}\`. An expectation is relevant only if BOTH of the following hold:
+- **Implemented by the golden solutions**: The golden solution diffs actually implement it. Do not test for patterns (e.g. a layout technique or UI component) that the solutions did not need to introduce for this app.
+- **Absent from the zero-passrate baseline**: The zero-passrate diff does not already satisfy it. Do not test for patterns the app already uses at baseline, since those tests cannot fail against the zero-passrate diff.
+Skip every expectation that does not meet both criteria. Do not write placeholder, skipped, or trivially-passing tests for them.
+
+`
+    : '';
+
   return `${contextBlock}# GOAL
-Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${patchInstruction}
+Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${disciplineInstruction}${patchInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -115,6 +130,7 @@ ${solutionList}
 
 # VERIFICATION & SCOPING RULES
 
+${disciplineScopingRule}
 ## 1. Strictly Follow the Boilerplate Template
 Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`getCssStyleSheet\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 

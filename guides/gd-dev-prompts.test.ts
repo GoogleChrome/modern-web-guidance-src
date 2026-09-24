@@ -83,6 +83,29 @@ test('buildTargetGraderPrompt formats failure context correctly when provided', 
   assert.ok(prompt.includes('Golden test failed on assertion getComputedStyle'));
 });
 
+test('buildTargetGraderPrompt includes discipline scoping only for discipline guides', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'devtools-times',
+    templateFile: 'template.grader.ts',
+  };
+
+  const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(disciplinePrompt.includes('discipline guide'));
+  assert.ok(disciplinePrompt.includes('Discipline Guide Scoping'));
+  assert.ok(disciplinePrompt.includes('You do NOT need to write a test for every expectation'));
+
+  const standardPrompt = buildTargetGraderPrompt(baseOpts);
+  assert.ok(!standardPrompt.includes('discipline guide'));
+  assert.ok(!standardPrompt.includes('Discipline Guide Scoping'));
+});
+
 test('buildTargetTaskPrompt creates clean developer prompt instructions', () => {
   const prompt = buildTargetTaskPrompt({
     guideFile: 'guide.md',
