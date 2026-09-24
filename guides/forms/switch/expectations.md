@@ -1,6 +1,9 @@
-- **MANDATORY**: Each switch control MUST be represented by an `<input type="checkbox">` element that explicitly utilizes the standardized HTML `switch` attribute.
-- **MANDATORY**: The switch control's active and track coloration MUST be custom-styled using the standard CSS `accent-color` property to align with design tokens.
-- **MANDATORY**: Each switch MUST be properly associated with its label, either implicitly by wrapping the `<input>` inside a `<label>` element or explicitly using matching `id` and `for` attributes, ensuring correct accessibility mapping.
-- **MANDATORY**: When a switch is focused, it MUST display a highly visible focus indicator utilizing the `:focus-visible` pseudo-class (e.g., custom outline/offsets) to ensure copy-paste safety and keyboard navigation accessibility.
-- **MANDATORY**: Selecting or toggling the state of a switch control MUST immediately fire its associated state mutation (e.g. toggling the Dark Mode switch updates the root `data-theme` attribute to update the layout presentation).
-- **OPTIONAL**: Progressive enhancement can be demonstrated by storing user preferences in standard Web Storage (`localStorage`) and initializing control states based on system preferences using `window.matchMedia()` queries.
+- Each switch control MUST be represented by a standard HTML `<input type="checkbox">` element that explicitly utilizes the standard `switch` attribute.
+- The switch input MUST be associated with a semantic `<label>` element.
+- The page MUST run an inline feature-detection script within `<head>` checking for native switch support via `'switch' in HTMLInputElement.prototype`.
+- When native switch is not supported, the script MUST append a helper class (e.g., `no-native-switch`) to the document root element before the initial paint.
+- When native switch support is missing (or `no-native-switch` is present on the root), the checkbox input MUST use `appearance: none` to render custom toggle switch styles.
+- When native switch support is missing, checking the switch input MUST slide its thumb using CSS transitions or transforms.
+- When native switch support is missing, checking the switch input MUST change its track background color to the active accent color.
+- The switch input MUST define the CSS `accent-color` property for native rendering in supported browsers.
+- The switch input MUST specify a visible `:focus-visible` outline for keyboard navigation.

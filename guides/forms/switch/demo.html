@@ -4,57 +4,36 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>User preferences demo</title>
+    <title>Switch demo</title>
+
+    <script>
+        if (!('switch' in HTMLInputElement.prototype)) {
+            document.documentElement.classList.add('no-native-switch');
+        }
+    </script>
 
     <style>
         :root {
             color-scheme: light dark;
-
-            --page-background: #f5f7fa;
-            --surface-background: #ffffff;
-            --text-color: #17202a;
-            --muted-color: #5b6773;
-            --border-color: #c7d0d9;
+            --page-background: Canvas;
+            --surface-background: Canvas;
+            --text-color: CanvasText;
+            --muted-color: GrayText;
+            --border-color: #808080;
+            --track-off: #e5e5e5;
             --accent-color: #1769e0;
             --focus-color: #ff8c00;
-        }
-
-        :root[data-theme="dark"] {
-            --page-background: #15191d;
-            --surface-background: #22282e;
-            --text-color: #f1f4f6;
-            --muted-color: #bbc4cc;
-            --border-color: #56616b;
-            --accent-color: #78aaff;
-            --focus-color: #ffbd66;
-        }
-
-        :root[data-contrast="high"] {
-            --page-background: #000000;
-            --surface-background: #000000;
-            --text-color: #ffffff;
-            --muted-color: #ffffff;
-            --border-color: #ffffff;
-            --accent-color: #ffff00;
-            --focus-color: #00ffff;
         }
 
         * {
             box-sizing: border-box;
         }
 
-        html {
-            font-size: 100%;
-        }
-
-        html[data-text-size="large"] {
-            font-size: 118%;
-        }
-
         body {
             min-block-size: 100vh;
             margin: 0;
-            padding: 2rem 1rem;
+            padding-block: 2rem;
+            padding-inline: 1rem;
             background: var(--page-background);
             color: var(--text-color);
             font-family: system-ui, sans-serif;
@@ -66,270 +45,128 @@
             margin-inline: auto;
         }
 
-        h1 {
-            margin-block-start: 0;
-        }
-
         .intro {
             color: var(--muted-color);
         }
 
-        .preferences {
+        .switches {
             display: grid;
             gap: 1rem;
             margin-block: 2rem;
-        }
-
-        .preference {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            padding: 1rem;
-        }
-
-        .switches {
-            padding: 1rem;
-            border: 2px solid var(--border-color);
-            border-radius: 0.75rem;
-            background: var(--surface-background);
-        }
-
-        .preference__description {
-            display: grid;
-            gap: 0.25rem;
-        }
-
-        .preference__description span {
-            color: var(--muted-color);
-            font-size: 0.9rem;
-        }
-
-        input[type="checkbox"][switch] {
-            flex: 0 0 auto;
-            inline-size: 3rem;
-            block-size: 1.75rem;
-            accent-color: var(--accent-color);
-        }
-
-        input[type="checkbox"][switch]:focus-visible {
-            outline: 3px solid var(--focus-color);
-            outline-offset: 4px;
-        }
-
-        .preview {
             padding: 1.5rem;
             border: 2px solid var(--border-color);
             border-radius: 0.75rem;
             background: var(--surface-background);
         }
 
-        .preview__animation {
-            inline-size: 4rem;
-            block-size: 4rem;
-            margin-block: 1rem;
+        .switch {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        .switch__control {
+            flex: 0 0 auto;
+        }
+
+        /* Native switch styling (WebKit / Safari) */
+        input[type="checkbox"][switch] {
+            accent-color: var(--accent-color);
+            inline-size: 3rem;
+            block-size: 1.75rem;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* Focus outline for both native and polyfilled controls */
+        input[type="checkbox"][switch]:focus-visible {
+            outline: 3px solid var(--focus-color);
+            outline-offset: 4px;
+        }
+
+        /* Fallback switch polyfill (non-WebKit browsers) */
+        html.no-native-switch input[type="checkbox"][switch] {
+            appearance: none;
+            -webkit-appearance: none;
+            inline-size: 3rem;
+            block-size: 1.75rem;
+            border-radius: 999px;
+            background-color: var(--track-off);
+            border: 2px solid var(--border-color);
+            position: relative;
+            margin: 0;
+            cursor: pointer;
+            outline-offset: 4px;
+            transition: background-color 150ms ease, border-color 150ms ease;
+            vertical-align: middle;
+        }
+
+        /* Sliding switch thumb */
+        html.no-native-switch input[type="checkbox"][switch]::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 50%;
+            inset-inline-start: 2px;
+            inline-size: calc(1.75rem - 8px);
+            block-size: calc(1.75rem - 8px);
             border-radius: 50%;
-            background: var(--accent-color);
-            animation: pulse 1.5s ease-in-out infinite alternate;
+            background-color: Canvas;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            transform: translateY(-50%);
+            transition: transform 150ms ease;
         }
 
-        .status {
-            margin-block-start: 1.5rem;
-            color: var(--muted-color);
-            font-size: 0.9rem;
+        /* Active / Checked track */
+        html.no-native-switch input[type="checkbox"][switch]:checked {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
         }
 
-        @keyframes pulse {
-            from {
-                transform: scale(0.8);
-                opacity: 0.5;
+        /* Active / Checked thumb slide */
+        html.no-native-switch input[type="checkbox"][switch]:checked::before {
+            transform: translate(calc(3rem - 1.75rem), -50%);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html.no-native-switch input[type="checkbox"][switch],
+            html.no-native-switch input[type="checkbox"][switch]::before {
+                transition: none;
             }
-
-            to {
-                transform: scale(1.2);
-                opacity: 1;
-            }
-        }
-
-        html[data-reduced-motion="true"] *,
-        html[data-reduced-motion="true"] *::before,
-        html[data-reduced-motion="true"] *::after {
-            animation-duration: 0.001ms !important;
-            animation-iteration-count: 1 !important;
-            scroll-behavior: auto !important;
-            transition-duration: 0.001ms !important;
         }
     </style>
 </head>
 <body>
     <main>
-        <h1>User preferences</h1>
+        <h1>Switch demo</h1>
 
         <p class="intro">
-            Try changing these settings. Each preference applies immediately
-            and is saved for your next visit.
+            This example uses a standard checkbox with the HTML <code>switch</code> attribute,
+            JavaScript feature detection, and a concise CSS polyfill for browsers lacking native support.
         </p>
 
-        <section class="preferences" aria-labelledby="preferences-heading">
-            <div class="switches">
-                <h2 id="preferences-heading">Appearance and accessibility</h2>
-                <label class="preference">
-                    <span class="preference__description">
-                        <strong>Dark mode</strong>
-                        <span>Use darker colours throughout the page.</span>
-                    </span>
+        <section class="switches" aria-labelledby="switches-heading">
+            <h2 id="switches-heading">Preferences</h2>
 
-                    <input
-                        id="dark-mode"
-                        type="checkbox"
-                        switch
-                    >
-                </label>
-
-                <label class="preference">
-                    <span class="preference__description">
-                        <strong>Reduced motion</strong>
-                        <span>Stop decorative animations.</span>
-                    </span>
-
-                    <input
-                        id="reduced-motion"
-                        type="checkbox"
-                        switch
-                    >
-                </label>
-
-                <label class="preference">
-                    <span class="preference__description">
-                        <strong>Larger text</strong>
-                        <span>Increase the base text size.</span>
-                    </span>
-
-                    <input
-                        id="large-text"
-                        type="checkbox"
-                        switch
-                    >
-                </label>
-
-                <label class="preference">
-                    <span class="preference__description">
-                        <strong>High contrast</strong>
-                        <span>Use stronger colours and borders.</span>
-                    </span>
-
-                    <input
-                        id="high-contrast"
-                        type="checkbox"
-                        switch
-                    >
-                </label>
-            </div>
-        </section>
-
-        <section class="preview" aria-labelledby="preview-heading">
-            <h2 id="preview-heading">Live preview</h2>
-
-            <p>
-                This preview changes as you adjust your preferences.
-            </p>
-
-            <div
-                class="preview__animation"
-                aria-hidden="true"
-            ></div>
-
-            <p id="preference-status" class="status" aria-live="polite"></p>
+            <label class="switch">
+                Enable notifications
+                <input
+                    class="switch__control"
+                    id="notifications"
+                    type="checkbox"
+                    switch
+                >
+            </label>
         </section>
     </main>
 
     <script>
-        const root = document.documentElement;
-        const status = document.querySelector("#preference-status");
+        const toggle = document.querySelector('#notifications');
 
-        const controls = {
-            darkMode: document.querySelector("#dark-mode"),
-            reducedMotion: document.querySelector("#reduced-motion"),
-            largeText: document.querySelector("#large-text"),
-            highContrast: document.querySelector("#high-contrast")
-        };
-
-        const operatingSystemPreferences = {
-            darkMode: window.matchMedia("(prefers-color-scheme: dark)").matches,
-            reducedMotion: window.matchMedia(
-                "(prefers-reduced-motion: reduce)"
-            ).matches
-        };
-
-        function getPreference(name, fallback) {
-            const savedValue = localStorage.getItem(`preference-${name}`);
-
-            if (savedValue === null) {
-                return fallback;
-            }
-
-            return savedValue === "true";
-        }
-
-        function savePreference(name, value) {
-            localStorage.setItem(`preference-${name}`, value);
-        }
-
-        function applyPreferences() {
-            const darkModeEnabled = controls.darkMode.checked;
-            const reducedMotionEnabled = controls.reducedMotion.checked;
-            const largeTextEnabled = controls.largeText.checked;
-            const highContrastEnabled = controls.highContrast.checked;
-
-            root.dataset.theme = darkModeEnabled ? "dark" : "light";
-            root.dataset.reducedMotion = reducedMotionEnabled;
-            root.dataset.textSize = largeTextEnabled ? "large" : "normal";
-            root.dataset.contrast = highContrastEnabled ? "high" : "normal";
-
-            status.textContent = [
-                darkModeEnabled ? "Dark mode on" : "Dark mode off",
-                reducedMotionEnabled
-                    ? "reduced motion on"
-                    : "reduced motion off",
-                largeTextEnabled ? "larger text on" : "larger text off",
-                highContrastEnabled
-                    ? "high contrast on"
-                    : "high contrast off"
-            ].join("; ") + ".";
-        }
-
-        function initialise() {
-            controls.darkMode.checked = getPreference(
-                "dark-mode",
-                operatingSystemPreferences.darkMode
-            );
-
-            controls.reducedMotion.checked = getPreference(
-                "reduced-motion",
-                operatingSystemPreferences.reducedMotion
-            );
-
-            controls.largeText.checked = getPreference(
-                "large-text",
-                false
-            );
-
-            controls.highContrast.checked = getPreference(
-                "high-contrast",
-                false
-            );
-
-            applyPreferences();
-        }
-
-        for (const [name, control] of Object.entries(controls)) {
-            control.addEventListener("change", () => {
-                savePreference(name, control.checked);
-                applyPreferences();
-            });
-        }
-
-        initialise();
+        toggle.addEventListener('change', () => {
+            console.log('Switch state:', toggle.checked);
+        });
     </script>
 </body>
 </html>
