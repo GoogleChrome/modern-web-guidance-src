@@ -35,6 +35,7 @@ export const DISCIPLINE_GUIDES = new Set([
   'webmcp',
 
   // Named orientation guides
+  'cpp-on-the-web',
   'css-layout',
   'passkeys',
 ]);
