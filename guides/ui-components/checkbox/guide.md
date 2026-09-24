@@ -10,7 +10,6 @@ web-feature-ids:
 
 # Styling Checkboxes
 
-Checkboxes are a core interactive element of web forms. Previous attempts to style checkboxes often involved hiding the native `<input>` element entirely and rendering a complex tree of custom wrapper `<div>`s or `<span>`s with ARIA roles. This legacy approach is highly error-prone, which can break native keyboard navigation, affect screen reader announcements, break native form validation, and disrupt standard form submission.
 
 Modern CSS allows you to style checkboxes directly, either by customizing the native appearance using the **`accent-color`** property, or by overriding default presentation entirely using **`appearance: none`** directly on the `<input type="checkbox">` element.
 
