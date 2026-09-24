@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Network Access Demo</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 820px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+      section { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; }
+      .badge { padding: 0.1rem 0.5rem; border-radius: 4px; background: #eee; font-family: monospace; }
+      .output-box { margin-top: 0.75rem; padding: 0.5rem; border: 1px dashed #999; font-family: monospace; font-size: 0.9rem; }
+      .remediation { margin-top: 0.75rem; padding: 0.5rem; border: 1px solid #d32f2f; background: #ffebee; color: #b71c1c; }
+      iframe { width: 100%; height: 60px; border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <h1>Local Network &amp; Loopback Access</h1>
+    <p>
+      Connect to devices on the local network (<code>local-network</code>) and companion apps on
+      <code>127.0.0.1</code> / <code>localhost</code> (<code>loopback-network</code>) with explicit
+      <code>targetAddressSpace</code> declarations and permission state handling.
+      <small>
+        (Note: Because <code>localhost</code> is already in the <code>loopback</code> address space,
+        to test permission denial locally toggle <strong>Local network</strong> /
+        <strong>Loopback network</strong> in Chrome <strong>Site settings</strong> or launch Chrome
+        with <code>--ip-address-space-overrides=127.0.0.1:PORT=public</code>.)
+      </small>
+    </p>
+
+    <div class="grid">
+      <section aria-labelledby="lan-heading">
+        <h2 id="lan-heading">1. Local Network Device (<code>local-network</code>)</h2>
+        <p>
+          Permission state:
+          <span
+            id="local-permission-badge"
+            class="badge"
+            data-testid="local-permission-status"
+            data-permission-status="local-network"
+          >checking</span>
+        </p>
+
+        <div class="controls">
+          <button id="btn-connect-local" data-testid="connect-local-button" type="button">
+            Connect to LAN Printer (HTTP)
+          </button>
+          <button id="btn-ws-local" data-testid="ws-local-button" class="secondary" type="button">
+            Open LAN WebSocket
+          </button>
+        </div>
+
+        <div id="local-output" data-testid="local-output" class="output-box">
+          Waiting for user action to connect to http://192.168.1.100:8080/api/status
+        </div>
+
+        <div
+          id="local-remediation"
+          data-testid="local-remediation"
+          data-remediation="local-network"
+          class="remediation"
+          hidden
+        >
+          Local network access is blocked or unreachable. Allow <strong>Local network</strong> in
+          your browser site settings and verify your device is on the same Wi-Fi/LAN.
+        </div>
+      </section>
+
+      <section aria-labelledby="loopback-heading">
+        <h2 id="loopback-heading">2. Loopback Companion App (<code>loopback-network</code>)</h2>
+        <p>
+          Permission state:
+          <span
+            id="loopback-permission-badge"
+            class="badge"
+            data-testid="loopback-permission-status"
+            data-permission-status="loopback-network"
+          >checking</span>
+        </p>
+
+        <div class="controls">
+          <button id="btn-connect-loopback" data-testid="connect-loopback-button" type="button">
+            Connect to Localhost Companion
+          </button>
+        </div>
+
+        <div id="loopback-output" data-testid="loopback-output" class="output-box">
+          Waiting for user action to connect to http://127.0.0.1:45678/health
+        </div>
+
+        <div
+          id="loopback-remediation"
+          data-testid="loopback-remediation"
+          data-remediation="loopback-network"
+          class="remediation"
+          hidden
+        >
+          Loopback access is blocked or companion app is not running. Allow
+          <strong>Loopback network</strong> in site settings and ensure the local daemon is started.
+        </div>
+      </section>
+    </div>
+
+    <section aria-labelledby="iframe-heading">
+      <h2 id="iframe-heading">3. Delegated Cross-Origin Iframe (<code>Permissions-Policy</code>)</h2>
+      <iframe
+        id="bridge-iframe"
+        data-testid="delegated-iframe"
+        src="about:blank"
+        allow="local-network; loopback-network"
+        title="Delegated Local Device Setup Bridge"
+      ></iframe>
+    </section>
+
+    <script type="module">
+      const LOCAL_DEVICE_URL = 'http://192.168.1.100:8080/api/status';
+      const LOCAL_WS_URL = 'ws://192.168.1.100:8080/stream';
+      const LOOPBACK_DAEMON_URL = 'http://127.0.0.1:45678/health';
+
+      function updatePermissionUI(permissionName, state) {
+        const badge = document.querySelector(`[data-permission-status="${permissionName}"]`);
+        const remediation = document.querySelector(`[data-remediation="${permissionName}"]`);
+        if (badge) {
+          badge.textContent = state;
+        }
+        if (remediation) {
+          remediation.hidden = state !== 'denied';
+        }
+      }
+
+      async function queryGranularPermission(permissionName) {
+        if (!navigator.permissions?.query) {
+          updatePermissionUI(permissionName, 'prompt');
+          return 'prompt';
+        }
+        try {
+          const status = await navigator.permissions.query({ name: permissionName });
+          status.addEventListener('change', () => {
+            updatePermissionUI(permissionName, status.state);
+          });
+          updatePermissionUI(permissionName, status.state);
+          return status.state;
+        } catch {
+          // Unrecognized permission name. Never fall back to 'local-network-access',
+          // which crashes older Chrome versions even inside try/catch.
+          updatePermissionUI(permissionName, 'prompt');
+          return 'prompt';
+        }
+      }
+
+      async function connectWithTargetAddressSpace(url, addressSpace, permissionName, outputEl, remediationEl) {
+        const state = await queryGranularPermission(permissionName);
+        if (state === 'denied') {
+          outputEl.textContent = `Error: ${permissionName} permission denied by user.`;
+          remediationEl.hidden = false;
+          return;
+        }
+
+        const request = new Request(url, {
+          method: 'GET',
+          mode: 'cors',
+          targetAddressSpace: addressSpace,
+        });
+
+        try {
+          outputEl.textContent = `Connecting (${addressSpace})...`;
+          const response = await fetch(request);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          const data = await response.json();
+          outputEl.textContent = `Connected (${addressSpace}): ${JSON.stringify(data)}`;
+          remediationEl.hidden = true;
+        } catch (err) {
+          outputEl.textContent = `Connection failed (${addressSpace}): ${err instanceof Error ? err.message : String(err)}`;
+          remediationEl.hidden = false;
+        }
+      }
+
+      function connectWebSocketSafe(wsUrl, outputEl, remediationEl) {
+        let socket;
+        try {
+          socket = new WebSocket(wsUrl, {
+            protocols: ['v1.telemetry'],
+            targetAddressSpace: 'local',
+          });
+        } catch {
+          socket = new WebSocket(wsUrl, ['v1.telemetry']);
+        }
+
+        outputEl.textContent = 'Opening local WebSocket...';
+        socket.addEventListener('open', () => {
+          outputEl.textContent = 'WebSocket connected (targetAddressSpace: local)';
+          remediationEl.hidden = true;
+          socket.close();
+        });
+        socket.addEventListener('error', () => {
+          outputEl.textContent = 'WebSocket connection blocked or unreachable.';
+          remediationEl.hidden = false;
+        });
+      }
+
+      const localOutput = document.getElementById('local-output');
+      const localRemediation = document.getElementById('local-remediation');
+      const loopbackOutput = document.getElementById('loopback-output');
+      const loopbackRemediation = document.getElementById('loopback-remediation');
+
+      // Pre-check permissions on load without firing network requests automatically when in 'prompt' state
+      queryGranularPermission('local-network');
+      queryGranularPermission('loopback-network');
+
+      document.getElementById('btn-connect-local').addEventListener('click', () => {
+        connectWithTargetAddressSpace(
+          LOCAL_DEVICE_URL,
+          'local',
+          'local-network',
+          localOutput,
+          localRemediation,
+        );
+      });
+
+      document.getElementById('btn-ws-local').addEventListener('click', () => {
+        connectWebSocketSafe(LOCAL_WS_URL, localOutput, localRemediation);
+      });
+
+      document.getElementById('btn-connect-loopback').addEventListener('click', () => {
+        connectWithTargetAddressSpace(
+          LOOPBACK_DAEMON_URL,
+          'loopback',
+          'loopback-network',
+          loopbackOutput,
+          loopbackRemediation,
+        );
+      });
+    </script>
+  </body>
+</html>

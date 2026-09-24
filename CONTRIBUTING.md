@@ -62,8 +62,8 @@ Content ATLs are responsible for the overall quality, completeness, and health o
 * **Baseline & Fallback Alignment**:
   * Align all guidance and expectations with a **Baseline Widely available** target. If a recommended feature is not yet widely available, the guide **must** specify (and the expectations/grader **must** test for) proper fallback strategies and progressive enhancement.
 * **Discipline Guide Decomposition**:
-  * Ensure discipline-level skills (e.g., CSS, JS) are broken up into modular "subskills" (i.e., smaller, focused guides) rather than structured as a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously.
-  * The primary discipline-level guide (e.g., `guides/css/css/guide.md` or `guides/performance/performance/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subskill guide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+  * Ensure discipline-level guides (e.g., CSS, JS) are broken up into modular "subguides" (i.e., smaller, focused guides) rather than structured as a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously.
+  * The primary discipline-level guide (e.g., `guides/css/css/guide.md` or `guides/performance/performance/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for how to approach the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
 
 ### Infrastructure Engineers
 Infrastructure engineers focus on the tooling, CLI, test harness reliability, LLM generation pipelines, and dashboard interfaces. They ensure that the evaluation runner is stable, calibration retries function correctly, and maintain the Skills CLI distribution path.
@@ -92,7 +92,7 @@ pnpm preflight
 - **`guides/`**: Curated guide content organized by discipline (performance, user-experience, etc.), along with core development pipeline orchestration scripts.
 - **`harness/`**: The evaluation harness for executing and scoring agent tests. Contains agent runners, evaluation orchestration, and base applications.
 - **`serving/`**: Serving infrastructure that compiles guides into semantic search indexes, builds the standalone RAG CLI distribution (`skills-cli`), and orchestrates publishing all Skills to both the public npm registry and the GitHub distribution repository.
-- **`skills-src/`**: Source files and templates for standalone discipline-level and topic-specific Agent Skills.
+- **`skills-src/`**: Source files and templates for standalone, topic-specific Agent Skills.
 - **`features/`**: Feature definitions and documentation snippets for specific web platform capabilities, used for transclusion and baseline status tracking.
 - **`eval-view/`**: A static web dashboard for visualizing and analyzing evaluation suite results.
 - **`nightly/`**: Automation scripts for configuring and executing scheduled nightly evaluation runs across multiple agents.

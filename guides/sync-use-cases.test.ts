@@ -276,6 +276,16 @@ describe('getStatusName', () => {
   test('returns "Needs guidance" before "Needs evals" since guidance must come first', () => {
     assert.strictEqual(getStatusName('', false, false), ProjectStatus.NeedsGuidance);
   });
+
+  test('returns "Needs guidance" when isDraft is true even if body and evals are present', () => {
+    assert.strictEqual(getStatusName('Some content.', true, true, true), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getStatusName('Some content.', false, false, true), ProjectStatus.NeedsGuidance);
+  });
+
+  test('returns "Needs guidance" when hasExpectations is false even if body is present', () => {
+    assert.strictEqual(getStatusName('Some content.', false, false, false, false), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getStatusName('Some content.', true, true, false, false), ProjectStatus.NeedsGuidance);
+  });
 });
 
 describe('getIssueStateChanges', () => {
@@ -454,7 +464,6 @@ describe('buildRequiredFilesChecklist', () => {
       isDisciplineGuide: false,
       draft: false,
       isPublished: false,
-      isDisciplineSkill: false,
       ...overrides,
     };
   }
@@ -510,6 +519,31 @@ describe('buildRequiredFilesChecklist', () => {
     const result = buildRequiredFilesChecklist(inv);
     assert.ok(result.includes('- [ ] expectations.md'));
   });
+
+  test('does not check off guide.md and appends draft annotation when draft is truthy', () => {
+    const invBool = makeInventory({
+      hasGuide: true,
+      draft: true,
+    });
+    const resultBool = buildRequiredFilesChecklist(invBool);
+    assert.ok(resultBool.includes('- [ ] Use case guidance (guide.md) *(draft: true)*'));
+
+    const invBlocked = makeInventory({
+      hasGuide: true,
+      draft: 'blocked',
+    });
+    const resultBlocked = buildRequiredFilesChecklist(invBlocked);
+    assert.ok(resultBlocked.includes('- [ ] Use case guidance (guide.md) *(draft: blocked)*'));
+
+    const invStubDraft = makeInventory({
+      hasGuide: false,
+      isStub: true,
+      draft: 'blocked',
+    });
+    const resultStubDraft = buildRequiredFilesChecklist(invStubDraft);
+    assert.ok(resultStubDraft.includes('- [ ] Use case guidance (guide.md)'));
+    assert.ok(!resultStubDraft.includes('*(draft'));
+  });
 });
 
 describe('buildIssueContent', () => {
@@ -531,7 +565,6 @@ describe('buildIssueContent', () => {
       isDisciplineGuide: false,
       draft: false,
       isPublished: false,
-      isDisciplineSkill: false,
     };
   }
 
@@ -795,7 +828,6 @@ describe('processGuideInventory', () => {
       isDisciplineGuide: false,
       draft: false,
       isPublished: false,
-      isDisciplineSkill: false,
       ...overrides,
     };
   }
