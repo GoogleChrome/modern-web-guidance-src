@@ -252,6 +252,155 @@ function gradeBadge(grade: AuditGrade): string {
   }
 }
 
+/**
+ * Calibrates an ExpectationIssue grade so that "HIGH" is strictly reserved for defects
+ * that are VERY LIKELY to cause a False Negative or False Positive when converted to a grader script.
+ */
+export function calibrateExpectationIssueGrade(e: ExpectationIssue): AuditGrade {
+  const raw = normalizeGrade(e.grade);
+  const cat = (e.category || '').toUpperCase();
+  const citation = (e.citation || '').toLowerCase();
+  const quote = (e.quoteOrRule || '').toLowerCase();
+  const proof = (e.counterexampleProof || '').toLowerCase();
+  const remedy = (e.remedy || '').toLowerCase();
+  const combined = `${cat} ${quote} ${proof} ${remedy}`;
+
+  // Minor edge-cases, syntax identity variations, or unit preferences -> LOW
+  if (
+    raw === 'LOW' ||
+    /multiple\s+(?:intrinsic\s+)?keywords\s+(?:inside|within)\s+(?:the\s+same\s+|a\s+single\s+)?calc-size/i.test(combined) ||
+    /translate:\s*0['`\s]+instead\s+of|literal\s+string\s+'translate:\s*0'/i.test(combined) ||
+    /rem\/em|user-zoom\s+relative\s+unit/i.test(combined) ||
+    /exact\s+css\.supports\(\)\s+selector\s+literal|over-prescribes\s+the\s+exact\s+css\.supports/i.test(combined)
+  ) {
+    return 'LOW';
+  }
+
+  // Strictly check if this issue is VERY LIKELY to cause a False Negative or False Positive in grader.ts:
+  // 1. Explicit code comment / prose note / meta-grader instruction in expectations.md -> HIGH (FN)
+  const isExplicitCommentOrMetaRule =
+    citation.includes('expectations.md') &&
+    /code\s+comments\s+explicitly\s+state|implementation\s+notes\s+that|guide\s+or\s+code\s+comments|zero-passrate\s+test|force\s+fallback\s+mode|grader\s+authoring\s+instruction/i.test(
+      combined
+    );
+
+  // 2. Direct contradiction of guide.md or hallucinated/unprompted/hardcoded DOM tags in expectations.md -> HIGH (FN)
+  const isDirectContradictionOrHardcodedLock =
+    citation.includes('expectations.md') &&
+    /contradict|overflow:\s*visible.*fallback|hallucinat|absent\s+from\s+guide|logical\s+properties|hardcode.*(?:body|h2|main|task-specific|dom\s+elements)|requiring\s+all\s+three\s+unconditionally|conflicting\s+`?transform`?\s+rules/i.test(
+      combined
+    );
+
+  // 3. Complete omission of the primary core CSS/JS mechanism from expectations.md -> HIGH (FP)
+  const isPrimaryCoreMechanismOmission =
+    /never\s+asserts\s+(?:that\s+target\s+containers\s+declare\s+or\s+compute\s+)?`?overflow:\s*clip`?|never\s+asserts\s+the\s+core\s+css\s+mechanism|:has\(:user-invalid\)/i.test(
+      combined
+    );
+
+  if (
+    isExplicitCommentOrMetaRule ||
+    isDirectContradictionOrHardcodedLock ||
+    isPrimaryCoreMechanismOmission
+  ) {
+    return 'HIGH';
+  }
+
+  // Secondary negative anti-pattern checks (when positive checks already verify the modern feature),
+  // missing @supports/:where() fallback specifics, or mildly narrow phrasing calibrate to MEDIUM.
+  return 'MEDIUM';
+}
+
+/**
+ * Calibrates all issue grades in a CapsuleAuditAssessment and recomputes overallPriority and scores.
+ */
+export function calibrateAssessmentPriorities(
+  a: CapsuleAuditAssessment,
+  scope: AuditScope = 'both'
+): CapsuleAuditAssessment {
+  if (scope !== 'grader' && Array.isArray(a.expectationIssues)) {
+    for (const e of a.expectationIssues) {
+      e.grade = calibrateExpectationIssueGrade(e);
+      e.proposedExpectationDraft = ensureProposedExpectationDraft(e);
+    }
+  }
+  if (scope !== 'expectations' && Array.isArray(a.graderIssues)) {
+    for (const g of a.graderIssues) {
+      g.grade = normalizeGrade(g.grade);
+    }
+  }
+
+  const activeIssues = [
+    ...(scope === 'grader' ? [] : a.expectationIssues || []),
+    ...(scope === 'expectations' ? [] : a.graderIssues || []),
+  ];
+
+  const highCount = activeIssues.filter((i) => i.grade === 'HIGH').length;
+  const medCount = activeIssues.filter((i) => i.grade === 'MEDIUM').length;
+
+  a.overallPriority = highCount > 0 ? 'HIGH' : medCount >= 3 ? 'MEDIUM' : 'LOW';
+
+  if (scope !== 'grader') {
+    const expHigh = (a.expectationIssues || []).filter((e) => e.grade === 'HIGH').length;
+    const expMed = (a.expectationIssues || []).filter((e) => e.grade === 'MEDIUM').length;
+    const expLow = (a.expectationIssues || []).filter((e) => e.grade === 'LOW').length;
+    a.expectationCoverageScore = Math.max(
+      0,
+      Math.min(100, 100 - (expHigh * 14 + expMed * 7 + expLow * 3))
+    );
+  }
+  return a;
+}
+
+export interface PriorityCounts {
+  high: number;
+  medium: number;
+  low: number;
+  total: number;
+}
+
+export function getCapsulePriorityCounts(r: CapsuleAuditResult): PriorityCounts {
+  const scope = r.auditScope || 'both';
+  const a = r.finalAssessment;
+  const issues = [
+    ...(scope === 'grader' ? [] : a.expectationIssues || []),
+    ...(scope === 'expectations' ? [] : a.graderIssues || []),
+  ];
+  const high = issues.filter((i) => normalizeGrade(i.grade) === 'HIGH').length;
+  const medium = issues.filter((i) => normalizeGrade(i.grade) === 'MEDIUM').length;
+  const low = issues.filter((i) => normalizeGrade(i.grade) === 'LOW').length;
+  return { high, medium, low, total: issues.length };
+}
+
+function renderPriorityBreakdownMd(r: CapsuleAuditResult): string {
+  const c = getCapsulePriorityCounts(r);
+  return `🔴 **${c.high}** High · 🟠 **${c.medium}** Med · 🟢 **${c.low}** Low`;
+}
+
+function renderPriorityBreakdownHtml(r: CapsuleAuditResult): string {
+  const c = getCapsulePriorityCounts(r);
+  return `<div class="priority-breakdown">
+    <span class="badge ${c.high > 0 ? 'badge-high' : 'badge-zero'}" title="${c.high} HIGH priority issue(s)">🔴 HIGH: ${c.high}</span>
+    <span class="badge ${c.medium > 0 ? 'badge-medium' : 'badge-zero'}" title="${c.medium} MEDIUM priority issue(s)">🟠 MED: ${c.medium}</span>
+    <span class="badge ${c.low > 0 ? 'badge-low' : 'badge-zero'}" title="${c.low} LOW priority issue(s)">🟢 LOW: ${c.low}</span>
+  </div>`;
+}
+
+function sortCapsulesByPriorityCounts(results: CapsuleAuditResult[]): CapsuleAuditResult[] {
+  const gradeOrder: Record<AuditGrade, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+  return [...results].sort((a, b) => {
+    const ca = getCapsulePriorityCounts(a);
+    const cb = getCapsulePriorityCounts(b);
+    if (cb.high !== ca.high) return cb.high - ca.high;
+    if (cb.medium !== ca.medium) return cb.medium - ca.medium;
+    if (cb.low !== ca.low) return cb.low - ca.low;
+    const pDiff =
+      gradeOrder[a.finalAssessment.overallPriority] -
+      gradeOrder[b.finalAssessment.overallPriority];
+    if (pDiff !== 0) return pDiff;
+    return a.finalAssessment.expectationCoverageScore - b.finalAssessment.expectationCoverageScore;
+  });
+}
+
 function escapeMdTable(text: string): string {
   return (text || '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
 }
@@ -264,19 +413,26 @@ export function generateSummaryMarkdown(
   runId: string,
   outputDir = path.join(rootDir, 'harness', 'results', 'eval-audits', runId)
 ): string {
-  const gradeOrder: Record<AuditGrade, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-  const sorted = [...results].sort((a, b) => {
-    const pDiff =
-      gradeOrder[a.finalAssessment.overallPriority] -
-      gradeOrder[b.finalAssessment.overallPriority];
-    if (pDiff !== 0) return pDiff;
-    return a.finalAssessment.graderFidelityScore - b.finalAssessment.graderFidelityScore;
-  });
+  for (const r of results) {
+    calibrateAssessmentPriorities(r.finalAssessment, r.auditScope || 'both');
+  }
+  const sorted = sortCapsulesByPriorityCounts(results);
 
   const total = results.length;
   const highCount = results.filter((r) => r.finalAssessment.overallPriority === 'HIGH').length;
   const medCount = results.filter((r) => r.finalAssessment.overallPriority === 'MEDIUM').length;
   const lowCount = results.filter((r) => r.finalAssessment.overallPriority === 'LOW').length;
+
+  const totalIssueCounts = results.reduce(
+    (acc, r) => {
+      const c = getCapsulePriorityCounts(r);
+      acc.high += c.high;
+      acc.medium += c.medium;
+      acc.low += c.low;
+      return acc;
+    },
+    { high: 0, medium: 0, low: 0 }
+  );
 
   const legacyCount = results.filter((r) =>
     r.guideFormat.startsWith('legacy - top level guide')
@@ -311,7 +467,8 @@ export function generateSummaryMarkdown(
 
 | Metric | Value |
 |---|---|
-| **Overall Priority Breakdown** | 🔴 **HIGH**: ${highCount} &nbsp;&#124;&nbsp; 🟠 **MEDIUM**: ${medCount} &nbsp;&#124;&nbsp; 🟢 **LOW**: ${lowCount} |
+| **Capsules by Highest Priority** | 🔴 **HIGH**: ${highCount} &nbsp;&#124;&nbsp; 🟠 **MEDIUM**: ${medCount} &nbsp;&#124;&nbsp; 🟢 **LOW**: ${lowCount} |
+| **Total Issues by Priority** | 🔴 **HIGH**: ${totalIssueCounts.high} &nbsp;&#124;&nbsp; 🟠 **MEDIUM**: ${totalIssueCounts.medium} &nbsp;&#124;&nbsp; 🟢 **LOW**: ${totalIssueCounts.low} |
 | **Guide Formats Audited** | \`legacy - top level guide\`: ${legacyCount} &nbsp;&#124;&nbsp; \`new - low level guide\`: ${newCount} |
 | **Average Expectation Coverage Score** | **${avgExpScore} / 100** |
 | **Average Grader Fidelity Score** | **${avgGraderScore} / 100** |
@@ -321,7 +478,7 @@ export function generateSummaryMarkdown(
 
 ## 2. Priority Triage Table (Sorted HIGH $\\rightarrow$ LOW Priority)
 
-| Guide Capsule & Source Files | Guide Format | Overall Priority | Exp Coverage | Grader Fidelity | Verification | Defects (Exp / Grader) | Executive Summary |
+| Guide Capsule & Source Files | Guide Format | Priority Breakdown (Per Guide) | Exp Coverage | Grader Fidelity | Verification | Defects (Exp / Grader) | Executive Summary |
 |---|---|---|---|---|---|---|---|
 `;
 
@@ -335,7 +492,7 @@ export function generateSummaryMarkdown(
     const sourceLinksMd = `[guide](${links.guideRel}) · [expectations](${links.expectationsRel}) · [task](${links.taskRel}) · [grader](${links.graderRel})`;
     const expScoreStr = scope === 'grader' ? 'N/A' : `${a.expectationCoverageScore}/100`;
     const graderScoreStr = scope === 'expectations' ? 'N/A' : `${a.graderFidelityScore}/100`;
-    md += `| [\`${r.capsuleId}\`](#${r.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()})<br>${sourceLinksMd} | \`${r.guideFormat}\` | ${gradeBadge(a.overallPriority)} | ${expScoreStr} | ${graderScoreStr} | ${verifText} | ${a.expectationIssues.length} / ${a.graderIssues.length} | ${escapeMdTable(a.executiveSummary)} |\n`;
+    md += `| [\`${r.capsuleId}\`](#${r.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()})<br>${sourceLinksMd} | \`${r.guideFormat}\` | ${renderPriorityBreakdownMd(r)} | ${expScoreStr} | ${graderScoreStr} | ${verifText} | ${a.expectationIssues.length} / ${a.graderIssues.length} | ${escapeMdTable(a.executiveSummary)} |\n`;
   }
 
   md += `\n---\n\n## 3. Detailed Evidence-First Capsule Assessments\n\n`;
@@ -352,7 +509,7 @@ export function generateSummaryMarkdown(
     md += `### <a id="${anchor}"></a>\`${r.capsuleId}\`
 - **Guide format**: \`${r.guideFormat}\` &nbsp;|&nbsp; **Audit Scope**: \`${scope}\`
 - **Source Files**: [\`guide.md\`](${links.guideRel}) &nbsp;|&nbsp; [\`expectations.md\`](${links.expectationsRel}) &nbsp;|&nbsp; [\`task.md\`](${links.taskRel}) &nbsp;|&nbsp; [\`grader.ts\`](${links.graderRel})
-- **Overall Priority**: ${gradeBadge(a.overallPriority)} (Expectations Coverage: **${scope === 'grader' ? 'N/A' : `${a.expectationCoverageScore}/100`}** | Grader Fidelity: **${scope === 'expectations' ? 'N/A' : `${a.graderFidelityScore}/100`}**)
+- **Priority Breakdown**: ${renderPriorityBreakdownMd(r)} (Highest: ${gradeBadge(a.overallPriority)} | Expectations Coverage: **${scope === 'grader' ? 'N/A' : `${a.expectationCoverageScore}/100`}** | Grader Fidelity: **${scope === 'expectations' ? 'N/A' : `${a.graderFidelityScore}/100`}**)
 - **Verification**: ${consensusText}
 - **Summary**: ${a.executiveSummary}
 
@@ -602,7 +759,7 @@ function renderCapsuleCardHtml(
       <div class="capsule-title-group">
         <span class="capsule-id">${escapeHtml(r.capsuleId)}</span>
         <span class="format-badge format-${formatKey}">${escapeHtml(r.guideFormat)}</span>
-        ${htmlGradeBadge(a.overallPriority)}
+        ${renderPriorityBreakdownHtml(r)}
       </div>
       <div class="capsule-metrics-group">
         <span class="metric-chip">Exp Coverage: ${htmlScorePill(a.expectationCoverageScore, scope === 'grader')}</span>
@@ -852,6 +1009,12 @@ const SHARED_HTML_STYLES = `
     font-weight: 700;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
   }
+  .priority-breakdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
   .badge {
     display: inline-flex;
     align-items: center;
@@ -876,6 +1039,12 @@ const SHARED_HTML_STYLES = `
     background: var(--low-bg);
     color: var(--low-text);
     border: 1px solid var(--low-border);
+  }
+  .badge-zero {
+    background: #f8fafc;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
+    font-weight: 600;
   }
   .format-badge {
     display: inline-block;
@@ -1227,6 +1396,7 @@ export function generateCapsuleHtml(
   runId: string,
   itemsDir = path.join(rootDir, 'harness', 'results', 'eval-audits', runId, 'items')
 ): string {
+  calibrateAssessmentPriorities(result.finalAssessment, result.auditScope || 'both');
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1267,19 +1437,26 @@ export function generateSummaryHtml(
   runId: string,
   outputDir = path.join(rootDir, 'harness', 'results', 'eval-audits', runId)
 ): string {
-  const gradeOrder: Record<AuditGrade, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-  const sorted = [...results].sort((a, b) => {
-    const pDiff =
-      gradeOrder[a.finalAssessment.overallPriority] -
-      gradeOrder[b.finalAssessment.overallPriority];
-    if (pDiff !== 0) return pDiff;
-    return a.finalAssessment.graderFidelityScore - b.finalAssessment.graderFidelityScore;
-  });
+  for (const r of results) {
+    calibrateAssessmentPriorities(r.finalAssessment, r.auditScope || 'both');
+  }
+  const sorted = sortCapsulesByPriorityCounts(results);
 
   const total = results.length;
   const highCount = results.filter((r) => r.finalAssessment.overallPriority === 'HIGH').length;
   const medCount = results.filter((r) => r.finalAssessment.overallPriority === 'MEDIUM').length;
   const lowCount = results.filter((r) => r.finalAssessment.overallPriority === 'LOW').length;
+
+  const totalIssueCounts = results.reduce(
+    (acc, r) => {
+      const c = getCapsulePriorityCounts(r);
+      acc.high += c.high;
+      acc.medium += c.medium;
+      acc.low += c.low;
+      return acc;
+    },
+    { high: 0, medium: 0, low: 0 }
+  );
 
   const legacyCount = results.filter((r) =>
     r.guideFormat.startsWith('legacy - top level guide')
@@ -1324,7 +1501,7 @@ export function generateSummaryHtml(
           <div style="margin-top:5px"><a href="items/${slug}.html" style="font-size:11.5px;color:#64748b;text-decoration:none">Standalone report ↗</a></div>
         </td>
         <td><span class="format-badge format-${formatKey}">${escapeHtml(r.guideFormat)}</span></td>
-        <td>${htmlGradeBadge(a.overallPriority)}</td>
+        <td>${renderPriorityBreakdownHtml(r)}</td>
         <td>${htmlScorePill(a.expectationCoverageScore, scope === 'grader')}</td>
         <td>${htmlScorePill(a.graderFidelityScore, scope === 'expectations')}</td>
         <td>${verifHtml}</td>
@@ -1366,13 +1543,13 @@ export function generateSummaryHtml(
 
     <section class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-label">Overall Priority Breakdown</div>
+        <div class="kpi-label">Capsules by Highest Priority</div>
         <div class="kpi-value">
           <span class="badge badge-high">🔴 HIGH: ${highCount}</span>
           <span class="badge badge-medium">🟠 MED: ${medCount}</span>
           <span class="badge badge-low">🟢 LOW: ${lowCount}</span>
         </div>
-        <div class="kpi-sub">${total} total guide evaluation capsule(s)</div>
+        <div class="kpi-sub">Total Issues: 🔴 ${totalIssueCounts.high} High · 🟠 ${totalIssueCounts.medium} Med · 🟢 ${totalIssueCounts.low} Low</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Guide Formats Audited</div>
@@ -1401,7 +1578,7 @@ export function generateSummaryHtml(
 
     <section class="section-card">
       <div class="section-header">
-        <h2>Priority Triage Table (Sorted HIGH → LOW Priority)</h2>
+        <h2>Priority Triage Table (Sorted by High → Medium → Low Issue Counts)</h2>
         <span id="visible-count" style="font-size:13px;color:var(--text-muted);font-weight:600">Showing ${total} of ${total} capsules</span>
       </div>
 
@@ -1429,7 +1606,7 @@ export function generateSummaryHtml(
             <tr>
               <th>Guide Capsule &amp; Source Files</th>
               <th>Guide Format</th>
-              <th>Priority</th>
+              <th>Priority (Per-Guide Breakdown)</th>
               <th>Exp Coverage</th>
               <th>Grader Fidelity</th>
               <th>Verification</th>
@@ -1522,13 +1699,9 @@ export function writeAuditReports(
   const itemsDir = path.join(outputDir, 'items');
   fs.mkdirSync(itemsDir, { recursive: true });
 
-  // Ensure every expectation issue has a proposedExpectationDraft populated
+  // Calibrate issue severities and ensure proposedExpectationDraft is populated
   for (const r of results) {
-    if (r.finalAssessment?.expectationIssues) {
-      for (const e of r.finalAssessment.expectationIssues) {
-        e.proposedExpectationDraft = ensureProposedExpectationDraft(e);
-      }
-    }
+    calibrateAssessmentPriorities(r.finalAssessment, r.auditScope || 'both');
   }
 
   const summaryPath = path.join(outputDir, 'SUMMARY_AUDIT_EVALS.md');
@@ -1548,7 +1721,9 @@ export function writeAuditReports(
 
   for (const r of results) {
     const slug = r.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '__');
+    const itemJsonPath = path.join(itemsDir, `${slug}.json`);
     const itemHtmlPath = path.join(itemsDir, `${slug}.html`);
+    fs.writeFileSync(itemJsonPath, JSON.stringify(r, null, 2), 'utf8');
     fs.writeFileSync(itemHtmlPath, generateCapsuleHtml(r, runId, itemsDir), 'utf8');
   }
 

@@ -17,7 +17,9 @@ import {
 } from './audit-evals-prompts.ts';
 import {
   buildDeterministicBaselineAssessment,
+  calibrateAssessmentPriorities,
   ensureProposedExpectationDraft,
+  getCapsulePriorityCounts,
   normalizeGrade,
   writeAuditReports,
 } from './lib/audit-report-generator.ts';
@@ -99,7 +101,7 @@ function sanitizeAssessment(
   scope: AuditScope = 'both'
 ): CapsuleAuditAssessment {
   if (!raw || typeof raw !== 'object') {
-    return fallback;
+    return calibrateAssessmentPriorities(fallback, scope);
   }
 
   const expectationIssues: ExpectationIssue[] =
@@ -151,14 +153,17 @@ function sanitizeAssessment(
         ? Math.max(0, Math.min(100, Math.round(raw.graderFidelityScore)))
         : fallback.graderFidelityScore;
 
-  return {
-    overallPriority,
-    expectationCoverageScore,
-    graderFidelityScore,
-    expectationIssues,
-    graderIssues,
-    executiveSummary: raw.executiveSummary || fallback.executiveSummary,
-  };
+  return calibrateAssessmentPriorities(
+    {
+      overallPriority,
+      expectationCoverageScore,
+      graderFidelityScore,
+      expectationIssues,
+      graderIssues,
+      executiveSummary: raw.executiveSummary || fallback.executiveSummary,
+    },
+    scope
+  );
 }
 
 /**
@@ -456,9 +461,14 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
         const cached = JSON.parse(
           fs.readFileSync(checkpointFile, 'utf8')
         ) as CapsuleAuditResult;
+        cached.finalAssessment = calibrateAssessmentPriorities(
+          cached.finalAssessment,
+          cached.auditScope || scope
+        );
+        const pCounts = getCapsulePriorityCounts(cached);
         completedResults.push(cached);
         console.log(
-          `  ⏭️  [Resumed] ${cCyan(capsule.capsuleId.padEnd(42))} Priority: ${cached.finalAssessment.overallPriority}`
+          `  ⏭️  [Resumed] ${cCyan(capsule.capsuleId.padEnd(42))} Priority: ${cached.finalAssessment.overallPriority.padEnd(6)} (HIGH:${pCounts.high} MED:${pCounts.medium} LOW:${pCounts.low})`
         );
         continue;
       } catch {

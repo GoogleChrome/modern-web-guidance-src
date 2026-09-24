@@ -246,8 +246,17 @@ Read \`capsule-context.md\` carefully.
 
 ${scopeInstruction}
 
-### Strict Rules for Grading & Wording
-1. **Grades**: Use ONLY \`"HIGH"\`, \`"MEDIUM"\`, or \`"LOW"\` for \`overallPriority\` and issue \`grade\`. NEVER use \`"CRITICAL"\`.
+### Strict Rules for Grading & Wording (Calibrated Severity Thresholds)
+1. **Grades (\`"HIGH"\`, \`"MEDIUM"\`, or \`"LOW"\` ONLY — NEVER \`"CRITICAL"\`)**:
+   - **\`"HIGH"\` (Strict Threshold — Reserve ONLY for issues VERY LIKELY to cause a False Negative or False Positive when converted to a \`grader.ts\` script)**:
+     - **False Negative Trigger**: An expectation in \`expectations.md\` explicitly demands code comments/prose notes (\`"The code comments state..."\`, \`"The implementation notes that..."\`), meta-grader instructions (\`"Create a zero-passrate test..."\`), directly contradicts \`guide.md\`, hallucinates an unprompted requirement absent from \`guide.md\`, or hardcodes site-specific DOM selectors/all-at-once showcase patterns that will cause a generated \`grader.ts\` to fail valid implementations.
+     - **False Positive Trigger**: \`expectations.md\` completely omits the primary core CSS/JS feature of \`guide.md\` (e.g. never asserting \`overflow: clip\` in an \`overflow: clip\` guide, or never asserting \`:has(:user-invalid)\` in a parent validation guide), or \`grader.ts\` uses a superficial check that passes broken code.
+   - **\`"MEDIUM"\` (Standard Completeness, Negative-Guard & Fallback Gaps)**:
+     - Missing negative requirements (\`DO NOT\` anti-patterns from \`guide.md\`) when \`expectations.md\` already has positive assertions for the modern feature (since the positive assertion already catches most non-compliant code, missing the secondary negative guard is \`"MEDIUM"\`, NOT \`"HIGH"\`).
+     - Missing progressive enhancement / \`@supports\` / \`:where()\` fallback specifics, missing secondary properties (e.g. fluid padding when fluid font-size is already tested), or mildly narrow wording that matches \`guide.md\`'s primary example without contradicting it.
+   - **\`"LOW"\` (Minor Specificity, Edge-Case & Polish)**:
+     - Minor edge-case rules (e.g. mixing multiple basis keywords inside \`calc-size()\`, unit preference nuances like \`rem\` vs \`px\`, or minor phrasing tightness).
+   - **Guide \`overallPriority\`**: Set to \`"HIGH"\` ONLY if the capsule has at least one genuine \`"HIGH"\` defect; otherwise set to \`"MEDIUM"\` (if it has \`"MEDIUM"\` defects) or \`"LOW"\`.
 2. **Ample Evidence, Very Tight Wording**:
    - \`citation\`: Exact filename and line numbers (e.g. \`"grader.ts:106-107"\` or \`"expectations.md:2"\` or \`"guide.md:33"\`).
    - \`quoteOrRule\` / \`offendingCode\`: Exact verbatim quote or code snippet from the file.
@@ -307,8 +316,10 @@ Critically verify every claim in \`${assessmentJsonFilename}\`:
 3. **Verify Evidence, Counterexample Proofs & Proposed Expectation Drafts (\`WEAK_COUNTEREXAMPLE_PROOF\`)**:
    - Does every issue have an exact line citation, verbatim snippet, and a concrete 1-sentence counterexample proof?
    - Does every \`expectationIssue\` include a clean, copy-paste-ready, **100% site-agnostic** Markdown \`proposedExpectationDraft\` that satisfies \`CONTEXT.md\`'s "Writing expectations.md" criteria (independently testable, Playwright-verifiable specificity, positive/negative coverage, and NO hardcoded \`task.md\` selectors)?
-4. **Verify Grades & Tightness (\`WRONG_GRADE_OR_CITATION\` / \`WORDING_TOO_VERBOSE\`)**:
-   - Grades must strictly be \`HIGH\`, \`MEDIUM\`, or \`LOW\` (never \`CRITICAL\`). Line numbers must match \`capsule-context.md\`. Wording must be very tight.
+4. **Verify Calibrated Grades & Tightness (\`WRONG_GRADE_OR_CITATION\` / \`WORDING_TOO_VERBOSE\`)**:
+   - Grades must strictly be \`HIGH\`, \`MEDIUM\`, or \`LOW\` (never \`CRITICAL\`).
+   - **Guard Against \`HIGH\` Grade Inflation**: \`HIGH\` is strictly reserved for defects that are **very likely to cause a False Negative or False Positive when converted to a \`grader.ts\` script** (e.g., demanding untestable code comments/prose notes, directly contradicting \`guide.md\`, hardcoding unprompted DOM tags/selectors, or completely omitting the primary core CSS/JS feature). Missing secondary negative requirements (\`DO NOT\` checks when positive checks already assert the modern feature), missing \`@supports\`/\`:where()\` fallback specifics, or mildly narrow positive wording must be graded \`MEDIUM\` (or \`LOW\` for minor edge-case/unit nuances).
+   - Line numbers must match \`capsule-context.md\`. Wording must be very tight.
 
 ### Decision Rule
 - If the assessment in \`${assessmentJsonFilename}\` is accurate, complete, backed by solid counterexample proofs, and free of hallucinated defects, set \`"agreed": true\` and \`"critiques": []\`.
