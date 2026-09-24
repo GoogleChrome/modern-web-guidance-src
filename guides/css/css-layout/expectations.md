@@ -5,7 +5,7 @@
 - The implementation MUST use an auto margin (such as `margin-inline-start: auto`) to push a single flex item to the end of the main axis rather than `justify-self`.
 - The implementation MUST use safe alignment (such as `align-items: safe center`) on flex containers whose content can exceed the container size.
 - The implementation MUST set `min-inline-size: 0` (or `min-width: 0`) on flex items that contain long unbreakable content such as URLs or code strings.
-- The implementation MUST NOT declare both `flex-basis` and `inline-size` / `width` on the same flex item.
+- The implementation MUST NOT declare both a non-auto `flex-basis` and `inline-size` / `width` on the same flex item.
 - The implementation MUST NOT use `order` or a `*-reverse` value of `flex-direction` to reorder interactive content away from its DOM order.
 - The implementation MUST use `display: grid` for two-dimensional layouts that define both rows and columns.
 - The implementation MUST use `grid-template-areas` with named regions for page-level shell layouts, and assign children to those regions via `grid-area`.
