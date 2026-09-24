@@ -1,78 +1,56 @@
-import type { GuideContext, RunContext } from './compare-evals.ts';
+import type { GuideContext, RunContext, TaggedStep } from './compare-evals.ts';
 
-const MAX_GUIDE_PROMPT_CHARS = 8000;
-const MAX_EXPECTATIONS_PROMPT_CHARS = 6000;
-const MAX_GRADER_PROMPT_CHARS = 20000;
-const MAX_DIFF_PROMPT_CHARS = 40000;
+export const MAX_GUIDE_PROMPT_CHARS = 8000;
+export const MAX_EXPECTATIONS_PROMPT_CHARS = 6000;
+export const MAX_GRADER_PROMPT_CHARS = 12000;
+export const MAX_DIFF_PROMPT_CHARS = 15000;
+export const MAX_INLINE_STEPS_PER_RUN = 80;
+export const MAX_TOTAL_COMBINED_PROMPT_BYTES = 92000;
+const MAX_PROMPT_FIELD_CHARS = 1500;
+const MAX_FAILED_TRACES_CHARS = 2500;
 
 function truncateAtLineBoundary(text: string, limit: number): string {
   if (!text || text.length <= limit) return text;
   const truncated = text.slice(0, limit);
   const lastNewline = truncated.lastIndexOf('\n');
   const safeCut = lastNewline > limit * 0.8 ? truncated.slice(0, lastNewline) : truncated;
-  return `${safeCut}\n\n[... Truncated for prompt length budget (${text.length - safeCut.length} characters omitted) ...]`;
+  return `${safeCut}\n\n[... Truncated for prompt length budget (${text.length - safeCut.length} characters omitted; full text in comparison_context.md) ...]`;
 }
 
-export function getCompliancePrompts(
-  guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  statusA: string,
-  statusB: string
-): { systemInstruction: string; prompt: string } {
-  const systemInstruction = `You are a specialized Web Guidance Compliance Auditor. Your task is to evaluate whether two agent runs (Run A vs Run B) successfully discovered, retrieved, and adhered to the MANDATORY requirements in guide.md and expectations.md.
+export function formatCappedStepsOverview(
+  steps: TaggedStep[],
+  maxSteps = MAX_INLINE_STEPS_PER_RUN
+): string {
+  const nonNoise = steps.filter(s => s.category !== 'incidental_noise');
+  const noise = steps.filter(s => s.category === 'incidental_noise');
 
-Specifically analyze:
-1. **Starting Point & Eval Prompt Audit**: Inspect the initial eval prompt given to Run A vs Run B (Initial Eval / Task Prompts). Verify if both runs received the exact same initial instructions. If the initial prompts are identical, state clearly that both runs started from an identical prompt, so any divergence in behavior is due to agent decision-making or execution timeline differences (such as searching/retrieving the guide before vs after writing code).
-2. **Chronological Execution & Sequencing Audit**: Check the step numbers and order of events in the Chronological Milestone Timeline. Did the agent search for and retrieve the mandatory guide *before* writing or modifying code? If an agent wrote code first (e.g. code mutation) and only searched for or retrieved the guide later (or not at all), flag this as a critical sequencing failure ("Premature coding before guide retrieval").
-3. **Skill Discovery & Search**: Compare search queries used by Run A vs Run B. Did the search query accurately surface the guide, or did it miss due to vague/generic phrasing?
-4. **Guide Retrieval & Reading**: Did the agent actually retrieve guide.md before implementing code changes?
-5. **Mandatory Rule Adoption**: Compare agent thinking/reasoning steps against MANDATORY guide requirements. Did an agent explicitly ignore, bypass, or misunderstand a mandatory rule (e.g. opting for JS instead of CSS, omitting fallback, missing required HTML attributes)?
-6. **Compliance Discrepancy**: Explain how guide compliance, step sequencing, and rule adoption directly account for the difference in score between Run A (${ctxA.score}%) and Run B (${ctxB.score}%).`;
+  let selected: TaggedStep[];
+  let omittedNoiseCount = 0;
 
-  const timelineA = ctxA.preprocessed.taggedSteps.filter(s => s.category !== 'incidental_noise').map(s => `Step ${s.stepNumber}: [${s.category}] ${s.actionName} - ${s.thought?.slice(0, 80)}`);
-  const timelineB = ctxB.preprocessed.taggedSteps.filter(s => s.category !== 'incidental_noise').map(s => `Step ${s.stepNumber}: [${s.category}] ${s.actionName} - ${s.thought?.slice(0, 80)}`);
+  if (steps.length <= maxSteps) {
+    selected = steps;
+  } else if (nonNoise.length >= maxSteps) {
+    selected = nonNoise.slice(0, maxSteps);
+    omittedNoiseCount = noise.length;
+  } else {
+    const allowedNoiseCount = maxSteps - nonNoise.length;
+    const selectedNoise = noise.slice(0, allowedNoiseCount);
+    omittedNoiseCount = noise.length - selectedNoise.length;
+    selected = [...nonNoise, ...selectedNoise].sort((a, b) => a.stepNumber - b.stepNumber);
+  }
 
-  const prompt = `### Initial Eval / Task Prompts (Starting Points)
-- Run A Initial Prompt: """${ctxA.initialPrompt}"""
-- Run B Initial Prompt: """${ctxB.initialPrompt}"""
+  const omittedTotal = steps.length - selected.length;
+  const lines = selected.map(
+    s => `- Step ${s.stepNumber} [${s.category}] ${s.actionName || 'action'}: ${(s.thought || '').replace(/\s+/g, ' ').slice(0, 65)}`
+  );
 
-### Task Prompt
-"""
-${guideCtx.taskPrompt}
-"""
-
-### Reference Guidance (guide.md)
-"""
-${truncateAtLineBoundary(guideCtx.guideContent, MAX_GUIDE_PROMPT_CHARS)}
-"""
-
-### Expected Outcomes (expectations.md)
-"""
-${truncateAtLineBoundary(guideCtx.expectationsContent, MAX_EXPECTATIONS_PROMPT_CHARS)}
-"""
-
-### Run A (${statusA} - Score: ${ctxA.score}%)
-- Chronological Milestone Timeline:
-${JSON.stringify(timelineA, null, 2)}
-- Search Queries: ${JSON.stringify(ctxA.preprocessed.searchQueries)}
-- Retrieved Guide IDs: ${JSON.stringify(ctxA.preprocessed.retrievedGuideIds)}
-- Key Adopted Thoughts / Rules:
-${JSON.stringify(ctxA.preprocessed.mandatoryRulesAdopted, null, 2)}
-
-### Run B (${statusB} - Score: ${ctxB.score}%)
-- Chronological Milestone Timeline:
-${JSON.stringify(timelineB, null, 2)}
-- Search Queries: ${JSON.stringify(ctxB.preprocessed.searchQueries)}
-- Retrieved Guide IDs: ${JSON.stringify(ctxB.preprocessed.retrievedGuideIds)}
-- Key Adopted Thoughts / Rules:
-${JSON.stringify(ctxB.preprocessed.mandatoryRulesAdopted, null, 2)}
-`;
-
-  return { systemInstruction, prompt };
+  if (omittedTotal > 0) {
+    lines.push(`[... ${omittedTotal} steps omitted from inline overview (${omittedNoiseCount} incidental_noise steps); see full trajectory in comparison_context.md ...]`);
+  }
+  return lines.join('\n');
 }
 
-export function getCodeAndFrictionPrompts(
+export function getComparisonPrompts(
   guideCtx: GuideContext,
   ctxA: RunContext,
   ctxB: RunContext,
@@ -82,97 +60,28 @@ export function getCodeAndFrictionPrompts(
   statusA: string,
   statusB: string
 ): { systemInstruction: string; prompt: string } {
-  const systemInstruction = `You are a Code & Execution Diagnostic Sub-Agent. Your task is to identify the precise technical reason why Run A failed Playwright tests that Run B passed (or vice versa), using factual evidence from starting prompts, execution sequencing, grader code, error traces, and exact code diffs.
+  const systemInstruction = `You are an expert Lead Diagnostic Engineer performing a variance diagnosis between two AI agent evaluation runs (Run A vs Run B).
 
-Mandatory Audit Steps:
-1. **Starting Point & Launch Prompt Audit**: Inspect the initial eval prompt (Initial Eval / Task Prompts). If both runs received identical starting instructions, do NOT claim the prompt was defective, truncated, or malformed. State clearly that both runs started from identical instructions.
-2. **Execution Timeline & Sequencing Check**: Check the order of tool executions in Tagged Trajectory Steps Overview. Did the failing agent write or modify code *before* retrieving the required guide? Note if premature coding caused the agent to miss required identifiers, functions, or DOM structures.
-3. **Grader & Error Trace Check**: Inspect \`grader.ts\` and the exact Playwright error logs. Did the test fail due to a strict locator mismatch (e.g. querying \`button\` when the agent created \`<a>\`), timing issues, missing required CSS rules, or missing functionality? State the exact line of \`grader.ts\` and the failure message.
-4. **Base App Diff Audit**: Compare what Run A and Run B modified relative to the Base App. Do NOT attribute missing/extra styles in Run A to "corrupted code" or "botched search/replace" unless Run A actually deleted existing lines that were present in the Base App. Distinguish carefully between code deleted by Run A vs new code added exclusively by Run B.
-5. **Execution vs. Trajectory Status**: Check whether the file modification tool calls (\`write_file\`, \`multi_replace_file_content\`, etc.) succeeded or returned errors in the trajectory. Do not claim the agent hallucinated or botched an edit if the tool reported \`status: success\` and produced valid HTML/CSS/JS.
-6. **Friction Assessment**: Only cite context noise or retries as a contributing factor if trajectory logs explicitly show the model losing track of instructions, entering error recovery loops, or making blind retries. If the agent completed its edits cleanly on the first try but chose an incompatible HTML element (like \`<a>\` instead of \`<button>\`), state clearly that this was a locator alignment/implementation choice rather than context loss.`;
+### Execution & Orchestration Protocol
+1. **Subagent Delegation (When Available)**:
+   When subagent tools are available in your runtime, use your subagents to independently audit the two orthogonal diagnostic axes in parallel before synthesizing:
+   - **Audit Track 1 — Guide Compliance & Chronological Sequencing**:
+     - Verify whether Run A and Run B received identical initial evaluation prompts. If identical, state clearly that both runs started from an identical prompt.
+     - Check step numbers and chronological order: did the agent search for and retrieve \`guide.md\` *before* mutating code (\`code_mutation\`)? Flag any code edits made prior to guide retrieval as "Premature coding before guide retrieval".
+     - Compare search queries, retrieved guide IDs, and adoption of MANDATORY requirements from \`guide.md\` and \`expectations.md\`.
+   - **Audit Track 2 — Code Diffs, Grader Alignment & Execution Friction**:
+     - Inspect \`grader.ts\` and exact Playwright failure traces/locations to pinpoint the exact locator, DOM structure, CSS rule, or timing mismatch.
+     - Compare Base App vs Run A and Base App vs Run B diffs. Distinguish between existing Base App lines deleted by a run vs new lines added exclusively by the other run.
+     - Check trajectory tool outcomes (\`status: success\` vs \`status: error\`) and error retry loops. Only cite context noise or tool friction if trajectory logs show actual errors or blind retries.
+   If subagents are unavailable, execute both audit tracks systematically yourself and synthesize the results.
 
-  const failedTracesA = (ctxA.resultsJson || []).filter((c: any) => !c.passed).map((c: any) => ({
-    assertion: c.message,
-    location: c.location ? `Line ${c.location.line}` : 'Unknown',
-    errors: c.errors || ['Unknown error']
-  }));
+2. **Strict Payload-Only Constraint (MANDATORY)**:
+   - Diagnose **strictly** from the provided prompt payload and the uncapped reference files written inside your current isolated comparison workspace (\`comparison_context.md\`, \`guide.md\`, \`expectations.md\`, \`grader.ts\`, \`diff_base_vs_a.patch\`, \`diff_base_vs_b.patch\`, \`diff_a_vs_b.patch\`, \`run_a_trajectory.json\`, \`run_b_trajectory.json\`).
+   - **DO NOT** read, search, or inspect the main repository (\`guides/\`, \`tasks/\`, \`harness/\`, \`base-apps/\`, etc.) or run repository-wide search tools outside your current working directory. Never confuse current repository \`HEAD\` or live guides with what Run A and Run B actually produced.
 
-  const failedTracesB = (ctxB.resultsJson || []).filter((c: any) => !c.passed).map((c: any) => ({
-    assertion: c.message,
-    location: c.location ? `Line ${c.location.line}` : 'Unknown',
-    errors: c.errors || ['Unknown error']
-  }));
-
-  const prompt = `### Initial Eval / Task Prompts (Starting Points)
-- Run A Initial Prompt: """${ctxA.initialPrompt}"""
-- Run B Initial Prompt: """${ctxB.initialPrompt}"""
-
-### Validation Logic (grader.ts)
-"""
-${truncateAtLineBoundary(guideCtx.graderContent, MAX_GRADER_PROMPT_CHARS)}
-"""
-
-### Run A (${statusA} - Score: ${ctxA.score}%)
-- Dir: ${ctxA.dir}
-- Passed Assertions: ${JSON.stringify((ctxA.resultsJson || []).filter((c: any) => c.passed).map((c: any) => c.message))}
-- Failed Test Traces:
-${JSON.stringify(failedTracesA, null, 2)}
-- Trajectory Tagged Steps Summary:
-  - Code Mutations: ${ctxA.preprocessed.codeMutationCount}
-  - Context Noise Steps: ${ctxA.preprocessed.noiseCount}
-  - Error/Retry Loops: ${ctxA.preprocessed.errorLoopCount}
-
-### Run B (${statusB} - Score: ${ctxB.score}%)
-- Dir: ${ctxB.dir}
-- Passed Assertions: ${JSON.stringify((ctxB.resultsJson || []).filter((c: any) => c.passed).map((c: any) => c.message))}
-- Failed Test Traces:
-${JSON.stringify(failedTracesB, null, 2)}
-- Trajectory Tagged Steps Summary:
-  - Code Mutations: ${ctxB.preprocessed.codeMutationCount}
-  - Context Noise Steps: ${ctxB.preprocessed.noiseCount}
-  - Error/Retry Loops: ${ctxB.preprocessed.errorLoopCount}
-
-### Code Diffs (Unified Diff Format)
-
-#### Diff 1: Base App vs Run A Output
-"""
-${truncateAtLineBoundary(diffBaseVsA, MAX_DIFF_PROMPT_CHARS)}
-"""
-
-#### Diff 2: Base App vs Run B Output
-"""
-${truncateAtLineBoundary(diffBaseVsB, MAX_DIFF_PROMPT_CHARS)}
-"""
-
-#### Diff 3: Run A Output vs Run B Output
-"""
-${truncateAtLineBoundary(diffAvsB, MAX_DIFF_PROMPT_CHARS)}
-"""
-
-### Tagged Trajectory Steps Overview
-#### Run A:
-${JSON.stringify(ctxA.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, thought: s.thought?.slice(0, 100) })), null, 2)}
-
-#### Run B:
-${JSON.stringify(ctxB.preprocessed.taggedSteps.map(s => ({ step: s.stepNumber, cat: s.category, action: s.actionName, thought: s.thought?.slice(0, 100) })), null, 2)}
-`;
-
-  return { systemInstruction, prompt };
-}
-
-export function getSynthesizerPrompts(
-  guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  complianceAnalysis: string,
-  codeAndFrictionAnalysis: string,
-  statusA: string,
-  statusB: string
-): { systemInstruction: string; prompt: string } {
-  const systemInstruction = `You are an expert Lead Diagnostic Engineer synthesizing a variance diagnosis between two AI agent evaluation runs.
-
-You MUST structure your report into exactly the following four sections in Markdown format. Do not alter section titles or their order:
+3. **Required Output Format (No Preamble)**:
+   - Output **ONLY** the final Markdown report starting directly with \`### 1. First Meaningful Divergence\`. Do not emit conversational narration (such as "I will start the investigation...") before the first heading.
+   - Structure your report into **exactly** the following four sections in Markdown format:
 
 ### 1. First Meaningful Divergence
 - **Step Number**: Specify exact step number for Trial A and Trial B if they differ (e.g., Trial A Step 4, Trial B Step 7, or Step 0/Launch if initial eval prompt differed right at initialization)
@@ -211,24 +120,129 @@ Provide a Markdown table summarizing key milestones:
 | **Mandatory Rule Adoption** | ... | ... | ... |
 | **Context Noise / Retries** | ... | ... | ... |`;
 
-  const prompt = `### Guide & Task Context
+  const failedTracesA = (ctxA.resultsJson || []).filter((c) => !c.passed).map((c) => ({
+    assertion: c.message,
+    location: c.location ? `Line ${c.location.line}` : 'Unknown',
+    errors: c.errors || ['Unknown error']
+  }));
+
+  const failedTracesB = (ctxB.resultsJson || []).filter((c) => !c.passed).map((c) => ({
+    assertion: c.message,
+    location: c.location ? `Line ${c.location.line}` : 'Unknown',
+    errors: c.errors || ['Unknown error']
+  }));
+
+  const prompt = `### Guide & Task Metadata
 - Guide Name: ${guideCtx.guideName}
 - Task Name: ${guideCtx.taskName}
 
-### Run A (${statusA} - Score: ${ctxA.score}%, Dir: ${ctxA.dir})
-- Initial Prompt: """${ctxA.initialPrompt}"""
-### Run B (${statusB} - Score: ${ctxB.score}%, Dir: ${ctxB.dir})
-- Initial Prompt: """${ctxB.initialPrompt}"""
+### Initial Eval / Task Prompts (Starting Points)
+- Run A Initial Prompt: """${truncateAtLineBoundary(ctxA.initialPrompt, MAX_PROMPT_FIELD_CHARS)}"""
+- Run B Initial Prompt: """${truncateAtLineBoundary(ctxB.initialPrompt, MAX_PROMPT_FIELD_CHARS)}"""
 
-### Sub-Agent 1: Guide Compliance Analysis
+### Task Prompt
 """
-${complianceAnalysis}
+${truncateAtLineBoundary(guideCtx.taskPrompt, MAX_PROMPT_FIELD_CHARS)}
 """
 
-### Sub-Agent 2: Code-to-Trajectory & Friction Analysis
+### Reference Guidance (guide.md)
 """
-${codeAndFrictionAnalysis}
-"""`;
+${truncateAtLineBoundary(guideCtx.guideContent, MAX_GUIDE_PROMPT_CHARS)}
+"""
 
-  return { systemInstruction, prompt };
+### Expected Outcomes (expectations.md)
+"""
+${truncateAtLineBoundary(guideCtx.expectationsContent, MAX_EXPECTATIONS_PROMPT_CHARS)}
+"""
+
+### Validation Logic (grader.ts)
+"""
+${truncateAtLineBoundary(guideCtx.graderContent, MAX_GRADER_PROMPT_CHARS)}
+"""
+
+### Run A (${statusA} - Score: ${ctxA.score}%)
+- Dir: ${ctxA.dir}
+- Search Queries: ${JSON.stringify(ctxA.preprocessed.searchQueries)}
+- Retrieved Guide IDs: ${JSON.stringify(ctxA.preprocessed.retrievedGuideIds)}
+- Key Adopted Thoughts / Rules: ${JSON.stringify(ctxA.preprocessed.mandatoryRulesAdopted.slice(0, 15))}
+- Passed Assertions: ${JSON.stringify((ctxA.resultsJson || []).filter((c) => c.passed).map((c) => c.message))}
+- Failed Test Traces:
+${truncateAtLineBoundary(JSON.stringify(failedTracesA, null, 2), MAX_FAILED_TRACES_CHARS)}
+- Trajectory Metrics: Code Mutations=${ctxA.preprocessed.codeMutationCount}, Noise Steps=${ctxA.preprocessed.noiseCount}, Error/Retry Loops=${ctxA.preprocessed.errorLoopCount}
+- Tagged Trajectory Steps Overview (Run A):
+${formatCappedStepsOverview(ctxA.preprocessed.taggedSteps)}
+
+### Run B (${statusB} - Score: ${ctxB.score}%)
+- Dir: ${ctxB.dir}
+- Search Queries: ${JSON.stringify(ctxB.preprocessed.searchQueries)}
+- Retrieved Guide IDs: ${JSON.stringify(ctxB.preprocessed.retrievedGuideIds)}
+- Key Adopted Thoughts / Rules: ${JSON.stringify(ctxB.preprocessed.mandatoryRulesAdopted.slice(0, 15))}
+- Passed Assertions: ${JSON.stringify((ctxB.resultsJson || []).filter((c) => c.passed).map((c) => c.message))}
+- Failed Test Traces:
+${truncateAtLineBoundary(JSON.stringify(failedTracesB, null, 2), MAX_FAILED_TRACES_CHARS)}
+- Trajectory Metrics: Code Mutations=${ctxB.preprocessed.codeMutationCount}, Noise Steps=${ctxB.preprocessed.noiseCount}, Error/Retry Loops=${ctxB.preprocessed.errorLoopCount}
+- Tagged Trajectory Steps Overview (Run B):
+${formatCappedStepsOverview(ctxB.preprocessed.taggedSteps)}
+
+### Code Diffs (Unified Diff Format)
+
+#### Diff 1: Base App vs Run A Output
+"""
+${truncateAtLineBoundary(diffBaseVsA, MAX_DIFF_PROMPT_CHARS)}
+"""
+
+#### Diff 2: Base App vs Run B Output
+"""
+${truncateAtLineBoundary(diffBaseVsB, MAX_DIFF_PROMPT_CHARS)}
+"""
+
+#### Diff 3: Run A Output vs Run B Output
+"""
+${truncateAtLineBoundary(diffAvsB, MAX_DIFF_PROMPT_CHARS)}
+"""
+`;
+
+  const maxPromptBytes = MAX_TOTAL_COMBINED_PROMPT_BYTES - Buffer.byteLength(systemInstruction, 'utf8') - 1024;
+  const boundedPrompt =
+    Buffer.byteLength(prompt, 'utf8') > maxPromptBytes
+      ? truncateAtLineBoundary(prompt, maxPromptBytes)
+      : prompt;
+
+  return { systemInstruction, prompt: boundedPrompt };
 }
+
+export function getCompliancePrompts(
+  guideCtx: GuideContext,
+  ctxA: RunContext,
+  ctxB: RunContext,
+  statusA: string,
+  statusB: string
+): { systemInstruction: string; prompt: string } {
+  return getComparisonPrompts(guideCtx, ctxA, ctxB, '', '', '', statusA, statusB);
+}
+
+export function getCodeAndFrictionPrompts(
+  guideCtx: GuideContext,
+  ctxA: RunContext,
+  ctxB: RunContext,
+  diffBaseVsA: string,
+  diffBaseVsB: string,
+  diffAvsB: string,
+  statusA: string,
+  statusB: string
+): { systemInstruction: string; prompt: string } {
+  return getComparisonPrompts(guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB, statusA, statusB);
+}
+
+export function getSynthesizerPrompts(
+  guideCtx: GuideContext,
+  ctxA: RunContext,
+  ctxB: RunContext,
+  _complianceAnalysis: string,
+  _codeAndFrictionAnalysis: string,
+  statusA: string,
+  statusB: string
+): { systemInstruction: string; prompt: string } {
+  return getComparisonPrompts(guideCtx, ctxA, ctxB, '', '', '', statusA, statusB);
+}
+

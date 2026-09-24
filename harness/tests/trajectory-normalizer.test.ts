@@ -486,3 +486,123 @@ test('agent trajectory parsers strictly enforce modern-web-guidance retrieve fil
   assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
 });
 
+test('ensureFreshTrajectorySummary regenerates stale trajectory_summary.json missing normalizerVersion when raw session logs exist', async () => {
+  const {
+    NORMALIZER_VERSION,
+    ensureFreshTrajectorySummary
+  } = await import('../lib/trajectory-normalizer.ts');
+
+  const tempDir = createTempDir();
+  try {
+    // Write stale trajectory_summary.json without normalizerVersion and with outdated step categorization
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CLAUDE_CODE,
+      initialPrompt: 'Preserve this prompt',
+      steps: [
+        {
+          stepNumber: 1,
+          action: {
+            type: 'run_command',
+            canonicalCategory: 'incidental_noise',
+            name: 'Bash',
+            params: { command: 'npx modern-web-guidance search "popover"' }
+          }
+        }
+      ]
+    });
+
+    // Write raw session log (session-1.jsonl)
+    const rawEntry = {
+      role: 'assistant',
+      timestamp: '2026-08-10T10:00:00.000Z',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'call_1',
+            name: 'Bash',
+            input: { command: 'npx modern-web-guidance search "popover"' }
+          }
+        ]
+      }
+    };
+    fs.writeFileSync(path.join(tempDir, 'session-1.jsonl'), JSON.stringify(rawEntry));
+
+    const refreshed = await ensureFreshTrajectorySummary(tempDir);
+    assert.ok(refreshed);
+    assert.strictEqual(refreshed.normalizerVersion, NORMALIZER_VERSION);
+    assert.strictEqual(refreshed.initialPrompt, 'Preserve this prompt');
+    assert.strictEqual(refreshed.steps.length, 1);
+    assert.strictEqual(refreshed.steps[0].action?.canonicalCategory, 'skill_search');
+
+    const onDisk = readTrajectorySummary(tempDir);
+    assert.strictEqual(onDisk?.normalizerVersion, NORMALIZER_VERSION);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+function encodeVarint(value: number): Buffer {
+  const bytes: number[] = [];
+  let v = value;
+  while (v >= 0x80) {
+    bytes.push((v & 0x7f) | 0x80);
+    v = Math.floor(v / 128);
+  }
+  bytes.push(v);
+  return Buffer.from(bytes);
+}
+
+function encodeLengthDelimited(fieldNumber: number, payload: Buffer): Buffer {
+  const tag = (fieldNumber << 3) | 2;
+  return Buffer.concat([encodeVarint(tag), encodeVarint(payload.length), payload]);
+}
+
+function encodeVarintField(fieldNumber: number, value: number): Buffer {
+  const tag = (fieldNumber << 3) | 0;
+  return Buffer.concat([encodeVarint(tag), encodeVarint(value)]);
+}
+
+test('parseJetskiCliSession and findProtoTimestamp recover step timestamps from SQLite protobuf metadata', async () => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const {
+    parseProtobuf,
+    findProtoTimestamp,
+    parseJetskiCliSession
+  } = await import('../agents/jetski-cli-agent.ts');
+
+  // 1754860800 seconds = 2025-08-10T21:20:00.000Z, 250000000 nanos = 250ms
+  const timestampSubmsg = Buffer.concat([
+    encodeVarintField(1, 1754860800),
+    encodeVarintField(2, 250_000_000)
+  ]);
+  // Wrap inside outer metadata field 4
+  const metadataBuf = encodeLengthDelimited(4, timestampSubmsg);
+
+  const parsedMeta = parseProtobuf(metadataBuf);
+  const extractedIso = findProtoTimestamp(parsedMeta);
+  assert.strictEqual(extractedIso, '2025-08-10T21:20:00.250Z');
+
+  // Also test full SQLite session db parsing without any timestamp column
+  const tempDir = createTempDir();
+  try {
+    const dbPath = path.join(tempDir, 'session-jetski.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec('CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB)');
+    const payloadJson = JSON.stringify({
+      toolAction: 'Running command',
+      toolSummary: 'Search web guidance',
+      CommandLine: 'npx modern-web-guidance search "anchor positioning"'
+    });
+    const stmt = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(1, 1, 1, metadataBuf, Buffer.from(payloadJson, 'utf8'));
+    db.close();
+
+    const summary = parseJetskiCliSession(tempDir);
+    assert.strictEqual(summary.steps.length, 1);
+    assert.strictEqual(summary.steps[0].timestamp, '2025-08-10T21:20:00.250Z');
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+

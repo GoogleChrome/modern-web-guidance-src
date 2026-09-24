@@ -3,56 +3,39 @@ import path from 'path';
 import fs from 'fs';
 import { resultsDir as baseResultsDir } from '../../lib/paths.ts';
 import { cCyan, cGreen, cYellow, cRed } from '../../lib/colors.ts';
-import { Agents } from '../config.ts';
+import {
+  NORMALIZER_VERSION,
+  ensureFreshTrajectorySummary,
+  hasRawSessionLogs,
+  readTrajectorySummary
+} from './trajectory-normalizer.ts';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
 
+export const GCS_DOWNLOAD_COMPLETE_SENTINEL = '.gcs_download_complete';
+
+const inflightSuiteEvalsDownloads = new Map<string, Promise<void>>();
+
 /**
- * Performs post-download operations, such as generating missing trajectory summaries.
+ * Performs post-download operations, such as generating missing or stale trajectory summaries.
  */
 async function postDownloadProcessing(absoluteRunDir: string, relativeRunPath: string) {
-  const summaryPath = path.join(absoluteRunDir, 'trajectory_summary.json');
-  let needsGeneration = !fs.existsSync(summaryPath);
-  if (!needsGeneration) {
-    try {
-      const summaryJson = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-      if (!Array.isArray(summaryJson.steps) || summaryJson.steps.length === 0) {
-        needsGeneration = true;
-      }
-    } catch {
-      needsGeneration = true;
-    }
-  }
-  if (needsGeneration) {
-    console.log(cCyan(`[GCS Downloader] trajectory_summary.json is missing or outdated in historical run. Generating v2.0 on the fly...`));
-    let detectedAgent: string | undefined;
-    let curr = absoluteRunDir;
-    while (curr && curr !== path.dirname(curr)) {
-      const evalsPath = path.join(curr, 'evals.json');
-      if (fs.existsSync(evalsPath)) {
-        try {
-          const data = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
-          if (data.agent) {
-            const raw = String(data.agent).replace(/-/g, '_');
-            detectedAgent = Object.values(Agents).find(a => a === raw || a === data.agent) || data.agent;
-            break;
-          }
-        } catch {
-          // ignore parse failure
-        }
-      }
-      curr = path.dirname(curr);
-    }
+  const existing = readTrajectorySummary(absoluteRunDir);
+  const isFresh =
+    existing !== null &&
+    Array.isArray(existing.steps) &&
+    existing.steps.length > 0 &&
+    existing.normalizerVersion === NORMALIZER_VERSION;
 
-    if (!detectedAgent) {
-      console.warn(`[GCS Downloader] Warning: Could not determine agent from evals.json for run: ${relativeRunPath}. Skipping automatic trajectory generation.`);
-      return;
-    }
-    
+  if (!isFresh && hasRawSessionLogs(absoluteRunDir)) {
+    console.log(
+      cCyan(
+        `[GCS Downloader] trajectory_summary.json is missing or outdated (version=${existing?.normalizerVersion ?? 'none'}) in ${relativeRunPath}. Regenerating v${NORMALIZER_VERSION} on the fly...`
+      )
+    );
     try {
-      const { generateNormalizedTrajectory } = await import('./trajectory-normalizer.ts');
-      await generateNormalizedTrajectory(absoluteRunDir, detectedAgent);
+      await ensureFreshTrajectorySummary(absoluteRunDir);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[GCS Downloader] Warning: Failed to generate trajectory on the fly: ${msg}`);
@@ -74,7 +57,9 @@ async function downloadFileWithToken(token: string, gcsFileName: string, destPat
   }
 
   const arrayBuffer = await response.arrayBuffer();
-  fs.writeFileSync(destPath, Buffer.from(arrayBuffer));
+  const tmpPath = `${destPath}.tmp.${process.pid}.${Date.now()}`;
+  fs.writeFileSync(tmpPath, Buffer.from(arrayBuffer));
+  fs.renameSync(tmpPath, destPath);
 }
 
 /**
@@ -141,45 +126,64 @@ async function downloadFileBatch<T>(
 
 /**
  * Downloads a suite-level evals.json file from GCS if it is missing locally.
+ * Deduplicates concurrent requests for the same suiteName using an in-flight Promise map.
  */
-async function downloadSuiteEvalsIfMissing(suiteName: string, token: string | undefined) {
+export async function downloadSuiteEvalsIfMissing(suiteName: string, token: string | undefined): Promise<void> {
   const destPath = path.join(baseResultsDir, suiteName, 'evals.json');
   if (fs.existsSync(destPath)) {
-    return; // Already exists locally
+    return;
   }
 
-  const gcsFileName = `${suiteName}/evals.json`;
-  console.log(cCyan(`[GCS Downloader] Suite-level evals.json is missing. Downloading from GCS: gs://${BUCKET_NAME}/${gcsFileName}...`));
-  
-  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  const inflight = inflightSuiteEvalsDownloads.get(suiteName);
+  if (inflight) {
+    return inflight;
+  }
 
-  if (token && token.startsWith('Bearer ')) {
-    try {
-      await downloadFileWithToken(token, gcsFileName, destPath);
-      console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via REST API!`));
+  const downloadPromise = (async () => {
+    if (fs.existsSync(destPath)) {
       return;
+    }
+
+    const gcsFileName = `${suiteName}/evals.json`;
+    console.log(cCyan(`[GCS Downloader] Suite-level evals.json is missing. Downloading from GCS: gs://${BUCKET_NAME}/${gcsFileName}...`));
+
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+
+    if (token && token.startsWith('Bearer ')) {
+      try {
+        await downloadFileWithToken(token, gcsFileName, destPath);
+        console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via REST API!`));
+        return;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via REST: ${msg}`);
+      }
+    }
+
+    // Fallback to Storage SDK (ADC)
+    try {
+      const storage = new Storage({ projectId: PROJECT_ID });
+      const bucket = storage.bucket(BUCKET_NAME);
+      const file = bucket.file(gcsFileName);
+      const [exists] = await file.exists();
+      if (exists) {
+        const tmpPath = `${destPath}.tmp.${process.pid}.${Date.now()}`;
+        await file.download({ destination: tmpPath });
+        fs.renameSync(tmpPath, destPath);
+        console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via Storage SDK!`));
+      } else {
+        console.warn(`[GCS Downloader] Suite evals.json does not exist on GCS: gs://${BUCKET_NAME}/${gcsFileName}`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via REST: ${msg}`);
+      console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via SDK: ${msg}`);
     }
-  }
+  })().finally(() => {
+    inflightSuiteEvalsDownloads.delete(suiteName);
+  });
 
-  // Fallback to Storage SDK (ADC)
-  try {
-    const storage = new Storage({ projectId: PROJECT_ID });
-    const bucket = storage.bucket(BUCKET_NAME);
-    const file = bucket.file(gcsFileName);
-    const [exists] = await file.exists();
-    if (exists) {
-      await file.download({ destination: destPath });
-      console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via Storage SDK!`));
-    } else {
-      console.warn(`[GCS Downloader] Suite evals.json does not exist on GCS: gs://${BUCKET_NAME}/${gcsFileName}`);
-    }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via SDK: ${msg}`);
-  }
+  inflightSuiteEvalsDownloads.set(suiteName, downloadPromise);
+  return downloadPromise;
 }
 
 /**
@@ -222,19 +226,17 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
 
   if (fs.existsSync(absoluteRunDir)) {
     const files = fs.readdirSync(absoluteRunDir);
-    const hasTrajectory = files.includes('trajectory_summary.json');
-    const hasResults = files.some(f => f.endsWith('_results.json') || f === 'runtime.json');
-    if (hasTrajectory) {
-      return true; // Already cached locally
-    }
-    if (hasResults) {
+    const hasSentinel = files.includes(GCS_DOWNLOAD_COMPLETE_SENTINEL);
+    const hasTrajectory = files.includes('trajectory_summary.json') || hasRawSessionLogs(absoluteRunDir);
+    const hasResults = files.some((f) => f.endsWith('_results.json') || f === 'runtime.json');
+    if (hasSentinel || (hasResults && hasTrajectory)) {
       await postDownloadProcessing(absoluteRunDir, relativeRunPath);
       return true;
     }
   }
 
   console.log(cCyan(`[GCS Downloader] Run directory not found or incomplete locally: ${relativeRunPath}`));
-  
+
   const gcsPrefix = relativeRunPath.replace(/\\/g, '/') + '/';
 
   if (token && token.startsWith('Bearer ')) {
@@ -258,6 +260,7 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
         (name, destPath) => downloadFileWithToken(token, name, destPath)
       );
 
+      fs.writeFileSync(path.join(absoluteRunDir, GCS_DOWNLOAD_COMPLETE_SENTINEL), new Date().toISOString(), 'utf8');
       console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded all files via REST API!`));
       await postDownloadProcessing(absoluteRunDir, relativeRunPath);
       return true;
@@ -291,6 +294,7 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
       (file, destPath) => file.download({ destination: destPath })
     );
 
+    fs.writeFileSync(path.join(absoluteRunDir, GCS_DOWNLOAD_COMPLETE_SENTINEL), new Date().toISOString(), 'utf8');
     console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded all files via Storage SDK!`));
     await postDownloadProcessing(absoluteRunDir, relativeRunPath);
     return true;

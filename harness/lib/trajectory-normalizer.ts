@@ -7,7 +7,7 @@ import { Agents } from '../config.ts';
 import { parseClaudeTrajectory } from '../agents/claude-code-agent.ts';
 import { parseGeminiTrajectory } from '../agents/gemini-cli-agent.ts';
 import { parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
-import { parseJetskiTrajectory } from '../agents/jetski-cli-agent.ts';
+import { parseJetskiTrajectory, parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
 import { parsePiTrajectory } from '../agents/pi-agent.ts';
 
 // Re-export for test compatibility and legacy callers
@@ -44,6 +44,7 @@ export {
 export {
   parseJetskiTrajectory,
   parseJetskiCliSession,
+  findProtoTimestamp,
   collectJetskiCliGuidesFromTrajectory,
   collectJetskiCliToolsFromTrajectory,
   extractJetskiCliModel,
@@ -62,12 +63,29 @@ export {
 
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
+export const NORMALIZER_VERSION = 2;
 
 const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
 
 export function getSessionFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
+}
+
+export function hasRawSessionLogs(dir: string): boolean {
+  if (!fs.existsSync(dir)) return false;
+  try {
+    const files = fs.readdirSync(dir);
+    return files.some(
+      (f) =>
+        (f.endsWith('.db') && !f.endsWith('-shm') && !f.endsWith('-wal')) ||
+        ((f.startsWith('session-') || f.startsWith('subagent-')) &&
+          (f.endsWith('.json') || f.endsWith('.jsonl'))) ||
+        f === 'trajectory.jsonl'
+    );
+  } catch {
+    return false;
+  }
 }
 
 export type CanonicalCategory =
@@ -183,6 +201,7 @@ export interface SubagentMetadata {
 }
 
 export interface TrajectorySummary {
+  normalizerVersion?: number;
   agent: string;
   steps: StandardizedStep[];
   subagents?: Record<string, SubagentMetadata>;
@@ -260,6 +279,7 @@ export function categorizeAction(
 }
 
 export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
+  summary.normalizerVersion = NORMALIZER_VERSION;
   if (Array.isArray(summary.steps)) {
     summary.steps.sort((a, b) => {
       if (a.timestamp && b.timestamp) {
@@ -328,12 +348,68 @@ export function readTrajectorySummary(targetDir: string): TrajectorySummary | nu
   }
 }
 
-export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
+function normalizeAgentName(rawAgent: string | undefined): string | undefined {
+  if (!rawAgent) return undefined;
+  const normalized = String(rawAgent).trim().toLowerCase().replace(/-/g, '_');
+  const match = Object.values(Agents).find((a) => a === normalized || a === rawAgent);
+  return match || normalized;
+}
+
+export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySummary | null): string | undefined {
+  // 1. Check suite evals.json in parent directories
+  let curr = path.resolve(runDir);
+  while (curr && curr !== path.dirname(curr)) {
+    const evalsPath = path.join(curr, 'evals.json');
+    if (fs.existsSync(evalsPath)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+        if (data.agent) {
+          return normalizeAgentName(String(data.agent));
+        }
+      } catch {
+        // ignore invalid json
+      }
+    }
+    curr = path.dirname(curr);
+  }
+
+  // 2. Check existing summary.agent field
+  if (existingSummary?.agent) {
+    return normalizeAgentName(existingSummary.agent);
+  }
+
+  // 3. Check directory path tokens (e.g. -claude_code, -codex_cli, -jetski_cli, -gemini_cli)
+  const dirLower = runDir.toLowerCase().replace(/-/g, '_');
+  if (dirLower.includes('claude_code')) return Agents.CLAUDE_CODE;
+  if (dirLower.includes('codex_cli')) return Agents.CODEX_CLI;
+  if (dirLower.includes('jetski_cli') || dirLower.includes('jetski')) return Agents.JETSKI_CLI;
+  if (dirLower.includes('gemini_cli')) return Agents.GEMINI_CLI;
+  if (/(?:^|[/\\_])pi(?:$|[/\\_])/.test(dirLower)) return Agents.PI;
+
+  // 4. Inspect raw files as final fallback
+  try {
+    const files = fs.readdirSync(runDir);
+    if (files.some((f) => f.endsWith('.db') && !f.endsWith('-shm') && !f.endsWith('-wal'))) {
+      return Agents.JETSKI_CLI;
+    }
+  } catch {
+    // ignore
+  }
+
+  return undefined;
+}
+
+export function generateNormalizedTrajectorySync(
+  targetDir: string,
+  agentName: string,
+  initialPrompt?: string
+): TrajectorySummary | null {
   try {
     let summary: TrajectorySummary | null = null;
+    const normalizedAgent = normalizeAgentName(agentName) || agentName;
 
-    if (agentName === Agents.JETSKI_CLI) {
-      summary = await parseJetskiTrajectory(targetDir);
+    if (normalizedAgent === Agents.JETSKI_CLI) {
+      summary = finalizeTrajectorySummary(parseJetskiCliSession(targetDir));
     } else {
       let allFiles: string[] = [];
       try {
@@ -343,11 +419,15 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       }
 
       const mainSessionFiles = allFiles
-        .filter(f => f.startsWith('session-') && !f.includes('-subagents-') && (f.endsWith('.json') || f.endsWith('.jsonl')))
+        .filter(
+          (f) =>
+            (f.startsWith('session-') && !f.includes('-subagents-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) ||
+            f === 'trajectory.jsonl'
+        )
         .sort((a, b) => a.localeCompare(b));
 
       const subagentFiles = allFiles
-        .filter(f => (f.startsWith('subagent-') || f.includes('-subagents-')) && (f.endsWith('.json') || f.endsWith('.jsonl')))
+        .filter((f) => (f.startsWith('subagent-') || f.includes('-subagents-')) && (f.endsWith('.json') || f.endsWith('.jsonl')))
         .sort((a, b) => a.localeCompare(b));
 
       const subagentsMap: Record<string, any[]> = {};
@@ -386,26 +466,63 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
       }
 
       if (allMainEntries.length > 0 || Object.keys(subagentsMap).length > 0) {
-        if (agentName === Agents.CLAUDE_CODE) {
+        if (normalizedAgent === Agents.CLAUDE_CODE) {
           summary = parseClaudeTrajectory(allMainEntries, subagentsMap);
-        } else if (agentName === Agents.GEMINI_CLI) {
+        } else if (normalizedAgent === Agents.GEMINI_CLI) {
           summary = parseGeminiTrajectory(allMainEntries, subagentsMap);
-        } else if (agentName === Agents.CODEX_CLI) {
+        } else if (normalizedAgent === Agents.CODEX_CLI) {
           summary = parseCodexTrajectory(allMainEntries, subagentsMap);
-        } else if (agentName === Agents.PI) {
+        } else if (normalizedAgent === Agents.PI) {
           summary = parsePiTrajectory(allMainEntries, subagentsMap);
         }
       }
     }
 
     if (summary) {
-      summary.initialPrompt = initialPrompt;
+      if (initialPrompt !== undefined) {
+        summary.initialPrompt = initialPrompt;
+      }
       finalizeTrajectorySummary(summary);
       writeTrajectorySummary(targetDir, summary);
+      return summary;
     }
   } catch (err) {
     console.error(`[TrajectoryParser] Failed to generate normalized trajectory for ${agentName}:`, err);
   }
+  return null;
+}
+
+export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
+  generateNormalizedTrajectorySync(targetDir, agentName, initialPrompt);
+}
+
+export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySummary | null {
+  const existing = readTrajectorySummary(runDir);
+  const isFresh =
+    existing !== null &&
+    Array.isArray(existing.steps) &&
+    existing.steps.length > 0 &&
+    existing.normalizerVersion === NORMALIZER_VERSION;
+
+  if (isFresh) {
+    return existing;
+  }
+
+  if (hasRawSessionLogs(runDir)) {
+    const detectedAgent = detectAgentForRun(runDir, existing);
+    if (detectedAgent) {
+      const regenerated = generateNormalizedTrajectorySync(runDir, detectedAgent, existing?.initialPrompt);
+      if (regenerated) {
+        return regenerated;
+      }
+    }
+  }
+
+  return existing;
+}
+
+export async function ensureFreshTrajectorySummary(runDir: string): Promise<TrajectorySummary | null> {
+  return ensureFreshTrajectorySummarySync(runDir);
 }
 
 function isNodeError(err: unknown): err is NodeJS.ErrnoException {
