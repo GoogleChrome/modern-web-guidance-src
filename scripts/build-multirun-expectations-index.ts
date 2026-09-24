@@ -8,6 +8,7 @@ import {
   getViolationCategoryTally,
   renderViolationTallyHtml,
   renderViolationTallyMd,
+  resolveCapsuleSourceLinks,
 } from '../guides/lib/audit-report-generator.ts';
 import type { CapsuleAuditResult } from '../guides/lib/audit-types.ts';
 
@@ -243,27 +244,24 @@ export function buildMultirunExpectationsIndex(): {
   const allCapsuleRowsHtml = allCapsulesWithRun
     .map(({ runId, category, result: r }) => {
       const slug = r.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '__');
+      const anchor = r.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
       const counts = getCapsulePriorityCounts(r);
       const vcatsAttr = getCapsuleCategoriesAttr(r);
       const p = r.finalAssessment.overallPriority;
       const cov = r.finalAssessment.expectationCoverageScore;
       const covClass =
         cov >= 80 ? 'score-good' : cov >= 65 ? 'score-warn' : 'score-bad';
-      const relGuide = path
-        .relative(evalAuditsDir, r.guideFilePath)
-        .split(path.sep)
-        .join('/');
-      const relExp = r.expectationsFilePath
-        ? path.relative(evalAuditsDir, r.expectationsFilePath).split(path.sep).join('/')
-        : '';
+      const links = resolveCapsuleSourceLinks(r, evalAuditsDir);
 
       return `<tr class="capsule-row" data-priority="${p}" data-category="${escapeHtml(category)}" data-vcats="${escapeHtml(vcatsAttr)}" data-search="${escapeHtml((r.capsuleId + ' ' + vcatsAttr + ' ' + r.finalAssessment.executiveSummary).toLowerCase())}">
         <td>
           <a class="capsule-link" href="./${runId}/items/${slug}.html">${escapeHtml(r.capsuleId)}</a>
           <div class="src-links">
-            <a class="src-chip" href="./${runId}/SUMMARY_AUDIT_EVALS.html#${slug}">Category Report</a>
-            <a class="src-chip" href="${relGuide}" target="_blank">guide.md</a>
-            ${relExp ? `<a class="src-chip" href="${relExp}" target="_blank">expectations.md</a>` : ''}
+            <a class="src-chip" href="./${runId}/SUMMARY_AUDIT_EVALS.html#${anchor}">Category Report</a>
+            <a class="src-chip" href="${escapeHtml(links.guideRel)}" target="_blank">guide.md</a>
+            <a class="src-chip" href="${escapeHtml(links.expectationsRel)}" target="_blank">expectations.md</a>
+            <a class="src-chip" href="${escapeHtml(links.taskRel)}" target="_blank">task.md</a>
+            <a class="src-chip" href="${escapeHtml(links.graderRel)}" target="_blank">grader.ts</a>
           </div>
         </td>
         <td><a class="cat-badge" href="./${runId}/SUMMARY_AUDIT_EVALS.html">${escapeHtml(category)}</a></td>

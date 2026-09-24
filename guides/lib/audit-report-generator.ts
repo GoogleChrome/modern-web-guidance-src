@@ -74,6 +74,50 @@ export interface CapsuleSourceRelativeLinks {
 }
 
 /**
+ * Converts an absolute or repo-relative file path into a portable repo-relative path (e.g., "guides/css/.../guide.md").
+ */
+export function toRepoRelativePath(p: string | null | undefined, fallbackRel: string): string {
+  if (!p) return fallbackRel;
+  const normalized = p.split(path.sep).join('/');
+  const rootNormalized = rootDir.split(path.sep).join('/').replace(/\/$/, '');
+  if (normalized.startsWith(rootNormalized + '/')) {
+    return normalized.slice(rootNormalized.length + 1);
+  }
+  const guidesIdx = normalized.indexOf('guides/');
+  if (guidesIdx !== -1) {
+    return normalized.slice(guidesIdx);
+  }
+  if (!path.isAbsolute(p)) {
+    return normalized.replace(/^\.\//, '');
+  }
+  return fallbackRel;
+}
+
+/**
+ * Sanitizes all file paths stored on a CapsuleAuditResult so JSON artifacts contain only portable relative paths.
+ */
+export function sanitizeResultPathsForPortability(r: CapsuleAuditResult): void {
+  const baseRel = `guides/${r.guideId}`;
+  const isTargetApp = r.targetApp && r.targetApp !== 'legacy';
+  r.guideFilePath = toRepoRelativePath(r.guideFilePath, `${baseRel}/guide.md`);
+  r.expectationsFilePath = toRepoRelativePath(
+    r.expectationsFilePath,
+    `${baseRel}/expectations.md`
+  );
+  r.taskFilePath = toRepoRelativePath(
+    r.taskFilePath,
+    isTargetApp ? `${baseRel}/targets/${r.targetApp}/task.md` : `${baseRel}/tasks/task.md`
+  );
+  r.graderFilePath = toRepoRelativePath(
+    r.graderFilePath,
+    isTargetApp ? `${baseRel}/targets/${r.targetApp}/grader.ts` : `${baseRel}/grader.ts`
+  );
+  if (r.demoFilePath) {
+    r.demoFilePath = toRepoRelativePath(r.demoFilePath, `${baseRel}/demo.html`);
+  }
+}
+
+/**
  * Resolves relative paths (normalized with '/') from `fromDir` to the capsule's
  * guide.md, expectations.md, task.md, and grader.ts files.
  */
@@ -89,38 +133,38 @@ export function resolveCapsuleSourceLinks(
   >,
   fromDir: string
 ): CapsuleSourceRelativeLinks {
-  const guideDirAbs = path.join(rootDir, 'guides', r.guideId);
-  const inRepo = (p?: string) => Boolean(p && p.startsWith(rootDir));
-
-  const guideAbs = inRepo(r.guideFilePath) ? r.guideFilePath! : path.join(guideDirAbs, 'guide.md');
-  const expectationsAbs = inRepo(r.expectationsFilePath)
-    ? r.expectationsFilePath!
-    : path.join(guideDirAbs, 'expectations.md');
-
+  const baseRel = `guides/${r.guideId}`;
+  const guideDirAbs = path.join(rootDir, baseRel);
   const isTargetApp =
     r.targetApp &&
     r.targetApp !== 'legacy' &&
     fs.existsSync(path.join(guideDirAbs, 'targets', r.targetApp));
 
-  const taskAbs = inRepo(r.taskFilePath)
-    ? r.taskFilePath!
-    : isTargetApp
-      ? path.join(guideDirAbs, 'targets', r.targetApp!, 'task.md')
-      : path.join(guideDirAbs, 'tasks', 'task.md');
+  const guideRelRepo = toRepoRelativePath(r.guideFilePath, `${baseRel}/guide.md`);
+  const expectationsRelRepo = toRepoRelativePath(
+    r.expectationsFilePath,
+    `${baseRel}/expectations.md`
+  );
+  const taskRelRepo = toRepoRelativePath(
+    r.taskFilePath,
+    isTargetApp ? `${baseRel}/targets/${r.targetApp}/task.md` : `${baseRel}/tasks/task.md`
+  );
+  const graderRelRepo = toRepoRelativePath(
+    r.graderFilePath,
+    isTargetApp ? `${baseRel}/targets/${r.targetApp}/grader.ts` : `${baseRel}/grader.ts`
+  );
 
-  const graderAbs = inRepo(r.graderFilePath)
-    ? r.graderFilePath!
-    : isTargetApp
-      ? path.join(guideDirAbs, 'targets', r.targetApp!, 'grader.ts')
-      : path.join(guideDirAbs, 'grader.ts');
-
-  const toRel = (absPath: string) => path.relative(fromDir, absPath).split(path.sep).join('/');
+  const toRel = (repoRelPath: string) => {
+    const absTarget = path.resolve(rootDir, repoRelPath);
+    const rel = path.relative(fromDir, absTarget).split(path.sep).join('/');
+    return rel.startsWith('.') ? rel : `./${rel}`;
+  };
 
   return {
-    guideRel: toRel(guideAbs),
-    expectationsRel: toRel(expectationsAbs),
-    taskRel: toRel(taskAbs),
-    graderRel: toRel(graderAbs),
+    guideRel: toRel(guideRelRepo),
+    expectationsRel: toRel(expectationsRelRepo),
+    taskRel: toRel(taskRelRepo),
+    graderRel: toRel(graderRelRepo),
   };
 }
 
@@ -949,8 +993,8 @@ function renderCapsuleCardHtml(
   }
 
   const itemLinkHtml = standalone
-    ? `<a href="../SUMMARY_AUDIT_EVALS.html#${anchor}" class="btn-link">← Back to Full Audit Summary</a>`
-    : `<a href="items/${slug}.html" class="btn-link" title="Open standalone capsule report">Open Standalone Page ↗</a>`;
+    ? `<a href="../SUMMARY_AUDIT_EVALS.html#${anchor}" class="btn-link">← Subdirectory Summary</a> <a href="../../INDEX_ALL_EXPECTATIONS_AUDITS.html" class="btn-link">↖ All Subdirectories Index</a>`
+    : `<a href="./items/${slug}.html" class="btn-link" title="Open standalone capsule report">Open Standalone Page ↗</a>`;
 
   return `<details class="capsule-card priority-${a.overallPriority.toLowerCase()}" id="${anchor}" data-priority="${a.overallPriority}" data-format="${formatKey}" data-vcats="${escapeHtml(getCapsuleCategoriesAttr(r))}" open>
     <summary class="capsule-card-header">
@@ -1687,8 +1731,10 @@ export function generateCapsuleHtml(
   runId: string,
   itemsDir = path.join(rootDir, 'harness', 'results', 'eval-audits', runId, 'items')
 ): string {
+  sanitizeResultPathsForPortability(result);
   calibrateAssessmentPriorities(result.finalAssessment, result.auditScope || 'both');
   const pCounts = getCapsulePriorityCounts(result);
+  const anchor = result.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1710,8 +1756,9 @@ export function generateCapsuleHtml(
           <span>Timestamp: <code>${escapeHtml(result.timestamp)}</code></span>
         </div>
       </div>
-      <div>
-        <a href="../SUMMARY_AUDIT_EVALS.html" class="btn-link">← Full Audit Summary</a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="../SUMMARY_AUDIT_EVALS.html#${anchor}" class="btn-link">← Subdirectory Summary</a>
+        <a href="../../INDEX_ALL_EXPECTATIONS_AUDITS.html" class="btn-link">↖ All Subdirectories Index</a>
       </div>
     </header>
 
@@ -1739,6 +1786,7 @@ export function generateSummaryHtml(
   outputDir = path.join(rootDir, 'harness', 'results', 'eval-audits', runId)
 ): string {
   for (const r of results) {
+    sanitizeResultPathsForPortability(r);
     calibrateAssessmentPriorities(r.finalAssessment, r.auditScope || 'both');
   }
   const sorted = sortCapsulesByPriorityCounts(results);
@@ -1800,7 +1848,7 @@ export function generateSummaryHtml(
           <div style="margin-top:6px">
             ${renderSourceLinksBarHtml(links)}
           </div>
-          <div style="margin-top:5px"><a href="items/${slug}.html" style="font-size:11.5px;color:#64748b;text-decoration:none">Standalone report ↗</a></div>
+          <div style="margin-top:5px"><a href="./items/${slug}.html" style="font-size:11.5px;color:#64748b;text-decoration:none">Standalone report ↗</a></div>
         </td>
         <td><span class="format-badge format-${formatKey}">${escapeHtml(r.guideFormat)}</span></td>
         <td>${renderPriorityBreakdownHtml(r)}</td>
@@ -1838,7 +1886,8 @@ export function generateSummaryHtml(
           <span>Total Capsules Audited: <code>${total}</code></span>
         </div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <a href="../INDEX_ALL_EXPECTATIONS_AUDITS.html" class="btn-link">↖ All Subdirectories Index</a>
         <button class="filter-btn" onclick="toggleAllDetails(true)">Expand All Details</button>
         <button class="filter-btn" onclick="toggleAllDetails(false)">Collapse All Details</button>
       </div>
@@ -2027,8 +2076,9 @@ export function writeAuditReports(
   const itemsDir = path.join(outputDir, 'items');
   fs.mkdirSync(itemsDir, { recursive: true });
 
-  // Calibrate issue severities and ensure proposedExpectationDraft is populated
+  // Sanitize paths to portable relative paths and calibrate issue severities
   for (const r of results) {
+    sanitizeResultPathsForPortability(r);
     calibrateAssessmentPriorities(r.finalAssessment, r.auditScope || 'both');
   }
 
