@@ -484,11 +484,11 @@ function renderCapsuleCardHtml(
       <div class="table-wrap"><table class="defect-table">
         <thead>
           <tr>
-            <th style="width:55px">ID</th>
-            <th style="width:195px">Issue Type &amp; Grade</th>
-            <th style="width:145px">Citation</th>
-            <th style="width:32%">Evidence &amp; Counterexample Proof</th>
-            <th>Tight Remedy &amp; Proposed Expectation Draft (Copy-Ready MD)</th>
+            <th style="width:68px">ID</th>
+            <th style="width:200px">Issue Type &amp; Grade</th>
+            <th style="width:150px">Citation</th>
+            <th style="width:34%">Evidence &amp; Counterexample Proof</th>
+            <th>Recommendation &amp; Proposed Expectation Draft</th>
           </tr>
         </thead>
         <tbody>
@@ -496,24 +496,28 @@ function renderCapsuleCardHtml(
             .map((e, idx) => {
               const draft = ensureProposedExpectationDraft(e);
               const draftId = `draft-${slug}-${idx}`;
-              return `<tr>
-            <td class="mono bold">${escapeHtml(e.id)}</td>
-            <td>
+              return `<tr class="defect-row">
+            <td class="id-cell"><span class="defect-id-pill">${escapeHtml(e.id)}</span></td>
+            <td class="type-cell">
               <div class="category-tag">${escapeHtml(e.category)}</div>
-              <div style="margin-top:6px">${htmlGradeBadge(normalizeGrade(e.grade))}</div>
+              <div style="margin-top:8px">${htmlGradeBadge(normalizeGrade(e.grade))}</div>
             </td>
-            <td>${renderCitationHtml(e.citation, links)}</td>
-            <td>
+            <td class="citation-cell">${renderCitationHtml(e.citation, links)}</td>
+            <td class="evidence-cell">
               <div class="evidence-block">
                 <div class="evidence-label">Current Quote / Rule</div>
                 <pre class="code-snippet">${escapeHtml(e.quoteOrRule)}</pre>
               </div>
               <div class="proof-block">
-                <span class="proof-label">Counterexample Proof:</span> ${escapeHtml(e.counterexampleProof)}
+                <div class="proof-label">Counterexample Proof</div>
+                <div>${escapeHtml(e.counterexampleProof)}</div>
               </div>
             </td>
             <td class="remedy-cell">
-              <div style="margin-bottom:10px"><strong>Remedy:</strong> ${escapeHtml(e.remedy)}</div>
+              <div class="remedy-callout">
+                <div class="remedy-callout-label">Recommended Fix</div>
+                <div class="remedy-callout-text">${escapeHtml(e.remedy)}</div>
+              </div>
               <div class="draft-box">
                 <div class="draft-box-header">
                   <span>✨ Proposed Draft for <a href="${escapeHtml(links.expectationsRel)}" target="_blank" style="color:inherit;text-decoration:underline">expectations.md</a></span>
@@ -548,33 +552,39 @@ function renderCapsuleCardHtml(
       <div class="table-wrap"><table class="defect-table">
         <thead>
           <tr>
-            <th style="width:55px">ID</th>
-            <th style="width:195px">Issue Type &amp; Grade</th>
-            <th style="width:145px">Citation</th>
-            <th>Offending Code &amp; Counterexample Proof</th>
-            <th style="width:28%">Tight Remedy</th>
+            <th style="width:68px">ID</th>
+            <th style="width:200px">Issue Type &amp; Grade</th>
+            <th style="width:150px">Citation</th>
+            <th style="width:38%">Offending Code &amp; Counterexample Proof</th>
+            <th>Recommended Fix</th>
           </tr>
         </thead>
         <tbody>
           ${a.graderIssues
             .map(
-              (g) => `<tr>
-            <td class="mono bold">${escapeHtml(g.id)}</td>
-            <td>
+              (g) => `<tr class="defect-row">
+            <td class="id-cell"><span class="defect-id-pill">${escapeHtml(g.id)}</span></td>
+            <td class="type-cell">
               <div class="category-tag">${escapeHtml(g.category)}</div>
-              <div style="margin-top:6px">${htmlGradeBadge(normalizeGrade(g.grade))}</div>
+              <div style="margin-top:8px">${htmlGradeBadge(normalizeGrade(g.grade))}</div>
             </td>
-            <td>${renderCitationHtml(g.citation, links)}</td>
-            <td>
+            <td class="citation-cell">${renderCitationHtml(g.citation, links)}</td>
+            <td class="evidence-cell">
               <div class="evidence-block">
                 <div class="evidence-label">Offending Code</div>
                 <pre class="code-snippet">${escapeHtml(g.offendingCode)}</pre>
               </div>
               <div class="proof-block">
-                <span class="proof-label">Counterexample Proof:</span> ${escapeHtml(g.counterexampleProof)}
+                <div class="proof-label">Counterexample Proof</div>
+                <div>${escapeHtml(g.counterexampleProof)}</div>
               </div>
             </td>
-            <td class="remedy-cell">${escapeHtml(g.remedy)}</td>
+            <td class="remedy-cell">
+              <div class="remedy-callout">
+                <div class="remedy-callout-label">Recommended Fix</div>
+                <div class="remedy-callout-text">${escapeHtml(g.remedy)}</div>
+              </div>
+            </td>
           </tr>`
             )
             .join('\n')}
@@ -780,6 +790,10 @@ const SHARED_HTML_STYLES = `
   }
   .table-wrap {
     overflow-x: auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   }
   table {
     width: 100%;
@@ -787,22 +801,56 @@ const SHARED_HTML_STYLES = `
     font-size: 13.5px;
   }
   th, td {
-    padding: 11px 14px;
+    padding: 15px 16px;
     text-align: left;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1.5px solid #cbd5e1;
+    border-right: 1px solid #e2e8f0;
     vertical-align: top;
   }
+  th:last-child, td:last-child {
+    border-right: none;
+  }
   th {
-    background: var(--surface-subtle);
-    font-weight: 600;
+    background: #f1f5f9;
+    font-weight: 700;
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--text-muted);
-    border-top: 1px solid var(--border);
+    color: #334155;
+    border-bottom: 2px solid #94a3b8;
   }
-  tr.triage-row:hover {
+  tbody tr.triage-row:nth-child(even) > td {
     background: #f8fafc;
+  }
+  tbody tr.triage-row:hover > td {
+    background: #eff6ff;
+  }
+  table.defect-table tbody tr.defect-row > td {
+    border-bottom: 2px solid #94a3b8;
+    padding: 18px 16px;
+  }
+  table.defect-table tbody tr.defect-row:last-child > td {
+    border-bottom: none;
+  }
+  table.defect-table tbody tr.defect-row:nth-child(odd) > td {
+    background: #ffffff;
+  }
+  table.defect-table tbody tr.defect-row:nth-child(even) > td {
+    background: #f8fafc;
+  }
+  .defect-id-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: #0f172a;
+    color: #ffffff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
   }
   .badge {
     display: inline-flex;
@@ -869,10 +917,10 @@ const SHARED_HTML_STYLES = `
   .verif-warn { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
   .capsule-card {
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid #cbd5e1;
     border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    margin-bottom: 24px;
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
     overflow: hidden;
   }
   .capsule-card.priority-high { border-left: 5px solid #ef4444; }
@@ -888,7 +936,7 @@ const SHARED_HTML_STYLES = `
     flex-wrap: wrap;
     gap: 12px;
     list-style: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #cbd5e1;
   }
   .capsule-card-header::-webkit-details-marker { display: none; }
   .capsule-title-group {
@@ -973,7 +1021,7 @@ const SHARED_HTML_STYLES = `
     font-size: 13.5px;
   }
   .sub-heading {
-    margin: 20px 0 10px 0;
+    margin: 20px 0 12px 0;
     font-size: 14.5px;
     font-weight: 700;
     display: flex;
@@ -992,10 +1040,11 @@ const SHARED_HTML_STYLES = `
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 11.5px;
     font-weight: 600;
-    background: var(--surface-subtle);
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
+    background: #f1f5f9;
+    color: #1e293b;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid #cbd5e1;
     word-break: break-all;
   }
   .citation-code, .citation-link {
@@ -1003,8 +1052,8 @@ const SHARED_HTML_STYLES = `
     font-size: 12px;
     background: #eff6ff;
     color: #1d4ed8;
-    padding: 3px 7px;
-    border-radius: 4px;
+    padding: 4px 8px;
+    border-radius: 5px;
     border: 1px solid #bfdbfe;
     display: inline-block;
     word-break: break-all;
@@ -1016,78 +1065,113 @@ const SHARED_HTML_STYLES = `
     text-decoration: underline;
   }
   .evidence-block {
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
   .evidence-label {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 3px;
+    letter-spacing: 0.03em;
+    color: #475569;
+    margin-bottom: 4px;
   }
   pre.code-snippet {
     margin: 0;
-    padding: 8px 11px;
-    background: var(--code-bg);
-    color: var(--code-text);
-    border-radius: 6px;
+    padding: 10px 13px;
+    background: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-word;
   }
+  .proof-block {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-left: 4px solid #f59e0b;
+    padding: 9px 12px;
+    border-radius: 7px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #78350f;
+  }
+  .proof-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #92400e;
+    margin-bottom: 3px;
+  }
+  .remedy-cell {
+    font-weight: 400;
+    color: var(--text);
+  }
+  .remedy-callout {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid #2563eb;
+    border-radius: 7px;
+    padding: 10px 13px;
+    margin-bottom: 12px;
+  }
+  .remedy-callout-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #1d4ed8;
+    margin-bottom: 3px;
+  }
+  .remedy-callout-text {
+    font-size: 13px;
+    line-height: 1.45;
+    color: #1e3a8a;
+    font-weight: 500;
+  }
   .draft-box {
     background: #ffffff;
-    border: 1px solid #86efac;
+    border: 1.5px solid #86efac;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 1px 2px rgba(22, 101, 52, 0.06);
+    box-shadow: 0 1px 3px rgba(22, 101, 52, 0.07);
   }
   .draft-box-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 10px;
+    padding: 7px 12px;
     background: #dcfce7;
+    border-bottom: 1px solid #86efac;
     color: #14532d;
     font-size: 11.5px;
     font-weight: 700;
   }
   pre.draft-snippet {
+    border: none;
     border-radius: 0;
-    background: #0f172a;
-    color: #bbf7d0;
-    padding: 10px 12px;
+    background: #f0fdf4;
+    color: #064e3b;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    line-height: 1.55;
   }
   .copy-btn {
     background: #ffffff;
-    border: 1px solid #4ade80;
+    border: 1px solid #22c55e;
     color: #15803d;
     border-radius: 5px;
-    padding: 2px 8px;
+    padding: 3px 9px;
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
   }
   .copy-btn:hover {
     background: #f0fdf4;
-  }
-  .proof-block {
-    background: #fffbeb;
-    border: 1px solid #fef08a;
-    padding: 8px 11px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #713f12;
-  }
-  .proof-label {
-    font-weight: 700;
-  }
-  .remedy-cell {
-    background: #f0fdf4;
-    font-weight: 500;
-    color: #14532d;
   }
   .empty-state {
     padding: 12px 16px;
