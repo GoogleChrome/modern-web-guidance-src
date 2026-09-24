@@ -106,23 +106,14 @@ Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
 
 ### 1.5 Secure Window Messaging (postMessage)
 If your application communicates with other origins using `window.postMessage`, you must strictly validate the sender and receiver.
-- **DO**: Prefer the `Origin` interface (`Origin.from(event.origin).isSameOrigin(trustedOrigin)`) when available to compare origins without error-prone string manipulation. Note that `isSameOrigin()` and `isSameSite()` require an `Origin` object as their argument (`const trustedOrigin = Origin.from('https://trusted-origin.com')`), not a raw string. Also pass `event.origin` (or a `URL` / `Window` / `HTMLAnchorElement` object) to `Origin.from(...)`, as `MessageEvent` itself does not currently define extract-an-origin steps and `Origin.from(event)` throws a `TypeError`.
-- **DO**: Because the `Origin` interface currently has **limited availability** (supported in Chrome/Edge 145+ and Safari 26.5+, not yet supported in Firefox), feature-detect `'Origin' in window` and fall back to strict equality on `event.origin` against an explicit trusted origin allowlist. Do **not** trust wildcards (`*`) or unverified payloads.
+- **DO**: Always validate the `event.origin` of incoming messages on the receiver side using strict equality against a list of trusted origins. Do **not** trust wildcards (`*`) or unverified payloads.
 - **DO**: Always specify a target origin (rather than the wildcard `*`) when calling `postMessage` to send sensitive data, ensuring only the intended origin can receive it.
 - **DO**: Validate and sanitize the properties of incoming message payloads before performing operations or writing them to DOM sinks. Manual JSON serialization is unnecessary as `postMessage` handles object cloning internally.
 
 ```javascript
-const TRUSTED_ORIGIN_URL = 'https://trusted-origin.com';
-// Both arguments to isSameOrigin() must be Origin instances
-const trustedOrigin = 'Origin' in window ? Origin.from(TRUSTED_ORIGIN_URL) : null;
-
-// Receiver (Safe - Origin interface with fallback for unsupported browsers)
+// Receiver (Safe - traditional string check)
 window.addEventListener('message', (event) => {
-  const isTrusted = 'Origin' in window
-    ? Origin.from(event.origin).isSameOrigin(trustedOrigin)
-    : event.origin === TRUSTED_ORIGIN_URL;
-  if (!isTrusted) return;
-
+  if (event.origin !== 'https://trusted-origin.com') return;
   const data = event.data;
   if (data && data.action === 'update') {
     // Process data safely
@@ -130,7 +121,7 @@ window.addEventListener('message', (event) => {
 });
 
 // Sender (Safe)
-targetWindow.postMessage({ action: 'update' }, TRUSTED_ORIGIN_URL);
+targetWindow.postMessage({ action: 'update' }, 'https://trusted-origin.com');
 ```
 
 ## Phase 2: Discovery & Data Collection (Prerequisites)
