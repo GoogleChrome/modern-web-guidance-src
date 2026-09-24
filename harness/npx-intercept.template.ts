@@ -14,10 +14,12 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
+const invokedBin = path.basename(process.argv[1] || 'npx');
 const args = process.argv.slice(2);
+const normalizedArgs = (args[0] === '-y' || args[0] === 'dlx') ? args.slice(1) : args;
 
-if (args[0] === '-y' && args[1] === 'modern-web-guidance@latest') {
-  const remainingArgs = args.slice(2);
+if (normalizedArgs[0] === 'modern-web-guidance@latest') {
+  const remainingArgs = normalizedArgs.slice(1);
   const localCliPath = "__LOCAL_CLI_PATH__";
 
   // Execute the local CLI instead of fetching from registry
@@ -25,23 +27,23 @@ if (args[0] === '-y' && args[1] === 'modern-web-guidance@latest') {
   process.exit(result.status ?? 0);
 }
 
-// Fallback to real npx
+// Fallback to real binary (npx, pnpx, or pnpm)
 const currentDir = fs.realpathSync(path.dirname(fileURLToPath(import.meta.url)));
 
-// Find all npx in PATH
-const npxPaths = spawnSync('which', ['-a', 'npx'], { encoding: 'utf8' }).stdout.split('\n').filter(Boolean);
+// Find all matching binaries in PATH
+const binPaths = spawnSync('which', ['-a', invokedBin], { encoding: 'utf8' }).stdout.split('\n').filter(Boolean);
 
-// Find the first one that does not resolve to our shim path
-const realNpx = npxPaths.find(p => {
+// Find the first one that does not resolve to our shim directory
+const realBin = binPaths.find(p => {
   try {
-    return fs.realpathSync(p) !== path.join(currentDir, 'npx');
+    return path.dirname(fs.realpathSync(p)) !== currentDir;
   } catch {
     return false;
   }
 });
 
-if (!realNpx) {
-  console.error("Could not find real npx");
+if (!realBin) {
+  console.error(`Could not find real ${invokedBin}`);
   process.exit(1);
 }
 
@@ -51,5 +53,6 @@ if (env.PATH) {
   env.PATH = pathDirs.filter(d => d !== currentDir).join(path.delimiter);
 }
 
-const result = spawnSync(realNpx, args, { stdio: 'inherit', env });
+const result = spawnSync(realBin, args, { stdio: 'inherit', env });
 process.exit(result.status ?? 0);
+

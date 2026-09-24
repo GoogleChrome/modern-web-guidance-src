@@ -412,9 +412,11 @@ export function generateTransientPackage(
     let templateContent = fs.readFileSync(templatePath, 'utf8');
     templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
 
-    const npxWrapperPath = path.join(targetDir, 'npx');
-    fs.writeFileSync(npxWrapperPath, templateContent);
-    fs.chmodSync(npxWrapperPath, 0o755); // Make executable
+    for (const binName of ['npx', 'pnpx', 'pnpm']) {
+      const wrapperPath = path.join(targetDir, binName);
+      fs.writeFileSync(wrapperPath, templateContent);
+      fs.chmodSync(wrapperPath, 0o755); // Make executable
+    }
   } else {
     console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
   }

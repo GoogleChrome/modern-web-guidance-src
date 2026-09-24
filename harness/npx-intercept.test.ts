@@ -24,32 +24,35 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
   let templateContent = fs.readFileSync(templatePath, 'utf8');
   templateContent = templateContent.replace('__LOCAL_CLI_PATH__', dummyCliPath);
 
-  const npxShimPath = path.join(tempDir, 'npx');
-  fs.writeFileSync(npxShimPath, templateContent);
-  fs.chmodSync(npxShimPath, 0o755);
+  for (const binName of ['npx', 'pnpx', 'pnpm']) {
+    const shimPath = path.join(tempDir, binName);
+    fs.writeFileSync(shimPath, templateContent);
+    fs.chmodSync(shimPath, 0o755);
+  }
 
   try {
-    // Run a command that should be intercepted
-    // We need to make sure we use the shim npx by setting PATH
+    // Run commands that should be intercepted across npx, pnpx, and pnpm dlx
     const env = { ...process.env, PATH: `${tempDir}:${process.env.PATH}` };
-
-    console.log(`Running intercepted command with PATH=${tempDir}...`);
-    const result = spawnSync('npx', ['-y', 'modern-web-guidance@latest', 'search', 'foo'], {
-      cwd: tempDir,
-      stdio: 'inherit',
-      env,
-      timeout: 10000,
-      shell: process.platform === 'win32'
-    });
-
-    assert.strictEqual(result.status, 0, 'Intercepted command should succeed');
-
     const calledFile = path.join(tempDir, 'called.txt');
-    assert.ok(fs.existsSync(calledFile), 'Dummy CLI should have been called');
-    assert.strictEqual(fs.readFileSync(calledFile, 'utf8'), 'yes', 'Dummy CLI should have written yes');
 
-    // Clean up called file
-    fs.unlinkSync(calledFile);
+    for (const [cmd, cmdArgs] of [
+      ['npx', ['-y', 'modern-web-guidance@latest', 'search', 'foo']],
+      ['pnpx', ['modern-web-guidance@latest', 'search', 'foo']],
+      ['pnpm', ['dlx', 'modern-web-guidance@latest', 'search', 'foo']],
+    ] as const) {
+      const result = spawnSync(cmd, [...cmdArgs], {
+        cwd: tempDir,
+        stdio: 'inherit',
+        env,
+        timeout: 10000,
+        shell: process.platform === 'win32'
+      });
+
+      assert.strictEqual(result.status, 0, `Intercepted ${cmd} command should succeed`);
+      assert.ok(fs.existsSync(calledFile), `Dummy CLI should have been called for ${cmd}`);
+      assert.strictEqual(fs.readFileSync(calledFile, 'utf8'), 'yes', 'Dummy CLI should have written yes');
+      fs.unlinkSync(calledFile);
+    }
 
     // Run a command that should NOT be intercepted (fallback)
     console.log(`Running fallback command with PATH=${tempDir}...`);
