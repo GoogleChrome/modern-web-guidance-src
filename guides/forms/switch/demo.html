@@ -7,9 +7,38 @@
     <title>Switch demo</title>
 
     <script>
-        if (!('switch' in HTMLInputElement.prototype)) {
-            document.documentElement.classList.add('no-native-switch');
+        const root = document.documentElement;
+        root.classList.add('switch-detection-pending');
+
+        function supportsNativeSwitchRendering() {
+            const frame = document.createElement('iframe');
+            frame.setAttribute('aria-hidden', 'true');
+            frame.style.cssText =
+                'position:absolute;inline-size:0;block-size:0;border:0;visibility:hidden;';
+            root.append(frame);
+
+            try {
+                const frameDocument = frame.contentDocument;
+                frameDocument.body.innerHTML = `
+                    <input id="checkbox" type="checkbox">
+                    <input id="switch" type="checkbox" switch>
+                `;
+
+                const checkbox = frameDocument.querySelector('#checkbox');
+                const switchControl = frameDocument.querySelector('#switch');
+
+                return switchControl.offsetWidth !== checkbox.offsetWidth ||
+                    switchControl.offsetHeight !== checkbox.offsetHeight;
+            } finally {
+                frame.remove();
+            }
         }
+
+        const supportsNativeSwitch = supportsNativeSwitchRendering();
+
+        root.classList.toggle('native-switch', supportsNativeSwitch);
+        root.classList.toggle('no-native-switch', !supportsNativeSwitch);
+        root.classList.remove('switch-detection-pending');
     </script>
 
     <style>
@@ -72,7 +101,7 @@
         }
 
         /* Native switch styling (WebKit / Safari) */
-        input[type="checkbox"][switch] {
+        html.native-switch input[type="checkbox"][switch] {
             accent-color: var(--accent-color);
             inline-size: 3rem;
             block-size: 1.75rem;
@@ -81,57 +110,88 @@
         }
 
         /* Focus outline for both native and polyfilled controls */
-        input[type="checkbox"][switch]:focus-visible {
+        input[type="checkbox"][switch]:focus-visible,
+        html.no-native-switch .switch:focus-within {
             outline: 3px solid var(--focus-color);
             outline-offset: 4px;
         }
 
-        /* Fallback switch polyfill (non-WebKit browsers) */
-        html.no-native-switch input[type="checkbox"][switch] {
-            appearance: none;
-            -webkit-appearance: none;
-            inline-size: 3rem;
-            block-size: 1.75rem;
-            border-radius: 999px;
-            background-color: var(--track-off);
-            border: 2px solid var(--border-color);
+        .switch {
+            --switch-block-size: 1.75rem;
+            --switch-inline-size: 3rem;
+            --switch-border-size: 2px;
+            --switch-thumb-size: calc(
+                var(--switch-block-size) - (2 * var(--switch-border-size))
+            );
+
             position: relative;
-            margin: 0;
-            cursor: pointer;
-            outline-offset: 4px;
-            transition: background-color 150ms ease, border-color 150ms ease;
-            vertical-align: middle;
+            padding-inline-end: var(--switch-inline-size);
         }
 
-        /* Sliding switch thumb */
-        html.no-native-switch input[type="checkbox"][switch]::before {
-            content: "";
+        /* Keep the checkbox as the semantic and interactive control. */
+        html.no-native-switch .switch__control {
+            position: absolute;
+            inline-size: 1px;
+            block-size: 1px;
+            margin: -1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+
+        /* The label pseudo-elements provide the fallback track and thumb. */
+        html.no-native-switch .switch::before {
             position: absolute;
             inset-block-start: 50%;
-            inset-inline-start: 2px;
-            inline-size: calc(1.75rem - 8px);
-            block-size: calc(1.75rem - 8px);
-            border-radius: 50%;
-            background-color: Canvas;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-            transform: translateY(-50%);
-            transition: transform 150ms ease;
+            inset-inline-end: 0;
+            inline-size: var(--switch-inline-size);
+            block-size: var(--switch-block-size);
+            box-sizing: border-box;
+            border: var(--switch-border-size) solid var(--border-color);
+            border-radius: 999em;
+            background-color: var(--track-off);
+            content: "";
+            transition: background-color 150ms ease, border-color 150ms ease;
+            margin-block-start: calc(var(--switch-block-size) / -2);
         }
 
-        /* Active / Checked track */
-        html.no-native-switch input[type="checkbox"][switch]:checked {
+        html.no-native-switch .switch::after {
+            position: absolute;
+            inset-block-start: 50%;
+            inset-inline-end: calc(
+                var(--switch-inline-size) - var(--switch-border-size) - var(--switch-thumb-size)
+            );
+            inline-size: var(--switch-thumb-size);
+            block-size: var(--switch-thumb-size);
+            box-sizing: border-box;
+            border: var(--switch-border-size) solid var(--border-color);
+            border-radius: 50%;
+            background-color: Canvas;
+            box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+            content: "";
+            transition: inset-inline-end 150ms ease, border-color 150ms ease;
+            margin-block-start: calc(var(--switch-thumb-size) / -2);
+        }
+
+        html.no-native-switch .switch:has(.switch__control:checked)::before {
             background-color: var(--accent-color);
             border-color: var(--accent-color);
         }
 
-        /* Active / Checked thumb slide */
-        html.no-native-switch input[type="checkbox"][switch]:checked::before {
-            transform: translate(calc(3rem - 1.75rem), -50%);
+        html.no-native-switch .switch:has(.switch__control:checked)::after {
+            inset-inline-end: var(--switch-border-size);
+            border-color: var(--accent-color);
+        }
+
+        html.switch-detection-pending .switch__control,
+        html.switch-detection-pending .switch::before,
+        html.switch-detection-pending .switch::after {
+            visibility: hidden;
         }
 
         @media (prefers-reduced-motion: reduce) {
-            html.no-native-switch input[type="checkbox"][switch],
-            html.no-native-switch input[type="checkbox"][switch]::before {
+            html.no-native-switch .switch::before,
+            html.no-native-switch .switch::after {
                 transition: none;
             }
         }
