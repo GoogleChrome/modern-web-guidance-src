@@ -141,19 +141,10 @@
           updatePermissionUI(permissionName, status.state);
           return status.state;
         } catch {
-          try {
-            const legacyStatus = await navigator.permissions.query({
-              name: 'local-network-access',
-            });
-            legacyStatus.addEventListener('change', () => {
-              updatePermissionUI(permissionName, legacyStatus.state);
-            });
-            updatePermissionUI(permissionName, legacyStatus.state);
-            return legacyStatus.state;
-          } catch {
-            updatePermissionUI(permissionName, 'prompt');
-            return 'prompt';
-          }
+          // Unrecognized permission name. Never fall back to 'local-network-access',
+          // which crashes older Chrome versions even inside try/catch.
+          updatePermissionUI(permissionName, 'prompt');
+          return 'prompt';
         }
       }
 

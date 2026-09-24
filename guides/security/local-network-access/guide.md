@@ -17,7 +17,7 @@ Because `localhost` (`127.0.0.1`) is already in the most private (`loopback`) ad
 
 **MANDATORY:** Serve any web application that initiates local or loopback network requests from a **Secure Context (`https://`)**. Local Network Access permissions are denied automatically in insecure (`http://`) top-level contexts.
 
-**DO NOT** rely on deprecated Private Network Access (PNA) preflight headers (`Access-Control-Request-Private-Network: true` / `Access-Control-Allow-Private-Network: true`). Local Network Access enforces access via client-side user permission prompts (`local-network` and `loopback-network`) combined with standard CORS headers (`Access-Control-Allow-Origin`) when reading cross-origin responses.
+**DO NOT** rely on deprecated Private Network Access (PNA) preflight headers (`Access-Control-Request-Private-Network: true` / `Access-Control-Allow-Private-Network: true`). Local Network Access enforces access via client-side user permission prompts (`local-network` and `loopback-network`) combined with standard CORS headers (`Access-Control-Allow-Origin`) when reading cross-origin responses. PNA preflights were never enforced as a blocking requirement and are not needed as a fallback. Existing servers or device firmware that already return `Access-Control-Allow-Private-Network: true` can keep doing so harmlessly, but do not add PNA handling to new code.
 
 ## Implementation Steps
 
@@ -162,6 +162,8 @@ By default, `local-network` and `loopback-network` have a default allowlist of `
 </iframe>
 ```
 
+Send the `Permissions-Policy` header on the **top-level (embedding) document's** response, not on the iframe's response:
+
 ```http
 Permissions-Policy: local-network=(self "https://setup.partner.example.com"), loopback-network=(self "https://setup.partner.example.com")
 ```
@@ -170,16 +172,17 @@ Permissions-Policy: local-network=(self "https://setup.partner.example.com"), lo
 
 {{ FEATURE_FALLBACKS("local-network-access") }}
 
-Because Local Network Access permissions and `targetAddressSpace` options are not yet supported across all browsers (and older browser versions used the combined `'local-network-access'` permission name before the granular `'local-network'` / `'loopback-network'` split, or only accepted a protocol string/array in `new WebSocket(url, protocols)`), implement **feature detection with progressive fallback**:
+Because Local Network Access permissions and `targetAddressSpace` options are not yet supported across all browsers (and older browser versions only accepted a protocol string/array in `new WebSocket(url, protocols)`), implement **feature detection with progressive fallback**:
 
-1. **Permission Query Fallback**: Wrap `navigator.permissions.query({ name: permissionName })` in a `try / catch`. If the browser throws a `TypeError` because `'local-network'` or `'loopback-network'` is an unrecognized `PermissionName`, fall back to querying `{ name: 'local-network-access' }`, and if that also throws, treat the state as `'prompt'` so the request still runs on user click.
-2. **`WebSocket` Constructor Fallback**: Wrap `new WebSocket(url, { protocols, targetAddressSpace })` in a `try / catch` and fall back to `new WebSocket(url, protocols)` when the browser does not support the `WebSocketInit` options dictionary.
-3. **Graceful Rejection Handling**: Always wrap `fetch()`, `WebSocket` error events, and `transport.ready` in error handlers that catch `TypeError` / connection failures and present clear remediation steps (checking that the local device is powered on, connected to the same network, and allowed in browser permissions).
+1. **Permission Query Fallback**: Wrap `navigator.permissions.query({ name: permissionName })` in a `try / catch`. If the browser throws a `TypeError` because `'local-network'` or `'loopback-network'` is an unrecognized `PermissionName`, treat the state as `'prompt'` so the request still runs on an explicit user click (the connection attempt itself triggers the browser prompt where LNA is supported).
+2. **DO NOT** query the legacy combined permission name `{ name: 'local-network-access' }`. In older Chrome versions this query crashes the renderer process, and `try / catch` cannot prevent it. Newer Chrome versions treat `'local-network-access'` only as a legacy alias for the granular permissions.
+3. **`WebSocket` Constructor Fallback**: Wrap `new WebSocket(url, { protocols, targetAddressSpace })` in a `try / catch` and fall back to `new WebSocket(url, protocols)` when the browser does not support the `WebSocketInit` options dictionary.
+4. **Graceful Rejection Handling**: Always wrap `fetch()`, `WebSocket` error events, and `transport.ready` in error handlers that catch `TypeError` / connection failures and present clear remediation steps (checking that the local device is powered on, connected to the same network, and allowed in browser permissions).
 
 ```javascript
 /**
- * Cross-browser permission check supporting granular ('local-network' / 'loopback-network'),
- * legacy ('local-network-access'), and browsers without LNA permission entries.
+ * Cross-browser permission check for the granular LNA permissions.
+ * Never falls back to querying 'local-network-access', which crashes older Chrome versions.
  * @param {'local-network' | 'loopback-network'} permissionName
  */
 export async function queryLnaPermissionSafe(permissionName) {
@@ -190,14 +193,8 @@ export async function queryLnaPermissionSafe(permissionName) {
     const status = await navigator.permissions.query({ name: permissionName });
     return status.state;
   } catch {
-    try {
-      // Fallback for browsers using the combined permission alias
-      const legacyStatus = await navigator.permissions.query({ name: 'local-network-access' });
-      return legacyStatus.state;
-    } catch {
-      // Browser does not implement LNA permissions; proceed on user gesture
-      return 'prompt';
-    }
+    // Unrecognized permission name; proceed on user gesture
+    return 'prompt';
   }
 }
 
