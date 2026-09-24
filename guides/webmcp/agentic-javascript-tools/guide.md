@@ -195,6 +195,24 @@ await document.modelContext.registerTool({
 
 **MANDATORY:** Treat `consequentialHint` as a hint, not an enforcement mechanism. It does not block execution on its own, and browsers that predate the hint will not prompt at all. Keep whatever in-app confirmation the action already warrants.
 
+## Flagging Debugging Tools
+
+Since Chrome 156, `annotations` supports `debugging`. Set `annotations.debugging` to `true` for tools built for debugging and developer tooling rather than end-user tasks. Examples: dumping internal app state, toggling feature flags, or seeding test data. This lets agents tell developer-only tools apart from tools meant to act for the user. It defaults to `false`. In-page agents and test harnesses can read it from `RegisteredTool.annotations.debugging` via `getTools()`.
+
+```javascript
+await document.modelContext.registerTool({
+  name: "dump_app_state",
+  description: "Returns a snapshot of the internal application store for debugging.",
+  execute() {
+    return appStore.getState();
+  },
+  annotations: {
+    readOnlyHint: true, // Only reads state.
+    debugging: true,    // Developer tooling, not an end-user action.
+  }
+});
+```
+
 ## In-Page Agents and Testing (`getTools` and `executeTool`)
 
 **Web pages do not need `getTools()` or `executeTool()` to expose tools to AI agents.** Simply calling `document.modelContext.registerTool()` is all that is required for browser agents, browser extensions, DevTools, and system-level assistants to discover and execute your tools out-of-band.
@@ -296,6 +314,7 @@ export function createInventoryTool(inventoryManager) {
     *   **readOnlyHint**: (Optional) Set to `true` if the tool does not modify any state and only reads data. This helps agents decide when it is safe to call the tool.
     *   **consequentialHint**: (Optional, Chrome 154+) Set to `true` for high-stakes, irreversible, or real-world actions so agents request user confirmation first.
     *   **untrustedContentHint**: (Optional) Set to `true` when the tool returns content your site does not control, such as user-generated text or third-party API responses.
+    *   **debugging**: (Optional, Chrome 156+) Set to `true` when the tool is meant for debugging and developer tooling, not end-user tasks. Defaults to `false`.
 *   **Registration Options**:
     *   **signal**: (Optional) An `AbortSignal` used to unregister the tool when it is no longer needed.
     *   **exposedTo**: (Optional) An array of secure origin strings controlling which documents in the document tree are allowed to discover and execute the tool across frame boundaries.
