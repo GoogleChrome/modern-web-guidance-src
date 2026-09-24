@@ -1,6 +1,11 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
-import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from "../lib/compare-prompts.ts";
+import {
+  getComparisonPrompts,
+  getCompliancePrompts,
+  getCodeAndFrictionPrompts,
+  getSynthesizerPrompts
+} from "../lib/compare-prompts.ts";
 import type { GuideContext, RunContext } from "../lib/compare-evals.ts";
 
 function createMockGuideContext(overrides?: Partial<GuideContext>): GuideContext {
@@ -64,24 +69,7 @@ function createMockRunContext(overrides?: Partial<RunContext>): RunContext {
 }
 
 describe("compare-prompts pipeline", () => {
-  test("getCompliancePrompts formats system instruction and prompt with truncated references", () => {
-    const guideCtx = createMockGuideContext();
-    const ctxA = createMockRunContext({ score: 100 });
-    const ctxB = createMockRunContext({ score: 0 });
-
-    const { systemInstruction, prompt } = getCompliancePrompts(guideCtx, ctxA, ctxB, "SUCCESSFUL", "FAILED");
-
-    assert.ok(systemInstruction.includes("Web Guidance Compliance Auditor"));
-    assert.ok(prompt.includes("### Initial Eval / Task Prompts (Starting Points)"));
-    assert.ok(prompt.includes(ctxA.initialPrompt));
-    assert.ok(prompt.includes(ctxB.initialPrompt));
-    assert.ok(prompt.includes("anchor-positioning"));
-    assert.ok(prompt.includes("Run A (SUCCESSFUL - Score: 100%)"));
-    assert.ok(prompt.includes("Run B (FAILED - Score: 0%)"));
-    assert.ok(prompt.length < guideCtx.guideContent.length + guideCtx.expectationsContent.length);
-  });
-
-  test("getCodeAndFrictionPrompts builds diffs and error traces correctly", () => {
+  test("getComparisonPrompts formats unified system instruction and prompt with subagent tracks, strict payload constraint, and truncated references", () => {
     const guideCtx = createMockGuideContext();
     const ctxA = createMockRunContext({ score: 100 });
     const ctxB = createMockRunContext({ score: 50 });
@@ -90,7 +78,7 @@ describe("compare-prompts pipeline", () => {
     const diffBaseVsB = "--- Base\n+++ Run B\n+ added line B";
     const diffAvsB = "--- Run A\n+++ Run B\n- diff";
 
-    const { systemInstruction, prompt } = getCodeAndFrictionPrompts(
+    const { systemInstruction, prompt } = getComparisonPrompts(
       guideCtx,
       ctxA,
       ctxB,
@@ -101,43 +89,29 @@ describe("compare-prompts pipeline", () => {
       "FAILED/POORER"
     );
 
-    assert.ok(systemInstruction.includes("Code & Execution Diagnostic Sub-Agent"));
-    assert.ok(prompt.includes("### Validation Logic (grader.ts)"));
-    assert.ok(prompt.includes("#### Diff 1: Base App vs Run A Output"));
-    assert.ok(prompt.includes("#### Diff 2: Base App vs Run B Output"));
-    assert.ok(prompt.includes("#### Diff 3: Run A Output vs Run B Output"));
-    assert.ok(prompt.includes("Expected anchor center to align with target center"));
-    assert.ok(prompt.includes("Code Mutations: 1"));
-  });
-
-  test("getSynthesizerPrompts combines sub-agent analyses into synthesis prompt", () => {
-    const guideCtx = createMockGuideContext();
-    const ctxA = createMockRunContext({ score: 100 });
-    const ctxB = createMockRunContext({ score: 0 });
-
-    const complianceAnalysis = "Run A retrieved the guide before writing code; Run B skipped guide retrieval.";
-    const codeAndFrictionAnalysis = "Run A used anchor-name; Run B attempted JS scroll listener.";
-
-    const { systemInstruction, prompt } = getSynthesizerPrompts(
-      guideCtx,
-      ctxA,
-      ctxB,
-      complianceAnalysis,
-      codeAndFrictionAnalysis,
-      "SUCCESSFUL",
-      "FAILED"
-    );
-
-    assert.ok(systemInstruction.includes("Lead Diagnostic Engineer synthesizing a variance diagnosis"));
+    // Subagent orchestration & strict payload-only constraints
+    assert.ok(systemInstruction.includes("Audit Track 1 — Guide Compliance & Chronological Sequencing"));
+    assert.ok(systemInstruction.includes("Audit Track 2 — Code Diffs, Grader Alignment & Execution Friction"));
+    assert.ok(systemInstruction.includes("Strict Payload-Only Constraint"));
     assert.ok(systemInstruction.includes("### 1. First Meaningful Divergence"));
     assert.ok(systemInstruction.includes("### 2. Root Cause & Friction Analysis"));
     assert.ok(systemInstruction.includes("### 3. Actionable Fix Recommendation"));
     assert.ok(systemInstruction.includes("### 4. Guide Compliance & Milestone Matrix"));
 
-    assert.ok(prompt.includes("### Sub-Agent 1: Guide Compliance Analysis"));
-    assert.ok(prompt.includes(complianceAnalysis));
-    assert.ok(prompt.includes("### Sub-Agent 2: Code-to-Trajectory & Friction Analysis"));
-    assert.ok(prompt.includes(codeAndFrictionAnalysis));
+    // Prompt contents
+    assert.ok(prompt.includes("### Initial Eval / Task Prompts (Starting Points)"));
+    assert.ok(prompt.includes(ctxA.initialPrompt));
+    assert.ok(prompt.includes(ctxB.initialPrompt));
+    assert.ok(prompt.includes("anchor-positioning"));
+    assert.ok(prompt.includes("Run A (SUCCESSFUL - Score: 100%)"));
+    assert.ok(prompt.includes("Run B (FAILED/POORER - Score: 50%)"));
+    assert.ok(prompt.includes("### Validation Logic (grader.ts)"));
+    assert.ok(prompt.includes("#### Diff 1: Base App vs Run A Output"));
+    assert.ok(prompt.includes("#### Diff 2: Base App vs Run B Output"));
+    assert.ok(prompt.includes("#### Diff 3: Run A Output vs Run B Output"));
+    assert.ok(prompt.includes("Expected anchor center to align with target center"));
+    assert.ok(prompt.includes("Code Mutations=1"));
+    assert.ok(prompt.length < guideCtx.guideContent.length + guideCtx.expectationsContent.length + guideCtx.graderContent.length);
   });
 
   test("handles sparse and empty run contexts safely without exceptions", () => {
@@ -146,6 +120,7 @@ describe("compare-prompts pipeline", () => {
     const sparseRunB = createMockRunContext({ resultsJson: [], initialPrompt: "" });
 
     assert.doesNotThrow(() => {
+      getComparisonPrompts(sparseGuide, sparseRunA, sparseRunB, "", "", "", "COMPARED RUN", "COMPARED RUN");
       getCompliancePrompts(sparseGuide, sparseRunA, sparseRunB, "COMPARED RUN", "COMPARED RUN");
       getCodeAndFrictionPrompts(sparseGuide, sparseRunA, sparseRunB, "", "", "", "COMPARED RUN", "COMPARED RUN");
       getSynthesizerPrompts(sparseGuide, sparseRunA, sparseRunB, "", "", "COMPARED RUN", "COMPARED RUN");

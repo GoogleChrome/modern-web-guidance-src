@@ -3,13 +3,19 @@ import path from 'node:path';
 import { cGreen, cRed, cCyan, cBold } from '../../lib/colors.ts';
 import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
 import { baseAppsDir, guidesDir, resultsDir } from '../../lib/paths.ts';
-import { getCompliancePrompts, getCodeAndFrictionPrompts, getSynthesizerPrompts } from './compare-prompts.ts';
+import { getComparisonPrompts } from './compare-prompts.ts';
 import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../lib/patch-utils.ts';
-import { categorizeAction, type CanonicalCategory, type TrajectorySummary } from './trajectory-normalizer.ts';
+import {
+  categorizeAction,
+  ensureFreshTrajectorySummary,
+  ensureFreshTrajectorySummarySync,
+  type CanonicalCategory,
+  type TrajectorySummary
+} from './trajectory-normalizer.ts';
 import { parseResultPath } from './collection.ts';
-import { isEnoent } from './agent-shared.ts';
+import { cleanupIsolatedHome, isEnoent } from './agent-shared.ts';
 import { getDefaultSolutionAgent, getGuidesMap, getTaskMap, GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE, TASK_FILE } from '../../lib/guide-validation.ts';
-import { runAgent } from '../../guides/lib/utils.ts';
+import { runAgent, setupGuideDevWorkDir } from '../../guides/lib/utils.ts';
 
 const ERROR_LOOP_THRESHOLD = 2;
 const MAX_THOUGHT_SNIPPET_LEN = 120;
@@ -35,20 +41,59 @@ function tryReadJson<T = any>(filePath: string): T | null {
 }
 
 /**
- * Calls the local agent CLI (Jetski or Gemini CLI based on repository config) to generate diagnostic text.
+ * Strips leading conversational narration before the first Markdown report heading.
  */
-async function callAgentCli(systemInstruction: string, prompt: string, label = 'Compare Agent'): Promise<string> {
+export function stripAgentNarration(rawOutput: string): string {
+  if (!rawOutput) return '';
+  const trimmed = rawOutput.trim();
+  const primaryHeading = '### 1. First Meaningful Divergence';
+  const primaryIdx = trimmed.indexOf(primaryHeading);
+  if (primaryIdx !== -1) {
+    return trimmed.slice(primaryIdx).trim();
+  }
+
+  const fallbackMatch = trimmed.match(/^(?:###|#)\s+/m);
+  if (fallbackMatch && fallbackMatch.index !== undefined) {
+    return trimmed.slice(fallbackMatch.index).trim();
+  }
+
+  return trimmed;
+}
+
+/**
+ * Calls the local agent CLI (Jetski or Gemini CLI based on repository config) inside an isolated workspace.
+ */
+async function callAgentCli(
+  systemInstruction: string,
+  prompt: string,
+  label = 'Compare Agent',
+  workDir?: string
+): Promise<string> {
   const combinedPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
   const agent = getDefaultSolutionAgent();
 
   console.log(`[${label}] Executing via ${agent}...`);
 
-  const cleanOutput = await runAgent(agent, combinedPrompt, undefined, { captureOutput: true });
-  if (!cleanOutput) {
-    throw new Error(`[${label}] Empty response received from ${agent}`);
-  }
+  const prevJetskiDir = process.env.JETSKI_DIR;
+  const ownsWorkDir = !workDir;
+  const effectiveWorkDir = workDir ?? setupGuideDevWorkDir('compare');
 
-  return cleanOutput;
+  try {
+    const rawOutput = await runAgent(agent, combinedPrompt, effectiveWorkDir, { captureOutput: true });
+    if (!rawOutput) {
+      throw new Error(`[${label}] Empty response received from ${agent}`);
+    }
+    return stripAgentNarration(rawOutput);
+  } finally {
+    if (ownsWorkDir) {
+      cleanupIsolatedHome(path.dirname(effectiveWorkDir));
+      if (prevJetskiDir === undefined) {
+        delete process.env.JETSKI_DIR;
+      } else {
+        process.env.JETSKI_DIR = prevJetskiDir;
+      }
+    }
+  }
 }
 
 export interface TaggedStep {
@@ -467,7 +512,7 @@ export function loadRunContext(runDir: string): RunContext {
     score = resultsJson.length > 0 ? Math.round((passed / resultsJson.length) * 100) : 0;
   }
 
-  const trajectorySummary = tryReadJson<TrajectorySummary>(path.join(absoluteDir, 'trajectory_summary.json'));
+  const trajectorySummary = ensureFreshTrajectorySummarySync(absoluteDir);
   const targetFileFromEvals = extractTargetFileFromEvalsJson(absoluteDir);
   const code = findCodeOutput(absoluteDir, targetFileFromEvals);
   const patchContent = tryReadFile(path.join(absoluteDir, 'agent.patch')) || undefined;
@@ -485,73 +530,6 @@ export function loadRunContext(runDir: string): RunContext {
   };
 }
 
-/**
- * Phase 2: Sub-agent 1 - Guide Compliance & Requirement Auditor.
- */
-async function runSubAgent1_GuideCompliance(
-  guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  statusA: string,
-  statusB: string,
-  agentCaller = callAgentCli
-): Promise<string> {
-  const { systemInstruction, prompt } = getCompliancePrompts(guideCtx, ctxA, ctxB, statusA, statusB);
-  return agentCaller(systemInstruction, prompt, 'Sub-Agent 1 (Guide Compliance)');
-}
-
-/**
- * Phase 2: Sub-agent 2 - Code-to-Trajectory Backtracking & Friction Diagnostic.
- */
-async function runSubAgent2_CodeAndFriction(
-  guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  diffBaseVsA: string,
-  diffBaseVsB: string,
-  diffAvsB: string,
-  statusA: string,
-  statusB: string,
-  agentCaller = callAgentCli
-): Promise<string> {
-  const { systemInstruction, prompt } = getCodeAndFrictionPrompts(
-    guideCtx,
-    ctxA,
-    ctxB,
-    diffBaseVsA,
-    diffBaseVsB,
-    diffAvsB,
-    statusA,
-    statusB
-  );
-  return agentCaller(systemInstruction, prompt, 'Sub-Agent 2 (Code & Friction)');
-}
-
-/**
- * Phase 3: Synthesizer - Combines sub-agent outputs into the 4-section diagnostic report.
- */
-async function synthesizeDiagnosis(
-  guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  complianceAnalysis: string,
-  codeAndFrictionAnalysis: string,
-  statusA: string,
-  statusB: string,
-  agentCaller = callAgentCli
-): Promise<string> {
-  const { systemInstruction, prompt } = getSynthesizerPrompts(
-    guideCtx,
-    ctxA,
-    ctxB,
-    complianceAnalysis,
-    codeAndFrictionAnalysis,
-    statusA,
-    statusB
-  );
-  return agentCaller(systemInstruction, prompt, 'Synthesizer Sub-Agent');
-}
-
 function computeInterRunDiff(ctxA: RunContext, ctxB: RunContext): string {
   if (ctxA.patchContent && ctxB.patchContent) {
     return generateUnifiedDiff(ctxA.patchContent.trim(), ctxB.patchContent.trim(), 'Run A Patch', 'Run B Patch');
@@ -564,15 +542,161 @@ function computeInterRunDiff(ctxA: RunContext, ctxB: RunContext): string {
   return generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
 }
 
+function sanitizeLabelSegment(raw: string): string {
+  return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'run';
+}
+
+function inferSuiteDir(runDir: string): string | null {
+  const resultsMatch = runDir.match(/(.*[/\\]results[/\\][^/\\]+)/);
+  if (resultsMatch) return resultsMatch[1];
+
+  const normalized = runDir.replace(/\\/g, '/').replace(/\/+$/, '');
+  const segments = normalized.split('/').filter(Boolean);
+  // Standard eval structure: .../<suite>/<trialIndex>/<guide>/<task>/<runType>
+  if (segments.length >= 5 && /^\d+$/.test(segments[segments.length - 4])) {
+    const prefix = normalized.startsWith('/') ? '/' : '';
+    return prefix + segments.slice(0, -4).join('/');
+  }
+  return null;
+}
+
+function extractRunLabel(runDir: string, guideName: string, taskName: string, includeSuite: boolean): string {
+  const normalized = runDir.replace(/\\/g, '/').replace(/\/+$/, '');
+  const suiteDir = inferSuiteDir(runDir);
+
+  if (suiteDir) {
+    const normalizedSuite = suiteDir.replace(/\\/g, '/').replace(/\/+$/, '');
+    const suiteName = path.basename(normalizedSuite);
+    const remainder = normalized.startsWith(normalizedSuite + '/')
+      ? normalized.slice(normalizedSuite.length + 1)
+      : '';
+    const relSegments = remainder
+      .split('/')
+      .filter((seg) => Boolean(seg) && seg !== guideName && seg !== taskName);
+    const baseLabel = relSegments.join('-') || path.basename(normalized);
+    return sanitizeLabelSegment(includeSuite ? `${suiteName}-${baseLabel}` : baseLabel);
+  }
+
+  const segments = normalized.split('/').filter(Boolean);
+  const filtered = segments.filter((seg) => seg !== guideName && seg !== taskName);
+  const tail = filtered.slice(-2).join('-') || path.basename(normalized);
+  return sanitizeLabelSegment(tail);
+}
+
 /**
- * Runs the diagnostic agent comparison using local CLI sub-agents.
+ * Resolves a deterministic, symmetric output file path for a variance diagnosis report.
+ * Always derives the output directory from Run A (falling back to Run B, then resultsDir)
+ * regardless of which run scored higher, and disambiguates filenames using both run labels.
+ */
+export function buildComparisonReportPath(
+  dirA: string,
+  dirB: string,
+  guideName: string,
+  taskName: string
+): string {
+  const suiteDirA = inferSuiteDir(dirA);
+  const suiteDirB = inferSuiteDir(dirB);
+
+  const baseOutputDir = suiteDirA || suiteDirB || resultsDir;
+  const diagnosesDir = path.join(baseOutputDir, 'variance_diagnoses');
+
+  const suiteNameA = suiteDirA ? path.basename(suiteDirA) : '';
+  const suiteNameB = suiteDirB ? path.basename(suiteDirB) : '';
+  const includeSuite = Boolean((suiteNameA || suiteNameB) && suiteNameA !== suiteNameB);
+
+  let labelA = extractRunLabel(dirA, guideName, taskName, includeSuite);
+  let labelB = extractRunLabel(dirB, guideName, taskName, includeSuite);
+  if (labelA === labelB) {
+    labelA = `${labelA}-A`;
+    labelB = `${labelB}-B`;
+  }
+
+  const fileName = `${sanitizeLabelSegment(guideName)}-${sanitizeLabelSegment(taskName)}-${labelA}-vs-${labelB}.md`;
+  return path.join(diagnosesDir, fileName);
+}
+
+/**
+ * Writes uncapped reference guides, expectations, graders, unified diffs, and trajectories into
+ * the isolated comparison workspace so the diagnostic agent and its subagents can inspect full context.
+ */
+function writeComparisonWorkspaceFiles(
+  workDir: string,
+  guideCtx: GuideContext,
+  ctxA: RunContext,
+  ctxB: RunContext,
+  diffBaseVsA: string,
+  diffBaseVsB: string,
+  diffAvsB: string
+): void {
+  fs.writeFileSync(path.join(workDir, 'guide.md'), guideCtx.guideContent, 'utf8');
+  fs.writeFileSync(path.join(workDir, 'expectations.md'), guideCtx.expectationsContent, 'utf8');
+  fs.writeFileSync(path.join(workDir, 'grader.ts'), guideCtx.graderContent, 'utf8');
+  fs.writeFileSync(path.join(workDir, 'diff_base_vs_a.patch'), diffBaseVsA, 'utf8');
+  fs.writeFileSync(path.join(workDir, 'diff_base_vs_b.patch'), diffBaseVsB, 'utf8');
+  fs.writeFileSync(path.join(workDir, 'diff_a_vs_b.patch'), diffAvsB, 'utf8');
+  fs.writeFileSync(path.join(workDir, 'run_a_trajectory.json'), JSON.stringify(ctxA.preprocessed, null, 2), 'utf8');
+  fs.writeFileSync(path.join(workDir, 'run_b_trajectory.json'), JSON.stringify(ctxB.preprocessed, null, 2), 'utf8');
+
+  const fullContextMd = `# Full Uncapped Comparison Context (${guideCtx.guideName} / ${guideCtx.taskName})
+
+## Task Prompt
+\`\`\`markdown
+${guideCtx.taskPrompt}
+\`\`\`
+
+## Reference Guidance (guide.md)
+\`\`\`markdown
+${guideCtx.guideContent}
+\`\`\`
+
+## Expected Outcomes (expectations.md)
+\`\`\`markdown
+${guideCtx.expectationsContent}
+\`\`\`
+
+## Grader (grader.ts)
+\`\`\`typescript
+${guideCtx.graderContent}
+\`\`\`
+
+## Diff 1: Base App vs Run A Output
+\`\`\`diff
+${diffBaseVsA}
+\`\`\`
+
+## Diff 2: Base App vs Run B Output
+\`\`\`diff
+${diffBaseVsB}
+\`\`\`
+
+## Diff 3: Run A Output vs Run B Output
+\`\`\`diff
+${diffAvsB}
+\`\`\`
+
+## Run A Full Tagged Trajectory Steps (Score: ${ctxA.score}%)
+\`\`\`json
+${JSON.stringify(ctxA.preprocessed.taggedSteps, null, 2)}
+\`\`\`
+
+## Run B Full Tagged Trajectory Steps (Score: ${ctxB.score}%)
+\`\`\`json
+${JSON.stringify(ctxB.preprocessed.taggedSteps, null, 2)}
+\`\`\`
+`;
+
+  fs.writeFileSync(path.join(workDir, 'comparison_context.md'), fullContextMd, 'utf8');
+}
+
+/**
+ * Runs the diagnostic agent comparison in an isolated workspace using a single unified prompt.
  */
 export async function runComparison(
   runDirA: string,
   runDirB: string,
-  agentCaller: (sys: string, prompt: string, label?: string) => Promise<string> = callAgentCli
+  agentCaller: (sys: string, prompt: string, label?: string, workDir?: string) => Promise<string> = callAgentCli
 ): Promise<string> {
-  console.log(cCyan(`\n=== Starting Run Comparison (Guide-Grounded 3-Phase Pipeline) ===`));
+  console.log(cCyan(`\n=== Starting Run Comparison (Unified Subagent-Orchestrated Pipeline) ===`));
   console.log(`Run A: ${runDirA}`);
   console.log(`Run B: ${runDirB}\n`);
 
@@ -581,30 +705,24 @@ export async function runComparison(
     downloadRunFromGcsIfMissing(runDirB)
   ]);
 
+  await Promise.all([
+    ensureFreshTrajectorySummary(runDirA),
+    ensureFreshTrajectorySummary(runDirB)
+  ]);
+
   const ctxA = loadRunContext(runDirA);
   const ctxB = loadRunContext(runDirB);
 
   console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
 
-  const isAProblem = ctxA.score < ctxB.score;
-  const isBProblem = ctxB.score < ctxA.score;
-  let successCtx = isAProblem ? ctxB : ctxA;
-  if (!isAProblem && !isBProblem) {
-    const isAGuided = parseResultPath(ctxA.dir)?.runType === 'guided';
-    const isBGuided = parseResultPath(ctxB.dir)?.runType === 'guided';
-    if (!isAGuided && isBGuided) {
-      successCtx = ctxB;
-    }
-  }
-
-  const parsedPath = parseResultPath(successCtx.dir);
+  const parsedPath = parseResultPath(ctxA.dir) || parseResultPath(ctxB.dir);
   if (!parsedPath) {
     throw new Error(
-      `Invalid run directory structure: cannot parse guide, task, and runType from "${successCtx.dir}". ` +
-      `Expected path format ending in: <guide>/<task>/<runType>`
+      `Invalid run directory structure: cannot parse guide, task, and runType from "${ctxA.dir}". ` +
+        `Expected path format ending in: <guide>/<task>/<runType>`
     );
   }
-  const { guide: guideName, taskName, runType } = parsedPath;
+  const { guide: guideName, taskName } = parsedPath;
 
   const guideCtx = findGuideContext(guideName, taskName);
   const diffBaseVsA = ctxA.patchContent
@@ -618,40 +736,35 @@ export async function runComparison(
   const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
   const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
 
-  const suiteMatch = successCtx.dir.match(/(.*[/\\]results[/\\][^/\\]+)/);
-  const suiteDir = suiteMatch ? suiteMatch[1] : successCtx.dir;
+  const prevJetskiDir = process.env.JETSKI_DIR;
+  const workDir = setupGuideDevWorkDir('compare');
 
   try {
     console.log(cBold(`[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`));
     console.log(`  Run A: ${ctxA.preprocessed.taggedSteps.length} steps (${ctxA.preprocessed.noiseCount} noise, ${ctxA.preprocessed.errorLoopCount} retries)`);
     console.log(`  Run B: ${ctxB.preprocessed.taggedSteps.length} steps (${ctxB.preprocessed.noiseCount} noise, ${ctxB.preprocessed.errorLoopCount} retries)`);
 
-    console.log(cBold(`[Compare Agent] Phase 2: Dispatching parallel sub-agents (Guide Compliance & Code/Friction)...`));
-    const [complianceAnalysis, codeAndFrictionAnalysis] = await Promise.all([
-      runSubAgent1_GuideCompliance(guideCtx, ctxA, ctxB, statusA, statusB, agentCaller),
-      runSubAgent2_CodeAndFriction(guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB, statusA, statusB, agentCaller)
-    ]);
+    writeComparisonWorkspaceFiles(workDir, guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB);
 
-    console.log(cBold(`[Compare Agent] Phase 3: Synthesizing final 4-section diagnostic report...`));
-    const markdownReport = await synthesizeDiagnosis(
+    console.log(cBold(`[Compare Agent] Phase 2: Executing unified diagnostic prompt in isolated workspace...`));
+    const { systemInstruction, prompt } = getComparisonPrompts(
       guideCtx,
       ctxA,
       ctxB,
-      complianceAnalysis,
-      codeAndFrictionAnalysis,
+      diffBaseVsA,
+      diffBaseVsB,
+      diffAvsB,
       statusA,
-      statusB,
-      agentCaller
+      statusB
     );
 
-    if (suiteMatch) {
-      const diagnosesDir = path.join(suiteDir, 'variance_diagnoses');
-      fs.mkdirSync(diagnosesDir, { recursive: true });
-      const fileName = `${guideName}-${taskName}-${runType}.md`;
-      const savedPath = path.join(diagnosesDir, fileName);
-      fs.writeFileSync(savedPath, markdownReport, 'utf8');
-      console.log(cGreen(`\n✅ Saved diagnostic report to: ${savedPath}`));
-    }
+    const rawReport = await agentCaller(systemInstruction, prompt, 'Compare Agent', workDir);
+    const markdownReport = stripAgentNarration(rawReport);
+
+    const savedPath = buildComparisonReportPath(ctxA.dir, ctxB.dir, guideName, taskName);
+    fs.mkdirSync(path.dirname(savedPath), { recursive: true });
+    fs.writeFileSync(savedPath, markdownReport, 'utf8');
+    console.log(cGreen(`\n✅ Saved diagnostic report to: ${savedPath}`));
 
     console.log(cBold(cCyan('--- DIAGNOSTIC REPORT ---')));
     console.log(markdownReport);
@@ -661,5 +774,12 @@ export async function runComparison(
   } catch (err: any) {
     console.error(cRed(`❌ Diagnosis failed: ${err.message}`));
     throw err;
+  } finally {
+    cleanupIsolatedHome(path.dirname(workDir));
+    if (prevJetskiDir === undefined) {
+      delete process.env.JETSKI_DIR;
+    } else {
+      process.env.JETSKI_DIR = prevJetskiDir;
+    }
   }
 }
