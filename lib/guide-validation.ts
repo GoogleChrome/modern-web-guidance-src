@@ -59,8 +59,6 @@ export interface GuideInventoryResult {
   hasError: boolean;
   featuresWithActiveUseCases: Set<string>;
   featuresWithAnyUseCases: Set<string>;
-  /** Features with at least one active use case that hasn't reached the "Needs evals" stage. */
-  featuresNeedingGuidance: Set<string>;
   preparedGuides: PreparedGuide[];
   incompleteSubdirs: string[];
 }
@@ -212,7 +210,6 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
   let hasError = false;
   const featuresWithActiveUseCases = new Set<string>();
   const featuresWithAnyUseCases = new Set<string>();
-  const featuresNeedingGuidance = new Set<string>();
   const preparedGuides: PreparedGuide[] = [];
   const incompleteSubdirs: string[] = [];
 
@@ -268,7 +265,6 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     for (const id of featureIds) {
       featuresWithAnyUseCases.add(id);
       if (isActive) featuresWithActiveUseCases.add(id);
-      if (isActive && statusName !== ProjectStatus.NeedsEvals) featuresNeedingGuidance.add(id);
     }
 
     if (isIncomplete) {
@@ -287,7 +283,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     });
   }
 
-  return { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, featuresNeedingGuidance, preparedGuides, incompleteSubdirs };
+  return { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs };
 }
 
 function readFileSafe(filePath: string): string {

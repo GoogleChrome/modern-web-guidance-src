@@ -712,19 +712,6 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result[0].targetStatus, 'Needs use cases');
   });
 
-  test('sets "Needs guidance" when any active use case still needs guidance', () => {
-    const featureMap = makeFeatureMap([['corner-shape', { number: 693, state: 'open' }]]);
-    const result = getFeaturesNeedingSync(featureMap, new Set(['corner-shape']), new Set(['corner-shape']), new Set(), null, new Set(['corner-shape']));
-    assert.strictEqual(result.length, 1);
-    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsGuidance);
-  });
-
-  test('prefers "Needs investigation" over "Needs guidance"', () => {
-    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
-    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']), new Set(['autofill']), null, new Set(['autofill']));
-    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
-  });
-
   test('sets "Needs investigation" for feature with use cases needing investigation', () => {
     const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']), new Set(['autofill']));
@@ -860,39 +847,6 @@ Body content.
     const result = processGuideInventory([makeInventory()]);
     assert.strictEqual(result.errors.length, 1);
     assert.match(result.errors[0], /invalid-feature-id-test/);
-  });
-
-  test('marks features of a use case without expectations as needing guidance', () => {
-    fs.writeFileSync(path.join(tempDir, 'my-use-case', 'guide.md'), `---
-name: my-use-case
-description: A description
-web-feature-ids:
-  - dialog-closedby
----
-
-# My Use Case
-
-Body content.
-`);
-    const result = processGuideInventory([makeInventory({ hasExpectations: false })]);
-    assert.ok(result.featuresNeedingGuidance.has('dialog-closedby'));
-  });
-
-  test('does not mark features of a use case needing evals as needing guidance', () => {
-    fs.writeFileSync(path.join(tempDir, 'my-use-case', 'guide.md'), `---
-name: my-use-case
-description: A description
-web-feature-ids:
-  - dialog-closedby
----
-
-# My Use Case
-
-Body content.
-`);
-    const result = processGuideInventory([makeInventory({ hasExpectations: true })]);
-    assert.ok(result.featuresWithActiveUseCases.has('dialog-closedby'));
-    assert.ok(!result.featuresNeedingGuidance.has('dialog-closedby'));
   });
 
   test('returns no errors for a valid guide', () => {
