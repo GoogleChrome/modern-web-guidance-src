@@ -5,6 +5,7 @@ import { Agents, type SuiteConfig } from '../config.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../lib/patch-utils.ts';
+import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
 import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
 import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
@@ -554,16 +555,20 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
  * @param workDir The working directory
  * @param targetDir The target directory for logs and results
  * @param agentName Name of the agent (for error messages)
+ * @param runType The run type ('guided' or 'unguided'); controls what the sandbox exposes
  */
 export async function runCliAgentCommand(
   command: string,
   commandArgs: string[],
   workDir: string,
   targetDir: string,
-  agentName: string
+  agentName: string,
+  runType: string
 ): Promise<void> {
   const sanitizedEnv = { ...process.env, PWD: workDir };
-  const child = spawn(command, commandArgs, {
+  // Hide the repo from the agent so it can't read guides/expectations/graders.
+  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(targetDir, runType));
+  const child = spawn(sandboxed.command, sandboxed.commandArgs, {
     cwd: workDir,
     env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
     stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively

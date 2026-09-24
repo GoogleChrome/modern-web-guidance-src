@@ -121,7 +121,8 @@ async function run() {
         commandArgs,
         workDir,
         targetDir,
-        'Pi'
+        'Pi',
+        runType
       );
     } finally {
       stopWatchingMcpLog();

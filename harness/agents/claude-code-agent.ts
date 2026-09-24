@@ -126,7 +126,8 @@ async function run() {
         commandArgs,
         workDir,
         targetDir,
-        'Claude Code'
+        'Claude Code',
+        runType
       );
     } finally {
       stopWatchingMcpLog();
