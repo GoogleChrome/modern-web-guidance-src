@@ -11,8 +11,8 @@
 - The implementation MUST use `grid-template-areas` with named regions for page-level shell layouts, and assign children to those regions via `grid-area`.
 - The implementation MUST use `repeat(auto-fit, minmax(<min>, 1fr))` or `repeat(auto-fill, minmax(<min>, 1fr))` for responsive card grids with an unknown item count.
 - The implementation MUST use `fr` units or `minmax()` for flexible track sizing instead of fixed pixel track widths.
-- The implementation MUST use `subgrid` (`grid-template-rows: subgrid` or `grid-template-columns: subgrid`) so that internal card elements align across sibling cards.
-- The implementation MUST declare an explicit `grid-template-rows` or `grid-template-columns` fallback immediately before the corresponding `subgrid` declaration in the same rule.
+- When aligning card elements across sibling cards that are laid out with grid, the implementation MUST use `subgrid` (`grid-template-rows: subgrid` or `grid-template-columns: subgrid`) so that internal card elements align.
+- The implementation MUST declare an explicit `grid-template-rows` or `grid-template-columns` fallback before the corresponding `subgrid` declaration in the same rule.
 - The implementation MUST NOT use `grid-auto-flow: dense` on grids containing interactive or focusable content.
 - The implementation MUST establish a containment context with `container-type: inline-size` (or `size`) on a wrapper element before querying it.
 - The implementation MUST use `@container` queries for component-level responsive behavior instead of viewport `@media` queries.
@@ -32,7 +32,7 @@
 - The implementation MUST NOT use `overflow: hidden` to mask layout gaps caused by inline replaced elements, and MUST instead set a block display-outside value (such as `display: block`) on those elements.
 - The implementation MUST use `aspect-ratio` on media containers to reserve space and prevent Cumulative Layout Shift before assets load.
 - The implementation MUST use intrinsic sizing keywords (`min-content`, `max-content`, or `fit-content`) instead of fixed dimensions where content should determine the size.
-- The implementation MUST use CSS logical properties (`inline-size`, `block-size`, `margin-inline`, `padding-block`, `inset-inline-start`) for layout dimensions and spacing.
+- The implementation SHOULD prefer the use CSS logical properties (`inline-size`, `block-size`, `margin-inline`, `padding-block`, `inset-inline-start`) for layout dimensions and spacing.
 - The implementation MUST use dynamic viewport units (`dvh`, `dvw`, `dvb`, or `dvi`) for full-height mobile layout containers instead of `vh`.
 - The implementation MUST NOT use `100vw` for full-width layout containers.
 - The implementation MUST implement masonry-style galleries using multi-column (`columns`) with `break-inside: avoid`, or grid with `grid-auto-flow: dense`, and MUST gate any `grid-template-rows: masonry` usage behind an `@supports` block.
