@@ -3,9 +3,37 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { replaceMacros } from './macros.ts';
+import { replaceMacros, maskComments } from './macros.ts';
 import { slugify } from './include.ts';
 import { rootDir } from '../../lib/paths.ts';
+
+describe('maskComments', () => {
+  it('masks comments while preserving line count', () => {
+    const input = 'Line 1\n{#\nMulti-line\ncomment\n#}\nLine 6';
+    const masked = maskComments(input);
+    assert.strictEqual(masked.split('\n').length, input.split('\n').length);
+    assert.ok(!masked.includes('Multi-line'));
+    assert.ok(masked.startsWith('Line 1\n'));
+    assert.ok(masked.endsWith('\nLine 6'));
+  });
+
+  it('collapses each comment line to a single space so following text is not indented into a code block', () => {
+    assert.strictEqual(maskComments('{# reviewer note #} <dialog>'), '  <dialog>');
+    assert.strictEqual(maskComments('{# a\nlonger note #} <dialog>'), ' \n  <dialog>');
+  });
+
+  it('keeps words on either side of an inline comment separated', () => {
+    assert.strictEqual(maskComments('Baseline{# note #}widely'), 'Baseline widely');
+  });
+
+  it('preserves code blocks and inline code spans without masking comment-like syntax inside them', () => {
+    const input = '`{# not a comment #}`\n```\n{# fenced #}\n```\n{# real comment #}';
+    const masked = maskComments(input);
+    assert.ok(masked.includes('`{# not a comment #}`'));
+    assert.ok(masked.includes('{# fenced #}'));
+    assert.ok(!masked.includes('real comment'));
+  });
+});
 
 describe('replaceMacros (Functional with real data)', () => {
   describe('BASELINE_STATUS', () => {

@@ -3,7 +3,7 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 
-import { validateMacros, stripComments } from '../serving/lib/macros.ts';
+import { validateMacros, stripComments, maskComments } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
@@ -147,11 +147,11 @@ export function validateGuide(filePath: string): ValidationResult {
     }
   }
 
-  const strippedBody = stripComments(body);
-  errors.push(...validateMacros(strippedBody, relativePath));
-  errors.push(...validateHtmlTags(strippedBody, relativePath));
-  errors.push(...validateGuideTitle(strippedBody, relativePath, data, { requireTitle: true }));
-  errors.push(...validateBaselineClaims(strippedBody, relativePath));
+  const maskedBody = maskComments(body);
+  errors.push(...validateMacros(maskedBody, relativePath));
+  errors.push(...validateHtmlTags(maskedBody, relativePath));
+  errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
+  errors.push(...validateBaselineClaims(maskedBody, relativePath));
 
   return { errors, data, body, filePath };
 }

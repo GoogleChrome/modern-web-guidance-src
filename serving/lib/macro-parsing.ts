@@ -26,6 +26,45 @@ const INLINE_CODE_PATTERN = /(`+)([\s\S]*?)\1/g;
 const RESTORE_CODE_PATTERN = /\x00CODE_(\d+)\x00/g;
 
 /**
+ * Runs `transform` on content with fenced code blocks (``` or ~~~) and inline code spans
+ * temporarily replaced by placeholders, so comment-like syntax inside code is left untouched.
+ */
+function withCodeSpansProtected(content: string, transform: (masked: string) => string): string {
+  const codeSpans: string[] = [];
+  const maskCode = (match: string): string => {
+    codeSpans.push(match);
+    return `\x00CODE_${codeSpans.length - 1}\x00`;
+  };
+
+  let masked = content.replace(CODE_BLOCK_PATTERN, maskCode);
+  masked = masked.replace(INLINE_CODE_PATTERN, maskCode);
+
+  let result = transform(masked);
+
+  // Restore protected code spans (bounded to avoid infinite loops on invalid input)
+  let iterations = 0;
+  const maxIterations = codeSpans.length + 1;
+  while (RESTORE_CODE_PATTERN.test(result) && iterations++ < maxIterations) {
+    result = result.replace(RESTORE_CODE_PATTERN, (_, idx) => codeSpans[Number(idx)]);
+  }
+  return result;
+}
+
+/**
+ * Masks {# ... #} comments for validation while preserving line numbers:
+ * - Comments inside fenced code blocks or inline code spans are preserved.
+ * - Each line of a comment collapses to a single space, so newlines are kept and words on
+ *   either side stay separated, but a comment can't indent the text after it into a code block.
+ */
+export function maskComments(content: string): string {
+  if (!content) return "";
+
+  return withCodeSpansProtected(content, (masked) =>
+    masked.replace(COMMENT_PATTERN, (match) => match.replace(/[^\r\n]+/g, " "))
+  );
+}
+
+/**
  * Strips {# ... #} comments from content and cleanly handles surrounding whitespace:
  * - Comments inside fenced code blocks or inline code spans are preserved.
  * - Heading anchors like `{#stable-id}` are ignored and never treated as comment openers.
@@ -36,55 +75,39 @@ const RESTORE_CODE_PATTERN = /\x00CODE_(\d+)\x00/g;
 export function stripComments(content: string): string {
   if (!content) return "";
 
-  // 1. Protect fenced code blocks (``` or ~~~) and inline code spans (`...`)
-  const codeSpans: string[] = [];
-  const maskCode = (match: string): string => {
-    codeSpans.push(match);
-    return `\x00CODE_${codeSpans.length - 1}\x00`;
-  };
+  return withCodeSpansProtected(content, (masked) => {
+    // 1. Strip standalone comment paragraphs (surrounded by blank lines)
+    let result = masked.replace(PARAGRAPH_COMMENT_PATTERN, "");
 
-  let masked = content.replace(CODE_BLOCK_PATTERN, maskCode);
-  masked = masked.replace(INLINE_CODE_PATTERN, maskCode);
+    // 2. Strip standalone comment lines (at beginning of text, between single newlines, or at end of text)
+    result = result.replace(LINE_COMMENT_PATTERN, "");
 
-  // 2. Strip standalone comment paragraphs (surrounded by blank lines)
-  let result = masked.replace(PARAGRAPH_COMMENT_PATTERN, "");
+    // 3. Strip inline comments and normalize adjacent whitespace
+    return result.replace(INLINE_COMMENT_PATTERN, (_match, leading, trailing, offset, fullStr) => {
+      const prevChar = offset > 0 ? fullStr[offset - 1] : "";
+      const nextChar = offset + _match.length < fullStr.length ? fullStr[offset + _match.length] : "";
 
-  // 3. Strip standalone comment lines (at beginning of text, between single newlines, or at end of text)
-  result = result.replace(LINE_COMMENT_PATTERN, "");
-
-  // 4. Strip inline comments and normalize adjacent whitespace
-  result = result.replace(INLINE_COMMENT_PATTERN, (_match, leading, trailing, offset, fullStr) => {
-    const prevChar = offset > 0 ? fullStr[offset - 1] : "";
-    const nextChar = offset + _match.length < fullStr.length ? fullStr[offset + _match.length] : "";
-
-    const atStartOfLine = !prevChar || prevChar === "\n" || prevChar === "\r";
-    const atEndOfLine = !nextChar || nextChar === "\n" || nextChar === "\r";
-    if (atStartOfLine || atEndOfLine) {
-      return "";
-    }
-
-    if (leading.length > 0 && trailing.length > 0) {
-      return " ";
-    }
-
-    if (leading.length > 0 || trailing.length > 0) {
-      // If opening or closing brackets/parens, or followed by punctuation like , ; : . ! ?
-      if (/[\(\[\{]/.test(prevChar) || /[\)\]\},;:!?.]/.test(nextChar)) {
+      const atStartOfLine = !prevChar || prevChar === "\n" || prevChar === "\r";
+      const atEndOfLine = !nextChar || nextChar === "\n" || nextChar === "\r";
+      if (atStartOfLine || atEndOfLine) {
         return "";
       }
-      return " ";
-    }
 
-    return "";
+      if (leading.length > 0 && trailing.length > 0) {
+        return " ";
+      }
+
+      if (leading.length > 0 || trailing.length > 0) {
+        // If opening or closing brackets/parens, or followed by punctuation like , ; : . ! ?
+        if (/[\(\[\{]/.test(prevChar) || /[\)\]\},;:!?.]/.test(nextChar)) {
+          return "";
+        }
+        return " ";
+      }
+
+      return "";
+    });
   });
-
-  // 5. Restore protected code spans (bounded to avoid infinite loops on invalid input)
-  let iterations = 0;
-  const maxIterations = codeSpans.length + 1;
-  while (RESTORE_CODE_PATTERN.test(result) && iterations++ < maxIterations) {
-    result = result.replace(RESTORE_CODE_PATTERN, (_, idx) => codeSpans[Number(idx)]);
-  }
-  return result;
 }
 
 /**
