@@ -27,7 +27,7 @@ Natural-language bulleted list of assertions. These are the input for automated 
     const content = fs.readFileSync(contextFilePath, 'utf8');
     // Match from "### Writing expectations.md" up to the next heading (## or ###) or horizontal rule (---)
     const match = content.match(
-      /(###\s+Writing\s+expectations\.md[\s\S]*?)(?=\n(?:---|\#{2,3}\s)|\s*$)/i
+      /(###\s+Writing\s+expectations\.md[\s\S]*?)(?=\n(?:---|#{2,3}\s)|\s*$)/i
     );
     if (match && match[1].trim().length > 0) {
       return match[1].trim();
