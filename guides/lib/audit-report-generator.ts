@@ -311,6 +311,49 @@ export function calibrateExpectationIssueGrade(e: ExpectationIssue): AuditGrade 
 }
 
 /**
+ * Normalizes an ExpectationIssue category into a canonical violation type so tallies
+ * across top-level, subdirectory, and individual guide reports are consistent.
+ */
+export function normalizeExpectationCategory(e: ExpectationIssue): string {
+  const raw = (e.category || '').trim().toUpperCase();
+  const combined = `${raw} ${e.quoteOrRule || ''} ${e.counterexampleProof || ''}`;
+
+  if (
+    /CONTRADICT|INCORRECT_API|INACCURATE_API|IMPOSSIBLE_RUNTIME|OVERFLOW:\s*VISIBLE.*FALLBACK/i.test(
+      combined
+    )
+  ) {
+    return 'CONTRADICTS_GUIDE';
+  }
+  if (
+    /HALLUCINAT|UNPROMPTED|TASK_PROMPT_DISCONNECT|ABSENT\s+FROM\s+GUIDE|HARDCODE.*(?:BODY|H2|MAIN|DOM\s+ELEMENTS)/i.test(
+      combined
+    )
+  ) {
+    return 'HALLUCINATED_OR_UNPROMPTED_REQUIREMENT';
+  }
+  if (/NON_TESTABLE|UNTESTABLE|UNVERIFIABLE/i.test(raw)) {
+    return 'NON_TESTABLE_PROSE';
+  }
+  if (/OVER_PRESCRIBED|ALL_AT_ONCE_SHOWCASE|OVER_NARROW|^NARROW_/i.test(raw)) {
+    return 'OVER_PRESCRIBED_EXPECTATION';
+  }
+  if (/NEGATIVE/i.test(raw)) {
+    return 'MISSING_NEGATIVE_REQUIREMENT';
+  }
+  if (/FALLBACK/i.test(raw)) {
+    return 'MISSING_FALLBACK_REQUIREMENT';
+  }
+  if (/VAGUE|AMBIGUOUS|UNDERSPECIFIED|UNDER_SPECIFIED|INSUFFICIENT|IMPRECISE|MINOR_SPECIFICITY|PRECISION_GAP|VERIFIABILITY_GAP/i.test(raw)) {
+    return 'VAGUE_EXPECTATION';
+  }
+  if (/MISSING|INCOMPLETE/i.test(raw)) {
+    return 'MISSING_CORE_REQUIREMENT';
+  }
+  return raw || 'MISSING_CORE_REQUIREMENT';
+}
+
+/**
  * Calibrates all issue grades in a CapsuleAuditAssessment and recomputes overallPriority and scores.
  */
 export function calibrateAssessmentPriorities(
@@ -319,6 +362,7 @@ export function calibrateAssessmentPriorities(
 ): CapsuleAuditAssessment {
   if (scope !== 'grader' && Array.isArray(a.expectationIssues)) {
     for (const e of a.expectationIssues) {
+      e.category = normalizeExpectationCategory(e);
       e.grade = calibrateExpectationIssueGrade(e);
       e.proposedExpectationDraft = ensureProposedExpectationDraft(e);
     }
@@ -358,6 +402,15 @@ export interface PriorityCounts {
   total: number;
 }
 
+export interface ViolationCategoryCount {
+  category: string;
+  total: number;
+  high: number;
+  medium: number;
+  low: number;
+  guideCount: number;
+}
+
 export function getCapsulePriorityCounts(r: CapsuleAuditResult): PriorityCounts {
   const scope = r.auditScope || 'both';
   const a = r.finalAssessment;
@@ -369,6 +422,146 @@ export function getCapsulePriorityCounts(r: CapsuleAuditResult): PriorityCounts 
   const medium = issues.filter((i) => normalizeGrade(i.grade) === 'MEDIUM').length;
   const low = issues.filter((i) => normalizeGrade(i.grade) === 'LOW').length;
   return { high, medium, low, total: issues.length };
+}
+
+/**
+ * Computes a sorted tally of violation categories across one or many CapsuleAuditResults.
+ */
+export function getViolationCategoryTally(
+  input: CapsuleAuditResult | CapsuleAuditResult[]
+): ViolationCategoryCount[] {
+  const list = Array.isArray(input) ? input : [input];
+  const map = new Map<
+    string,
+    { total: number; high: number; medium: number; low: number; guides: Set<string> }
+  >();
+
+  for (const r of list) {
+    const scope = r.auditScope || 'both';
+    const a = r.finalAssessment;
+    const issues = [
+      ...(scope === 'grader'
+        ? []
+        : (a.expectationIssues || []).map((e) => ({
+            category: normalizeExpectationCategory(e),
+            grade: normalizeGrade(e.grade),
+          }))),
+      ...(scope === 'expectations'
+        ? []
+        : (a.graderIssues || []).map((g) => ({
+            category: (g.category || 'UNVERIFIED_EXPECTATION').trim().toUpperCase(),
+            grade: normalizeGrade(g.grade),
+          }))),
+    ];
+
+    for (const issue of issues) {
+      const cat = issue.category;
+      let entry = map.get(cat);
+      if (!entry) {
+        entry = { total: 0, high: 0, medium: 0, low: 0, guides: new Set() };
+        map.set(cat, entry);
+      }
+      entry.total++;
+      if (issue.grade === 'HIGH') entry.high++;
+      else if (issue.grade === 'MEDIUM') entry.medium++;
+      else entry.low++;
+      entry.guides.add(r.capsuleId);
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([category, v]) => ({
+      category,
+      total: v.total,
+      high: v.high,
+      medium: v.medium,
+      low: v.low,
+      guideCount: v.guides.size,
+    }))
+    .sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      if (b.high !== a.high) return b.high - a.high;
+      if (b.medium !== a.medium) return b.medium - a.medium;
+      return a.category.localeCompare(b.category);
+    });
+}
+
+export function getCapsuleCategoriesAttr(r: CapsuleAuditResult): string {
+  const tally = getViolationCategoryTally(r);
+  return tally.map((t) => t.category).join('|');
+}
+
+export function renderViolationTallyMd(
+  input: CapsuleAuditResult | CapsuleAuditResult[],
+  inline = false
+): string {
+  const tally = getViolationCategoryTally(input);
+  if (tally.length === 0) {
+    return inline ? '_None_' : 'No violations recorded.';
+  }
+  if (inline) {
+    return tally
+      .map((t) => {
+        const parts: string[] = [];
+        if (t.high > 0) parts.push(`🔴${t.high}`);
+        if (t.medium > 0) parts.push(`🟠${t.medium}`);
+        if (t.low > 0) parts.push(`🟢${t.low}`);
+        return `\`${t.category}\`: **${t.total}** (${parts.join(' · ')})`;
+      })
+      .join(' &nbsp;·&nbsp; ');
+  }
+
+  let md = `| Violation Category | Total Count | Affected Guides | Severity Breakdown (🔴 High · 🟠 Med · 🟢 Low) |\n|---|---:|---:|---|\n`;
+  for (const t of tally) {
+    md += `| \`${t.category}\` | **${t.total}** | ${t.guideCount} | 🔴 **${t.high}** High · 🟠 **${t.medium}** Med · 🟢 **${t.low}** Low |\n`;
+  }
+  return md;
+}
+
+export function renderViolationTallyHtml(
+  input: CapsuleAuditResult | CapsuleAuditResult[],
+  options: { interactive?: boolean; compact?: boolean } = {}
+): string {
+  const tally = getViolationCategoryTally(input);
+  if (tally.length === 0) {
+    return `<div class="violation-tally-wrap"><span class="badge badge-low">✅ 0 Violations</span></div>`;
+  }
+  const totalViolations = tally.reduce((acc, t) => acc + t.total, 0);
+  const allBtnHtml = options.interactive
+    ? `<button type="button" class="vcat-chip active" data-filter-vcat="ALL" onclick="setViolationCategoryFilter('ALL', this)">
+        <span class="vcat-name">ALL VIOLATION TYPES</span>
+        <span class="vcat-total">${totalViolations}</span>
+      </button>`
+    : '';
+
+  const chipsHtml = tally
+    .map((t) => {
+      const sevClass =
+        t.high > 0 ? 'vcat-has-high' : t.medium > 0 ? 'vcat-has-med' : 'vcat-has-low';
+      const subBadges: string[] = [];
+      if (t.high > 0) subBadges.push(`<span class="vcat-sub vcat-sub-high">🔴${t.high}</span>`);
+      if (t.medium > 0) subBadges.push(`<span class="vcat-sub vcat-sub-med">🟠${t.medium}</span>`);
+      if (t.low > 0) subBadges.push(`<span class="vcat-sub vcat-sub-low">🟢${t.low}</span>`);
+
+      if (options.interactive) {
+        return `<button type="button" class="vcat-chip ${sevClass}" data-filter-vcat="${escapeHtml(t.category)}" onclick="setViolationCategoryFilter('${escapeHtml(t.category)}', this)" title="${escapeHtml(t.category)}: ${t.total} total across ${t.guideCount} guide(s) (Click to filter)">
+          <span class="vcat-name">${escapeHtml(t.category)}</span>
+          <span class="vcat-total">${t.total}</span>
+          <span class="vcat-breakdown">${subBadges.join('')}</span>
+        </button>`;
+      }
+      return `<span class="vcat-chip ${sevClass} ${options.compact ? 'vcat-compact' : ''}" title="${escapeHtml(t.category)}: ${t.total} violation(s)">
+        <span class="vcat-name">${escapeHtml(t.category)}</span>
+        <span class="vcat-total">${t.total}</span>
+        <span class="vcat-breakdown">${subBadges.join('')}</span>
+      </span>`;
+    })
+    .join('\n');
+
+  return `<div class="violation-tally-wrap ${options.compact ? 'violation-tally-compact' : ''}">
+    ${allBtnHtml}
+    ${chipsHtml}
+  </div>`;
 }
 
 function renderPriorityBreakdownMd(r: CapsuleAuditResult): string {
@@ -474,12 +667,16 @@ export function generateSummaryMarkdown(
 | **Average Grader Fidelity Score** | **${avgGraderScore} / 100** |
 | **Adversarial Review Consensus Rate** | **${consensusCount} / ${total}** (${total > 0 ? Math.round((consensusCount / total) * 100) : 0}%) |
 
+### 1.1 Violation Types Tally (Across All ${total} Guides in Run)
+
+${renderViolationTallyMd(results, false)}
+
 ---
 
 ## 2. Priority Triage Table (Sorted HIGH $\\rightarrow$ LOW Priority)
 
-| Guide Capsule & Source Files | Guide Format | Priority Breakdown (Per Guide) | Exp Coverage | Grader Fidelity | Verification | Defects (Exp / Grader) | Executive Summary |
-|---|---|---|---|---|---|---|---|
+| Guide Capsule & Source Files | Guide Format | Priority Breakdown (Per Guide) | Violation Types (Per Guide) | Exp Coverage | Grader Fidelity | Verification | Defects (Exp / Grader) | Executive Summary |
+|---|---|---|---|---|---|---|---|---|
 `;
 
   for (const r of sorted) {
@@ -492,7 +689,7 @@ export function generateSummaryMarkdown(
     const sourceLinksMd = `[guide](${links.guideRel}) · [expectations](${links.expectationsRel}) · [task](${links.taskRel}) · [grader](${links.graderRel})`;
     const expScoreStr = scope === 'grader' ? 'N/A' : `${a.expectationCoverageScore}/100`;
     const graderScoreStr = scope === 'expectations' ? 'N/A' : `${a.graderFidelityScore}/100`;
-    md += `| [\`${r.capsuleId}\`](#${r.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()})<br>${sourceLinksMd} | \`${r.guideFormat}\` | ${renderPriorityBreakdownMd(r)} | ${expScoreStr} | ${graderScoreStr} | ${verifText} | ${a.expectationIssues.length} / ${a.graderIssues.length} | ${escapeMdTable(a.executiveSummary)} |\n`;
+    md += `| [\`${r.capsuleId}\`](#${r.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()})<br>${sourceLinksMd} | \`${r.guideFormat}\` | ${renderPriorityBreakdownMd(r)} | ${renderViolationTallyMd(r, true)} | ${expScoreStr} | ${graderScoreStr} | ${verifText} | ${a.expectationIssues.length} / ${a.graderIssues.length} | ${escapeMdTable(a.executiveSummary)} |\n`;
   }
 
   md += `\n---\n\n## 3. Detailed Evidence-First Capsule Assessments\n\n`;
@@ -510,6 +707,7 @@ export function generateSummaryMarkdown(
 - **Guide format**: \`${r.guideFormat}\` &nbsp;|&nbsp; **Audit Scope**: \`${scope}\`
 - **Source Files**: [\`guide.md\`](${links.guideRel}) &nbsp;|&nbsp; [\`expectations.md\`](${links.expectationsRel}) &nbsp;|&nbsp; [\`task.md\`](${links.taskRel}) &nbsp;|&nbsp; [\`grader.ts\`](${links.graderRel})
 - **Priority Breakdown**: ${renderPriorityBreakdownMd(r)} (Highest: ${gradeBadge(a.overallPriority)} | Expectations Coverage: **${scope === 'grader' ? 'N/A' : `${a.expectationCoverageScore}/100`}** | Grader Fidelity: **${scope === 'expectations' ? 'N/A' : `${a.graderFidelityScore}/100`}**)
+- **Violation Types Tally**: ${renderViolationTallyMd(r, true)}
 - **Verification**: ${consensusText}
 - **Summary**: ${a.executiveSummary}
 
@@ -754,7 +952,7 @@ function renderCapsuleCardHtml(
     ? `<a href="../SUMMARY_AUDIT_EVALS.html#${anchor}" class="btn-link">← Back to Full Audit Summary</a>`
     : `<a href="items/${slug}.html" class="btn-link" title="Open standalone capsule report">Open Standalone Page ↗</a>`;
 
-  return `<details class="capsule-card priority-${a.overallPriority.toLowerCase()}" id="${anchor}" data-priority="${a.overallPriority}" data-format="${formatKey}" open>
+  return `<details class="capsule-card priority-${a.overallPriority.toLowerCase()}" id="${anchor}" data-priority="${a.overallPriority}" data-format="${formatKey}" data-vcats="${escapeHtml(getCapsuleCategoriesAttr(r))}" open>
     <summary class="capsule-card-header">
       <div class="capsule-title-group">
         <span class="capsule-id">${escapeHtml(r.capsuleId)}</span>
@@ -772,6 +970,10 @@ function renderCapsuleCardHtml(
       <div class="source-files-bar">
         <span class="source-files-label">Source Files (Relative Links):</span>
         ${renderSourceLinksBarHtml(links)}
+      </div>
+      <div class="source-files-bar" style="margin-top:8px">
+        <span class="source-files-label">Violation Types Tally (This Guide):</span>
+        ${renderViolationTallyHtml(r, { compact: true })}
       </div>
       <div class="exec-summary-banner">
         <strong>Executive Summary:</strong> ${escapeHtml(a.executiveSummary)}
@@ -1373,6 +1575,95 @@ const SHARED_HTML_STYLES = `
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
   a.capsule-jump:hover { text-decoration: underline; }
+  .violation-tally-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .violation-tally-compact {
+    gap: 6px;
+  }
+  .vcat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    cursor: default;
+    transition: all 0.12s ease;
+  }
+  button.vcat-chip {
+    cursor: pointer;
+  }
+  button.vcat-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
+  }
+  button.vcat-chip.active {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border-color: #0f172a !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+  }
+  button.vcat-chip.active .vcat-total {
+    background: #334155;
+    color: #ffffff;
+  }
+  .vcat-compact {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  .vcat-has-high {
+    background: #fff1f2;
+    border-color: #fda4af;
+    color: #881337;
+  }
+  .vcat-has-med {
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #78350f;
+  }
+  .vcat-has-low {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #14532d;
+  }
+  .vcat-name {
+    letter-spacing: -0.01em;
+  }
+  .vcat-total {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.09);
+    font-size: 11.5px;
+    font-weight: 800;
+  }
+  .vcat-breakdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .vcat-sub {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+  }
 `;
 
 const SHARED_COPY_SCRIPT = `
@@ -1397,6 +1688,7 @@ export function generateCapsuleHtml(
   itemsDir = path.join(rootDir, 'harness', 'results', 'eval-audits', runId, 'items')
 ): string {
   calibrateAssessmentPriorities(result.finalAssessment, result.auditScope || 'both');
+  const pCounts = getCapsulePriorityCounts(result);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1422,6 +1714,15 @@ export function generateCapsuleHtml(
         <a href="../SUMMARY_AUDIT_EVALS.html" class="btn-link">← Full Audit Summary</a>
       </div>
     </header>
+
+    <section class="section-card" style="padding: 16px 22px; margin-bottom: 20px;">
+      <div class="section-header" style="margin-bottom: 10px;">
+        <h2 style="font-size: 15px;">📊 Violation Types Tally for <code>${escapeHtml(result.capsuleId)}</code> (${pCounts.total} Total Issue${pCounts.total === 1 ? '' : 's'})</h2>
+        ${renderPriorityBreakdownHtml(result)}
+      </div>
+      ${renderViolationTallyHtml(result, { interactive: false })}
+    </section>
+
     ${renderCapsuleCardHtml(result, itemsDir, true)}
   </div>
   <script>${SHARED_COPY_SCRIPT}</script>
@@ -1488,11 +1789,12 @@ export function generateSummaryHtml(
       const slug = r.capsuleId.replace(/[^a-zA-Z0-9_-]/g, '__');
       const isLegacy = r.guideFormat.startsWith('legacy - top level guide');
       const formatKey = isLegacy ? 'legacy' : 'new';
+      const vcatsAttr = getCapsuleCategoriesAttr(r);
       const verifHtml = r.consensusReached
         ? `<span class="verif-badge verif-ok">✅ Agreed (${r.turnsTaken}t)</span>`
         : `<span class="verif-badge verif-warn">⚠️ Capped (${r.turnsTaken}t)</span>`;
 
-      return `<tr class="triage-row" data-priority="${a.overallPriority}" data-format="${formatKey}" data-search="${escapeHtml((r.capsuleId + ' ' + r.guideFormat + ' ' + a.executiveSummary).toLowerCase())}">
+      return `<tr class="triage-row" data-priority="${a.overallPriority}" data-format="${formatKey}" data-vcats="${escapeHtml(vcatsAttr)}" data-search="${escapeHtml((r.capsuleId + ' ' + r.guideFormat + ' ' + vcatsAttr + ' ' + a.executiveSummary).toLowerCase())}">
         <td>
           <a href="#${anchor}" class="capsule-jump">${escapeHtml(r.capsuleId)}</a>
           <div style="margin-top:6px">
@@ -1502,6 +1804,7 @@ export function generateSummaryHtml(
         </td>
         <td><span class="format-badge format-${formatKey}">${escapeHtml(r.guideFormat)}</span></td>
         <td>${renderPriorityBreakdownHtml(r)}</td>
+        <td>${renderViolationTallyHtml(r, { compact: true })}</td>
         <td>${htmlScorePill(a.expectationCoverageScore, scope === 'grader')}</td>
         <td>${htmlScorePill(a.graderFidelityScore, scope === 'expectations')}</td>
         <td>${verifHtml}</td>
@@ -1576,6 +1879,13 @@ export function generateSummaryHtml(
       </div>
     </section>
 
+    <section class="section-card" style="padding: 18px 24px; margin-bottom: 24px;">
+      <div class="section-header" style="margin-bottom: 12px;">
+        <h2 style="font-size: 16px;">📊 Violation Types Tally Across All ${total} Guides in Run <span style="font-weight:500;font-size:12.5px;color:var(--text-muted);margin-left:8px;">(Click any violation category to filter table &amp; details)</span></h2>
+      </div>
+      ${renderViolationTallyHtml(results, { interactive: true })}
+    </section>
+
     <section class="section-card">
       <div class="section-header">
         <h2>Priority Triage Table (Sorted by High → Medium → Low Issue Counts)</h2>
@@ -1607,6 +1917,7 @@ export function generateSummaryHtml(
               <th>Guide Capsule &amp; Source Files</th>
               <th>Guide Format</th>
               <th>Priority (Per-Guide Breakdown)</th>
+              <th>Violation Types (Per Guide)</th>
               <th>Exp Coverage</th>
               <th>Grader Fidelity</th>
               <th>Verification</th>
@@ -1633,6 +1944,7 @@ export function generateSummaryHtml(
     ${SHARED_COPY_SCRIPT}
     let currentPriority = 'ALL';
     let currentFormat = 'ALL';
+    let currentVcat = 'ALL';
 
     function setPriorityFilter(priority, btn) {
       currentPriority = priority;
@@ -1648,6 +1960,20 @@ export function generateSummaryHtml(
       applyFilters();
     }
 
+    function setViolationCategoryFilter(vcat, btn) {
+      if (currentVcat === vcat && vcat !== 'ALL') {
+        currentVcat = 'ALL';
+        document.querySelectorAll('[data-filter-vcat]').forEach(el => el.classList.remove('active'));
+        const allBtn = document.querySelector('[data-filter-vcat="ALL"]');
+        if (allBtn) allBtn.classList.add('active');
+      } else {
+        currentVcat = vcat;
+        document.querySelectorAll('[data-filter-vcat]').forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      applyFilters();
+    }
+
     function applyFilters() {
       const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
       const rows = document.querySelectorAll('#triage-tbody tr.triage-row');
@@ -1657,14 +1983,16 @@ export function generateSummaryHtml(
       rows.forEach((row, idx) => {
         const p = row.getAttribute('data-priority');
         const f = row.getAttribute('data-format');
+        const vcats = (row.getAttribute('data-vcats') || '').split('|').filter(Boolean);
         const card = cards[idx];
         const cardText = card ? card.textContent.toLowerCase() : (row.getAttribute('data-search') || '');
 
         const matchP = currentPriority === 'ALL' || p === currentPriority;
         const matchF = currentFormat === 'ALL' || f === currentFormat;
+        const matchV = currentVcat === 'ALL' || vcats.includes(currentVcat);
         const matchQ = !q || cardText.includes(q);
 
-        const visible = matchP && matchF && matchQ;
+        const visible = matchP && matchF && matchV && matchQ;
         row.style.display = visible ? '' : 'none';
         if (card) card.style.display = visible ? '' : 'none';
         if (visible) shown++;
