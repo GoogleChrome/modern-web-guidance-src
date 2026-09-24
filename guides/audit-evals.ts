@@ -227,7 +227,8 @@ export async function runAdversarialAuditLoopForCapsule(
       expectationsMd,
       taskMd,
       graderTs,
-      staticSignals
+      staticSignals,
+      scope
     );
     fs.writeFileSync(path.join(workDir, 'capsule-context.md'), contextMd, 'utf8');
 
@@ -425,6 +426,7 @@ export async function runAuditEvals(options: AuditEvalsOptions = {}): Promise<{
   const capsules = discoverAuditCapsules({
     pattern: options.pattern,
     targetApp: options.targetApp,
+    scope,
   });
 
   console.log(

@@ -46,6 +46,7 @@ export function discoverAuditCapsules(options?: {
   pattern?: string;
   targetApp?: string;
   scanDir?: string;
+  scope?: 'expectations' | 'grader' | 'both';
 }): DiscoveredCapsule[] {
   const rootScanDir = options?.scanDir ?? guidesDir;
   if (!fs.existsSync(rootScanDir)) return [];
@@ -87,6 +88,44 @@ export function discoverAuditCapsules(options?: {
 
       const targetsDirAbs = path.join(guideDirAbs, TARGETS_DIR);
       const topLevelGraderPath = path.join(guideDirAbs, GRADER_FILE);
+
+      // When auditing expectations only, expectations.md lives once at the guide root (site-agnostic),
+      // so we emit exactly one capsule per guideId regardless of how many target apps exist.
+      if (options?.scope === 'expectations') {
+        let representativeGraderPath = topLevelGraderPath;
+        let representativeTaskPath = path.join(guideDirAbs, 'tasks', TASK_FILE);
+        let guideFormat: GuideFormatLabel = 'legacy - top level guide';
+
+        if (fs.existsSync(targetsDirAbs) && fs.statSync(targetsDirAbs).isDirectory()) {
+          const targetDirs = fs
+            .readdirSync(targetsDirAbs, { withFileTypes: true })
+            .filter((d) => d.isDirectory() && !d.name.startsWith('.') && supportedApps.includes(d.name))
+            .map((d) => d.name)
+            .sort();
+          if (targetDirs.length > 0) {
+            const firstApp = targetDirs[0];
+            guideFormat = `new - low level guide (${firstApp})`;
+            representativeGraderPath = path.join(targetsDirAbs, firstApp, GRADER_FILE);
+            representativeTaskPath = path.join(targetsDirAbs, firstApp, TASK_FILE);
+          }
+        }
+
+        const demoPath = path.join(guideDirAbs, DEMO_FILE);
+        capsules.push({
+          capsuleId: guideId,
+          guideId,
+          category,
+          guideName,
+          guideFormat,
+          guideDirAbs,
+          guideFilePath,
+          expectationsFilePath,
+          graderFilePath: representativeGraderPath,
+          taskFilePath: representativeTaskPath,
+          demoFilePath: fs.existsSync(demoPath) ? demoPath : undefined,
+        });
+        continue;
+      }
 
       // Check for target-specific capsules ("new - low level guide")
       let foundTargetCapsules = false;

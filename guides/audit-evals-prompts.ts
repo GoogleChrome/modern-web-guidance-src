@@ -57,7 +57,8 @@ export function buildCapsuleContextFileContent(
   expectationsMd: string,
   taskMd: string,
   graderTs: string,
-  staticSignals: StaticAuditSignals
+  staticSignals: StaticAuditSignals,
+  scope: AuditScope = 'both'
 ): string {
   const contextGuidelines = loadContextExpectationsGuidelines();
 
@@ -98,18 +99,12 @@ export function buildCapsuleContextFileContent(
           .join('\n')
       : 'All expectations matched a test title above similarity threshold.';
 
-  return `# Audit Context for Guide Capsule: ${capsule.guideId}
-- **Guide Format**: ${capsule.guideFormat}
-- **Capsule ID**: ${capsule.capsuleId}
-
----
-
-## 0. Authoritative Project Guidelines from CONTEXT.md (Refreshed Live)
-${contextGuidelines}
-
----
-
-## 1. Deterministic Static Pre-Analysis Signals
+  const staticSection =
+    scope === 'expectations'
+      ? `## 1. Deterministic Static Pre-Analysis Signals
+- **Potential Non-Testable Prose/Comment Expectations in expectations.md**:
+${proseSummary}`
+      : `## 1. Deterministic Static Pre-Analysis Signals
 - **fs.readFileSync Lines in grader.ts**: ${staticSignals.fsReadFileSyncLines.join(', ') || 'None'}
 - **Potential Unprompted Hardcoded Locators in grader.ts (not in task.md)**:
 ${unpromptedSummary}
@@ -118,7 +113,40 @@ ${regexSummary}
 - **Potential Non-Testable Prose/Comment Expectations in expectations.md**:
 ${proseSummary}
 - **Embedding Similarity Coverage Gaps (expectations.md vs grader.ts test titles)**:
-${missingCoverageSummary}
+${missingCoverageSummary}`;
+
+  const graderAndTaskSections =
+    scope === 'expectations'
+      ? ''
+      : `
+---
+
+## 4. File: task.md (Line-Numbered — Used ONLY for Pillar 2 Grader Fidelity, NOT for locking expectations.md)
+\`\`\`markdown
+${formatWithLineNumbers(taskMd)}
+\`\`\`
+
+---
+
+## 5. File: grader.ts (Line-Numbered — Used ONLY for Pillar 2 Grader Fidelity)
+\`\`\`typescript
+${formatWithLineNumbers(graderTs)}
+\`\`\`
+`;
+
+  return `# Audit Context for Guide Capsule: ${capsule.guideId}
+- **Guide Format**: ${capsule.guideFormat}
+- **Capsule ID**: ${capsule.capsuleId}
+- **Audit Scope**: ${scope}
+
+---
+
+## 0. Authoritative Project Guidelines from CONTEXT.md (Refreshed Live)
+${contextGuidelines}
+
+---
+
+${staticSection}
 
 ---
 
@@ -133,21 +161,7 @@ ${formatWithLineNumbers(guideMd)}
 \`\`\`markdown
 ${formatWithLineNumbers(expectationsMd)}
 \`\`\`
-
----
-
-## 4. File: task.md (Line-Numbered)
-\`\`\`markdown
-${formatWithLineNumbers(taskMd)}
-\`\`\`
-
----
-
-## 5. File: grader.ts (Line-Numbered)
-\`\`\`typescript
-${formatWithLineNumbers(graderTs)}
-\`\`\`
-`;
+${graderAndTaskSections}`;
 }
 
 export const ASSESSMENT_JSON_SCHEMA_EXAMPLE = `{
@@ -163,8 +177,8 @@ export const ASSESSMENT_JSON_SCHEMA_EXAMPLE = `{
       "citation": "expectations.md:2",
       "quoteOrRule": "The guide or code comments explicitly state that interpolate-size: allow-keywords is a mandatory opt-in...",
       "counterexampleProof": "An agent writing valid CSS without explanatory comments fails this expectation despite following guide.md.",
-      "remedy": "Remove comment requirement; assert functional behavior only.",
-      "proposedExpectationDraft": "- Sets \`interpolate-size: allow-keywords\` on \`:root\` (or an ancestor container) to enable transitions to and from intrinsic sizing keywords (\`auto\`, \`min-content\`, \`max-content\`, \`fit-content\`)."
+      "remedy": "Remove comment requirement; assert generic, site-agnostic functional behavior only.",
+      "proposedExpectationDraft": "- Applies \`interpolate-size: allow-keywords\` on \`:root\`, an ancestor container, or the animated element itself (unless \`calc-size()\` is used) so transitions to and from intrinsic sizing keywords (\`auto\`, \`min-content\`, \`max-content\`, \`fit-content\`) produce smooth intermediate dimensions."
     }
   ],
   "graderIssues": [
@@ -189,23 +203,29 @@ export function buildAuditorInitialPrompt(
 ): string {
   const contextGuidelines = loadContextExpectationsGuidelines();
 
-  const pillar1Block = `### Pillar 1: Expectation Completeness & Validity (\`expectations.md\` vs \`guide.md\`, \`task.md\`, and \`CONTEXT.md\`)
+  const pillar1Block = `### Pillar 1: Expectation Completeness & Validity (\`expectations.md\` vs \`guide.md\` and \`CONTEXT.md\`)
 #### Authoritative Framework Instructions from \`CONTEXT.md\` (Refreshed Live):
 ${contextGuidelines}
+
+#### Architectural Rule: \`expectations.md\` MUST Be Site-Agnostic (App-Independent)
+- \`expectations.md\` lives at the guide root and is used across **multiple different target test applications** (e.g. \`daily-grind\`, \`zenith-tasks\`, etc.).
+- Therefore, \`expectations.md\` **MUST BE GENERIC** to the web feature in \`guide.md\` and **MUST NEVER lock to site-specific DOM selectors, IDs, or class names from \`task.md\`** (e.g., NEVER require \`#faq-trigger\`, \`#faq-content\`, \`#promo-alert\`, or \`.product-card\` inside \`expectations.md\`).
+- Translating generic expectations from \`expectations.md\` into test-site-specific selectors from \`task.md\` is strictly the job of \`grader.ts\` (Pillar 2), NOT \`expectations.md\`.
+- Do **NOT** fault \`expectations.md\` for using generic descriptions (like "an interactive trigger" or "a collapsible element") instead of \`task.md\` IDs. Conversely, if \`expectations.md\` *does* hardcode site-specific IDs/classes that lock it to one test app, flag that as \`TASK_PROMPT_DISCONNECT\` / \`OVER_PRESCRIBED_EXPECTATION\`.
 
 #### Evaluation Criteria for \`expectations.md\`:
 - **Compliance with \`CONTEXT.md\` ("Writing expectations.md")**:
   1. **Independently Testable**: Is every assertion independently testable?
-  2. **Playwright-Verifiable Specificity**: Is each assertion specific enough that an automated Playwright test (or AST check) can verify it (e.g., observable DOM/CSS state rather than vague prose or code comments)?
+  2. **Playwright-Verifiable Specificity (While Remaining Site-Agnostic)**: Is each assertion specific enough about the observable DOM/CSS/runtime outcome that a Playwright grader can map it to any target app (without requiring prose comments or locking to site-specific DOM IDs)?
   3. **Positive AND Negative Requirements**: Does \`expectations.md\` cover BOTH **positive requirements** (what MUST be present per \`guide.md\` DOs, accessibility, and fallbacks) AND **negative requirements** (what MUST NOT be present—e.g. banned anti-patterns / \`DO NOT\` directives from \`guide.md\`)?
 - Are all core technical rules, mandatory constraints, accessibility requirements (e.g. \`prefers-reduced-motion\`, ARIA state sync), and required fallbacks in \`guide.md\` covered by \`expectations.md\`?
 - Do any expectations demand non-testable prose or code comments (\`NON_TESTABLE_PROSE\`) rather than observable runtime/AST behavior?
 - Do any expectations over-prescribe a single syntax when \`guide.md\` allows alternatives (\`OVER_PRESCRIBED_EXPECTATION\`)?
-- Are expectations disconnected from \`task.md\` (\`TASK_PROMPT_DISCONNECT\`)—e.g. requiring UI components that \`task.md\` never asks the developer/agent to build?
-- **CRITICAL**: For EVERY issue in \`expectationIssues\`, you MUST provide \`"proposedExpectationDraft"\`: the exact replacement or new Markdown bullet(s) (including \`### Section Heading\` if adding a new section, or \`- ...\` bullet) phrased so that it is 100% ready to copy-paste directly into \`expectations.md\` and strictly follows the \`CONTEXT.md\` "Writing expectations.md" rules (independently testable, Playwright-specific, covering positive/negative requirements).`;
+- **CRITICAL**: For EVERY issue in \`expectationIssues\`, you MUST provide \`"proposedExpectationDraft"\`: the exact replacement or new Markdown bullet(s) (\`- ...\` bullet or \`### Heading\\n- ...\`) phrased so that it is **100% generic/site-agnostic** (NO \`#faq-trigger\` or \`task.md\`-specific selectors!), ready to copy-paste directly into \`expectations.md\`, and strictly compliant with \`CONTEXT.md\`.`;
 
   const pillar2Block = `### Pillar 2: Grader Fidelity — False Negatives & False Positives (\`grader.ts\` vs \`expectations.md\`, \`task.md\`, \`guide.md\`)
-- **FALSE_NEGATIVE_UNPROMPTED_LOCATOR**: Does \`grader.ts\` hardcode specific DOM IDs or class names (e.g., \`#faq-trigger\`, \`#promo-alert\`) that are NOT explicitly mandated in \`task.md\`?
+- Note: \`grader.ts\` is responsible for translating the generic expectations in \`expectations.md\` into concrete Playwright tests against the specific target site/app defined by \`task.md\`.
+- **FALSE_NEGATIVE_UNPROMPTED_LOCATOR**: Does \`grader.ts\` hardcode specific DOM IDs or class names (e.g., \`#faq-trigger\`, \`#promo-alert\`) that are NOT explicitly mandated in \`task.md\` (or present in the target base app)?
 - **FALSE_NEGATIVE_STATIC_FILE_REGEX**: Does \`grader.ts\` use \`fs.readFileSync\` with regex/string checks on raw HTML instead of Playwright DOM evaluation (\`window.getComputedStyle\`, runtime attributes) or multi-file AST checks?
 - **FALSE_NEGATIVE_NARROW_IMPLEMENTATION**: Does \`grader.ts\` fail valid alternative implementations permitted by \`guide.md\` (e.g. checking only \`block-size\` when \`height\` is also valid)?
 - **FALSE_POSITIVE_SUPERFICIAL_CHECK**: Does \`grader.ts\` pass broken code due to superficial substring/regex matching (e.g. \`/aria-expanded/i.test(html)\` passing static HTML without testing dynamic click toggling)?
@@ -214,7 +234,7 @@ ${contextGuidelines}
 
   const scopeInstruction =
     scope === 'expectations'
-      ? `**AUDIT SCOPE: EXPECTATIONS ONLY (\`--scope expectations\`)**\nEvaluate ONLY Pillar 1 (\`expectations.md\` vs \`guide.md\`, \`task.md\`, & \`CONTEXT.md\`). Set \`"graderIssues": []\` and \`"graderFidelityScore": 100\`.\n\n${pillar1Block}`
+      ? `**AUDIT SCOPE: EXPECTATIONS ONLY (\`--scope expectations\`)**\nEvaluate ONLY Pillar 1 (\`expectations.md\` vs \`guide.md\` & \`CONTEXT.md\`). Set \`"graderIssues": []\` and \`"graderFidelityScore": 100\`.\n\n${pillar1Block}`
       : scope === 'grader'
         ? `**AUDIT SCOPE: GRADER FIDELITY ONLY (\`--scope grader\`)**\nEvaluate ONLY Pillar 2 (\`grader.ts\` vs \`expectations.md\`, \`task.md\`, \`guide.md\`). Set \`"expectationIssues": []\` and \`"expectationCoverageScore": 100\`.\n\n${pillar2Block}`
         : `**AUDIT SCOPE: BOTH EXPECTATIONS & GRADER (\`--scope both\`)**\nYou must evaluate both pillars:\n\n${pillar1Block}\n\n${pillar2Block}`;
@@ -233,7 +253,7 @@ ${scopeInstruction}
    - \`quoteOrRule\` / \`offendingCode\`: Exact verbatim quote or code snippet from the file.
    - \`counterexampleProof\`: ONE razor-sharp sentence proving why a valid implementation fails (FN) or a broken implementation passes (FP).
    - \`remedy\`: ONE concise sentence specifying the exact fix.
-   - \`proposedExpectationDraft\` (required on all \`expectationIssues\`): Ready-to-copy Markdown text (\`- ...\` bullet or \`### Heading\\n- ...\`) phrased for direct insertion into \`expectations.md\`.
+   - \`proposedExpectationDraft\` (required on all \`expectationIssues\`): Ready-to-copy, **site-agnostic** Markdown text (\`- ...\` bullet or \`### Heading\\n- ...\`) phrased for direct insertion into \`expectations.md\` (never hardcode \`task.md\` selectors like \`#faq-trigger\`).
 3. **Output Persistence**:
    Write the valid JSON object matching the schema below directly to the file \`${outputJsonFilename}\` in your current working directory. Also print the JSON block in your final response.
 
@@ -268,19 +288,25 @@ ${scopeNote}
 ### Authoritative Framework Instructions from \`CONTEXT.md\` (Refreshed Live):
 ${contextGuidelines}
 
+### Architectural Rule: \`expectations.md\` MUST Remain Generic & Site-Agnostic
+- \`expectations.md\` lives at the guide root and is shared across multiple target test apps (\`daily-grind\`, \`zenith-tasks\`, etc.).
+- \`expectations.md\` and every \`proposedExpectationDraft\` **MUST BE SITE-AGNOSTIC**—they must describe generic web feature behaviors from \`guide.md\` and **MUST NEVER hardcode site-specific selectors/IDs from \`task.md\`** (such as \`#faq-trigger\`, \`#faq-content\`, \`#promo-alert\`). Translating generic expectations into test-site-specific selectors is strictly the job of \`grader.ts\` (Pillar 2).
+- If the Auditor faulted \`expectations.md\` for being generic instead of using \`task.md\` selectors, OR if any \`proposedExpectationDraft\` hardcodes \`task.md\` selectors (like \`#faq-trigger\`), flag that immediately as \`HALLUCINATED_DEFECT\` / \`WEAK_COUNTEREXAMPLE_PROOF\` and require a generic, site-agnostic draft!
+
 Read BOTH \`capsule-context.md\` and \`${assessmentJsonFilename}\` in your current working directory.
 
 ### Your Adversarial Mandate
 Critically verify every claim in \`${assessmentJsonFilename}\`:
 1. **Hunt for Hallucinated Defects (\`HALLUCINATED_DEFECT\`)**:
-   - Did the Auditor claim a selector (e.g. \`#id\` or \`.class\`) is unprompted when it IS actually mentioned in \`task.md\`?
+   - Did the Auditor claim a selector (e.g. \`#id\` or \`.class\`) is unprompted in \`grader.ts\` when it IS actually mentioned in \`task.md\`?
+   - Did the Auditor falsely fault \`expectations.md\` for not naming \`task.md\` selectors (remember: \`expectations.md\` is supposed to be generic and site-agnostic)?
    - Did the Auditor claim a requirement from \`guide.md\` is missing when another expectation or test already covers it?
    - Did the Auditor misinterpret how the Playwright test or AST check in \`grader.ts\` works?
 2. **Hunt for Missed Defects (\`MISSED_DEFECT\`)**:
    - Within the active scope (${scope}), did the Auditor miss any obvious \`fs.readFileSync\` regex check, unprompted hardcoded locator, superficial false-positive regex, missing mandatory positive/negative requirement (\`DO\` / \`DO NOT\`) from \`guide.md\`, or violation of \`CONTEXT.md\`'s "Writing expectations.md" rules?
 3. **Verify Evidence, Counterexample Proofs & Proposed Expectation Drafts (\`WEAK_COUNTEREXAMPLE_PROOF\`)**:
    - Does every issue have an exact line citation, verbatim snippet, and a concrete 1-sentence counterexample proof?
-   - Does every \`expectationIssue\` include a clean, copy-paste-ready Markdown \`proposedExpectationDraft\` that satisfies \`CONTEXT.md\`'s "Writing expectations.md" criteria (independently testable, Playwright-verifiable specificity, positive/negative coverage)?
+   - Does every \`expectationIssue\` include a clean, copy-paste-ready, **100% site-agnostic** Markdown \`proposedExpectationDraft\` that satisfies \`CONTEXT.md\`'s "Writing expectations.md" criteria (independently testable, Playwright-verifiable specificity, positive/negative coverage, and NO hardcoded \`task.md\` selectors)?
 4. **Verify Grades & Tightness (\`WRONG_GRADE_OR_CITATION\` / \`WORDING_TOO_VERBOSE\`)**:
    - Grades must strictly be \`HIGH\`, \`MEDIUM\`, or \`LOW\` (never \`CRITICAL\`). Line numbers must match \`capsule-context.md\`. Wording must be very tight.
 
@@ -329,7 +355,7 @@ Read \`capsule-context.md\`, \`${assessmentJsonFilename}\`, and \`${reviewJsonFi
 ### Your Task
 1. Address EVERY critique in \`${reviewJsonFilename}\`:
    - Remove any \`HALLUCINATED_DEFECT\` that was disproven by the source files.
-   - Add any \`MISSED_DEFECT\` with full citation, verbatim snippet, 1-sentence counterexample proof, 1-line remedy, and (for expectation issues) a copy-ready Markdown \`proposedExpectationDraft\` adhering to \`CONTEXT.md\`'s "Writing expectations.md" rules.
+   - Add any \`MISSED_DEFECT\` with full citation, verbatim snippet, 1-sentence counterexample proof, 1-line remedy, and (for expectation issues) a copy-ready, **site-agnostic** Markdown \`proposedExpectationDraft\` adhering to \`CONTEXT.md\`'s "Writing expectations.md" rules (never hardcode \`task.md\` selectors).
    - Tighten any \`WEAK_COUNTEREXAMPLE_PROOF\` or \`WORDING_TOO_VERBOSE\`.
    - Ensure all grades are strictly \`"HIGH"\`, \`"MEDIUM"\`, or \`"LOW"\` (no \`"CRITICAL"\`).
 2. Write the updated, complete JSON assessment to \`${assessmentJsonFilename}\` (overwriting the file) and print the JSON block in your final response.
