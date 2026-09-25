@@ -20,7 +20,6 @@
 - The implementation MUST use the native Popover API (`popover` and `popovertarget` attributes) for non-modal transient overlays such as tooltips or menus.
 - The implementation MUST NOT call `.showModal()` on elements that possess a `popover` attribute.
 - The implementation MUST use `<details>` with `<summary>` as its first child for native inline disclosure widgets.
-- The implementation MUST share an identical `name` attribute across `<details>` elements where opening one closes the others.
 - The implementation MUST NOT nest interactive controls (`<a>` or `<button>`) directly inside a `<summary>` element.
 - The implementation MUST apply the global `inert` attribute to background sections when custom non-dialog overlays or off-screen drawers are open.
 - The implementation MUST NOT use positive `tabindex` values (`tabindex="1"` or greater).
