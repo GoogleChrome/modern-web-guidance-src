@@ -213,7 +213,10 @@ window.__featuresMapping = {
     "view-transitions"
   ],
   "avoid-redundant-large-asset-downloads": [
-    "tmp-cross-origin-storage"
+    "tmp-cross-origin-storage",
+    "fetch",
+    "web-cryptography",
+    "permissions-policy"
   ],
   "batch-analytics-events": [
     "fetchlater",
@@ -275,7 +278,8 @@ window.__featuresMapping = {
     "content-visibility"
   ],
   "load-shared-resources-declaratively": [
-    "tmp-cross-origin-storage"
+    "tmp-cross-origin-storage",
+    "subresource-integrity"
   ],
   "optimize-image-priority": [
     "fetch-priority",
@@ -306,7 +310,8 @@ window.__featuresMapping = {
     "temporal"
   ],
   "share-web-fonts-across-origins": [
-    "tmp-cross-origin-storage"
+    "tmp-cross-origin-storage",
+    "subresource-integrity"
   ],
   "streaming-api": [
     "tmp-streaming-api"
