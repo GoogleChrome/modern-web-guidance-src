@@ -4,7 +4,6 @@ description: Build a site navigation bar that adapts across screen sizes and ind
 web-feature-ids:
   - popover
   - anchor-positioning
-  - local-link
 guides:
   - responsive-disclosure
   - icons
