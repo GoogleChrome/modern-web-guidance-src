@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, navigator-flow=true, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reorder Tasks</title>
   <style>
     @property --icon-start {
@@ -78,12 +78,22 @@
       place-items: center;
       cursor: grab;
       touch-action: none;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
       user-select: none;
       -webkit-user-select: none;
     }
 
     .drag-handle:active {
       cursor: grabbing;
+    }
+
+    .drag-handle:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .task-controls {
@@ -180,12 +190,12 @@
 <body>
   <main>
     <h1>Tasks</h1>
-    <p>Use an item's drag handle to drag it, or use the "Move up" and "Move down" buttons to reorder via keyboard.</p>
+    <p>Drag an item with its handle, use <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd> when the handle is focused, or use the movement buttons.</p>
 
     <ol class="task-list" id="taskList">
-      <li class="task" data-label="Outline project">
-        <div class="drag-handle icon" aria-hidden="true" title="Drag to reorder Outline project"
-          style="--icon: var(--icon-grip);"></div>
+      <li class="task" data-reorder-item data-label="Outline project">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" title="Drag to reorder Outline project"
+          style="--icon: var(--icon-grip);"></button>
         <label>Outline project <input value="Write the first draft"></label>
         <div class="task-controls">
           <button class="move-up-button" type="button" aria-label="Move Outline project up" title="Move up">
@@ -196,9 +206,9 @@
           </button>
         </div>
       </li>
-      <li class="task" data-label="Review research">
-        <div class="drag-handle icon" aria-hidden="true" title="Drag to reorder Review research"
-          style="--icon: var(--icon-grip);"></div>
+      <li class="task" data-reorder-item data-label="Review research">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" title="Drag to reorder Review research"
+          style="--icon: var(--icon-grip);"></button>
         <label>Review research <input value="Collect source notes"></label>
         <div class="task-controls">
           <button class="move-up-button" type="button" aria-label="Move Review research up" title="Move up">
@@ -209,9 +219,9 @@
           </button>
         </div>
       </li>
-      <li class="task" data-label="Schedule review">
-        <div class="drag-handle icon" aria-hidden="true" title="Drag to reorder Schedule review"
-          style="--icon: var(--icon-grip);"></div>
+      <li class="task" data-reorder-item data-label="Schedule review">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" title="Drag to reorder Schedule review"
+          style="--icon: var(--icon-grip);"></button>
         <label>Schedule review <input value="Invite the team"></label>
         <div class="task-controls">
           <button class="move-up-button" type="button" aria-label="Move Schedule review up" title="Move up">
@@ -254,11 +264,7 @@
     }
 
     function moveItem(item, before) {
-      if (typeof list.moveBefore === 'function') {
-        list.moveBefore(item, before);
-      } else {
-        list.insertBefore(item, before);
-      }
+      list.moveBefore(item, before);
     }
 
     function finishPointerReorder() {
@@ -346,6 +352,14 @@
 
       announce(`${item.dataset.label} moved ${direction}. Position ${getPosition(item)} of ${list.children.length}.`);
     }
+
+    list.addEventListener('keydown', (event) => {
+      const handle = event.target.closest('.drag-handle');
+      if (!handle || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+
+      event.preventDefault();
+      moveKeyboardItem(handle.closest('.task'), event.key === 'ArrowUp' ? 'up' : 'down');
+    });
 
     list.addEventListener('click', (event) => {
       const upBtn = event.target.closest('.move-up-button');

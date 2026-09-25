@@ -1,10 +1,10 @@
-- **MANDATORY**: A pointer drag started from an item's drag handle changes the item's DOM and visible position within the collection.
-- **OPTIONAL**: During a pointer drag, provide visual feedback that follows the pointer without blocking detection of destination items and makes the original item visibly distinct until the drag ends.
+- **OPTIONAL**: When pointer dragging is supported, dragging an item—preferably from a dedicated drag handle—changes the item's DOM and visible position within the collection.
+- **OPTIONAL**: During a pointer drag, provide visual feedback that follows the pointer without blocking detection of destination items. If that feedback is a faded copy of the item, make the original item visibly distinct until the drag ends.
 - **MANDATORY**: Reordering moves the existing item rather than replacing it, so state in controls inside that item is retained.
-- **MANDATORY**: Each item has a "Move up" and a "Move down" button (or options menu containing them) that identifies the item and its action.
-- **MANDATORY**: Activating the "Move up" button on an item moves it up in the collection.
-- **MANDATORY**: Activating the "Move down" button on an item moves it down in the collection.
-- **MANDATORY**: Focus remains on the activated movement control (or shifts to the alternative control on the same item to prevent focus loss if the activated button becomes disabled) after reordering.
-- **MANDATORY**: The first item's "Move up" button is disabled and the last item's "Move down" button is disabled.
+- **MANDATORY**: Each item provides an accessible keyboard reordering mechanism, such as an appropriately named, focusable drag handle that supports `ArrowUp` and `ArrowDown`, or separate movement buttons (or an options menu containing them).
+- **MANDATORY**: The keyboard reordering mechanism moves the item up in the collection.
+- **MANDATORY**: The keyboard reordering mechanism moves the item down in the collection.
+- **MANDATORY**: Focus remains on the keyboard reordering mechanism after reordering, shifting to an alternative control on the same item when necessary to prevent focus loss.
+- **MANDATORY**: The keyboard reordering mechanism prevents movement beyond the first and last items.
 - **MANDATORY**: Keyboard reordering actions are announced in a live region with the item's final position.
 - **MANDATORY WHEN REORDERING IS SUPPLEMENTARY**: The collection remains readable and usable in its default DOM order without JavaScript.
