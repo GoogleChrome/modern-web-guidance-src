@@ -54,8 +54,8 @@
       background: #d4ebe7;
       cursor: grab;
       touch-action: none;
-      user-select: none;
       -webkit-user-select: none;
+      user-select: none;
     }
 
     .drag-handle.dragging {
@@ -109,9 +109,12 @@
     const handle = document.getElementById('panelHandle');
     const closeButton = document.getElementById('closeButton');
     const openPanelButton = document.getElementById('openPanelButton');
+    const dragThreshold = 4;
     let isDragging = false;
     let offsetX = 0;
     let offsetY = 0;
+    let startX = 0;
+    let startY = 0;
 
     function moveTo(left, top) {
       const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
@@ -121,18 +124,27 @@
     }
 
     handle.addEventListener('pointerdown', (event) => {
-      if (event.target.closest('button, input, select, textarea, a')) return;
-      event.preventDefault();
+      if (event.button !== 0 || event.target.closest('button, input, select, textarea, a')) return;
       const rect = draggable.getBoundingClientRect();
-      isDragging = true;
+      isDragging = false;
+      startX = event.clientX;
+      startY = event.clientY;
       offsetX = event.clientX - rect.left;
       offsetY = event.clientY - rect.top;
-      handle.classList.add('dragging');
       handle.setPointerCapture(event.pointerId);
     });
 
     handle.addEventListener('pointermove', (event) => {
-      if (isDragging) moveTo(event.clientX - offsetX, event.clientY - offsetY);
+      if (!handle.hasPointerCapture(event.pointerId)) return;
+
+      if (!isDragging) {
+        const distance = Math.hypot(event.clientX - startX, event.clientY - startY);
+        if (distance < dragThreshold) return;
+        isDragging = true;
+        handle.classList.add('dragging');
+      }
+
+      moveTo(event.clientX - offsetX, event.clientY - offsetY);
     });
 
     function stopDragging() {
@@ -142,6 +154,7 @@
 
     handle.addEventListener('pointerup', stopDragging);
     handle.addEventListener('pointercancel', stopDragging);
+    handle.addEventListener('lostpointercapture', stopDragging);
 
     handle.addEventListener('keydown', (event) => {
       const directions = {

@@ -9,5 +9,8 @@
 - **MANDATORY**: The element MUST be repositionable with keyboard arrow keys when the drag handle is focused, using the same viewport constraints as pointer movement.
 - **MANDATORY WHEN DRAGGING ONLY REPOSITIONS A COMPONENT**: Treat dragging as progressive enhancement: without JavaScript, the element, its content, and its controls remain visible, readable, and functional in a sensible default position.
 - **MANDATORY WHEN DRAGGING IS ESSENTIAL TO THE EXPERIENCE**: Provide the required pointer and keyboard interactions; do not present a non-draggable fallback as equivalent behavior.
-- **MANDATORY**: A draggable `<dialog>` implementation MUST set `margin: 0` before assigning `left` and `top`, but the generic draggable-element implementation MUST NOT require a dialog.
+- **MANDATORY**: A draggable `<dialog>` or `[popover]` implementation MUST set `margin: 0` before assigning `left` and `top`, but the generic draggable-element implementation MUST NOT require either control.
+- **MANDATORY**: A pointerdown with a non-primary button MUST NOT start a drag.
+- **OPTIONAL**: Delay entering the dragging state until the pointer has moved a small threshold, such as 4px, so a click does not trigger drag styling. Remove the state on `lostpointercapture`.
+- **OPTIONAL**: For layout-heavy elements, use a translation during the drag to avoid per-frame layout, then commit the final position to `left` and `top` on release.
 - **OPTIONAL**: A visual grab indicator (such as transitioning from `cursor: grab` to `cursor: grabbing` on drag) communicates drag state.
