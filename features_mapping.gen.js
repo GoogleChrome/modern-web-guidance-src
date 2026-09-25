@@ -726,9 +726,6 @@ window.__featuresMapping = {
   "precise-text-alignment": [
     "text-box"
   ],
-  "prevent-text-wrapping": [
-    "text-wrap"
-  ],
   "shaped-cutouts": [
     "masks"
   ],
