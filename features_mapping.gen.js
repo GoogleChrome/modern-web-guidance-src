@@ -351,6 +351,9 @@ window.__featuresMapping = {
   "trusted-types": [
     "trusted-types"
   ],
+  "validate-origins": [
+    "origin"
+  ],
   "carousel-slide-effects": [
     "scroll-driven-animations",
     "scroll-snap"
