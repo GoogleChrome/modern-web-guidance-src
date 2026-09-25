@@ -940,7 +940,7 @@ async function enrichTrajectorySteps(traj, pathStr, resultsBase) {
       }
       let searchIdx = 0;
       for (const step of traj.steps) {
-        if (step.action && (step.action.name === 'get_best_practices' || step.action.type === 'web_search' || step.action.name === 'search_use_cases')) {
+        if (step.action && (step.action.name === 'get_best_practices' || step.action.name === 'search_use_cases')) {
           if (logCalls[searchIdx]) {
             if (!step.outcome) step.outcome = { status: 'success' };
             if (typeof step.outcome !== 'string') {
