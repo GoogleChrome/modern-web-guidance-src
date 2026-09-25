@@ -4,25 +4,25 @@ description: Build a site navigation bar that adapts across screen sizes and ind
 web-feature-ids:
   - popover
   - anchor-positioning
+  - local-link
 guides:
-  - menu
-  - overflow-popup
   - responsive-disclosure
+  - icons
 ---
 
-# Responsive Site Navigation (Popover + Anchor Positioning)
+# Responsive Site Navigation
 
-A modern site navigation bar must adapt seamlessly across screen sizes, provide robust accessibility, and remain performant.
+Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
 
-By combining the native **Popover API** and **CSS Anchor Positioning**, we can build a responsive navigation bar using a **single, semantic markup tree** without duplicate markup or heavy JS toggles. On narrow containers, the nav acts as an overlay popover that light-dismisses and anchors to the trigger. On wide containers, container queries transform it into an inline static header.
+This guide describes site-navigation integration. It does not define application-menu behaviour. For reusable responsive disclosure behaviour, see {{ GUIDE_REF("responsive-disclosure") }}. For the decorative chevron, see {{ GUIDE_REF("icons") }}.
 
-For component-driven layouts, container queries, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}. For color-scheme management and theme overrides, see {{ GUIDE_REF("component-specific-light-dark-theme") }}.
+For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
 
 ---
 
 ## Core Markup
 
-Use a single `<nav>` container for both narrow and wide layouts. Wrap it in a semantic `<header>` that acts as the layout query container (`container-type: inline-size`).
+Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<header>` that acts as the layout query container with `container-type: inline-size`.
 
 ```html
 <header class="site-header">
@@ -44,30 +44,21 @@ Use a single `<nav>` container for both narrow and wide layouts. Wrap it in a se
       </button>
 
       <ul id="site-menu" class="site-menu" popover="auto">
-        <li>
-          <a class="menu-link" href="index.html" aria-current="page">Home</a>
-        </li>
-        <li>
-          <a class="menu-link" href="about.html">About</a>
-        </li>
+        <li><a class="menu-link" href="index.html" aria-current="page">Home</a></li>
+        <li><a class="menu-link" href="about.html">About</a></li>
       </ul>
     </nav>
   </div>
 </header>
 ```
 
-### Key Markup Notes:
-- **`<nav>` wrapper**: Wrapping both the trigger button and the popover menu ensures the navigation landmark remains discoverable by screen readers while the popover is closed.
-- **`popover="auto"`**: Provides keyboard dismiss (Escape), light dismiss, and accessible focus order on mobile. For details, see {{ GUIDE_REF("declarative-dialog-popover-control") }}.
-- **`popovertarget` / `aria-controls`**: Establishes the declarative toggle contract without JavaScript.
-- **`aria-current="page"`**: Conveys the active page to assistive technology.
-- **`aria-hidden="true"` / `focusable="false"`**: Excludes the visual menu icon from screen readers.
+The button declaratively controls the menu with `popovertarget` and `aria-controls`. The `nav` remains the navigation landmark while the menu is closed. The decorative trigger icon is hidden from assistive technologies with `aria-hidden="true"` and `focusable="false"`. For the general popover control contract, see {{ GUIDE_REF("declarative-dialog-popover-control") }}.
 
 ---
 
-## Narrow Viewports: Popover and Anchor Positioning
+## Narrow Layout: Popover Navigation
 
-In narrow layouts, use CSS Anchor Positioning to tether the popover navigation panel to the trigger button.
+On narrow containers, keep `popover="auto"` on the navigation list. Anchor the fixed popover to the menu button and constrain its height so a long navigation can scroll without exceeding the viewport.
 
 ```css
 .site-header {
@@ -82,24 +73,26 @@ In narrow layouts, use CSS Anchor Positioning to tether the popover navigation p
   .site-menu {
     position: fixed;
     inset: auto;
+    inset-block-start: 4.75rem; /* fallback */
     inset-block-start: anchor(--menu-button bottom);
-    inset-inline-end: anchor(--menu-button right);
+    inset-inline-end: 1rem;
     inline-size: 80dvw;
     max-inline-size: calc(100dvw - 2rem);
     block-size: fit-content;
+    max-block-size: calc(100dvh - 6rem);
     margin-block-start: 0.5rem;
     overflow: auto;
   }
 }
 ```
 
-For more anchor-positioning patterns, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}.
+The first `inset-block-start` declaration is the fallback; the later `anchor()` declaration overrides it where Anchor Positioning is supported. For collision-aware positioning near viewport edges, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}.
 
 ---
 
-## Wide Viewports: Transforming to Static Layout
+## Wide Layout: Inline Navigation
 
-To reuse the `<nav>` container on desktop, override the native popover styles so the menu displays inline instead of as an overlay.
+On wide containers, hide the narrow-layout trigger and reset the popover presentation so the same list participates in the header as an inline navigation.
 
 ```css
 @container (inline-size >= 45rem) {
@@ -111,9 +104,11 @@ To reuse the `<nav>` container on desktop, override the native popover styles so
     position: static;
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 0.25rem;
     inline-size: auto;
+    max-inline-size: none;
     block-size: auto;
+    max-block-size: none;
     overflow: visible;
     margin: 0;
     padding: 0;
@@ -128,224 +123,72 @@ To reuse the `<nav>` container on desktop, override the native popover styles so
 }
 ```
 
+CSS changes the presentation, but JavaScript must also synchronise the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
+
 ---
 
-## Nested Dropdowns (Sub-navigation)
+## Nested Site Navigation
 
-For sub-navigation, use native `<details>` and `<summary>` elements. They act as inline expandable lists on mobile. On desktop, they function as resilient floating dropdowns positioned using modern CSS Anchor Positioning, aligning with the techniques in {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}.
+Use `<details>` and `<summary>` for nested site navigation, with the submenu represented by a nested list. Keep the submenu inline inside the narrow navigation popover. If the wide layout requires a floating submenu, promote that list to a native `popover="auto"` and synchronise it with the disclosure; keep the reusable disclosure behaviour in {{ GUIDE_REF("responsive-disclosure") }}.
 
-### Core Markup for Sub-navigation
+The site-navigation-specific synchronisation is (use one shared layout-state function for the outer navigation as shown in the demo):
 
-```html
-<li>
-  <details class="nav-dropdown">
-    <summary class="menu-link dropdown-trigger">
-      <span>Services</span>
-      <svg class="dropdown-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
-      </svg>
-    </summary>
-    <ul class="dropdown-list">
-      <li><a class="menu-link" href="design.html">Design</a></li>
-      <li><a class="menu-link" href="development.html">Development</a></li>
-    </ul>
-  </details>
-</li>
-```
+```js
+const details = document.querySelector(".nav-dropdown");
+const summary = details.querySelector("summary");
+const submenu = details.querySelector(".dropdown-list");
 
-### Styling the Nested Sub-navigation
-
-```css
-.nav-dropdown > summary {
-  list-style: none;
-}
-.nav-dropdown > summary::-webkit-details-marker {
-  display: none;
-}
-.dropdown-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-.dropdown-icon {
-  inline-size: 1.15rem;
-  block-size: 1.15rem;
-  transition: transform 180ms ease;
-}
-.nav-dropdown[open] .dropdown-icon {
-  transform: rotate(180deg);
-}
-
-@container (inline-size < 45rem) {
-  .dropdown-list {
-    display: grid;
-    gap: 0.25rem;
-    padding-inline-start: 1.5rem;
-  }
-}
-
-@container (inline-size >= 45rem) {
-  .dropdown-trigger {
-    anchor-name: --services-trigger;
-  }
-  .dropdown-list {
-    position: absolute;
-    position-anchor: --services-trigger;
-    position-area: block-end span-inline-end;
-    position-try-fallbacks: flip-block;
-    inset: auto;
-    display: grid;
-    gap: 0.25rem;
-    inline-size: max-content;
-    min-inline-size: 12rem;
-    padding: 0.5rem;
-    z-index: 10;
-    background: var(--surface-raised);
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 15%);
-  }
-}
-```
-
-For a deeper dive on edge-resilient overlay menus, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}. For sliding active visual indicators using anchor positioning, see {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
-
-### Dismissing Dropdowns on Click Outside and Escape
-
-Because `<details>` elements do not natively close when clicking outside or pressing Escape, use a lightweight listener on desktop.
-
-```javascript
-document.addEventListener("click", (event) => {
-  const isDesktop = getComputedStyle(document.querySelector(".menu-button")).display === "none";
-  if (!isDesktop) return;
-
-  document.querySelectorAll(".nav-dropdown[open]").forEach((details) => {
-    if (!details.contains(event.target)) {
-      details.removeAttribute("open");
-    }
-  });
-});
-
-document.addEventListener("keydown", (event) => {
-  const isDesktop = getComputedStyle(document.querySelector(".menu-button")).display === "none";
-  if (!isDesktop) return;
-
-  if (event.key === "Escape") {
-    document.querySelectorAll(".nav-dropdown[open]").forEach((details) => {
-      details.removeAttribute("open");
-      details.querySelector("summary").focus();
+details.addEventListener("toggle", () => {
+  if (submenu.matches("[popover]")) {
+    submenu.togglePopover({
+      force: details.open,
+      source: summary
     });
   }
 });
+
+submenu.addEventListener("toggle", (event) => {
+  details.open = event.newState === "open";
+});
 ```
 
----
+Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behaviour provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
 
-## Synchronizing Layout Resize
-
-If a user resizes the browser to desktop while the mobile popover is active, the popover remains open in the background, causing accessibility issues. Use `ResizeObserver` to dismiss the popover when transitioning to desktop.
-
-```javascript
-const navigation = document.querySelector("#site-menu");
-const header = document.querySelector(".site-header");
-const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
-const desktopBreakpoint = 45 * rootFontSize;
-
-function closeNavigationOnDesktop(entry) {
-  if (entry.contentRect.width >= desktopBreakpoint && navigation.matches(":popover-open")) {
-    navigation.hidePopover();
-  }
-}
-
-const headerObserver = new ResizeObserver(([entry]) => closeNavigationOnDesktop(entry));
-headerObserver.observe(header);
-```
-
----
-
-## Indicating the Active Page
-
-Convey the active page visually using a pseudo-element (`::before`) on the active link. Highlight the active page natively using the CSS `:local-link` pseudo-class and the semantic `aria-current="page"` attribute.
+For collision-aware submenu positioning, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }}. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
 ```css
-.menu-link[aria-current="page"],
-.menu-link:local-link {
-  color: var(--accent);
-}
-
-@container (inline-size < 45rem) {
-  .menu-link[aria-current="page"]::before,
-  .menu-link:local-link::before {
-    position: absolute;
-    inset-block: 0.75rem;
-    inset-inline-start: 0.3rem;
-    inline-size: 0.2rem;
-    border-radius: 99rem;
-    background: currentColor;
-    content: "";
-  }
-}
-
 @container (inline-size >= 45rem) {
-  .menu-link[aria-current="page"]::before,
-  .menu-link:local-link::before {
-    inset-block: auto 0.1rem;
-    inset-inline: 0.8rem;
-    inline-size: auto;
-    block-size: 0.2rem;
+  .dropdown-list {
+    position: absolute;
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-block;
+    inset: auto;
+    height: auto;
+    display: grid;
+    inline-size: max-content;
+    min-inline-size: 12rem;
   }
 }
 ```
 
 ---
 
-## Smooth Entry & Exit Transitions
+## Indicating the Current Page
 
-Animate the popover transition on mobile layouts using `@starting-style` and `allow-discrete` to smoothly animate opacity and transform when toggled. For a complete guide on entry/exit animations, see {{ GUIDE_REF("animate-element-entry-exit") }}.
-
-```css
-@media (prefers-reduced-motion: no-preference) {
-  @container (inline-size < 45rem) {
-    .site-menu {
-      transition: display 0.2s allow-discrete, opacity 0.2s ease, transform 0.2s ease;
-      opacity: 0;
-      transform: translateY(-0.5rem);
-    }
-
-    .site-menu:popover-open {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    @starting-style {
-      .site-menu:popover-open {
-        opacity: 0;
-        transform: translateY(-0.5rem);
-      }
-    }
-  }
-}
-```
+Use `aria-current="page"` to identify the current page. Set it at build time or with JavaScript, and use `[aria-current="page"]` as the CSS styling hook. The visual treatment is a design decision; do not assume a particular pseudo-element, border, or orientation.
 
 ---
 
-## Fallback Strategies
+## Transitions and Accessibility
+
+If the navigation is animated, use `@starting-style` and `allow-discrete` for popover entry and exit, animate only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}.
+
+Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh` for viewport-relative limits, provide visible `:focus-visible` indicators, and adapt custom borders and current-page indicators under `forced-colors: active`.
+
+---
+
+## Fallbacks
 
 {{ FEATURE_FALLBACKS("anchor-positioning") }}
 
-For browsers that do not support CSS Anchor Positioning, provide an absolute position fallback.
-
-```css
-@container (inline-size < 45rem) {
-  @supports not (inset-block-start: anchor(--menu-button bottom)) {
-    .site-menu {
-      inset-block-start: 4.75rem;
-      inset-inline-end: 1rem;
-    }
-  }
-}
-```
-
-For guidelines on applying component-specific colors, see {{ GUIDE_REF("component-specific-light-dark-theme") }}.
+For the mobile menu, put the absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid.

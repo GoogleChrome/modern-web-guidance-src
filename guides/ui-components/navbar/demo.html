@@ -19,6 +19,7 @@
       --border: light-dark(#d4d4d8, #444);
       --accent: light-dark(#1d4ed8, #93c5fd);
       --focus-ring: light-dark(#1d4ed8, #bfdbfe);
+      --icon-chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     }
 
     :where(*, *::before, *::after) {
@@ -155,12 +156,11 @@
       color: var(--text);
     }
 
-    /* Style active visual links using both aria-current and modern :local-link */
-    .menu-link:is([aria-current="page"], :local-link) {
+    .menu-link[aria-current="page"] {
       color: var(--accent);
     }
 
-    .menu-link:is([aria-current="page"], :local-link)::before {
+    .menu-link[aria-current="page"]::before {
       position: absolute;
       inset-block: 0.75rem;
       inset-inline-start: 0.3rem;
@@ -187,13 +187,21 @@
       cursor: pointer;
     }
 
-    .dropdown-icon {
+    .dropdown-trigger {
+      --icon-end: var(--icon-chevron-down);
+    }
+
+    .dropdown-trigger::after {
       inline-size: 1.15rem;
       block-size: 1.15rem;
+      background-color: currentColor;
+      content: "";
+      mask: var(--icon-chevron-down) no-repeat center / contain;
+      -webkit-mask: var(--icon-chevron-down) no-repeat center / contain;
       transition: transform 180ms ease;
     }
 
-    .nav-dropdown[open] .dropdown-icon {
+    .nav-dropdown[open] .dropdown-trigger::after {
       transform: rotate(180deg);
     }
 
@@ -258,6 +266,7 @@
         position: fixed;
         inset: auto;
 
+        /* Anchor Positioning declarations. */
         inset-block-start: anchor(--menu-button bottom);
         inset-inline-end: anchor(--menu-button right);
 
@@ -284,11 +293,10 @@
       /*
         Fallback for browsers that do not support anchor positioning.
       */
-      @supports not (inset-block-start: anchor(--menu-button bottom)) {
-        .site-menu {
-          inset-block-start: 4.75rem;
-          inset-inline-end: 1rem;
-        }
+      .site-menu {
+        inset-block-start: 4.75rem; /* fallback */
+        inset-block-start: anchor(--menu-button bottom);
+        inset-inline-end: 1rem;
       }
     }
 
@@ -330,35 +338,35 @@
         padding-inline: 0.8rem;
       }
 
-      .menu-link:is([aria-current="page"], :local-link)::before {
+      .menu-link[aria-current="page"]::before {
         inset-block: auto 0.1rem;
         inset-inline: 0.8rem;
         inline-size: auto;
         block-size: 0.2rem;
       }
 
-      .dropdown-trigger {
-        anchor-name: --services-trigger;
-      }
-
-      /* Desktop flyout style for dropdowns using CSS Anchor Positioning */
+      /* Desktop flyout style for the native submenu popover. */
       .dropdown-list {
         position: absolute;
-        position-anchor: --services-trigger;
         position-area: block-end span-inline-end;
         position-try-fallbacks: flip-block;
         inset: auto;
+        inset-block: auto;
+        height: auto;
         display: grid;
         gap: 0.25rem;
         inline-size: max-content;
         min-inline-size: 12rem;
+        max-height: max-content;
+        place-self: start;
+        align-self: start;
+        justify-self: start;
         margin-block-start: 0.5rem;
         padding: 0.5rem;
         border: 1px solid var(--border);
         border-radius: 0.5rem;
         background: var(--surface-raised);
         box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 15%);
-        z-index: 10;
       }
 
       .dropdown-list .menu-link {
@@ -401,7 +409,7 @@
         box-shadow: none;
       }
 
-      .menu-link:is([aria-current="page"], :local-link)::before {
+      .menu-link[aria-current="page"]::before {
         background: Highlight;
       }
     }
@@ -448,10 +456,6 @@
             <details class="nav-dropdown">
               <summary class="menu-link dropdown-trigger">
                 <span>Services</span>
-                <svg class="dropdown-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-linecap="round"
-                    stroke-linejoin="round" stroke-width="2" />
-                </svg>
               </summary>
               <ul class="dropdown-list">
                 <li>
@@ -503,42 +507,42 @@
   <script>
     const menu = document.querySelector("#site-menu");
     const header = document.querySelector(".site-header");
-    const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const desktopBreakpoint = 45 * rootFontSize;
+    const details = document.querySelector(".nav-dropdown");
+    const summary = details.querySelector("summary");
+    const submenu = details.querySelector(".dropdown-list");
 
-    // CSS changes the layout; JS closes stale popover state after a resize.
-    function closeMenuOnDesktop(entry) {
-      if (entry.contentRect.width >= desktopBreakpoint && menu.matches(":popover-open")) {
-        menu.hidePopover();
-      }
-    }
+    details.addEventListener("toggle", () => {
+      if (!submenu.matches("[popover]")) return;
 
-    const headerObserver = new ResizeObserver(([entry]) => closeMenuOnDesktop(entry));
-    headerObserver.observe(header);
-
-    // Close details dropdowns on desktop when clicking outside or pressing Escape
-    document.addEventListener("click", (event) => {
-      const isDesktop = getComputedStyle(document.querySelector(".menu-button")).display === "none";
-      if (!isDesktop) return;
-
-      document.querySelectorAll(".nav-dropdown[open]").forEach((details) => {
-        if (!details.contains(event.target)) {
-          details.removeAttribute("open");
-        }
+      submenu.togglePopover({
+        force: details.open,
+        source: summary
       });
     });
 
-    document.addEventListener("keydown", (event) => {
-      const isDesktop = getComputedStyle(document.querySelector(".menu-button")).display === "none";
-      if (!isDesktop) return;
-
-      if (event.key === "Escape") {
-        document.querySelectorAll(".nav-dropdown[open]").forEach((details) => {
-          details.removeAttribute("open");
-          details.querySelector("summary").focus();
-        });
-      }
+    submenu.addEventListener("toggle", (event) => {
+      details.open = event.newState === "open";
     });
+
+    function syncLayoutState(width) {
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const isWide = width >= 45 * rootFontSize;
+
+      if (isWide) {
+        menu.removeAttribute("popover");
+        submenu.setAttribute("popover", "auto");
+      } else {
+        menu.setAttribute("popover", "auto");
+        submenu.removeAttribute("popover");
+      }
+    }
+
+    const layoutObserver = new ResizeObserver(([entry]) => {
+      syncLayoutState(entry.contentRect.width);
+    });
+
+    layoutObserver.observe(header);
+    syncLayoutState(header.getBoundingClientRect().width);
   </script>
 </body>
 
