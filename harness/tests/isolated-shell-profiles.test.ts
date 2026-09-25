@@ -104,7 +104,7 @@ test('login shell in isolated HOME correctly prepends targetDir to PATH and exec
     // If on macOS, also verify zsh login shell (-l triggers zprofile evaluation and path_helper reset)
     if (process.platform === 'darwin') {
       const zshResult = spawnSync('zsh', ['-l', '-c', mockBinName], {
-        env: { ...process.env, HOME: homeDir },
+        env: { ...process.env, HOME: homeDir, ZDOTDIR: homeDir },
         encoding: 'utf8',
         timeout: 5000,
       });

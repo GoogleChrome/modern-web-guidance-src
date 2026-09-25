@@ -23,6 +23,14 @@ const TEMP_REPO_DIR = "/tmp/guides-baseline-repo";
 const safeEnv = { ...process.env };
 delete safeEnv.GIT_DIR;
 delete safeEnv.GIT_WORK_TREE;
+// Clear any GIT_CONFIG variables that might be set by the environment to prevent interference
+Object.keys(safeEnv).forEach(key => {
+  if (key.startsWith('GIT_CONFIG_') && key !== 'GIT_CONFIG_GLOBAL' && key !== 'GIT_CONFIG_SYSTEM') {
+    delete safeEnv[key];
+  }
+});
+delete safeEnv.GIT_EXTERNAL_DIFF;
+delete safeEnv.GIT_PAGER;
 
 let mergeBase = "";
 
