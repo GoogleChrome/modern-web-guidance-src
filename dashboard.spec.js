@@ -155,6 +155,16 @@ test.describe('Eval View Dashboard', () => {
     await expect(page).toHaveURL(/.*guide.html\?guide=.+/);
   });
 
+  test('should scope the guide trend to a single target when task is supplied', async ({ page }) => {
+    await page.goto('/guide.html?guide=content-vis&task=content-vis-task');
+    await expect(page.locator('#guide-name-header')).toContainText('content-vis-task');
+    await expect(page.locator('.timeline-point').first()).toBeVisible();
+
+    // A target absent from the data charts nothing rather than falling back to combined totals.
+    await page.goto('/guide.html?guide=content-vis&task=not-a-real-target');
+    await expect(page.locator('#empty-state')).toBeVisible();
+  });
+
   test('should block access to hidden files', async ({ page }) => {
     const response = await page.request.get('/.gitignore');
     expect(response.status()).toBe(403);
