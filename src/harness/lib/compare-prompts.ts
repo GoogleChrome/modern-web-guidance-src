@@ -211,38 +211,3 @@ ${truncateAtLineBoundary(diffAvsB, MAX_DIFF_PROMPT_CHARS)}
   return { systemInstruction, prompt: boundedPrompt };
 }
 
-export function getCompliancePrompts(
-  guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  statusA: string,
-  statusB: string
-): { systemInstruction: string; prompt: string } {
-  return getComparisonPrompts(guideCtx, ctxA, ctxB, '', '', '', statusA, statusB);
-}
-
-export function getCodeAndFrictionPrompts(
-  guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  diffBaseVsA: string,
-  diffBaseVsB: string,
-  diffAvsB: string,
-  statusA: string,
-  statusB: string
-): { systemInstruction: string; prompt: string } {
-  return getComparisonPrompts(guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB, statusA, statusB);
-}
-
-export function getSynthesizerPrompts(
-  guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
-  _complianceAnalysis: string,
-  _codeAndFrictionAnalysis: string,
-  statusA: string,
-  statusB: string
-): { systemInstruction: string; prompt: string } {
-  return getComparisonPrompts(guideCtx, ctxA, ctxB, '', '', '', statusA, statusB);
-}
-

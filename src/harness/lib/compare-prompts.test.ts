@@ -1,11 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
-import {
-  getComparisonPrompts,
-  getCompliancePrompts,
-  getCodeAndFrictionPrompts,
-  getSynthesizerPrompts
-} from "../lib/compare-prompts.ts";
+import { getComparisonPrompts } from "../lib/compare-prompts.ts";
 import type { GuideContext, RunContext } from "../lib/compare-evals.ts";
 
 function createMockGuideContext(overrides?: Partial<GuideContext>): GuideContext {
@@ -121,9 +116,6 @@ describe("compare-prompts pipeline", () => {
 
     assert.doesNotThrow(() => {
       getComparisonPrompts(sparseGuide, sparseRunA, sparseRunB, "", "", "", "COMPARED RUN", "COMPARED RUN");
-      getCompliancePrompts(sparseGuide, sparseRunA, sparseRunB, "COMPARED RUN", "COMPARED RUN");
-      getCodeAndFrictionPrompts(sparseGuide, sparseRunA, sparseRunB, "", "", "", "COMPARED RUN", "COMPARED RUN");
-      getSynthesizerPrompts(sparseGuide, sparseRunA, sparseRunB, "", "", "COMPARED RUN", "COMPARED RUN");
     });
   });
 });
