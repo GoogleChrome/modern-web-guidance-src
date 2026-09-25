@@ -1,8 +1,5 @@
-- Untrusted HTML is sanitized and inserted into the target container using `Element.prototype.setHTML()` (or a sanitized fallback when unsupported) rather than raw `innerHTML`.
-- The rendered output container does not contain any `<script>` elements when given input containing `<script>` tags.
-- The rendered output container does not contain any inline `on*` event handler attributes (such as `onclick` or `onerror`) on any descendant elements.
-- A custom `Sanitizer` configuration restricts allowed elements to basic formatting tags (such as `p`, `b`, `i`, `strong`, `em`) and strips disallowed elements such as `<img>`.
-- The custom `Sanitizer` configuration uses `replaceWithChildrenElements` (e.g., `['div']`) so wrapper `<div>` tags are removed while preserving their inner text/child nodes in the rendered container.
-- Allowed elements and attributes (such as `<p class="...">` and `<b>`) are preserved in the rendered output container.
-- When `Element.prototype.setHTML` or `Sanitizer` is unavailable in the browser, the implementation conditionally loads and falls back to `DOMPurify.sanitize()` with matching allowed elements and attributes.
-
+- After untrusted HTML containing a `<script>` element is rendered, the output container contains no `<script>` elements.
+- After untrusted HTML containing inline event handlers is rendered, no element in the output container has an `on*` attribute (such as `onclick` or `onerror`).
+- Rendering untrusted HTML does not execute any script from the input (no dialogs open and no console messages are logged by the injected markup).
+- Safe formatting markup in the input (such as a `<p>` containing a `<b>` element) is rendered as elements in the output container, not as escaped text.
+- When `Element.prototype.setHTML` is removed before the page's scripts run, the output container still contains no `<script>` elements and no `on*` attributes after rendering untrusted HTML.
