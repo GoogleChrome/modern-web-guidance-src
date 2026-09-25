@@ -4,7 +4,7 @@
 - The implementation MUST structure page regions using semantic landmark elements (`<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`).
 - The implementation MUST use the native `<search>` element to wrap search and filtering controls instead of `<div role="search">`.
 - The implementation MUST use `<button>` elements for triggered actions and `<a>` elements strictly for URL navigation.
-- The implementation MUST explicitly set `type="button"` on non-submit `<button>` elements inside forms.
+- The implementation MUST explicitly set a `type` attribute on every `<button>` inside forms.
 - The implementation MUST use semantic list elements (`<ul>`, `<ol>`, `<dl>`) for list content.
 - The implementation MUST hide purely decorative `<svg>` elements with `aria-hidden="true"` and decorative `<img>` elements with an empty `alt=""` attribute.
 - The implementation MUST NOT use redundant values on boolean attributes (e.g., use `disabled` or `required`, not `disabled="disabled"`).
