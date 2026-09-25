@@ -79,10 +79,80 @@ function hasBinary(name: string): boolean {
   return spawnSync('which', [name], { stdio: 'ignore' }).status === 0;
 }
 
-export function buildBwrapArgs(command: string, commandArgs: string[], policy: SandboxPolicy): string[] {
+function bindOrSymlink(args: string[], p: string): void {
+  try {
+    const lst = fs.lstatSync(p);
+    if (lst.isSymbolicLink()) {
+      args.push('--symlink', fs.readlinkSync(p), p);
+    } else {
+      args.push('--bind', p, p);
+    }
+  } catch {
+    // Ignore transient entries in /run
+  }
+}
+
+/**
+ * Inside bwrap's unprivileged user namespace, only the current user's UID is
+ * mapped; root-owned directories on the host appear owned by `nobody` (65534).
+ * Tools that verify ancestor directory ownership for user runtime/credential
+ * files under `/run` (e.g. `/run/user/<uid>`) reject paths whose parents are
+ * owned by `nobody`. Re-creating `/run` and any immediate subdirectory containing
+ * current-user entries with mode 0755 makes them owned by the current user
+ * inside the namespace while preserving all `/run` entries.
+ */
+function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
+  const uid = process.getuid?.();
+  if (uid === undefined || !fs.existsSync(runDir)) return;
+
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(runDir);
+  } catch {
+    return;
+  }
+
+  const dirsWithUserEntries = new Map<string, string[]>();
+  for (const name of entries) {
+    const p = path.join(runDir, name);
+    try {
+      if (!fs.lstatSync(p).isDirectory()) continue;
+      const subEntries = fs.readdirSync(p);
+      const hasUserEntry = subEntries.some(sub => {
+        try {
+          return fs.lstatSync(path.join(p, sub)).uid === uid;
+        } catch {
+          return false;
+        }
+      });
+      if (hasUserEntry) dirsWithUserEntries.set(name, subEntries);
+    } catch {
+      // Ignore unreadable or transient entries in /run
+    }
+  }
+
+  if (dirsWithUserEntries.size === 0) return;
+
+  args.push('--perms', '0755', '--tmpfs', runDir);
+  for (const name of entries) {
+    const p = path.join(runDir, name);
+    const subEntries = dirsWithUserEntries.get(name);
+    if (subEntries) {
+      args.push('--perms', '0755', '--dir', p);
+      for (const sub of subEntries) {
+        bindOrSymlink(args, path.join(p, sub));
+      }
+    } else {
+      bindOrSymlink(args, p);
+    }
+  }
+}
+
+export function buildBwrapArgs(command: string, commandArgs: string[], policy: SandboxPolicy, runDir: string = '/run'): string[] {
   const args = ['--dev-bind', '/', '/', '--die-with-parent', '--tmpfs', policy.hiddenDir];
   for (const p of policy.readOnlyPaths) args.push('--ro-bind', p, p);
   for (const p of policy.writablePaths) args.push('--bind', p, p);
+  appendRunDirMounts(args, runDir);
   args.push('--', command, ...commandArgs);
   return args;
 }

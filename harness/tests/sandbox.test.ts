@@ -35,16 +35,28 @@ test('buildSandboxPolicy exposes dist only for guided runs and the target dir as
 });
 
 test('buildBwrapArgs hides the repo before re-binding exposed paths', () => {
-  const args = buildBwrapArgs('agent', ['-p', 'hi'], {
-    hiddenDir: '/repo',
-    readOnlyPaths: ['/repo/node_modules'],
-    writablePaths: ['/repo/harness/results/x'],
-  });
-  const tmpfsIdx = args.indexOf('--tmpfs');
-  assert.strictEqual(args[tmpfsIdx + 1], '/repo');
-  assert.ok(args.indexOf('--ro-bind') > tmpfsIdx);
-  assert.ok(args.indexOf('--bind') > tmpfsIdx);
-  assert.deepStrictEqual(args.slice(args.indexOf('--')), ['--', 'agent', '-p', 'hi']);
+  const fakeRun = fs.mkdtempSync(path.join(os.tmpdir(), 'sandbox-run-'));
+  const userSubDir = path.join(fakeRun, 'user', '1000');
+  fs.mkdirSync(userSubDir, { recursive: true });
+  try {
+    const args = buildBwrapArgs('agent', ['-p', 'hi'], {
+      hiddenDir: '/repo',
+      readOnlyPaths: ['/repo/node_modules'],
+      writablePaths: ['/repo/harness/results/x'],
+    }, fakeRun);
+    const tmpfsIdx = args.indexOf('--tmpfs');
+    assert.strictEqual(args[tmpfsIdx + 1], '/repo');
+    assert.ok(args.indexOf('--ro-bind') > tmpfsIdx);
+    assert.ok(args.indexOf('--bind') > tmpfsIdx);
+    if (process.getuid) {
+      assert.ok(args.includes(fakeRun));
+      assert.ok(args.includes(path.join(fakeRun, 'user')));
+      assert.ok(args.includes(userSubDir));
+    }
+    assert.deepStrictEqual(args.slice(args.indexOf('--')), ['--', 'agent', '-p', 'hi']);
+  } finally {
+    fs.rmSync(fakeRun, { recursive: true, force: true });
+  }
 });
 
 test('wrapCommandInSandbox passes through when GD_UNSAFE_NO_SANDBOX=1', () => {
