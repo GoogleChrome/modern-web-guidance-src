@@ -47,25 +47,26 @@
     //     crossOriginStorage: "*",
     //   };
     //
-    // A static import written that way can't degrade -- an import
-    // attribute key a browser doesn't recognize is a hard parse-time
-    // failure, not an ignored attribute, the same way an unknown HTTP
-    // header can't be silently dropped mid-request. Code that must keep
-    // working regardless of COS support instead feature-detects and uses
-    // dynamic import(), which falls back to a normal network import
-    // automatically.
+    // A static import written that way can't degrade: an import
+    // attribute key a browser doesn't recognize fails the whole module at
+    // parse time. A dynamic import() with it rejects before fetching
+    // anything, even when navigator.crossOriginStorage exists (for example,
+    // added by an extension), so catch that rejection and import the same
+    // URL without the attribute.
     const statusEl = document.getElementById('module-status');
-    const supportsCOS = !!navigator.crossOriginStorage?.requestFileHandle;
 
     try {
-      const mod = supportsCOS
-        ? await import('/assets/shared-config.js', {
-            with: {
-              integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
-              crossOriginStorage: '*',
-            },
-          })
-        : await import('/assets/shared-config.js');
+      let mod;
+      try {
+        mod = await import('/assets/shared-config.js', {
+          with: {
+            integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
+            crossOriginStorage: '*',
+          },
+        });
+      } catch {
+        mod = await import('/assets/shared-config.js');
+      }
 
       statusEl.textContent = `Configuration module ready: ${JSON.stringify(mod.default)}`;
     } catch (err) {

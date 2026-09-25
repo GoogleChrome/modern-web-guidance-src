@@ -80,7 +80,32 @@ Once a `<template>` replaces an insertion point, that insertion point no longer 
 ```
 
 ### 2. Imperative JS Streaming
-You can now pipe fetch responses directly into the DOM without manual chunk handling.
+
+The browser provides a suite of 24 methods (6 actions, each with 4 variations) to update the DOM either statically (from a string) or via a stream.
+
+#### API Reference Matrix
+
+| Action | Static (Safe) | Streaming (Safe) | Static (Unsafe) | Streaming (Unsafe) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Set** | `setHTML()` | `streamHTML()` | `setHTMLUnsafe()` | `streamHTMLUnsafe()` |
+| **Replace** | `replaceWithHTML()` | `streamReplaceWithHTML()` | `replaceWithHTMLUnsafe()` | `streamReplaceWithHTMLUnsafe()` |
+| **Before** | `beforeHTML()` | `streamBeforeHTML()` | `beforeHTMLUnsafe()` | `streamBeforeHTMLUnsafe()` |
+| **Prepend** | `prependHTML()` | `streamPrependHTML()` | `prependHTMLUnsafe()` | `streamPrependHTMLUnsafe()` |
+| **Append** | `appendHTML()` | `streamAppendHTML()` | `appendHTMLUnsafe()` | `streamAppendHTMLUnsafe()` |
+| **After** | `afterHTML()` | `streamAfterHTML()` | `afterHTMLUnsafe()` | `streamAfterHTMLUnsafe()` |
+
+#### Key Concepts
+
+*   **Safe vs. Unsafe**: 
+    *   **Safe** methods (e.g., `setHTML()`) use a built-in sanitizer by default to strip potentially dangerous content like `<script>` tags. You can pass a custom `Sanitizer` object in the options to apply in addition to the default sanitizer.
+    *   **Unsafe** methods (e.g., `setHTMLUnsafe()`) do not sanitize by default, but you can still pass a custom `Sanitizer`. To allow scripts to execute in the new content, you must explicitly pass `{ runScripts: true }` in the options. **IMPORTANT**: Only use unsafe methods with trusted content where safe methods would not work.
+*   **Static vs. Streaming**:
+    *   **Static** methods take a string (or `TrustedHTML`) and apply it immediately.
+    *   **Streaming** methods return a `WritableStream`. This allows you to pipe content (e.g., from a `fetch` response) directly into the DOM, and the browser will render it incrementally as chunks arrive.
+
+#### Example: Streaming a Fetch Response
+
+You can pipe fetch responses directly into the DOM without manual chunk handling.
 
 ```javascript
 const main = document.querySelector('main');

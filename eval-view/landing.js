@@ -872,13 +872,9 @@ function renderPivotInsights() {
 
         const suiteGuides = testInfo.guides || {};
         Object.keys(suiteGuides).forEach(guide => {
-            const gG = suiteGuides[guide].guided || { passed: 0, total: 0 };
-            const uG = suiteGuides[guide].unguided || { passed: 0, total: 0 };
-            const gG_rate = gG.total > 0 ? Math.round((gG.passed / gG.total) * 100) : 0;
-            const uG_rate = uG.total > 0 ? Math.round((uG.passed / uG.total) * 100) : 0;
-            const uG_uplift = gG_rate - uG_rate;
+            const { guidedRate = 0, unguidedRate = 0, uplift = 0 } = suiteGuides[guide];
             if (!grouped.guide[guide]) grouped.guide[guide] = [];
-            grouped.guide[guide].push({ uplift: uG_uplift, uRate: uG_rate, gRate: gG_rate });
+            grouped.guide[guide].push({ uplift, uRate: unguidedRate, gRate: guidedRate });
         });
     });
 
