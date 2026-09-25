@@ -6,7 +6,7 @@
 - The implementation MUST use `<button>` elements for triggered actions and `<a>` elements strictly for URL navigation.
 - The implementation MUST explicitly set a `type` attribute on every `<button>` inside forms.
 - The implementation MUST use semantic list elements (`<ul>`, `<ol>`, `<dl>`) for list content.
-- The implementation MUST hide purely decorative `<svg>` elements with `aria-hidden="true"` and decorative `<img>` elements with an empty `alt=""` attribute.
+- The implementation MUST give every `<img>` an `alt` attribute and every `<svg>` either `aria-hidden="true"` or an accessible name.
 - The implementation MUST NOT use redundant values on boolean attributes (e.g., use `disabled` or `required`, not `disabled="disabled"`).
 - The implementation MUST use `<figure>` and `<figcaption>` to group self-contained diagrams, images, or code listings that require captions.
 - The implementation MUST wrap multi-line code blocks in `<pre><code>` and add `tabindex="0"` to scrollable `<pre>` containers.
@@ -20,11 +20,10 @@
 - The implementation MUST use the native Popover API (`popover` and `popovertarget` attributes) for non-modal transient overlays such as tooltips or menus.
 - The implementation MUST NOT call `.showModal()` on elements that possess a `popover` attribute.
 - The implementation MUST use `<details>` with `<summary>` as its first child for native inline disclosure widgets.
-- The implementation MUST share an identical `name` attribute across `<details>` elements when implementing a mutually exclusive accordion group.
+- The implementation MUST share an identical `name` attribute across `<details>` elements where opening one closes the others.
 - The implementation MUST NOT nest interactive controls (`<a>` or `<button>`) directly inside a `<summary>` element.
 - The implementation MUST apply the global `inert` attribute to background sections when custom non-dialog overlays or off-screen drawers are open.
 - The implementation MUST NOT use positive `tabindex` values (`tabindex="1"` or greater).
-- The implementation MUST use `<datalist>` coupled with `<input list="...">` for native input auto-suggestions.
 - The implementation MUST NOT set `autocomplete="off"` on credential, contact, or address inputs, and MUST use specific tokens (`email`, `current-password`, `new-password`, `street-address`).
 - The implementation MUST pair `autocomplete` tokens with matching `type` and `inputmode` attributes on form inputs.
 - The implementation MUST include a `poster` attribute and `<track kind="captions">` inside content `<video controls>` elements.
