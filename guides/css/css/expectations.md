@@ -3,7 +3,7 @@
 - The implementation MUST use `:where()` for low-specificity default rules or fallback selectors.
 - The implementation MUST use `:has()` to style parent or container elements based on child or input states (such as `label:has(:checked)`) instead of toggling state classes via JavaScript.
 - The implementation MUST NOT nest a `:has()` selector inside another `:has()` selector.
-- The implementation MUST use `:is()` or `:where()` instead of duplicating CSS rules when grouping selectors or fallbacks.
+- The implementation MUST use `:is()` or `:where()` instead of duplicating CSS rules when grouping selectors or fallbacks, except for pseudo-elements.
 - The implementation MUST use `:not()` to exclude irrelevant states (such as `button:hover:not(:disabled)`) rather than writing subsequent override rules to undo styles.
 - The implementation MUST use `@scope` when scoping component styles to a DOM subtree or donut scope (`@scope (...) to (...)`).
 - The implementation MUST NOT apply global wildcard reset declarations (`* { ... }`) outside of a low-priority `@layer reset` block.
