@@ -17,8 +17,8 @@ before(async () => {
         fs.writeFileSync(path.join(mockResultsDir, 'mock-suite', 'evals.json'), JSON.stringify({ summary: {}, results: {} }));
     }
 
-    // Generate manifests for standard tests (skip fetch to isolate)
-    await generateSuitesManifest('.', targetResultsDir, true);
+    // Generate manifests for standard tests
+    await generateSuitesManifest('.', targetResultsDir);
 });
 
 after(async () => {
@@ -49,44 +49,10 @@ test('Parity: Static manifests should be correctly generated and accessible', as
     assert.deepStrictEqual(suiteIds.sort(), localDirs.sort(), 'Static suites manifest should match local completed suites');
 });
 
-test('generateSuitesManifest merges live suites with local suites via mock fetch', async () => {
-  const testMockDir = path.resolve('./test-mock-merge-results');
-  fs.mkdirSync(path.join(testMockDir, 'local-suite'), { recursive: true });
-  fs.writeFileSync(path.join(testMockDir, 'local-suite', 'evals.json'), JSON.stringify({ summary: {}, results: {} }));
-
-  // Mock fetch to return live suites
-  const originalFetch = global.fetch;
-  // @ts-expect-error simple mock
-  global.fetch = async (url) => {
-    if (url === 'https://googlechrome.github.io/guidance-dash/suites.gen.json') {
-      return {
-        ok: true,
-        json: async () => [{ testId: 'live-suite' }]
-      };
-    }
-    return originalFetch(url);
-  };
-
-  try {
-    const result = await generateSuitesManifest('.', testMockDir);
-    const resultIds = result.map((s: any) => typeof s === 'string' ? s : s.testId);
-    assert.deepStrictEqual(resultIds, ['live-suite', 'local-suite'], 'Manifest should contain both live and local suites');
-  } finally {
-    // Restore fetch
-    global.fetch = originalFetch;
-    // Cleanup
-    fs.rmSync(testMockDir, { recursive: true, force: true });
-    const suitesPath = path.resolve('./suites.gen.json');
-    if (fs.existsSync(suitesPath)) {
-        fs.unlinkSync(suitesPath);
-    }
-  }
-});
-
 test('Parity: evals.json should be valid in all completed suites', async () => {
     const suitesPath = path.resolve('./suites.gen.json');
-    // Re-generate without skipFetch to ensure we have a valid file for this test if previous one was cleaned up
-    await generateSuitesManifest('.', targetResultsDir, true);
+    // Re-generate to ensure we have a valid file for this test if previous one was cleaned up
+    await generateSuitesManifest('.', targetResultsDir);
     
     if (!fs.existsSync(suitesPath)) return;
     

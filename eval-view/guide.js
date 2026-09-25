@@ -7,12 +7,13 @@ let allTestData = {}; // Cache all test data by testId
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
     const guideName = params.get('guide');
+    const taskName = params.get('task');
     if (!guideName) {
         window.location.href = './';
         return;
     }
 
-    $('#guide-name-header').textContent = guideName;
+    $('#guide-name-header').textContent = taskName ? `${guideName} — ${taskName}` : guideName;
     setupTimelineFilterControls(guideName);
 
     try {
@@ -299,16 +300,30 @@ function renderGraphs(guideName) {
 
     const params = new URLSearchParams(window.location.search);
     const highlightTestId = params.get('testId');
+    const activeTask = params.get('task');
 
     const testKeys = Object.keys(allTestData);
-    
+
+    /**
+     * The requested target's stats, or the guide roll-up when no target is requested.
+     * @param {GuideSuiteSummary} run
+     * @returns {any}
+     */
+    const getStats = (run) => {
+        const guideStats = run.guides?.[guideName];
+        if (!guideStats) return null;
+        if (!activeTask) return guideStats;
+        // Single-task guides store only the name; the roll-up is that task's data.
+        if (guideStats.tasks) return guideStats.tasks[activeTask];
+        return guideStats.taskName === activeTask ? guideStats : null;
+    };
+
     // Filter out suites that don't have this guide, or have 0 trials for it
     const filteredKeys = testKeys.filter(key => {
-        const run = allTestData[key];
-        if (!run.guides || !run.guides[guideName]) return false;
-        const g = run.guides[guideName];
-        const gTotal = g.guidedTotal !== undefined ? g.guidedTotal : (g.guided?.total || 0);
-        const uTotal = g.unguidedTotal !== undefined ? g.unguidedTotal : (g.unguided?.total || 0);
+        const g = getStats(allTestData[key]);
+        if (!g) return false;
+        const gTotal = g.guidedTotal || 0;
+        const uTotal = g.unguidedTotal || 0;
         return gTotal > 0 || uTotal > 0;
     });
 
@@ -459,7 +474,8 @@ function renderGraphs(guideName) {
             const x = globalTimeline.length > 1 ? paddingX + i * stepX : globalWidth / 2;
             
             const run = runs.find(r => getDateKey(r.timestamp) === suite.dateKey);
-            
+            const stats = run ? getStats(run) : null;
+
             const isHighlighted = run && run.testId === highlightTestId;
             if (isHighlighted) {
                 svgContent += `
@@ -467,8 +483,7 @@ function renderGraphs(guideName) {
                 `;
             }
 
-            if (run) {
-                const stats = run.guides[guideName];
+            if (run && stats) {
                 const yU = rateToY(stats.unguidedRate);
                 const yG = rateToY(stats.guidedRate);
                 const isPositive = stats.guidedRate >= stats.unguidedRate;
@@ -545,7 +560,8 @@ function renderGraphs(guideName) {
                 const runData = combinations[combKey].find(r => r.testId === testId);
                 if (!runData) return;
 
-                const stats = runData.guides[guideName];
+                const stats = getStats(runData);
+                if (!stats) return;
                 const formattedDate = new Date(runData.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
                 const tooltip = $('#tooltip-container');
@@ -558,10 +574,10 @@ function renderGraphs(guideName) {
                     </div>
                 `;
 
-                const gPassed = stats.guidedPassed !== undefined ? stats.guidedPassed : (stats.guided?.passed || 0);
-                const gTotal = stats.guidedTotal !== undefined ? stats.guidedTotal : (stats.guided?.total || 0);
-                const uPassed = stats.unguidedPassed !== undefined ? stats.unguidedPassed : (stats.unguided?.passed || 0);
-                const uTotal = stats.unguidedTotal !== undefined ? stats.unguidedTotal : (stats.unguided?.total || 0);
+                const gPassed = stats.guidedPassed || 0;
+                const gTotal = stats.guidedTotal || 0;
+                const uPassed = stats.unguidedPassed || 0;
+                const uTotal = stats.unguidedTotal || 0;
 
                 content.innerHTML = `
                     <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.75rem;">${formattedDate}</div>

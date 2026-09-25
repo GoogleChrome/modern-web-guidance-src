@@ -745,7 +745,7 @@ function renderGrid(data, testId) {
             const trackWidth = 250; // matches css
             const scale = (/** @type {number} */ val) => (val / 100) * trackWidth;
 
-            const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
+            const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
             const trendLinkHtml = `
                 <a href="${trendUrl}" class="trend-link" title="View trend over time" style="margin-left: 8px; text-decoration: none; color: var(--color-primary); display: inline-flex; align-items: center; vertical-align: middle;" onclick="event.stopPropagation();">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

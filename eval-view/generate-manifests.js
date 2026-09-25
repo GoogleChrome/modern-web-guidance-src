@@ -48,40 +48,13 @@ export function generateMapping(outputDir = '.') {
 /** 
  * Generates suites.gen.json based on folders in harness/results that contain evals.json.
  */
-export async function generateSuitesManifest(outputDir = '.', resultsSourceDir = resultsDir, skipFetch = false) {
+export async function generateSuitesManifest(outputDir = '.', resultsSourceDir = resultsDir) {
     const { extractSuiteSummary } = await import('./summary-extractor.js');
     /** @type {Map<string, Record<string, any>>} */
     const suitesMap = new Map();
     const outputPath = path.join(outputDir, 'suites.gen.json');
 
-    // 1. Fetch live manifest from GitHub Pages to preserve historical data
-    if (!skipFetch) {
-        const liveManifestUrl = 'https://googlechrome.github.io/guidance-dash/suites.gen.json';
-        console.log(`Fetching live manifest from ${liveManifestUrl}...`);
-        try {
-            const response = await fetch(liveManifestUrl);
-            if (response.ok) {
-                const liveSuites = await response.json();
-                if (Array.isArray(liveSuites)) {
-                    console.log(`Fetched ${liveSuites.length} suites from live manifest.`);
-                    liveSuites.forEach(s => {
-                        if (typeof s === 'string') {
-                            suitesMap.set(s, { testId: s, source: 'remote' });
-                        } else if (s && s.testId) {
-                            suitesMap.set(s.testId, s);
-                        }
-                    });
-                }
-            } else {
-                console.warn(`Failed to fetch live manifest (Status ${response.status}). Starting fresh.`);
-            }
-        } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            console.warn(`Failed to fetch live manifest:`, message);
-        }
-    }
-
-    // 2. Add new suites from results dir
+    // Add suites from results dir
     if (fs.existsSync(resultsSourceDir)) {
         const items = fs.readdirSync(resultsSourceDir, { withFileTypes: true });
         for (const item of items) {
