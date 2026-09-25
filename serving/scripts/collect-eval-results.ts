@@ -125,11 +125,8 @@ function collectResults() {
         continue;
       }
 
-      // Extract serving info, default to skills_cli if not specified
-      let serving = data.serving || 'unknown';
-      if (data.serving === undefined && data.enableSkills !== undefined) {
-        serving = data.enableSkills ? 'skills_cli' : 'mcp';
-      }
+      // Historical runs may record a now-removed serving approach (e.g. `mcp`).
+      const serving = data.serving || 'unknown';
 
       summaries.push({
         testId: folderName,

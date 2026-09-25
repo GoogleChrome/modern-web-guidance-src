@@ -23,3 +23,7 @@ Once the use cases are approved, the second stage is to complete the documentati
 Always refer to the [Guides](../.agents/skills/project-guides/SKILL.md) and [Evaluations](../.agents/skills/project-evals/SKILL.md) skills for detailed instructions.
 
 When writing content, note that it is intended to be read by *other* coding agents. In particular, `guide.md` will be read by general web developers' coding agents to learn how to use the features. Other files like `demo.html` and `expectations.md` will be used by coding agents within this project to validate that the guidance is correct. Therefore, your writing must be highly structured, deterministic, and command-oriented.
+
+**Discipline guides**
+
+If you add a discipline guide, you MUST add its slug to `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`.

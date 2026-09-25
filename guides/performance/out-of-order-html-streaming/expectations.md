@@ -1,0 +1,7 @@
+- The page should initially render fallback content (such as a loading skeleton) within a range defined by `<?start>` and `<?end>` processing instructions.
+- The fallback content should be automatically replaced by the final content delivered in a `<template for="...">` element once that part of the HTML stream is processed.
+- Placeholder containers should have stable dimensions (e.g. `min-height` or `aspect-ratio`) to prevent layout shifts when the content is patched.
+- For imperative updates, the `Response.textStream()` method should be used to get a stream of HTML from a fetch response.
+- Unsafe methods should only be used with trusted content that contains items that would be removed by the safe methods.
+- The `runScripts: true` option must only be passed to an unsafe method when writing content that contains trusted `<script>` elements.
+- Containers receiving out-of-order updates should have appropriate `aria-live` attributes, where needed, to notify screen reader users of the changes.

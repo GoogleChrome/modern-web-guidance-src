@@ -1,0 +1,7 @@
+- The text color of the badge or button computes to either `rgb(0, 0, 0)` or `rgb(255, 255, 255)` when a background color is applied.
+- The computed text color has a contrast ratio of at least 4.5:1 against the computed background color.
+- When the background color custom property is updated, the computed text color automatically updates to maintain contrast.
+- If the browser does not support `contrast-color()`, the element still has a readable computed text color (not the browser default).
+- For dynamic backgrounds in non-supporting browsers, the element has a secondary readability aid such as a `text-shadow`, a `-webkit-text-stroke`, or a translucent background overlay.
+- If a text stroke is used as a fallback, the `paint-order` property is set to `stroke fill` or `markers stroke fill`.
+- The `contrast-color()` function is not used to define the `background-color` property of any element.

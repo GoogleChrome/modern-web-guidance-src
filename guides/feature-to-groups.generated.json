@@ -30,6 +30,15 @@
   "alternative-style-sheets": [
     "css"
   ],
+  "anchor-positioning": [
+    "css"
+  ],
+  "anchor-positioning-animations": [
+    "css"
+  ],
+  "anchor-positioning-transforms": [
+    "css"
+  ],
   "animation-composition": [
     "animation"
   ],
@@ -198,6 +207,9 @@
     "css"
   ],
   "contain-style": [
+    "css"
+  ],
+  "container-anchor-position-queries": [
     "css"
   ],
   "container-queries": [
@@ -496,6 +508,9 @@
   "grid-animation": [
     "css"
   ],
+  "grid-lanes": [
+    "css"
+  ],
   "has": [
     "css"
   ],
@@ -625,9 +640,6 @@
     "css"
   ],
   "marker": [
-    "css"
-  ],
-  "masonry": [
     "css"
   ],
   "media-queries": [
