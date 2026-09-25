@@ -384,6 +384,10 @@ window.__featuresMapping = {
     "anchor-positioning",
     "popover"
   ],
+  "responsive-table": [
+    "sticky-positioning",
+    "container-queries"
+  ],
   "scroll-position-aware-elements": [
     "container-scroll-state-queries"
   ],
