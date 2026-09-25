@@ -8,6 +8,7 @@ web-feature-ids:
 # later: ::slider-thumb, ::slider-track, ::slider-fill
 guides:
   - slider-tooltip
+  - brand-consistent-forms
 ---
 
 <!--
@@ -38,7 +39,7 @@ If a tooltip that follows the thumb is required, use the {{ GUIDE_REF("slider-to
 
 ## Choose the styling approach
 
-For simple colour customisation, use {{ GUIDE_REF("accent-color") }} and retain the browser’s native rendering:
+For simple colour customisation, use {{ GUIDE_REF("brand-consistent-forms") }} and retain the browser’s native rendering:
 
 ```css
 input[type="range"] {
