@@ -313,9 +313,6 @@ window.__featuresMapping = {
     "tmp-cross-origin-storage",
     "subresource-integrity"
   ],
-  "streaming-api": [
-    "tmp-streaming-api"
-  ],
   "privacy": [
     "permissions-policy",
     "partitioned-cookies",
