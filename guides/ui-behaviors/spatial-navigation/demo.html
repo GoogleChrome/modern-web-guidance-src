@@ -56,36 +56,61 @@
       margin: 20px 0;
     }
 
-    /* 
-        Asymmetrical Dashboard Layout 
-        Provides an ideal testbed for 2D visual distance calculations (where row/col matching fails).
+    /*
+        Asymmetrical CSS Grid Layout
+        Deliberately uses visual order, column spans, and gaps so DOM order
+        cannot be used as a substitute for spatial geometry.
       */
     .dashboard {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
       gap: 16px;
       margin: 32px 0;
     }
 
-    .dashboard-row {
-      display: flex;
-      gap: 16px;
-      width: 100%;
+    .spatial-card:nth-child(1) {
+      order: 1;
+      grid-column: span 4;
     }
 
-    /* Row 1: 3 equal-width cards */
-    .row-1 .spatial-card {
-      flex: 1;
+    .spatial-card:nth-child(2) {
+      order: 3;
+      grid-column: span 4;
     }
 
-    /* Row 2: 2 wider cards */
-    .row-2 .spatial-card {
-      flex: 1;
+    .spatial-card:nth-child(3) {
+      order: 2;
+      grid-column: span 4;
     }
 
-    /* Row 3: 4 smaller cards */
-    .row-3 .spatial-card {
-      flex: 1;
+    .spatial-card:nth-child(4) {
+      order: 5;
+      grid-column: span 6;
+    }
+
+    .spatial-card:nth-child(5) {
+      order: 4;
+      grid-column: span 6;
+    }
+
+    .spatial-card:nth-child(6),
+    .spatial-card:nth-child(7),
+    .spatial-card:nth-child(8),
+    .spatial-card:nth-child(9) {
+      order: 6;
+      grid-column: span 3;
+    }
+
+    .spatial-card:nth-child(7) {
+      order: 7;
+    }
+
+    .spatial-card:nth-child(8) {
+      order: 8;
+    }
+
+    .spatial-card:nth-child(9) {
+      order: 9;
     }
 
     .spatial-card {
@@ -153,8 +178,8 @@
   <div class="container">
     <header>
       <h1>Spatial Focus Navigation</h1>
-      <p>This demo implements visual 2D directional navigation using a bounding-rect distance heuristic and roving
-        tabindex focus management.</p>
+      <p>This demo implements visual 2D directional navigation across a CSS Grid with reordered and spanning items,
+        using live bounding-rect geometry and roving tabindex focus management.</p>
 
       <div class="instructions" id="spatnav-instructions">
         <strong>Interactive Instructions:</strong> Press <strong>Tab</strong> to focus on the first card, then use the
@@ -171,55 +196,43 @@
 
     <!-- Spatial widget group with a single tab stop via roving tabindex -->
     <div class="dashboard" role="group" aria-label="Visual Dashboard Layout" aria-describedby="spatnav-instructions">
-
-      <!-- Row 1: 3 Columns -->
-      <div class="dashboard-row row-1">
-        <div class="spatial-card" tabindex="0" id="card-1-1">
-          <span class="card-title">Card 1-1</span>
-          <span class="card-body">Row 1, Column 1</span>
-        </div>
-        <div class="spatial-card" tabindex="-1" id="card-1-2">
-          <span class="card-title">Card 1-2</span>
-          <span class="card-body">Row 1, Column 2</span>
-        </div>
-        <div class="spatial-card" tabindex="-1" id="card-1-3">
-          <span class="card-title">Card 1-3</span>
-          <span class="card-body">Row 1, Column 3</span>
-        </div>
+      <!-- DOM order intentionally differs from visual order. CSS Grid also gives items different spans. -->
+      <div class="spatial-card" tabindex="0" id="card-1-1">
+        <span class="card-title">Card 1-1</span>
+        <span class="card-body">Grid item, order 1, span 4</span>
       </div>
-
-      <!-- Row 2: 2 Columns (asymmetrical) -->
-      <div class="dashboard-row row-2">
-        <div class="spatial-card" tabindex="-1" id="card-2-1">
-          <span class="card-title">Card 2-1 (Wide)</span>
-          <span class="card-body">Row 2, Column 1</span>
-        </div>
-        <div class="spatial-card" tabindex="-1" id="card-2-2">
-          <span class="card-title">Card 2-2 (Wide)</span>
-          <span class="card-body">Row 2, Column 2</span>
-        </div>
+      <div class="spatial-card" tabindex="-1" id="card-1-2">
+        <span class="card-title">Card 1-2</span>
+        <span class="card-body">Grid item, order 3, span 4</span>
       </div>
-
-      <!-- Row 3: 4 Columns (asymmetrical) -->
-      <div class="dashboard-row row-3">
-        <div class="spatial-card" tabindex="-1" id="card-3-1">
-          <span class="card-title">Card 3-1</span>
-          <span class="card-body">Row 3, Col 1</span>
-        </div>
-        <div class="spatial-card" tabindex="-1" id="card-3-2">
-          <span class="card-title">Card 3-2</span>
-          <span class="card-body">Row 3, Col 2</span>
-        </div>
-        <div class="spatial-card" tabindex="-1" id="card-3-3">
-          <span class="card-title">Card 3-3</span>
-          <span class="card-body">Row 3, Col 3</span>
-        </div>
-        <div class="spatial-card" tabindex="-1" id="card-3-4">
-          <span class="card-title">Card 3-4</span>
-          <span class="card-body">Row 3, Col 4</span>
-        </div>
+      <div class="spatial-card" tabindex="-1" id="card-1-3">
+        <span class="card-title">Card 1-3</span>
+        <span class="card-body">Grid item, order 2, span 4</span>
       </div>
-
+      <div class="spatial-card" tabindex="-1" id="card-2-1">
+        <span class="card-title">Card 2-1 (Wide)</span>
+        <span class="card-body">Grid item, order 5, span 6</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-2-2">
+        <span class="card-title">Card 2-2 (Wide)</span>
+        <span class="card-body">Grid item, order 4, span 6</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-3-1">
+        <span class="card-title">Card 3-1</span>
+        <span class="card-body">Grid item, span 1</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-3-2">
+        <span class="card-title">Card 3-2</span>
+        <span class="card-body">Grid item, span 1</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-3-3">
+        <span class="card-title">Card 3-3</span>
+        <span class="card-body">Grid item, span 1</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-3-4">
+        <span class="card-title">Card 3-4</span>
+        <span class="card-body">Grid item, span 1</span>
+      </div>
     </div>
 
     <div class="scroll-buffer">
@@ -233,123 +246,96 @@
 
   <script>
     const logPanel = document.getElementById('log-panel');
-    const cards = Array.from(document.querySelectorAll('.spatial-card'));
+    const dashboard = document.querySelector('.dashboard');
+    const cards = Array.from(dashboard.querySelectorAll('.spatial-card'));
+
+    function getFocusableCandidates(container) {
+      const focusableSelector = [
+        '[tabindex]',
+        'a[href]',
+        'button',
+        'input',
+        'select',
+        'textarea',
+        'summary',
+        '[contenteditable="true"]'
+      ].join(', ');
+
+      return Array.from(container.querySelectorAll(focusableSelector))
+        .filter(candidate => !candidate.matches(':disabled, [aria-disabled="true"]'));
+    }
 
     function log(message) {
       logPanel.textContent = message;
       logPanel.scrollTop = logPanel.scrollHeight;
     }
 
-    // Global cache for bounding client rects.
-    // Reused across consecutive keystrokes to avoid layout queries, and invalidated on viewport or layout changes.
-    let rectCache = null;
-    let invalidationFrameId = null;
-
-    function getRectCache(currentEl, candidates) {
-      if (!rectCache) {
-        rectCache = new Map();
-      }
-      
-      if (!rectCache.has(currentEl)) {
-        rectCache.set(currentEl, currentEl.getBoundingClientRect());
-      }
-      
-      for (const cand of candidates) {
-        if (!rectCache.has(cand)) {
-          rectCache.set(cand, cand.getBoundingClientRect());
+    // Read live geometry for each keypress. Avoid a global cache because layout can
+    // change for many reasons between events.
+    function findNextSpatialFocus(currentEl, direction, candidates) {
+      const rects = new Map();
+      for (const candidate of candidates) {
+        if (candidate.checkVisibility()) {
+          rects.set(candidate, candidate.getBoundingClientRect());
         }
       }
-      
-      return rectCache;
-    }
-
-    function invalidateRectCache() {
-      if (rectCache) {
-        rectCache = null;
-        log('Spatial coordinate cache invalidated.');
-      }
-    }
-
-    function queueCacheInvalidation() {
-      if (invalidationFrameId) {
-        cancelAnimationFrame(invalidationFrameId);
-      }
-      invalidationFrameId = requestAnimationFrame(invalidateRectCache);
-    }
-
-    // Invalidate cache when window size or scroll position changes, debounced to once per frame
-    window.addEventListener('resize', queueCacheInvalidation, { passive: true });
-    window.addEventListener('scroll', queueCacheInvalidation, { passive: true });
-
-    // Invalidate cache when the layout container resizes (e.g. responsive grid reflow)
-    const dashboard = document.querySelector('.dashboard');
-    if (dashboard && typeof ResizeObserver !== 'undefined') {
-      const resizeObserver = new ResizeObserver(() => queueCacheInvalidation());
-      resizeObserver.observe(dashboard);
-    }
-
-    // Visual 2D Distance Heuristic Algorithm
-    function findNextSpatialFocus(currentEl, direction, candidates) {
-      const rects = getRectCache(currentEl, candidates);
 
       const currRect = rects.get(currentEl);
-      const currCenter = {
-        x: currRect.left + currRect.width / 2,
-        y: currRect.top + currRect.height / 2
-      };
+      if (!currRect) return null;
 
-      let bestCandidate = null;
-      let minDistance = Infinity;
-      const weight = 2.5; // Penalty weight on the orthogonal axis
+      const tolerance = 2;
+      const weight = 2.5;
+      const directionalCandidates = [];
 
-      for (const cand of candidates) {
-        if (cand === currentEl) continue;
+      for (const candidate of candidates) {
+        if (candidate === currentEl || !rects.has(candidate)) continue;
 
-        const candRect = rects.get(cand);
-        const candCenter = {
-          x: candRect.left + candRect.width / 2,
-          y: candRect.top + candRect.height / 2
-        };
-
-        let isCorrectDirection = false;
-        let dProj = 0;
-        let dOrtho = 0;
+        const candidateRect = rects.get(candidate);
+        let gap;
+        let overlaps;
+        let centreOffset;
 
         switch (direction) {
           case 'right':
-            isCorrectDirection = candCenter.x > currCenter.x;
-            dProj = candRect.left - currRect.right;
-            dOrtho = Math.abs(candCenter.y - currCenter.y);
+            if (candidateRect.left < currRect.right - tolerance) continue;
+            gap = candidateRect.left - currRect.right;
+            overlaps = candidateRect.top < currRect.bottom && candidateRect.bottom > currRect.top;
+            centreOffset = Math.abs((candidateRect.top + candidateRect.bottom) / 2 - (currRect.top + currRect.bottom) / 2);
             break;
           case 'left':
-            isCorrectDirection = candCenter.x < currCenter.x;
-            dProj = currRect.left - candRect.right;
-            dOrtho = Math.abs(candCenter.y - currCenter.y);
+            if (candidateRect.right > currRect.left + tolerance) continue;
+            gap = currRect.left - candidateRect.right;
+            overlaps = candidateRect.top < currRect.bottom && candidateRect.bottom > currRect.top;
+            centreOffset = Math.abs((candidateRect.top + candidateRect.bottom) / 2 - (currRect.top + currRect.bottom) / 2);
             break;
           case 'down':
-            isCorrectDirection = candCenter.y > currCenter.y;
-            dProj = candRect.top - currRect.bottom;
-            dOrtho = Math.abs(candCenter.x - currCenter.x);
+            if (candidateRect.top < currRect.bottom - tolerance) continue;
+            gap = candidateRect.top - currRect.bottom;
+            overlaps = candidateRect.left < currRect.right && candidateRect.right > currRect.left;
+            centreOffset = Math.abs((candidateRect.left + candidateRect.right) / 2 - (currRect.left + currRect.right) / 2);
             break;
           case 'up':
-            isCorrectDirection = candCenter.y < currCenter.y;
-            dProj = currRect.top - candRect.bottom;
-            dOrtho = Math.abs(candCenter.x - currCenter.x);
+            if (candidateRect.bottom > currRect.top + tolerance) continue;
+            gap = currRect.top - candidateRect.bottom;
+            overlaps = candidateRect.left < currRect.right && candidateRect.right > currRect.left;
+            centreOffset = Math.abs((candidateRect.left + candidateRect.right) / 2 - (currRect.left + currRect.right) / 2);
             break;
+          default:
+            continue;
         }
 
-        if (isCorrectDirection) {
-          const projectionDistance = Math.max(0, dProj);
-          const distance = projectionDistance + (weight * dOrtho);
-
-          if (distance < minDistance) {
-            minDistance = distance;
-            bestCandidate = cand;
-          }
-        }
+        directionalCandidates.push({ candidate, gap: Math.max(0, gap), overlaps, centreOffset });
       }
 
-      return bestCandidate;
+      const alignedCandidates = directionalCandidates.filter(({ overlaps }) => overlaps);
+      const pool = alignedCandidates.length ? alignedCandidates : directionalCandidates;
+      pool.sort((a, b) => {
+        const aScore = alignedCandidates.length ? a.gap : a.gap + weight * a.centreOffset;
+        const bScore = alignedCandidates.length ? b.gap : b.gap + weight * b.centreOffset;
+        return aScore - bScore || a.centreOffset - b.centreOffset;
+      });
+
+      return pool[0]?.candidate ?? null;
     }
 
     // Handle roving tabindex focus updates
@@ -360,8 +346,17 @@
       nextEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
 
-    // Keyboard Event Router
-    document.addEventListener('keydown', (e) => {
+    function targetConsumesArrowKeys(target) {
+      return target instanceof Element && target.matches(':read-write, select, input[type="range"], [role="slider"]');
+    }
+
+    // Keyboard Event Router, scoped to this spatial widget.
+    dashboard.addEventListener('keydown', (e) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+
+      const target = e.composedPath()[0];
+      if (targetConsumesArrowKeys(target)) return;
+
       const active = document.activeElement;
       if (!active || !cards.includes(active)) return;
 
@@ -372,7 +367,8 @@
       if (e.key === 'ArrowUp') direction = 'up';
 
       if (direction) {
-        const nextEl = findNextSpatialFocus(active, direction, cards);
+        const candidates = getFocusableCandidates(dashboard);
+        const nextEl = findNextSpatialFocus(active, direction, candidates);
 
         if (nextEl) {
           // Found a candidate: intercept event and shift focus

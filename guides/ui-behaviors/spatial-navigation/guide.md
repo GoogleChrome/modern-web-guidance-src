@@ -3,6 +3,7 @@ name: spatial-navigation
 description: Implement accessible spatial navigation using arrow keys that works correctly in different layout modes (grid etc)
 web-feature-ids:
   - scroll-into-view
+# - focusgroup
 guides:
   - accessibility
   - css-layout
@@ -23,7 +24,7 @@ When implementing custom arrow-key spatial focus, adhere to these foundational r
 1. **Limit to composite widgets**: Do not override arrow keys on normal document text flow or simple vertical list layouts where default sequential Tab navigation is expected. See {{ GUIDE_REF("accessibility") }} for general document flow guidance.
 2. **Preserve native boundary scrolling**: If there is no focusable element in the pressed direction, **do not prevent default browser behavior**. Let the event bubble so the browser can scroll the viewport natively. Overriding arrow keys unconditionally breaks accessibility (WCAG 1.4.10).
 3. **Ensure focus visibility and alignment**: When focus changes, ensure the newly focused element is scrolled into view (e.g., using `scrollIntoView({ block: 'nearest', inline: 'nearest' })`) so that it remains fully visible.
-4. **Coordinate with the layout system**: Determine focus candidate positions using live bounding geometries (`getBoundingClientRect()`). **DO**: Keep spatial calculations highly performant by storing the bounding client rects in a globally scoped cache rather than querying them on-demand inside the selection loop. Invalidate this cache on events that change layout positions, such as window `resize` and `scroll`, or via a `ResizeObserver` on the parent layout container. See {{ GUIDE_REF("css-layout") }} for modern layout recommendations.
+4. **Coordinate with the layout system**: Determine focus candidate positions from live bounding geometries (`getBoundingClientRect()`) while handling each keypress. Avoid assuming that DOM order or a fixed grid structure represents the visual layout. See {{ GUIDE_REF("css-layout") }} for modern layout recommendations.
 
 ---
 
@@ -38,151 +39,29 @@ The spatial container must expose a single tab stop to sequential Page Tab navig
 
 ### Visual Candidate Selection
 
-In asymmetrical, wrapped, or grid layouts, index-based mapping fails. Instead, query live visual bounding boxes and calculate 2D distance.
+In asymmetrical, wrapped, or grid layouts, index-based mapping fails. Instead, derive candidates from the live visual geometry for the current keypress:
 
-To find the best target in a direction (`up`, `down`, `left`, `right`), filter candidates by their center coordinates, then rank them by combining **projection distance** (distance along the navigation axis) and **orthogonal distance** (distance along the perpendicular axis), applying a penalty weight ($w \ge 2$) on the orthogonal axis to favor on-axis movement.
+* **Candidates**: Use the focusable descendants of the widget container that pass `checkVisibility()`. Hidden elements can have a zero-sized rect at `(0, 0)` and must not become accidental `up` or `left` targets.
+* **Geometry**: Read `getBoundingClientRect()` for the focused element and every candidate while handling the keypress. Do not cache these rects globally: layout can change for many reasons, and a small number of geometry reads is cheap when handling a user-paced key event.
+* **Direction filter**: A candidate is in the pressed direction only when its near edge is at or beyond the current element’s far edge on that axis, allowing a small tolerance for sub-pixel rounding. For example, a candidate for `right` must have `candidate.left >= current.right - tolerance`. Do not compare centres to determine whether a candidate is in the direction.
+* **Aligned candidates first**: Among candidates that pass the direction filter, prefer candidates whose extent on the perpendicular axis overlaps the current element’s extent. Choose the smallest gap on the navigation axis, breaking ties with the smallest perpendicular centre offset. This keeps navigation in the adjacent visual row or column even when an item is unusually wide.
+* **Fallback scoring**: If no candidate overlaps on the perpendicular axis, score the remaining candidates as `gap + w * perpendicularCentreOffset` and choose the minimum. Use a weight `w >= 2` as a starting point, then tune it for the layout; a larger weight favours candidates that are more closely aligned.
+* **No candidate**: Return nothing. The event handler must not call `preventDefault()`, allowing the browser to scroll natively.
 
-```javascript
-// Global cache for candidate bounding client rects to prevent layout thrashing
-let rectCache = null;
-let invalidationFrameId = null;
-
-function getRectCache(currentEl, candidates) {
-  if (!rectCache) {
-    rectCache = new Map();
-  }
-  
-  if (!rectCache.has(currentEl)) {
-    rectCache.set(currentEl, currentEl.getBoundingClientRect());
-  }
-  
-  for (const cand of candidates) {
-    if (!rectCache.has(cand)) {
-      rectCache.set(cand, cand.getBoundingClientRect());
-    }
-  }
-  
-  return rectCache;
-}
-
-function invalidateRectCache() {
-  rectCache = null;
-}
-
-function queueCacheInvalidation() {
-  if (invalidationFrameId) {
-    cancelAnimationFrame(invalidationFrameId);
-  }
-  invalidationFrameId = requestAnimationFrame(invalidateRectCache);
-}
-
-// Invalidate cache on window resize/scroll, debounced to once per frame
-window.addEventListener('resize', queueCacheInvalidation, { passive: true });
-window.addEventListener('scroll', queueCacheInvalidation, { passive: true });
-
-// Invalidate cache when container layout shifts
-const container = document.querySelector('.spatial-container');
-if (container && typeof ResizeObserver !== 'undefined') {
-  const observer = new ResizeObserver(() => queueCacheInvalidation());
-  observer.observe(container);
-}
-
-// Visual 2D Distance Heuristic Algorithm
-function getBestCandidate(currentEl, direction, candidates) {
-  const rects = getRectCache(currentEl, candidates);
-  const currentRect = rects.get(currentEl);
-  const currentCenter = {
-    x: currentRect.left + currentRect.width / 2,
-    y: currentRect.top + currentRect.height / 2
-  };
-
-  let best = null;
-  let minDistance = Infinity;
-  const weight = 2.5; // Penalty weight on the perpendicular axis
-
-  for (const candidate of candidates) {
-    if (candidate === currentEl) continue;
-
-    const candidateRect = rects.get(candidate);
-    const candidateCenter = {
-      x: candidateRect.left + candidateRect.width / 2,
-      y: candidateRect.top + candidateRect.height / 2
-    };
-
-    let isCorrectDirection = false;
-    let projectionDistance = 0;
-    let orthogonalDistance = 0;
-
-    switch (direction) {
-      case 'right':
-        isCorrectDirection = candidateCenter.x > currentCenter.x;
-        projectionDistance = candidateRect.left - currentRect.right;
-        orthogonalDistance = Math.abs(candidateCenter.y - currentCenter.y);
-        break;
-      case 'left':
-        isCorrectDirection = candidateCenter.x < currentCenter.x;
-        projectionDistance = currentRect.left - candidateRect.right;
-        orthogonalDistance = Math.abs(candidateCenter.y - currentCenter.y);
-        break;
-      case 'down':
-        isCorrectDirection = candidateCenter.y > currentCenter.y;
-        projectionDistance = candidateRect.top - currentRect.bottom;
-        orthogonalDistance = Math.abs(candidateCenter.x - currentCenter.x);
-        break;
-      case 'up':
-        isCorrectDirection = candidateCenter.y < currentCenter.y;
-        projectionDistance = currentRect.top - candidateRect.bottom;
-        orthogonalDistance = Math.abs(candidateCenter.x - currentCenter.x);
-        break;
-    }
-
-    if (isCorrectDirection) {
-      const distance = Math.max(0, projectionDistance) + (weight * orthogonalDistance);
-      if (distance < minDistance) {
-        minDistance = distance;
-        best = candidate;
-      }
-    }
-  }
-  return best;
-}
-```
+The exact implementation can vary, but keep the direction test edge-based and apply the overlap preference before the weighted fallback. This is the crux of the algorithm; avoid presenting a cache or a fixed weight as universally correct.
 
 ---
 
 ### Keypress Integration & Scroll Cooperation
 
-Your event router must prevent standard viewport scrolling **only** when a valid spatial focus transition occurs.
+Your event router must prevent standard viewport scrolling **only** when a valid spatial focus transition occurs:
 
-```javascript
-document.addEventListener('keydown', (e) => {
-  const active = document.activeElement;
-  if (!active || !candidates.includes(active)) return;
-
-  let direction = null;
-  if (e.key === 'ArrowRight') direction = 'right';
-  if (e.key === 'ArrowLeft') direction = 'left';
-  if (e.key === 'ArrowDown') direction = 'down';
-  if (e.key === 'ArrowUp') direction = 'up';
-
-  if (!direction) return;
-
-  const nextEl = getBestCandidate(active, direction, candidates);
-
-  if (nextEl) {
-    e.preventDefault(); // Intercept arrow navigation and handle programmatically
-    shiftFocus(active, nextEl); // Update roving tabindex and focus
-    nextEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }
-  // If nextEl is null, event bubbles naturally allowing the browser to scroll
-});
-```
+* Do not intercept the event when a modifier key is held, when `e.defaultPrevented` is already true, or when the innermost event target consumes arrow keys itself. Use `e.composedPath()[0]` rather than only `e.target`, because `e.target` can be retargeted to a shadow host. A practical editable/control check is `target.matches(':read-write, select, input[type="range"], [role="slider"]')`; closed shadow roots cannot be inspected.
+* Scope the listener to the widget container, so multiple spatial widgets can coexist on a page.
+* Act only when the focused element is itself a candidate. If items contain their own focusable controls, either make those controls candidates too or leave them alone; do not resolve a parent with `closest()`.
+* When a candidate is found, call `preventDefault()`, update the roving `tabindex`, call `focus()`, and use `scrollIntoView({ block: 'nearest', inline: 'nearest' })`.
+* When no candidate is found, return without calling `preventDefault()` so native scrolling continues.
 
 ---
 
-### Customizable Settings & WCAG Compliance
-
-Provide settings to disable arrow-key hijacking entirely or disable single-character keyboard shortcuts to satisfy WCAG:
-
-* **Opt-out Switch**: Allow users to toggle custom arrow key navigation off.
-* **Character-key Shortcuts**: Disable custom keys like `h`/`j`/`k`/`l` or `W`/`A`/`S`/`D` by default, or require modifier keys (e.g. `Alt`, `Ctrl`) to satisfy WCAG 2.1.4 (Character Key Shortcuts).
+Avoid adding single-character shortcuts such as `h`/`j`/`k`/`l` or `W`/`A`/`S`/`D` for spatial navigation. Arrow keys are not character keys, and preserving native scrolling when no candidate exists avoids unnecessarily blocking viewport movement.
