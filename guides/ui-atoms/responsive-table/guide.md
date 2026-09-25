@@ -17,7 +17,7 @@ The core of a responsive table is maintaining the relationship between data cell
 1.  **Semantic Foundation**: Use standard `<table>` elements with `<thead>`, `<tbody>`, and `<th>` elements.
 2.  **Sticky Context**: Apply `position: sticky` to both column headers and row headers. This ensures that no matter how far a user scrolls in any direction, they never lose the context of what the data represents.
 3.  **Adaptive Transformations**: Use `@container` queries instead of `@media` queries. This allows the table to adapt based on its own width (e.g., when placed in a sidebar or a narrow dashboard widget) rather than the entire viewport.
-4.  **Label Injection**: In the stacked layout, the `<thead>` is hidden, and accessible headers are injected into each cell using `::before` pseudo-elements and `data-` attributes.
+4.  **Label Injection**: In the stacked layout, the `<thead>` is hidden, and accessible headers are injected into each cell using `::before` pseudo-elements and CSS variables.
 
 ## Implementation Steps
 
@@ -36,7 +36,8 @@ Structure your table with standard semantic headers. Use a `.table-wrapper` to h
     </thead>
     <tbody>
       <tr>
-        <!-- Row header remains sticky horizontally -->
+        <!-- Row header remains sticky horizontally on desktop, 
+             and becomes a sticky card header on mobile -->
         <th>Alex Rivera</th>
         <td>Engineer</td>
         <td>Active</td>
@@ -53,7 +54,7 @@ Enable scrolling and make headers sticky. Use logical properties and explicit z-
 .table-wrapper {
   overflow: auto;
   max-inline-size: 100%;
-  max-block-size: min(500px, 80vh); /* Example value */
+  max-block-size: min(500px, 80vh);
   container-type: inline-size;
 }
 
@@ -62,20 +63,18 @@ table {
   border-spacing: 0;
 }
 
-/* Sticky column headers */
-thead th {
+/* Sticky column headers (desktop) */
+thead {
   position: sticky;
   inset-block-start: 0;
-  z-index: 10;
-  background: #eee;
+  z-index: 1; /* Above sticky row headers */
 }
 
-/* Sticky row headers */
+/* Sticky row headers (desktop) */
 tbody th {
   position: sticky;
   inset-inline-start: 0;
-  background: #f9f9f9;
-  z-index: 5;
+  background: white; /* Required to cover background during scroll */
 }
 ```
 
@@ -89,19 +88,28 @@ When space is limited, hide the original header row and transform the table into
   }
 
   thead {
-    /* MANDATORY: Hide column header. */
+    /* MANDATORY: Hide column header from layout and screen readers. */
     display: none
   }
 
-  /* Define column labels as CSS variables */
+  tr {
+    margin-block-end: 1.5rem;
+    border: 1px solid #ccc;
+  }
+
+  /* Sticky row headers at the top of each block/card */
+  tbody th {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    background: #eee;
+  }
+
+  /* Define column labels as CSS variables (often set via JS) */
   table {
     --label-1: "Employee";
     --label-2: "Role";
     --label-3: "Status";
-  }
-
-  td::before {
-    font-weight: bold;
   }
 
   /* Inject labels with accessible names */
@@ -113,24 +121,6 @@ When space is limited, hide the original header row and transform the table into
   /* MANDATORY: Map the label for each column */
   td:nth-child(3)::before {
     content: var(--label-3) ": " / var(--label-3);
-  }
-}
-```
-
-## Fallbacks
-
-Changing the `display` value on table-related elements may cause content to be inaccessible in browsers released before 2023. To support these browsers, apply table semantics using ARIA to impacted elements and test thoroughly.
-
-### Container Queries
-{{ FEATURE_FALLBACKS("container-queries") }}
-
-If your target environment does not support container queries, use `@media` queries to provide a viewport-based fallback.
-
-```css
-/* Optional viewport-based fallback */
-@media (max-width: 600px) {
-  @supports not (container-type: inline-size) {
-    /* Repeat stacked layout styles here */
   }
 }
 ```
