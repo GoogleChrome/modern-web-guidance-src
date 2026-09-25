@@ -230,28 +230,34 @@ chrome.action.setBadgeText({ text: 'REC' }); // TypeError
 
 **Rule of thumb:** Offscreen documents do the Web API work (recording, parsing, audio). The service worker does all chrome.* API work (downloads, badge updates, notifications). Use `chrome.runtime.sendMessage` to bridge between them. See `references/extensions/message-passing.md`.
 
-#### 15. Notifications and badge icons must reference real image files
+#### 15. Notifications and badge icons must use `chrome.runtime.getURL()` (or a data/blob URL)
 
-`chrome.notifications.create()` requires a valid `iconUrl` pointing to an actual image file.
-If the file doesn't exist or the path is wrong, the call fails with `"Unable to download all specified images."`
+`chrome.notifications.create({ iconUrl })` (unless using a `data:`/`blob:` URL) and
+`chrome.action.setIcon({ path })` require an existing file and resolve relative paths against the
+caller (`src/background.js`, `options/options.html`), not the extension root. Missing files or bare
+relative paths from a subdirectory fail with `"Unable to download all specified images."`,
+`"Failed to set icon '<path>': Failed to fetch"`, or `"Could not load action icon '<path>'."`
+Wrap paths in `chrome.runtime.getURL()` (or prefix with `/`). See `references/extensions/icons.md`.
 
 ```js
-// ❌ BROKEN — icon file doesn't exist
+// ❌ BROKEN: bare relative path called from src/background.js resolves to src/icons/icon-128.png
 chrome.notifications.create('reminder', {
   type: 'basic',
-  iconUrl: 'icons/icon-128.png', // File not in extension!
+  iconUrl: 'icons/icon-128.png',
   title: 'Reminder',
-  message: 'Time is up!'
+  message: 'Time is up!',
 });
 
-// ✅ Generate a data URL at runtime via OffscreenCanvas — no file needed.
-// See `references/extensions/icons.md` for a reusable implementation.
-const iconUrl = await getIconDataUrl();
-chrome.notifications.create('reminder', { type: 'basic', iconUrl, title: 'Reminder', message: 'Time is up!' });
+// ✅ CORRECT: resolved from extension root via chrome.runtime.getURL() (or data/blob URL)
+chrome.notifications.create('reminder', {
+  type: 'basic',
+  iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+  title: 'Reminder',
+  message: 'Time is up!',
+});
 ```
 
-This applies to ALL image references in chrome.* APIs — notifications, `chrome.action.setIcon`,
-context menu icons, etc. **If you reference a file, it must exist.**
+(`chrome.contextMenus.create()` and `.update()` take no icon parameter.)
 
 #### 16. Tab capture: guard against double-start with state locking
 
@@ -365,6 +371,19 @@ gesture is gone and the call throws `"This function must be called during a user
 it as the first thing in the listener, with nothing awaited before it — see
 `references/extensions/permissions.md`.
 
+#### 21. Full-page `chrome.debugger` captures require `clip` slices, timeouts, and `finally` detach
+
+Prefer `chrome.tabs.captureVisibleTab()` with `"activeTab"` when visible-viewport capture suffices,
+as `"debugger"` warns of all-sites access and shows a debugging infobar. Never call
+`Page.captureScreenshot({ captureBeyondViewport: true })` unclipped or without a timeout and
+`finally` detach; see `references/extensions/screenshot-capture.md`.
+
+#### 22. Dynamic `import()` and post-install `importScripts()` of new scripts throw in service workers
+
+`import()` throws `TypeError` on `ServiceWorkerGlobalScope`. Use static top-level `import` in module
+workers (`"type": "module"`) or synchronous top-level `importScripts()` in classic workers. See
+`references/extensions/service-worker.md`.
+
 ### Always Manifest V3
 
 Never generate Manifest V2 code.
@@ -374,6 +393,15 @@ Never generate Manifest V2 code.
 - `host_permissions` is separate from `permissions`
 - No inline scripts in HTML — use `<script src="file.js">`
 - No inline event handlers — use `addEventListener`
+
+### Automated Testing (CDP / BiDi)
+
+- Branded Google Chrome ignores `--load-extension`. Use **Chrome for Testing** / **Chromium**, or
+  load via CDP `Extensions.loadUnpacked` or BiDi `webExtension.install` (ChromeDriver: add
+  `--enable-unsafe-extension-debugging` to Chrome args).
+- `"Another debugger is already attached to the tab with id: N."` means **this extension** still
+  holds a `chrome.debugger` session on that tab (a missed `detach`). The harness can stay attached.
+  See `references/extensions/automated-testing.md`.
 
 ---
 
@@ -487,6 +515,8 @@ For detailed API patterns and publishing guidance, read the relevant file BEFORE
 | Storage | `references/extensions/storage.md` |
 | Tab & window management | `references/extensions/tab-management.md` |
 | Tab/desktop capture | `references/extensions/media-capture.md` |
+| Screenshot capture (`chrome.debugger`) | `references/extensions/screenshot-capture.md` |
+| Automated testing / CDP | `references/extensions/automated-testing.md` |
 | User scripts | `references/extensions/user-scripts.md` |
 | Message passing | `references/extensions/message-passing.md` |
 | Icons | `references/extensions/icons.md` |
@@ -513,9 +543,10 @@ Verify EVERY item before delivering:
 - [ ] If reading/scripting tabs from a side panel: use `tabs` + `host_permissions` (NOT `activeTab`)
 - [ ] DevTools panel paths in `chrome.devtools.panels.create()` are relative to extension root
 - [ ] Offscreen documents use ONLY `chrome.runtime` messaging — no `chrome.downloads`, `chrome.action`, etc.
-- [ ] All image refs in `chrome.notifications`, `chrome.action.setIcon`, etc. point to real files (or use data URLs)
+- [ ] Runtime icon paths use `chrome.runtime.getURL()` or `/` (or a `data:`/`blob:` URL for `iconUrl`), not bare paths
 - [ ] Tab/desktop capture uses state locking to prevent double-start errors
 - [ ] `chrome.desktopCapture.chooseDesktopMedia` passes `targetTab` with `tabs` permission
+- [ ] Full-page `chrome.debugger` captures use `clip` slices (`<= 8,192` device px) with timeouts and `finally` detach
 - [ ] `chrome.windows` calls use `getAll`/`getLastFocused`/`getCurrent` — NOT `.query()` (it doesn't exist)
 - [ ] `chrome.permissions.request()` in a service worker `onMessage` listener is called with no `await` before it (gesture is lost after the first async gap)
 - [ ] `chrome.userScripts` availability checked before use (API throws if user hasn't enabled it)
@@ -528,3 +559,5 @@ Verify EVERY item before delivering:
 - [ ] `host_permissions` scoped to specific domains (not `<all_urls>` unless needed)
 - [ ] `return true` in `onMessage` listeners with async responses
 - [ ] Any use of `"tab"` in `chrome.contextMenus` `contexts` requires Chrome M150+
+- [ ] Service workers use static top-level `import` (module) or top-level `importScripts()` (classic), never `import()`
+- [ ] Automated tests follow `references/extensions/automated-testing.md` (no `--load-extension` on branded Chrome)
