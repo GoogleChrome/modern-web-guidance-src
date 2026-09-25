@@ -20,7 +20,7 @@ Use a command menu for actions that change the current interface, such as creati
 > [!NOTE]
 > **Choose the pattern deliberately.** `role="menu"` and `role="menubar"` describe composite application widgets with managed focus and arrow-key navigation. They are not required for every navigation bar. Use the menu pattern only when that interaction model is appropriate for the component, including application navigation that intentionally behaves like a desktop menubar.
 
-This guide keeps the proposed [`focusgroup`](https://open-ui.org/components/scoped-focusgroup.explainer/) attribute in the markup as the progressive-enhancement hook, but uses a small local fallback for menu focus movement. This avoids the current Microsoft [focusgroup polyfill](https://github.com/microsoft/polyfills/tree/main/packages/focusgroup) lifecycle leak and ensures Safari handles directional keys instead of scrolling the page. The fallback does not replace the native feature when it becomes available.
+This guide uses the proposed [`focusgroup`](https://open-ui.org/components/scoped-focusgroup.explainer/) attribute as the progressive-enhancement hook. A menu focusgroup supplies the relevant menu roles to its container and managed items, together with the keyboard behaviour associated with those roles. Selection and activation remain the author's responsibility. The examples use `nomemory` so opening a menu always starts at its first item, and provide a small local fallback for browsers without native support. This avoids the current Microsoft [focusgroup polyfill](https://github.com/microsoft/polyfills/tree/main/packages/focusgroup) lifecycle leak and ensures Safari handles directional keys instead of scrolling the page. The fallback does not replace the native feature when it becomes available.
 
 ## Setup a sticky menu bar with scroll-state queries
 
@@ -56,7 +56,7 @@ When nesting a menu trigger or bar within a header, you often want the header to
 
 ## Open and position the menu
 
-Use a button as the menu trigger. The [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API) places the menu in the top layer and supplies light-dismiss behaviour. `popovertargetaction="toggle"` makes pointer activation explicit.
+Use a button as the menu trigger. The [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API) places the menu in the top layer and supplies light-dismiss behaviour. Trigger the popover imperatively with `showPopover()` and `hidePopover()` rather than using `popovertarget` or `popovertargetaction`. Declarative popover targeting makes the browser treat the control as the popover source and adds implicit accessibility relationships, including `aria-expanded` and `aria-details`, that are not required for this menu pattern.
 
 > [!IMPORTANT]
 > **Workaround for popover clobbering focusgroup semantics:**
@@ -64,24 +64,24 @@ Use a button as the menu trigger. The [Popover API](https://developer.mozilla.or
 
 ```html
 <!-- Trigger button -->
-<button id="file-trigger" type="button" popovertarget="file-menu" popovertargetaction="toggle" aria-haspopup="menu">
+<button id="file-trigger" type="button" aria-haspopup="menu" aria-expanded="false">
   File
 </button>
 
 <!-- Popover container -->
-<div id="file-menu" popover="auto" aria-labelledby="file-trigger">
+<div id="file-menu" popover="auto">
   <!-- WORKAROUND: Nest focusgroup inside popover to preserve semantics -->
-  <div focusgroup="menu" aria-label="File commands">
+  <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
     <button type="button">New file</button>
     <button type="button">Save</button>
-    <button id="preferences-trigger" type="button" popovertarget="preferences-menu" popovertargetaction="toggle" aria-haspopup="menu" aria-expanded="false">
+    <button id="preferences-trigger" type="button" aria-haspopup="menu" aria-expanded="false">
       Preferences <span aria-hidden="true">›</span>
     </button>
   </div>
 </div>
 ```
 
-The explicit `role="menu"` and `role="menuitem"` attributes make the intended accessibility semantics available consistently while native support or the local fallback is active. Do not add an `aria-label` to a menu when its visible menu-item names already provide sufficient context; an unnecessary label may be announced as an extra phrase such as “File commands”. A `role="menubar"` identifies the persistent command bar that owns the trigger. A native button's visible text supplies its accessible name, so do not add a redundant `aria-label` to a button that already has a visible label. Keep decorative submenu indicators `aria-hidden="true"`. Use `aria-label` for genuinely icon-only controls, not to duplicate visible button text. The JavaScript must still move focus to the first item when opening, implement selection, synchronise expanded state, and restore focus when closing.
+A `focusgroup="menu nomemory"` supplies the menu and menu-item roles, together with the menu pattern's focus keyboard behaviour, when nothing else clobbers those semantics. Do not duplicate those roles explicitly: an explicit `role` can override the semantics that focusgroup supplies. Name the menu from its trigger with `aria-labelledby`; assistive technologies can then announce it as the “File” menu when focus enters its first item. Do not add a separate contextual name such as “File commands” when the trigger already provides the appropriate context. The `nomemory` token disables focusgroup's last-focused-item memory so opening starts at the first item. Focusgroup manages focus, not command activation or selection; JavaScript must handle those author responsibilities and restore focus when closing. Because the popovers are opened imperatively, the browser does not provide the command-popover source mapping. JavaScript must therefore synchronise `aria-expanded` with each popover's open state. A `role="menubar"` identifies the persistent command bar that owns the trigger. A native button's visible text supplies its accessible name, so do not add a redundant `aria-label` to a button that already has a visible label. Keep decorative submenu indicators `aria-hidden="true"`. Use `aria-label` for genuinely icon-only controls, not to duplicate visible button text.
 
 ### Position the menu with CSS Anchor Positioning
 
@@ -105,20 +105,20 @@ Keep the opening, closing, and keyboard traversal independent of CSS anchor posi
 
 ## Implement menu keyboard interaction
 
-Do not implement a second roving-tabindex system when using `focusgroup="menu"`. Its focus behaviour handles movement between menu items, including the supported boundary behaviour. JavaScript remains responsible for the parts focusgroup does not cover:
+Do not implement a second roving-tabindex system when using `focusgroup="menu nomemory"`. Native focusgroup supplies the menu roles and the menu pattern's focus behaviour, including its directional and boundary keys, unless another attribute or element such as `popover` clobbers those semantics. JavaScript remains responsible for the parts focusgroup does not cover:
 
-- Opening the menu with pointer activation, `Enter`, `Space`, or `ArrowDown`, and moving focus to the first enabled item each time.
-- Moving focus to the first enabled item after opening, after allowing the trigger's expanded-state announcement to complete; the demos use a short 200ms delay before sending a separate focus event for the first item, without scrolling the page.
-- Handling `ArrowUp` and `ArrowDown` in the fallback path so the keys move between enabled items and do not scroll the page in browsers without native focusgroup support.
-- Activating a command with `Enter` or `Space`.
+- Opening the menu with pointer activation, `Enter`, `Space`, or `ArrowDown`, setting `aria-expanded="true"`, and moving focus immediately to the first enabled item. `nomemory` ensures the focusgroup does not restore the previously focused item.
+- Setting `aria-expanded="false"` when closing each popover and restoring focus to its invoking trigger. The imperative path avoids the declarative source announcement race, so no `aria-hidden` workaround or focus delay is needed.
+- Providing the local fallback path for browsers without native focusgroup support.
+- Activating or selecting a command with `Enter` or `Space`.
 - Closing with `Escape` and restoring focus to the invoking trigger.
 - Allowing `Tab` to leave the menu rather than trapping it.
 
-The demos use a local focusgroup fallback rather than the Microsoft polyfill. It handles `ArrowUp`, `ArrowDown`, `Home`, and `End` in the capture phase, prevents page scrolling, and moves focus between enabled direct-child buttons. This is intentionally a small custom polyfill for the menu behaviour demonstrated here; it avoids the upstream polyfill's detached-ancestor leak and should be expanded or replaced with native `focusgroup` as browser support matures.
+The demos use a local focusgroup fallback rather than the Microsoft polyfill. It handles `ArrowUp`, `ArrowDown`, `Home`, and `End` in the capture phase, prevents page scrolling, and moves focus between enabled direct-child buttons. The fallback reproduces only the focus movement needed by this demo; it does not attempt to provide focusgroup's native role mapping or its other configuration features. This is intentionally a small custom fallback for the menu behaviour demonstrated here; it avoids the upstream polyfill's detached-ancestor leak and should be removed or replaced with native `focusgroup` as browser support matures.
 
 ## Add a submenu
 
-A submenu trigger is a focusgroup-managed menu item with `aria-haspopup="menu"` and an accurate `aria-expanded` state. Its submenu is another `popover="manual"` containing its own nested `focusgroup="menu"`. Manual popovers prevent light-dismiss from closing the parent menu when focus moves into the submenu. `ArrowRight` opens the submenu and moves focus to its first item. `ArrowLeft` closes it and returns focus to the parent trigger. `Escape` closes the current level and restores focus.
+A submenu trigger is a focusgroup-managed menu item with `aria-haspopup="menu"` and an author-managed `aria-expanded` state. Its `popover="manual"` is opened and closed imperatively so the trigger is not treated as a declarative popover source. Its submenu is another `popover="manual"` containing its own nested `focusgroup="menu nomemory"`. Manual popovers prevent light-dismiss from closing the parent menu when focus moves into the submenu. `ArrowRight` opens the submenu and moves focus to its first item. `ArrowLeft` closes it and returns focus to the parent trigger. `Escape` closes the current level and restores focus.
 
 Pointer activation must provide the same result as keyboard activation. Keep the submenu open while focus moves into it, and ensure that clicking outside closes all open levels without leaving focus in hidden content.
 
@@ -152,12 +152,12 @@ Use CSS anchor positioning to lay out the nested submenu beside its trigger auto
 When rows include icons, labels, shortcuts, or submenu indicators, define the columns once on the focusgroup and use `subgrid` for each row. Keep shortcut text supplementary: it must not be the only way to understand or operate an item, and it should be hidden from assistive technology when it duplicates the interaction instructions.
 
 ```css
-[focusgroup="menu"] {
+[focusgroup~="menu"] {
   display: grid;
   grid-template-columns: auto 1fr auto;
 }
 
-[focusgroup="menu"] > * {
+[focusgroup~="menu"] > * {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
@@ -168,7 +168,7 @@ When rows include icons, labels, shortcuts, or submenu indicators, define the co
 
 Automated checks cannot verify the whole interaction contract. Test each demo with a keyboard and at least one screen reader:
 
-1. Tab to the trigger and confirm its name, button role, and collapsed/expanded state.
+1. Tab to the trigger and confirm its name, button role, and synchronised `aria-expanded` state.
 2. Open the menu with the mouse, Enter, Space, and ArrowDown; confirm focus moves to the first item.
 3. Use Up, Down, Home, and End and confirm the focusgroup/polyfill moves focus and the focused item is announced once.
 4. Open the submenu with Right Arrow or its button; return with Left Arrow and Escape.
@@ -179,10 +179,10 @@ These checks complement [WCAG 2.2 Keyboard](https://www.w3.org/WAI/WCAG22/Unders
 
 ## Progressive enhancement and fallbacks
 
-The demos retain `focusgroup="menu"` in the markup and use a small local fallback for browsers without native support. Opening a menu moves DOM focus to its first enabled item; delaying that move by 200ms avoids competing with VoiceOver's announcement of the trigger's expanded state.
+The demos retain `focusgroup="menu nomemory"` in the markup and use a small local fallback for browsers without native support. They open and close popovers imperatively, synchronise `aria-expanded` themselves, and move DOM focus immediately to the first enabled item. This avoids the declarative popover source relationship and its associated trigger-announcement race; test the result with VoiceOver and NVDA.
 
 ```js
-document.querySelectorAll('[focusgroup="menu"]').forEach(group => {
+document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
   group.addEventListener('keydown', event => {
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     const items = [...group.querySelectorAll(':scope > button')]

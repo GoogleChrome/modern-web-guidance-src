@@ -70,8 +70,8 @@
 
     .trigger:hover,
     .trigger:focus-visible,
-    [focusgroup="menu"]>button:hover,
-    [focusgroup="menu"]>button:focus-visible {
+    [focusgroup~="menu"]>button:hover,
+    [focusgroup~="menu"]>button:focus-visible {
       background: var(--accent);
       color: white;
     }
@@ -118,13 +118,13 @@
       }
     }
 
-    [focusgroup="menu"] {
+    [focusgroup~="menu"] {
       display: grid;
       gap: .1rem;
       min-inline-size: 14rem;
     }
 
-    [focusgroup="menu"]>button {
+    [focusgroup~="menu"]>button {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -148,8 +148,7 @@
 <body>
   <div class="bar-wrap">
     <div class="bar" role="menubar" aria-label="Document commands">
-      <button id="file-trigger" class="trigger" type="button" popovertarget="file-menu" popovertargetaction="toggle"
-        role="menuitem" aria-haspopup="menu" aria-expanded="false">File</button>
+<button id="file-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">File</button>
     </div>
   </div>
 
@@ -167,19 +166,18 @@
     <p id="status" role="status" aria-live="polite"></p>
   </main>
 
-  <div id="file-menu" popover="auto" aria-labelledby="file-trigger">
+  <div id="file-menu" popover="auto">
     <!-- Keep focusgroup inside the popover: popover can otherwise clobber its semantics. -->
-    <div focusgroup="menu" role="menu">
-      <button type="button" role="menuitem">New file</button>
-      <button type="button" role="menuitem">Save</button>
-      <button id="preferences-trigger" type="button" popovertarget="preferences-menu" popovertargetaction="toggle"
-        role="menuitem" aria-haspopup="menu" aria-expanded="false">Preferences <span class="hint"
+    <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
+      <button type="button" >New file</button>
+      <button type="button" >Save</button>
+      <button id="preferences-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Preferences <span class="hint"
           aria-hidden="true">›</span></button>
     </div>
-    <div id="preferences-menu" popover="manual" aria-labelledby="preferences-trigger">
-      <div focusgroup="menu" role="menu">
-        <button type="button" role="menuitem">Appearance</button>
-        <button type="button" role="menuitem">Keyboard shortcuts</button>
+    <div id="preferences-menu" popover="manual">
+      <div focusgroup="menu nomemory" aria-labelledby="preferences-trigger">
+        <button type="button" >Appearance</button>
+        <button type="button" >Keyboard shortcuts</button>
       </div>
     </div>
   </div>
@@ -188,7 +186,7 @@
     // Keep focusgroup in the markup as the progressive-enhancement hook, but
     // use this small local fallback for browsers without native focusgroup.
     function installFocusgroupFallback() {
-      document.querySelectorAll('[focusgroup="menu"]').forEach(group => {
+      document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
         group.addEventListener('keydown', event => {
           if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
           const items = [...group.querySelectorAll(':scope > button')]
@@ -211,21 +209,20 @@
     const subTrigger = document.querySelector('#preferences-trigger');
     const subMenu = document.querySelector('#preferences-menu');
     const status = document.querySelector('#status');
-    const menuItems = menu => [...menu.querySelector(':scope > [focusgroup="menu"]')
+    const menuItems = menu => [...menu.querySelector(':scope > [focusgroup~="menu"]')
       .querySelectorAll(':scope > button')]
       .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
 
-    const focusTimers = new WeakMap();
-    const focusAnnouncementDelay = 120;
     function focusFirst(menu) {
       const first = menuItems(menu)[0];
-      if (!first) return;
-      clearTimeout(focusTimers.get(menu));
-      focusTimers.set(menu, setTimeout(() => {
-        // Give VoiceOver enough time to finish announcing the trigger's
-        // expanded state before moving focus into the newly opened menu.
-        if (menu.matches(':popover-open')) first.focus({ preventScroll: true });
-      }, focusAnnouncementDelay));
+      if (first && menu.matches(':popover-open')) first.focus({ preventScroll: true });
+    }
+
+    function openMenu(menu, trigger) {
+      if (menu.matches(':popover-open')) return;
+      menu.showPopover();
+      trigger.setAttribute('aria-expanded', 'true');
+      focusFirst(menu);
     }
 
     function closeSubmenu(returnFocus = true) {
@@ -243,8 +240,7 @@
 
     function activate(item) {
       if (item === subTrigger) {
-        subTrigger.setAttribute('aria-expanded', 'true');
-        if (!subMenu.matches(':popover-open')) subMenu.showPopover();
+        openMenu(subMenu, subTrigger);
         return;
       }
       status.textContent = `${item.textContent.trim()} selected`;
@@ -254,17 +250,26 @@
     rootTrigger.addEventListener('keydown', event => {
       if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        if (!rootMenu.matches(':popover-open')) rootMenu.showPopover();
-        focusFirst(rootMenu);
+        openMenu(rootMenu, rootTrigger);
       }
+    });
+
+    rootTrigger.addEventListener('click', event => {
+      event.preventDefault();
+      if (rootMenu.matches(':popover-open')) closeRootMenu();
+      else openMenu(rootMenu, rootTrigger);
+    });
+
+    subTrigger.addEventListener('click', event => {
+      event.preventDefault();
+      if (subMenu.matches(':popover-open')) closeSubmenu();
+      else openMenu(subMenu, subTrigger);
     });
 
     [rootMenu, subMenu].forEach(menu => {
       menu.addEventListener('toggle', () => {
-        const open = menu.matches(':popover-open');
         const trigger = menu === rootMenu ? rootTrigger : subTrigger;
-        trigger.setAttribute('aria-expanded', String(open));
-        if (open) focusFirst(menu);
+        trigger.setAttribute('aria-expanded', String(menu.matches(':popover-open')));
       });
 
       menu.addEventListener('keydown', event => {
@@ -289,7 +294,7 @@
       });
 
       menu.addEventListener('click', event => {
-        const item = event.target.closest('[focusgroup="menu"] > button');
+        const item = event.target.closest('[focusgroup~="menu"] > button');
         if (item) {
           event.preventDefault();
           activate(item);
