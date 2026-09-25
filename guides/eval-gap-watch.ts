@@ -5,7 +5,8 @@
  *
  *   1. `missing-evals`        — a guide has guidance and expectations, but no evals.
  *   2. `expectations-changed` — a guide that already has evals had its
- *                               expectations.md edited, so the evals may be stale.
+ *                               expectations.md edited in a push that didn't
+ *                               also touch its evals, so they may be stale.
  *
  * Issues are keyed by a hidden marker comment so reruns don't file duplicates.
  * `missing-evals` issues close themselves once evals land.
@@ -17,7 +18,15 @@ import child_process from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { scanAllGuides, EXPECTATIONS_FILE, type GuideInventory } from '../lib/guide-validation.ts';
+import {
+  scanAllGuides,
+  getGuideStatus,
+  ProjectStatus,
+  EXPECTATIONS_FILE,
+  GRADER_FILE,
+  TARGETS_DIR,
+  type GuideInventory,
+} from '../lib/guide-validation.ts';
 import { rootDir } from '../lib/paths.ts';
 
 export const EVAL_OWNERS = ['micahjo7', 'paulirish', 'TravenReese'];
@@ -32,25 +41,14 @@ export interface Gap {
   guideName: string;
 }
 
+/** An open issue carrying the eval-gap label. */
 export interface ExistingIssue {
   number: number;
   body: string;
-  state: 'OPEN' | 'CLOSED';
   title: string;
 }
 
 // --- Detection ---
-
-/** True when a guide has evals, in either the legacy or targets layout. */
-export function hasEvals(inv: GuideInventory): boolean {
-  return inv.hasGrader && inv.hasTask;
-}
-
-/** True when a guide is complete enough that evals are expected of it. */
-function isEvalCandidate(inv: GuideInventory): boolean {
-  // Drafts are withheld from distribution, so they aren't expected to have evals yet.
-  return !inv.draft && inv.hasGuide && inv.hasExpectations && !inv.expectationsEmpty;
-}
 
 function toGap(kind: GapKind, inv: GuideInventory): Gap {
   return { kind, guidePath: path.relative(rootDir, inv.dir), guideName: inv.name };
@@ -59,43 +57,36 @@ function toGap(kind: GapKind, inv: GuideInventory): Gap {
 /** Case 1: guidance and expectations are populated, but there are no evals. */
 export function findMissingEvals(guides: GuideInventory[]): Gap[] {
   return guides
-    .filter(inv => isEvalCandidate(inv) && !hasEvals(inv))
+    .filter(inv => getGuideStatus(inv) === ProjectStatus.NeedsEvals)
     .map(inv => toGap('missing-evals', inv));
 }
 
-/** Case 2: a guide that already has evals had its expectations.md edited. */
+/** True when the changed files edit a guide's expectations.md without touching its evals. */
+function editsExpectationsOnly(files: string[], guidePath: string): boolean {
+  const inGuide = files.filter(f => f.startsWith(`${guidePath}/`)).map(f => f.slice(guidePath.length + 1));
+  return inGuide.includes(EXPECTATIONS_FILE) &&
+    !inGuide.some(f => f === GRADER_FILE || f.startsWith('tasks/') || f.startsWith(`${TARGETS_DIR}/`));
+}
+
+/** Case 2: a complete guide had expectations.md edited in a change that left its evals alone. */
 export function findChangedExpectations(guides: GuideInventory[], changedFiles: string[]): Gap[] {
-  const changed = new Set(changedFiles);
   return guides
-    .filter(inv => hasEvals(inv) && changed.has(path.join(path.relative(rootDir, inv.dir), EXPECTATIONS_FILE)))
+    .filter(inv => getGuideStatus(inv) === null && editsExpectationsOnly(changedFiles, path.relative(rootDir, inv.dir)))
     .map(inv => toGap('expectations-changed', inv));
 }
 
-/**
- * Repo-relative paths changed since a date expression (e.g. `7 days ago`).
- *
- * Resolving the base from history rather than a push event keeps this working
- * on a schedule, where there is no previous-commit reference to diff against.
- */
-export function getChangedFiles(since: string): string[] {
+/** Repo-relative paths changed between a commit (e.g. a push's "before") and HEAD. */
+export function getChangedFiles(before: string): string[] {
   try {
-    const base = child_process.execFileSync('git', ['rev-list', '-1', `--before=${since}`, 'HEAD'], {
+    const output = child_process.execFileSync('git', ['diff', '--name-only', before, 'HEAD'], {
       encoding: 'utf8',
       cwd: rootDir,
-    }).trim();
-
-    if (!base) {
-      console.warn(`⚠️ No commit found before "${since}"; skipping the expectations diff.`);
-      return [];
-    }
-
-    const output = child_process.execFileSync('git', ['diff', '--name-only', `${base}..HEAD`], {
-      encoding: 'utf8',
-      cwd: rootDir,
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
-    return output.split('\n').map(f => f.trim()).filter(Boolean);
-  } catch (err) {
-    console.warn(`⚠️ Could not diff since "${since}":`, err);
+    return output.split('\n').filter(Boolean);
+  } catch {
+    // e.g. the first push to a branch, or a force push that dropped `before`.
+    console.warn(`⚠️ Could not diff ${before}..HEAD; skipping the expectations check.`);
     return [];
   }
 }
@@ -117,13 +108,13 @@ export function buildIssue(gap: Gap): { title: string; body: string } {
   const { title, summary, action } = gap.kind === 'missing-evals'
     ? {
         title: `Evals missing for the ${gap.guideName} guide`,
-        summary: `${link} has guidance and populated \`${EXPECTATIONS_FILE}\`, but its grader is missing.`,
+        summary: `${link} has guidance and populated \`${EXPECTATIONS_FILE}\`, but its evals are missing.`,
         action: `Run \`gd dev ${gap.guidePath}\` to create the evals.`,
       }
     : {
-        title: `Expectations changed for the ${gap.guideName} guide, which already has evals`,
+        title: `Expectations changed for the ${gap.guideName} guide`,
         summary: `\`${EXPECTATIONS_FILE}\` in ${link} was edited, and this guide already has evals.`,
-        action: 'Confirm the graders still verify the updated expectations, then close this issue.',
+        action: `Run \`gd dev ${gap.guidePath}\` to update the evals.`,
       };
 
   const body = [
@@ -141,14 +132,15 @@ export function buildIssue(gap: Gap): { title: string; body: string } {
 // --- Planning ---
 
 /**
- * Returns the issues to file and close. A gap with an open issue is left alone.
- * Only `missing-evals` auto-closes, since it is recomputed from the tree every
- * run; `expectations-changed` is a point-in-time alert a human closes.
+ * Returns the issues to file and close, given the currently open issues. A gap
+ * with an open issue is left alone. Only `missing-evals` auto-closes, since it
+ * is recomputed from the tree every run; `expectations-changed` is a
+ * point-in-time alert a human closes.
  */
 export function planIssues(gaps: Gap[], existing: ExistingIssue[]): { toCreate: Gap[]; toClose: ExistingIssue[] } {
   const openIssues = new Map<string, ExistingIssue>();
   for (const issue of existing) {
-    const marker = issue.state === 'OPEN' ? parseMarker(issue.body) : null;
+    const marker = parseMarker(issue.body);
     if (marker) openIssues.set(`${marker.kind}:${marker.guidePath}`, issue);
   }
 
@@ -180,7 +172,7 @@ export const githubApi = {
   listIssues(): ExistingIssue[] {
     const output = child_process.execFileSync(
       'gh',
-      ['issue', 'list', '--label', EVAL_GAP_LABEL, '--state', 'all', '--limit', '500', '--json', 'number,body,state,title'],
+      ['issue', 'list', '--label', EVAL_GAP_LABEL, '--state', 'open', '--limit', '500', '--json', 'number,body,title'],
       { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
     );
     return (JSON.parse(output) as ExistingIssue[]).map(i => ({ ...i, body: i.body ?? '' }));
@@ -197,7 +189,7 @@ export const githubApi = {
   closeIssue(issueNumber: number): void {
     child_process.execFileSync(
       'gh',
-      ['issue', 'close', String(issueNumber), '--reason', 'completed', '--comment', 'Resolved — this guide now has evals.'],
+      ['issue', 'close', String(issueNumber), '--reason', 'completed', '--comment', 'Closing — this guide no longer has a missing-evals gap.'],
       { stdio: 'inherit' }
     );
   },
@@ -209,15 +201,14 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   const dryRun = argv.includes('--dry-run') || process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1';
   if (dryRun) console.log('🧪 Dry run — no issues will be filed or closed.\n');
 
-  // Matches the workflow's weekly cadence, with a day of overlap so an edit
-  // landing near the run boundary isn't missed.
-  const since = process.env.EVAL_GAP_SINCE ?? '8 days ago';
+  // The push's "before" commit. Manual runs have none, so they only check for missing evals.
+  const before = process.env.EVAL_GAP_BEFORE;
 
   const guides = scanAllGuides();
-  const changedFiles = getChangedFiles(since);
+  const changedFiles = before ? getChangedFiles(before) : [];
 
   const gaps = [...findMissingEvals(guides), ...findChangedExpectations(guides, changedFiles)];
-  console.log(`Scanned ${guides.length} guides (expectations diffed since "${since}"), found ${gaps.length} gap(s).`);
+  console.log(`Scanned ${guides.length} guides and ${changedFiles.length} changed file(s), found ${gaps.length} gap(s).`);
 
   const { toCreate, toClose } = planIssues(gaps, githubApi.listIssues());
 

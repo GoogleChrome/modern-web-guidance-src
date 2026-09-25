@@ -86,15 +86,22 @@ interface ValidationResult {
 /**
  * Determines the project status name for a use case based on its completeness.
  * Returns null when the use case is complete.
+ * @param guidance The guide body, or a precomputed has-guidance flag.
  */
-export function getStatusName(guideBody: string, hasGrader: boolean, hasTask: boolean, isDraft: boolean = false, hasExpectations: boolean = true): ProjectStatus | null {
-  if (guideBody.trim().length === 0 || isDraft || !hasExpectations) {
+export function getStatusName(guidance: string | boolean, hasGrader: boolean, hasTask: boolean, isDraft: boolean = false, hasExpectations: boolean = true): ProjectStatus | null {
+  const hasGuidance = typeof guidance === 'string' ? guidance.trim().length > 0 : guidance;
+  if (!hasGuidance || isDraft || !hasExpectations) {
     return ProjectStatus.NeedsGuidance;
   }
   if (!hasGrader || !hasTask) {
     return ProjectStatus.NeedsEvals;
   }
   return null;
+}
+
+/** The project status of an inventoried guide; see getStatusName. */
+export function getGuideStatus(inv: GuideInventory): ProjectStatus | null {
+  return getStatusName(inv.hasGuide, inv.hasGrader, inv.hasTask, Boolean(inv.draft), inv.hasExpectations && !inv.expectationsEmpty);
 }
 
 /**

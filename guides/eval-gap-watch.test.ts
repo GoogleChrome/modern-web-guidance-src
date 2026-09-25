@@ -3,7 +3,6 @@ import assert from 'node:assert';
 import path from 'node:path';
 
 import {
-  hasEvals,
   findMissingEvals,
   findChangedExpectations,
   buildMarker,
@@ -38,16 +37,8 @@ function makeGap(overrides: Partial<Gap> = {}): Gap {
 
 function issueFor(gap: Gap, overrides: Partial<ExistingIssue> = {}): ExistingIssue {
   const { title, body } = buildIssue(gap);
-  return { number: 7, body, state: 'OPEN', title, ...overrides };
+  return { number: 7, body, title, ...overrides };
 }
-
-describe('hasEvals', () => {
-  it('requires both a grader and a task', () => {
-    assert.strictEqual(hasEvals(makeGuide()), true);
-    assert.strictEqual(hasEvals(makeGuide({ hasGrader: false })), false);
-    assert.strictEqual(hasEvals(makeGuide({ hasTask: false })), false);
-  });
-});
 
 describe('findMissingEvals', () => {
   it('flags a guide with guidance and expectations but no evals', () => {
@@ -81,7 +72,8 @@ describe('findMissingEvals', () => {
 });
 
 describe('findChangedExpectations', () => {
-  const expectationsPath = 'guides/css/sample-guide/expectations.md';
+  const dir = 'guides/css/sample-guide';
+  const expectationsPath = `${dir}/expectations.md`;
 
   it('flags a guide with evals whose expectations changed', () => {
     const gaps = findChangedExpectations([makeGuide()], [expectationsPath]);
@@ -92,8 +84,12 @@ describe('findChangedExpectations', () => {
     assert.deepStrictEqual(findChangedExpectations([makeGuide({ hasGrader: false, hasTask: false })], [expectationsPath]), []);
   });
 
+  it('ignores drafts', () => {
+    assert.deepStrictEqual(findChangedExpectations([makeGuide({ draft: true })], [expectationsPath]), []);
+  });
+
   it('ignores a guide whose expectations did not change', () => {
-    assert.deepStrictEqual(findChangedExpectations([makeGuide()], ['guides/css/sample-guide/guide.md']), []);
+    assert.deepStrictEqual(findChangedExpectations([makeGuide()], [`${dir}/guide.md`]), []);
   });
 
   it('does not match another guide with a similar path', () => {
@@ -102,6 +98,17 @@ describe('findChangedExpectations', () => {
 
   it('returns nothing when there is no diff', () => {
     assert.deepStrictEqual(findChangedExpectations([makeGuide()], []), []);
+  });
+
+  it('ignores changes that also update the evals', () => {
+    for (const evalFile of ['grader.ts', 'tasks/task.md', 'targets/daily-grind/grader.ts']) {
+      assert.deepStrictEqual(findChangedExpectations([makeGuide()], [expectationsPath, `${dir}/${evalFile}`]), [], evalFile);
+    }
+  });
+
+  it('does not count evals changed in another guide', () => {
+    const gaps = findChangedExpectations([makeGuide()], [expectationsPath, 'guides/css/sample-guide-two/grader.ts']);
+    assert.strictEqual(gaps.length, 1);
   });
 });
 
@@ -144,11 +151,6 @@ describe('planIssues', () => {
     assert.deepStrictEqual(plan.toClose, []);
   });
 
-  it('refiles when the previous issue was closed', () => {
-    const plan = planIssues([gap], [issueFor(gap, { state: 'CLOSED' })]);
-    assert.deepStrictEqual(plan.toCreate, [gap]);
-  });
-
   it('closes a missing-evals issue once evals land', () => {
     const plan = planIssues([], [issueFor(gap)]);
     assert.strictEqual(plan.toClose.length, 1);
@@ -161,7 +163,7 @@ describe('planIssues', () => {
   });
 
   it('ignores issues without a marker', () => {
-    const plan = planIssues([], [{ number: 99, body: 'unrelated', state: 'OPEN', title: 'Other' }]);
+    const plan = planIssues([], [{ number: 99, body: 'unrelated', title: 'Other' }]);
     assert.deepStrictEqual(plan.toClose, []);
   });
 

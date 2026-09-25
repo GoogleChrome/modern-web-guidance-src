@@ -1,10 +1,15 @@
 name: Eval Gap Watch
 
 on:
-  # Monday 13:00 UTC. The script's lookback window is kept slightly wider than
-  # this interval so an edit landing near the boundary isn't missed.
-  schedule:
-    - cron: '0 13 * * 1'
+  # Any of these can open or close an issue: guidance/expectations can create
+  # gaps, and grader/task changes (legacy or targets layout) can resolve them.
+  push:
+    branches: [main]
+    paths:
+      - 'guides/**/guide.md'
+      - 'guides/**/expectations.md'
+      - 'guides/**/grader.ts'
+      - 'guides/**/task.md'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -12,20 +17,16 @@ on:
         required: true
         default: 'true'
         type: boolean
-      since:
-        description: 'How far back to look for expectations.md edits'
-        required: false
-        default: '8 days ago'
-        type: string
 
 permissions:
   contents: read
   issues: write
 
 # This job reads the existing issues and then writes new ones, so parallel runs
-# would both see an empty list and file the same issue twice. Queue them
-# instead — and never cancel an in-flight run, which could leave issues
-# half-filed.
+# could both see an empty list and file the same issue twice. Serialize them,
+# and never cancel an in-flight run, which could leave issues half-filed.
+# GitHub keeps at most one pending run per group, so a burst of pushes can drop
+# a waiting run's expectations check; missing-evals is recomputed next run.
 concurrency:
   group: eval-gap-watch
   cancel-in-progress: false
@@ -40,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Needed to resolve a base commit from the lookback window.
+          # Needed so the push's "before" commit is available to diff against.
           fetch-depth: 0
           persist-credentials: false
 
@@ -61,4 +62,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-          EVAL_GAP_SINCE: ${{ github.event.inputs.since || '8 days ago' }}
+          # Empty on manual runs, which then only check for missing evals.
+          EVAL_GAP_BEFORE: ${{ github.event.before }}
