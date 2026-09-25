@@ -98,12 +98,28 @@ test('buildTargetGraderPrompt includes discipline scoping only for discipline gu
 
   const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
   assert.ok(disciplinePrompt.includes('discipline guide'));
-  assert.ok(disciplinePrompt.includes('Discipline Guide Scoping'));
   assert.ok(disciplinePrompt.includes('You do NOT need to write a test for every expectation'));
 
   const standardPrompt = buildTargetGraderPrompt(baseOpts);
   assert.ok(!standardPrompt.includes('discipline guide'));
-  assert.ok(!standardPrompt.includes('Discipline Guide Scoping'));
+});
+
+test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping only for discipline guides', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    workDir: '/tmp/test-sandbox',
+  };
+
+  const disciplineSolutionPrompt = buildSolutionPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(disciplineSolutionPrompt.includes('discipline guide'));
+  assert.ok(disciplineSolutionPrompt.includes('You do NOT need to satisfy every expectation'));
+  assert.ok(!buildSolutionPrompt(baseOpts).includes('discipline guide'));
+
+  const disciplineZeroPassratePrompt = buildZeroPassratePrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(disciplineZeroPassratePrompt.includes('discipline guide'));
+  assert.ok(disciplineZeroPassratePrompt.includes('You do NOT need to fail every expectation'));
+  assert.ok(!buildZeroPassratePrompt(baseOpts).includes('discipline guide'));
 });
 
 test('buildTargetTaskPrompt creates clean developer prompt instructions', () => {
