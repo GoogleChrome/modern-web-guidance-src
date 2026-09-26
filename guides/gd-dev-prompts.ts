@@ -1,6 +1,6 @@
 /**
  * Centralized, typed prompt builder functions for the gd dev evaluation generation process.
- * 
+ *
  * Having these prompts in one dedicated module ensures high visibility, easy tuning of AI
  * behavior across target capsules (patches, grader.ts, task.md), and
  * type-safe parameter interpolation.
@@ -14,11 +14,16 @@ export interface PatchPromptOptions {
   guideFile: string;
   expectationsFile: string;
   workDir: string;
+  isDisciplineGuide?: boolean;
 }
 
 export function buildSolutionPrompt(opts: PatchPromptOptions): string {
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to this application. You do NOT need to satisfy every expectation. Only implement the expectations that are relevant to this application.`
+    : '';
+
   return `# GOAL
-Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy all must-pass expectations in \`${opts.expectationsFile}\`.
+Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy all must-pass expectations in \`${opts.expectationsFile}\`.${disciplineInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -34,12 +39,16 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 }
 
 export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to this application. You do NOT need to fail every expectation. Only remove implementations of the expectations that are relevant to this application.`
+    : '';
+
   return `# GOAL
 Inspect the clean codebase in the directory \`${opts.workDir}\`. Your goal is to ensure the codebase does NOT implement any part of the feature described in \`${opts.guideFile}\` and does NOT satisfy any criteria in \`${opts.expectationsFile}\`.
 
 If the codebase is already clean of this feature (meaning the feature is not present and assertions verifying the feature would naturally fail), do NOT modify any files (leave the workspace unchanged).
 
-If the codebase already contains partial, complete, or conflicting implementations of the feature, disable, unset, revert, or remove those implementations.
+If the codebase already contains partial, complete, or conflicting implementations of the feature, disable, unset, revert, or remove those implementations.${disciplineInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -71,6 +80,7 @@ export interface GraderPromptOptions {
   linkedomDtsPath?: string;
   cssomnomDtsPath?: string;
   failureContext?: string;
+  isDisciplineGuide?: boolean;
 }
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
@@ -102,8 +112,12 @@ Analyze this failure and modify the existing grader file to fix these assertions
     ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because any of the golden solution patches or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
     : '';
 
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to the \`${opts.baseApp}\` application. You do NOT need to write a test for every expectation.`
+    : '';
+
   return `${contextBlock}# GOAL
-Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${patchInstruction}
+Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${disciplineInstruction}${patchInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
