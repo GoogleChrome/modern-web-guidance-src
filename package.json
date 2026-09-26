@@ -27,6 +27,7 @@
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
+    "test-guides": "pnpm --filter guides test",
     "grade": "node --experimental-strip-types guides/run-grader.ts",
     "dev-guide": "node --env-file=.env --experimental-strip-types guides/dev-guide.ts",
     "scan-guide-lengths": "node --experimental-strip-types scripts/scan-guide-lengths.ts",
