@@ -5,6 +5,7 @@ web-feature-ids:
   - template-for
   - html-setters
   - html-streaming-setters
+  - html-processing-instructions
   
 ---
 
@@ -142,3 +143,9 @@ await response
 {{ BASELINE_STATUS("html-streaming-setters") }}
 
 You can use polyfills like `template-for-polyfill` and `html-setters-polyfill` to emulate the API surface for non-supporting browsers.
+
+### Markers without processing instruction support
+
+{{ BASELINE_STATUS("html-processing-instructions") }}
+
+If your Baseline target does not parse processing instructions in HTML, markers become `Comment` nodes and the tree walk above finds nothing. Treat marker inspection as an enhancement, and feature-detect it with `Object.hasOwn(ProcessingInstruction.prototype, 'getAttribute')`.
