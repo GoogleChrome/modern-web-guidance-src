@@ -34,6 +34,14 @@ window.__featuresMapping = {
     "has",
     "not"
   ],
+  "css-conditionals": [
+    "if",
+    "container-style-queries",
+    "cascade-layers",
+    "abs-sign",
+    "color-mix",
+    "light-dark"
+  ],
   "design-token-reactivity": [
     "container-style-queries"
   ],
