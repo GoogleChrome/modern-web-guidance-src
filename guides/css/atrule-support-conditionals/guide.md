@@ -98,7 +98,7 @@ In some cases, if the conditional CSS to apply can be reduced to a single proper
 
 For a more general-purpose solution, you can register a non-inheriting property and set it to ` ` (a space) on the root element:
 
-<!-- Testcase: https://codepen.io/leaverou/pen/KwWzpVr -->
+{# Testcase: https://codepen.io/leaverou/pen/KwWzpVr #}
 
 ```css
 @property --supports-atproperty {
