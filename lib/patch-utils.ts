@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { createTwoFilesPatch } from 'diff';
 
 /**
  * Extracts target modified file paths directly from unified diff headers (+++ b/<path>).
@@ -97,4 +98,25 @@ export function initGitRepo(workDir: string): void {
   } catch (err) {
     console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
   }
+}
+
+/**
+ * Generates an aligned unified diff of two strings for LLM context and file comparison.
+ */
+export function generateUnifiedDiff(
+  oldText: string,
+  newText: string,
+  oldLabel = 'Old',
+  newLabel = 'New',
+  contextLines = 3
+): string {
+  if (oldText === newText) {
+    return 'No differences detected.';
+  }
+
+  const patch = createTwoFilesPatch(oldLabel, newLabel, oldText, newText, undefined, undefined, { context: contextLines });
+  if (!patch.includes('@@')) {
+    return 'No differences detected.';
+  }
+  return patch.trim();
 }

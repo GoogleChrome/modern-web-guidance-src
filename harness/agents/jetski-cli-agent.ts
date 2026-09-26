@@ -23,7 +23,8 @@ import {
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
-  readTrajectorySummary
+  readTrajectorySummary,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 
 const JETSKI_ERROR_STATUS_CODES = new Set([2, 4, 5]);
@@ -258,6 +259,47 @@ export function getProtoStrings(node: any, results: string[] = []): string[] {
   return results;
 }
 
+export function findProtoTimestamp(node: unknown): string | undefined {
+  if (!node || typeof node !== 'object' || node instanceof Uint8Array || Buffer.isBuffer(node)) {
+    return undefined;
+  }
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findProtoTimestamp(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  const record = node as Record<string, unknown>;
+  const field1 = record[1];
+  const seconds = Array.isArray(field1) ? field1[0] : field1;
+  if (
+    typeof seconds === 'number' &&
+    Number.isInteger(seconds) &&
+    seconds >= 1_700_000_000 &&
+    seconds <= 2_100_000_000
+  ) {
+    const field2 = record[2];
+    const rawNanos = Array.isArray(field2) ? field2[0] : field2;
+    const nanos =
+      typeof rawNanos === 'number' &&
+      Number.isInteger(rawNanos) &&
+      rawNanos >= 0 &&
+      rawNanos < 1_000_000_000
+        ? rawNanos
+        : 0;
+    const ms = seconds * 1000 + Math.floor(nanos / 1e6);
+    return new Date(ms).toISOString();
+  }
+
+  for (const key of Object.keys(record)) {
+    const found = findProtoTimestamp(record[key]);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
@@ -279,7 +321,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
         idx?: number;
         step_type?: number;
         status?: number;
-        timestamp?: number | string;
         metadata?: Uint8Array;
         step_payload?: Uint8Array;
       }>;
@@ -290,6 +331,25 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
       let fileHasTokens = false;
 
       for (const row of rows) {
+        let rowTimestamp: string | undefined;
+        if (row.metadata) {
+          const metadataBuffer = Buffer.isBuffer(row.metadata) ? row.metadata : Buffer.from(row.metadata);
+          const metaProto = parseProtobuf(metadataBuffer);
+          rowTimestamp = findProtoTimestamp(metaProto);
+          const usageNode = metaProto[METADATA_TAG_USAGE]?.[0];
+          if (usageNode && typeof usageNode === 'object') {
+            const input = (usageNode[USAGE_TAG_INPUT] && typeof usageNode[USAGE_TAG_INPUT][0] === 'number') ? usageNode[USAGE_TAG_INPUT][0] : 0;
+            const output = (usageNode[USAGE_TAG_OUTPUT] && typeof usageNode[USAGE_TAG_OUTPUT][0] === 'number') ? usageNode[USAGE_TAG_OUTPUT][0] : 0;
+            const cached = (usageNode[USAGE_TAG_CACHED] && typeof usageNode[USAGE_TAG_CACHED][0] === 'number') ? usageNode[USAGE_TAG_CACHED][0] : 0;
+            if (input > 0 || output > 0 || cached > 0) {
+              fileInput += input;
+              fileLastCached = Math.max(fileLastCached, cached);
+              fileOutput += output;
+              fileHasTokens = true;
+            }
+          }
+        }
+
         if (row.step_payload) {
           const payloadBuffer = Buffer.isBuffer(row.step_payload) ? row.step_payload : Buffer.from(row.step_payload);
           const payloadStr = payloadBuffer.toString('utf8');
@@ -302,7 +362,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
             if (seenJsonHashes.has(key)) continue;
             seenJsonHashes.add(key);
 
-            const timestamp = extractTimestamp(obj) || (row.timestamp ? new Date(row.timestamp).toISOString() : undefined);
+            const timestamp = extractTimestamp(obj) || rowTimestamp;
             const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
 
             if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
@@ -313,57 +373,45 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
-                action: {
-                  type: 'write_file',
-                  name: toolName,
-                  params: {
-                    targetFile,
-                    content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
-                  }
-                },
+                action: standardizeAction('write_file', toolName, {
+                  ...obj,
+                  path: targetFile,
+                  targetFile,
+                  content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
+                }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.CommandLine || (obj.toolAction && obj.toolAction.includes('Running command'))) {
-              const actType: NonNullable<StandardizedStep['action']>['type'] = 'run_command';
+              const actType = 'run_command' as const;
               const actName = obj.CommandLine ? obj.CommandLine.split(' ')[0] : 'terminal_command';
-              const params: Record<string, any> = { command: obj.CommandLine || obj.toolAction };
+              const params = { ...obj, command: obj.CommandLine || obj.toolAction || '' };
 
               steps.push({
                 stepNumber: 0,
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Running terminal command',
-                action: {
-                  type: actType,
-                  name: actName,
-                  params
-                },
+                action: standardizeAction(actType, actName, params),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             } else if (obj.AbsolutePath || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading')))) {
+              const filePath = obj.AbsolutePath || obj.path || obj.file_path || '';
               steps.push({
                 stepNumber: 0,
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
-                action: {
-                  type: 'read_file',
-                  name: 'view_file',
-                  params: { path: obj.AbsolutePath || obj.toolSummary }
-                },
+                action: standardizeAction('read_file', 'view_file', { path: String(filePath) }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
-            } else if (obj.DirectoryPath || (obj.toolAction && obj.toolAction.includes('Listing'))) {
+            } else if (obj.DirectoryPath || obj.SearchDirectory) {
+              const dirPath = obj.DirectoryPath || obj.SearchDirectory || '';
               steps.push({
                 stepNumber: 0,
                 timestamp,
                 subagentId,
                 thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
-                action: {
-                  type: 'read_file',
-                  name: 'list_dir',
-                  params: { path: obj.DirectoryPath }
-                },
+                action: standardizeAction('read_file', 'list_dir', { path: String(dirPath) }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
             }
@@ -396,23 +444,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
               if (match) {
                 toolsUsed.push(match[1]);
               }
-            }
-          }
-        }
-
-        if (row.metadata) {
-          const metadataBuffer = Buffer.isBuffer(row.metadata) ? row.metadata : Buffer.from(row.metadata);
-          const proto = parseProtobuf(metadataBuffer);
-          const usageNode = proto[METADATA_TAG_USAGE]?.[0];
-          if (usageNode && typeof usageNode === 'object') {
-            const input = (usageNode[USAGE_TAG_INPUT] && typeof usageNode[USAGE_TAG_INPUT][0] === 'number') ? usageNode[USAGE_TAG_INPUT][0] : 0;
-            const output = (usageNode[USAGE_TAG_OUTPUT] && typeof usageNode[USAGE_TAG_OUTPUT][0] === 'number') ? usageNode[USAGE_TAG_OUTPUT][0] : 0;
-            const cached = (usageNode[USAGE_TAG_CACHED] && typeof usageNode[USAGE_TAG_CACHED][0] === 'number') ? usageNode[USAGE_TAG_CACHED][0] : 0;
-            if (input > 0 || output > 0 || cached > 0) {
-              fileInput += input;
-              fileLastCached = Math.max(fileLastCached, cached);
-              fileOutput += output;
-              fileHasTokens = true;
             }
           }
         }

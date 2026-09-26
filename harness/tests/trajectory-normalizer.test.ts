@@ -10,6 +10,8 @@ import {
   writeTrajectorySummary,
   readTrajectorySummary,
   generateNormalizedTrajectory,
+  standardizeAction,
+  type StandardizedAction,
   type TrajectorySummary,
   TRAJECTORY_SUMMARY_FILE,
   extractClaudeMetadata,
@@ -35,7 +37,7 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
     TargetFile: 'src/user.ts',
     TargetContent: 'function retrieveUserData() { return null; }',
     ReplacementContent: 'function retrieveUserData() { return { id: 1 }; }'
-  });
+  }, undefined, 'write_file');
   assert.strictEqual(cat1, 'code_mutation');
 
   // Test 2: replace_file_content with "search" in content should be code_mutation, NOT skill_search
@@ -43,14 +45,14 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
     TargetFile: 'src/search-bar.ts',
     TargetContent: 'const search = () => {};',
     ReplacementContent: 'const search = (q) => performSearch(q);'
-  });
+  }, undefined, 'write_file');
   assert.strictEqual(cat2, 'code_mutation');
 
   // Test 3: write_to_file with "retrieve" and "search" in content
   const cat3 = categorizeAction('write_to_file', {
     TargetFile: 'src/api.ts',
     CodeContent: 'export async function retrieveAndSearch() {}'
-  });
+  }, undefined, 'write_file');
   assert.strictEqual(cat3, 'code_mutation');
 
   // Test 4: edit / str_replace_editor tools
@@ -58,41 +60,83 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
     command: 'str_replace',
     path: 'index.html',
     new_str: '<button onclick="search()">Search</button>'
-  });
+  }, undefined, 'write_file');
   assert.strictEqual(cat4, 'code_mutation');
 
-  // Test 5: Real guide retrieval / search tool calls are still classified correctly
-  const guideCat = categorizeAction('get_best_practices', { query: 'accessible-forms' });
-  assert.strictEqual(guideCat, 'skill_search');
+  // Test 5: Guidance tagging keys off a literal `modern-web-guidance` invocation
+  const cliSearchCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest search "accordion"' }, undefined, 'run_command');
+  assert.strictEqual(cliSearchCat, 'skill_search');
 
-  const retrieveCat = categorizeAction('retrieve_guidance', { id: 'dialog' });
-  assert.strictEqual(retrieveCat, 'guide_retrieval');
+  const cliRetrieveCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' }, undefined, 'run_command');
+  assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
 
   // Test 6: Mandatory rule thought classification
-  const thoughtCat = categorizeAction('custom_check', {}, 'I must follow the mandatory baseline css guidance rules');
+  const thoughtCat = categorizeAction('custom_check', {}, 'I must follow the mandatory baseline css guidance rules', 'other');
   assert.strictEqual(thoughtCat, 'mandatory_rule_thought');
 
   // Test 7: respond_to_user classification
-  const respondCat = categorizeAction('respond_to_user', {});
+  const respondCat = categorizeAction('respond_to_user', {}, undefined, 'other');
   assert.strictEqual(respondCat, 'other');
 
   // Test 8: Incidental noise fallback
-  const noiseCat = categorizeAction('unknown_utility_ping', {});
+  const noiseCat = categorizeAction('unknown_utility_ping', {}, undefined, 'other');
   assert.strictEqual(noiseCat, 'incidental_noise');
+
+  // Test 9: Skill activations get their own category
+  const skillCat = categorizeAction('Skill', { skill: 'modern-web-guidance' }, undefined, 'other');
+  assert.strictEqual(skillCat, 'skill_activation');
+  assert.strictEqual(categorizeAction('activate_skill', { name: 'modern-web-guidance' }, undefined, 'other'), 'skill_activation');
+});
+
+test('categorizeAction rejects commands and thoughts that only incidentally mention guidance terms', () => {
+  const notGuidance = [
+    'curl https://example.com/retrieve/item',
+    'rg search ./gd-utils/',
+    'git cat-file -p HEAD # retrieve gd blob',
+    'node ./scripts/cli.js search foo',
+    'gd search dialog'
+  ];
+  assert.deepStrictEqual(
+    notGuidance.map(command => categorizeAction('bash', { command }, undefined, 'run_command')),
+    notGuidance.map(() => 'incidental_noise')
+  );
+
+  // Generic search/retrieve tool names are not the guidance skill
+  assert.strictEqual(categorizeAction('code_search', { query: 'dialog' }, undefined, 'other'), 'incidental_noise');
+  assert.strictEqual(categorizeAction('get_best_practices', { use_case_id: 'accessible-forms' }, undefined, 'other'), 'incidental_noise');
+
+  // A thought that merely mentions css/baseline/guidance is not a mandatory rule adoption
+  assert.strictEqual(
+    categorizeAction('list_dir', {}, 'Listing the css folder to see what is there', 'other'),
+    'incidental_noise'
+  );
 });
 
 test('categorizeAction distinguishes read actions mentioning files from mutation actions', () => {
   // Read actions mentioning filenames should NOT be categorized as code_mutation
-  assert.notStrictEqual(categorizeAction('cat index.html', { cmd: 'cat index.html' }), 'code_mutation');
-  assert.notStrictEqual(categorizeAction('read_file', { file_path: 'index.html' }), 'code_mutation');
-  assert.notStrictEqual(categorizeAction('view_file', { AbsolutePath: 'app.jsx' }), 'code_mutation');
+  assert.notStrictEqual(categorizeAction('bash', { cmd: 'cat index.html' }, undefined, 'run_command'), 'code_mutation');
+  assert.notStrictEqual(categorizeAction('read_file', { file_path: 'index.html' }, undefined, 'read_file'), 'code_mutation');
+  assert.notStrictEqual(categorizeAction('view_file', { AbsolutePath: 'app.jsx' }, undefined, 'read_file'), 'code_mutation');
 
   // Mutation actions should be categorized as code_mutation
+  assert.strictEqual(categorizeAction('write_to_file', { TargetFile: 'index.html' }, undefined, 'write_file'), 'code_mutation');
+  assert.strictEqual(categorizeAction('replace_file_content', { TargetFile: 'app.jsx' }, undefined, 'write_file'), 'code_mutation');
+  assert.strictEqual(categorizeAction('edit', { path: 'style.css' }, undefined, 'write_file'), 'code_mutation');
+
+  // Also support callers without explicit actionType when mutationParamKeys are present
   assert.strictEqual(categorizeAction('write_to_file', { TargetFile: 'index.html' }), 'code_mutation');
   assert.strictEqual(categorizeAction('replace_file_content', { TargetFile: 'app.jsx' }), 'code_mutation');
-  assert.strictEqual(categorizeAction('edit', { path: 'style.css' }), 'code_mutation');
 });
 
+test('categorizeAction classifies TodoWrite and non-mutation tools as incidental noise', () => {
+  // Claude Code TodoWrite should never be miscategorized as code_mutation
+  assert.strictEqual(categorizeAction('TodoWrite', { todos: [] }, undefined, 'other'), 'incidental_noise');
+  assert.strictEqual(categorizeAction('TodoWrite', { todos: [] }), 'incidental_noise');
+  assert.strictEqual(categorizeAction('TodoRead', {}, undefined, 'other'), 'incidental_noise');
+
+  // Run command with edit/write in its name should not be miscategorized as code_mutation
+  assert.strictEqual(categorizeAction('edit_plan_notes', { command: 'echo "notes"' }, undefined, 'run_command'), 'incidental_noise');
+});
 
 test('mapToolType maps standard tool names to canonical types', () => {
   assert.strictEqual(mapToolType('read_file'), 'read_file');
@@ -104,11 +148,75 @@ test('mapToolType maps standard tool names to canonical types', () => {
   assert.strictEqual(mapToolType('bash'), 'run_command');
   assert.strictEqual(mapToolType('execute_bash'), 'run_command');
   assert.strictEqual(mapToolType('run_shell_command'), 'run_command');
-  assert.strictEqual(mapToolType('search'), 'web_search');
-  assert.strictEqual(mapToolType('get_best_practices'), 'web_search');
-  assert.strictEqual(mapToolType('retrieve'), 'web_search');
-  assert.strictEqual(mapToolType('query_guidance'), 'web_search');
+  assert.strictEqual(mapToolType('search'), 'other');
+  assert.strictEqual(mapToolType('get_best_practices'), 'other');
+  assert.strictEqual(mapToolType('retrieve'), 'other');
+  assert.strictEqual(mapToolType('query_guidance'), 'other');
+  assert.strictEqual(mapToolType('TodoWrite'), 'other');
+  assert.strictEqual(mapToolType('TodoRead'), 'other');
   assert.strictEqual(mapToolType('unknown_action'), 'other');
+});
+
+function assertActionType<T extends StandardizedAction['type']>(
+  action: StandardizedAction,
+  type: T
+): asserts action is Extract<StandardizedAction, { type: T }> {
+  assert.strictEqual(action.type, type);
+}
+
+test('standardizeAction enforces strictly typed parameter shapes per action type', () => {
+  // run_command standardizes 'cmd', 'command', or string to params.command
+  const cmd1 = standardizeAction('run_command', 'bash', { cmd: 'cat index.html' });
+  assertActionType(cmd1, 'run_command');
+  assert.strictEqual(cmd1.name, 'bash');
+  assert.strictEqual(cmd1.params.command, 'cat index.html');
+
+  const cmd2 = standardizeAction('run_command', 'terminal', { command: 'pnpm test' });
+  assertActionType(cmd2, 'run_command');
+  assert.strictEqual(cmd2.params.command, 'pnpm test');
+
+  const cmd3 = standardizeAction('run_command', 'bash', 'git status');
+  assertActionType(cmd3, 'run_command');
+  assert.strictEqual(cmd3.params.command, 'git status');
+
+  // read_file standardizes path, file_path to params.path
+  const read1 = standardizeAction('read_file', 'read', { file_path: 'src/index.ts' });
+  assertActionType(read1, 'read_file');
+  assert.strictEqual(read1.params.path, 'src/index.ts');
+
+  const read2 = standardizeAction('read_file', 'view_file', { path: 'app.jsx' });
+  assertActionType(read2, 'read_file');
+  assert.strictEqual(read2.params.path, 'app.jsx');
+
+  // write_file standardizes path/file_path and content/new_string/newText
+  const write1 = standardizeAction('write_file', 'write_to_file', {
+    path: 'index.html',
+    content: '<html></html>'
+  });
+  assertActionType(write1, 'write_file');
+  assert.strictEqual(write1.params.path, 'index.html');
+  assert.strictEqual(write1.params.content, '<html></html>');
+
+  const write2 = standardizeAction('write_file', 'edit', {
+    file_path: '/path/to/main.ts',
+    new_string: 'const a = 1;'
+  });
+  assertActionType(write2, 'write_file');
+  assert.strictEqual(write2.params.path, '/path/to/main.ts');
+  assert.strictEqual(write2.params.content, 'const a = 1;');
+
+  const write3 = standardizeAction('write_file', 'edit', {
+    path: '/path/to/main.ts',
+    newText: 'const b = 2;'
+  });
+  assertActionType(write3, 'write_file');
+  assert.strictEqual(write3.params.path, '/path/to/main.ts');
+  assert.strictEqual(write3.params.content, 'const b = 2;');
+
+  // other preserves raw properties
+  const other1 = standardizeAction('other', 'respond_to_user', { response: 'Done' });
+  assertActionType(other1, 'other');
+  assert.deepStrictEqual(other1.params, { response: 'Done' });
 });
 
 test('finalizeTrajectorySummary sorts steps monotonically and re-indexes with 1-based numbering', () => {
@@ -118,17 +226,17 @@ test('finalizeTrajectorySummary sorts steps monotonically and re-indexes with 1-
       {
         stepNumber: 99,
         timestamp: '2026-08-09T21:00:10.000Z',
-        action: { name: 'respond_to_user', type: 'other' }
+        action: standardizeAction('other', 'respond_to_user')
       },
       {
         stepNumber: 99,
         timestamp: '2026-08-09T21:00:01.000Z',
-        action: { name: 'search_use_cases', type: 'web_search' }
+        action: standardizeAction('run_command', 'bash', { command: 'npx modern-web-guidance search "dialog"' })
       },
       {
         stepNumber: 99,
         timestamp: '2026-08-09T21:00:05.000Z',
-        action: { name: 'write_file', type: 'write_file' }
+        action: standardizeAction('write_file', 'write_file', { path: 'index.html' })
       }
     ]
   };
@@ -137,7 +245,7 @@ test('finalizeTrajectorySummary sorts steps monotonically and re-indexes with 1-
   assert.strictEqual(finalized.steps.length, 3);
   assert.strictEqual(finalized.steps[0].stepNumber, 1);
   assert.strictEqual(finalized.steps[0].timestamp, '2026-08-09T21:00:01.000Z');
-  assert.strictEqual(finalized.steps[0].action?.name, 'search_use_cases');
+  assert.strictEqual(finalized.steps[0].action?.name, 'bash');
   assert.strictEqual(finalized.steps[0].action?.canonicalCategory, 'skill_search');
 
   assert.strictEqual(finalized.steps[1].stepNumber, 2);
@@ -376,5 +484,125 @@ test('agent trajectory parsers strictly enforce modern-web-guidance retrieve fil
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: genericCmd } }] } },
   ]);
   assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
+});
+
+test('ensureFreshTrajectorySummary regenerates stale trajectory_summary.json missing normalizerVersion when raw session logs exist', async () => {
+  const {
+    NORMALIZER_VERSION,
+    ensureFreshTrajectorySummary
+  } = await import('../lib/trajectory-normalizer.ts');
+
+  const tempDir = createTempDir();
+  try {
+    // Write stale trajectory_summary.json without normalizerVersion and with outdated step categorization
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CLAUDE_CODE,
+      initialPrompt: 'Preserve this prompt',
+      steps: [
+        {
+          stepNumber: 1,
+          action: {
+            type: 'run_command',
+            canonicalCategory: 'incidental_noise',
+            name: 'Bash',
+            params: { command: 'npx modern-web-guidance search "popover"' }
+          }
+        }
+      ]
+    });
+
+    // Write raw session log (session-1.jsonl)
+    const rawEntry = {
+      role: 'assistant',
+      timestamp: '2026-08-10T10:00:00.000Z',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'call_1',
+            name: 'Bash',
+            input: { command: 'npx modern-web-guidance search "popover"' }
+          }
+        ]
+      }
+    };
+    fs.writeFileSync(path.join(tempDir, 'session-1.jsonl'), JSON.stringify(rawEntry));
+
+    const refreshed = await ensureFreshTrajectorySummary(tempDir);
+    assert.ok(refreshed);
+    assert.strictEqual(refreshed.normalizerVersion, NORMALIZER_VERSION);
+    assert.strictEqual(refreshed.initialPrompt, 'Preserve this prompt');
+    assert.strictEqual(refreshed.steps.length, 1);
+    assert.strictEqual(refreshed.steps[0].action?.canonicalCategory, 'skill_search');
+
+    const onDisk = readTrajectorySummary(tempDir);
+    assert.strictEqual(onDisk?.normalizerVersion, NORMALIZER_VERSION);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+function encodeVarint(value: number): Buffer {
+  const bytes: number[] = [];
+  let v = value;
+  while (v >= 0x80) {
+    bytes.push((v & 0x7f) | 0x80);
+    v = Math.floor(v / 128);
+  }
+  bytes.push(v);
+  return Buffer.from(bytes);
+}
+
+function encodeLengthDelimited(fieldNumber: number, payload: Buffer): Buffer {
+  const tag = (fieldNumber << 3) | 2;
+  return Buffer.concat([encodeVarint(tag), encodeVarint(payload.length), payload]);
+}
+
+function encodeVarintField(fieldNumber: number, value: number): Buffer {
+  const tag = (fieldNumber << 3) | 0;
+  return Buffer.concat([encodeVarint(tag), encodeVarint(value)]);
+}
+
+test('parseJetskiCliSession and findProtoTimestamp recover step timestamps from SQLite protobuf metadata', async () => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const {
+    parseProtobuf,
+    findProtoTimestamp,
+    parseJetskiCliSession
+  } = await import('../agents/jetski-cli-agent.ts');
+
+  // 1754860800 seconds = 2025-08-10T21:20:00.000Z, 250000000 nanos = 250ms
+  const timestampSubmsg = Buffer.concat([
+    encodeVarintField(1, 1754860800),
+    encodeVarintField(2, 250_000_000)
+  ]);
+  // Wrap inside outer metadata field 4
+  const metadataBuf = encodeLengthDelimited(4, timestampSubmsg);
+
+  const parsedMeta = parseProtobuf(metadataBuf);
+  const extractedIso = findProtoTimestamp(parsedMeta);
+  assert.strictEqual(extractedIso, '2025-08-10T21:20:00.250Z');
+
+  // Also test full SQLite session db parsing without any timestamp column
+  const tempDir = createTempDir();
+  try {
+    const dbPath = path.join(tempDir, 'session-jetski.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec('CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB)');
+    const payloadJson = JSON.stringify({
+      toolAction: 'Running command',
+      toolSummary: 'Search web guidance',
+      CommandLine: 'npx modern-web-guidance search "anchor positioning"'
+    });
+    const stmt = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(1, 1, 1, metadataBuf, Buffer.from(payloadJson, 'utf8'));
+    db.close();
+
+    const summary = parseJetskiCliSession(tempDir);
+    assert.strictEqual(summary.steps.length, 1);
+    assert.strictEqual(summary.steps[0].timestamp, '2025-08-10T21:20:00.250Z');
+  } finally {
+    removeTempDir(tempDir);
+  }
 });
 

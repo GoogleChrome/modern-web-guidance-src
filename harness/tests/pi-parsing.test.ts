@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import {
   generateNormalizedTrajectory,
+  parsePiTrajectory,
   collectPiGuidesFromTrajectory,
   collectPiToolsFromTrajectory,
   extractPiModel,
@@ -287,7 +288,7 @@ test('Parser: Pi CLI normalization', async () => {
             {
               type: 'toolCall',
               name: 'bash',
-              arguments: { command: 'node dist/cli.js --retrieve autofill-address-form' }
+              arguments: { command: 'npx modern-web-guidance retrieve autofill-address-form' }
             }
           ]
         }
@@ -370,7 +371,6 @@ test('collectPi metrics and token extraction from trajectory files', async () =>
     removeTempDir(tempDir);
   }
 });
-
 test('getPiCommandAndArgs does not include --no-session by default', () => {
   const oldEnv = process.env.PI_NO_SESSION;
   delete process.env.PI_NO_SESSION;
@@ -437,5 +437,71 @@ test('exportPiTrajectories exports nested Pi session files with session- prefix'
     removeTempDir(tempHome);
     removeTempDir(targetDir);
   }
+});
+
+test('parsePiTrajectory handles stringified JSON tool arguments', () => {
+  const lines = [
+    {
+      type: 'message',
+      message: {
+        role: 'assistant',
+        content: [
+          {
+            type: 'toolCall',
+            id: 'call_pi_1',
+            name: 'bash',
+            arguments: JSON.stringify({ command: 'pnpm test' })
+          }
+        ]
+      }
+    },
+    {
+      type: 'tool_result',
+      tool_use_id: 'call_pi_1',
+      output: 'Pass',
+      is_error: false
+    }
+  ];
+
+  const summary = parsePiTrajectory(lines);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].action?.params?.command, 'pnpm test');
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+});
+
+test('parsePiTrajectory handles native Pi message.role toolResult format', () => {
+  const lines = [
+    {
+      type: 'message',
+      message: {
+        role: 'assistant',
+        content: [
+          {
+            type: 'toolCall',
+            id: 'call_pi_native',
+            name: 'bash',
+            arguments: { command: 'git status' }
+          }
+        ]
+      }
+    },
+    {
+      type: 'message',
+      message: {
+        role: 'toolResult',
+        toolCallId: 'call_pi_native',
+        toolName: 'bash',
+        content: [{ type: 'text', text: 'On branch main' }],
+        isError: false
+      }
+    }
+  ];
+
+  const summary = parsePiTrajectory(lines);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  assert.strictEqual(summary.steps[0].outcome?.message, 'On branch main');
 });
 

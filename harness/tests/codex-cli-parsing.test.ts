@@ -10,7 +10,7 @@ import {
   extractCodexCliModel,
   extractCodexCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
-import { extractCommandsFromCodexItem } from '../agents/codex-cli-agent.ts';
+import { extractCommandsFromCodexItem, parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
 import { extractModelFromResults } from '../lib/collection.ts';
 import { Agents } from '../config.ts';
 
@@ -85,6 +85,16 @@ test('extractCommandsFromCodexItem handles quotes, backticks, escapes, and paren
     }
   });
   assert.deepStrictEqual(cmd7, []);
+
+  // 8. exec tool call with array command argument
+  const cmd8 = extractCommandsFromCodexItem({
+    payload: {
+      type: 'function_call',
+      name: 'exec',
+      arguments: JSON.stringify({ command: ['npm', 'test'] })
+    }
+  });
+  assert.deepStrictEqual(cmd8, ['npm test']);
 });
 
 test('Codex CLI normalization with commentary, response items, and subagent inlining', async () => {
@@ -187,6 +197,7 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
     assert.strictEqual(summary.steps[0].thought, 'Inspecting existing html structure');
     assert.strictEqual(summary.steps[0].action?.name, 'cat index.html');
     assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[0].action?.params?.command, 'cat index.html');
     assert.strictEqual(summary.steps[0].outcome?.status, 'success');
 
     // Step 2: subagent npm test (20:30:05)
@@ -196,6 +207,7 @@ test('Codex CLI normalization with commentary, response items, and subagent inli
     assert.strictEqual(summary.steps[1].thought, 'Subagent running tests');
     assert.strictEqual(summary.steps[1].action?.name, 'npm test');
     assert.strictEqual(summary.steps[1].action?.type, 'run_command');
+    assert.strictEqual(summary.steps[1].action?.params?.command, 'npm test');
     assert.strictEqual(summary.steps[1].outcome?.status, 'success');
 
     // Step 3: main final_answer (20:30:10)
@@ -279,6 +291,36 @@ test('Codex CLI normalization with modern custom_tool_call exec_command', async 
   } finally {
     removeTempDir(tempDir);
   }
+});
+
+test('Codex CLI handles array-structured output blocks in tool outputs', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_arr_1',
+        name: 'exec',
+        arguments: JSON.stringify({ command: 'node test.js' })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_arr_1',
+        output: [
+          { type: 'input_text', text: 'Script completed\nWall time 0.1s\nOutput:\n' },
+          { type: 'input_text', text: 'All checks passed.' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  assert.ok(summary.steps[0].outcome?.message?.includes('All checks passed.'));
 });
 
 test('collectCodex metrics from legacy function_call trajectory file', async () => {
@@ -381,7 +423,6 @@ test('collectCodex metrics from modern custom_tool_call trajectory file', async 
     removeTempDir(tempDir);
   }
 });
-
 test('Codex CLI normalization handles Responses API array output and extracts model', async () => {
   const tempDir = createTempDir();
   try {
@@ -447,3 +488,122 @@ test('Codex CLI normalization handles Responses API array output and extracts mo
   }
 });
 
+test('parseCodexTrajectory handles structured array of content blocks in function_call_output', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_content_blocks',
+        name: 'exec',
+        arguments: JSON.stringify({ command: ['cat', 'package.json'] })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_content_blocks',
+        output: [
+          { type: 'input_text', text: 'Script completed\nOutput:\n' },
+          { type: 'input_text', text: '{\n  "name": "test-app"\n}\n' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].action?.name, 'cat package.json');
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+  assert.strictEqual(summary.steps[0].outcome?.message?.includes('"name": "test-app"'), true);
+});
+
+test('parseCodexTrajectory does not flag tool output containing "error:" substring as failure', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_view_error_file',
+        name: 'exec',
+        arguments: JSON.stringify({ command: 'cat index.html' })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_view_error_file',
+        output: [
+          { type: 'input_text', text: 'Script completed\nWall time 0.1s\nOutput:\n' },
+          { type: 'input_text', text: '<p class="error">Error: Please enter a valid date</p>' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+});
+
+test('parseCodexTrajectory recognizes real Script failed as error', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_fail',
+        name: 'exec',
+        arguments: JSON.stringify({ command: 'node invalid.js' })
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call_fail',
+        output: [
+          { type: 'input_text', text: 'Script failed\nWall time 0.0s\nOutput:\n' },
+          { type: 'input_text', text: 'Script error:\nSyntaxError: Unexpected token' }
+        ]
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].outcome?.status, 'error');
+});
+
+test('parseCodexTrajectory parses code-mode patch calls as write_file', () => {
+  const rollout = [
+    {
+      type: 'response_item',
+      payload: {
+        type: 'custom_tool_call',
+        call_id: 'call_patch_1',
+        name: 'exec',
+        input: 'const patch = "*** Begin Patch\\n*** Update File: src/App.tsx\\n@@\\n- const a = 1;\\n+ const a = 2;\\n";'
+      }
+    },
+    {
+      type: 'response_item',
+      payload: {
+        type: 'custom_tool_call_output',
+        call_id: 'call_patch_1',
+        output: 'Script completed\nOutput:\n'
+      }
+    }
+  ];
+
+  const summary = parseCodexTrajectory(rollout);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'write_file');
+  assert.strictEqual(summary.steps[0].action?.name, 'apply_patch');
+  assert.strictEqual(summary.steps[0].action?.canonicalCategory, 'code_mutation');
+  assert.strictEqual((summary.steps[0].action?.params as any)?.path, 'src/App.tsx');
+  assert.strictEqual(summary.steps[0].outcome?.status, 'success');
+});
