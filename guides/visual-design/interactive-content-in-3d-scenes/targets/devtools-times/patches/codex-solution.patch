@@ -1,0 +1,375 @@
+diff --git a/src/components/NewsScene.astro b/src/components/NewsScene.astro
+new file mode 100644
+index 0000000..d90372d
+--- /dev/null
++++ b/src/components/NewsScene.astro
+@@ -0,0 +1,74 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++  articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++<news-scene class="news-scene">
++  <h2 class="font-brand text-3xl mb-4">Explore the news</h2>
++  <div class="scene-stage" data-stage>
++    <canvas layoutsubtree hidden></canvas>
++    <!-- This same DOM card is moved into the canvas only after feature detection. -->
++    <div class="news-card" data-card>
++      <div aria-live="polite" aria-atomic="true">
++        {articles.map((article, index) => (
++          <article data-story hidden={index !== 0}>
++            <p class="eyebrow">{article.data.category} · {index + 1} of {articles.length}</p>
++            <h3 class="font-brand"><a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>{article.data.title}</a></h3>
++            <p class="summary">{article.data.summary}</p>
++            <a class="read-story" href={`${import.meta.env.BASE_URL}articles/${article.id}`}>Read story →</a>
++          </article>
++        ))}
++      </div>
++      <div class="card-actions">
++        <button type="button" data-next hidden>Next story</button>
++        <button type="button" data-angle hidden aria-pressed="false">Straighten card</button>
++      </div>
++    </div>
++  </div>
++</news-scene>
++
++<style>
++  .news-scene { display: block; padding: 24px; }
++  .scene-stage { background: #f3f0e8; border: 1px solid #ded8ca; padding: 32px 24px; }
++  canvas { width: 100%; display: block; }
++  canvas[hidden], [hidden] { display: none; }
++  .news-card { box-sizing: border-box; width: 100%; max-width: 600px; margin: auto; padding: 24px; background: #fff; color: #171717; border: 1px solid #bdb6a7; transform-origin: 0 0; }
++  .scene-stage[data-enhanced] { padding: 0; }
++  .scene-stage[data-enhanced] .news-card { margin: 0; max-width: none; }
++  .eyebrow { color: #854d0e; text-transform: uppercase; letter-spacing: .08em; font-size: 12px; }
++  h3 { font-size: 28px; line-height: 1.15; margin: 12px 0; }
++  .summary { line-height: 1.5; margin-bottom: 16px; }
++  .read-story { font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
++  .card-actions { display: flex; flex-wrap: wrap; gap: 12px; }
++  .card-actions:has(button:not([hidden])) { margin-top: 20px; }
++  button { font: inherit; font-size: 14px; background: #fef3c7; border: 1px solid #92400e; padding: 8px 12px; cursor: pointer; }
++  a:hover { color: #92400e; }
++  button:hover { background: #fde68a; }
++  :is(a, button):focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
++  @media (max-width: 480px) { .news-scene { padding: 16px; } .scene-stage { padding: 24px 12px; } .news-card { padding: 18px; } }
++</style>
++
++<script>
++  import { enhanceNewsScene } from '../scripts/news-scene';
++
++  class NewsScene extends HTMLElement {
++    private cleanup?: () => void;
++
++    connectedCallback() {
++      this.cleanup?.();
++      this.cleanup = enhanceNewsScene(this);
++    }
++
++    disconnectedCallback() {
++      this.cleanup?.();
++      this.cleanup = undefined;
++    }
++  }
++
++  if (!customElements.get('news-scene')) customElements.define('news-scene', NewsScene);
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..14dc3fa 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import NewsScene from '../components/NewsScene.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -60,6 +61,7 @@ politicsArticles[2] = {
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <NewsScene articles={topStories} />
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+@@ -81,4 +83,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/scripts/news-scene.ts b/src/scripts/news-scene.ts
+new file mode 100644
+index 0000000..5a2f2ea
+--- /dev/null
++++ b/src/scripts/news-scene.ts
+@@ -0,0 +1,250 @@
++// Keep experimental API declarations local; partial implementations must pass
++// runtime checks before any HTML-in-Canvas methods are called.
++type PaintEvent = Event & { changedElements?: readonly Element[] };
++type HTMLCanvas = HTMLCanvasElement & {
++  requestPaint?: () => void;
++  onpaint?: ((event: PaintEvent) => void) | null;
++  getElementTransform?: (element: Element, matrix: DOMMatrix) => DOMMatrix;
++};
++type HTMLWebGL = WebGL2RenderingContext & {
++  texElementImage2D?: (target: number, format: number, element: Element) => void;
++};
++
++export function enhanceNewsScene(root: HTMLElement): () => void {
++  const canvas = root.querySelector<HTMLCanvas>('canvas');
++  const stage = root.querySelector<HTMLElement>('[data-stage]');
++  const card = root.querySelector<HTMLElement>('[data-card]');
++  const next = root.querySelector<HTMLButtonElement>('[data-next]');
++  const angle = root.querySelector<HTMLButtonElement>('[data-angle]');
++  if (!canvas || !stage || !card || !next || !angle) return () => {};
++
++  const events = new AbortController();
++  const stories = Array.from(card.querySelectorAll<HTMLElement>('[data-story]'));
++  let index = Math.max(0, stories.findIndex(story => !story.hidden));
++  let invalidate = () => {};
++  let stopRendering = () => {};
++  let flat = false;
++  next.hidden = stories.length < 2;
++  next.addEventListener('click', () => {
++    stories[index].hidden = true;
++    index = (index + 1) % stories.length;
++    stories[index].hidden = false;
++    invalidate();
++  }, { signal: events.signal });
++  angle.addEventListener('click', () => {
++    flat = !flat;
++    angle.setAttribute('aria-pressed', String(flat));
++    angle.textContent = flat ? 'Tilt card' : 'Straighten card';
++    invalidate();
++  }, { signal: events.signal });
++
++  const cleanup = () => {
++    events.abort();
++    stopRendering();
++  };
++
++  // Ordinary server-rendered HTML remains visible without JS or API support.
++  if (!('requestPaint' in HTMLCanvasElement.prototype) ||
++      typeof canvas.requestPaint !== 'function' ||
++      typeof canvas.getElementTransform !== 'function' ||
++      typeof ResizeObserver === 'undefined' || typeof DOMMatrix === 'undefined') {
++    return cleanup;
++  }
++
++  let gl: HTMLWebGL | null;
++  try {
++    gl = canvas.getContext('webgl2', { alpha: true, antialias: true });
++  } catch {
++    return cleanup;
++  }
++  if (!gl || typeof gl.texElementImage2D !== 'function') return cleanup;
++  const context = gl;
++  const shaders: WebGLShader[] = [];
++  let program: WebGLProgram | null = null;
++  let buffer: WebGLBuffer | null = null;
++  let texture: WebGLTexture | null = null;
++  let observer: ResizeObserver | undefined;
++  let frame = 0;
++  let stopped = false;
++  let dirty = true;
++  let dprQuery: MediaQueryList | undefined;
++  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++
++  stopRendering = () => {
++    if (stopped) return;
++    stopped = true;
++    cancelAnimationFrame(frame);
++    observer?.disconnect();
++    dprQuery?.removeEventListener('change', onDprChange);
++    canvas.onpaint = null;
++    // Restore the original live DOM, including its state, on failure/navigation.
++    const focused = document.activeElement;
++    stage.append(card);
++    card.style.removeProperty('transform');
++    card.style.removeProperty('width');
++    canvas.hidden = true;
++    canvas.style.removeProperty('height');
++    delete stage.dataset.enhanced;
++    angle.hidden = true;
++    if (focused instanceof HTMLElement && card.contains(focused)) focused.focus();
++    if (texture) context.deleteTexture(texture);
++    if (buffer) context.deleteBuffer(buffer);
++    if (program) context.deleteProgram(program);
++    shaders.forEach(shader => context.deleteShader(shader));
++  };
++
++  function onDprChange() {
++    dprQuery?.removeEventListener('change', onDprChange);
++    dprQuery = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
++    dprQuery.addEventListener('change', onDprChange);
++    resize();
++  }
++
++  function resize(entry?: ResizeObserverEntry) {
++    if (stopped || !canvas || !card) return;
++    const cssWidth = canvas.clientWidth;
++    if (!cssWidth) return;
++    const cardWidth = Math.min(600, Math.max(1, cssWidth - 48));
++    card.style.width = `${cardWidth}px`;
++    const cssHeight = card.offsetHeight + 100;
++    const heightChanged = canvas.style.height !== `${cssHeight}px`;
++    if (heightChanged) canvas.style.height = `${cssHeight}px`;
++    const pixels = entry?.target === canvas ? entry.devicePixelContentBoxSize?.[0] : undefined;
++    const expectedWidth = Math.round(cssWidth * window.devicePixelRatio);
++    const expectedHeight = Math.round(cssHeight * window.devicePixelRatio);
++    // Some environments expose a device-pixel box that ignores an overridden
++    // DPR. Trust the precise box only when it agrees with the current scale.
++    const width = pixels && Math.abs(pixels.inlineSize - expectedWidth) <= 1
++      ? pixels.inlineSize : expectedWidth;
++    const height = !heightChanged && pixels && Math.abs(pixels.blockSize - expectedHeight) <= 1
++      ? pixels.blockSize : expectedHeight;
++    if (canvas.width !== width) canvas.width = width;
++    if (canvas.height !== height) canvas.height = height;
++    invalidate();
++  }
++
++  try {
++    const compile = (type: number, source: string) => {
++      const shader = context.createShader(type);
++      if (!shader) throw new Error('Unable to allocate shader');
++      shaders.push(shader);
++      context.shaderSource(shader, source);
++      context.compileShader(shader);
++      if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) throw new Error('Unable to compile shader');
++      return shader;
++    };
++    const vertex = compile(context.VERTEX_SHADER, `#version 300 es
++      in vec2 position;
++      uniform mat4 mvp;
++      out vec2 uv;
++      void main() {
++        uv = position + 0.5;
++        gl_Position = mvp * vec4(position, 0.0, 1.0);
++      }`);
++    const fragment = compile(context.FRAGMENT_SHADER, `#version 300 es
++      precision mediump float;
++      in vec2 uv;
++      uniform sampler2D content;
++      out vec4 color;
++      void main() { color = texture(content, uv); }`);
++    program = context.createProgram();
++    buffer = context.createBuffer();
++    texture = context.createTexture();
++    if (!program || !buffer || !texture) throw new Error('Unable to allocate scene');
++    context.attachShader(program, vertex);
++    context.attachShader(program, fragment);
++    context.linkProgram(program);
++    if (!context.getProgramParameter(program, context.LINK_STATUS)) throw new Error('Unable to link scene');
++    context.useProgram(program);
++    context.bindBuffer(context.ARRAY_BUFFER, buffer);
++    context.bufferData(context.ARRAY_BUFFER, new Float32Array([
++      -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5,
++    ]), context.STATIC_DRAW);
++    const position = context.getAttribLocation(program, 'position');
++    context.enableVertexAttribArray(position);
++    context.vertexAttribPointer(position, 2, context.FLOAT, false, 0, 0);
++    const matrixLocation = context.getUniformLocation(program, 'mvp');
++    context.activeTexture(context.TEXTURE0);
++    context.bindTexture(context.TEXTURE_2D, texture);
++    context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MIN_FILTER, context.LINEAR);
++    context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MAG_FILTER, context.LINEAR);
++    context.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_S, context.CLAMP_TO_EDGE);
++    context.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_T, context.CLAMP_TO_EDGE);
++    context.pixelStorei(context.UNPACK_FLIP_Y_WEBGL, true);
++    context.uniform1i(context.getUniformLocation(program, 'content'), 0);
++
++    invalidate = () => {
++      if (stopped) return;
++      dirty = true;
++      if (!frame) frame = requestAnimationFrame(() => {
++        frame = 0;
++        if (stopped) return;
++        try { canvas.requestPaint!(); } catch { stopRendering(); }
++      });
++    };
++
++    canvas.onpaint = (event) => {
++      if (stopped || (!dirty && event.changedElements?.length === 0)) return;
++      try {
++        if (context.isContextLost()) throw new Error('WebGL context lost');
++        // All HTML texture uploads and scene draws happen in the paint handler.
++        context.bindTexture(context.TEXTURE_2D, texture);
++        context.texElementImage2D!(context.TEXTURE_2D, context.RGBA8, card);
++        const perspective = new DOMMatrix();
++        perspective.m34 = -1 / 900;
++        const tilt = flat || reducedMotion.matches ? 0 : 1;
++        const mvp = new DOMMatrix()
++          .scale(2 / canvas.clientWidth, 2 / canvas.clientHeight, 1 / 1000)
++          .multiply(perspective)
++          .rotate(-5 * tilt, -12 * tilt, 0)
++          .scale(card.offsetWidth, card.offsetHeight, 1);
++        context.viewport(0, 0, canvas.width, canvas.height);
++        context.clearColor(0, 0, 0, 0);
++        context.clear(context.COLOR_BUFFER_BIT);
++        context.uniformMatrix4fv(matrixLocation, false, mvp.toFloat32Array());
++        context.drawArrays(context.TRIANGLE_STRIP, 0, 4);
++        if (context.getError() !== context.NO_ERROR) throw new Error('Unable to paint HTML texture');
++
++        // Use the exact shader MVP for native hit testing and text selection.
++        const gridWidth = card.offsetWidth * canvas.width / canvas.clientWidth;
++        const gridHeight = card.offsetHeight * canvas.height / canvas.clientHeight;
++        const normalize = new DOMMatrix()
++          .scale(1 / gridWidth, -1 / gridHeight, 1 / gridHeight)
++          .translate(-gridWidth / 2, -gridHeight / 2);
++        const viewport = new DOMMatrix()
++          .translate(canvas.width / 2, canvas.height / 2)
++          .scale(canvas.width / 2, -canvas.height / 2, canvas.height / 2);
++        let transform = canvas.getElementTransform!(card, viewport.multiply(mvp).multiply(normalize));
++        // Rebuild the matrix to accommodate Chromium <=148's incorrect is2D flag.
++        if (transform.is2D) transform = DOMMatrix.fromFloat64Array(transform.toFloat64Array());
++        const cssTransform = transform.toString();
++        if (card.style.transform !== cssTransform) card.style.transform = cssTransform;
++        dirty = false;
++      } catch {
++        stopRendering();
++      }
++    };
++
++    canvas.addEventListener('webglcontextlost', stopRendering, { signal: events.signal });
++    stage.dataset.enhanced = '';
++    canvas.hidden = false;
++    canvas.append(card);
++    angle.hidden = false;
++    // Observers are created once, never inside onpaint.
++    observer = new ResizeObserver(entries => resize(entries.find(entry => entry.target === canvas)));
++    const supportsDevicePixels = typeof ResizeObserverEntry !== 'undefined' &&
++      'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++    try {
++      observer.observe(canvas, supportsDevicePixels ? { box: 'device-pixel-content-box' } : {});
++    } catch {
++      observer.observe(canvas);
++    }
++    observer.observe(card);
++    window.addEventListener('resize', () => resize(), { signal: events.signal });
++    reducedMotion.addEventListener('change', () => invalidate(), { signal: events.signal });
++    onDprChange();
++  } catch {
++    stopRendering();
++  }
++  return cleanup;
++}
+diff --git a/src/types/html-in-canvas.d.ts b/src/types/html-in-canvas.d.ts
+new file mode 100644
+index 0000000..47aab6b
+--- /dev/null
++++ b/src/types/html-in-canvas.d.ts
+@@ -0,0 +1,6 @@
++// Astro's HTML types do not yet include this experimental boolean attribute.
++declare namespace astroHTML.JSX {
++  interface CanvasHTMLAttributes {
++    layoutsubtree?: boolean;
++  }
++}

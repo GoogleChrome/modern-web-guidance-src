@@ -1,0 +1,375 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..ee109f3 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -2,6 +2,38 @@ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
+   }
++
++  // Experimental HTML-in-Canvas API (https://developer.chrome.com/blog/canvas-html)
++  // Not yet part of the standard DOM lib, so it's augmented here.
++  interface CanvasPaintEvent extends Event {
++    readonly changedElements?: ReadonlyArray<Element>;
++  }
++
++  interface HTMLCanvasElement {
++    onpaint: ((this: HTMLCanvasElement, event: CanvasPaintEvent) => void) | null;
++    requestPaint?: () => void;
++    getElementTransform?: (element: Element, transform: DOMMatrix) => DOMMatrix;
++  }
++
++  interface WebGLRenderingContext {
++    texElementImage2D?: (target: number, internalFormat: number, element: Element) => void;
++  }
++
++  interface WebGL2RenderingContext {
++    texElementImage2D?: (target: number, internalFormat: number, element: Element) => void;
++  }
++
++  interface ResizeObserverEntry {
++    readonly devicePixelContentBoxSize?: ReadonlyArray<ResizeObserverSize>;
++  }
++}
++
++declare module 'react' {
++  interface CanvasHTMLAttributes<T> extends HTMLAttributes<T> {
++    // Enables descendant HTML elements to be projected into WebGL/WebGPU
++    // scenes rendered onto this canvas (HTML-in-Canvas API).
++    layoutsubtree?: string;
++  }
+ }
+ 
+ export {};
+\ No newline at end of file
+diff --git a/src/components/Interactive3DPreview.tsx b/src/components/Interactive3DPreview.tsx
+new file mode 100644
+index 0000000..e04d588
+--- /dev/null
++++ b/src/components/Interactive3DPreview.tsx
+@@ -0,0 +1,297 @@
++import React, { useEffect, useRef, useState } from 'react';
++
++const VERTEX_SHADER_SOURCE = `
++  attribute vec2 a_position;
++  attribute vec2 a_uv;
++  uniform mat4 u_matrix;
++  varying vec2 v_uv;
++  void main() {
++    gl_Position = u_matrix * vec4(a_position, 0.0, 1.0);
++    v_uv = a_uv;
++  }
++`;
++
++const FRAGMENT_SHADER_SOURCE = `
++  precision mediump float;
++  uniform sampler2D u_texture;
++  varying vec2 v_uv;
++  void main() {
++    gl_FragColor = texture2D(u_texture, v_uv);
++  }
++`;
++
++function createShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | null {
++  const shader = gl.createShader(type);
++  if (!shader) return null;
++  gl.shaderSource(shader, source);
++  gl.compileShader(shader);
++  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
++    console.error('Shader compile failed:', gl.getShaderInfoLog(shader));
++    gl.deleteShader(shader);
++    return null;
++  }
++  return shader;
++}
++
++function createProgram(gl: WebGL2RenderingContext, vertexShader: WebGLShader, fragmentShader: WebGLShader): WebGLProgram | null {
++  const program = gl.createProgram();
++  if (!program) return null;
++  gl.attachShader(program, vertexShader);
++  gl.attachShader(program, fragmentShader);
++  gl.linkProgram(program);
++  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
++    console.error('Program link failed:', gl.getProgramInfoLog(program));
++    gl.deleteProgram(program);
++    return null;
++  }
++  return program;
++}
++
++// Minimal column-major 4x4 matrix helpers, matching DOMMatrix's expected layout.
++function multiplyMat4(a: Float32Array, b: Float32Array): Float32Array {
++  const out = new Float32Array(16);
++  for (let col = 0; col < 4; col++) {
++    const b0 = b[col * 4 + 0];
++    const b1 = b[col * 4 + 1];
++    const b2 = b[col * 4 + 2];
++    const b3 = b[col * 4 + 3];
++    out[col * 4 + 0] = a[0] * b0 + a[4] * b1 + a[8] * b2 + a[12] * b3;
++    out[col * 4 + 1] = a[1] * b0 + a[5] * b1 + a[9] * b2 + a[13] * b3;
++    out[col * 4 + 2] = a[2] * b0 + a[6] * b1 + a[10] * b2 + a[14] * b3;
++    out[col * 4 + 3] = a[3] * b0 + a[7] * b1 + a[11] * b2 + a[15] * b3;
++  }
++  return out;
++}
++
++function perspectiveMat4(fovy: number, aspect: number, near: number, far: number): Float32Array {
++  const out = new Float32Array(16);
++  const f = 1.0 / Math.tan(fovy / 2);
++  out[0] = f / aspect;
++  out[5] = f;
++  out[10] = (far + near) / (near - far);
++  out[11] = -1;
++  out[14] = (2 * far * near) / (near - far);
++  return out;
++}
++
++function translationMat4(x: number, y: number, z: number): Float32Array {
++  // prettier-ignore
++  return new Float32Array([
++    1, 0, 0, 0,
++    0, 1, 0, 0,
++    0, 0, 1, 0,
++    x, y, z, 1,
++  ]);
++}
++
++function rotationYMat4(rad: number): Float32Array {
++  const c = Math.cos(rad);
++  const s = Math.sin(rad);
++  // prettier-ignore
++  return new Float32Array([
++    c, 0, -s, 0,
++    0, 1, 0, 0,
++    s, 0, c, 0,
++    0, 0, 0, 1,
++  ]);
++}
++
++/**
++ * Demonstrates the HTML-in-Canvas API: a real, interactive DOM panel is
++ * rendered into a rotating WebGL scene while remaining part of the layout
++ * tree, so buttons stay clickable and text stays selectable.
++ */
++export default function Interactive3DPreview() {
++  const canvasRef = useRef<HTMLCanvasElement>(null);
++  const panelRef = useRef<HTMLDivElement>(null);
++  const [isSupported, setIsSupported] = useState<boolean | null>(null);
++  const [likeCount, setLikeCount] = useState(128);
++
++  // Step 1: feature detection must happen before the API is used at all.
++  useEffect(() => {
++    const supported = typeof HTMLCanvasElement !== 'undefined' && 'requestPaint' in HTMLCanvasElement.prototype;
++    setIsSupported(supported);
++  }, []);
++
++  useEffect(() => {
++    if (!isSupported) return;
++
++    const canvas = canvasRef.current;
++    const uiElement = panelRef.current;
++    if (!canvas || !uiElement) return;
++
++    const gl = canvas.getContext('webgl2');
++    if (!gl) return;
++
++    const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER_SOURCE);
++    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
++    if (!vertexShader || !fragmentShader) return;
++    const program = createProgram(gl, vertexShader, fragmentShader);
++    if (!program) return;
++
++    const positionLoc = gl.getAttribLocation(program, 'a_position');
++    const uvLoc = gl.getAttribLocation(program, 'a_uv');
++    const matrixLoc = gl.getUniformLocation(program, 'u_matrix');
++    const textureLoc = gl.getUniformLocation(program, 'u_texture');
++
++    // Unit-square quad in model space, matching the normalization step used
++    // below when mapping the HTML panel's pixel size into this same space.
++    const positionBuffer = gl.createBuffer();
++    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
++    gl.bufferData(
++      gl.ARRAY_BUFFER,
++      new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]),
++      gl.STATIC_DRAW,
++    );
++
++    const uvBuffer = gl.createBuffer();
++    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
++    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]), gl.STATIC_DRAW);
++
++    const texture = gl.createTexture();
++    gl.bindTexture(gl.TEXTURE_2D, texture);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++
++    // Keep the canvas's backing store matching the device pixel grid so the
++    // projected HTML content doesn't come out blurry.
++    const supportsDevicePixelContentBox =
++      typeof ResizeObserverEntry !== 'undefined' && 'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++
++    const resizeObserver = new ResizeObserver((entries) => {
++      const entry = entries[0];
++      if (!entry) return;
++      const dpc = entry.devicePixelContentBoxSize;
++      canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
++      canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
++    });
++    resizeObserver.observe(
++      canvas,
++      supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : undefined,
++    );
++
++    let angle = 0;
++    let animationFrameId = 0;
++
++    canvas.onpaint = () => {
++      if (gl.texElementImage2D) {
++        try {
++          gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, uiElement);
++        } catch (err) {
++          console.error('texElementImage2D copy failed:', err);
++        }
++      }
++
++      const width = canvas.width || 1;
++      const height = canvas.height || 1;
++
++      gl.viewport(0, 0, width, height);
++      gl.enable(gl.DEPTH_TEST);
++      gl.clearColor(0.07, 0.07, 0.1, 1);
++      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
++
++      angle += 0.006;
++      const projection = perspectiveMat4(Math.PI / 4, width / height, 0.1, 10);
++      const view = translationMat4(0, 0, -2.2);
++      const model = rotationYMat4(angle);
++      const htmlElementMVP = multiplyMat4(projection, multiplyMat4(view, model));
++
++      gl.useProgram(program);
++
++      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
++      gl.enableVertexAttribArray(positionLoc);
++      gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
++
++      gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
++      gl.enableVertexAttribArray(uvLoc);
++      gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
++
++      gl.activeTexture(gl.TEXTURE0);
++      gl.bindTexture(gl.TEXTURE_2D, texture);
++      gl.uniform1i(textureLoc, 0);
++      gl.uniformMatrix4fv(matrixLoc, false, htmlElementMVP);
++
++      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
++
++      if (canvas.getElementTransform) {
++        const mvpDOM = new DOMMatrix(Array.from(htmlElementMVP));
++
++        const dprX = canvas.width / canvas.clientWidth;
++        const dprY = canvas.height / canvas.clientHeight;
++        const gridWidth = uiElement.offsetWidth * dprX;
++        const gridHeight = uiElement.offsetHeight * dprY;
++
++        const toGLModel = new DOMMatrix()
++          .scale(1 / gridWidth, -1 / gridHeight, 1 / gridHeight)
++          .translate(-gridWidth / 2, -gridHeight / 2);
++
++        const clipToCanvasViewport = new DOMMatrix()
++          .translate(canvas.width / 2, canvas.height / 2)
++          .scale(canvas.width / 2, -canvas.height / 2, canvas.height / 2);
++
++        const screenSpaceTransform = clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
++
++        let computedTransform = canvas.getElementTransform(uiElement, screenSpaceTransform);
++        if (computedTransform.is2D) {
++          // Workaround for Chromium bug https://crbug.com/512171941 affecting
++          // versions under 149, where `is2D` is incorrectly true for a 3D matrix.
++          computedTransform = DOMMatrix.fromFloat64Array(computedTransform.toFloat64Array());
++        }
++        uiElement.style.transform = computedTransform.toString();
++      }
++    };
++
++    function render() {
++      canvas!.requestPaint?.();
++      animationFrameId = requestAnimationFrame(render);
++    }
++    animationFrameId = requestAnimationFrame(render);
++
++    return () => {
++      cancelAnimationFrame(animationFrameId);
++      resizeObserver.disconnect();
++      canvas.onpaint = null;
++      gl.deleteProgram(program);
++      gl.deleteBuffer(positionBuffer);
++      gl.deleteBuffer(uvBuffer);
++      gl.deleteTexture(texture);
++    };
++  }, [isSupported]);
++
++  const panelContent = (
++    <div
++      ref={panelRef}
++      className="w-64 rounded-lg bg-white/95 p-4 text-center shadow-lg origin-center"
++      style={{ transformOrigin: '0 0' }}
++    >
++      <p className="text-xs font-semibold uppercase tracking-wide text-amber-500">Multimedia Lab</p>
++      <h3 className="mt-1 font-brand text-lg leading-snug text-gray-900">The Future of AI</h3>
++      <p className="mt-1 text-xs text-gray-600">Live interactive preview panel</p>
++      <button
++        type="button"
++        onClick={() => setLikeCount((count) => count + 1)}
++        className="mt-3 w-full rounded bg-amber-400 px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-amber-300"
++      >
++        ▲ {likeCount} Likes
++      </button>
++    </div>
++  );
++
++  return (
++    <div className="mx-auto flex h-80 w-full max-w-md items-center justify-center overflow-hidden rounded-lg bg-gray-900">
++      {isSupported ? (
++        <canvas ref={canvasRef} className="h-full w-full" layoutsubtree="">
++          {panelContent}
++        </canvas>
++      ) : (
++        // Fallback: HTML-in-Canvas isn't supported, so lay the real content
++        // directly on top of a static canvas background using plain CSS.
++        <div className="relative h-full w-full">
++          <canvas className="h-full w-full" aria-hidden="true" />
++          <div className="absolute inset-0 flex items-center justify-center">{panelContent}</div>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..385fb5c 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -1,6 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import { getCollection } from 'astro:content';
++import Interactive3DPreview from '../components/Interactive3DPreview';
+ 
+ const multimedia = await getCollection('multimedia');
+ ---
+@@ -17,5 +18,14 @@ const multimedia = await getCollection('multimedia');
+                 ))}
+             </ul>
+         </div>
++
++        <section class="mt-10 pt-8 border-t-2">
++            <h2 class="text-xl font-bold text-gray-900 mb-1">Experimental: Interactive 3D Preview</h2>
++            <p class="text-sm text-gray-600 mb-4">
++                A Chrome DevTools Labs demo of the HTML-in-Canvas API: the panel below is real,
++                clickable DOM projected into a live WebGL scene.
++            </p>
++            <Interactive3DPreview client:load />
++        </section>
+     </div>
+ </Layout>
+\ No newline at end of file
