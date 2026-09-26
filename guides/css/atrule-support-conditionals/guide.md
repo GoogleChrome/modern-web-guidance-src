@@ -34,7 +34,6 @@ I.e. don't do this:
 
 Regular CSS graceful parsing will already ignore rules the browser doesn't understand, so this is unnecessary.
 
-
 ## Detecting support for at-rules without `@supports at-rule()` { #detecting-at-rules-without-supports-at-rule }
 
 When `at-rule()` is not an option, either due to browser support or because deeper detection is needed, you can use the guidance below.
