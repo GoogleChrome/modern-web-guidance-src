@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -e
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GD_TS="$DIR/gd.ts"
+
+# Helper to test if a node binary actually supports loading TypeScript (.ts) files
+supports_ts() {
+  "$1" --experimental-strip-types "$GD_TS" --version >/dev/null 2>&1
+}
+
+# 1. Check current 'node' in PATH
+if command -v node >/dev/null 2>&1 && supports_ts "$(command -v node)"; then
+  exec node --experimental-strip-types "$GD_TS" "$@"
+fi
+
+# 2. Search for an NVM / FNM / Volta / local Node v22+ binary with TypeScript support
+shopt -s nullglob
+CANDIDATES=(
+  "$HOME"/.local/share/pnpm/bin/node
+  "$HOME"/.local/share/pnpm/node
+  "$HOME"/.local/share/pnpm/nodejs/2[2-9]*/bin/node
+  "$HOME"/.nvm/versions/node/v2[2-9]*/bin/node
+  "$HOME"/*/.nvm/versions/node/v2[2-9]*/bin/node
+  "$HOME"/.local/share/fnm/node-versions/v2[2-9]*/installation/bin/node
+  "$HOME"/.volta/tools/image/node/2[2-9]*/bin/node
+)
+shopt -u nullglob
+
+for candidate in "${CANDIDATES[@]}"; do
+  if [ -x "$candidate" ] && supports_ts "$candidate"; then
+    NODE_BIN_DIR="$(dirname "$candidate")"
+    export PATH="$NODE_BIN_DIR:$PATH"
+    exec "$candidate" --experimental-strip-types "$GD_TS" "$@"
+  fi
+done
+
+echo "Error: Default 'node' ($(command -v node || echo 'none')) was compiled without TypeScript support (ERR_NO_TYPESCRIPT)." >&2
+echo "Please use Node.js v22.6+ downloaded from nodejs.org or via nvm." >&2
+exit 1

@@ -4,7 +4,7 @@
 
 This document describes the goals, architecture, contributor workflow, and current state of the Modern Web Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
 
-Last updated: 2026-07-10.
+Last updated: 2026-09-23.
 
 ---
 
@@ -113,6 +113,7 @@ pnpm link --global && gd setup-completion
 | Command | What it does |
 |---|---|
 | `gd audit` | Prints a matrix of all guides across maturity stages. |
+| `gd audit-evals [pattern]` | Audits expectation completeness (`expectations.md` vs `guide.md` & `CONTEXT.md`) and/or grader fidelity (`grader.ts` vs `expectations.md` & `task.md`) with adversarial review, generating Markdown, JSON, and interactive HTML reports (`--expectations-only`, `--grader-only`, or `--scope both`). |
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + demo.html + expectations.md" through target generation, calibration, agent tests, and report creation. |
 | `gd dev <dir> --test-grader` | Run calibration check across target apps (golden patches should pass 100%, zero-passrate should fail 100%). |
 | `gd pr <dir>` | Opens a GitHub Pull Request with auto-labeled classification and `report.md` body. |
