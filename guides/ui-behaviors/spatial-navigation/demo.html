@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spatial Navigation Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 40px 20px;
+      background: #f0f2f5;
+      color: #333;
+      line-height: 1.5;
+      min-height: 185vh;
+      /* Deliberately tall to test native viewport scrolling at boundary edges */
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.75rem;
+      color: #1a1a1a;
+    }
+
+    .instructions {
+      font-size: 0.9rem;
+      color: #666;
+      background: #f8fafc;
+      padding: 12px 16px;
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+    }
+
+    .scroll-buffer {
+      padding: 30px 10px;
+      color: #888;
+      font-style: italic;
+      text-align: center;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    /*
+        Asymmetrical CSS Grid Layout
+        Deliberately uses visual order, column spans, and gaps so DOM order
+        cannot be used as a substitute for spatial geometry.
+      */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+      margin: 32px 0;
+    }
+
+    .spatial-card:nth-child(1) {
+      order: 1;
+      grid-column: span 4;
+    }
+
+    .spatial-card:nth-child(2) {
+      order: 3;
+      grid-column: span 4;
+    }
+
+    .spatial-card:nth-child(3) {
+      order: 2;
+      grid-column: span 4;
+    }
+
+    .spatial-card:nth-child(4) {
+      order: 5;
+      grid-column: span 6;
+    }
+
+    .spatial-card:nth-child(5) {
+      order: 4;
+      grid-column: span 6;
+    }
+
+    .spatial-card:nth-child(6),
+    .spatial-card:nth-child(7),
+    .spatial-card:nth-child(8),
+    .spatial-card:nth-child(9) {
+      order: 6;
+      grid-column: span 3;
+    }
+
+    .spatial-card:nth-child(7) {
+      order: 7;
+    }
+
+    .spatial-card:nth-child(8) {
+      order: 8;
+    }
+
+    .spatial-card:nth-child(9) {
+      order: 9;
+    }
+
+    .spatial-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 24px;
+      height: 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      user-select: none;
+    }
+
+    .spatial-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+    }
+
+    /* High-visibility focus indicator */
+    .spatial-card:focus-visible {
+      outline: 4px solid #2563eb;
+      outline-offset: 2px;
+      border-color: #2563eb;
+      background-color: #eff6ff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spatial-card {
+        transition: none;
+        transform: none !important;
+      }
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #1f2937;
+    }
+
+    .card-body {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    /* Console logger */
+    .log-panel {
+      font-family: monospace;
+      background: #1e293b;
+      color: #38bdf8;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-top: 16px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Spatial Focus Navigation</h1>
+      <p>This demo implements visual 2D directional navigation across a CSS Grid with reordered and spanning items,
+        using live bounding-rect geometry and roving tabindex focus management.</p>
+
+      <div class="instructions" id="spatnav-instructions">
+        <strong>Interactive Instructions:</strong> Press <strong>Tab</strong> to focus on the first card, then use the
+        <strong>Arrow Keys</strong> to navigate spatially across rows and columns.
+        <br>
+        Pressing arrows at boundaries (e.g. Down at the bottom cards or Up at the top cards) allows the browser to
+        scroll the viewport natively.
+      </div>
+    </header>
+
+    <div class="scroll-buffer">
+      [Scroll Area Above Container]
+    </div>
+
+    <!-- Spatial widget group with a single tab stop via roving tabindex -->
+    <div class="dashboard" role="group" aria-label="Visual Dashboard Layout" aria-describedby="spatnav-instructions">
+      <!-- DOM order intentionally differs from visual order. CSS Grid also gives items different spans. -->
+      <div class="spatial-card" tabindex="0" id="card-1-1">
+        <span class="card-title">Card 1-1</span>
+        <span class="card-body">Grid item, order 1, span 4</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-1-2">
+        <span class="card-title">Card 1-2</span>
+        <span class="card-body">Grid item, order 3, span 4</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-1-3">
+        <span class="card-title">Card 1-3</span>
+        <span class="card-body">Grid item, order 2, span 4</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-2-1">
+        <span class="card-title">Card 2-1 (Wide)</span>
+        <span class="card-body">Grid item, order 5, span 6</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-2-2">
+        <span class="card-title">Card 2-2 (Wide)</span>
+        <span class="card-body">Grid item, order 4, span 6</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-3-1">
+        <span class="card-title">Card 3-1</span>
+        <span class="card-body">Grid item, span 1</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-3-2">
+        <span class="card-title">Card 3-2</span>
+        <span class="card-body">Grid item, span 1</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-3-3">
+        <span class="card-title">Card 3-3</span>
+        <span class="card-body">Grid item, span 1</span>
+      </div>
+      <div class="spatial-card" tabindex="-1" id="card-3-4">
+        <span class="card-title">Card 3-4</span>
+        <span class="card-body">Grid item, span 1</span>
+      </div>
+    </div>
+
+    <div class="scroll-buffer">
+      [Scroll Area Below Container]
+    </div>
+
+    <div class="log-panel" id="log-panel">
+      System initialized. Ready for keyboard input.
+    </div>
+  </div>
+
+  <script>
+    const logPanel = document.getElementById('log-panel');
+    const dashboard = document.querySelector('.dashboard');
+    const cards = Array.from(dashboard.querySelectorAll('.spatial-card'));
+
+    function getFocusableCandidates(container) {
+      const focusableSelector = [
+        '[tabindex]',
+        'a[href]',
+        'button',
+        'input',
+        'select',
+        'textarea',
+        'summary',
+        '[contenteditable="true"]'
+      ].join(', ');
+
+      return Array.from(container.querySelectorAll(focusableSelector))
+        .filter(candidate => !candidate.matches(':disabled, [aria-disabled="true"]'));
+    }
+
+    function log(message) {
+      logPanel.textContent = message;
+      logPanel.scrollTop = logPanel.scrollHeight;
+    }
+
+    // Read live geometry for each keypress. Avoid a global cache because layout can
+    // change for many reasons between events.
+    function findNextSpatialFocus(currentEl, direction, candidates) {
+      const rects = new Map();
+      for (const candidate of candidates) {
+        if (candidate.checkVisibility()) {
+          rects.set(candidate, candidate.getBoundingClientRect());
+        }
+      }
+
+      const currRect = rects.get(currentEl);
+      if (!currRect) return null;
+
+      const tolerance = 2;
+      const weight = 2.5;
+      const directionalCandidates = [];
+
+      for (const candidate of candidates) {
+        if (candidate === currentEl || !rects.has(candidate)) continue;
+
+        const candidateRect = rects.get(candidate);
+        let gap;
+        let overlaps;
+        let centreOffset;
+
+        switch (direction) {
+          case 'right':
+            if (candidateRect.left < currRect.right - tolerance) continue;
+            gap = candidateRect.left - currRect.right;
+            overlaps = candidateRect.top < currRect.bottom && candidateRect.bottom > currRect.top;
+            centreOffset = Math.abs((candidateRect.top + candidateRect.bottom) / 2 - (currRect.top + currRect.bottom) / 2);
+            break;
+          case 'left':
+            if (candidateRect.right > currRect.left + tolerance) continue;
+            gap = currRect.left - candidateRect.right;
+            overlaps = candidateRect.top < currRect.bottom && candidateRect.bottom > currRect.top;
+            centreOffset = Math.abs((candidateRect.top + candidateRect.bottom) / 2 - (currRect.top + currRect.bottom) / 2);
+            break;
+          case 'down':
+            if (candidateRect.top < currRect.bottom - tolerance) continue;
+            gap = candidateRect.top - currRect.bottom;
+            overlaps = candidateRect.left < currRect.right && candidateRect.right > currRect.left;
+            centreOffset = Math.abs((candidateRect.left + candidateRect.right) / 2 - (currRect.left + currRect.right) / 2);
+            break;
+          case 'up':
+            if (candidateRect.bottom > currRect.top + tolerance) continue;
+            gap = currRect.top - candidateRect.bottom;
+            overlaps = candidateRect.left < currRect.right && candidateRect.right > currRect.left;
+            centreOffset = Math.abs((candidateRect.left + candidateRect.right) / 2 - (currRect.left + currRect.right) / 2);
+            break;
+          default:
+            continue;
+        }
+
+        directionalCandidates.push({ candidate, gap: Math.max(0, gap), overlaps, centreOffset });
+      }
+
+      const alignedCandidates = directionalCandidates.filter(({ overlaps }) => overlaps);
+      const pool = alignedCandidates.length ? alignedCandidates : directionalCandidates;
+      pool.sort((a, b) => {
+        const aScore = alignedCandidates.length ? a.gap : a.gap + weight * a.centreOffset;
+        const bScore = alignedCandidates.length ? b.gap : b.gap + weight * b.centreOffset;
+        return aScore - bScore || a.centreOffset - b.centreOffset;
+      });
+
+      return pool[0]?.candidate ?? null;
+    }
+
+    // Handle roving tabindex focus updates
+    function shiftFocus(currentEl, nextEl) {
+      cards.forEach(card => card.setAttribute('tabindex', '-1'));
+      nextEl.setAttribute('tabindex', '0');
+      nextEl.focus();
+      nextEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    function targetConsumesArrowKeys(target) {
+      return target instanceof Element && target.matches(':read-write, select, input[type="range"], [role="slider"]');
+    }
+
+    // Keyboard Event Router, scoped to this spatial widget.
+    dashboard.addEventListener('keydown', (e) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+
+      const target = e.composedPath()[0];
+      if (targetConsumesArrowKeys(target)) return;
+
+      const active = document.activeElement;
+      if (!active || !cards.includes(active)) return;
+
+      let direction = null;
+      if (e.key === 'ArrowRight') direction = 'right';
+      if (e.key === 'ArrowLeft') direction = 'left';
+      if (e.key === 'ArrowDown') direction = 'down';
+      if (e.key === 'ArrowUp') direction = 'up';
+
+      if (direction) {
+        const candidates = getFocusableCandidates(dashboard);
+        const nextEl = findNextSpatialFocus(active, direction, candidates);
+
+        if (nextEl) {
+          // Found a candidate: intercept event and shift focus
+          e.preventDefault();
+          log(`Navigated ${direction} to: ${nextEl.id}`);
+          shiftFocus(active, nextEl);
+        } else {
+          // Edge hit: allow native scrolling to occur
+          log(`Boundary reached on ${direction}. Bubbling key event to allow native window scroll.`);
+        }
+      }
+    });
+
+    // Synchronize click interactions with roving tabindex
+    cards.forEach(card => {
+      card.addEventListener('mousedown', () => {
+        cards.forEach(c => c.setAttribute('tabindex', '-1'));
+        card.setAttribute('tabindex', '0');
+        log(`Clicked: ${card.id}. Active roving index updated.`);
+      });
+    });
+  </script>
+</body>
+
+</html>
