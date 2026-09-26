@@ -75,6 +75,35 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 });
 ```
 
+## Dynamic `import()` and Post-Install `importScripts()` of New Scripts Throw
+
+Dynamic `import()` throws unconditionally in all service workers
+(`TypeError: import() is disallowed on ServiceWorkerGlobalScope by the HTML specification`). You
+cannot lazy-load code at runtime in an MV3 service worker:
+
+- **Module workers** (`"background": { "service_worker": "background.js", "type": "module" }`):
+  Declare all dependencies with static top-level `import` statements (`importScripts()` is not
+  available in module workers).
+- **Classic workers** (default): Load all scripts via top-level `importScripts()` during initial
+  install evaluation. Calling `importScripts()` with a new file inside an event handler after
+  installation throws `NetworkError: "importScripts() of new scripts after service worker installation is not allowed."`
+
+```js
+// ❌ BROKEN: dynamic import() and post-install importScripts() both throw in service workers
+chrome.runtime.onMessage.addListener(async (message) => {
+  if (message.type === 'NEEDS_HEAVY_LIB') {
+    await import('./lib/heavy.js');   // TypeError: import() is disallowed
+    importScripts('lib/heavy.js');    // NetworkError if not loaded during initial evaluation
+  }
+});
+
+// ✅ CORRECT (module worker): static top-level import
+import { useHeavyLib } from './lib/heavy.js';
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'NEEDS_HEAVY_LIB') useHeavyLib();
+});
+```
+
 ## Pattern: Keeping the SW Alive (When Necessary)
 
 Occasionally you need the SW alive for a long-running operation. Use one of:
