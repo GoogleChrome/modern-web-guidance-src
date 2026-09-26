@@ -25,7 +25,8 @@ guides/**/.last-run.json
 .env
 *.log
 dev.log
-.vscode
+.vscode/*
+!.vscode/extensions.json
 
 # OS Junk
 .DS_Store
