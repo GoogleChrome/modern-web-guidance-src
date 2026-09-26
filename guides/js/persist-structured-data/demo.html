@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IndexedDB Notes Demo</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+        color: #1a1a1a;
+        background: #fafafa;
+      }
+
+      h1 {
+        margin-bottom: 0.5rem;
+      }
+
+      .form-row {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      input[type="text"] {
+        flex: 1;
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+        border: 2px solid #ccc;
+        border-radius: 6px;
+      }
+
+      button {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #0066cc;
+        color: white;
+        font-weight: 500;
+      }
+
+      button:hover {
+        background: #0052a3;
+      }
+
+      .note-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .note-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: #fff;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      }
+
+      .note-item span {
+        flex: 1;
+      }
+
+      .note-item time {
+        font-size: 0.8rem;
+        color: #666;
+        margin: 0 1rem;
+      }
+
+      .delete-btn {
+        background: #cc3333;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+      }
+
+      .delete-btn:hover {
+        background: #aa2222;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: #888;
+        padding: 2rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Notes</h1>
+    <p>Add notes below. They persist in IndexedDB across page reloads.</p>
+
+    <div class="form-row">
+      <input type="text" id="note-input" placeholder="Write a note…" />
+      <button id="add-btn">Add</button>
+    </div>
+
+    <ul class="note-list" id="note-list"></ul>
+
+    <script>
+      const DB_NAME = "demo-notes";
+      const DB_VERSION = 1;
+      const STORE_NAME = "notes";
+
+      let db = null;
+
+      // --- IndexedDB helpers wrapped in Promises ---
+
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+          request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            if (event.oldVersion < 1) {
+              const store = database.createObjectStore(STORE_NAME, {
+                keyPath: "id",
+                autoIncrement: true,
+              });
+              store.createIndex("createdAt", "createdAt", { unique: false });
+            }
+          };
+
+          request.onsuccess = (event) => {
+            const database = event.target.result;
+
+            // Handle version changes from other tabs.
+            database.onversionchange = () => {
+              database.close();
+              db = null;
+              location.reload();
+            };
+
+            resolve(database);
+          };
+
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      async function getDb() {
+        if (!db) {
+          db = await openDatabase();
+        }
+        return db;
+      }
+
+      // Back/forward cache (bfcache) lifecycle management:
+      // Open IndexedDB connections block pages from entering bfcache.
+      window.addEventListener("pagehide", () => {
+        if (db) {
+          db.close();
+          db = null;
+        }
+      });
+
+      window.addEventListener("pageshow", async (event) => {
+        if (event.persisted) {
+          db = await openDatabase();
+          await refresh();
+        }
+      });
+
+      function addNote(database, text) {
+        return new Promise((resolve, reject) => {
+          const tx = database.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          const record = { text, createdAt: Date.now() };
+          const request = store.add(record);
+
+          let id;
+          request.onsuccess = () => {
+            id = request.result;
+          };
+
+          // Resolve on transaction complete for durable storage.
+          tx.oncomplete = () => resolve(id);
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error || new DOMException("Transaction aborted", "AbortError"));
+        });
+      }
+
+      function getAllNotes(database) {
+        return new Promise((resolve, reject) => {
+          const tx = database.transaction(STORE_NAME, "readonly");
+          const store = tx.objectStore(STORE_NAME);
+          const index = store.index("createdAt");
+          const request = index.getAll();
+          request.onsuccess = () => resolve(request.result);
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error || new DOMException("Transaction aborted", "AbortError"));
+        });
+      }
+
+      function deleteNote(database, id) {
+        return new Promise((resolve, reject) => {
+          const tx = database.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          store.delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error || new DOMException("Transaction aborted", "AbortError"));
+        });
+      }
+
+      // --- UI ---
+
+      const noteInput = document.getElementById("note-input");
+      const addBtn = document.getElementById("add-btn");
+      const noteList = document.getElementById("note-list");
+
+      function renderNotes(notes) {
+        if (notes.length === 0) {
+          noteList.innerHTML =
+            '<li class="empty-state">No notes yet. Add one above.</li>';
+          return;
+        }
+
+        noteList.innerHTML = notes
+          .map(
+            (note) => `
+          <li class="note-item" data-id="${note.id}">
+            <span>${escapeHTML(note.text)}</span>
+            <time>${new Date(note.createdAt).toLocaleString()}</time>
+            <button class="delete-btn" aria-label="Delete note">✕</button>
+          </li>`,
+          )
+          .join("");
+      }
+
+      function escapeHTML(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      async function refresh() {
+        const database = await getDb();
+        const notes = await getAllNotes(database);
+        renderNotes(notes);
+      }
+
+      addBtn.addEventListener("click", async () => {
+        const text = noteInput.value.trim();
+        if (!text) return;
+        const database = await getDb();
+        await addNote(database, text);
+        noteInput.value = "";
+        await refresh();
+      });
+
+      noteInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addBtn.click();
+      });
+
+      noteList.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".delete-btn");
+        if (!btn) return;
+        const item = btn.closest(".note-item");
+        const id = Number(item.dataset.id);
+        const database = await getDb();
+        await deleteNote(database, id);
+        await refresh();
+      });
+
+      // Initialize
+      (async () => {
+        await refresh();
+      })();
+    </script>
+  </body>
+</html>
