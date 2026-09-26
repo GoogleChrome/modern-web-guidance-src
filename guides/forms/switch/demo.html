@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Switch demo</title>
+
+    <script>
+        const root = document.documentElement;
+        root.classList.add('switch-detection-pending');
+
+        function supportsNativeSwitchRendering() {
+            const frame = document.createElement('iframe');
+            frame.setAttribute('aria-hidden', 'true');
+            frame.style.cssText =
+                'position:absolute;inline-size:0;block-size:0;border:0;visibility:hidden;';
+            root.append(frame);
+
+            try {
+                const frameDocument = frame.contentDocument;
+                frameDocument.body.innerHTML = `
+                    <input id="checkbox" type="checkbox">
+                    <input id="switch" type="checkbox" switch>
+                `;
+
+                const checkbox = frameDocument.querySelector('#checkbox');
+                const switchControl = frameDocument.querySelector('#switch');
+
+                return switchControl.offsetWidth !== checkbox.offsetWidth ||
+                    switchControl.offsetHeight !== checkbox.offsetHeight;
+            } finally {
+                frame.remove();
+            }
+        }
+
+        const supportsNativeSwitch = supportsNativeSwitchRendering();
+
+        root.classList.toggle('native-switch', supportsNativeSwitch);
+        root.classList.toggle('no-native-switch', !supportsNativeSwitch);
+        root.classList.remove('switch-detection-pending');
+    </script>
+
+    <style>
+        :root {
+            color-scheme: light dark;
+            --page-background: Canvas;
+            --surface-background: Canvas;
+            --text-color: CanvasText;
+            --muted-color: GrayText;
+            --border-color: #808080;
+            --track-off: #e5e5e5;
+            --accent-color: #1769e0;
+            --focus-color: #ff8c00;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-block-size: 100vh;
+            margin: 0;
+            padding-block: 2rem;
+            padding-inline: 1rem;
+            background: var(--page-background);
+            color: var(--text-color);
+            font-family: system-ui, sans-serif;
+            line-height: 1.5;
+        }
+
+        main {
+            inline-size: min(100%, 42rem);
+            margin-inline: auto;
+        }
+
+        .intro {
+            color: var(--muted-color);
+        }
+
+        .switches {
+            display: grid;
+            gap: 1rem;
+            margin-block: 2rem;
+            padding: 1.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            background: var(--surface-background);
+        }
+
+        .switch {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        .switch__control {
+            flex: 0 0 auto;
+        }
+
+        /* Native switch styling (WebKit / Safari) */
+        html.native-switch input[type="checkbox"][switch] {
+            accent-color: var(--accent-color);
+            inline-size: 3rem;
+            block-size: 1.75rem;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* Focus outline for both native and polyfilled controls */
+        input[type="checkbox"][switch]:focus-visible,
+        html.no-native-switch .switch:focus-within {
+            outline: 3px solid var(--focus-color);
+            outline-offset: 4px;
+        }
+
+        .switch {
+            --switch-block-size: 1.75rem;
+            --switch-inline-size: 3rem;
+            --switch-border-size: 2px;
+            --switch-thumb-size: calc(
+                var(--switch-block-size) - (2 * var(--switch-border-size))
+            );
+
+            position: relative;
+            padding-inline-end: var(--switch-inline-size);
+        }
+
+        /* Keep the checkbox as the semantic and interactive control. */
+        html.no-native-switch .switch__control {
+            position: absolute;
+            inline-size: 1px;
+            block-size: 1px;
+            margin: -1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+
+        /* The label pseudo-elements provide the fallback track and thumb. */
+        html.no-native-switch .switch::before {
+            position: absolute;
+            inset-block-start: 50%;
+            inset-inline-end: 0;
+            inline-size: var(--switch-inline-size);
+            block-size: var(--switch-block-size);
+            box-sizing: border-box;
+            border: var(--switch-border-size) solid var(--border-color);
+            border-radius: 999em;
+            background-color: var(--track-off);
+            content: "";
+            transition: background-color 150ms ease, border-color 150ms ease;
+            margin-block-start: calc(var(--switch-block-size) / -2);
+        }
+
+        html.no-native-switch .switch::after {
+            position: absolute;
+            inset-block-start: 50%;
+            inset-inline-end: calc(
+                var(--switch-inline-size) - var(--switch-border-size) - var(--switch-thumb-size)
+            );
+            inline-size: var(--switch-thumb-size);
+            block-size: var(--switch-thumb-size);
+            box-sizing: border-box;
+            border: var(--switch-border-size) solid var(--border-color);
+            border-radius: 50%;
+            background-color: Canvas;
+            box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+            content: "";
+            transition: inset-inline-end 150ms ease, border-color 150ms ease;
+            margin-block-start: calc(var(--switch-thumb-size) / -2);
+        }
+
+        html.no-native-switch .switch:has(.switch__control:checked)::before {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        html.no-native-switch .switch:has(.switch__control:checked)::after {
+            inset-inline-end: var(--switch-border-size);
+            border-color: var(--accent-color);
+        }
+
+        html.switch-detection-pending .switch__control,
+        html.switch-detection-pending .switch::before,
+        html.switch-detection-pending .switch::after {
+            visibility: hidden;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html.no-native-switch .switch::before,
+            html.no-native-switch .switch::after {
+                transition: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Switch demo</h1>
+
+        <p class="intro">
+            This example uses a standard checkbox with the HTML <code>switch</code> attribute,
+            JavaScript feature detection, and a concise CSS polyfill for browsers lacking native support.
+        </p>
+
+        <section class="switches" aria-labelledby="switches-heading">
+            <h2 id="switches-heading">Preferences</h2>
+
+            <label class="switch">
+                Enable notifications
+                <input
+                    class="switch__control"
+                    id="notifications"
+                    type="checkbox"
+                    switch
+                >
+            </label>
+        </section>
+    </main>
+
+    <script>
+        const toggle = document.querySelector('#notifications');
+
+        toggle.addEventListener('change', () => {
+            console.log('Switch state:', toggle.checked);
+        });
+    </script>
+</body>
+</html>
