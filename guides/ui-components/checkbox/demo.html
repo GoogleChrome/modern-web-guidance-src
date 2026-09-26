@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern Custom Checkboxes</title>
+
+  <style>
+    :root {
+      --brand-primary: #1a73e8;
+      --brand-primary-hover: #1557b0;
+      --brand-danger: #b00020;
+      --border-color: #74777f;
+      --border-color-hover: #43474e;
+      --background-color: #ffffff;
+      --background-disabled: #e1e2e4;
+      --text-color: #1f1f1f;
+      --text-disabled: #8e9196;
+
+      /* Reusable SVG assets */
+      --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
+      --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: var(--text-color);
+      background-color: #fcfcfd;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      font-size: 1.75rem;
+    }
+
+    .subtitle {
+      margin-bottom: 2rem;
+      color: #5e6064;
+    }
+
+    section {
+      margin-bottom: 1.5rem;
+      padding: 1.5rem;
+      background-color: var(--background-color);
+      border: 1px solid #e1e2e4;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: #303133;
+      font-size: 1.2rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    /*
+     * The label provides a larger interactive target while the checkbox
+     * retains its intended visual size.
+     */
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      min-block-size: 44px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    label.disabled {
+      color: var(--text-disabled);
+      cursor: not-allowed;
+    }
+
+    /*
+     * Native styling with accent-color.
+     *
+     * Avoid very light accent colours because some browsers, including
+     * Safari, may retain a light checkmark with insufficient contrast.
+     */
+    .native-checkbox {
+      inline-size: 1.25em;
+      aspect-ratio: 1;
+      margin: 0;
+      accent-color: var(--brand-primary);
+      cursor: pointer;
+    }
+
+    .native-checkbox:disabled {
+      cursor: not-allowed;
+    }
+
+    /*
+     * Custom styling with appearance: none.
+     *
+     * Explicit relative sizes are needed because appearance: none removes
+     * the browser's default dimensions. The smaller icon leaves space for
+     * the border and visual padding.
+     */
+    .custom-checkbox {
+      --checkbox-size: 1.25em;
+      --checkbox-icon-size: 0.7em;
+
+      appearance: none;
+      display: inline-grid;
+      flex-shrink: 0;
+      place-content: center;
+      inline-size: var(--checkbox-size);
+      aspect-ratio: 1;
+      margin: 0;
+      color: var(--text-color);
+      background-color: var(--background-color);
+      border: 2px solid var(--border-color);
+      border-radius: 4px;
+      cursor: pointer;
+      outline: 2px solid transparent;
+      outline-offset: 2px;
+      transition:
+        border-color 150ms ease,
+        background-color 150ms ease,
+        color 150ms ease;
+    }
+
+    .custom-checkbox:hover:not(:disabled) {
+      border-color: var(--border-color-hover);
+    }
+
+    .custom-checkbox:focus-visible {
+      outline-color: var(--brand-primary);
+    }
+
+    .custom-checkbox::before {
+      content: "";
+      inline-size: var(--checkbox-icon-size);
+      aspect-ratio: 1;
+      background-color: currentColor;
+      mask: var(--checkbox-icon) no-repeat center / contain;
+      scale: 0;
+      transition: scale 150ms cubic-bezier(0.12, 0.8, 0.32, 1.2);
+    }
+
+    .custom-checkbox:checked {
+      --checkbox-icon: var(--icon-check);
+
+      color: #ffffff;
+      background-color: var(--brand-primary);
+      border-color: var(--brand-primary);
+    }
+
+    .custom-checkbox:checked::before {
+      scale: 1;
+    }
+
+    .custom-checkbox:indeterminate {
+      --checkbox-icon: var(--icon-dash);
+
+      color: #ffffff;
+      background-color: var(--brand-primary);
+      border-color: var(--brand-primary);
+    }
+
+    .custom-checkbox:indeterminate::before {
+      scale: 1;
+    }
+
+    .custom-checkbox:disabled {
+      color: var(--text-disabled);
+      background-color: var(--background-disabled);
+      border-color: var(--text-disabled);
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .custom-checkbox--danger:checked,
+    .custom-checkbox--danger:indeterminate {
+      background-color: var(--brand-danger);
+      border-color: var(--brand-danger);
+    }
+
+    .demo-controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .button {
+      padding: 0.5rem 1rem;
+      color: #ffffff;
+      font: inherit;
+      font-size: 0.9rem;
+      background-color: #303133;
+      border: 0;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background-color: #43474e;
+    }
+
+    .button:focus-visible {
+      outline: 2px solid var(--brand-primary);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Modern CSS Checkbox Design</h1>
+    <p class="subtitle">
+      Style checkboxes with <code>accent-color</code> and
+      <code>appearance: none</code> while preserving native functionality
+      and accessibility.
+    </p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Native checkboxes with <code>accent-color</code></h2>
+
+      <div class="form-group">
+        <label>
+          <input type="checkbox" class="native-checkbox" checked />
+          Native checkbox
+        </label>
+
+        <label>
+          <input type="checkbox" id="native-indeterminate" class="native-checkbox" />
+          Native checkbox in the indeterminate state
+        </label>
+
+        <label class="disabled">
+          <input type="checkbox" class="native-checkbox" checked disabled />
+          Native checkbox, disabled and checked
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Custom checkboxes with <code>appearance: none</code></h2>
+
+      <div class="form-group">
+        <label>
+          <input type="checkbox" class="custom-checkbox" checked />
+          Custom checkbox
+        </label>
+
+        <label>
+          <input type="checkbox" id="custom-indeterminate" class="custom-checkbox" />
+          Custom checkbox in the indeterminate state
+        </label>
+
+        <label class="disabled">
+          <input type="checkbox" class="custom-checkbox" checked disabled />
+          Custom checkbox, disabled and checked
+        </label>
+
+        <label>
+          <input type="checkbox" class="custom-checkbox custom-checkbox--danger" checked />
+          Custom checkbox with a danger colour
+        </label>
+      </div>
+
+      <div class="demo-controls">
+        <button class="button" id="toggle-indeterminate" type="button">
+          Toggle indeterminate states
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /*
+     * The indeterminate state cannot be set with an HTML attribute.
+     * It must be set programmatically.
+     */
+    const nativeIndeterminate = document.querySelector(
+      "#native-indeterminate"
+    );
+
+    const customIndeterminate = document.querySelector(
+      "#custom-indeterminate"
+    );
+
+    const toggleButton = document.querySelector(
+      "#toggle-indeterminate"
+    );
+
+    nativeIndeterminate.indeterminate = true;
+    customIndeterminate.indeterminate = true;
+
+    toggleButton.addEventListener("click", () => {
+      const nextState = !nativeIndeterminate.indeterminate;
+
+      nativeIndeterminate.indeterminate = nextState;
+      customIndeterminate.indeterminate = nextState;
+    });
+  </script>
+</body>
+
+</html>
