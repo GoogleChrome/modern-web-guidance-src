@@ -140,7 +140,7 @@ const SUPPORTS_PAGE_MARGINS = Boolean(sheet.cssRules[0]?.cssRules[0]);
 ```
 
 IMPORTANT:
-- When using JS to detect support for CSS features, apply a class to the root element and branch off that instead of applying the styles from JavaScript directly.
+- When using JS to detect support for CSS features, do NOT apply the styles from JS directly. Instead, apply a class to the root element and branch off that in CSS.
 - Do note that container queries are parsed even if the prelude is not recognized, and there is no way to detect support for certain types of container queries from the CSSOM structure.
 - Do NOT use `CSS.registerProperty` to detect support for `@property` as its support is slightly broader.
 
