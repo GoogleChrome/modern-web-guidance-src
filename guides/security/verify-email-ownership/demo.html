@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Email Verification Relying Party Demo</title>
+</head>
+<body>
+  <form method="POST" action="/api/verify-email" id="verify-form">
+    <label for="email">Email address</label>
+    <input
+      type="email"
+      id="email"
+      name="email"
+      autocomplete="email"
+      required
+    >
+
+    <!-- The nonce value must be freshly generated on the server per form render. -->
+    <input
+      type="hidden"
+      name="token"
+      nonce="SERVER_GENERATED_PER_FORM_NONCE"
+      autocomplete="email-verification-token"
+    >
+
+    <button type="submit" id="submit-btn">Continue</button>
+  </form>
+
+  <script type="module">
+    const form = document.getElementById('verify-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', () => {
+      submitBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>

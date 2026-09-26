@@ -1,0 +1,8 @@
+- The verification form includes an `<input type="email">` with `autocomplete="email"` and a sibling `<input type="hidden">` with `autocomplete="email-verification-token"` and a non-empty `nonce` attribute inside the same `<form>`.
+- The server generates a fresh, single-use cryptographic `nonce` per form render and prevents reuse of stale cached forms with already-consumed nonces (for example, by serving the form page with `Cache-Control: no-store` rather than re-enabling a previously submitted form on `pageshow`).
+- All cryptographic token validation is executed strictly on the server—never in client-side JavaScript.
+- The server-side verification logic uses established platform SD-JWT and JOSE/JWT libraries (such as `@sd-jwt/core` and `jose` on Node.js) to parse and validate the SD-JWT format rather than hand-rolling custom JWT/SD-JWT parsing or signature verification code.
+- The server-side verification logic consumes the session nonce immediately upon receipt to prevent replay attacks and verifies that the token's `email` claim matches the submitted email address case-insensitively.
+- The server-side verification logic validates DNS `TXT` delegation at `_email-verification.<domain>` and confirms the derived `https://<issuer-host>` origin matches the token's `iss` claim byte-for-byte.
+- When verifying the issuer signature against the JWKS, if the token header omits `kid`, the verifier iterates through all keys in the JWKS rather than failing key lookup.
+- When no token is submitted or when token verification fails, the implementation falls back gracefully to a standard email OTP or magic link verification flow without blocking the user.
