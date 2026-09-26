@@ -57,30 +57,3 @@ The start and end delay for an interest invoker (i.e. the element with the `inte
 ### Fallback strategies
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
-
-Interest invokers must be conditionally polyfilled using the `interestfor` polyfill package from NPM. Do prefer bundling the polyfill over using the CDN.
-
-```html
-<script type="module">
-  if(!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")){
-    // CDN link only used for example, prefer bundling.
-    await import("https://unpkg.com/interestfor@latest");
-  }
-</script>
-```
-
-When using the polyfill the CSS API changes slightly for the `:interest-source` and `:interest-target` pseudo-classes, as well as, the `interest-delay`, `interest-delay-start`, and `interest-delay-end` properties:
-
-```css
-/* Styles to apply when the effect is being previewed */
-:is(:interest-source, .interest-source) {}
-:is(:interest-target, .interest-target) {}
-
-/* Adjust the start and end delay for interest invokers */
-[interestfor] {
-  --interest-delay-start: 0.2s;
-  interest-delay-start: var(--interest-delay-start);
-  --interest-delay-end: 0.1s;
-  interest-delay-end: var(--interest-delay-end);
-}
-```
