@@ -9,6 +9,7 @@
     "issue": "https://github.com/web-platform-dx/web-features/issues/4029"
   },
   "tmp-scroll-axis-lock": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4213"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4213",
+    "group": "scrolling"
   }
 }
