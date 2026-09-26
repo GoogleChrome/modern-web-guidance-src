@@ -25,6 +25,7 @@
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
     "tmp-cross-origin-storage": "tomayac",
+    "tmp-scroll-axis-lock": "bramus",
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {
