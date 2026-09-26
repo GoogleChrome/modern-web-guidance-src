@@ -1,0 +1,16 @@
+- **MANDATORY**: The draggable element MUST use a viewport-relative positioning model such as `position: fixed` when its movement is clamped to the viewport.
+- **MANDATORY**: A dedicated drag handle MUST use `user-select: none` (with vendor prefixes when needed for the support target) to prevent text highlighting during the drag gesture. Non-handle content MUST remain selectable.
+- **MANDATORY**: The drag handle MUST define `touch-action: none` so touch gestures that begin on it do not compete with custom dragging.
+- **MANDATORY**: Repositioning coordinates MUST preserve the pointer offset from the element's top-left corner calculated on pointer down so the element does not jump on grab.
+- **MANDATORY**: Drag coordinates MUST be clamped to viewport limits so the element cannot be moved fully off-screen.
+- **MANDATORY**: The drag sequence MUST remain active after the pointer leaves the handle, using pointer capture on the handle or `pointermove`, `pointerup`, and `pointercancel` listeners on `document` or `window`.
+- **MANDATORY**: Interactive controls inside the draggable element MUST remain functional, and activating them MUST NOT start a drag.
+- **MANDATORY**: The drag handle MUST be keyboard-focusable without using `role="application"`.
+- **MANDATORY**: The element MUST be repositionable with keyboard arrow keys when the drag handle is focused, using the same viewport constraints as pointer movement.
+- **MANDATORY WHEN DRAGGING ONLY REPOSITIONS A COMPONENT**: Treat dragging as progressive enhancement: without JavaScript, the element, its content, and its controls remain visible, readable, and functional in a sensible default position.
+- **MANDATORY WHEN DRAGGING IS ESSENTIAL TO THE EXPERIENCE**: Provide the required pointer and keyboard interactions; do not present a non-draggable fallback as equivalent behavior.
+- **MANDATORY**: A draggable `<dialog>` or `[popover]` implementation MUST set `margin: 0` before assigning `left` and `top`, but the generic draggable-element implementation MUST NOT require either control.
+- **MANDATORY**: A pointerdown with a non-primary button MUST NOT start a drag.
+- **OPTIONAL**: Delay entering the dragging state until the pointer has moved a small threshold, such as 4px, so a click does not trigger drag styling. Remove the state on `lostpointercapture`.
+- **OPTIONAL**: For layout-heavy elements, use a translation during the drag to avoid per-frame layout, then commit the final position to `left` and `top` on release.
+- **OPTIONAL**: A visual grab indicator (such as transitioning from `cursor: grab` to `cursor: grabbing` on drag) communicates drag state.
