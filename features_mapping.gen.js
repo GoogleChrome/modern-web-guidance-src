@@ -448,6 +448,9 @@ window.__featuresMapping = {
     "popover",
     "dialog"
   ],
+  "diagonal-panning": [
+    "tmp-scroll-axis-lock"
+  ],
   "directional-navigation-transitions": [
     "view-transitions",
     "active-view-transition"
