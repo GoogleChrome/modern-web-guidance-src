@@ -107,7 +107,7 @@ canvas.onpaint = (event) => {
 };
 ```
 
-6. Update the CSS transform.
+5. Update the CSS transform.
 
 The browser needs to map from the 3D coordinate space into the CSS coordinate space using a viewport transform. To facilitate this, do the following:
 
@@ -155,7 +155,7 @@ if (canvas.getElementTransform) {
 }
 ```
 
-7. [Troubleshooting] If the developer is experiencing a mismatch in the DOM logical layout in 3D even after applying the CSS transform from step 5, check if the developer is experiencing the issue in Chromium 148 or earlier. If that's the case, check if `transform.is2D` is correctly set to false for a 3D DOMMatrix. If not, re-initialize the DOMMatrix which corrects `is2D` to be false before applying the transform to the target HTML element. This issue is fixed in Chromium 149+, and if the developer is experiencing it in newer Chromium versions, the is2D value is not the cause:
+6. [Troubleshooting] If the developer is experiencing a mismatch in the DOM logical layout in 3D even after applying the CSS transform from step 5, check if the developer is experiencing the issue in Chromium 148 or earlier. If that's the case, check if `transform.is2D` is correctly set to false for a 3D DOMMatrix. If not, re-initialize the DOMMatrix which corrects `is2D` to be false before applying the transform to the target HTML element. This issue is fixed in Chromium 149+, and if the developer is experiencing it in newer Chromium versions, the is2D value is not the cause:
 
 ```js
 if (transform.is2D) {
@@ -355,7 +355,7 @@ function animate() {
 - **MANDATORY**: Check browser support for the HTML-in-Canvas API before using it.
 - **MANDATORY**: When using WebGL or WebGPU, always add the `layoutsubtree` attribute to the `<canvas>` element.
 - **MANDATORY**: When using WebGL or WebGPU, use an `onpaint` event handler to render the HTML content to the canvas.
-- **MANDATORY**: Use the `texElementImage2D` for WebGL, or `copyElementImageToTexture` for WebGPU methods to render the HTML content to the canvas.
+- **MANDATORY**: When using WebGL or WebGPU, use `texElementImage2D` for WebGL, or `copyElementImageToTexture` for WebGPU, to render the HTML content to the canvas.
 - **MANDATORY**: When using WebGL or WebGPU, update the CSS transform of the HTML element to match the transform of the rendered content by setting the `style.transform` property of the HTML element.
 - **MANDATORY**: Observe the screen size and update the canvas size to match device pixels, for example, by using `ResizeObserver`.
 - **DO NOT** embed cross-origin content in a canvas, as it is not supported.
