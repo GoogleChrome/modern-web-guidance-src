@@ -74,6 +74,9 @@ jobs:
         run: |
           pnpm update --recursive web-features
 
+      - name: Regenerate feature-to-groups cache for ATL triage
+        run: node --experimental-strip-types guides/generate-feature-to-groups.ts
+
       - name: Validate repository guide impact after web-features bump
         id: validate-web-feature-update
         continue-on-error: true

@@ -1054,6 +1054,9 @@
   "time-relative-selectors": [
     "css"
   ],
+  "tmp-scroll-axis-lock": [
+    "scrolling"
+  ],
   "transforms2d": [
     "css"
   ],
@@ -1112,6 +1115,72 @@
   ],
   "visibility": [
     "css"
+  ],
+  "wasm": [
+    "webassembly"
+  ],
+  "wasm-bigint": [
+    "webassembly"
+  ],
+  "wasm-branch-hinting": [
+    "webassembly"
+  ],
+  "wasm-bulk-memory": [
+    "webassembly"
+  ],
+  "wasm-exception-handling": [
+    "webassembly"
+  ],
+  "wasm-exnref-exceptions": [
+    "webassembly"
+  ],
+  "wasm-extended-constant-expressions": [
+    "webassembly"
+  ],
+  "wasm-garbage-collection": [
+    "webassembly"
+  ],
+  "wasm-jspi": [
+    "webassembly"
+  ],
+  "wasm-memory64": [
+    "webassembly"
+  ],
+  "wasm-multi-memory": [
+    "webassembly"
+  ],
+  "wasm-multi-value": [
+    "webassembly"
+  ],
+  "wasm-mutable-globals": [
+    "webassembly"
+  ],
+  "wasm-non-trapping-float-to-int": [
+    "webassembly"
+  ],
+  "wasm-reference-types": [
+    "webassembly"
+  ],
+  "wasm-sign-extension-operators": [
+    "webassembly"
+  ],
+  "wasm-simd": [
+    "webassembly"
+  ],
+  "wasm-simd-relaxed": [
+    "webassembly"
+  ],
+  "wasm-string-builtins": [
+    "webassembly"
+  ],
+  "wasm-tail-call-optimization": [
+    "webassembly"
+  ],
+  "wasm-threads": [
+    "webassembly"
+  ],
+  "wasm-typed-fun-refs": [
+    "webassembly"
   ],
   "web-animations": [
     "animation"
