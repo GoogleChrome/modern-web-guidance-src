@@ -544,6 +544,9 @@ window.__featuresMapping = {
     "invoker-commands",
     "view-transitions"
   ],
+  "spatial-navigation": [
+    "scroll-into-view"
+  ],
   "swipe-to-remove": [
     "scroll-snap",
     "scroll-initial-target",
