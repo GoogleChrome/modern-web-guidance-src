@@ -34,6 +34,7 @@
     "transitions": "bramus",
     "view-transitions": "bramus",
     "webassembly": "sbc100",
-    "webauthn": "agektmr"
+    "webauthn": "agektmr",
+    "security": "rowan-m"
   }
 }
