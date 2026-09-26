@@ -1,0 +1,3 @@
+- Elements that use `content-visibility: auto` should set intrinsic sizes for their content to avoid instability when scrolling.
+- For layouts that are one-dimensional, only the intrinsic size of the relevant direction must be provided.
+- Prefer the logical variants `contain-intrinsic-block-size` and `contain-intrinsic-inline-size` when logical properties are in use for the element and its context.
