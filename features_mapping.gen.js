@@ -173,6 +173,9 @@ window.__featuresMapping = {
   "form-associated-custom-elements": [
     "form-associated-custom-elements"
   ],
+  "html-markers": [
+    "html-processing-instructions"
+  ],
   "prerendering-custom-elements": [
     "declarative-shadow-dom"
   ],
@@ -306,7 +309,8 @@ window.__featuresMapping = {
   "out-of-order-html-streaming": [
     "template-for",
     "html-setters",
-    "html-streaming-setters"
+    "html-streaming-setters",
+    "html-processing-instructions"
   ],
   "resolution-optimized-pseudo-elements": [
     "image-set"
