@@ -144,3 +144,5 @@ await response
 {{ BASELINE_STATUS("html-processing-instructions") }}
 
 You can use polyfills like `template-for-polyfill` and `html-setters-polyfill` to emulate the API surface for non-supporting browsers.
+
+Browsers without `html-processing-instructions` support parse `<?marker>`, `<?start>`, and `<?end>` as comments. `template-for-polyfill` still recognizes these comments as markers, so keep the same processing instruction syntax for all browsers. Do not rewrite the markers as HTML comments or elements for non-supporting browsers.
