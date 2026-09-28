@@ -11,9 +11,16 @@ guides:
 
 # Build a Card
 
-A card is a visual pattern, not a fixed semantic or interaction model. Use it
-for content such as articles, products, profiles, status summaries, and saved
-items. Choose semantics from the card's purpose:
+## Overview
+
+A card groups one related piece of content or one choice. It is a visual pattern,
+not a fixed semantic or interaction model. The implementation must preserve the
+content's meaning, use the native interaction that matches its purpose, and remain
+usable when optional styling or layout enhancements are unavailable.
+
+## Guidelines
+
+Choose semantics from the card's purpose:
 
 - use an `article` for independently understandable content;
 - use one native link when the whole card is one destination;
@@ -21,52 +28,21 @@ items. Choose semantics from the card's purpose:
 - use labelled radios or checkboxes when cards represent choices;
 - use a native `select` when the interaction is a select.
 
-Keep the source order meaningful: media, title, supporting content, then related
-actions. For semantics and focus treatment, see
-{{ GUIDE_REF("accessibility") }}.
+Keep media, title, supporting content, and actions in meaningful source order.
+Optional media, metadata, and actions must not make the remaining content
+ambiguous. Do not duplicate markup or use CSS `order` to contradict source order;
+see {{ GUIDE_REF("css-layout") }}.
 
-## Adapt to the card's placement
+## Implementation
 
-Cards commonly appear in a main-content grid, narrow sidebar, and compact
-related-content area. Make the card respond to the width available to its slot,
-not to the viewport. For container-query setup and sizing strategy, see
-{{ GUIDE_REF("size-aware-styling") }}.
+Start with a complete stacked layout. Adapt the card to its allocated inline size,
+not the viewport, when it appears in grids, sidebars, or other variable-width
+layouts. A media card may place media beside its content when there is enough
+space; a card without media must remain complete without special markup.
 
-Put the query container on a wrapper around the card when a query needs to alter
-the card's own layout. A container cannot query itself, so the wrapper lets the
-card change from a stacked presentation to a media-and-content layout.
-
-### Align cards in a grid
-
-Let the parent grid control columns and gaps. Align corresponding regions, such
-as titles, descriptions, and actions, only when that improves comparison; do not
-force every card to the same height when content should remain natural.
-
-Use `subgrid` when cards need shared internal tracks:
-
-```css
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-}
-
-.card {
-  display: grid;
-  grid-row: span 3;
-  grid-template-rows: subgrid;
-}
-```
-
-Keep the card's DOM order meaningful and align actions through layout rather than
-moving them with CSS `order`. See {{ GUIDE_REF("css-layout") }}.
-
-### Card composition
-
-Place the `article` inside a wrapper that represents the card's allocated layout
-space. Make that wrapper the query container: a container cannot query its own
-inline size, so the wrapper lets the card adapt to the width available in its
-parent layout. Make the heading link to the primary destination, and keep
-secondary actions separate from that link:
+Put the query container on a wrapper around the card when the card's own layout
+needs to respond to that space. A card cannot query its own size. For the
+container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
 
 ```html
 <div class="card-container">
@@ -76,7 +52,7 @@ secondary actions separate from that link:
       <h3><a href="/recipes/poached-eggs">Poached eggs</a></h3>
       <p>Breakfast special</p>
     </hgroup>
-    <p>Two poached eggs served on toasted sourdough with microgreens.</p>
+    <p>Two poached eggs served on toasted sourdough.</p>
     <footer>
       <button>Favorite</button>
       <a href="/recipes/poached-eggs">View recipe</a>
@@ -85,105 +61,62 @@ secondary actions separate from that link:
 </div>
 ```
 
-### Support common card variations
+The example shows a card with a primary destination and independent actions. A
+card may instead include a badge or metadata in its header, a hero image, or a
+footer containing a price and actions. Keep each region optional where the
+content allows it, and use layout rather than duplicated markup to arrange them.
 
-Keep optional regions in the same meaningful order. A card may include a badge or
-metadata in its header, a hero image before the content, and actions in its
-footer. Use layout to align regions; do not duplicate markup or move content with
-CSS `order`.
+Constrain media to an intentional size or aspect ratio and avoid distortion. An
+informative image needs an appropriate text alternative; decorative media should
+use an empty alternative. A hero image may be decorative when the adjacent title
+already communicates the same information.
 
-```html
-<article class="card">
-  <header>
-    <span class="badge">Featured</span>
-    <h3><a href="/products/example">Product name</a></h3>
-    <p>Category · 4.8 stars</p>
-  </header>
-  <img src="product.jpg" alt="">
-  <p>Short description of the product.</p>
-  <footer>
-    <span>£24</span>
-    <button>Add to basket</button>
-  </footer>
-</article>
-```
+### Align cards in a grid
 
-The header, media, supporting content, and footer should each remain optional
-without making the remaining content ambiguous. Keep hero media decorative when
-it adds no information beyond the text; otherwise provide an appropriate
-alternative. Align footer actions consistently across a group only when that
-helps comparison, and keep every action independently operable.
+Let the parent grid control columns and gaps. Align corresponding regions, such
+as titles, descriptions, or actions, only when that improves comparison. Do not
+force equal heights when natural content height is more appropriate.
 
-### Card layout
-
-Start with a complete stacked layout that works at every card width. Cards may
-appear in grid columns, sidebars, or related-content areas, so use the card's
-allocated inline size rather than the viewport to decide when to change its
-layout. For the container-query pattern, see
-{{ GUIDE_REF("size-aware-styling") }}.
-
-When the card's container is wide enough, a card that has media may place that
-media beside its title, supporting content, and actions. Keep the media and
-content in a meaningful DOM order, and do not require a separate component or
-special markup when media is absent.
-
-Use `:has()` only when the presence or absence of content changes the card's
-presentation. For example, the wider layout can apply only to cards containing
-direct media, while a text-only card can style its heading region differently:
+When cards need shared internal tracks, `subgrid` can align them without changing
+source order:
 
 ```css
-.card:not(:has(> :is(img, picture, svg))) > hgroup {
-  background: #17202a;
-  color: #fff;
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-rows: repeat(3, auto);
+}
+
+.card {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
 }
 ```
 
-Keep the default presentation complete and readable, and ensure links and focus
-indicators remain distinguishable against the new background. Do not use `:has()`
-when an ordinary class, element selector, or unconditional layout rule expresses
-the requirement more clearly. See
-{{ GUIDE_REF("content-based-styling") }}.
+Use `:has()` only when the card's content changes its presentation, such as when
+media changes the layout or a text-only card receives a different treatment. Do
+not use it when a class, element selector, or unconditional rule expresses the
+requirement more clearly. See {{ GUIDE_REF("content-based-styling") }}.
 
-Keep media within a deliberate aspect ratio or size constraint and use
-non-distorting cropping where appropriate. Ensure that the resulting layout
-does not hide, overlap, or reorder the card's title, supporting content, or
-actions.
+## Interaction models
 
-The card's layout should preserve the source order used in the composition
-example:
-
-1. media, when present;
-2. title and supporting content;
-3. related actions.
-
-Do not use CSS `order` to create a visual sequence that differs from the DOM
-sequence. See {{ GUIDE_REF("css-layout") }}.
-
-The card's focus treatment should provide context while each focused link or
-control retains its own visible focus indicator. For focus appearance and
-control semantics, see {{ GUIDE_REF("accessibility") }}.
-
-
-## Choose semantics for the card's interaction model
-
-When a card represents one destination and has no independent actions, it may be
-one native link. Do not nest other links, buttons, or form controls inside it:
+When the card is one destination and has no independent actions, it may be one
+native link. Do not nest links, buttons, or form controls inside it:
 
 ```html
 <a class="card" href="/recipes/poached-eggs">
-  <img src="recipe.jpg" alt="">
   <h3>Poached eggs</h3>
   <p>Two poached eggs served on toasted sourdough.</p>
 </a>
 ```
 
-When a card has independent actions, link its title to the primary destination
-and keep secondary actions as separate native links or buttons. Preserve the DOM
-sequence rather than using CSS `order`; see {{ GUIDE_REF("css-layout") }}.
+When a card has a primary destination and independent actions, link the title to
+the destination and keep the other links or buttons separate. Each action must
+remain independently operable.
 
-When cards represent choices, use native form controls and style their labels as
-cards. Use radios for one choice, checkboxes for independent choices, and a
-native `select` when the interaction is a select:
+When cards represent choices, style their native controls and labels as cards.
+Use radios for one choice and checkboxes for independent choices:
 
 ```html
 <fieldset class="option-cards">
@@ -199,6 +132,25 @@ native `select` when the interaction is a select:
 </fieldset>
 ```
 
-Do not replace links, buttons, or form controls with clickable `div` or `article`
-elements. Keep native controls keyboard-operable and preserve visible focus;
+Use a native `select` when the interaction is a select; do not represent its
+options as arbitrary card markup. Use a button when selecting a card performs an
+immediate action rather than setting form state.
+
+## Accessibility
+
+Keep native links, buttons, and form controls keyboard-operable, with accessible
+names and visible focus indicators. A card-level focus treatment may provide
+context, but must not replace the focused link or control's own indicator.
+
+Preserve the reading order when changing the visual layout. Do not make the card
+or its actions depend on hover, pointer input, colour alone, or a visual icon
+without an accessible name. For related semantic, focus, and control guidance,
 see {{ GUIDE_REF("accessibility") }}.
+
+## Fallback strategies
+
+Without container queries or `:has()`, the semantic HTML and stacked layout must
+remain usable. Do not make enhanced layout or styling necessary for the card's
+content or interaction. If a card's enhanced presentation depends on `:has()`,
+provide the same essential content and interaction through the default structure
+rather than requiring a script-only replacement.
