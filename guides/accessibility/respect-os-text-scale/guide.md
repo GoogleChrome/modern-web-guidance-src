@@ -70,16 +70,27 @@ When text scales up, elements require more vertical and horizontal space to prev
 
 ### 4. DO NOT Override the Root Font Size
 
-When opting in via the `<meta>` tag, **DO NOT** manually multiply or calculate the root font-size in your stylesheet using custom system environment properties:
+When opting in via the `<meta name="text-scale" content="scale">` element, **DO NOT** explicitly set the root `font-size` in your stylesheet. This includes declarations on either `:root` or `html`, and applies to absolute units, relative units, and calculated values.
+
+For example, do not override the root font size with a fixed value:
 
 ```css
-/* ❌ DO NOT DO THIS: This overrides native behavior and triggers double-scaling */
+/* ❌ DO NOT DO THIS: This can prevent the browser from applying text scaling */
+html {
+  font-size: 16px;
+}
+```
+
+Also avoid manually multiplying or calculating the root font size using custom system environment properties:
+
+```css
+/* ❌ DO NOT DO THIS: This overrides native behavior and can trigger double-scaling */
 :root {
   font-size: calc(1rem * env(preferred-text-scale));
 }
 ```
 
-Leave `:root` at its default. The browser handles the scale injection automatically and safely.
+Leave the root font size to the browser. The browser handles the operating system text scale automatically and applies it to content sized relative to the root font size.
 
 ## Fallback Strategies
 
