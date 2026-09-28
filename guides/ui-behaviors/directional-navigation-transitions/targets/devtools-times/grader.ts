@@ -9,488 +9,328 @@ import {
   CSSKeyframesRule,
   CSSKeyframeRule,
   CSSMediaRule,
-  type CSSStyleSheet,
   type CSSRule,
-  type CSSRuleList,
 } from 'cssomnom';
+import type { Page } from '@playwright/test';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getAllStyleRules(rules: CSSRuleList | CSSRule[]): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
+// --- CSS helpers ---
+
+const REDUCED_MOTION = /prefers-reduced-motion\s*:\s*reduce/i;
+
+/**
+ * Flattens every rule in the sheet, descending into any grouping rule
+ * (@media, @layer, @supports, …) but not into @keyframes.
+ * When `skipReducedMotion` is set, rules inside `prefers-reduced-motion: reduce`
+ * blocks are omitted (so `animation: none` overrides don't mask the real settings).
+ */
+function flattenRules(rules: Iterable<CSSRule>, skipReducedMotion = false): CSSRule[] {
+  const out: CSSRule[] = [];
   for (const rule of Array.from(rules)) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
+    if (skipReducedMotion && rule instanceof CSSMediaRule && REDUCED_MOTION.test(rule.conditionText)) {
+      continue;
     }
-    if ('cssRules' in rule && rule.cssRules && !(rule instanceof CSSKeyframesRule)) {
-      result.push(...getAllStyleRules(rule.cssRules as CSSRuleList));
+    out.push(rule);
+    if (!(rule instanceof CSSKeyframesRule) && 'cssRules' in rule && (rule as any).cssRules) {
+      out.push(...flattenRules((rule as any).cssRules, skipReducedMotion));
     }
   }
-  return result;
+  return out;
 }
 
-function getKeyframeRules(stylesheet: CSSStyleSheet): CSSKeyframesRule[] {
-  return Array.from(stylesheet.cssRules).filter(
-    (r): r is CSSKeyframesRule => r instanceof CSSKeyframesRule
+function getRules(skipReducedMotion = false) {
+  const all = flattenRules(getCssStyleSheet(targetFiles).cssRules, skipReducedMotion);
+  return {
+    styleRules: all.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule),
+    keyframes: all.filter((r): r is CSSKeyframesRule => r instanceof CSSKeyframesRule),
+    mediaRules: all.filter((r): r is CSSMediaRule => r instanceof CSSMediaRule),
+  };
+}
+
+/** Splits on `sep` while ignoring separators nested inside parentheses. */
+function splitTopLevel(value: string, sep: RegExp): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of value) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (depth === 0 && sep.test(ch)) {
+      if (current.trim()) parts.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+const splitLayers = (v: string) => splitTopLevel(v, /,/);
+const splitTokens = (v: string) => splitTopLevel(v, /\s/);
+
+function getAnimationNames(rule: CSSStyleRule, keyframeNames: Set<string>): string[] {
+  const longhand = rule.style.getPropertyValue('animation-name');
+  if (longhand.trim()) return splitLayers(longhand);
+  const shorthand = rule.style.getPropertyValue('animation');
+  return splitLayers(shorthand)
+    .flatMap(splitTokens)
+    .filter((t) => keyframeNames.has(t));
+}
+
+/** Keyframes referenced by `:active-view-transition-type(<type>)::view-transition-<pseudo>(root)`. */
+function findDirectionalKeyframes(
+  type: 'forward' | 'backward',
+  pseudo: 'old' | 'new',
+): CSSKeyframesRule[] {
+  const { styleRules, keyframes } = getRules(true);
+  const typeRe = new RegExp(`:active-view-transition-type\\([^)]*\\b${type}\\b[^)]*\\)`, 'i');
+  const pseudoRe = new RegExp(`::view-transition-${pseudo}\\(\\s*(root|\\*)\\s*\\)`, 'i');
+  const names = new Set(keyframes.map((k) => k.name));
+  const referenced = new Set(
+    styleRules
+      .filter((r) => typeRe.test(r.selectorText) && pseudoRe.test(r.selectorText))
+      .flatMap((r) => getAnimationNames(r, names)),
+  );
+  return keyframes.filter((k) => referenced.has(k.name));
+}
+
+function findKeyframe(rule: CSSKeyframesRule, offset: 'from' | 'to'): CSSKeyframeRule | undefined {
+  const aliases = offset === 'from' ? ['from', '0%'] : ['to', '100%'];
+  return Array.from(rule.cssRules).find(
+    (kf): kf is CSSKeyframeRule =>
+      kf instanceof CSSKeyframeRule &&
+      kf.keyText.split(',').some((k) => aliases.includes(k.trim().toLowerCase())),
   );
 }
 
-function findKeyframeRule(
-  keyframeRules: CSSKeyframesRule[],
-  animName: string
-): CSSKeyframesRule | undefined {
-  if (!animName) return undefined;
-  const trimmed = animName.trim();
-  return (
-    keyframeRules.find((k) => trimmed.includes(k.name)) ||
-    keyframeRules.find((k) => k.name === trimmed)
+/** Returns the X translation of a keyframe from either `translate` or `transform`. */
+function getTranslateX(kf: CSSKeyframeRule): string | undefined {
+  const translate = kf.style.getPropertyValue('translate').trim();
+  if (translate && translate !== 'none') return splitTokens(translate)[0]?.toLowerCase();
+  const transform = kf.style.getPropertyValue('transform');
+  const match = /translate(?:x|3d)?\(\s*([^,\s)]+)/i.exec(transform);
+  return match?.[1].toLowerCase();
+}
+
+function slidesTo(
+  type: 'forward' | 'backward',
+  pseudo: 'old' | 'new',
+  offset: 'from' | 'to',
+  sign: '-' | '+',
+): boolean {
+  const expected = sign === '-' ? ['-100%', '-100vw'] : ['100%', '100vw'];
+  return findDirectionalKeyframes(type, pseudo).some((rule) => {
+    const kf = findKeyframe(rule, offset);
+    const x = kf && getTranslateX(kf);
+    return Boolean(x && expected.includes(x));
+  });
+}
+
+function getGroupRules(): CSSStyleRule[] {
+  return getRules(true).styleRules.filter((r) =>
+    /::view-transition-group\(\s*root\s*\)/i.test(r.selectorText),
   );
 }
 
-test.describe('Directional Navigation Transitions Target Grader', () => {
+function parseSeconds(token: string): number | undefined {
+  const m = /^(-?[\d.]+)(ms|s)$/i.exec(token.trim());
+  if (!m) return undefined;
+  return m[2].toLowerCase() === 'ms' ? Number(m[1]) / 1000 : Number(m[1]);
+}
+
+const EASING = /^(ease|ease-in|ease-out|ease-in-out|linear|step-start|step-end|cubic-bezier\(.*\)|linear\(.*\)|steps\(.*\))$/i;
+
+// --- Browser helpers ---
+
+async function installTransitionSpy(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as any;
+    w.__transitions = [];
+    const orig = document.startViewTransition?.bind(document);
+    if (!orig) return;
+    (document as any).startViewTransition = (arg?: any) => {
+      const record = { types: [] as string[], activeTypesDuringUpdate: [] as string[] };
+      if (arg && typeof arg === 'object' && Array.isArray(arg.types)) record.types.push(...arg.types);
+      const userUpdate = typeof arg === 'function' ? arg : arg?.update;
+      const update = async () => {
+        for (const t of ['forward', 'backward']) {
+          try {
+            if (document.documentElement.matches(`:active-view-transition-type(${t})`)) {
+              record.activeTypesDuringUpdate.push(t);
+            }
+          } catch {}
+        }
+        return userUpdate?.();
+      };
+      const transition =
+        arg && typeof arg === 'object' ? orig({ ...arg, update }) : orig(update);
+      transition.types?.forEach((t: string) => {
+        if (!record.types.includes(t)) record.types.push(t);
+      });
+      const origAdd = transition.types?.add?.bind(transition.types);
+      if (origAdd) {
+        transition.types.add = (t: string) => {
+          if (!record.types.includes(t)) record.types.push(t);
+          return origAdd(t);
+        };
+      }
+      w.__transitions.push(record);
+      return transition;
+    };
+  });
+}
+
+function nextButton(page: Page) {
+  return page
+    .locator('#next')
+    .or(page.getByRole('button', { name: /\bnext\b/i }))
+    .first();
+}
+
+function prevButton(page: Page) {
+  return page
+    .locator('#prev')
+    .or(page.getByRole('button', { name: /\bprev(ious)?\b/i }))
+    .first();
+}
+
+async function clickAndCapture(page: Page, which: 'next' | 'prev') {
+  // "Previous" is typically disabled on the first item, so advance first.
+  if (which === 'prev') {
+    await nextButton(page).click({ timeout: 5000 });
+    await page.waitForTimeout(1000);
+  }
+  await page.evaluate(() => ((window as any).__transitions = []));
+  await (which === 'next' ? nextButton(page) : prevButton(page)).click({ timeout: 5000 });
+  await page
+    .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 5000 })
+    .catch(() => {});
+  return page.evaluate(() => (window as any).__transitions as Array<{
+    types: string[];
+    activeTypesDuringUpdate: string[];
+  }>);
+}
+
+const hasType = (t: { types: string[]; activeTypesDuringUpdate: string[] }, type: string) =>
+  t.types.includes(type) || t.activeTypesDuringUpdate.includes(type);
+
+test.describe('directional-navigation-transitions Target Grader', () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
   test('During a forward transition, the ::view-transition-old(root) element has an animation that translates it to -100% on the X-axis', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
-    const keyframeRules = getKeyframeRules(stylesheet);
-
-    const fwdOldRule = styleRules.find(
-      (r) =>
-        /active-view-transition-type\(\s*['"]?forward['"]?\s*\)/i.test(r.selectorText) &&
-        /view-transition-old/i.test(r.selectorText)
-    );
-    const animName =
-      fwdOldRule?.style.getPropertyValue('animation-name') ||
-      fwdOldRule?.style.getPropertyValue('animation') ||
-      fwdOldRule?.style.cssText ||
-      '';
-    const kf = findKeyframeRule(keyframeRules, animName);
-    const toKeyframe = Array.from(kf?.cssRules || []).find(
-      (k) => (k as CSSKeyframeRule).keyText === 'to' || (k as CSSKeyframeRule).keyText === '100%'
-    ) as CSSKeyframeRule | undefined;
-    const prop =
-      toKeyframe?.style.getPropertyValue('transform') ||
-      toKeyframe?.style.getPropertyValue('translate') ||
-      toKeyframe?.style.cssText ||
-      '';
-
-    const isValid = Boolean(
-      fwdOldRule &&
-        kf &&
-        (/translate(X|3d)?\(\s*-100%/i.test(prop) || /translate:\s*-100%/i.test(prop))
-    );
-    expect(isValid).toBe(true);
+    expect(slidesTo('forward', 'old', 'to', '-')).toBe(true);
   });
 
   test('During a forward transition, the ::view-transition-new(root) element has an animation that translates it from 100% on the X-axis', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
-    const keyframeRules = getKeyframeRules(stylesheet);
-
-    const fwdNewRule = styleRules.find(
-      (r) =>
-        /active-view-transition-type\(\s*['"]?forward['"]?\s*\)/i.test(r.selectorText) &&
-        /view-transition-new/i.test(r.selectorText)
-    );
-    const animName =
-      fwdNewRule?.style.getPropertyValue('animation-name') ||
-      fwdNewRule?.style.getPropertyValue('animation') ||
-      fwdNewRule?.style.cssText ||
-      '';
-    const kf = findKeyframeRule(keyframeRules, animName);
-    const fromKeyframe = Array.from(kf?.cssRules || []).find(
-      (k) => (k as CSSKeyframeRule).keyText === 'from' || (k as CSSKeyframeRule).keyText === '0%'
-    ) as CSSKeyframeRule | undefined;
-    const prop =
-      fromKeyframe?.style.getPropertyValue('transform') ||
-      fromKeyframe?.style.getPropertyValue('translate') ||
-      fromKeyframe?.style.cssText ||
-      '';
-
-    const isValid = Boolean(
-      fwdNewRule &&
-        kf &&
-        (/translate(X|3d)?\(\s*100%/i.test(prop) || /translate:\s*100%/i.test(prop))
-    );
-    expect(isValid).toBe(true);
+    expect(slidesTo('forward', 'new', 'from', '+')).toBe(true);
   });
 
   test('During a backward transition, the ::view-transition-old(root) element has an animation that translates it to 100% on the X-axis', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
-    const keyframeRules = getKeyframeRules(stylesheet);
-
-    const backOldRule = styleRules.find(
-      (r) =>
-        /active-view-transition-type\(\s*['"]?backward['"]?\s*\)/i.test(r.selectorText) &&
-        /view-transition-old/i.test(r.selectorText)
-    );
-    const animName =
-      backOldRule?.style.getPropertyValue('animation-name') ||
-      backOldRule?.style.getPropertyValue('animation') ||
-      backOldRule?.style.cssText ||
-      '';
-    const kf = findKeyframeRule(keyframeRules, animName);
-    const toKeyframe = Array.from(kf?.cssRules || []).find(
-      (k) => (k as CSSKeyframeRule).keyText === 'to' || (k as CSSKeyframeRule).keyText === '100%'
-    ) as CSSKeyframeRule | undefined;
-    const prop =
-      toKeyframe?.style.getPropertyValue('transform') ||
-      toKeyframe?.style.getPropertyValue('translate') ||
-      toKeyframe?.style.cssText ||
-      '';
-
-    const isValid = Boolean(
-      backOldRule &&
-        kf &&
-        (/translate(X|3d)?\(\s*100%/i.test(prop) || /translate:\s*100%/i.test(prop))
-    );
-    expect(isValid).toBe(true);
+    expect(slidesTo('backward', 'old', 'to', '+')).toBe(true);
   });
 
   test('During a backward transition, the ::view-transition-new(root) element has an animation that translates it from -100% on the X-axis', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
-    const keyframeRules = getKeyframeRules(stylesheet);
-
-    const backNewRule = styleRules.find(
-      (r) =>
-        /active-view-transition-type\(\s*['"]?backward['"]?\s*\)/i.test(r.selectorText) &&
-        /view-transition-new/i.test(r.selectorText)
-    );
-    const animName =
-      backNewRule?.style.getPropertyValue('animation-name') ||
-      backNewRule?.style.getPropertyValue('animation') ||
-      backNewRule?.style.cssText ||
-      '';
-    const kf = findKeyframeRule(keyframeRules, animName);
-    const fromKeyframe = Array.from(kf?.cssRules || []).find(
-      (k) => (k as CSSKeyframeRule).keyText === 'from' || (k as CSSKeyframeRule).keyText === '0%'
-    ) as CSSKeyframeRule | undefined;
-    const prop =
-      fromKeyframe?.style.getPropertyValue('transform') ||
-      fromKeyframe?.style.getPropertyValue('translate') ||
-      fromKeyframe?.style.cssText ||
-      '';
-
-    const isValid = Boolean(
-      backNewRule &&
-        kf &&
-        (/translate(X|3d)?\(\s*-100%/i.test(prop) || /translate:\s*-100%/i.test(prop))
-    );
-    expect(isValid).toBe(true);
+    expect(slidesTo('backward', 'new', 'from', '-')).toBe(true);
   });
 
   test('The animations use the transform or translate property, and do not use left, right, inset-inline-start or inset-inline-end', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const keyframeRules = getKeyframeRules(stylesheet);
-
-    const directionalKeyframes = keyframeRules.filter((k) =>
-      Array.from(k.cssRules).some((kf) => {
-        const text = (kf as CSSKeyframeRule).style.cssText;
-        return /translate|transform/i.test(text) || /100%|-100%/.test(text);
-      })
+    const directional = new Set(
+      (['forward', 'backward'] as const).flatMap((type) =>
+        (['old', 'new'] as const).flatMap((pseudo) => findDirectionalKeyframes(type, pseudo)),
+      ),
     );
-
-    const hasDirectionalKeyframes = directionalKeyframes.length >= 4;
-    const allUseTransformOrTranslate = directionalKeyframes.every((k) =>
-      Array.from(k.cssRules).some((kf) => {
-        const style = (kf as CSSKeyframeRule).style;
-        const prop =
-          style.getPropertyValue('transform') ||
-          style.getPropertyValue('translate') ||
-          style.cssText;
-        return /transform|translate/i.test(prop);
-      })
+    const frames = [...directional].flatMap((k) =>
+      Array.from(k.cssRules).filter((r): r is CSSKeyframeRule => r instanceof CSSKeyframeRule),
     );
-    const noneUseInsets = directionalKeyframes.every((k) =>
-      Array.from(k.cssRules).every((kf) => {
-        const style = (kf as CSSKeyframeRule).style;
-        return (
-          !style.getPropertyValue('left') &&
-          !style.getPropertyValue('right') &&
-          !style.getPropertyValue('inset-inline-start') &&
-          !style.getPropertyValue('inset-inline-end') &&
-          !style.getPropertyValue('inset') &&
-          !style.getPropertyValue('inset-inline')
-        );
-      })
+    const usesTransform = frames.some(
+      (kf) => kf.style.getPropertyValue('transform') || kf.style.getPropertyValue('translate'),
     );
-
-    const isValid = hasDirectionalKeyframes && allUseTransformOrTranslate && noneUseInsets;
-    expect(isValid).toBe(true);
+    const usesInsets = frames.some((kf) =>
+      ['left', 'right', 'inset', 'inset-inline', 'inset-inline-start', 'inset-inline-end'].some(
+        (p) => kf.style.getPropertyValue(p),
+      ),
+    );
+    expect(directional.size > 0 && usesTransform && !usesInsets).toBe(true);
   });
 
-  test('The ::view-transition-group(root) element has an animation duration of 0.4 seconds', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
-
-    const groupRule = styleRules.find((r) =>
-      /::view-transition-group(\(\s*root\s*\))?/i.test(r.selectorText)
-    );
-    const duration =
-      groupRule?.style.getPropertyValue('animation-duration') ||
-      groupRule?.style.getPropertyValue('animation') ||
-      groupRule?.style.cssText ||
-      '';
-
-    const isValid = Boolean(groupRule && /\b(0?\.4s|400ms)\b/i.test(duration));
-    expect(isValid).toBe(true);
+  test('The ::view-transition-group(root) element has an animation duration between 0.2 and 0.6 seconds', () => {
+    const durations = getGroupRules().flatMap((r) => {
+      const longhand = r.style.getPropertyValue('animation-duration');
+      const tokens = longhand.trim()
+        ? splitLayers(longhand)
+        : splitLayers(r.style.getPropertyValue('animation')).map(
+            (layer) => splitTokens(layer).find((t) => parseSeconds(t) !== undefined) ?? '',
+          );
+      return tokens.map(parseSeconds).filter((s): s is number => s !== undefined);
+    });
+    expect(durations.some((s) => s >= 0.2 && s <= 0.6)).toBe(true);
   });
 
-  test('The ::view-transition-group(root) element uses an ease-in-out timing function', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
-
-    const groupRule = styleRules.find((r) =>
-      /::view-transition-group(\(\s*root\s*\))?/i.test(r.selectorText)
-    );
-    const timing =
-      groupRule?.style.getPropertyValue('animation-timing-function') ||
-      groupRule?.style.getPropertyValue('animation') ||
-      groupRule?.style.cssText ||
-      '';
-
-    const isValid = Boolean(groupRule && /\bease-in-out\b/i.test(timing));
-    expect(isValid).toBe(true);
+  test('The ::view-transition-group(root) element uses a non-linear timing function (e.g. an ease keyword or cubic-bezier()), not linear', () => {
+    const easings = getGroupRules().flatMap((r) => {
+      const longhand = r.style.getPropertyValue('animation-timing-function');
+      if (longhand.trim()) return splitLayers(longhand);
+      return splitLayers(r.style.getPropertyValue('animation')).flatMap((layer) =>
+        splitTokens(layer).filter((t) => EASING.test(t)),
+      );
+    });
+    const nonLinear = easings.some((e) => /^(ease|cubic-bezier\(|linear\()/i.test(e));
+    expect(nonLinear).toBe(true);
   });
 
   test('All view transition animations are disabled when prefers-reduced-motion is set to reduce', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const mediaRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSMediaRule => r instanceof CSSMediaRule
-    );
-
-    const reducedMedia = mediaRules.find(
-      (m) =>
-        m.conditionText.includes('prefers-reduced-motion') &&
-        m.conditionText.includes('reduce')
-    );
-    const reducedStyleRules = reducedMedia ? getAllStyleRules(reducedMedia.cssRules) : [];
-    const disabledRule = reducedStyleRules.find(
-      (r) =>
-        /view-transition/i.test(r.selectorText) ||
-        /\*/.test(r.selectorText) ||
-        /root/i.test(r.selectorText)
-    );
-    const animProp =
-      disabledRule?.style.getPropertyValue('animation') ||
-      disabledRule?.style.getPropertyValue('animation-name') ||
-      disabledRule?.style.getPropertyValue('animation-duration') ||
-      disabledRule?.style.cssText ||
-      '';
-
-    const isValid = Boolean(
-      disabledRule && (/\bnone\b/i.test(animProp) || /\b0s\b/i.test(animProp))
-    );
-    expect(isValid).toBe(true);
+    const { mediaRules } = getRules();
+    const disables = mediaRules
+      .filter((m) => REDUCED_MOTION.test(m.conditionText))
+      .flatMap((m) =>
+        flattenRules(m.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule),
+      )
+      .some((r) => {
+        if (!/::view-transition|\*/.test(r.selectorText)) return false;
+        const anim = r.style.getPropertyValue('animation');
+        const name = r.style.getPropertyValue('animation-name');
+        const dur = r.style.getPropertyValue('animation-duration');
+        return (
+          /\bnone\b/i.test(anim) ||
+          /\bnone\b/i.test(name) ||
+          /(^|\s)(0s|0ms|0\.0*1ms)($|\s|,)/i.test(dur)
+        );
+      });
+    expect(disables).toBe(true);
   });
 
   // --- BROWSER ASSERTIONS (E2E) ---
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
-      await page.addInitScript(() => {
-        (window as any).__transitions = [];
-        const orig = document.startViewTransition;
-        document.startViewTransition = function (optsOrCb: any) {
-          const record: {
-            called: boolean;
-            types: string[];
-            activeTypesDuringUpdate: string[];
-          } = {
-            called: true,
-            types: [],
-            activeTypesDuringUpdate: [],
-          };
-
-          if (optsOrCb && typeof optsOrCb === 'object' && Array.isArray(optsOrCb.types)) {
-            record.types.push(...optsOrCb.types);
-          }
-
-          let userUpdate: (() => void | Promise<void>) | undefined;
-          if (typeof optsOrCb === 'function') {
-            userUpdate = optsOrCb;
-          } else if (optsOrCb && typeof optsOrCb.update === 'function') {
-            userUpdate = optsOrCb.update;
-          }
-
-          const wrappedUpdate = async () => {
-            try {
-              if (document.documentElement.matches(':active-view-transition-type(forward)')) {
-                record.activeTypesDuringUpdate.push('forward');
-              }
-            } catch {}
-            try {
-              if (document.documentElement.matches(':active-view-transition-type(backward)')) {
-                record.activeTypesDuringUpdate.push('backward');
-              }
-            } catch {}
-
-            if (userUpdate) {
-              return await userUpdate();
-            }
-          };
-
-          let transition: any;
-          if (orig) {
-            try {
-              if (typeof optsOrCb === 'function') {
-                transition = orig.call(document, wrappedUpdate);
-              } else if (optsOrCb && typeof optsOrCb === 'object') {
-                transition = orig.call(document, {
-                  ...optsOrCb,
-                  update: wrappedUpdate,
-                });
-              }
-            } catch {
-              try {
-                transition = orig.call(document, wrappedUpdate);
-              } catch {}
-            }
-          }
-
-          if (transition && transition.types) {
-            if (typeof transition.types.forEach === 'function') {
-              transition.types.forEach((t: string) => {
-                if (!record.types.includes(t)) record.types.push(t);
-              });
-            }
-            const origAdd = transition.types.add;
-            if (typeof origAdd === 'function') {
-              transition.types.add = function (t: string) {
-                if (!record.types.includes(t)) record.types.push(t);
-                return origAdd.call(transition.types, t);
-              };
-            }
-          }
-
-          (window as any).__transitions.push(record);
-
-          return (
-            transition || {
-              types: new Set(record.types),
-              ready: Promise.resolve(),
-              finished: Promise.resolve(),
-              updateCallbackDone: Promise.resolve(),
-              skipTransition() {},
-            }
-          );
-        };
-      });
-
+      await installTransitionSpy(page);
       await page.goto(TARGET_URL);
     });
 
     test('Clicking the "Next" button triggers a view transition', async ({ page }) => {
-      const nextBtn = page
-        .locator('button, [role="button"], a')
-        .filter({ hasText: /\bnext\b/i })
-        .or(page.getByRole('button', { name: /\bnext\b/i }))
-        .or(
-          page.locator(
-            '[aria-label*="next" i], [data-direction="forward"], [data-slider-next], [data-story-next]'
-          )
-        )
-        .first();
-
-      await nextBtn.click({ timeout: 5000 });
-      await page
-        .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 5000 })
-        .catch(() => {});
-
-      const transitionTriggered = await page.evaluate(() => {
-        const transitions = (window as any).__transitions || [];
-        return transitions.length > 0;
-      });
-      expect(transitionTriggered).toBe(true);
+      const transitions = await clickAndCapture(page, 'next');
+      expect(transitions.length).toBeGreaterThan(0);
     });
 
     test('Clicking the "Previous" button triggers a view transition', async ({ page }) => {
-      const prevBtn = page
-        .locator('button, [role="button"], a')
-        .filter({ hasText: /\bprev(ious)?\b/i })
-        .or(page.getByRole('button', { name: /\bprev(ious)?\b/i }))
-        .or(
-          page.locator(
-            '[aria-label*="prev" i], [data-direction="backward"], [data-slider-prev], [data-story-prev]'
-          )
-        )
-        .first();
-
-      await prevBtn.click({ timeout: 5000 });
-      await page
-        .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 5000 })
-        .catch(() => {});
-
-      const transitionTriggered = await page.evaluate(() => {
-        const transitions = (window as any).__transitions || [];
-        return transitions.length > 0;
-      });
-      expect(transitionTriggered).toBe(true);
+      const transitions = await clickAndCapture(page, 'prev');
+      expect(transitions.length).toBeGreaterThan(0);
     });
 
     test('During the "Next" transition, the forward transition type is active on the document element', async ({
       page,
     }) => {
-      const nextBtn = page
-        .locator('button, [role="button"], a')
-        .filter({ hasText: /\bnext\b/i })
-        .or(page.getByRole('button', { name: /\bnext\b/i }))
-        .or(
-          page.locator(
-            '[aria-label*="next" i], [data-direction="forward"], [data-slider-next], [data-story-next]'
-          )
-        )
-        .first();
-
-      await nextBtn.click({ timeout: 5000 });
-      await page
-        .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 5000 })
-        .catch(() => {});
-
-      const isForwardActive = await page.evaluate(() => {
-        const transitions = (window as any).__transitions || [];
-        const last = transitions[transitions.length - 1];
-        return Boolean(
-          last &&
-            (last.types?.some((t: string) => /\bforward\b/i.test(t)) ||
-              last.activeTypesDuringUpdate?.some((t: string) => /\bforward\b/i.test(t)))
-        );
-      });
-      expect(isForwardActive).toBe(true);
+      const transitions = await clickAndCapture(page, 'next');
+      expect(transitions.some((t) => hasType(t, 'forward'))).toBe(true);
     });
 
     test('During the "Previous" transition, the backward transition type is active on the document element', async ({
       page,
     }) => {
-      const prevBtn = page
-        .locator('button, [role="button"], a')
-        .filter({ hasText: /\bprev(ious)?\b/i })
-        .or(page.getByRole('button', { name: /\bprev(ious)?\b/i }))
-        .or(
-          page.locator(
-            '[aria-label*="prev" i], [data-direction="backward"], [data-slider-prev], [data-story-prev]'
-          )
-        )
-        .first();
-
-      await prevBtn.click({ timeout: 5000 });
-      await page
-        .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 5000 })
-        .catch(() => {});
-
-      const isBackwardActive = await page.evaluate(() => {
-        const transitions = (window as any).__transitions || [];
-        const last = transitions[transitions.length - 1];
-        return Boolean(
-          last &&
-            (last.types?.some((t: string) => /\bbackward\b/i.test(t)) ||
-              last.activeTypesDuringUpdate?.some((t: string) => /\bbackward\b/i.test(t)))
-        );
-      });
-      expect(isBackwardActive).toBe(true);
+      const transitions = await clickAndCapture(page, 'prev');
+      expect(transitions.some((t) => hasType(t, 'backward'))).toBe(true);
     });
   });
 });

@@ -1,1 +1,1 @@
-- Animate visual state changes to reflect the direction of a user's navigational flow, such as sliding new content in from the right when advancing forward or from the left when returning to a previous screen.
+- turn the seasonal favorites section into a card slider that shows one card at a time, with Next and Previous buttons. when switching cards, slide the content in the direction of travel (next slides the new card in from the right, previous from the left). disable the animation for users who prefer reduced motion.

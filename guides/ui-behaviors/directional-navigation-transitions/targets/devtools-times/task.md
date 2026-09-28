@@ -1,1 +1,1 @@
-- Animate visual state changes to reflect the direction of a user's navigational flow, such as sliding new content in from the right when advancing forward or from the left when returning to a previous screen.
+- turn the top stories section on the homepage into a slider that shows one story at a time, with Next and Previous buttons. when switching stories, slide the content in the direction of travel (next slides the new story in from the right, previous from the left). disable the animation for users who prefer reduced motion.
