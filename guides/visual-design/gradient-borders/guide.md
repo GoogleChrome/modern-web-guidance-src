@@ -5,7 +5,7 @@ draft: stub
 web-feature-ids:
   - background-clip-border-area
   - background-clip
-  - mask
+  - masks
 ---
 
 ## Implementation notes for guide authors
