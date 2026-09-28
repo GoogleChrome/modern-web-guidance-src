@@ -85,7 +85,9 @@ function bindOrSymlink(args: string[], p: string): void {
     if (lst.isSymbolicLink()) {
       args.push('--symlink', fs.readlinkSync(p), p);
     } else {
-      args.push('--bind', p, p);
+      // --bind-try: /run entries are transient (pid files, sockets); skip any
+      // that vanish between enumeration and mount instead of aborting bwrap.
+      args.push('--bind-try', p, p);
     }
   } catch {
     // Ignore transient entries in /run

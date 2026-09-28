@@ -52,6 +52,7 @@ test('buildBwrapArgs hides the repo before re-binding exposed paths', () => {
       assert.ok(args.includes(fakeRun));
       assert.ok(args.includes(path.join(fakeRun, 'user')));
       assert.ok(args.includes(userSubDir));
+      assert.strictEqual(args[args.indexOf(userSubDir) - 1], '--bind-try', '/run entries must use --bind-try');
     }
     assert.deepStrictEqual(args.slice(args.indexOf('--')), ['--', 'agent', '-p', 'hi']);
   } finally {
