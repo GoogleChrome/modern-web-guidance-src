@@ -182,6 +182,30 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
   });
 
+  it('validates that pending temporary feature groups exist in web-features', async () => {
+    const { groups } = await import('web-features');
+    const pendingPath = path.join(REPO_ROOT, 'features', 'pending-web-features.json');
+    const pending = JSON.parse(fs.readFileSync(pendingPath, 'utf8'));
+
+    for (const [fid, entry] of Object.entries<{ group?: string | string[] }>(pending)) {
+      const entryGroups = entry.group === undefined ? [] : [entry.group].flat();
+      for (const group of entryGroups) {
+        if (!(group in groups)) {
+          assert.fail(`Feature ID "${fid}" in features/pending-web-features.json has unknown group "${group}"`);
+        }
+      }
+    }
+  });
+
+  it('ensures feature-to-groups.generated.json is synchronized with guides/atls.json', async () => {
+    const { buildFeatureToGroupsJson, FEATURE_TO_GROUPS_PATH } = await import('./generate-feature-to-groups.ts');
+    assert.strictEqual(
+      fs.readFileSync(FEATURE_TO_GROUPS_PATH, 'utf8'),
+      buildFeatureToGroupsJson(),
+      'guides/feature-to-groups.generated.json is out of date. Run: node --experimental-strip-types guides/generate-feature-to-groups.ts'
+    );
+  });
+
   it('validates that all features/tmp-*.md files are registered in features/pending-web-features.json', async () => {
     const { validateFeature } = await import('../serving/lib/baseline.ts');
     const featuresDir = path.join(REPO_ROOT, 'features');

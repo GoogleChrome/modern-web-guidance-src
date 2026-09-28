@@ -25,7 +25,6 @@
     "canvas-html": "ewewraw",
     "container-scroll-state-queries": "bramus",
     "tmp-cross-origin-storage": "tomayac",
-    "tmp-scroll-axis-lock": "bramus",
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {
@@ -35,6 +34,7 @@
     "transitions": "bramus",
     "view-transitions": "bramus",
     "webassembly": "sbc100",
-    "webauthn": "agektmr"
+    "webauthn": "agektmr",
+    "security": "rowan-m"
   }
 }
