@@ -96,13 +96,41 @@ control retains its own visible focus indicator. For focus appearance and
 control semantics, see {{ GUIDE_REF("accessibility") }}.
 
 
-## Keep the card's structure intentional
+## Choose semantics for the card's interaction model
 
-Do not turn the whole card into one large link when it has independent actions.
-Make the title link to the card's primary destination and keep secondary actions
-as separate native controls. Avoid using CSS `order` to create a visual sequence
-that differs from the DOM sequence; see {{ GUIDE_REF("css-layout") }}.
+When a card represents one destination and has no independent actions, it may be
+one native link. Do not nest other links, buttons, or form controls inside it:
 
-Use the focus and interaction guidance in {{ GUIDE_REF("accessibility") }} for
-interactive card content rather than implementing component-specific keyboard
-behavior.
+```html
+<a class="card" href="/recipes/poached-eggs">
+  <img src="recipe.jpg" alt="">
+  <h3>Poached eggs</h3>
+  <p>Two poached eggs served on toasted sourdough.</p>
+</a>
+```
+
+When a card has independent actions, link its title to the primary destination
+and keep secondary actions as separate native links or buttons. Preserve the DOM
+sequence rather than using CSS `order`; see {{ GUIDE_REF("css-layout") }}.
+
+When cards represent choices, use native form controls and style their labels as
+cards. Use radios for one choice, checkboxes for independent choices, and a
+native `select` when the interaction is a select:
+
+```html
+<fieldset class="option-cards">
+  <legend>Choose a delivery method</legend>
+  <label class="option-card">
+    <input type="radio" name="delivery" value="standard">
+    <span>Standard delivery</span>
+  </label>
+  <label class="option-card">
+    <input type="radio" name="delivery" value="express">
+    <span>Express delivery</span>
+  </label>
+</fieldset>
+```
+
+Do not replace links, buttons, or form controls with clickable `div` or `article`
+elements. Keep native controls keyboard-operable and preserve visible focus;
+see {{ GUIDE_REF("accessibility") }}.
