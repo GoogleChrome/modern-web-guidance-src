@@ -100,7 +100,7 @@ progress::-moz-progress-bar {
 ```css
 /* Indeterminate state animation */
 progress {
-  --indeterminate-track: linear-gradient(90deg, 
+  --indeterminate-track: linear-gradient(to right, 
     transparent 0% 15%, 
     var(--progress-color, currentColor) 15% 45%, 
     transparent 45% 100%
@@ -144,11 +144,12 @@ progress:indeterminate::-moz-progress-bar {
 
 ### 3. Accessibility Considerations
 * **Mandatory:** Use `<label for="...">`, `aria-labelledby`, or `aria-label` to associate the progress element with a label. 
-* **Contextual state**: Use `aria-describedby` to reference the loading progress of a section of a page. Use `aria-busy="true"` on the container being updated. Set `aria-busy` to `"false"` when the task is complete. 
-* **Optional:** Set `tabindex="-1"` and call `.focus()` on the `progress` element in JavaScript when significant updates occur to force screen readers to announce the new progress.
+* **Contextual state**: Use `aria-describedby` to reference the loading progress of a separate region of a page. Use `aria-busy="true"` on the container being updated. Set `aria-busy` to `"false"` when the task is complete. 
+* **Optional:** Set `tabindex="-1"` and call `.focus()` on the `progress` element in JavaScript when significant updates like the completion of a task occur to force screen readers to announce the new progress.
 * **DO** respect `prefers-reduced-motion` if you apply custom animations.
 * **DO** ensure proper contrast between the progress bar and track when adding custom styles.
 * **Programmatic focus**: Use `:focus-visible` to indicate when a progress element has been programmatically focused. 
+* **Consider alternatives to represent indeterminate state**: Indeterminate progress bar animations displayed in parallel to other content can be considered distracting for some users. 
 
 ```html
 <section id="upload-container" aria-live="polite" aria-describedby="upload-progress">
