@@ -16,10 +16,22 @@
     [popover] { min-inline-size: 15rem; margin: 0; padding: .3rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--surface); color: var(--ink); box-shadow: 0 .7rem 1.8rem #0004; }
     #file-trigger { anchor-name: --file-anchor; }
     #preferences-trigger { anchor-name: --preferences-anchor; }
-    #file-menu { position-anchor: --file-anchor; position-area: block-end span-inline-end; inset: auto; }
-    #preferences-menu { position-anchor: --preferences-anchor; position-area: inline-end span-block-start; inset: auto; }
+    #file-menu {
+      position-anchor: --file-anchor;
+      inset-inline-start: anchor(--file-anchor left);
+      inset-block-start: anchor(--file-anchor bottom);
+    }
+    #preferences-menu {
+      position-anchor: --preferences-anchor;
+      inset-inline-start: anchor(right);
+      inset-block-start: anchor(top);
+    }
     @media (max-width: 40rem) {
-      #preferences-menu { position-area: block-end span-inline-start; }
+      #file-menu,
+      #preferences-menu {
+        position-area: block-end center;
+        inset: auto;
+      }
     }
     [focusgroup~="menu"] { display: grid; gap: .1rem; }
     [focusgroup~="menu"] > button { display: flex; justify-content: space-between; inline-size: 100%; padding: .55rem .7rem; border: 0; border-radius: .2rem; background: transparent; color: inherit; text-align: start; cursor: pointer; }
@@ -44,7 +56,6 @@
           const next = event.key === 'Home' ? 0 : event.key === 'End' ? menuItems.length - 1 :
             (current + (event.key === 'ArrowUp' ? -1 : 1) + menuItems.length) % menuItems.length;
           event.preventDefault();
-          event.stopImmediatePropagation();
           menuItems[next < 0 ? 0 : next].focus({ preventScroll: true });
         }, true);
       });
@@ -55,25 +66,52 @@
     const subTrigger = document.querySelector('#preferences-trigger');
     const subMenu = document.querySelector('#preferences-menu');
     const status = document.querySelector('#status');
-    const items = menu => [...menu.querySelector(':scope > [focusgroup~="menu"]')
-      .querySelectorAll(':scope > button')];
+    const menuItems = menu => [...menu.querySelector(':scope > [focusgroup~="menu"]')
+      .querySelectorAll(':scope > button')]
+      .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
     const focusFirst = menu => {
-      const first = items(menu)[0];
+      const first = menuItems(menu)[0];
       if (first && menu.matches(':popover-open')) first.focus({ preventScroll: true });
     };
-    const openMenu = (menu, trigger) => { if (menu.matches(':popover-open')) return; menu.showPopover(); trigger.setAttribute('aria-expanded', 'true'); focusFirst(menu); }; 
-    const closeSub = (returnFocus = true) => { subMenu.hidePopover(); subTrigger.setAttribute('aria-expanded', 'false'); if (returnFocus) subTrigger.focus(); };
-    const closeRoot = () => { closeSub(false); rootMenu.hidePopover(); rootTrigger.setAttribute('aria-expanded', 'false'); rootTrigger.focus(); };
-    const activate = item => { if (item === subTrigger) { openMenu(subMenu, subTrigger); } else { status.textContent = `${item.textContent.trim()} selected`; closeRoot(); } };
-    rootTrigger.addEventListener('keydown', event => { if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openMenu(rootMenu, rootTrigger); } });
-    rootTrigger.addEventListener('click', event => { event.preventDefault(); if (rootMenu.matches(':popover-open')) closeRoot(); else openMenu(rootMenu, rootTrigger); });
-    subTrigger.addEventListener('click', event => { event.preventDefault(); if (subMenu.matches(':popover-open')) closeSub(); else openMenu(subMenu, subTrigger); });
+    const closeMenu = (menu, returnFocus = false) => {
+      if (!menu.matches(':popover-open')) return;
+      [...menu.querySelectorAll(':scope > [popover]:popover-open')].forEach(child => closeMenu(child));
+      menu.hidePopover();
+      const trigger = menu === rootMenu ? rootTrigger : subTrigger;
+      trigger.setAttribute('aria-expanded', 'false');
+      if (returnFocus) trigger.focus();
+    };
+    const openMenu = (menu, trigger) => {
+      if (menu.matches(':popover-open')) return;
+      if (menu === rootMenu) closeMenu(rootMenu);
+      else if (subMenu.matches(':popover-open')) closeMenu(subMenu);
+      menu.showPopover();
+      trigger.setAttribute('aria-expanded', 'true');
+      focusFirst(menu);
+    };
+    const activate = item => {
+      if (item === subTrigger) {
+        if (subMenu.matches(':popover-open')) closeMenu(subMenu, true);
+        else openMenu(subMenu, subTrigger);
+      } else {
+        status.textContent = `${item.textContent.trim()} selected`;
+        closeMenu(rootMenu, true);
+      }
+    };
+    rootTrigger.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (rootMenu.matches(':popover-open')) closeMenu(rootMenu, true);
+        else openMenu(rootMenu, rootTrigger);
+      }
+    });
+    rootTrigger.addEventListener('click', event => { event.preventDefault(); if (rootMenu.matches(':popover-open')) closeMenu(rootMenu, true); else openMenu(rootMenu, rootTrigger); });
     [rootMenu, subMenu].forEach(menu => {
       menu.addEventListener('toggle', () => { const trigger = menu === rootMenu ? rootTrigger : subTrigger; trigger.setAttribute('aria-expanded', String(menu.matches(':popover-open'))); });
-      menu.addEventListener('keydown', event => { const active = document.activeElement; if (event.key === 'ArrowRight' && menu === rootMenu && active === subTrigger) { event.preventDefault(); event.stopPropagation(); activate(subTrigger); } else if (event.key === 'ArrowLeft' && menu === subMenu) { event.preventDefault(); event.stopPropagation(); closeSub(); } else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); menu === subMenu ? closeSub() : closeRoot(); } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); activate(active); } });
+      menu.addEventListener('keydown', event => { const active = document.activeElement; if (event.key === 'Tab') { closeMenu(rootMenu); } else if (event.key === 'ArrowRight' && menu === rootMenu && active === subTrigger) { event.preventDefault(); event.stopPropagation(); activate(subTrigger); } else if (event.key === 'ArrowLeft' && menu === subMenu) { event.preventDefault(); event.stopPropagation(); closeMenu(subMenu, true); } else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeMenu(menu, true); } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); activate(active); } });
       menu.addEventListener('click', event => { const item = event.target.closest('[focusgroup~="menu"] > button'); if (item) { event.preventDefault(); activate(item); } });
     });
-    document.addEventListener('pointerdown', event => { if (!rootMenu.contains(event.target) && event.target !== rootTrigger) closeRoot(); });
+    document.addEventListener('pointerdown', event => { if (!event.target.closest('[popover], #file-trigger')) closeMenu(rootMenu); });
   </script>
 </body>
 </html>

@@ -181,9 +181,9 @@
   <div class="bar-wrap">
     <div class="bar" role="menubar" aria-label="Document commands">
       <button id="file-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">File</button>
-      <button id="edit-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">Edit</button>
-      <button id="view-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">View</button>
-      <button id="help-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">Help</button>
+      <button id="edit-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false" tabindex="-1">Edit</button>
+      <button id="view-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false" tabindex="-1">View</button>
+      <button id="help-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false" tabindex="-1">Help</button>
     </div>
   </div>
 
@@ -274,7 +274,6 @@
           const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
             (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
           event.preventDefault();
-          event.stopImmediatePropagation();
           items[next < 0 ? 0 : next].focus({ preventScroll: true });
         }, true);
       });
@@ -299,15 +298,21 @@
 
     function closeMenu(menu, returnFocus = false) {
       if (!menu.matches(':popover-open')) return;
-      [...menu.querySelectorAll(':scope > [popover]')].forEach(child => closeMenu(child));
+
+      // Close any open descendant submenus before closing their parent menu.
+      [...menu.querySelectorAll('[popover]:popover-open')]
+        .reverse()
+        .forEach(child => closeMenu(child));
+
       menu.hidePopover();
       const trigger = triggerForMenu(menu);
       if (trigger) trigger.setAttribute('aria-expanded', 'false');
       if (returnFocus && trigger) trigger.focus();
     }
 
-    function closeAllMenus(returnFocus = false) {
-      menus.filter(menu => menu.matches(':popover-open') && menu.getAttribute('popover') === 'auto')
+    function closeAllMenus(returnFocus = false, except = null) {
+      menus
+        .filter(menu => menu !== except && menu.matches(':popover-open'))
         .forEach(menu => closeMenu(menu, returnFocus));
     }
 
@@ -321,7 +326,7 @@
 
     function openMenu(menu, trigger) {
       if (menu.matches(':popover-open')) return;
-      if (!menu.parentElement.closest('[popover]')) closeAllMenus();
+      if (!menu.parentElement.closest('[popover]')) closeAllMenus(false, menu);
       else closeSiblingMenus(menu);
       menu.showPopover();
       trigger.setAttribute('aria-expanded', 'true');
@@ -339,8 +344,9 @@
       closeAllMenus(true);
     }
 
-    rootTriggers.forEach(trigger => {
+    rootTriggers.forEach((trigger, index) => {
       const menu = menuForTrigger(trigger);
+      if (index === 0) trigger.tabIndex = 0;
       let suppressNextClick = false;
 
       trigger.addEventListener('pointerdown', event => {
@@ -351,7 +357,14 @@
       });
 
       trigger.addEventListener('keydown', event => {
-        if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+          event.preventDefault();
+          closeAllMenus();
+          const direction = event.key === 'ArrowRight' ? 1 : -1;
+          const nextIndex = (rootTriggers.indexOf(trigger) + direction + rootTriggers.length) % rootTriggers.length;
+          rootTriggers.forEach(item => { item.tabIndex = item === rootTriggers[nextIndex] ? 0 : -1; });
+          rootTriggers[nextIndex].focus();
+        } else if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           openMenu(menu, trigger);
         }
@@ -376,9 +389,10 @@
       menu.addEventListener('keydown', event => {
         const active = document.activeElement;
         const parentMenu = menu.parentElement.closest('[popover]');
-        const parentTrigger = triggerForMenu(menu);
         const activeSubmenu = submenuTrigger(active) && menuForTrigger(active);
-        if (event.key === 'ArrowRight' && activeSubmenu) {
+        if (event.key === 'Tab') {
+          closeAllMenus();
+        } else if (event.key === 'ArrowRight' && activeSubmenu) {
           event.preventDefault();
           event.stopPropagation();
           openMenu(activeSubmenu, active);
