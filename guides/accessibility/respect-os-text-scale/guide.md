@@ -81,8 +81,6 @@ When opting in via the `<meta>` tag, **DO NOT** manually multiply or calculate t
 
 Leave `:root` at its default. The browser handles the scale injection automatically and safely.
 
----
-
 ## Fallback Strategies
 
 On browsers where `<meta name="text-scale" content="scale">` is unsupported, the layout degrades gracefully. The page will display the layout at the browser's standard default base font size (typically 16px), and the user can still utilize standard manual page zoom or pinch-to-zoom options.
