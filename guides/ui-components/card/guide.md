@@ -58,88 +58,42 @@ secondary actions separate from that link:
 
 ### Card layout
 
-Start with a stacked layout. Size media within the card, then apply a
-two-column layout only when the card has media and its slot is wide enough:
+Start with a complete stacked layout that works at every card width. Cards may
+appear in grid columns, sidebars, or related-content areas, so use the card's
+allocated inline size rather than the viewport to decide when to change its
+layout. For the container-query pattern, see
+{{ GUIDE_REF("size-aware-styling") }}.
 
-```css
-.card-container {
-  container-type: inline-size;
-}
+When the card's container is wide enough, a card that has media may place that
+media beside its title, supporting content, and actions. Keep the media and
+content in a meaningful DOM order, and do not require a separate component or
+special markup when media is absent.
 
-.card {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  border: 1px solid currentColor;
-  border-radius: 0.5rem;
-}
-
-.card:has(:focus-visible) {
-  outline: 2px solid currentColor;
-  outline-offset: 4px;
-}
-
-.card > :is(img, picture, svg) {
-  inline-size: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: 0.25rem;
-}
-
-.card > hgroup {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.card > hgroup > :is(h1, h2, h3, h4, h5, h6),
-.card > hgroup > p,
-.card > p {
-  margin: 0;
-}
-
-.card > footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-@container (min-width: 32rem) {
-  .card:has(> :is(img, picture, svg)) {
-    grid-template-columns: 8.75rem 1fr;
-    gap: 0.5rem 1.25rem;
-    align-items: start;
-  }
-
-  .card:has(> :is(img, picture, svg)) > :is(img, picture, svg) {
-    grid-column: 1;
-    grid-row: 1 / span 10;
-    align-self: start;
-    block-size: 100%;
-    min-block-size: 8.75rem;
-  }
-
-  .card:has(> :is(img, picture, svg)) > :not(:is(img, picture, svg)) {
-    grid-column: 2;
-  }
-}
-
-.card:not(:has(> :is(img, picture, svg))) {
-  border-top: 0.25rem solid currentColor;
-}
-```
-
-Use `:has()` only for content-dependent variation, such as applying the
-two-column treatment only when a card has media. Keep the default stacked layout
-complete and readable so cards without media do not require special markup. The
-text-only border treatment is optional; use it only when it conveys a meaningful
-content distinction. For broader content-based styling guidance, see
+Use `:has()` only when the presence or absence of content changes the card's
+presentation. For example, the wider layout can apply only to cards containing
+direct media, while cards without media retain the default stacked layout. Do
+not use it when an ordinary class, element selector, or unconditional layout
+rule expresses the same requirement more clearly. See
 {{ GUIDE_REF("content-based-styling") }}.
 
-The focus outline on the card provides context while its child retains its own
-visible focus indicator. For focus appearance and control semantics, see
-{{ GUIDE_REF("accessibility") }}.
+Keep media within a deliberate aspect ratio or size constraint and use
+non-distorting cropping where appropriate. Ensure that the resulting layout
+does not hide, overlap, or reorder the card's title, supporting content, or
+actions.
+
+The card's layout should preserve the source order used in the composition
+example:
+
+1. media, when present;
+2. title and supporting content;
+3. related actions.
+
+Do not use CSS `order` to create a visual sequence that differs from the DOM
+sequence. See {{ GUIDE_REF("css-layout") }}.
+
+The card's focus treatment should provide context while each focused link or
+control retains its own visible focus indicator. For focus appearance and
+control semantics, see {{ GUIDE_REF("accessibility") }}.
 
 
 ## Keep the card's structure intentional
