@@ -210,7 +210,7 @@ test.describe('avoid-redundant-large-asset-downloads Target Grader', () => {
 
       return lookupCalls.every((call) => {
         const enclosingTry = call.getFirstAncestorByKind(SyntaxKind.TryStatement);
-        const isChainedCatch = call.getParent().getText().includes('.catch');
+        const isChainedCatch = call.getParent()?.getText().includes('.catch') ?? false;
         return Boolean(enclosingTry || isChainedCatch);
       });
     });

@@ -4,7 +4,7 @@ import {
   getTargetFiles,
   getJsProject,
 } from '../../../../test-fixture.ts';
-import { SyntaxKind } from 'ts-morph';
+import { SyntaxKind, type Node } from 'ts-morph';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
@@ -126,7 +126,7 @@ test.describe('avoid-redundant-large-asset-downloads Target Grader', () => {
           if (catchClause) {
             const statements = catchClause.getBlock().getStatements();
             const unconditionallyThrows = statements.some(s => s.getKind() === SyntaxKind.ThrowStatement);
-            let enclosingFn = ts.getParent();
+            let enclosingFn: Node | undefined = ts.getParent();
             while (
               enclosingFn &&
               ![SyntaxKind.FunctionDeclaration, SyntaxKind.ArrowFunction, SyntaxKind.FunctionExpression].includes(enclosingFn.getKind())
@@ -201,7 +201,7 @@ test.describe('avoid-redundant-large-asset-downloads Target Grader', () => {
         if (ts.getTryBlock().getText().includes('requestFileHandle')) {
           const catchClause = ts.getCatchClause();
           if (catchClause) {
-            let enclosingFn = ts.getParent();
+            let enclosingFn: Node | undefined = ts.getParent();
             while (
               enclosingFn &&
               ![SyntaxKind.FunctionDeclaration, SyntaxKind.ArrowFunction, SyntaxKind.FunctionExpression].includes(enclosingFn.getKind())
