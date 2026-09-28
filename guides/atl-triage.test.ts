@@ -780,6 +780,21 @@ describe('handlePR', () => {
     assert.deepStrictEqual(result.sort(), ['scrolling-group-owner', 'visual-owner'].sort());
   });
 
+  it('resolves pending temporary features to their group owner', () => {
+    const config = {
+      default: {},
+      web_features: {},
+      web_features_groups: {
+        scrolling: 'scrolling-group-owner'
+      }
+    };
+
+    // 'tmp-scroll-axis-lock' is registered under 'scrolling' in features/pending-web-features.json
+    const mockFiles = ['guides/ui-behaviors/diagonal-panning/guide.md'];
+    const result = handlePR(99999, 'some-contributor', config, mockFiles);
+    assert.deepStrictEqual(result, ['scrolling-group-owner']);
+  });
+
   it('auto-assigns category owners across multiple categories where a feature is transcluded', () => {
     const config = {
       default: {
