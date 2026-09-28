@@ -13,14 +13,16 @@ The `<progress>` element is the semantic way to represent the completion progres
 
 This guide implements a horizontal progress bar with style customizations beyond just changing the color of `progress` with `accent-color`. For guidance on implementing a circular progress bar in the determinate state see {{ GUIDE_REF("progress-ring") }}. For circular progress bars in the indeterminate state, see {{ GUIDE_REF("spinner") }}.
 
-## How to implement
+## How to implement a fully styled progressed bar
 
 1.  **Use the native `<progress>` element**: It provides built-in accessibility and platform-consistent behavior.
 2.  **Define the state**:
     *   **Determinate**: Set the `value` attribute. Setting the `max` value is optional unless a scale different from the default 0-1 scale is needed. 
     *   **Indeterminate**: Omit the `value` attribute for tasks of unknown duration to set the progress bar into an indeterminate state. 
-3. **Tint the progress bar**: Use `accent-color` for simply changing the color of the progress bar. More extensive cross-browser customizations require resetting default browser styles with `appearance: none` and the use of targeted pseudo selectors.
-4.  **Standardize Styles**: Use `appearance: none` to normalize the progress bar across different browsers before applying more customized styles.
+3. **Standardize Styles**: Use `appearance: none` to normalize the progress bar across different browsers before applying more customized styles. 
+4.  **Style the progress bar**: Use targeted pseudo selectors for extensive cross-browser customizations.
+
+**If fully customized styles are not needed,** use `accent-color` for simply changing the color of the progress bar.
 
 
 ### 1. Markup
@@ -28,17 +30,17 @@ This guide implements a horizontal progress bar with style customizations beyond
 Use the native `progress` element and associate it with a label which can optionally be hidden visually.
 
 ```html
-  <label for="p">File progress:</label>
-  <!-- Optional: use the max value if not using the default 0-1 scale -->
-  <progress id="p" value="20" max="100"></progress>
+<label for="p">File progress:</label>
+<!-- Optional: use the max value if not using the default 0-1 scale -->
+<progress id="p" value="20" max="100"></progress>
 ```
 
 Remove the `value` attribute to set the progress bar into an indeterminate state. 
 
 ```html
-  <label for="p">File progress:</label>
-  <!-- Mandatory: Omit or remove value attribute for indeterminate state -->
-  <progress id="p" max="100"></progress>
+<label for="p">File progress:</label>
+<!-- Mandatory: Omit or remove value attribute for indeterminate state -->
+<progress id="p" max="100"></progress>
 ```
 
 
@@ -50,9 +52,9 @@ Remove the `value` attribute to set the progress bar into an indeterminate state
 Use `accent-color` for basic tinting of the progress bar. 
 
 ```css
-  progress {
-    accent-color: var(--brand-color);
-  }
+progress {
+  accent-color: var(--brand-color);
+}
 ```
 
 #### Customized Styling
@@ -73,9 +75,12 @@ progress {
 ```css
 /* **Mandatory**: -moz- and -webkit- pseudo selectors cannot be grouped. If grouped one of the selectors will be ignored. */
 /* Apply color for custom progress track (background) */
-progress,
-progress::-webkit-progress-bar {
+progress {
   background: var(--progress-track-color);
+}
+/* Use browser target pseudo selector to make the default progress background transparent */
+progress::-webkit-progress-bar {
+  background: transparent;
 }
   
 /* Apply color for custom progress bar */
@@ -90,12 +95,18 @@ progress::-moz-progress-bar {
 }
 ```
 
-3. **Add a custom animation for the indeterminate state:** Use `:not([value])` or the `:indeterminate` pseudo class to target the progress element in its indeterminate state to add a custom animation. 
+3. **Add a custom animation for the indeterminate state:** Use the `:indeterminate` pseudo class to target the progress element in its indeterminate state to add a custom animation. 
 
 ```css
 /* Indeterminate state animation */
-/* Optional: Use the :indeterminate psueudo-class as part of a selector (progress:indeterminate) */
-progress:not([value]) {
+/* Use the :indeterminate psueudo-class as part of a selector (progress:indeterminate) */
+progress:indeterminate::-webkit-progress-bar {
+  background: linear-gradient(90deg, transparent, var(--progress-color, currentColor), transparent);
+  background-size: 200% 100%;
+  animation: loading 2s infinite linear;
+}
+
+progress:indeterminate::-moz-progress-bar {
   background: linear-gradient(90deg, transparent, var(--progress-color, currentColor), transparent);
   background-size: 200% 100%;
   animation: loading 2s infinite linear;
@@ -108,21 +119,20 @@ progress:not([value]) {
 
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  progress:not([value]) {
+  progress:indeterminate {
     /* Slow down the animation significantly and use a subtler visual change */
     animation-duration: 10s;
     background: linear-gradient(90deg, var(--color-surface), var(--accent-color), var(--color-surface));
-    background-size: 200% 100%;
   }
 }
 
 /* Ensure track backgrounds don't hide animation in WebKit and Chrome. */
-progress:not([value])::-webkit-progress-bar {
+progress:indeterminate::-webkit-progress-bar {
   background: transparent;
 }
 
 /* Ensure track backgrounds don't hide animation in Firefox. */
-progress:not([value])::-moz-progress-bar {
+progress:indeterminate::-moz-progress-bar {
   background: transparent;
 }
 ```
