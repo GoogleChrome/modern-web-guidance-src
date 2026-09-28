@@ -7,7 +7,7 @@ import { spawnSync } from 'child_process';
 
 test('npx interception via shim', async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npx-intercept-test-'));
-  const templatePath = path.resolve(import.meta.dirname, 'npx-intercept.template.ts');
+  const templatePath = path.resolve(import.meta.dirname, '..', 'npx-intercept.template.ts');
 
   assert.ok(fs.existsSync(templatePath), 'Template should exist');
 
