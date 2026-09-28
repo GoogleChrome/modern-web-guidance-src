@@ -188,6 +188,9 @@
   "conic-gradients": [
     "css"
   ],
+  "connection-allowlists": [
+    "security"
+  ],
   "contain": [
     "css"
   ],
@@ -230,6 +233,9 @@
   "contrast-color": [
     "css"
   ],
+  "cors": [
+    "security"
+  ],
   "counter-reset-reversed": [
     "css"
   ],
@@ -244,6 +250,9 @@
   ],
   "cross-document-view-transitions": [
     "view-transitions"
+  ],
+  "csp": [
+    "security"
   ],
   "css-escape": [
     "css"
@@ -529,6 +538,9 @@
   "hsl": [
     "css"
   ],
+  "hsts": [
+    "security"
+  ],
   "hwb": [
     "css"
   ],
@@ -546,6 +558,9 @@
   ],
   "if": [
     "css"
+  ],
+  "iframe-credentialless": [
+    "security"
   ],
   "image-set": [
     "css"
@@ -657,6 +672,9 @@
   "mix-blend-mode": [
     "css"
   ],
+  "mixed-content": [
+    "security"
+  ],
   "mixin": [
     "css"
   ],
@@ -755,6 +773,9 @@
   ],
   "paint-order": [
     "css"
+  ],
+  "permissions": [
+    "security"
   ],
   "physical-properties": [
     "css"
@@ -1074,6 +1095,9 @@
   "trig-functions": [
     "css"
   ],
+  "trusted-types": [
+    "security"
+  ],
   "two-value-display": [
     "css"
   ],
@@ -1083,8 +1107,14 @@
   "update": [
     "css"
   ],
+  "upgrade-insecure-requests": [
+    "security"
+  ],
   "user-action-pseudos": [
     "css"
+  ],
+  "user-activation": [
+    "security"
   ],
   "user-pseudos": [
     "css"
@@ -1184,6 +1214,9 @@
   ],
   "web-animations": [
     "animation"
+  ],
+  "web-cryptography": [
+    "security"
   ],
   "webauthn": [
     "webauthn"
