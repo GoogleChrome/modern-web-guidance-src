@@ -114,7 +114,7 @@ Do not implement a second roving-tabindex system when using `focusgroup="menu no
 - Closing with `Escape` and restoring focus to the invoking trigger.
 - Allowing `Tab` to leave the menu rather than trapping it.
 
-The demos use a local focusgroup fallback rather than the Microsoft polyfill. It handles `ArrowUp`, `ArrowDown`, `Home`, and `End` in the capture phase, prevents page scrolling, and moves focus between enabled direct-child buttons. The fallback reproduces only the focus movement needed by this demo; it does not attempt to provide focusgroup's native role mapping or its other configuration features. This is intentionally a small custom fallback for the menu behaviour demonstrated here; it avoids the upstream polyfill's detached-ancestor leak and should be removed or replaced with native `focusgroup` as browser support matures.
+The demos use a local focusgroup fallback rather than the Microsoft polyfill. It handles `ArrowUp`, `ArrowDown`, `Home`, and `End` in the capture phase, prevents page scrolling, and moves focus between enabled direct-child buttons. The full demo includes several top-level menus, with submenus under only some items, so the menu and anchor-positioning behaviour can be tested across more than one menu tree. The fallback reproduces only the focus movement needed by this demo; it does not attempt to provide focusgroup's native role mapping or its other configuration features. This is intentionally a small custom fallback for the menu behaviour demonstrated here; it avoids the upstream polyfill's detached-ancestor leak and should be removed or replaced with native `focusgroup` as browser support matures.
 
 ## Add a submenu
 
