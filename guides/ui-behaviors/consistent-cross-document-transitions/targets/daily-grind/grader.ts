@@ -7,6 +7,7 @@ import {
   getHtmlDocuments,
 } from '../../../../test-fixture.ts';
 import { CSSViewTransitionRule, CSSMediaRule } from 'cssomnom';
+import { Node, SyntaxKind } from 'ts-morph';
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -21,6 +22,45 @@ function findViewTransitionRules(rules: readonly any[]): CSSViewTransitionRule[]
     }
   }
   return result;
+}
+
+/**
+ * Negative and conditional expectations ("does not ...", "if ... then ...") pass
+ * vacuously on an app that hasn't implemented the feature at all. Gate them on the
+ * cross-document opt-in so they only credit an actual implementation, without the
+ * baseline having to inject placeholder anti-patterns.
+ */
+function hasCrossDocumentOptIn(): boolean {
+  const rules = Array.from(getCssStyleSheet(targetFiles).cssRules);
+  return findViewTransitionRules(rules).some((r) => r.navigation === 'auto');
+}
+
+const VT_NAME_ASSIGNMENT = /viewTransitionName|view-transition-name/;
+
+/**
+ * Returns the source text of every `pagereveal` handler: the callback passed to
+ * `addEventListener('pagereveal', ...)` or assigned to `onpagereveal`. When the
+ * handler is a reference rather than an inline function, the whole file is used.
+ */
+function getPagerevealHandlers(): string[] {
+  const handlers: string[] = [];
+  for (const sf of getJsProject(targetFiles).getSourceFiles()) {
+    for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+      if (!call.getExpression().getText().endsWith('addEventListener')) continue;
+      const [eventArg, handlerArg] = call.getArguments();
+      if (!eventArg || !Node.isStringLiteral(eventArg) || eventArg.getLiteralValue() !== 'pagereveal') continue;
+      const isInline = handlerArg && (Node.isArrowFunction(handlerArg) || Node.isFunctionExpression(handlerArg));
+      handlers.push(isInline ? handlerArg.getText() : sf.getFullText());
+    }
+    for (const bin of sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+      if (bin.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) continue;
+      if (!bin.getLeft().getText().endsWith('onpagereveal')) continue;
+      const right = bin.getRight();
+      const isInline = Node.isArrowFunction(right) || Node.isFunctionExpression(right);
+      handlers.push(isInline ? right.getText() : sf.getFullText());
+    }
+  }
+  return handlers;
 }
 
 test.describe('consistent-cross-document-transitions Target Grader', () => {
@@ -83,15 +123,17 @@ test.describe('consistent-cross-document-transitions Target Grader', () => {
     expect(hasFragmentHref).toBe(true);
   });
 
-  // 5. Responsive render blocking using media attribute on link rel="expect"
+  // 5. The media attribute is used on link rel="expect" WHEN different viewport sizes require
+  // blocking on different DOM elements. The expectation is conditional: a single unconditional
+  // link targeting content that is above the fold at every width is correct. We can't statically
+  // know the app's per-viewport fold, so we check that render blocking is in place and that any
+  // media attribute that is used is a real (non-empty) media query.
   test('uses media attribute on link rel="expect" for responsive viewport render blocking', () => {
     const docs = getHtmlDocuments(targetFiles);
     const expectLinks = docs.flatMap(({ document }) => Array.from(document.querySelectorAll('link[rel="expect"]')));
-    const hasMediaAttr = expectLinks.some((l: any) => {
-      const media = l.getAttribute('media');
-      return Boolean(media && media.trim().length > 0);
-    });
-    expect(hasMediaAttr).toBe(true);
+    expect(expectLinks.length).toBeGreaterThan(0);
+    const hasEmptyMedia = expectLinks.some((l: any) => l.hasAttribute('media') && !(l.getAttribute('media') || '').trim());
+    expect(hasEmptyMedia).toBe(false);
   });
 
   // 6. Scripts that must run before transition are marked with blocking="render" in <head>
@@ -108,6 +150,7 @@ test.describe('consistent-cross-document-transitions Target Grader', () => {
   test('does not render-block below-the-fold elements such as footer in link rel="expect"', () => {
     const docs = getHtmlDocuments(targetFiles);
     const expectLinks = docs.flatMap(({ document }) => Array.from(document.querySelectorAll('link[rel="expect"]')));
+    expect(expectLinks.length).toBeGreaterThan(0);
     const blocksBelowTheFold = expectLinks.some((l: any) => {
       const href = (l.getAttribute('href') || '').toLowerCase();
       return href.includes('footer') || href.includes('comment') || href.includes('below-the-fold');
@@ -117,9 +160,9 @@ test.describe('consistent-cross-document-transitions Target Grader', () => {
 
   // 8. If view-transition-name assigned dynamically via pagereveal, registered in blocking="render" script in head
   test('registers pagereveal listener in a blocking="render" script in the head when dynamic transitions are used', () => {
+    expect(hasCrossDocumentOptIn()).toBe(true);
     const docs = getHtmlDocuments(targetFiles);
-    const project = getJsProject(targetFiles);
-    const hasPagereveal = project.getSourceFiles().some((sf) => sf.getFullText().includes('pagereveal'));
+    const hasPagereveal = getPagerevealHandlers().length > 0;
 
     let improperlyRegisteredPagereveal = false;
     if (hasPagereveal) {
@@ -144,19 +187,19 @@ test.describe('consistent-cross-document-transitions Target Grader', () => {
     expect(improperlyRegisteredPagereveal).toBe(false);
   });
 
-  // 9. Dynamically assigned view-transition-name values are removed after transition finishes
+  // 9. Dynamically assigned view-transition-name values are removed after transition finishes.
+  // Only pagereveal handlers that actually assign a view-transition-name need cleanup.
   test('cleans up dynamic view-transition-name after transition finishes if pagereveal is used', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-    const invalidPagereveal = sourceFiles.some((sf) => {
-      const text = sf.getFullText();
-      return text.includes('pagereveal') && !text.includes('finished');
-    });
-    expect(invalidPagereveal).toBe(false);
+    expect(hasCrossDocumentOptIn()).toBe(true);
+    const missingCleanup = getPagerevealHandlers().some(
+      (handler) => VT_NAME_ASSIGNMENT.test(handler) && !/\.finished\b/.test(handler)
+    );
+    expect(missingCleanup).toBe(false);
   });
 
   // 10. No two elements on the same page share the same view-transition-name value
   test('ensures no duplicate static view-transition-name values exist on the same page', () => {
+    expect(hasCrossDocumentOptIn()).toBe(true);
     const docs = getHtmlDocuments(targetFiles);
     let hasDuplicates = false;
     for (const { document } of docs) {
