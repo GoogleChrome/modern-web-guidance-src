@@ -1,0 +1,7 @@
+- Exact origin validation accepts URLs, link elements, or `MessageEvent` origins that match the trusted reference origin, including URLs with paths or explicit default ports (such as `:443` on `https:`).
+- Exact origin validation rejects cross-origin URLs, prefix-spoofed domains (such as `https://trusted.example.com.attacker.example`), and different subdomains.
+- Same-site validation accepts URLs that share both the scheme and the registrable domain (such as different subdomains or ports over `https:`).
+- Same-site validation rejects scheme downgrades (such as `http:` when the trusted origin uses `https:`) and unrelated domains.
+- Origin and site validation safely rejects opaque `"null"` origins (such as `MessageEvent` instances with `origin: "null"` or `data:` URLs) and malformed URL strings without throwing uncaught exceptions.
+- Two distinct opaque origins (such as two separate `data:` URLs or messages from two different sandboxed iframes) are never treated as same-origin.
+- When `globalThis.Origin` is unavailable, origin and site validation still accepts trusted inputs and rejects spoofed, cross-origin, scheme-downgraded, or `"null"` inputs via a `URL`-based fallback.
