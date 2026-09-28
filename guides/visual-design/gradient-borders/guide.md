@@ -8,9 +8,11 @@ web-feature-ids:
   - masks
 ---
 
+<!--
 ## Implementation notes for guide authors
 
 - Core guidance: `background-clip: border-area`
 - Fallback:
 	- If content bg doesn't have to be transparent, just `linear-gradient(<color>)` with `background-clip: padding-box` over the gradient
 	- If content bg has to be transparent, masked pseudo-element (very briefly, agents know this just fine, just reference it)
+-->

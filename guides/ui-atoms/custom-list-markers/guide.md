@@ -10,6 +10,7 @@ web-feature-ids:
   - symbols-function
 ---
 
+<!--
 ## Notes for guide authors
 
 This is meant to function as the first stop for any use case involving a list with custom markers of any sort, including interactive ones.
@@ -26,3 +27,4 @@ This is meant to function as the first stop for any use case involving a list wi
 
 - Once this is done, `checkbox-group` can refer to it for layout
 - Once `icons` is done, this can refer to it for icon markers
+-->
