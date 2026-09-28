@@ -157,17 +157,21 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 
 #### DOs
 - **Logical Tab Order**: Ensure tab order matches visual layouts (top-to-bottom).
-- **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide overrides with sufficient contrast.
 - **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements. When implementing a custom keyboard handler for button-like elements, `Enter` should be a `keydown` handler and `Space` should be a `keyup` handler (matching native `<button>` behavior where `Enter` repeats and `Space` triggers on release).
 - **Use `tabindex` deliberately**: Anything focusable — by keyboard or programmatically — should have an implicit or explicit ARIA role, so don't make every element focusable. When focus is needed, choose `tabindex="0"` to add the element to the tab order or `tabindex="-1"` to make it programmatically focusable only (e.g., a skip-link target).
 - **Manage Toggle States**: Utilize `aria-expanded` and `aria-pressed` to communicate toggle states for custom controls.
 
 #### DON'Ts
-- **Don't disable outlines without replacements**: Avoid `outline: none` without styling alternatives.
 - **Don't use Positive Tabindex values**: Never use `tabindex="1"` or greater.
 - **Don't hide interactive elements from screen readers**: Avoid `aria-hidden="true"` or `role="presentation"` on elements that can receive focus.
 
-### Code Examples
+### Focus indicators
+
+- **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide overrides with sufficient contrast.
+- Use `:focus-visible` to define custom focus rings, not `:focus`.
+- **Don't disable outlines without replacements**: Avoid `outline: none` without styling alternatives.
+- Prefer `outline` over other properties (e.g. `box-shadow`) for focus rings. If you must rely on `box-shadow` for focus rings, provide an `outline`-based fallback for High Contrast Mode using the `forced-colors` media query.
+- Pair focus outlines with `outline-offset` to visually separate the ring from the element.
 
 ```css
 /* Good: High contrast focus border */
@@ -176,6 +180,14 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
   outline-offset: 3px;
 }
 ```
+
+### Touch targets
+
+- Interactive elements should be at least 24×24 CSS pixels (WCAG 2.5.8 AA). Enforce with `min-block-size` / `min-inline-size` or padding rather than `width` / `height`, so content can grow the target but not shrink it.
+- Bump targets up on coarse pointers: `@media (pointer: coarse) { ... }`.
+- **DON'T** use `touch-action: none` for custom gestures — it disables page scrolling through the element. Scope to the axis you actually need: `pan-y` for horizontal swipes (page still scrolls vertically), `pan-x` for vertical ones. Reserve `none` for elements where no native touch behavior makes sense (e.g. a drawing canvas).
+
+### Code Examples
 
 ```html
 <!-- Good: Skip to main content -->
@@ -223,6 +235,7 @@ function toggleWidgetState() {
 - **Decorative SVGs removal**: Apply `aria-hidden="true"` to remove decorative SVGs from reading flows.
 - **Long descriptions for complex images**: Use `<figure>`/`<figcaption>` or `aria-describedby` for charts and infographics.
 - **Provide data tables as alternatives**: Consider providing semantic data tables as accessible alternatives for charts and other complex data visualizations.
+- **Alt text for CSS generated content**: Use the alternative text argument of `content` (e.g. `content: url(icon.svg) / "Save";`) and keep meaningful text in the DOM. See {{ GUIDE_REF('accessible-generated-content') }} for more details.
 
 #### DON'Ts
 - **Don't use clichéd prefixes**: Avoid "Image of..." or "Picture of...".
@@ -340,41 +353,17 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 
 ## 9. Color, Contrast, and Typography
 
+See {{ GUIDE_REF('color') }} for contrast requirements, light and dark color schemes, and Forced Colors Mode, and {{ GUIDE_REF('typography') }} for readable typography.
+
 ### Actionable Guidelines
 
 #### DOs
-- **Minimum contrast standards**: Maintain 4.5:1 for normal text and 3:1 for large text or icons.
-- **Ensure non-text contrast standards**: Maintain a minimum contrast ratio of 3:1 for user interface component boundaries and states.
-  - This includes visual elements (borders, backgrounds, box-shadows, underlines) that form the boundary or indicate the presence of a UI component (e.g., input field borders).
-  - This also includes visual elements indicating active states within a component (e.g., checkbox checkmarks or switch thumbs).
-  - **Caveat**: Meeting 3:1 non-text contrast can challenge minimalistic designs. Soft gradients or subtle inset/outset shadows can soften visual boundaries while satisfying accessibility requirements.
 - **Use multiple state indicators**: Do not denote success/errors ONLY with color. Use icons or text.
-- **Relative font size units**: Use `rem` or `em` for font sizes instead of `px`.
-- **Consistent or Start alignment**: Avoid `justify` alignment as it can be more difficult to read.
-- **Avoid long lines of text**: Cap paragraph blocks to a maximum of 80 characters width.
-- **Support user zoom preferences**: Allow users to resize text up to 200% without loss of content or functionality.
-- **Support light and dark color schemes**: Honor `@media (prefers-color-scheme: dark)` and pair it with the `color-scheme` CSS property so form controls, scrollbars, and other UA-rendered surfaces match.
-- **Use `prefers-contrast` only when warranted**: Reach for `@media (prefers-contrast: more)` when the design uses low-contrast accents (e.g., subtle borders, muted secondary text) that need to be reinforced; most sites that already meet baseline contrast won't need it.
 
 #### DON'Ts
 - **Don't use color alone to indicate the presence of a user interface component or its state**: Use iconography and/or shape to help differentiate.
-- **Don't use Justified Text Alignment**: Avoid `text-align: justify`.
-- **Don't use Ornate fonts**: Omit cursive typefaces for main reading content.
-- **Don't rely on all-caps for emphasis**: Prefer bolding for visual emphasis, and use `<em>`/`<strong>` when the emphasis is semantic.
-- **Limit emphasis overall**: Emphasis loses meaning when it's everywhere — apply it only where it changes how the content should be read.
 
 ### Code Examples
-
-```css
-/* Good: Relative sizing and line caps */
-body {
-  line-height: 1.5;
-  text-align: start; /* Supports LTR and RTL */
-}
-article {
-  max-width: 80ch; /* Caps line length to ~80 characters for readability */
-}
-```
 
 ```html
 <!-- Good: Denotes state without colors alone -->
@@ -384,43 +373,9 @@ article {
 </div>
 ```
 
-```css
-/* Dark Mode support variables */
-:root {
-  --bg-color: #ffffff;
-  --text-color: #212529;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-color: #121212;
-    --text-color: #f8f9fa;
-  }
-}
-```
-
 ## 10. Motions and Preferences
 
-### Actionable Guidelines
-
-#### DOs
-- **Support Reduced Motion media queries**: Support `@media (prefers-reduced-motion: reduce)` media queries.
-- **Provide Pause mechanism**: Allow users to stop auto-running carousels banners or other persistent animations.
-- **Default to static views**: Consider defaulting to static states and allowing users to opt-in to motion.
-
-#### DON'Ts
-- **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures.
-
-### Code Examples
-
-```css
-/* Good: Dampen spin states for reduced motion queries */
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-    opacity: 0.5;
-  }
-}
-```
+See {{ GUIDE_REF('motion') }}.
 
 ## 11. Modals and Native Dialogs
 
