@@ -26,6 +26,7 @@
     "container-scroll-state-queries": "bramus",
     "tmp-cross-origin-storage": "tomayac",
     "tmp-scroll-axis-lock": "bramus",
+    "tmp-email-verification": "rowan-m",
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {

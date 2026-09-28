@@ -10,5 +10,8 @@
   },
   "tmp-scroll-axis-lock": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4213"
+  },
+  "tmp-email-verification": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4439"
   }
 }
