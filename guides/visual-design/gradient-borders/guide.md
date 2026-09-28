@@ -1,6 +1,6 @@
 ---
 name: gradient-borders
-description: Create continuous gradient borders around an HTML element, with a transparent content area
+description: Create continuous gradient borders around an element, with a transparent content area
 draft: stub
 web-feature-ids:
   - background-clip-border-area
