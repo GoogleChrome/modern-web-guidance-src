@@ -99,41 +99,46 @@ progress::-moz-progress-bar {
 
 ```css
 /* Indeterminate state animation */
-/* Use the :indeterminate psueudo-class as part of a selector (progress:indeterminate) */
-progress:indeterminate::-webkit-progress-bar {
-  background: linear-gradient(90deg, transparent, var(--progress-color, currentColor), transparent);
-  background-size: 200% 100%;
-  animation: loading 2s infinite linear;
+progress {
+  --indeterminate-track: linear-gradient(90deg, 
+    transparent 0% 15%, 
+    var(--progress-color, currentColor) 15% 45%, 
+    transparent 45% 100%
+  );
+  --indeterminate-track-size: 200% 100%;
+  --indeterminate-track-animation: loading 1.5s infinite linear;
 }
 
+/* Use the :indeterminate pseudo-class to target the progress element in its indeterminate state */
+progress:indeterminate::-webkit-progress-bar {
+  background: var(--indeterminate-track);
+  background-size: var(--indeterminate-track-size);
+  animation: var(--indeterminate-track-animation);
+}
+
+/* **Mandatory**: -moz- and -webkit- pseudo selectors cannot be grouped. If grouped one of the selectors will be ignored.  */
 progress:indeterminate::-moz-progress-bar {
-  background: linear-gradient(90deg, transparent, var(--progress-color, currentColor), transparent);
-  background-size: 200% 100%;
-  animation: loading 2s infinite linear;
+  background: var(--indeterminate-track);
+  background-size: var(--indeterminate-track-size);
+  animation: var(--indeterminate-track-animation);
 }
 
 @keyframes loading {
   from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
+  to { background-position: -150% 0; }
 }
 
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  progress:indeterminate {
-    /* Slow down the animation significantly and use a subtler visual change */
+  progress:indeterminate::-webkit-progress-bar {
+    /* Slow down the animation significantly */
     animation-duration: 10s;
-    background: linear-gradient(90deg, var(--color-surface), var(--accent-color), var(--color-surface));
   }
-}
 
-/* Ensure track backgrounds don't hide animation in WebKit and Chrome. */
-progress:indeterminate::-webkit-progress-bar {
-  background: transparent;
-}
-
-/* Ensure track backgrounds don't hide animation in Firefox. */
-progress:indeterminate::-moz-progress-bar {
-  background: transparent;
+  progress:indeterminate::-moz-progress-bar {
+    /* Slow down the animation significantly */
+    animation-duration: 10s;
+  }
 }
 ```
 
