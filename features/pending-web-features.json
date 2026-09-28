@@ -13,5 +13,8 @@
   },
   "tmp-polygon-round": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4429"
+  },
+  "tmp-column-wrap": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4430"
   }
 }
