@@ -196,21 +196,34 @@ function prevButton(page: Page) {
     .first();
 }
 
-async function clickAndCapture(page: Page, which: 'next' | 'prev') {
+type TransitionRecord = { types: string[]; activeTypesDuringUpdate: string[] };
+
+/**
+ * Clicks until a view transition is recorded. Buttons rendered by client-side
+ * frameworks may be visible before hydration attaches their click handlers,
+ * so a single early click can be silently dropped.
+ */
+async function clickUntilTransition(page: Page, which: 'next' | 'prev'): Promise<void> {
+  const button = which === 'next' ? nextButton(page) : prevButton(page);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await button.click({ timeout: 5000 });
+    const recorded = await page
+      .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+    if (recorded) return;
+  }
+}
+
+async function clickAndCapture(page: Page, which: 'next' | 'prev'): Promise<TransitionRecord[]> {
   // "Previous" is typically disabled on the first item, so advance first.
   if (which === 'prev') {
-    await nextButton(page).click({ timeout: 5000 });
+    await clickUntilTransition(page, 'next');
     await page.waitForTimeout(1000);
+    await page.evaluate(() => ((window as any).__transitions = []));
   }
-  await page.evaluate(() => ((window as any).__transitions = []));
-  await (which === 'next' ? nextButton(page) : prevButton(page)).click({ timeout: 5000 });
-  await page
-    .waitForFunction(() => (window as any).__transitions?.length > 0, null, { timeout: 5000 })
-    .catch(() => {});
-  return page.evaluate(() => (window as any).__transitions as Array<{
-    types: string[];
-    activeTypesDuringUpdate: string[];
-  }>);
+  await clickUntilTransition(page, which);
+  return page.evaluate(() => (window as any).__transitions as TransitionRecord[]);
 }
 
 const hasType = (t: { types: string[]; activeTypesDuringUpdate: string[] }, type: string) =>
