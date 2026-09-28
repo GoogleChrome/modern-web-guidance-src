@@ -235,11 +235,12 @@
     /* --------------------------------------------------
      CONTENT-BASED STYLING OVERRIDES (If media is absent)
      -------------------------------------------------- */
-    /* Style cards specifically when they DO NOT contain any media elements (text-only card) */
-    /* This leverages combining :not() and :has() as described in content-based-styling subskill */
-    .card:not(:has(> :is(img, picture, svg))) {
-      border-top: 4px solid var(--focus-ring-color);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    /* Give text-only cards a distinct heading treatment. */
+    .card:not(:has(> :is(img, picture, svg))) > hgroup {
+      background: var(--text-main);
+      color: var(--bg-card);
+      padding: 0.75rem;
+      border-radius: 8px;
     }
 
     /* Presentation header styling */

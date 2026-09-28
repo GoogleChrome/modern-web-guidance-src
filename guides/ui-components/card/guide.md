@@ -85,6 +85,34 @@ secondary actions separate from that link:
 </div>
 ```
 
+### Support common card variations
+
+Keep optional regions in the same meaningful order. A card may include a badge or
+metadata in its header, a hero image before the content, and actions in its
+footer. Use layout to align regions; do not duplicate markup or move content with
+CSS `order`.
+
+```html
+<article class="card">
+  <header>
+    <span class="badge">Featured</span>
+    <h3><a href="/products/example">Product name</a></h3>
+    <p>Category · 4.8 stars</p>
+  </header>
+  <img src="product.jpg" alt="">
+  <p>Short description of the product.</p>
+  <footer>
+    <span>£24</span>
+    <button>Add to basket</button>
+  </footer>
+</article>
+```
+
+The header, media, supporting content, and footer should each remain optional
+without making the remaining content ambiguous. Keep hero media decorative when
+it adds no information beyond the text; otherwise provide an appropriate
+alternative. Align footer actions consistently across a group only when that
+helps comparison, and keep every action independently operable.
 
 ### Card layout
 
@@ -101,9 +129,19 @@ special markup when media is absent.
 
 Use `:has()` only when the presence or absence of content changes the card's
 presentation. For example, the wider layout can apply only to cards containing
-direct media, while cards without media retain the default stacked layout. Do
-not use it when an ordinary class, element selector, or unconditional layout
-rule expresses the same requirement more clearly. See
+direct media, while a text-only card can style its heading region differently:
+
+```css
+.card:not(:has(> :is(img, picture, svg))) > hgroup {
+  background: #17202a;
+  color: #fff;
+}
+```
+
+Keep the default presentation complete and readable, and ensure links and focus
+indicators remain distinguishable against the new background. Do not use `:has()`
+when an ordinary class, element selector, or unconditional layout rule expresses
+the requirement more clearly. See
 {{ GUIDE_REF("content-based-styling") }}.
 
 Keep media within a deliberate aspect ratio or size constraint and use
