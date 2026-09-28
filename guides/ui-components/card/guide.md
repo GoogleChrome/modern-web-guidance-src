@@ -9,14 +9,20 @@ guides:
   - content-based-styling
 ---
 
-# Build a Content-Aware Card
+# Build a Card
 
-Use a card to group one independently understandable piece of content: an
-article preview, product, profile, or saved item. Keep its source order
-meaningful: media, title, supporting content, then related actions.
+A card is a visual pattern, not a fixed semantic or interaction model. Use it
+for content such as articles, products, profiles, status summaries, and saved
+items. Choose semantics from the card's purpose:
 
-Use an `article` when the card can stand on its own outside its current page.
-For the appropriate semantics and focus treatment for links and controls, see
+- use an `article` for independently understandable content;
+- use one native link when the whole card is one destination;
+- use separate links or buttons when it has independent actions;
+- use labelled radios or checkboxes when cards represent choices;
+- use a native `select` when the interaction is a select.
+
+Keep the source order meaningful: media, title, supporting content, then related
+actions. For semantics and focus treatment, see
 {{ GUIDE_REF("accessibility") }}.
 
 ## Adapt to the card's placement
@@ -29,6 +35,30 @@ not to the viewport. For container-query setup and sizing strategy, see
 Put the query container on a wrapper around the card when a query needs to alter
 the card's own layout. A container cannot query itself, so the wrapper lets the
 card change from a stacked presentation to a media-and-content layout.
+
+### Align cards in a grid
+
+Let the parent grid control columns and gaps. Align corresponding regions, such
+as titles, descriptions, and actions, only when that improves comparison; do not
+force every card to the same height when content should remain natural.
+
+Use `subgrid` when cards need shared internal tracks:
+
+```css
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.card {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+}
+```
+
+Keep the card's DOM order meaningful and align actions through layout rather than
+moving them with CSS `order`. See {{ GUIDE_REF("css-layout") }}.
 
 ### Card composition
 
