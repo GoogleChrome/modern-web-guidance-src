@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vertical carousel</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --surface: Canvas;
+      --ink: CanvasText;
+      --line: color-mix(in srgb, CanvasText, transparent 75%);
+      --accent: #0a5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-block-size: 100vh;
+      display: grid;
+      place-items: center;
+      font: 1rem/1.5 system-ui, sans-serif;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .carousel {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      block-size: min(70vh, 24rem);
+    }
+
+    .carousel-track {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      gap: 1rem;
+      block-size: 100%;
+      border-radius: 0.5rem;
+    }
+
+    .carousel-item {
+      flex: 0 0 100%;
+      scroll-snap-align: center;
+      display: grid;
+      place-items: center;
+      inline-size: 16rem;
+      border-radius: 0.5rem;
+      font-size: 2rem;
+      background: color-mix(in srgb, var(--accent), var(--surface) 80%);
+      border: 1px solid var(--line);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      @supports (animation-timeline: view()) {
+        .carousel-item {
+          animation: fade-in linear both;
+          /* Tracks the block axis, unlike the horizontal demo's view(inline) */
+          animation-timeline: view(block);
+          animation-range: entry 0% cover 40%;
+        }
+
+        @keyframes fade-in {
+          from {
+            opacity: 0.3;
+          }
+
+          to {
+            opacity: 1;
+          }
+        }
+      }
+    }
+
+    @supports selector(::scroll-button(*)) {
+      .carousel-track::scroll-button(block-start) {
+        content: "‹";
+        rotate: 90deg;
+      }
+
+      .carousel-track::scroll-button(block-end) {
+        content: "›";
+        rotate: 90deg;
+      }
+
+      .carousel-track::scroll-button(*) {
+        font-size: 1.5rem;
+        line-height: 1;
+        inline-size: 2.5rem;
+        block-size: 2.5rem;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .carousel-track::scroll-button(*):disabled {
+        opacity: 0.3;
+        pointer-events: none;
+      }
+    }
+
+    @supports selector(::scroll-marker) {
+      .carousel-track {
+        scroll-marker-group: after;
+      }
+
+      ::scroll-marker-group {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      .carousel-item::scroll-marker {
+        content: "";
+        inline-size: 0.6rem;
+        block-size: 0.6rem;
+        border-radius: 50%;
+        background: var(--line);
+        border: none;
+        cursor: pointer;
+      }
+
+      .carousel-item::scroll-marker:target-current {
+        background: var(--accent);
+      }
+    }
+
+    .fallback-controls {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .fallback-controls button {
+      font: inherit;
+      inline-size: 2.5rem;
+      block-size: 2.5rem;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .fallback-markers {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .fallback-markers button {
+      inline-size: 0.6rem;
+      block-size: 0.6rem;
+      padding: 0;
+      border-radius: 50%;
+      border: none;
+      background: var(--line);
+      cursor: pointer;
+    }
+
+    .fallback-markers button[aria-current="true"] {
+      background: var(--accent);
+    }
+
+    :focus-visible {
+      outline: 0.2rem solid #f90;
+      outline-offset: 0.15rem;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Featured products">
+    <ul class="carousel-track">
+      <li class="carousel-item" role="group" aria-roledescription="slide" aria-label="1 of 4">Slide 1</li>
+      <li class="carousel-item" role="group" aria-roledescription="slide" aria-label="2 of 4">Slide 2</li>
+      <li class="carousel-item" role="group" aria-roledescription="slide" aria-label="3 of 4">Slide 3</li>
+      <li class="carousel-item" role="group" aria-roledescription="slide" aria-label="4 of 4">Slide 4</li>
+    </ul>
+
+    <!-- MANDATORY: announces the current slide regardless of which control moved the carousel -->
+    <p class="visually-hidden" role="status" aria-live="polite"></p>
+
+    <!-- Rendered only when the browser lacks native ::scroll-button() support -->
+    <div class="fallback-controls" hidden>
+      <button type="button" class="carousel-prev" aria-label="Previous slide">‹</button>
+      <button type="button" class="carousel-next" aria-label="Next slide">›</button>
+    </div>
+
+    <!-- Rendered only when the browser lacks native ::scroll-marker support -->
+    <div class="fallback-markers" role="tablist" aria-label="Slides" hidden></div>
+  </div>
+
+  <script type="module">
+    const track = document.querySelector('.carousel-track');
+    const items = [...track.querySelectorAll('.carousel-item')];
+    const status = document.querySelector('.carousel [role="status"]');
+    const hasNativeButtons = CSS.supports('selector(::scroll-button(*))');
+    const hasNativeMarkers = CSS.supports('selector(::scroll-marker)');
+
+    // Measures the block (y) axis; the horizontal demo measures rect.left/width instead
+    function currentIndex() {
+      const trackRect = track.getBoundingClientRect();
+      const center = trackRect.top + trackRect.height / 2;
+      return items.reduce((closest, item, index) => {
+        const rect = item.getBoundingClientRect();
+        const distance = Math.abs(rect.top + rect.height / 2 - center);
+        return distance < closest.distance ? { index, distance } : closest;
+      }, { index: 0, distance: Infinity }).index;
+    }
+
+    function scrollToIndex(index) {
+      items[index]?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }
+
+    if (!hasNativeButtons) {
+      const controls = document.querySelector('.fallback-controls');
+      controls.hidden = false;
+      controls.querySelector('.carousel-prev').addEventListener('click', () => {
+        scrollToIndex(Math.max(0, currentIndex() - 1));
+      });
+      controls.querySelector('.carousel-next').addEventListener('click', () => {
+        scrollToIndex(Math.min(items.length - 1, currentIndex() + 1));
+      });
+    }
+
+    let markerButtons = [];
+    if (!hasNativeMarkers) {
+      const markers = document.querySelector('.fallback-markers');
+      markers.hidden = false;
+      items.forEach((_, index) => {
+        const marker = document.createElement('button');
+        marker.type = 'button';
+        marker.setAttribute('aria-label', `Go to slide ${index + 1}`);
+        marker.addEventListener('click', () => scrollToIndex(index));
+        markers.append(marker);
+      });
+      markerButtons = [...markers.children];
+    }
+
+    // MANDATORY: runs regardless of native vs. fallback controls, so the
+    // status region and marker highlight always match the settled slide.
+    let announceTimeout;
+    function syncCurrentSlide() {
+      const active = currentIndex();
+      status.textContent = `Slide ${active + 1} of ${items.length}`;
+      markerButtons.forEach((marker, index) => {
+        marker.setAttribute('aria-current', String(index === active));
+      });
+    }
+
+    track.addEventListener('scroll', () => {
+      clearTimeout(announceTimeout);
+      announceTimeout = setTimeout(syncCurrentSlide, 100);
+    });
+
+    if (!hasNativeMarkers) syncCurrentSlide();
+  </script>
+</body>
+
+</html>

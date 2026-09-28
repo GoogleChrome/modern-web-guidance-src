@@ -1,0 +1,13 @@
+- **MANDATORY**: The carousel track has `scroll-snap-type` set on the scroll axis, and every carousel item has `scroll-snap-align` so it can act as a snap target.
+- **MANDATORY**: The carousel container is exposed as a labelled region (`role="region"` plus an accessible name) with `aria-roledescription="carousel"`.
+- **MANDATORY**: Each slide is exposed as a labelled group (`role="group"` plus an accessible name identifying its position, e.g. "2 of 4") with `aria-roledescription="slide"`.
+- **MANDATORY**: A visually hidden, polite live region (`aria-live="polite"` or `role="status"`) announces the current slide's position after the carousel settles on a new slide, regardless of whether the native controls or the script fallback triggered the move.
+- **MANDATORY**: The carousel remains scrollable by native touch, pointer/trackpad, and keyboard input independent of any JavaScript.
+- **MANDATORY**: Activating the previous/next controls (native `::scroll-button()` or the script fallback) moves the carousel to the adjacent snapped item.
+- **MANDATORY**: The previous control does not move the carousel earlier than the first item, and the next control does not move it later than the last item.
+- **MANDATORY**: Activating a position marker (native `::scroll-marker` or the script fallback) scrolls its corresponding item into view.
+- **MANDATORY**: The marker or indicator representing the currently visible item is visually distinguished from the others, and this updates as the visible item changes.
+- **MANDATORY WHEN THE CAROUSEL SCROLLS VERTICALLY**: Snapping, the previous/next controls, and position tracking operate on the block axis (`y`) rather than the inline axis (`x`).
+- **MANDATORY WHEN A SCROLL-DRIVEN SLIDE EFFECT IS USED**: The effect is wrapped in `@media (prefers-reduced-motion: no-preference)` so it is disabled when the user requests reduced motion.
+- **MANDATORY WHEN NATIVE `::scroll-button()`/`::scroll-marker` SUPPORT IS ABSENT**: A script-based fallback provides equivalent previous/next and position-marker controls, and the two control sets are not both rendered at once.
+- **OPTIONAL**: Items fade, scale, or otherwise animate as they enter or exit the scrollport.
