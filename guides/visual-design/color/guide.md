@@ -17,6 +17,18 @@ web-feature-ids:
 
 {# Top-level discipline guide for anything color-related #}
 
+## Accessible color
+
+**Don't use color alone to indicate the presence of a user interface component or its state**: Use iconography and/or shape to help differentiate. Do not denote success/errors ONLY with color. Use icons or text.
+
+```html
+<!-- Good: Denotes state without colors alone -->
+<div class="error-msg">
+  <span aria-hidden="true">❌</span>
+  <span>The password entered was invalid.</span>
+</div>
+```
+
 ### Contrast
 
 - **Minimum contrast standards**: Maintain 4.5:1 for normal text and 3:1 for large text or icons.
@@ -28,21 +40,8 @@ web-feature-ids:
 
 ### Light and dark color schemes
 
-- **Support light and dark color schemes**: Honor `@media (prefers-color-scheme: dark)` and pair it with the `color-scheme` CSS property so form controls, scrollbars, and other UA-rendered surfaces match. See {{ GUIDE_REF('dark-mode') }} for more details.
-
-```css
-/* Dark Mode support variables */
-:root {
-  --bg-color: #ffffff;
-  --text-color: #212529;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-color: #121212;
-    --text-color: #f8f9fa;
-  }
-}
-```
+- **Support light and dark color schemes**: Honor `@media (prefers-color-scheme: dark)` and pair it with the `color-scheme` CSS property so form controls, scrollbars, and other UA-rendered surfaces match.
+See {{ GUIDE_REF('dark-mode') }} for more details.
 
 ### Forced Colors Mode
 
@@ -50,7 +49,7 @@ web-feature-ids:
 - **Use `forced-color-adjust: none` only where color is essential information** (syntax highlighter, color picker swatch). **DON'T** use `forced-color-adjust: none` just to preserve aesthetics.
 - **Don't rely on `background-image`, `box-shadow`, or `border-image` to convey borders, separators, or state**: They disappear in forced colors (and often in print too). If you must, ensure there's an alternative in forced colors mode, such as `outline` or `border` with system color keywords (`CanvasText`, `LinkText`, `ButtonText`, `Highlight`, `GrayText`, etc.).
 
-### Generating tints
+## Generating tints
 
 {# Link to color-ramps once that guide is ready to publish #}
 
