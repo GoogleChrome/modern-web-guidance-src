@@ -32,11 +32,14 @@ card change from a stacked presentation to a media-and-content layout.
 
 ### Card composition
 
-Place the `article` inside its query wrapper. Make the heading link to the
-primary destination, and keep secondary actions separate from that link:
+Place the `article` inside a wrapper that represents the card's allocated layout
+space. Make that wrapper the query container: a container cannot query its own
+inline size, so the wrapper lets the card adapt to the width available in its
+parent layout. Make the heading link to the primary destination, and keep
+secondary actions separate from that link:
 
 ```html
-<div class="card-slot">
+<div class="card-container">
   <article class="card">
     <img src="recipe.jpg" alt="Poached eggs on toast">
     <hgroup>
@@ -59,7 +62,7 @@ Start with a stacked layout. Size media within the card, then apply a
 two-column layout only when the card has media and its slot is wide enough:
 
 ```css
-.card-slot {
+.card-container {
   container-type: inline-size;
 }
 
