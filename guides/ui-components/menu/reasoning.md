@@ -58,7 +58,7 @@ By prescribing explicit capture and stopping of key events inside each layer, th
 The demos omit `popovertarget`, `popovertargetaction`, and `command="toggle-popover"`. Their triggers call `showPopover()` and `hidePopover()` through JavaScript.
 
 ### Architectural Rationale
-Declarative popover targeting makes the trigger the popover source and causes the browser to expose implicit accessibility relationships, including `aria-expanded` and `aria-details`. Those relationships do not match this menu's desired semantics and cannot be overridden reliably. Imperative control avoids the source relationship, allowing the implementation to set `aria-expanded` explicitly and move focus immediately to the first menu item without the trigger announcement race or the `aria-hidden` workaround.
+Declarative popover targeting makes the trigger the popover source and causes the browser to expose implicit accessibility relationships, including `aria-expanded` and `aria-details`. Those relationships do not match this menu's desired semantics and cannot be overridden reliably. This guide intentionally moves focus to the first menu item when the menu opens, but that focus movement is a design choice for this command-menu pattern rather than a universal Popover or focusgroup requirement. Imperative control avoids the source relationship, allowing the implementation to set `aria-expanded` explicitly and coordinate the state update with immediate focus movement without the trigger announcement race that can occur when declarative targeting and focus movement are combined. The Microsoft polyfill's separate failure to upgrade hidden popovers is a limitation of its upgrade heuristic, not a consequence of this focus-management choice.
 
 ---
 

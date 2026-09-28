@@ -56,7 +56,7 @@ When nesting a menu trigger or bar within a header, you often want the header to
 
 ## Open and position the menu
 
-Use a button as the menu trigger. The [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API) places the menu in the top layer and supplies light-dismiss behaviour. Trigger the popover imperatively with `showPopover()` and `hidePopover()` rather than using `popovertarget` or `popovertargetaction`. Declarative popover targeting makes the browser treat the control as the popover source and adds implicit accessibility relationships, including `aria-expanded` and `aria-details`, that are not required for this menu pattern.
+Use a button as the menu trigger. The [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API) places the menu in the top layer and supplies light-dismiss behaviour. Trigger the popover imperatively with `showPopover()` and `hidePopover()` rather than using `popovertarget` or `popovertargetaction`. Declarative popover targeting makes the browser treat the control as the popover source and adds implicit accessibility relationships, including `aria-expanded` and `aria-details`, that are not required for this menu pattern. This guide also moves focus into the menu when it opens, so imperative control lets the implementation coordinate the expanded-state update and focus transition without the announcement race that can occur when declarative targeting and immediate focus movement are combined.
 
 > [!IMPORTANT]
 > **Workaround for popover clobbering focusgroup semantics:**
@@ -107,7 +107,7 @@ Keep the opening, closing, and keyboard traversal independent of CSS anchor posi
 
 Do not implement a second roving-tabindex system when using `focusgroup="menu nomemory"`. Native focusgroup supplies the menu roles and the menu pattern's focus behaviour, including its directional and boundary keys, unless another attribute or element such as `popover` clobbers those semantics. JavaScript remains responsible for the parts focusgroup does not cover:
 
-- Opening the menu with pointer activation, `Enter`, `Space`, or `ArrowDown`, setting `aria-expanded="true"`, and moving focus immediately to the first enabled item. `nomemory` ensures the focusgroup does not restore the previously focused item.
+- Opening the menu with pointer activation, `Enter`, `Space`, or `ArrowDown`, setting `aria-expanded="true"`, and moving focus immediately to the first enabled item. This is the interaction contract chosen for this command-menu pattern, not a requirement of Popover or focusgroup. `nomemory` ensures the focusgroup does not restore the previously focused item.
 - Setting `aria-expanded="false"` when closing each popover and restoring focus to its invoking trigger. The imperative path avoids the declarative source announcement race, so no `aria-hidden` workaround or focus delay is needed.
 - Providing the local fallback path for browsers without native focusgroup support.
 - Activating or selecting a command with `Enter` or `Space`.
@@ -179,7 +179,7 @@ These checks complement [WCAG 2.2 Keyboard](https://www.w3.org/WAI/WCAG22/Unders
 
 ## Progressive enhancement and fallbacks
 
-The demos retain `focusgroup="menu nomemory"` in the markup and use a small local fallback for browsers without native support. They open and close popovers imperatively, synchronise `aria-expanded` themselves, and move DOM focus immediately to the first enabled item. This avoids the declarative popover source relationship and its associated trigger-announcement race; test the result with VoiceOver and NVDA.
+The demos retain `focusgroup="menu nomemory"` in the markup and use a small local fallback for browsers without native support. They open and close popovers imperatively, synchronise `aria-expanded` themselves, and move DOM focus immediately to the first enabled item. Moving focus into the first item is an intentional choice for this command-menu pattern, not a universal requirement for menus whose popover is adjacent to the trigger. Imperative control avoids the declarative popover source relationship and the associated trigger-announcement race; test the result with VoiceOver and NVDA.
 
 ```js
 document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
