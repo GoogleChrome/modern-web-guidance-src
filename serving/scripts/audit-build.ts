@@ -3,6 +3,7 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { globSync } from 'glob';
 import { config } from '../../lib/skills-config.ts';
+import { isDisciplineGuide } from '../../lib/guide-validation.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '../../');
 
@@ -26,14 +27,15 @@ function auditBuild() {
     absolute: false,
   });
 
-  // 2. Find all internalized discipline guides (guides/<cat>/<cat>/guide.md)
+  // 2. Find all internalized discipline guides: category root guides
+  // (guides/<cat>/<cat>/guide.md) and named guides listed in DISCIPLINE_GUIDES.
   const disciplineGuides = globSync(['guides/*/*/guide.md'], {
     cwd: repoRoot,
     ignore: ['**/node_modules/**', '**/dist/**'],
     absolute: false,
   }).filter(f => {
     const parts = f.split('/');
-    return parts.length === 4 && parts[1] === parts[2];
+    return parts.length === 4 && isDisciplineGuide(parts[2], parts[1]);
   });
 
   const allFiles = [...skillFiles, ...disciplineGuides].sort();

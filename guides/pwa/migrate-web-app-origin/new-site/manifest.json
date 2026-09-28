@@ -1,0 +1,12 @@
+{
+  "name": "New App Name",
+  "id": "/demo.html",
+  "start_url": "demo.html",
+  "display": "standalone",
+  "migrate_from": [
+    {
+      "id": "https://old-app.example.com/",
+      "behavior": "force"
+    }
+  ]
+}

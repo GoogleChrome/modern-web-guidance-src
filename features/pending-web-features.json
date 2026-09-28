@@ -8,7 +8,10 @@
   "tmp-cross-origin-storage": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4029"
   },
+  "tmp-scroll-axis-lock": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4213"
+  },
   "tmp-email-verification": {
-    "issue": "https://github.com/WICG/email-verification"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4439"
   }
 }

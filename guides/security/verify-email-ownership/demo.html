@@ -5,7 +5,7 @@
   <title>Email Verification Relying Party Demo</title>
 </head>
 <body>
-  <form method="POST" action="/api/verify-email" id="verify-form">
+  <form method="POST" action="/api/verify-email">
     <label for="email">Email address</label>
     <input
       type="email"
@@ -23,16 +23,7 @@
       autocomplete="email-verification-token"
     >
 
-    <button type="submit" id="submit-btn">Continue</button>
+    <button type="submit">Continue</button>
   </form>
-
-  <script type="module">
-    const form = document.getElementById('verify-form');
-    const submitBtn = document.getElementById('submit-btn');
-
-    form.addEventListener('submit', () => {
-      submitBtn.disabled = true;
-    });
-  </script>
 </body>
 </html>

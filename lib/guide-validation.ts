@@ -3,7 +3,7 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 
-import { validateMacros } from '../serving/lib/macros.ts';
+import { validateMacros, stripComments, maskComments } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
@@ -35,6 +35,8 @@ export const DISCIPLINE_GUIDES = new Set([
   'webmcp',
 
   // Named orientation guides
+  'cpp-on-the-web',
+  'css-conditionals',
   'css-layout',
   'passkeys',
 ]);
@@ -85,15 +87,22 @@ interface ValidationResult {
 /**
  * Determines the project status name for a use case based on its completeness.
  * Returns null when the use case is complete.
+ * @param guidance The guide body, or a precomputed has-guidance flag.
  */
-export function getStatusName(guideBody: string, hasGrader: boolean, hasTask: boolean, isDraft: boolean = false, hasExpectations: boolean = true): ProjectStatus | null {
-  if (guideBody.trim().length === 0 || isDraft || !hasExpectations) {
+export function getStatusName(guidance: string | boolean, hasGrader: boolean, hasTask: boolean, isDraft: boolean = false, hasExpectations: boolean = true): ProjectStatus | null {
+  const hasGuidance = typeof guidance === 'string' ? guidance.trim().length > 0 : guidance;
+  if (!hasGuidance || isDraft || !hasExpectations) {
     return ProjectStatus.NeedsGuidance;
   }
   if (!hasGrader || !hasTask) {
     return ProjectStatus.NeedsEvals;
   }
   return null;
+}
+
+/** The project status of an inventoried guide; see getStatusName. */
+export function getGuideStatus(inv: GuideInventory): ProjectStatus | null {
+  return getStatusName(inv.hasGuide, inv.hasGrader, inv.hasTask, Boolean(inv.draft), inv.hasExpectations && !inv.expectationsEmpty);
 }
 
 /**
@@ -147,10 +156,11 @@ export function validateGuide(filePath: string): ValidationResult {
     }
   }
 
-  errors.push(...validateMacros(body, relativePath));
-  errors.push(...validateHtmlTags(body, relativePath));
-  errors.push(...validateGuideTitle(body, relativePath, data, { requireTitle: true }));
-  errors.push(...validateBaselineClaims(body, relativePath));
+  const maskedBody = maskComments(body);
+  errors.push(...validateMacros(maskedBody, relativePath));
+  errors.push(...validateHtmlTags(maskedBody, relativePath));
+  errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
+  errors.push(...validateBaselineClaims(maskedBody, relativePath));
 
   return { errors, data, body, filePath };
 }
@@ -461,6 +471,13 @@ export function getTaskMap(): Map<string, TaskInfo> {
   return taskMap;
 }
 
+/**
+ * Strips both {# ... #} macro comments and <!-- ... --> HTML comments.
+ */
+export function stripAllComments(content: string): string {
+  return stripComments(content).replace(/<!--[\s\S]*?-->/g, '');
+}
+
 export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean }): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
@@ -473,9 +490,10 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
 
   const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
   const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
-  const hasContent = content.replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
+  const hasContent = stripAllComments(content).trim().length > 0;
   const isStub = hasFrontmatter && !hasContent;
   const hasGuide = hasContent;
+
   // Any truthy `draft` withholds the guide, but treat explicitly falsy-looking
   // strings (e.g. `draft: "false"`, `draft: no`) as not-draft — quoting a
   // boolean shouldn't silently unpublish a guide.
@@ -771,7 +789,7 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
  */
 export function validateGuideTitle(body: string, relativePath: string, data?: GuideData, options?: { requireTitle?: boolean }): string[] {
   const errors = validateHeadings(body, relativePath, data);
-  const isStub = body.replace(/<!--[\s\S]*?-->/g, '').trim().length === 0;
+  const isStub = stripAllComments(body).trim().length === 0;
 
   if (options?.requireTitle && !isStub) {
     const hasH1 = Boolean(extractH1Heading(body));

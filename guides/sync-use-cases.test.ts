@@ -286,6 +286,12 @@ describe('getStatusName', () => {
     assert.strictEqual(getStatusName('Some content.', false, false, false, false), ProjectStatus.NeedsGuidance);
     assert.strictEqual(getStatusName('Some content.', true, true, false, false), ProjectStatus.NeedsGuidance);
   });
+
+  test('accepts a precomputed has-guidance flag in place of the body', () => {
+    assert.strictEqual(getStatusName(true, true, true), null);
+    assert.strictEqual(getStatusName(true, false, true), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getStatusName(false, true, true), ProjectStatus.NeedsGuidance);
+  });
 });
 
 describe('getIssueStateChanges', () => {
