@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Content-Sized Iframes Demo</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+    }
+
+    p.lead {
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .embed {
+      /* Give the frame a definite width. The embedded content is laid out at this width. */
+      width: 100%;
+      border: 0;
+      padding: 0;
+      display: block;
+      /* Opt in: use the embedded document's content height as the iframe's natural height. */
+      frame-sizing: content-height;
+      /* DO NOT set an explicit height here or use a height attribute. */
+    }
+
+    @supports (frame-sizing: content-height) {
+      .embed {
+        height: auto;
+        frame-sizing: content-height;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Article Discussion</h1>
+    <p class="lead">
+      The embedded comment widget below uses <code>frame-sizing: content-height</code> on the host
+      <code>&lt;iframe&gt;</code> and <code>&lt;meta name="responsive-embedded-sizing"&gt;</code> +
+      <code>window.requestResize()</code> inside the embedded document so it never shows an inner scrollbar.
+    </p>
+
+    <iframe
+      id="comments-frame"
+      class="embed"
+      title="Article comments widget"
+      loading="lazy"
+    ></iframe>
+  </main>
+
+  <script type="module">
+    // Guarded resize helper used inside the embedded document.
+    export function requestFrameResize() {
+      if (typeof window.requestResize !== 'function') return;
+      try {
+        window.requestResize();
+      } catch {
+        // Not embedded or not opted in: there is nothing to resize.
+      }
+    }
+
+    const embeddedHtml = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="responsive-embedded-sizing" content="allow-origins=*">
+  <title>Embedded Comments Widget</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    /* DO NOT size html/body with viewport units (vh/dvh/svh) or height: 100%. */
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.5;
+    }
+    .widget {
+      padding: 12px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .widget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+    .widget-header h2 {
+      margin: 0;
+      font-size: 1.125rem;
+    }
+    details.guidelines {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    details.guidelines summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+    details.guidelines p {
+      margin: 8px 0 0;
+      font-size: 0.9rem;
+      color: #334155;
+    }
+    .comments-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .comment-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+    .comment-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+    .comment-author {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .comment-body {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #ffffff;
+    }
+    form.comment-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget">
+    <div class="widget-header">
+      <h2>Comments (<span id="comment-count">2</span>)</h2>
+    </div>
+
+    <details class="guidelines" id="guidelines-details" open>
+      <summary id="guidelines-summary">Community Guidelines</summary>
+      <p>
+        Keep feedback constructive and relevant. When you collapse or expand this section, add a comment,
+        or load more items, the embedded document calls <code>window.requestResize()</code> so the host
+        iframe updates its height without scrolling.
+      </p>
+    </details>
+
+    <div class="comments-list" id="comments-list">
+      <article class="comment-card">
+        <div class="comment-meta">
+          <span class="comment-author">Maya Lin</span>
+          <span>2 hours ago</span>
+        </div>
+        <p class="comment-body">
+          Native content-sized iframes eliminate the fragile postMessage height-sync boilerplate!
+        </p>
+      </article>
+      <article class="comment-card">
+        <div class="comment-meta">
+          <span class="comment-author">Devon Brooks</span>
+          <span>1 hour ago</span>
+        </div>
+        <p class="comment-body">
+          Remember to list every allowed embedding origin in the responsive-embedded-sizing meta tag.
+        </p>
+      </article>
+    </div>
+
+    <div class="controls">
+      <button type="button" id="load-more-btn">Load more comments</button>
+      <button type="button" id="remove-comment-btn">Remove latest comment</button>
+    </div>
+
+    <form class="comment-form" id="comment-form">
+      <input type="text" id="author-input" placeholder="Your name" aria-label="Your name">
+      <textarea id="comment-input" rows="2" placeholder="Add a comment..." aria-label="Add a comment"></textarea>
+      <div>
+        <button type="submit" class="primary" id="submit-comment-btn">Post comment</button>
+      </div>
+    </form>
+  </div>
+
+  <script type="module">
+    export function requestFrameResize() {
+      if (typeof window.requestResize !== 'function') return;
+      try {
+        window.requestResize();
+      } catch {
+        // Not embedded or not opted in: there is nothing to resize.
+      }
+    }
+
+    // Fallback height reporting when native frame-sizing is not supported.
+    if (window.parent !== window && (typeof CSS === 'undefined' || !CSS.supports('frame-sizing', 'content-height'))) {
+      const reportHeight = () => {
+        const targetOrigin = window.location.origin && window.location.origin !== 'null'
+          ? window.location.origin
+          : '*';
+        window.parent.postMessage(
+          { type: 'embed-height', height: document.documentElement.offsetHeight },
+          targetOrigin,
+        );
+      };
+      new ResizeObserver(reportHeight).observe(document.documentElement);
+    }
+
+    // Observe unexpected layout shifts (e.g. font swaps or <details> toggles).
+    new ResizeObserver(() => requestFrameResize()).observe(document.documentElement);
+
+    const commentsList = document.getElementById('comments-list');
+    const commentCount = document.getElementById('comment-count');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const removeCommentBtn = document.getElementById('remove-comment-btn');
+    const commentForm = document.getElementById('comment-form');
+    const guidelinesDetails = document.getElementById('guidelines-details');
+
+    const extraComments = [
+      {
+        author: 'Samira Patel',
+        time: '45 minutes ago',
+        body: 'Calling window.requestResize() after DOM updates keeps the frame height synced within 1px.',
+      },
+      {
+        author: 'Lucas Meyer',
+        time: '20 minutes ago',
+        body: 'Assigning srcdoc inside requestAnimationFrame ensures the host frame lays out first.',
+      },
+    ];
+    let extraIndex = 0;
+
+    function updateCount() {
+      commentCount.textContent = String(commentsList.children.length);
+    }
+
+    function appendComment(author, time, body) {
+      const card = document.createElement('article');
+      card.className = 'comment-card';
+      const meta = document.createElement('div');
+      meta.className = 'comment-meta';
+      const authorSpan = document.createElement('span');
+      authorSpan.className = 'comment-author';
+      authorSpan.textContent = author;
+      const timeSpan = document.createElement('span');
+      timeSpan.textContent = time;
+      meta.append(authorSpan, timeSpan);
+
+      const p = document.createElement('p');
+      p.className = 'comment-body';
+      p.textContent = body;
+      card.append(meta, p);
+      commentsList.appendChild(card);
+      updateCount();
+    }
+
+    loadMoreBtn.addEventListener('click', () => {
+      const next = extraComments[extraIndex % extraComments.length];
+      extraIndex += 1;
+      appendComment(next.author, next.time, next.body);
+      requestFrameResize();
+    });
+
+    removeCommentBtn.addEventListener('click', () => {
+      if (commentsList.lastElementChild && commentsList.children.length > 1) {
+        commentsList.lastElementChild.remove();
+        updateCount();
+        requestFrameResize();
+      } else if (guidelinesDetails.open) {
+        guidelinesDetails.open = false;
+        requestFrameResize();
+      }
+    });
+
+    guidelinesDetails.addEventListener('toggle', () => {
+      requestFrameResize();
+    });
+
+    commentForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const authorInput = document.getElementById('author-input');
+      const commentInput = document.getElementById('comment-input');
+      const author = authorInput.value.trim() || 'Alex Rivera';
+      const body = commentInput.value.trim() || 'Great overview of responsive iframe sizing!';
+      appendComment(author, 'Just now', body);
+      authorInput.value = '';
+      commentInput.value = '';
+      requestFrameResize();
+    });
+  <\/script>
+</body>
+</html>`;
+
+    const frame = document.getElementById('comments-frame');
+
+    // Assign srcdoc after the host's first layout so the iframe has a definite width
+    // when the embedded document performs its initial layout.
+    requestAnimationFrame(() => {
+      frame.srcdoc = embeddedHtml;
+    });
+
+    // Fallback listener on the embedding page when native frame-sizing is unavailable.
+    if (typeof CSS === 'undefined' || !CSS.supports('frame-sizing', 'content-height')) {
+      frame.style.height = '500px';
+      window.addEventListener('message', (event) => {
+        if (event.source !== frame.contentWindow) return;
+        if (event.data?.type !== 'embed-height' || !Number.isFinite(event.data.height)) return;
+        frame.style.height = `${Math.ceil(event.data.height)}px`;
+      });
+    }
+  </script>
+</body>
+</html>
