@@ -14,7 +14,8 @@ import {
   truncateMessage,
   finalizeTrajectorySummary,
   generateNormalizedTrajectory,
-  readTrajectorySummary
+  readTrajectorySummary,
+  standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 import type { ClaudeLogEntry } from './claude.d.ts';
 
@@ -204,11 +205,7 @@ function parseClaudeLogEntries(
             timestamp,
             subagentId,
             thought,
-            action: {
-              type: mapToolType(tool.name || ''),
-              name: tool.name || 'unknown',
-              params: tool.input
-            }
+            action: standardizeAction(mapToolType(tool.name || ''), tool.name || 'unknown', tool.input)
           }) - 1;
 
           if (tool.id) {
