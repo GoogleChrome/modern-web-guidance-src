@@ -1,7 +1,6 @@
 ---
 name: verify-email-ownership
 description: Verify that a user owns an email address during account creation, sign-in, or recovery without sending a one-time passcode or magic link email.
-draft: Origin Trial
 web-feature-ids:
   - tmp-email-verification
 ---
