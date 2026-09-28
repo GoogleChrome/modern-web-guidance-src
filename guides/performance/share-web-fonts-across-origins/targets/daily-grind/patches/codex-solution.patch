@@ -1,0 +1,73 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..178135c
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++/dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9c617e2
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,5 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', output));
+diff --git a/index.html b/index.html
+index 66c9173..50bd92e 100644
+--- a/index.html
++++ b/index.html
+@@ -6,6 +6,29 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /* Publicly distributed Roboto uses global sharing. Hashes identify the exact
++       version-pinned font bytes; update each hash if its URL changes.
++       Keep the COS source first and its plain network fallback second. */
++    @font-face {
++      font-family: 'Roboto';
++      font-style: normal;
++      font-weight: 400;
++      font-display: swap;
++      src:
++        url('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.2.6/files/roboto-latin-400-normal.woff2' integrity('sha256-5EwR9INL3U1rbae47l6uvIrLQSUM1rzlzILqgmIUDqo=') cross-origin-storage(*)) format('woff2'),
++        url('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.2.6/files/roboto-latin-400-normal.woff2') format('woff2');
++    }
++
++    @font-face {
++      font-family: 'Roboto';
++      font-style: normal;
++      font-weight: 700;
++      font-display: swap;
++      src:
++        url('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.2.6/files/roboto-latin-700-normal.woff2' integrity('sha256-zsLHcq3l/s55W7GO7quGMjRxrL2T/iY5pAq6ZE+fJNs=') cross-origin-storage(*)) format('woff2'),
++        url('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.2.6/files/roboto-latin-700-normal.woff2') format('woff2');
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -21,7 +44,7 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

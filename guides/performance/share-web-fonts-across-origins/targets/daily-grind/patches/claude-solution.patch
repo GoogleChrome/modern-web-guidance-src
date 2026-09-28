@@ -1,0 +1,61 @@
+diff --git a/index.html b/index.html
+index 66c9173..58b1ac2 100644
+--- a/index.html
++++ b/index.html
+@@ -20,6 +20,19 @@
+       padding: 0;
+     }
+ 
++    /* Shared icon font used for social links in the footer. Loaded via the
++       Cross-Origin Storage API so visitors who already cached it from another
++       site referencing the same CDN file skip re-downloading it here. */
++    @font-face {
++      font-family: 'Font Awesome 6 Brands';
++      src:
++        /* COS-enhanced source listed first, plain fallback listed after it. */
++        url('https://use.fontawesome.com/releases/v6.5.1/webfonts/fa-brands-400.woff2' integrity('sha384-oHtuXHzT7C7H23zM/nl6BsfnryyF6w7BXVsPHKB7t4z4qDsC1kM6ES3Hg8xBAAC0') cross-origin-storage(*)) format('woff2'),
++        url('https://use.fontawesome.com/releases/v6.5.1/webfonts/fa-brands-400.woff2') format('woff2');
++      font-weight: 400;
++      font-style: normal;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -152,6 +165,24 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .social-icons {
++      display: flex;
++      justify-content: center;
++      gap: 18px;
++      margin-bottom: 20px;
++    }
++
++    .social-icons a {
++      font-family: 'Font Awesome 6 Brands';
++      font-size: 1.3rem;
++      color: var(--primary);
++      text-decoration: none;
++    }
++
++    .social-icons a:hover {
++      color: var(--accent);
++    }
+   </style>
+ </head>
+ 
+@@ -198,6 +229,11 @@
+   </main>
+ 
+   <footer>
++    <div class="social-icons">
++      <a href="https://facebook.com/dailygrindcoffee" aria-label="Facebook">&#xf39e;</a>
++      <a href="https://instagram.com/dailygrindcoffee" aria-label="Instagram">&#xf16d;</a>
++      <a href="https://x.com/dailygrindcoffee" aria-label="X (Twitter)">&#xe61b;</a>
++    </div>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

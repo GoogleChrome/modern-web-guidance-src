@@ -1,0 +1,45 @@
+diff --git a/index.html b/index.html
+index 66c9173..016aee3 100644
+--- a/index.html
++++ b/index.html
+@@ -6,6 +6,31 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /*
++      Publicly distributed Roboto web font uses global sharing via Cross-Origin Storage (COS).
++      The COS-enhanced source is listed first with integrity() and cross-origin-storage(*),
++      followed by the plain fallback source for browsers without COS support.
++    */
++    @font-face {
++      font-family: 'Roboto';
++      font-style: normal;
++      font-weight: 400;
++      font-display: swap;
++      src:
++        url('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.2.6/files/roboto-latin-400-normal.woff2' integrity('sha256-5EwR9INL3U1rbae47l6uvIrLQSUM1rzlzILqgmIUDqo=') cross-origin-storage(*)) format('woff2'),
++        url('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.2.6/files/roboto-latin-400-normal.woff2') format('woff2');
++    }
++
++    @font-face {
++      font-family: 'Roboto';
++      font-style: normal;
++      font-weight: 700;
++      font-display: swap;
++      src:
++        url('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.2.6/files/roboto-latin-700-normal.woff2' integrity('sha256-zsLHcq3l/s55W7GO7quGMjRxrL2T/iY5pAq6ZE+fJNs=') cross-origin-storage(*)) format('woff2'),
++        url('https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.2.6/files/roboto-latin-700-normal.woff2') format('woff2');
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -21,7 +46,7 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);

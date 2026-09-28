@@ -1,0 +1,1 @@
+- Serve large, popular web fonts from a shared cross-origin cache instead of re-downloading them from a font CDN on every site that references them.

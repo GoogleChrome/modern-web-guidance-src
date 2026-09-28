@@ -1,0 +1,45 @@
+diff --git a/public/fonts/grenze.css b/public/fonts/grenze.css
+new file mode 100644
+index 0000000..41b1ad7
+--- /dev/null
++++ b/public/fonts/grenze.css
+@@ -0,0 +1,20 @@
++/*
++ * Self-hosted @font-face for the "Grenze" brand font, normally served by
++ * Google Fonts. This file is shipped as a static asset (not run through the
++ * Tailwind/Lightning CSS build pipeline) so the `integrity()` /
++ * `cross-origin-storage()` url() modifiers below survive unminified/unstripped.
++ *
++ * The COS-enhanced source is listed first so a browser that supports the
++ * Cross-Origin Storage API tries it first; the plain url() fallback after it
++ * points at the font's real, working network location and is used by every
++ * browser that doesn't recognize cross-origin-storage()/integrity().
++ */
++@font-face {
++  font-family: "Grenze";
++  font-style: normal;
++  font-weight: 500;
++  font-display: swap;
++  src:
++    url("https://fonts.gstatic.com/s/grenze/v18/O4ZOFGb7hR12Bxqt9ErXQpCpkHScyrnU2HA.ttf" integrity("sha256-ZFxYd0EgA2BFH0GBDESTVekxjztdMebPDBX4Ld+IuCc=") cross-origin-storage(*)) format("truetype"),
++    url("https://fonts.gstatic.com/s/grenze/v18/O4ZOFGb7hR12Bxqt9ErXQpCpkHScyrnU2HA.ttf") format("truetype");
++}
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..efc9d9c 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -21,13 +21,8 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
++    <link rel="stylesheet" href=`${baseUrl}/fonts/grenze.css` />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
