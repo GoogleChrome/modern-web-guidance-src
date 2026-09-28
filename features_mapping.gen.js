@@ -362,6 +362,13 @@ window.__featuresMapping = {
   "sanitize-untrusted-html": [
     "sanitizer"
   ],
+  "secure-external-subresources": [
+    "url-cross-origin",
+    "url-referrer-policy",
+    "url-integrity",
+    "subresource-integrity",
+    "referrer-policy"
+  ],
   "trusted-types": [
     "trusted-types"
   ],
