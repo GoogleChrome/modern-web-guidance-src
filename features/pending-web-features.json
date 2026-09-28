@@ -19,5 +19,8 @@
   },
   "tmp-revert-rule": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4431"
+  },
+  "tmp-path-length": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4307"
   }
 }
