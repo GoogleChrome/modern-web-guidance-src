@@ -96,25 +96,57 @@
       anchor-name: --file-trigger;
     }
 
-    #preferences-trigger {
-      anchor-name: --preferences-trigger;
-    }
+    #edit-trigger { anchor-name: --edit-trigger; }
+    #view-trigger { anchor-name: --view-trigger; }
+    #help-trigger { anchor-name: --help-trigger; }
+    #open-recent-trigger { anchor-name: --open-recent-trigger; }
+    #export-trigger { anchor-name: --export-trigger; }
+    #appearance-trigger { anchor-name: --appearance-trigger; }
 
+    /* Align each top-level menu's start edge with its trigger's start edge. */
     #file-menu {
       position-anchor: --file-trigger;
-      position-area: block-end span-inline-end;
-      inset: auto;
+      inset-inline-start: anchor(--file-trigger left);
+      inset-block-start: anchor(--file-trigger bottom);
     }
 
-    #preferences-menu {
-      position-anchor: --preferences-trigger;
-      position-area: inline-end span-block-start;
-      inset: auto;
+    #edit-menu {
+      position-anchor: --edit-trigger;
+      inset-inline-start: anchor(--edit-trigger left);
+      inset-block-start: anchor(--edit-trigger bottom);
     }
+
+    #view-menu {
+      position-anchor: --view-trigger;
+      inset-inline-start: anchor(--view-trigger left);
+      inset-block-start: anchor(--view-trigger bottom);
+    }
+
+    #help-menu {
+      position-anchor: --help-trigger;
+      inset-inline-start: anchor(--help-trigger left);
+      inset-block-start: anchor(--help-trigger bottom);
+    }
+
+    /* Align each submenu's start edge with its trigger's end edge. */
+    .submenu {
+      inset-inline-start: anchor(right);
+      inset-block-start: anchor(top);
+    }
+
+    #open-recent-menu { position-anchor: --open-recent-trigger; }
+    #export-menu { position-anchor: --export-trigger; }
+    #appearance-menu { position-anchor: --appearance-trigger; }
 
     @media (max-width: 40rem) {
-      #preferences-menu {
-        position-area: block-end span-inline-start;
+      /* Centre open menus below their triggers on narrow viewports. */
+      #file-menu,
+      #edit-menu,
+      #view-menu,
+      #help-menu,
+      .submenu {
+        position-area: block-end center;
+        inset: auto;
       }
     }
 
@@ -148,7 +180,10 @@
 <body>
   <div class="bar-wrap">
     <div class="bar" role="menubar" aria-label="Document commands">
-<button id="file-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">File</button>
+      <button id="file-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">File</button>
+      <button id="edit-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">Edit</button>
+      <button id="view-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">View</button>
+      <button id="help-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">Help</button>
     </div>
   </div>
 
@@ -166,19 +201,62 @@
     <p id="status" role="status" aria-live="polite"></p>
   </main>
 
-  <div id="file-menu" popover="auto">
-    <!-- Keep focusgroup inside the popover: popover can otherwise clobber its semantics. -->
+  <!-- Keep each focusgroup inside its popover: popover can otherwise clobber its semantics. -->
+  <div id="file-menu" class="menu" popover="auto">
     <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
-      <button type="button" >New file</button>
-      <button type="button" >Save</button>
-      <button id="preferences-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Preferences <span class="hint"
-          aria-hidden="true">›</span></button>
+      <button type="button">New file</button>
+      <button type="button">Open…</button>
+      <button id="open-recent-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Open Recent <span class="hint" aria-hidden="true">›</span></button>
+      <button type="button">Save</button>
+      <button id="export-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Export <span class="hint" aria-hidden="true">›</span></button>
+      <button type="button">Close window</button>
     </div>
-    <div id="preferences-menu" popover="manual">
-      <div focusgroup="menu nomemory" aria-labelledby="preferences-trigger">
-        <button type="button" >Appearance</button>
-        <button type="button" >Keyboard shortcuts</button>
+    <div id="open-recent-menu" class="menu submenu" popover="manual">
+      <div focusgroup="menu nomemory" aria-labelledby="open-recent-trigger">
+        <button type="button">Project brief</button>
+        <button type="button">Design notes</button>
+        <button type="button">Meeting agenda</button>
       </div>
+    </div>
+    <div id="export-menu" class="menu submenu" popover="manual">
+      <div focusgroup="menu nomemory" aria-labelledby="export-trigger">
+        <button type="button">PDF</button>
+        <button type="button">Rich Text</button>
+        <button type="button">Plain Text</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="edit-menu" class="menu" popover="auto">
+    <div focusgroup="menu nomemory" aria-labelledby="edit-trigger">
+      <button type="button">Undo</button>
+      <button type="button">Redo</button>
+      <button type="button">Cut</button>
+      <button type="button">Copy</button>
+      <button type="button">Paste</button>
+    </div>
+  </div>
+
+  <div id="view-menu" class="menu" popover="auto">
+    <div focusgroup="menu nomemory" aria-labelledby="view-trigger">
+      <button type="button">Show Toolbar</button>
+      <button id="appearance-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Appearance <span class="hint" aria-hidden="true">›</span></button>
+      <button type="button">Enter Full Screen</button>
+    </div>
+    <div id="appearance-menu" class="menu submenu" popover="manual">
+      <div focusgroup="menu nomemory" aria-labelledby="appearance-trigger">
+        <button type="button">Use Light Appearance</button>
+        <button type="button">Use Dark Appearance</button>
+        <button type="button">Use System Appearance</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="help-menu" class="menu" popover="auto">
+    <div focusgroup="menu nomemory" aria-labelledby="help-trigger">
+      <button type="button">Search Documentation</button>
+      <button type="button">Keyboard Shortcuts</button>
+      <button type="button">About Document</button>
     </div>
   </div>
 
@@ -204,88 +282,114 @@
 
     installFocusgroupFallback();
 
-    const rootTrigger = document.querySelector('#file-trigger');
-    const rootMenu = document.querySelector('#file-menu');
-    const subTrigger = document.querySelector('#preferences-trigger');
-    const subMenu = document.querySelector('#preferences-menu');
     const status = document.querySelector('#status');
+    const menus = [...document.querySelectorAll('[popover]')];
+    const rootTriggers = [...document.querySelectorAll('.bar [aria-haspopup="menu"]')];
     const menuItems = menu => [...menu.querySelector(':scope > [focusgroup~="menu"]')
       .querySelectorAll(':scope > button')]
       .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+    const submenuTrigger = item => item.matches('[aria-haspopup="menu"]') ? item : null;
+    const menuForTrigger = trigger => document.querySelector(`#${trigger.id.replace('trigger', 'menu')}`);
+    const triggerForMenu = menu => document.querySelector(`#${menu.id.replace('menu', 'trigger')}`);
 
     function focusFirst(menu) {
       const first = menuItems(menu)[0];
       if (first && menu.matches(':popover-open')) first.focus({ preventScroll: true });
     }
 
+    function closeMenu(menu, returnFocus = false) {
+      if (!menu.matches(':popover-open')) return;
+      [...menu.querySelectorAll(':scope > [popover]')].forEach(child => closeMenu(child));
+      menu.hidePopover();
+      const trigger = triggerForMenu(menu);
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      if (returnFocus && trigger) trigger.focus();
+    }
+
+    function closeAllMenus(returnFocus = false) {
+      menus.filter(menu => menu.matches(':popover-open') && menu.getAttribute('popover') === 'auto')
+        .forEach(menu => closeMenu(menu, returnFocus));
+    }
+
+    function closeSiblingMenus(menu) {
+      const parent = menu.parentElement;
+      if (!parent) return;
+      [...parent.querySelectorAll(':scope > [popover]:popover-open')]
+        .filter(sibling => sibling !== menu)
+        .forEach(sibling => closeMenu(sibling));
+    }
+
     function openMenu(menu, trigger) {
       if (menu.matches(':popover-open')) return;
+      if (!menu.parentElement.closest('[popover]')) closeAllMenus();
+      else closeSiblingMenus(menu);
       menu.showPopover();
       trigger.setAttribute('aria-expanded', 'true');
       focusFirst(menu);
     }
 
-    function closeSubmenu(returnFocus = true) {
-      if (subMenu.matches(':popover-open')) subMenu.hidePopover();
-      subTrigger.setAttribute('aria-expanded', 'false');
-      if (returnFocus) subTrigger.focus();
-    }
-
-    function closeRootMenu() {
-      closeSubmenu(false);
-      if (rootMenu.matches(':popover-open')) rootMenu.hidePopover();
-      rootTrigger.setAttribute('aria-expanded', 'false');
-      rootTrigger.focus();
-    }
-
     function activate(item) {
-      if (item === subTrigger) {
-        openMenu(subMenu, subTrigger);
+      const submenu = submenuTrigger(item) && menuForTrigger(item);
+      if (submenu) {
+        if (submenu.matches(':popover-open')) closeMenu(submenu, true);
+        else openMenu(submenu, item);
         return;
       }
       status.textContent = `${item.textContent.trim()} selected`;
-      closeRootMenu();
+      closeAllMenus(true);
     }
 
-    rootTrigger.addEventListener('keydown', event => {
-      if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+    rootTriggers.forEach(trigger => {
+      const menu = menuForTrigger(trigger);
+      let suppressNextClick = false;
+
+      trigger.addEventListener('pointerdown', event => {
+        if (!menu.matches(':popover-open')) return;
         event.preventDefault();
-        openMenu(rootMenu, rootTrigger);
-      }
+        suppressNextClick = true;
+        closeMenu(menu, true);
+      });
+
+      trigger.addEventListener('keydown', event => {
+        if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openMenu(menu, trigger);
+        }
+      });
+      trigger.addEventListener('click', event => {
+        event.preventDefault();
+        if (suppressNextClick) {
+          suppressNextClick = false;
+          return;
+        }
+        if (menu.matches(':popover-open')) closeMenu(menu, true);
+        else openMenu(menu, trigger);
+      });
     });
 
-    rootTrigger.addEventListener('click', event => {
-      event.preventDefault();
-      if (rootMenu.matches(':popover-open')) closeRootMenu();
-      else openMenu(rootMenu, rootTrigger);
-    });
-
-    subTrigger.addEventListener('click', event => {
-      event.preventDefault();
-      if (subMenu.matches(':popover-open')) closeSubmenu();
-      else openMenu(subMenu, subTrigger);
-    });
-
-    [rootMenu, subMenu].forEach(menu => {
+    menus.forEach(menu => {
       menu.addEventListener('toggle', () => {
-        const trigger = menu === rootMenu ? rootTrigger : subTrigger;
-        trigger.setAttribute('aria-expanded', String(menu.matches(':popover-open')));
+        const trigger = triggerForMenu(menu);
+        if (trigger) trigger.setAttribute('aria-expanded', String(menu.matches(':popover-open')));
       });
 
       menu.addEventListener('keydown', event => {
         const active = document.activeElement;
-        if (event.key === 'ArrowRight' && menu === rootMenu && active === subTrigger) {
+        const parentMenu = menu.parentElement.closest('[popover]');
+        const parentTrigger = triggerForMenu(menu);
+        const activeSubmenu = submenuTrigger(active) && menuForTrigger(active);
+        if (event.key === 'ArrowRight' && activeSubmenu) {
           event.preventDefault();
           event.stopPropagation();
-          activate(subTrigger);
-        } else if (event.key === 'ArrowLeft' && menu === subMenu) {
+          openMenu(activeSubmenu, active);
+        } else if (event.key === 'ArrowLeft' && parentMenu) {
           event.preventDefault();
           event.stopPropagation();
-          closeSubmenu();
+          closeMenu(menu, true);
         } else if (event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
-          menu === subMenu ? closeSubmenu() : closeRootMenu();
+          closeMenu(menu, true);
         } else if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           event.stopPropagation();
@@ -303,7 +407,7 @@
     });
 
     document.addEventListener('pointerdown', event => {
-      if (!rootMenu.contains(event.target) && event.target !== rootTrigger) closeRootMenu();
+      if (!event.target.closest('[popover], .bar [aria-haspopup="menu"]')) closeAllMenus();
     });
   </script>
 </body>
