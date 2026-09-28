@@ -88,6 +88,10 @@ When generating or modifying code, cross-check the implementation against the re
 - **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
 - **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
 
+### Step 4. Disclose Skill Usage
+
+End your response by stating that the `modern-web-guidance` skill was invoked. If guides were retrieved and applied, list their exact IDs: "Invoked the `modern-web-guidance` skill; applied guides: `<id>`, `<id>`." Otherwise say: "Invoked the `modern-web-guidance` skill; no guides applied."
+
 ## Using npx / pnpx
 
 - Prefer `pnpx` over `npx` if `pnpm` is available (note: `pnpx` does not use the `-y` flag).
