@@ -359,6 +359,9 @@ window.__featuresMapping = {
   "passkeys": [
     "webauthn"
   ],
+  "restrict-outbound-connections": [
+    "connection-allowlists"
+  ],
   "sanitize-untrusted-html": [
     "sanitizer"
   ],
