@@ -7,6 +7,8 @@ To avoid interference with active work, clone a dedicated repository on your loc
 Please make sure to follow `<repo_root>/README.md` on setting up credentials for Jetski, Claude and Codex.
 Related environment variables can be set at `<repo_root>/.env`.
 
+**Sandbox requirement:** Eval agents run inside a filesystem sandbox that hides the repo (so they can't read guides/graders). On Linux this requires bubblewrap: `sudo apt install bubblewrap`, then verify with `bwrap --dev-bind / / true`. Without it every agent run fails. See "Filesystem Sandbox" in `harness/README.md`.
+
 **Safety Note:** The nightly scripts implement a strict fail-fast mechanism. They will immediately abort if the repository has **any uncommitted changes** (including untracked files). This ensures no user progress is accidentally lost. The workflow executes entirely within isolated `nightly-*` branches created directly from `origin/main`. Please avoid using the `nightly-*` prefix for your own active local branches to prevent any potential conflicts.
 
 Evaluation results are uploaded automatically to the dashboard and can be viewed at `go/guidance-evals`.
