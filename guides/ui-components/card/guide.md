@@ -7,8 +7,6 @@ web-feature-ids:
 guides:
   - size-aware-styling
   - content-based-styling
-  - css-layout
-  - accessibility
 ---
 
 # Build a Content-Aware Card
