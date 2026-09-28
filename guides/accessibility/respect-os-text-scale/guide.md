@@ -72,7 +72,13 @@ Instead, combine a font-relative value with viewport-relative scaling and use re
 
 Test fluid typography with operating system text scaling, browser text-size settings, and browser zoom of at least 200%. Text MUST remain readable without clipping, overlap, or loss of content or functionality.
 
-### 3. Ensure Content Wrapping & Flexible Heights
+### 3. Use Scalable Responsive Breakpoints
+
+Responsive breakpoints MUST NOT assume that text will remain at its default size. Where a breakpoint is intended to respond to available space for text, prefer content-driven layouts, container queries, or `em`-based media queries rather than fixed pixel thresholds.
+
+Test responsive layouts with operating system text scaling and browser zoom enabled. Text MUST remain readable and content MUST remain visible without overlap, clipping, or horizontal scrolling.
+
+### 5. Ensure Content Wrapping & Flexible Heights
 
 When text scales up, elements require more vertical and horizontal space to prevent truncation or overlap. To keep your components robust, design your layouts to expand dynamically around the content rather than forcing rigid coordinates:
 
