@@ -16,5 +16,8 @@
   },
   "tmp-column-wrap": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4430"
+  },
+  "tmp-revert-rule": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4431"
   }
 }
