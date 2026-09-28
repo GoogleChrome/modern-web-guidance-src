@@ -1,0 +1,1369 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..f0a232b
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++dist/
++test-results/
++playwright-report/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..8e040e5
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,15 @@
++import { build } from 'esbuild';
++import { mkdir, copyFile, cp } from 'node:fs/promises';
++
++await mkdir('dist/assets', { recursive: true });
++await build({
++  entryPoints: ['src/app.ts'],
++  outfile: 'dist/assets/app.js',
++  bundle: true,
++  format: 'iife',
++  target: 'es2022',
++  minify: true,
++});
++// Copy HTML verbatim: processing instructions must retain their original syntax.
++await copyFile('index.html', 'dist/index.html');
++await cp('public', 'dist', { recursive: true });
+diff --git a/index.html b/index.html
+index 66c9173..dc2fe46 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script src="/assets/app.js" defer></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -135,6 +136,20 @@
+       background: #3e2723;
+     }
+ 
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    button:disabled, button[aria-disabled="true"] { opacity: 0.65; cursor: wait; }
++    .coffee-tip { margin-top: 40px; }
++    #coffee-tip-content { min-height: 180px; margin-top: 20px; }
++    #coffee-tip-content .card { min-height: 180px; }
++    .skeleton { background: var(--secondary); }
++    #tip-status { min-height: 1.6em; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +210,19 @@
+         </div>
+       </div>
+     </section>
++    <section class="coffee-tip" aria-labelledby="coffee-tip-heading">
++      <h2 id="coffee-tip-heading">From Our Baristas</h2>
++      <div id="coffee-tip-content" aria-live="polite" aria-atomic="true">
++        <?start name="coffee-tip">
++        <div class="card skeleton" role="status">
++          <p>Loading your brewing tip…</p>
++        </div>
++        <?end>
++      </div>
++      <button id="refresh-tip" class="btn" type="button" disabled>Refresh brewing tip</button>
++      <p id="tip-status" role="status"></p>
++      <noscript><p>Enable JavaScript if your browser does not support automatic content updates.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +235,14 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Delivered after the page shell; the marker is consumed by this patch. -->
++  <template for="coffee-tip">
++    <article class="card">
++      <h3>A Better Cup at Home</h3>
++      <p>Grind your beans just before brewing to keep every cup fragrant and full of flavor.</p>
++    </article>
++  </template>
++
+ </body>
+ 
+ </html>
+diff --git a/package-lock.json b/package-lock.json
+new file mode 100644
+index 0000000..27b0dae
+--- /dev/null
++++ b/package-lock.json
+@@ -0,0 +1,991 @@
++{
++  "name": "daily-grind",
++  "version": "1.0.0",
++  "lockfileVersion": 3,
++  "requires": true,
++  "packages": {
++    "": {
++      "name": "daily-grind",
++      "version": "1.0.0",
++      "dependencies": {
++        "dompurify": "^3.4.16",
++        "template-for-polyfill": "^0.1.1"
++      },
++      "devDependencies": {
++        "@playwright/test": "^1.63.0",
++        "esbuild": "^0.28.2",
++        "typescript": "^7.0.2"
++      }
++    },
++    "node_modules/@esbuild/aix-ppc64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.28.2.tgz",
++      "integrity": "sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==",
++      "cpu": [
++        "ppc64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "aix"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/android-arm": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.28.2.tgz",
++      "integrity": "sha512-kXXoiPVVGQcnIYGOeaovwOURpniDBpSq4A03qkQ+BMQqtGG6HYap3xne9C1O1yo4TR3qxlCX5IqqmX6fFo2Lqg==",
++      "cpu": [
++        "arm"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "android"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/android-arm64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.28.2.tgz",
++      "integrity": "sha512-5YfKeeI8qWfBZIX+u2xZC3Zlb3Os/gLS2sbEKM+I4ZOcsWmHS2WLysCcQZDAFRslDUU5Oiq44gf6PYN1vGwG5A==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "android"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/android-x64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.28.2.tgz",
++      "integrity": "sha512-O387ite7SzUyCcy3JQX4P4bLtEA7bLLkx+esve5JHnyYfNTxcVpXZo9jhdB0lTKN44gztELTdU7nS8Nr16Fs1Q==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "android"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/darwin-arm64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.28.2.tgz",
++      "integrity": "sha512-n4KqkOQrraxHJcgjM1RvwbigfQKIKJVpM7xp+KsxiyUSrRdIXnt73VhrPAx0fV44hgfmIVKjxMN9J1t5jySVkw==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/darwin-x64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.28.2.tgz",
++      "integrity": "sha512-uq6suIWYP37qzGddBKPw5QEQPi6HiLGsO7UmkpfyaYNQ3D+rN6w6WfwH+nuqcGXWvawGwxOEroO4YGnFh95azw==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/freebsd-arm64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.28.2.tgz",
++      "integrity": "sha512-n+I0BTSRIoy+d6RPKnEVwql5UwBJolytvY4mAOIEJorKlqgPII8ix6slVVrfZ5Tnj7glIZvloylbB/EJPMWEXw==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "freebsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/freebsd-x64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.28.2.tgz",
++      "integrity": "sha512-78XJTJkvPs0kz2w61301PJjXl4g7q3JqiYMZ/M/yVI73EHBrCRTgkhu9oqG7vPqq+a/yadEW8aD+agKlk5xrmg==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "freebsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-arm": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.28.2.tgz",
++      "integrity": "sha512-XlDnu2q5yoqems+xay6wSAcg9DDD7K9RLKZEBOMZm3ckNpJBvOX20tSfby8KfrrhINDyv9V2YVZKY/SpoGJI8w==",
++      "cpu": [
++        "arm"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-arm64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.28.2.tgz",
++      "integrity": "sha512-pW4AC0P3it8c7do9MVM4p51FzHzdM/TZrerurgRcHJ2WTa1VQ1CIq18xncfpBJw4ojkiZZrKW2yIBWBP92j6Ug==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-ia32": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.28.2.tgz",
++      "integrity": "sha512-CYbnj78HsIeA+DhgUKgFCfvNsTHFhMMrinUrMZpDXJXKN8T3XViTZ/+wtHeVxEWY8ewSzTFN+nRmSwO2tZaLUQ==",
++      "cpu": [
++        "ia32"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-loong64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.28.2.tgz",
++      "integrity": "sha512-buwkd8nsph4R+ajRvw0qM5Hja/TXQow3ptzWO2EbG/cqcIkHloRrdlBtQlshyYGTNFvfkfJ5tpPLVkY4DtsPfQ==",
++      "cpu": [
++        "loong64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-mips64el": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.28.2.tgz",
++      "integrity": "sha512-ZVykbDyk7519VwiNb9Lcj9m8XM6v5V9uKPvrEMkkEedVewf+0itkhahp4HDpgERXhwLRpWFypsGbG/J8s0QjJA==",
++      "cpu": [
++        "mips64el"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-ppc64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.28.2.tgz",
++      "integrity": "sha512-CAXl+Dtd9UUuJd8pKKdwh6MLm3MUMiqMPmhZ3tTSXPqfyQ3vDl6R5hZdZ/kYojK4ofXtdfSv1tFq8XzWx3heNQ==",
++      "cpu": [
++        "ppc64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-riscv64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.28.2.tgz",
++      "integrity": "sha512-GeXCej4IQtU1B+QlDV8W/RRvbzI3O/Stss+/bCXv4lZls5WGRtu2a+3JkA3i4qIUlMXpcHebWpF8AkJhATowuA==",
++      "cpu": [
++        "riscv64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-s390x": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.28.2.tgz",
++      "integrity": "sha512-3H1weTYZPxt/WOhByszQZybS9w5lKzUn1FDMsgEChbHWQwHYQQRfBxgCcZvPhjHfKyJjIievvMmEUawJrdY9Dg==",
++      "cpu": [
++        "s390x"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/linux-x64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.28.2.tgz",
++      "integrity": "sha512-4xTZr1FUmSoQW4XIWmit3tzQrUTZM+N3P0XV8xROKYF50XfI7xeO90+1bZvNwxIufQ9hDQVRJH5YhgPVF8A/HQ==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/netbsd-arm64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.28.2.tgz",
++      "integrity": "sha512-sSATRjPeDBg3pdgHoQfoYBob11Kk1FGa9lui5RIHZCoCkJa9QKlvl3/vKz2usCmYYjs7ymJR/2Nnsqe+Hjt5nw==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "netbsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/netbsd-x64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.28.2.tgz",
++      "integrity": "sha512-lqnzCV+mM0gIADaKihiCg6ifgfU2L3h5E33rNQBN1Y4MaVGnzryzmvvf7UHxprpQdE8hpqLolJ9Rl+SkIRDpyw==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "netbsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/openbsd-arm64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.28.2.tgz",
++      "integrity": "sha512-AL2qJILH7lNjrDmCQDvdxMfAUIv8KMNZOvrwAQ8i8//ntL9FflhOyMJ8OZSMBb8/AWXe3/5v5S20y3zCoZWKoQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "openbsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/openbsd-x64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.28.2.tgz",
++      "integrity": "sha512-QtiuPytchRyC4rwUKhexJdQKvDuZ6hWloi3igqPQNUJCS1/v9EiO3UTOXR6A3FoMo4fnAKbWJdqaIwhOzh8qEw==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "openbsd"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/openharmony-arm64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/openharmony-arm64/-/openharmony-arm64-0.28.2.tgz",
++      "integrity": "sha512-WkhYDmpTjLvGlScA1rwjRUmhl4k8oXR3cIbtqWmELgU/dFeHHlEllxDvdWcNJV9rbzCexB5vz8gtNewWLgCT7Q==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "openharmony"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/sunos-x64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.28.2.tgz",
++      "integrity": "sha512-GPMSkTOtMnv2U2F8gxe4Io6qmVs+YKyp832Etqqxr0hFngmXQ3rzwytelm3GIn7T4VviRUlf3sOgBOiTdvaf7g==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "sunos"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/win32-arm64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.28.2.tgz",
++      "integrity": "sha512-PIhhEkE9uPBleRBrQEJpUn7MBnibZzbGzYWPmY3x+YoVg/95zbjB4CxPPOQ8l5tYYM4mMaCthF8/1DIfBQQyWQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/win32-ia32": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.28.2.tgz",
++      "integrity": "sha512-YmJbfTlvU7Sdn9BB+4PRES4oB6pxgS37MAONj+hBr/cpXS1aBPKXxNnDbu+QCWPj0o9dgyxeq79g6c5P8KeuYA==",
++      "cpu": [
++        "ia32"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@esbuild/win32-x64": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.28.2.tgz",
++      "integrity": "sha512-5ebpxr3nWMzrL/rnUI755Jkuee0bHL/Gq0WTF9lvcpv73wAp5eu8MfBUgWK9bhWvZjj7yX8etf/8tI8Ney695g==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@playwright/test": {
++      "version": "1.63.0",
++      "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.63.0.tgz",
++      "integrity": "sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "dependencies": {
++        "playwright": "1.63.0"
++      },
++      "bin": {
++        "playwright": "cli.js"
++      },
++      "engines": {
++        "node": ">=20"
++      }
++    },
++    "node_modules/@types/trusted-types": {
++      "version": "2.0.7",
++      "resolved": "https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz",
++      "integrity": "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==",
++      "license": "MIT",
++      "optional": true
++    },
++    "node_modules/@typescript/typescript-aix-ppc64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-aix-ppc64/-/typescript-aix-ppc64-7.0.2.tgz",
++      "integrity": "sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==",
++      "cpu": [
++        "ppc64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "aix"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-darwin-arm64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-darwin-arm64/-/typescript-darwin-arm64-7.0.2.tgz",
++      "integrity": "sha512-gowzar9MwS/aRWp6f3a4KUqzRjAZjOsmGNCM6LcTgXum+dBfgsBVMN+AgvOCCbguXyick6LJhpBszxMebJ8syA==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-darwin-x64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-darwin-x64/-/typescript-darwin-x64-7.0.2.tgz",
++      "integrity": "sha512-SZ9xZInqApNlNGc9s0W1VSsktYSOe9cFqNOIqmN1Gs8SmkjKZYFt017G4VwPxASInODuAdbTW7sXiFUf893RgA==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-freebsd-arm64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-freebsd-arm64/-/typescript-freebsd-arm64-7.0.2.tgz",
++      "integrity": "sha512-W5NH4y/J0plIIS5b2xvTEkU7JFxyqdMAOgf+Ilhl0vHQXKO5dZoxd+C/jEtq56c4F3wk71RB4BMRQ2XdI+bwYQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "freebsd"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-freebsd-x64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-freebsd-x64/-/typescript-freebsd-x64-7.0.2.tgz",
++      "integrity": "sha512-UMGDx5sTpzNw3WiPebH7l90IWfJggEd+egHt/q6p7/Cm3zqoV7VxkGXt+3DxPIw8CcmvAB0j3sVVfbhX+M4Tpw==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "freebsd"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-linux-arm": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-arm/-/typescript-linux-arm-7.0.2.tgz",
++      "integrity": "sha512-gffT3xPz9sR7j/YJExkyPntrI0P2EP9XbOyWzth2/Gs0RstK+90RBcO0ncXoXy/beYll1SXw846Nf2zdnEz0QQ==",
++      "cpu": [
++        "arm"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-linux-arm64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-arm64/-/typescript-linux-arm64-7.0.2.tgz",
++      "integrity": "sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-linux-loong64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-loong64/-/typescript-linux-loong64-7.0.2.tgz",
++      "integrity": "sha512-uEHck9i8hoAzXPiYRib1O7miOnz23SxIeVl6F4LXox+qov1K35jHcEW6VHKvZI+pyvl7fZEP4MCU5LYvIq1GuQ==",
++      "cpu": [
++        "loong64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-linux-mips64el": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-mips64el/-/typescript-linux-mips64el-7.0.2.tgz",
++      "integrity": "sha512-R4KvAMnE43W5Qeqb0Ly56O3mWMWIAgsMyz36DCaycd5nbg/9kzm0liw3JocfRqyJY0KPmzFjbswozXyW0DnIYA==",
++      "cpu": [
++        "mips64el"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-linux-ppc64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-ppc64/-/typescript-linux-ppc64-7.0.2.tgz",
++      "integrity": "sha512-DORx5b3sd/4S7eayxm4FQv+A7CrkUIGRaHiwI8oiHTAI1fAPWhF4J0vAlkC8biAlHSVVwxMQ3tjZ2/DVbnQiiA==",
++      "cpu": [
++        "ppc64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-linux-riscv64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-riscv64/-/typescript-linux-riscv64-7.0.2.tgz",
++      "integrity": "sha512-wf0jqEDOjrPRnKwYRyyJDRo11KMbvMFrU+q4zqKyChODBzvlkbhNQfKvLxQCcwTpdDaXSHZTVuh0JoCrKCUMHQ==",
++      "cpu": [
++        "riscv64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-linux-s390x": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-s390x/-/typescript-linux-s390x-7.0.2.tgz",
++      "integrity": "sha512-IkwJc3L7yhytWd/ewjyxNDfOmswCm9GWMJT/ue/dU4aZNbwZeYAetq42VyLmsmSjvoX7z74X6ZaYCtzAr0EuGw==",
++      "cpu": [
++        "s390x"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-linux-x64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-x64/-/typescript-linux-x64-7.0.2.tgz",
++      "integrity": "sha512-EYdf2cNg7rgCWJnxCdJ+F3V39O8ihb37eHAu1LK8oAFizgTQbPOK7zHHXbPt8rX24COqODXeI3sIf0fCXG7H/A==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-netbsd-arm64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-netbsd-arm64/-/typescript-netbsd-arm64-7.0.2.tgz",
++      "integrity": "sha512-+polYF4MF04aPpO5FTkHran9yUQDSXqy5GiSDKpsll5jy3l3+g9QLhpf39T+ePtefhXLOGrLl0QIjkQP6VnelA==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "netbsd"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-netbsd-x64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-netbsd-x64/-/typescript-netbsd-x64-7.0.2.tgz",
++      "integrity": "sha512-8YIT0EHM/3dq10ZOVF/A7pc/YSMtbcecct4rWtexrnSCHOPcpC2KTLXfTCR6vDpnSiY12heNb1GiN/wu+T/FyA==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "netbsd"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-openbsd-arm64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-openbsd-arm64/-/typescript-openbsd-arm64-7.0.2.tgz",
++      "integrity": "sha512-APT8+ClYnuYm1u9+kgGXoMj2VzWzcymwh2gNSQVySHfkRDGOTVkoWLjCmOQSaO+PoqQ57B0flRp9SA+7GnnkzQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "openbsd"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-openbsd-x64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-openbsd-x64/-/typescript-openbsd-x64-7.0.2.tgz",
++      "integrity": "sha512-yX7s+Q0Dln0Dt9tEzZsAjXXR/+ytBM7AlglaqyeMPxQszJ1JhlJdZ6jLA+IzldHtflX81em7lDao1xXu+aRRkg==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "openbsd"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-sunos-x64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-sunos-x64/-/typescript-sunos-x64-7.0.2.tgz",
++      "integrity": "sha512-dLJDGaLZ1D4HPQn62u1n8mBDkJREwMsAkCdkwd4Ieqw+x3TUyTsqY0YiBCtE6H6OzzgGk3iuZ3vFWRS+E8/d1g==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "sunos"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-win32-arm64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-win32-arm64/-/typescript-win32-arm64-7.0.2.tgz",
++      "integrity": "sha512-Gyl1Vy6OsWesLzmq+EP0Fb7b4Nid5232AvcA2SFcdYreldpNtYFFofPjnt62y9hQy7VTaZp65ICJjuAQRaVcIQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/@typescript/typescript-win32-x64": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/@typescript/typescript-win32-x64/-/typescript-win32-x64-7.0.2.tgz",
++      "integrity": "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g==",
++      "cpu": [
++        "x64"
++      ],
++      "dev": true,
++      "license": "Apache-2.0",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">=16.20.0"
++      }
++    },
++    "node_modules/dompurify": {
++      "version": "3.4.16",
++      "resolved": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.16.tgz",
++      "integrity": "sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ==",
++      "license": "(MPL-2.0 OR Apache-2.0)",
++      "optionalDependencies": {
++        "@types/trusted-types": "^2.0.7"
++      }
++    },
++    "node_modules/esbuild": {
++      "version": "0.28.2",
++      "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.28.2.tgz",
++      "integrity": "sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==",
++      "dev": true,
++      "hasInstallScript": true,
++      "license": "MIT",
++      "bin": {
++        "esbuild": "bin/esbuild"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "optionalDependencies": {
++        "@esbuild/aix-ppc64": "0.28.2",
++        "@esbuild/android-arm": "0.28.2",
++        "@esbuild/android-arm64": "0.28.2",
++        "@esbuild/android-x64": "0.28.2",
++        "@esbuild/darwin-arm64": "0.28.2",
++        "@esbuild/darwin-x64": "0.28.2",
++        "@esbuild/freebsd-arm64": "0.28.2",
++        "@esbuild/freebsd-x64": "0.28.2",
++        "@esbuild/linux-arm": "0.28.2",
++        "@esbuild/linux-arm64": "0.28.2",
++        "@esbuild/linux-ia32": "0.28.2",
++        "@esbuild/linux-loong64": "0.28.2",
++        "@esbuild/linux-mips64el": "0.28.2",
++        "@esbuild/linux-ppc64": "0.28.2",
++        "@esbuild/linux-riscv64": "0.28.2",
++        "@esbuild/linux-s390x": "0.28.2",
++        "@esbuild/linux-x64": "0.28.2",
++        "@esbuild/netbsd-arm64": "0.28.2",
++        "@esbuild/netbsd-x64": "0.28.2",
++        "@esbuild/openbsd-arm64": "0.28.2",
++        "@esbuild/openbsd-x64": "0.28.2",
++        "@esbuild/openharmony-arm64": "0.28.2",
++        "@esbuild/sunos-x64": "0.28.2",
++        "@esbuild/win32-arm64": "0.28.2",
++        "@esbuild/win32-ia32": "0.28.2",
++        "@esbuild/win32-x64": "0.28.2"
++      }
++    },
++    "node_modules/fs-extra": {
++      "version": "11.4.1",
++      "resolved": "https://registry.npmjs.org/fs-extra/-/fs-extra-11.4.1.tgz",
++      "integrity": "sha512-KYAb4c9BJQI6QqGKthV68OHe0badztdXJWKo0WtBA9IuCFPTKvE5ZdUBglP833aMjhaSPNO4A5j/EkzZtGlKjA==",
++      "license": "MIT",
++      "dependencies": {
++        "graceful-fs": "^4.2.0",
++        "jsonfile": "^6.0.1",
++        "universalify": "^2.0.0"
++      },
++      "engines": {
++        "node": ">=14.14"
++      }
++    },
++    "node_modules/graceful-fs": {
++      "version": "4.2.11",
++      "resolved": "https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz",
++      "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==",
++      "license": "ISC"
++    },
++    "node_modules/jsonfile": {
++      "version": "6.2.1",
++      "resolved": "https://registry.npmjs.org/jsonfile/-/jsonfile-6.2.1.tgz",
++      "integrity": "sha512-zwOTdL3rFQ/lRdBnntKVOX6k5cKJwEc1HdilT71BWEu7J41gXIB2MRp+vxduPSwZJPWBxEzv4yH1wYLJGUHX4Q==",
++      "license": "MIT",
++      "dependencies": {
++        "universalify": "^2.0.0"
++      },
++      "optionalDependencies": {
++        "graceful-fs": "^4.1.6"
++      }
++    },
++    "node_modules/playwright": {
++      "version": "1.63.0",
++      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.63.0.tgz",
++      "integrity": "sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "dependencies": {
++        "playwright-core": "1.63.0"
++      },
++      "bin": {
++        "playwright": "cli.js"
++      },
++      "engines": {
++        "node": ">=20"
++      }
++    },
++    "node_modules/playwright-core": {
++      "version": "1.63.0",
++      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz",
++      "integrity": "sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "bin": {
++        "playwright-core": "cli.js"
++      },
++      "engines": {
++        "node": ">=20"
++      }
++    },
++    "node_modules/template-for-polyfill": {
++      "version": "0.1.1",
++      "resolved": "https://registry.npmjs.org/template-for-polyfill/-/template-for-polyfill-0.1.1.tgz",
++      "integrity": "sha512-kvWL3JWXtaP22WpiKWU2UgIO5h2qN0ivvH8GpmEQ9ktFD3t+djumkxRe77WBcVrosuwoBqld/jKfAYII+xmsgA==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "fs-extra": "^11.3.4"
++      }
++    },
++    "node_modules/typescript": {
++      "version": "7.0.2",
++      "resolved": "https://registry.npmjs.org/typescript/-/typescript-7.0.2.tgz",
++      "integrity": "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "bin": {
++        "tsc": "bin/tsc"
++      },
++      "engines": {
++        "node": ">=16.20.0"
++      },
++      "optionalDependencies": {
++        "@typescript/typescript-aix-ppc64": "7.0.2",
++        "@typescript/typescript-darwin-arm64": "7.0.2",
++        "@typescript/typescript-darwin-x64": "7.0.2",
++        "@typescript/typescript-freebsd-arm64": "7.0.2",
++        "@typescript/typescript-freebsd-x64": "7.0.2",
++        "@typescript/typescript-linux-arm": "7.0.2",
++        "@typescript/typescript-linux-arm64": "7.0.2",
++        "@typescript/typescript-linux-loong64": "7.0.2",
++        "@typescript/typescript-linux-mips64el": "7.0.2",
++        "@typescript/typescript-linux-ppc64": "7.0.2",
++        "@typescript/typescript-linux-riscv64": "7.0.2",
++        "@typescript/typescript-linux-s390x": "7.0.2",
++        "@typescript/typescript-linux-x64": "7.0.2",
++        "@typescript/typescript-netbsd-arm64": "7.0.2",
++        "@typescript/typescript-netbsd-x64": "7.0.2",
++        "@typescript/typescript-openbsd-arm64": "7.0.2",
++        "@typescript/typescript-openbsd-x64": "7.0.2",
++        "@typescript/typescript-sunos-x64": "7.0.2",
++        "@typescript/typescript-win32-arm64": "7.0.2",
++        "@typescript/typescript-win32-x64": "7.0.2"
++      }
++    },
++    "node_modules/universalify": {
++      "version": "2.0.1",
++      "resolved": "https://registry.npmjs.org/universalify/-/universalify-2.0.1.tgz",
++      "integrity": "sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==",
++      "license": "MIT",
++      "engines": {
++        "node": ">= 10.0.0"
++      }
++    }
++  }
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..770df06 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,20 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "npm run build && node server.mjs",
++    "build": "tsc --noEmit && node build.mjs",
++    "test": "playwright test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "dompurify": "^3.4.16",
++    "template-for-polyfill": "^0.1.1"
++  },
++  "devDependencies": {
++    "@playwright/test": "^1.63.0",
++    "esbuild": "^0.28.2",
++    "typescript": "^7.0.2"
+   }
+ }
+diff --git a/playwright.config.ts b/playwright.config.ts
+new file mode 100644
+index 0000000..20e150a
+--- /dev/null
++++ b/playwright.config.ts
+@@ -0,0 +1,11 @@
++import { defineConfig } from '@playwright/test';
++
++export default defineConfig({
++  testDir: './tests',
++  use: { baseURL: 'http://127.0.0.1:11222' },
++  webServer: {
++    command: 'npm start',
++    url: 'http://127.0.0.1:11222',
++    reuseExistingServer: false,
++  },
++});
+diff --git a/public/partials/coffee-tip.html b/public/partials/coffee-tip.html
+new file mode 100644
+index 0000000..2a0d964
+--- /dev/null
++++ b/public/partials/coffee-tip.html
+@@ -0,0 +1,4 @@
++<article class="card">
++  <h3>Keep Your Coffee Fresh</h3>
++  <p>Store your beans in an airtight container away from heat and sunlight to preserve their flavor.</p>
++</article>
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..9e87d0e
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,32 @@
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++
++const routes = new Map([
++  ['/', ['dist/index.html', 'text/html; charset=utf-8']],
++  ['/index.html', ['dist/index.html', 'text/html; charset=utf-8']],
++  ['/assets/app.js', ['dist/assets/app.js', 'text/javascript; charset=utf-8']],
++  ['/partials/coffee-tip.html', ['dist/partials/coffee-tip.html', 'text/html; charset=utf-8']],
++]);
++
++createServer(async (request, response) => {
++  const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
++  const route = routes.get(pathname);
++  if (!route || !['GET', 'HEAD'].includes(request.method ?? '')) {
++    response.writeHead(route ? 405 : 404).end('Not found');
++    return;
++  }
++  try {
++    const [file, contentType] = route;
++    const html = await readFile(file, 'utf8');
++    response.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store' });
++    if (request.method === 'HEAD') { response.end(); return; }
++    const patchIndex = html.indexOf('<template for="coffee-tip">');
++    if (patchIndex === -1) { response.end(html); return; }
++    response.write(html.slice(0, patchIndex));
++    // Simulate deferred work while the shell and loading state render first.
++    const timer = setTimeout(() => response.end(html.slice(patchIndex)), 200);
++    response.on('close', () => clearTimeout(timer));
++  } catch {
++    response.writeHead(500).end('Unable to load this page.');
++  }
++}).listen(Number(process.env.PORT ?? 11222), '0.0.0.0');
+diff --git a/src/app.ts b/src/app.ts
+new file mode 100644
+index 0000000..c4285ca
+--- /dev/null
++++ b/src/app.ts
+@@ -0,0 +1,73 @@
++import 'template-for-polyfill';
++import DOMPurify from 'dompurify';
++
++// Preserve native decoding when available, including multi-byte chunk boundaries.
++if (typeof Response.prototype.textStream !== 'function') {
++  Response.prototype.textStream = function (): ReadableStream<string> {
++    if (!this.body) throw new TypeError('The response has no body.');
++    return this.body.pipeThrough(new TextDecoderStream());
++  };
++}
++
++type StreamingElement = HTMLElement & {
++  streamHTML?: () => WritableStream<string>;
++};
++
++function safeHTMLStream(target: StreamingElement): WritableStream<string> {
++  if (typeof target.streamHTML === 'function') return target.streamHTML();
++
++  // Older browsers buffer until close. Sanitize the complete document, never
++  // individual chunks, which may end in the middle of a tag or attribute.
++  let html = '';
++  return new WritableStream<string>({
++    write(chunk) { html += chunk; },
++    close() {
++      const content = DOMPurify.sanitize(html, {
++        RETURN_DOM_FRAGMENT: true,
++        ALLOWED_TAGS: ['article', 'h3', 'p', 'strong', 'em'],
++        ALLOWED_ATTR: ['class'],
++      });
++      target.replaceChildren(content);
++    },
++    abort() { html = ''; },
++  });
++}
++
++const content = document.getElementById('coffee-tip-content');
++const button = document.getElementById('refresh-tip');
++const status = document.getElementById('tip-status');
++
++if (content && button instanceof HTMLButtonElement && status) {
++  // The control stays outside the patched range, so keyboard focus is preserved.
++  button.disabled = false;
++  button.addEventListener('click', async () => {
++    if (button.getAttribute('aria-disabled') === 'true') return;
++    button.setAttribute('aria-disabled', 'true');
++    content.setAttribute('aria-busy', 'true');
++    status.textContent = 'Refreshing your brewing tip…';
++    const controller = new AbortController();
++    const timeout = window.setTimeout(() => controller.abort(), 15000);
++    try {
++      const response = await fetch('/partials/coffee-tip.html', {
++        signal: controller.signal,
++        cache: 'no-store',
++        headers: { Accept: 'text/html' },
++      });
++      if (!response.ok || !response.body ||
++          !response.headers.get('content-type')?.includes('text/html')) {
++        throw new Error('Unable to load the brewing tip.');
++      }
++      // The fragment needs no scripts or unsafe markup, so use the safe API.
++      await response.textStream().pipeTo(safeHTMLStream(content), {
++        signal: controller.signal,
++      });
++      status.textContent = 'Brewing tip updated.';
++    } catch {
++      status.textContent = 'The brewing tip could not be refreshed. Please try again.';
++    } finally {
++      window.clearTimeout(timeout);
++      content.setAttribute('aria-busy', 'false');
++      button.removeAttribute('aria-disabled');
++    }
++  });
++}
+diff --git a/src/polyfills.d.ts b/src/polyfills.d.ts
+new file mode 100644
+index 0000000..1998444
+--- /dev/null
++++ b/src/polyfills.d.ts
+@@ -0,0 +1,5 @@
++declare module 'template-for-polyfill';
++
++interface Response {
++  textStream(): ReadableStream<string>;
++}
+diff --git a/tests/streaming.spec.ts b/tests/streaming.spec.ts
+new file mode 100644
+index 0000000..e42c0de
+--- /dev/null
++++ b/tests/streaming.spec.ts
+@@ -0,0 +1,68 @@
++import { test, expect } from '@playwright/test';
++
++test('sends a shell with loading markers before the final template', async () => {
++  const response = await fetch('http://127.0.0.1:11222');
++  const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
++  const first = await reader.read();
++  expect(first.value).toContain('<?start name="coffee-tip">');
++  expect(first.value).toContain('Loading your brewing tip');
++  expect(first.value).not.toContain('<template for="coffee-tip">');
++  let remaining = '';
++  for (;;) {
++    const { value, done } = await reader.read();
++    if (done) break;
++    remaining += value;
++  }
++  expect(remaining).toContain('<template for="coffee-tip">');
++});
++
++test('patches the fallback and refreshes without moving keyboard focus', async ({ page }) => {
++  const errors: string[] = [];
++  page.on('pageerror', error => errors.push(error.message));
++  await page.goto('/');
++  const content = page.locator('#coffee-tip-content');
++  await expect(content).toContainText('A Better Cup at Home');
++  await expect(content.locator('.skeleton')).toHaveCount(0);
++  await expect(page.locator('template[for="coffee-tip"]')).toHaveCount(0);
++  const before = await content.boundingBox();
++  const button = page.getByRole('button', { name: 'Refresh brewing tip' });
++  await button.focus();
++  await page.keyboard.press('Enter');
++  await expect(content).toContainText('Keep Your Coffee Fresh');
++  await expect(page.locator('#tip-status')).toHaveText('Brewing tip updated.');
++  await expect(button).toBeFocused();
++  expect((await content.boundingBox())?.height).toBe(before?.height);
++  expect(errors).toEqual([]);
++});
++
++test('recovers from fetch failure and allows retry', async ({ page }) => {
++  await page.goto('/');
++  await page.route('**/partials/coffee-tip.html', route => route.fulfill({ status: 503 }));
++  const button = page.getByRole('button', { name: 'Refresh brewing tip' });
++  await button.click();
++  await expect(page.locator('#tip-status')).toContainText('Please try again');
++  await expect(button).toBeEnabled();
++  await expect(page.locator('#coffee-tip-content')).toHaveAttribute('aria-busy', 'false');
++  await expect(page.locator('#coffee-tip-content')).toContainText('A Better Cup at Home');
++  await page.unroute('**/partials/coffee-tip.html');
++  await button.click();
++  await expect(page.locator('#tip-status')).toHaveText('Brewing tip updated.');
++});
++
++test('sanitizes the compatibility path and fits a narrow viewport', async ({ page }) => {
++  await page.setViewportSize({ width: 375, height: 812 });
++  await page.addInitScript(() => {
++    Object.defineProperty(Element.prototype, 'streamHTML', { value: undefined, configurable: true });
++    Object.defineProperty(Response.prototype, 'textStream', { value: undefined, configurable: true, writable: true });
++  });
++  await page.goto('/');
++  await page.route('**/partials/coffee-tip.html', route => route.fulfill({
++    contentType: 'text/html',
++    body: '<article class="card"><h3>Fresh café ☕</h3><script>window.unsafeExecuted=true</script><img src=x onerror="window.unsafeExecuted=true"><p onclick="window.unsafeExecuted=true">Enjoy your coffee.</p></article>',
++  }));
++  await page.getByRole('button', { name: 'Refresh brewing tip' }).click();
++  await expect(page.locator('#coffee-tip-content')).toContainText('Fresh café ☕');
++  await expect(page.locator('#coffee-tip-content script, #coffee-tip-content img, #coffee-tip-content [onclick]')).toHaveCount(0);
++  expect(await page.evaluate(() => 'unsafeExecuted' in window)).toBe(false);
++  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..0d8dcf3
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "noEmit": true,
++    "skipLibCheck": true
++  },
++  "include": ["src/**/*.ts"]
++}
