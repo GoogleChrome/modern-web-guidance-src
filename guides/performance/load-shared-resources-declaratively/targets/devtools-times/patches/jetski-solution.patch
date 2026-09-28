@@ -1,0 +1,207 @@
+diff --git a/package.json b/package.json
+index 5e71a8a..e4f6bbd 100644
+--- a/package.json
++++ b/package.json
+@@ -4,7 +4,7 @@
+   "version": "0.0.1",
+   "scripts": {
+     "dev": "astro dev",
+-    "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
++    "start": "HOST=0.0.0.0 PORT=${PORT:-11224} ASTRO_NODE_LOGGING=disabled node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+     "astro": "astro"
+diff --git a/public/assets/shared-config.js b/public/assets/shared-config.js
+new file mode 100644
+index 0000000..4d79338
+--- /dev/null
++++ b/public/assets/shared-config.js
+@@ -0,0 +1,6 @@
++// A small stand-in for a popular, unmodified configuration module that
++// many unrelated sites import identically.
++export default {
++  theme: 'shared',
++  version: 1,
++};
+diff --git a/public/assets/shared-widget.css b/public/assets/shared-widget.css
+new file mode 100644
+index 0000000..d280114
+--- /dev/null
++++ b/public/assets/shared-widget.css
+@@ -0,0 +1,10 @@
++/* A small stand-in for a popular, unmodified CSS framework or widget
++   stylesheet that many unrelated sites reference identically. */
++.shared-widget {
++  display: flex;
++  align-items: center;
++  gap: 0.5rem;
++  padding: 0.5rem 1rem;
++  border-radius: 0.5rem;
++  font-family: system-ui, sans-serif;
++}
+diff --git a/public/assets/shared-widget.js b/public/assets/shared-widget.js
+new file mode 100644
+index 0000000..02e66ee
+--- /dev/null
++++ b/public/assets/shared-widget.js
+@@ -0,0 +1,8 @@
++// A small stand-in for a popular, unmodified JS widget script that many
++// unrelated sites reference identically.
++document.addEventListener('DOMContentLoaded', () => {
++  const el = document.createElement('div');
++  el.className = 'shared-widget';
++  el.textContent = 'Shared widget loaded';
++  document.body.appendChild(el);
++});
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..208078e 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -3,12 +3,20 @@ import React from 'react';
+ interface FlyoutMenuProps {
+   isOpen: boolean;
+   categories: string[];
+-  articles: any[];
+-  reports: any[];
+-  multimedia: any[];
++  articles?: any[];
++  reports?: any[];
++  multimedia?: any[];
++  onClose?: () => void;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({
++  isOpen,
++  categories,
++  articles = [],
++  reports = [],
++  multimedia = [],
++  onClose,
++}) => {
+   if (!isOpen) {
+     return null;
+   }
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..74531ae 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -29,14 +29,65 @@ const baseUrl = import.meta.env.BASE_URL;
+       rel="stylesheet"
+     />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <link
++      rel="stylesheet"
++      href="/assets/shared-widget.css"
++      integrity="sha256-weEls3ieuAOdZqOgF+wzQ0QOq0UsCc/CVwsHZuAuOHQ="
++      crossorigin="anonymous"
++      crossoriginstorage="*"
++    />
++    <script
++      is:inline
++      defer
++      src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"
++      integrity="sha256-P9fo2B+PrvUrz1xo30j7CNBAg5GxUh65jmgZwfy9CrE="
++      crossorigin="anonymous"
++      crossoriginstorage="*"
++    ></script>
++    <script
++      is:inline
++      defer
++      src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"
++      integrity="sha256-rxM3pgURCBDIgWxD/2KBR0guPgrq03pSGPTlk+ypq2w="
++      crossorigin="anonymous"
++      crossoriginstorage="*"
++    ></script>
++    <script
++      is:inline
++      defer
++      src="/assets/shared-widget.js"
++      integrity="sha256-DUaXcac0kQE8UUAj0fd0KXLJ2OAEYByq1gaWjnOG3Do="
++      crossorigin="anonymous"
++      crossoriginstorage="*"
++    ></script>
++    <script is:inline type="module">
++      let mod;
++      try {
++        mod = await import('/assets/shared-config.js', {
++          with: {
++            integrity: 'sha256-/HriZgQoB51h9br04HIpeiJWX0ephs2au4oCPqxQNKU=',
++            crossOriginStorage: '*',
++          },
++        });
++      } catch {
++        // Fall back to a plain import of the same URL.
++        mod = await import('/assets/shared-config.js');
++      }
++      if (mod && mod.default) {
++        window.__sharedConfig = mod.default;
++      }
++      const statusEl = document.getElementById('module-status');
++      if (statusEl && mod) {
++        statusEl.textContent = `Configuration module ready: ${JSON.stringify(mod.default)}`;
++      }
++    </script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
++    <div id="module-status" class="hidden">Loading configuration module...</div>
+     <div class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
+diff --git a/src/utils/images.ts b/src/utils/images.ts
+index b8fe01e..5190641 100644
+--- a/src/utils/images.ts
++++ b/src/utils/images.ts
+@@ -9,7 +9,7 @@ const allImages = import.meta.glob<{ default: ImageMetadata }>(
+ export async function getArticleImage(article: CollectionEntry<'articles'>) {
+     const imagePath = article.data.image;
+     if (!imagePath) {
+-        throw new Error(`Image path is missing for article: ${article.slug}`);
++        throw new Error(`Image path is missing for article: ${article.id}`);
+     }
+ 
+     if (imagePath.startsWith('http')) {
+@@ -17,7 +17,8 @@ export async function getArticleImage(article: CollectionEntry<'articles'>) {
+     }
+ 
+     // Find the matching image module in the glob import
+-    const imageModuleKey = Object.keys(allImages).find(key => key.endsWith(imagePath.split('/').pop()));
++    const filename = imagePath.split('/').pop() || '';
++    const imageModuleKey = Object.keys(allImages).find(key => key.endsWith(filename));
+ 
+     if (!imageModuleKey) {
+         throw new Error(`Could not find image module for path: ${imagePath}`);
+diff --git a/src/utils/shared-config.ts b/src/utils/shared-config.ts
+new file mode 100644
+index 0000000..b3d1c13
+--- /dev/null
++++ b/src/utils/shared-config.ts
+@@ -0,0 +1,22 @@
++export interface SharedConfig {
++  theme: string;
++  version: number;
++}
++
++export async function loadSharedConfig(): Promise<SharedConfig> {
++  let mod: { default: SharedConfig };
++  try {
++    // @ts-ignore
++    mod = await import('/assets/shared-config.js', {
++      with: {
++        integrity: 'sha256-/HriZgQoB51h9br04HIpeiJWX0ephs2au4oCPqxQNKU=',
++        crossOriginStorage: '*',
++      },
++    });
++  } catch {
++    // Fall back to a plain import of the same URL.
++    // @ts-ignore
++    mod = await import('/assets/shared-config.js');
++  }
++  return mod.default;
++}

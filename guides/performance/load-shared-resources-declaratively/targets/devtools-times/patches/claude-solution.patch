@@ -1,0 +1,20 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..6de9945 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -30,7 +30,14 @@ const baseUrl = import.meta.env.BASE_URL;
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    <script
++      is:inline
++      defer
++      src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"
++      integrity="sha384-y7PP6lDPptjiv4rgGjRv2duEiwPqushYoNT4U7WypsDdoS9KKKcUh+R2THa53vjA"
++      crossorigin="anonymous"
++      crossoriginstorage="*"
++    ></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 

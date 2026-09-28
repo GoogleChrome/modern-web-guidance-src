@@ -1,0 +1,369 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..1eae0cf
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++dist/
++node_modules/
+diff --git a/assets/site.css b/assets/site.css
+new file mode 100644
+index 0000000..504f745
+--- /dev/null
++++ b/assets/site.css
+@@ -0,0 +1,146 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
+diff --git a/index.html b/index.html
+index 66c9173..4f2f75b 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,14 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <!-- Site-specific styles use same-site COS sharing; crossorigin independently sets CORS mode. -->
++  <link
++    rel="stylesheet"
++    href="/assets/site.css"
++    integrity="sha384-tpEA4y6MkfhaQo2x/8vEwIp4ctKiZa7AWWvRZABAa/DxkgXejzOYWELIxzj/QAbH"
++    crossorigin="anonymous"
++    crossoriginstorage
++  >
+ </head>
+ 
+ <body>
+diff --git a/package.json b/package.json
+index 2bd4d77..28acf96 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node scripts/build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..d5b4024
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,24 @@
++import { createHash } from 'node:crypto';
++import { copyFile, mkdir, readFile } from 'node:fs/promises';
++
++const root = new URL('../', import.meta.url);
++const html = await readFile(new URL('index.html', root), 'utf8');
++const stylesheet = await readFile(new URL('assets/site.css', root));
++const integrity = `sha384-${createHash('sha384').update(stylesheet).digest('base64')}`;
++const link = html.match(/<link\b[^>]*href="\/assets\/site\.css"[^>]*>/)?.[0];
++
++// Fail before publishing if edited stylesheet bytes no longer match the SRI hash.
++if (!link?.includes(`integrity="${integrity}"`)) {
++  throw new Error(`Update the stylesheet integrity in index.html to "${integrity}".`);
++}
++if (!/\scrossoriginstorage\s*>/.test(link)) {
++  throw new Error('The site stylesheet must opt into same-site COS with a valueless attribute.');
++}
++if (!link.includes('crossorigin="anonymous"')) {
++  throw new Error('Keep the stylesheet CORS mode independent of its COS sharing scope.');
++}
++
++await mkdir(new URL('dist/assets/', root), { recursive: true });
++await copyFile(new URL('index.html', root), new URL('dist/index.html', root));
++await copyFile(new URL('assets/site.css', root), new URL('dist/assets/site.css', root));
++console.log('Built dist/ and verified stylesheet integrity and same-site COS sharing.');

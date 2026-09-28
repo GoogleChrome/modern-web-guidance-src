@@ -1,0 +1,25 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..cefe62c 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -21,12 +21,16 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
++    <!-- This version-pinned public font stylesheet is identical across sites,
++         so global sharing is appropriate. Keep the URL and hash in sync.
++         Browsers without COS support load the same integrity-checked URL. -->
+     <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
++      href="https://cdn.jsdelivr.net/npm/@fontsource/grenze@5.2.5/500.css"
+       rel="stylesheet"
++      integrity="sha384-QONoc+xIQkXULahvIQ3NG4zSAIe5WlOoycu6rVhNTuMbQCsffNKMAfCwi372iWog"
++      crossorigin="anonymous"
++      crossoriginstorage="*"
+     />
+ 
+     <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
