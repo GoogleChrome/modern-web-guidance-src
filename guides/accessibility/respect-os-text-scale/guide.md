@@ -49,6 +49,29 @@ h1 {
 }
 ```
 
+### Fluid Typography
+
+Fluid typography MAY use viewport-relative units such as `vw`, provided that font sizes also include a font-relative component such as `rem` or `em`.
+
+Avoid sizing text exclusively with viewport units:
+
+```css
+/* ❌ DO NOT DO THIS: The font size does not respond fully to user text scaling */
+.heading {
+  font-size: 5vw;
+}
+```
+
+Instead, combine a font-relative value with viewport-relative scaling and use relative minimum and maximum bounds:
+
+```css
+.heading {
+  font-size: clamp(2rem, 1.25rem + 2vw, 4rem);
+}
+```
+
+Test fluid typography with operating system text scaling, browser text-size settings, and browser zoom of at least 200%. Text MUST remain readable without clipping, overlap, or loss of content or functionality.
+
 ### 3. Ensure Content Wrapping & Flexible Heights
 
 When text scales up, elements require more vertical and horizontal space to prevent truncation or overlap. To keep your components robust, design your layouts to expand dynamically around the content rather than forcing rigid coordinates:
