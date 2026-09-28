@@ -1,0 +1,356 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..2a17758 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,6 +1,52 @@
++interface CrossOriginStorageHash {
++  algorithm: string;
++  value: string;
++}
++
++interface CrossOriginStorageRequestOptions {
++  create?: boolean;
++  origins?: '*' | string[];
++}
++
++interface CrossOriginStorageWritableFileStream {
++  write(data: Blob | BufferSource | string): Promise<void>;
++  close(): Promise<void>;
++}
++
++interface CrossOriginStorageFileHandle {
++  getFile(): Promise<File>;
++  createWritable(): Promise<CrossOriginStorageWritableFileStream>;
++}
++
++interface CrossOriginStorageManager {
++  requestFileHandle(
++    hash: CrossOriginStorageHash,
++    options?: CrossOriginStorageRequestOptions,
++  ): Promise<CrossOriginStorageFileHandle>;
++}
++
++interface ChartEngineApi {
++  renderBarChart(
++    container: HTMLElement,
++    data: Array<{ label: string; value: number }>,
++    theme?: { colors?: string[]; background?: string },
++  ): void;
++}
++
++interface ChartThemeApi {
++  colors: string[];
++  background: string;
++}
++
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    ChartEngine?: ChartEngineApi;
++    ChartTheme?: ChartThemeApi;
++  }
++
++  interface Navigator {
++    readonly crossOriginStorage?: CrossOriginStorageManager;
+   }
+ }
+ 
+diff --git a/public/vendor/chart-engine.js b/public/vendor/chart-engine.js
+new file mode 100644
+index 0000000..4bd8f3b
+--- /dev/null
++++ b/public/vendor/chart-engine.js
+@@ -0,0 +1,61 @@
++(function (global) {
++  'use strict';
++
++  function renderBarChart(container, data, theme) {
++    if (!container) {
++      return;
++    }
++
++    container.innerHTML = '';
++
++    var palette = (theme && theme.colors) || ['#f59e0b'];
++    var values = data.map(function (point) {
++      return point.value;
++    });
++    var maxValue = Math.max.apply(Math, [1].concat(values));
++
++    var wrapper = document.createElement('div');
++    wrapper.style.display = 'flex';
++    wrapper.style.alignItems = 'flex-end';
++    wrapper.style.gap = '12px';
++    wrapper.style.padding = '8px';
++
++    data.forEach(function (point, index) {
++      var column = document.createElement('div');
++      column.style.display = 'flex';
++      column.style.flexDirection = 'column';
++      column.style.alignItems = 'center';
++      column.style.flex = '1';
++
++      var track = document.createElement('div');
++      track.style.display = 'flex';
++      track.style.alignItems = 'flex-end';
++      track.style.height = '120px';
++      track.style.width = '100%';
++
++      var bar = document.createElement('div');
++      var heightPercent = (point.value / maxValue) * 100;
++      bar.style.width = '100%';
++      bar.style.height = heightPercent + '%';
++      bar.style.backgroundColor = palette[index % palette.length];
++      bar.style.borderRadius = '4px 4px 0 0';
++      bar.title = point.label + ': ' + point.value;
++      track.appendChild(bar);
++
++      var label = document.createElement('span');
++      label.textContent = point.label;
++      label.style.fontSize = '11px';
++      label.style.marginTop = '6px';
++      label.style.color = '#4b5563';
++      label.style.textAlign = 'center';
++
++      column.appendChild(track);
++      column.appendChild(label);
++      wrapper.appendChild(column);
++    });
++
++    container.appendChild(wrapper);
++  }
++
++  global.ChartEngine = { renderBarChart: renderBarChart };
++})(window);
+diff --git a/public/vendor/chart-theme.js b/public/vendor/chart-theme.js
+new file mode 100644
+index 0000000..ca67276
+--- /dev/null
++++ b/public/vendor/chart-theme.js
+@@ -0,0 +1,8 @@
++(function (global) {
++  'use strict';
++
++  global.ChartTheme = {
++    colors: ['#f59e0b', '#fb923c', '#f97316', '#ea580c', '#c2410c', '#9a3412'],
++    background: '#ffffff',
++  };
++})(window);
+diff --git a/src/components/ReportsPulseChart.tsx b/src/components/ReportsPulseChart.tsx
+new file mode 100644
+index 0000000..fc68252
+--- /dev/null
++++ b/src/components/ReportsPulseChart.tsx
+@@ -0,0 +1,82 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { loadSharedAsset } from '../utils/crossOriginAssetLoader';
++import { CHART_ENGINE_HASH, CHART_THEME_HASH } from '../utils/assetHashes';
++
++interface ChartPoint {
++    label: string;
++    value: number;
++}
++
++interface Props {
++    data: ChartPoint[];
++}
++
++function injectScript(blob: Blob): Promise<void> {
++    return new Promise((resolve, reject) => {
++        const script = document.createElement('script');
++        const objectUrl = URL.createObjectURL(blob);
++        script.src = objectUrl;
++        script.onload = () => {
++            URL.revokeObjectURL(objectUrl);
++            resolve();
++        };
++        script.onerror = () => {
++            URL.revokeObjectURL(objectUrl);
++            reject(new Error('Failed to evaluate shared chart asset'));
++        };
++        document.body.appendChild(script);
++    });
++}
++
++export default function ReportsPulseChart({ data }: Props) {
++    const containerRef = useRef<HTMLDivElement>(null);
++    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
++
++    useEffect(() => {
++        let cancelled = false;
++
++        async function renderChart() {
++            try {
++                const base = import.meta.env.BASE_URL;
++
++                // These two files are proprietary build output for this site,
++                // not a popular shared library like three.js, so `origins` is
++                // deliberately omitted and any write-back stays same-site-only.
++                // Each hash is looked up independently via Promise.all rather
++                // than a single batched call.
++                const [engineBlob, themeBlob] = await Promise.all([
++                    loadSharedAsset(`${base}vendor/chart-engine.js`, CHART_ENGINE_HASH),
++                    loadSharedAsset(`${base}vendor/chart-theme.js`, CHART_THEME_HASH),
++                ]);
++
++                if (cancelled) return;
++
++                await Promise.all([injectScript(engineBlob), injectScript(themeBlob)]);
++
++                if (cancelled || !containerRef.current) return;
++
++                window.ChartEngine?.renderBarChart(containerRef.current, data, window.ChartTheme);
++                setStatus('ready');
++            } catch (error) {
++                console.error('Failed to load reports pulse chart:', error);
++                if (!cancelled) setStatus('error');
++            }
++        }
++
++        renderChart();
++
++        return () => {
++            cancelled = true;
++        };
++    }, [data]);
++
++    return (
++        <div className="my-6 p-4 border border-gray-200 rounded-md not-prose">
++            <h3 className="text-sm font-semibold text-gray-500 mb-2">Reports by Category</h3>
++            {status === 'error' && (
++                <p className="text-sm text-gray-500">Chart is unavailable right now.</p>
++            )}
++            <div ref={containerRef} />
++        </div>
++    );
++}
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..89bf0f7 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -1,14 +1,24 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import { getCollection } from 'astro:content';
++import ReportsPulseChart from '../components/ReportsPulseChart';
+ 
+ const reports = await getCollection('reports');
++
++const categoryCounts = reports.reduce<Record<string, number>>((acc, report) => {
++    const category = report.data.category;
++    acc[category] = (acc[category] ?? 0) + 1;
++    return acc;
++}, {});
++
++const chartData = Object.entries(categoryCounts).map(([label, value]) => ({ label, value }));
+ ---
+ <Layout title="Reports">
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+         <div class="prose max-w-none">
+             <p>Read our latest reports.</p>
++            <ReportsPulseChart client:load data={chartData} />
+             <ul>
+                 {reports.map(report => (
+                     <li>
+diff --git a/src/utils/assetHashes.ts b/src/utils/assetHashes.ts
+new file mode 100644
+index 0000000..a39154b
+--- /dev/null
++++ b/src/utils/assetHashes.ts
+@@ -0,0 +1,15 @@
++import type { AssetHash } from './crossOriginAssetLoader';
++
++// Computed at build time from the exact published bytes of each vendor
++// asset (crypto.subtle.digest('SHA-256', bytes)). Regenerate whenever a
++// vendor file's contents change, since a stale hash just becomes a
++// permanent cache miss rather than a broken load.
++export const CHART_ENGINE_HASH: AssetHash = {
++  algorithm: 'SHA-256',
++  value: 'd0b05f29add242d49ca2af6081efd5c749dceddf17fb8055eb74438b13786b6c',
++};
++
++export const CHART_THEME_HASH: AssetHash = {
++  algorithm: 'SHA-256',
++  value: '404e7eba82cbc94cabb85b41d1ed5d96b55c755d2c07755e1fdb49c051d3a709',
++};
+diff --git a/src/utils/crossOriginAssetLoader.ts b/src/utils/crossOriginAssetLoader.ts
+new file mode 100644
+index 0000000..6c9c670
+--- /dev/null
++++ b/src/utils/crossOriginAssetLoader.ts
+@@ -0,0 +1,74 @@
++export interface AssetHash {
++  algorithm: string;
++  value: string;
++}
++
++export type AssetOrigins = '*' | string[];
++
++/**
++ * Loads a large shared asset (AI model weights, a Wasm module, a
++ * fully-bundled JS library, etc.) from Cross-Origin Storage (COS) when the
++ * browser supports it, falling back to a normal network fetch otherwise.
++ * Network responses are written back to COS so the next origin that asks
++ * for the same content hash can skip the download entirely.
++ *
++ * @param url The asset's real, working network URL, used as the fallback.
++ * @param hash The build-time content hash identifying the asset in COS.
++ * @param origins Sharing scope for the write-back; omit for same-site only.
++ */
++export async function loadSharedAsset(
++  url: string,
++  hash: AssetHash,
++  origins?: AssetOrigins,
++): Promise<Blob> {
++  const cos = navigator.crossOriginStorage;
++  // Feature-detect once, up front. Browsers without COS skip straight to a
++  // normal fetch instead of attempting a call that can't succeed.
++  const supportsCOS = !!cos?.requestFileHandle;
++  // Set when Permissions Policy blocks COS in this context (e.g. a
++  // cross-origin iframe the embedder didn't opt in), since every further
++  // COS call here would reject the same way.
++  let blocked = false;
++
++  if (supportsCOS && cos) {
++    try {
++      // Check COS before the network. If another origin already stored this
++      // exact hash, this resolves without any network request at all.
++      const handle = await cos.requestFileHandle(hash);
++      return await handle.getFile();
++    } catch (err) {
++      // A NotFoundError never proves the file is absent from COS: the
++      // origin may be outside its sharing scope, a globally shared file may
++      // not be on the browser's popular-hash list yet, or the browser may
++      // deliberately GREASE the response to protect privacy. Any rejection
++      // (including NotFoundError) falls back to the network below; only a
++      // NotAllowedError additionally skips the write-back, since it means
++      // COS itself is blocked in this context.
++      blocked = err instanceof Error && err.name === 'NotAllowedError';
++    }
++  }
++
++  const response = await fetch(url);
++  const fileBlob = await response.blob();
++
++  if (supportsCOS && cos && !blocked) {
++    try {
++      const handle = await cos.requestFileHandle(hash, {
++        create: true,
++        // Only pass `origins` when the caller chose a scope, so omitting it
++        // keeps the same-site-only default.
++        ...(origins ? { origins } : {}),
++      });
++      const writable = await handle.createWritable();
++      await writable.write(fileBlob);
++      await writable.close();
++      // Never call getFile() on this handle before write()/close() has
++      // resolved; the blob already in hand is returned below instead.
++    } catch {
++      // Storing is a nice-to-have for future visitors, not required for
++      // this call to succeed.
++    }
++  }
++
++  return fileBlob;
++}

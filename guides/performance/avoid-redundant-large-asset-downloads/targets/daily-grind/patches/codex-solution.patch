@@ -1,0 +1,457 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..f0f99cb
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,24 @@
++# The Daily Grind
++
++Run `npm install`, then `npm run build` and `npm test`. `npm start` builds and
++serves the application; deploy the `dist/` directory.
++
++The existing hero photograph is vendored in `assets/coffee-hero.jpg`. The build
++hashes those exact bytes with SHA-256 and embeds a content-addressed local URL
++and lowercase hash in the generated page. If the source asset is missing, the
++build downloads the original photograph once. Normal builds need no asset
++network access. To update the photograph, replace the source asset and rebuild.
++
++`src/load-asset.js` checks Cross-Origin Storage before fetching. Cache failures
++fall back to the network; policy denials disable further COS calls for the page.
++Successful downloads are written in full, and storage failures don't prevent
++displaying the photograph. This site's image deliberately keeps the default
++same-site sharing scope. Callers may choose a trusted origin array or, for a
++genuinely popular public resource, `'*'`. Even globally scoped resources can
++return a cache miss because of privacy or popularity gating. Multiple assets
++can be loaded with `Promise.all` over separate `loadAsset` calls.
++
++Browsers without COS use the same local network asset. Runtime code never hashes
++the asset or downloads it first to identify it. Strict TypeScript checking covers
++the browser JavaScript and the experimental COS API declarations. Tests simulate
++COS support and failures; they do not require a browser with experimental support.
+diff --git a/assets/coffee-hero.jpg b/assets/coffee-hero.jpg
+new file mode 100644
+index 0000000..73ff876
+Binary files /dev/null and b/assets/coffee-hero.jpg differ
+diff --git a/index.html b/index.html
+index 66c9173..13f2424 100644
+--- a/index.html
++++ b/index.html
+@@ -75,8 +75,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background: var(--primary);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -207,6 +206,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- The build inserts the hero loader and its exact content hash here. -->
++  <!-- ASSET_LOADER -->
+ </body>
+ 
+ </html>
+diff --git a/package-lock.json b/package-lock.json
+new file mode 100644
+index 0000000..8f64884
+--- /dev/null
++++ b/package-lock.json
+@@ -0,0 +1,29 @@
++{
++  "name": "daily-grind",
++  "version": "1.0.0",
++  "lockfileVersion": 3,
++  "requires": true,
++  "packages": {
++    "": {
++      "name": "daily-grind",
++      "version": "1.0.0",
++      "devDependencies": {
++        "typescript": "^5.9.3"
++      }
++    },
++    "node_modules/typescript": {
++      "version": "5.9.3",
++      "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz",
++      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "bin": {
++        "tsc": "bin/tsc",
++        "tsserver": "bin/tsserver"
++      },
++      "engines": {
++        "node": ">=14.17"
++      }
++    }
++  }
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..c711943 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,14 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "tsc && node scripts/build.js",
++    "test": "node --test tests/*.test.js",
++    "start": "npm run build && pnpm dlx statikk dist --port ${PORT:-11222}"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/scripts/build.js b/scripts/build.js
+new file mode 100644
+index 0000000..c8f6505
+--- /dev/null
++++ b/scripts/build.js
+@@ -0,0 +1,34 @@
++import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
++import { webcrypto } from 'node:crypto';
++
++// Vendor the existing photograph once; subsequent builds use the same bytes.
++// Runtime requests always use our real, same-origin copy, with no CORS dependency.
++const source = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80';
++await mkdir('assets', { recursive: true });
++let bytes;
++try {
++  bytes = await readFile('assets/coffee-hero.jpg');
++} catch (error) {
++  if (error.code !== 'ENOENT') throw error;
++  const response = await fetch(source);
++  if (!response.ok) throw new Error(`Photo download failed: ${response.status}`);
++  if (!response.headers.get('content-type')?.startsWith('image/')) {
++    throw new Error('Expected an image response');
++  }
++  bytes = Buffer.from(await response.arrayBuffer());
++  await writeFile('assets/coffee-hero.jpg', bytes);
++}
++
++const digest = await webcrypto.subtle.digest('SHA-256', bytes);
++const hash = { algorithm: 'SHA-256', value: Buffer.from(digest).toString('hex') };
++const assetUrl = `/assets/coffee-hero-${hash.value}.jpg`;
++await mkdir('dist/assets', { recursive: true });
++await mkdir('dist/src', { recursive: true });
++await writeFile(`dist${assetUrl}`, bytes);
++await Promise.all(['load-asset.js', 'hero.js'].map(file =>
++  copyFile(`src/${file}`, `dist/src/${file}`),
++));
++const html = await readFile('index.html', 'utf8');
++const loader = `<script type="module">\nimport { loadHero } from '/src/hero.js';\nloadHero(${JSON.stringify(assetUrl)}, ${JSON.stringify(hash)});\n</script>`;
++await writeFile('dist/index.html', html.replace('<!-- ASSET_LOADER -->', loader));
++console.log(`Built site with SHA-256 ${hash.value}`);
+diff --git a/src/cos.d.ts b/src/cos.d.ts
+new file mode 100644
+index 0000000..5fcffab
+--- /dev/null
++++ b/src/cos.d.ts
+@@ -0,0 +1,27 @@
++export interface AssetHash {
++  algorithm: 'SHA-256' | 'SHA-384' | 'SHA-512';
++  value: string;
++}
++
++export type SharingScope = '*' | string[];
++
++export interface StorageHandle {
++  getFile(): Promise<File>;
++  createWritable(): Promise<{
++    write(data: Blob): Promise<void>;
++    close(): Promise<void>;
++  }>;
++}
++
++export interface CrossOriginStorage {
++  requestFileHandle(
++    hash: AssetHash,
++    options?: { create: true; origins?: SharingScope },
++  ): Promise<StorageHandle>;
++}
++
++declare global {
++  interface Navigator {
++    crossOriginStorage?: CrossOriginStorage;
++  }
++}
+diff --git a/src/hero.js b/src/hero.js
+new file mode 100644
+index 0000000..85c9c03
+--- /dev/null
++++ b/src/hero.js
+@@ -0,0 +1,23 @@
++import { loadAsset } from './load-asset.js';
++
++/**
++ * @param {string} url
++ * @param {import('./cos.js').AssetHash} hash
++ */
++export async function loadHero(url, hash) {
++  const hero = document.querySelector('.hero');
++  if (!(hero instanceof HTMLElement)) return;
++  try {
++    // This site's selected photograph uses the default same-site scope.
++    const blob = await loadAsset(url, hash);
++    const objectUrl = URL.createObjectURL(blob);
++    hero.style.backgroundImage =
++      `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("${objectUrl}")`;
++    window.addEventListener('pagehide', (event) => {
++      if (!event.persisted) URL.revokeObjectURL(objectUrl);
++    });
++  } catch (error) {
++    // Keep the readable solid-color hero if the network is also unavailable.
++    console.warn('Unable to load the hero photograph.', error);
++  }
++}
+diff --git a/src/load-asset.js b/src/load-asset.js
+new file mode 100644
+index 0000000..efc878e
+--- /dev/null
++++ b/src/load-asset.js
+@@ -0,0 +1,60 @@
++/** @typedef {import('./cos.js').AssetHash} AssetHash */
++/** @typedef {import('./cos.js').SharingScope} SharingScope */
++
++// Detect support once for this page, before any asset request.
++const storage = globalThis.navigator?.crossOriginStorage;
++const supportsCOS = typeof storage?.requestFileHandle === 'function';
++let blocked = false;
++
++/** @param {unknown} error */
++function isNotAllowed(error) {
++  return typeof error === 'object' && error !== null &&
++    'name' in error && error.name === 'NotAllowedError';
++}
++
++/**
++ * Load exact, build-hashed bytes, checking COS before any network request.
++ * Omit origins for same-site assets; use '*' only for popular public resources.
++ * For several assets, use Promise.all(assets.map(asset => loadAsset(...))).
++ * Each requestFileHandle call always receives one hash.
++ * @param {string} url
++ * @param {AssetHash} hash
++ * @param {SharingScope} [origins]
++ * @returns {Promise<Blob>}
++ */
++export async function loadAsset(url, hash, origins) {
++  if (supportsCOS && !blocked) {
++    try {
++      const handle = await storage.requestFileHandle(hash);
++      return await handle.getFile();
++    } catch (error) {
++      // Policy denial disables subsequent COS calls in this context.
++      // NotFoundError is only a miss, including privacy/popularity gating
++      // for '*' resources: it never establishes that a file is absent.
++      if (isNotAllowed(error)) blocked = true;
++    }
++  }
++
++  const response = await fetch(url);
++  if (!response.ok) {
++    throw new Error(`Asset request failed (${response.status}): ${url}`);
++  }
++  const blob = await response.blob();
++
++  if (supportsCOS && !blocked) {
++    try {
++      const handle = await storage.requestFileHandle(hash, {
++        create: true,
++        ...(origins === undefined ? {} : { origins }),
++      });
++      const writable = await handle.createWritable();
++      await writable.write(blob);
++      await writable.close();
++      // Never read from a newly created handle; the full blob is in hand.
++    } catch (error) {
++      if (isNotAllowed(error)) blocked = true;
++      // Storage is optional. A failed write must not break the asset consumer.
++    }
++  }
++  return blob;
++}
+diff --git a/tests/load-asset.test.js b/tests/load-asset.test.js
+new file mode 100644
+index 0000000..50de47d
+--- /dev/null
++++ b/tests/load-asset.test.js
+@@ -0,0 +1,144 @@
++import { test, afterEach } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import { webcrypto } from 'node:crypto';
++
++const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
++const originalFetch = globalThis.fetch;
++const hash = { algorithm: 'SHA-256', value: 'a'.repeat(64) };
++let sequence = 0;
++
++afterEach(() => {
++  if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator);
++  else delete globalThis.navigator;
++  globalThis.fetch = originalFetch;
++});
++
++async function setup(storage) {
++  Object.defineProperty(globalThis, 'navigator', {
++    configurable: true, value: { crossOriginStorage: storage },
++  });
++  return (await import(`../src/load-asset.js?test=${sequence++}`)).loadAsset;
++}
++
++function rejected(name) {
++  return new DOMException('Simulated storage rejection', name);
++}
++
++test('unsupported browsers fetch immediately', async () => {
++  const load = await setup(undefined);
++  let fetches = 0;
++  globalThis.fetch = async () => { fetches++; return new Response('complete asset'); };
++  assert.equal(await (await load('/asset', hash)).text(), 'complete asset');
++  assert.equal(fetches, 1);
++});
++
++test('a cache hit never fetches or requests a writable handle', async () => {
++  const cached = new Blob(['cached']);
++  const load = await setup({ requestFileHandle: async (...args) => {
++    assert.deepEqual(args, [hash]);
++    return { getFile: async () => cached };
++  } });
++  globalThis.fetch = () => { assert.fail('Unexpected fetch'); };
++  assert.equal(await load('/asset', hash), cached);
++});
++
++for (const origins of [undefined, '*', ['https://coffee.example', 'https://shop.example']]) {
++  test(`NotFoundError falls back and fully writes with scope ${JSON.stringify(origins)}`, async () => {
++    const calls = [];
++    const load = await setup({ requestFileHandle: async (requestedHash, options) => {
++      assert.deepEqual(requestedHash, hash);
++      if (!options) { calls.push('lookup'); throw rejected('NotFoundError'); }
++      assert.deepEqual(options, { create: true, ...(origins === undefined ? {} : { origins }) });
++      calls.push('create');
++      return {
++        getFile() { assert.fail('Must not read the newly-created handle'); },
++        async createWritable() {
++          calls.push('writable');
++          return {
++            async write(blob) { calls.push(`write:${await blob.text()}`); },
++            async close() { calls.push('close'); },
++          };
++        },
++      };
++    } });
++    globalThis.fetch = async () => { calls.push('fetch'); return new Response('all bytes'); };
++    assert.equal(await (await load('/asset', hash, origins)).text(), 'all bytes');
++    assert.deepEqual(calls, ['lookup', 'fetch', 'create', 'writable', 'write:all bytes', 'close']);
++  });
++}
++
++for (const stage of ['requestFileHandle', 'getFile']) {
++  test(`NotAllowedError at ${stage} suppresses write-back and subsequent COS calls`, async () => {
++    let calls = 0;
++    const load = await setup({ requestFileHandle: async () => {
++      calls++;
++      if (stage === 'requestFileHandle') throw rejected('NotAllowedError');
++      return { getFile: async () => { throw rejected('NotAllowedError'); } };
++    } });
++    globalThis.fetch = async () => new Response('network');
++    for (let i = 0; i < 2; i++) assert.equal(await (await load('/asset', hash)).text(), 'network');
++    assert.equal(calls, 1);
++  });
++}
++
++for (const stage of ['lookup', 'read', 'create', 'writable', 'write', 'close']) {
++  test(`${stage} rejection preserves network fallback`, async () => {
++    const load = await setup({ requestFileHandle: async (_, options) => {
++      if (!options) {
++        if (stage !== 'read') throw rejected('UnknownError');
++        return { getFile: async () => { throw rejected('UnknownError'); } };
++      }
++      if (stage === 'create') throw rejected('QuotaExceededError');
++      return { createWritable: async () => {
++        if (stage === 'writable') throw rejected('UnknownError');
++        return {
++          async write() { if (stage === 'write') throw rejected('UnknownError'); },
++          async close() { if (stage === 'close') throw rejected('UnknownError'); },
++        };
++      } };
++    } });
++    globalThis.fetch = async () => new Response('network bytes');
++    assert.equal(await (await load('/asset', hash)).text(), 'network bytes');
++  });
++}
++
++test('HTTP errors and network failures propagate without storing an error response', async () => {
++  let calls = 0;
++  const load = await setup({ requestFileHandle: async () => {
++    calls++; throw rejected('NotFoundError');
++  } });
++  globalThis.fetch = async () => new Response('not found', { status: 404 });
++  await assert.rejects(load('/asset', hash), /404/);
++  globalThis.fetch = async () => { throw new TypeError('Offline'); };
++  await assert.rejects(load('/asset', hash), /Offline/);
++  assert.equal(calls, 2);
++});
++
++test('concurrent assets use individual hash lookups through Promise.all', async () => {
++  const seen = [];
++  const load = await setup({ requestFileHandle: async requestedHash => {
++    assert.equal(Array.isArray(requestedHash), false);
++    seen.push(requestedHash);
++    return { getFile: async () => new Blob([requestedHash.value]) };
++  } });
++  const hashes = [hash, { ...hash, value: 'b'.repeat(64) }];
++  const files = await Promise.all(hashes.map(value => load('/asset', value)));
++  assert.deepEqual(seen, hashes);
++  assert.deepEqual(await Promise.all(files.map(file => file.text())), hashes.map(value => value.value));
++});
++
++test('built hash matches the exact served bytes and the page has no direct image fetch', async () => {
++  const html = await readFile('dist/index.html', 'utf8');
++  const match = html.match(/loadHero\(("[^"]+"), (\{[^\n]+\})\)/);
++  assert.ok(match);
++  const url = JSON.parse(match[1]);
++  const builtHash = JSON.parse(match[2]);
++  assert.equal(builtHash.algorithm, 'SHA-256');
++  assert.match(builtHash.value, /^[a-f0-9]{64}$/);
++  const bytes = await readFile(`dist${url}`);
++  const digest = await webcrypto.subtle.digest(builtHash.algorithm, bytes);
++  assert.equal(Buffer.from(digest).toString('hex'), builtHash.value);
++  assert.ok(!html.includes('images.unsplash.com'));
++  assert.ok(!html.includes('url('));
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..e2421cf
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,13 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "target": "ES2022",
++    "module": "NodeNext",
++    "moduleResolution": "NodeNext",
++    "lib": ["ES2022", "DOM"]
++  },
++  "include": ["src/**/*.js", "src/**/*.d.ts"]
++}

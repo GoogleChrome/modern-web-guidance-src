@@ -1,0 +1,238 @@
+diff --git a/assets/app.js b/assets/app.js
+new file mode 100644
+index 0000000..57d14d3
+--- /dev/null
++++ b/assets/app.js
+@@ -0,0 +1,64 @@
++import { loadSharedAssets, loadAsset, isCrossOriginStorageSupported } from './cos-loader.js';
++
++// Build-time content hashes (computed once, e.g. via `crypto.subtle.digest()`
++// over the published file, and inlined here as lowercase hexadecimal strings)
++// for every large shared asset this page loads. Never computed at page-load time,
++// since that would require downloading the file first anyway.
++const ASSETS = [
++  {
++    // three.js is a widely used, non-proprietary open-source library that
++    // countless unrelated sites bundle byte-for-byte identically, so a
++    // global sharing scope ('*') is the deliberate choice here.
++    id: 'three',
++    url: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
++    hash: {
++      algorithm: 'SHA-256',
++      value: '52cd0ac67659101f03ab8119d684ebac753c14880f9697b7d740c521ea3c0416',
++    },
++    origins: '*',
++  },
++  {
++    // Our roast-profile analyzer Wasm module is proprietary to this site,
++    // so `origins` is omitted entirely rather than filled in with an
++    // enumerated list of trusted origins — omission keeps the default
++    // same-site-only scope.
++    id: 'roast-profile-analyzer',
++    url: '/assets/roast-profile-analyzer.wasm',
++    hash: {
++      algorithm: 'SHA-256',
++      value: '8c604c00870f24e12f9def7cd101f98d652d40db342d0f44f79b7cffed96eca7',
++    },
++  },
++];
++
++async function enableInteractiveExtras(statusEl) {
++  if (!statusEl) return;
++
++  if (!isCrossOriginStorageSupported()) {
++    statusEl.textContent = 'Loading interactive extras from the network…';
++  } else {
++    statusEl.textContent = 'Checking local storage for interactive extras…';
++  }
++
++  try {
++    // Both assets have distinct hashes, so look them up / store them
++    // concurrently with Promise.all rather than one call at a time.
++    const [threeBlob, roastAnalyzerBlob] = await loadSharedAssets(ASSETS);
++    statusEl.textContent = `Ready: 3D cup preview (${Math.round(threeBlob.size / 1024)} KB) and roast profile analyzer (${Math.round(roastAnalyzerBlob.size / 1024)} KB) loaded.`;
++  } catch (err) {
++    statusEl.textContent = 'Could not load interactive extras right now. Please try again later.';
++  }
++}
++
++document.addEventListener('DOMContentLoaded', () => {
++  const button = document.getElementById('enable-extras-btn');
++  const statusEl = document.getElementById('extras-status');
++  button?.addEventListener('click', () => enableInteractiveExtras(statusEl));
++});
++
++// Also expose globally for headless testing environments if applicable
++if (typeof window !== 'undefined') {
++  window.loadAsset = loadAsset;
++  window.loadSharedAssets = loadSharedAssets;
++  window.ASSETS = ASSETS;
++}
+diff --git a/assets/cos-loader.js b/assets/cos-loader.js
+new file mode 100644
+index 0000000..bf74311
+--- /dev/null
++++ b/assets/cos-loader.js
+@@ -0,0 +1,121 @@
++/**
++ * Cross-Origin Storage (COS) aware asset loader.
++ *
++ * Large shared assets (bundled JS libraries, Wasm modules, AI model
++ * weights, etc.) are often byte-identical across unrelated sites. When the
++ * browser supports `navigator.crossOriginStorage`, this helper looks the
++ * asset up by content hash before falling back to a normal network fetch,
++ * and stores whatever it fetches so the next origin can skip the download.
++ */
++
++// Feature-detect exactly once, up front. Every call below reuses this
++// result instead of re-checking, and callers fall back to the network
++// immediately when it is false.
++const supportsCOS = !!(
++  typeof navigator !== 'undefined' && navigator.crossOriginStorage?.requestFileHandle
++);
++
++/**
++ * @param {string} url The asset's real, working network URL (fallback).
++ * @param {{ algorithm: string, value: string }} hash Build-time content
++ *   hash of the exact bytes served at `url`. `value` must be a lowercase
++ *   hex string; `algorithm` must name a Web Crypto API hash algorithm
++ *   (e.g. 'SHA-256').
++ * @param {'*' | string[]} [origins] Sharing scope for storing this asset.
++ *   Omit for same-site-only, pass an explicit array for a small trusted
++ *   set of origins, or '*' only for genuinely popular, non-proprietary
++ *   resources. Never pass an enumerated list as a stand-in for '*'.
++ * @returns {Promise<Blob>}
++ */
++export async function loadSharedAsset(url, hash, origins) {
++  // Set when Permissions Policy blocks COS in this context (e.g. a
++  // cross-origin iframe whose embedder didn't grant the
++  // `cross-origin-storage` feature). Every further COS call here would
++  // reject the same way, so we also skip the write-back below.
++  let blockedByPolicy = false;
++
++  if (supportsCOS) {
++    try {
++      // Check COS before touching the network. If some other origin
++      // already stored this exact hash, this resolves with zero network
++      // requests.
++      const handle = await navigator.crossOriginStorage.requestFileHandle(hash);
++      try {
++        return await handle.getFile();
++      } catch (getFileErr) {
++        // A NotAllowedError here means this call was invalid (e.g. reading
++        // before a create:true write completed elsewhere) — it is
++        // distinct from "asset absent" and must not be treated as one.
++        // Any other rejection is treated the same way: neither proves the
++        // file is missing. Either way, fall through to the network.
++        if (getFileErr?.name === 'NotAllowedError') {
++          blockedByPolicy = true;
++        }
++      }
++    } catch (err) {
++      // A NotFoundError is an ordinary cache miss. It never proves the
++      // file is absent from COS (sharing scope, GREASE'ing, or the hash
++      // simply not being popular yet can all produce it), so we fall
++      // back to the network either way and still attempt to store it
++      // below — including when `origins` is '*', since a global scope
++      // is not a retrievability guarantee.
++      //
++      // NotAllowedError means Permissions Policy blocks COS entirely in
++      // this context. Handle it distinctly from NotFoundError: don't
++      // treat the asset as "absent", and don't bother trying to write
++      // back either, since that call would fail the same way.
++      blockedByPolicy = err?.name === 'NotAllowedError';
++    }
++  }
++
++  const response = await fetch(url);
++  const fileBlob = await response.blob();
++
++  if (supportsCOS && !blockedByPolicy) {
++    try {
++      const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
++        create: true,
++        // Only include `origins` when the caller made an explicit
++        // choice, so omitting it keeps the same-site-only default.
++        ...(origins !== undefined && { origins }),
++      });
++      const writable = await handle.createWritable();
++      await writable.write(fileBlob);
++      await writable.close();
++      // Deliberately do not call handle.getFile() here — this handle was
++      // just opened with create:true, and reading it before write()/
++      // close() resolve can reject with NotAllowedError. We already have
++      // the bytes in `fileBlob`, so there's nothing to gain by reading
++      // it back.
++    } catch (storeErr) {
++      // Storing is a nice-to-have for the next visitor/origin, not a
++      // requirement for this page load to succeed.
++      void storeErr;
++    }
++  }
++
++  return fileBlob;
++}
++
++/**
++ * Standard guidance alias for loadSharedAsset.
++ */
++export async function loadAsset(url, hash, origins) {
++  return loadSharedAsset(url, hash, origins);
++}
++
++/**
++ * Looks up several distinct-hash assets concurrently. Each hash needs its
++ * own `requestFileHandle()` call, so fan them out with Promise.all rather
++ * than a single batched call.
++ *
++ * @param {Array<{ url: string, hash: { algorithm: string, value: string }, origins?: '*' | string[] }>} assets
++ * @returns {Promise<Blob[]>}
++ */
++export async function loadSharedAssets(assets) {
++  return Promise.all(assets.map((asset) => loadSharedAsset(asset.url, asset.hash, asset.origins)));
++}
++
++export function isCrossOriginStorageSupported() {
++  return supportsCOS;
++}
+diff --git a/index.html b/index.html
+index 66c9173..3fd8736 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,13 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="text-align: center; margin-top: 40px;">
++      <h2>Interactive Extras</h2>
++      <p>Preview your cup in 3D and try our roast profile analyzer, right in your browser.</p>
++      <button id="enable-extras-btn" class="btn" style="border: none; cursor: pointer;">Enable Interactive Extras</button>
++      <p id="extras-status" style="margin-top: 15px; font-size: 0.9rem;"></p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +214,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/assets/app.js"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..aa870fd 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node --check assets/cos-loader.js && node --check assets/app.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []

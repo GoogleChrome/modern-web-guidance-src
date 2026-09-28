@@ -1,0 +1,633 @@
+diff --git a/README.md b/README.md
+index 4479b53..36f2fed 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,29 @@
+ 
+ This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
+ 
++Article search loads the pinned Fuse.js 7.1.0 standalone library on demand through
++`src/utils/loadAsset.ts`. The Vite plugin in `build/shared-assets.mjs` hashes the
++package's exact published bytes with SHA-256 at build time and emits those same
++bytes under the app's base URL. No asset download is needed to compute a hash in
++the browser.
++
++The loader first checks Cross-Origin Storage when supported, then fetches from
++the app on any miss or read failure. Permission denials skip write-back; other
++misses attempt a complete write and close. Fuse uses `origins: '*'` because it is
++a widely distributed, public Apache-2.0-licensed library. That scope does not guarantee
++availability: popularity and privacy gating can still produce `NotFoundError`.
++Site-specific assets should omit the scope, and assets shared with a small trusted
++set may use explicit origins. Multiple assets use individual concurrent requests
++via `Promise.all`.
++
++The library is imported from a temporary JavaScript blob URL, which is revoked
++after import. Basic title/summary matching remains available if the library cannot load.
++COS is progressive enhancement and needs no permission-policy change for the top-level site.
++If an embedding context denies it, normal fetching still works seamlessly.
++
++Run `npm test` for cache hit, fallback, permissions, full writes, failure, concurrency,
++and build-time hash checks. Run `npm run build` for the production build.
++
+ 
+ ```sh
+ pnpm install && pnpm run start
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..e5c76b5 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -3,6 +3,7 @@ import { defineConfig } from "astro/config";
+ import react from "@astrojs/react";
+ import tailwindcss from "@tailwindcss/vite";
+ import node from "@astrojs/node";
++import sharedAssets from "./build/shared-assets.mjs";
+ 
+ 
+ // https://astro.build/config
+@@ -11,7 +12,7 @@ export default defineConfig({
+   base: 'devtools-times/',
+   integrations: [react()],
+   vite: {
+-    plugins: [tailwindcss()],
++    plugins: [tailwindcss(), sharedAssets()],
+   },
+   adapter: node({
+     mode: "standalone",
+diff --git a/build/shared-assets.mjs b/build/shared-assets.mjs
+new file mode 100644
+index 0000000..bc7f73e
+--- /dev/null
++++ b/build/shared-assets.mjs
+@@ -0,0 +1,57 @@
++import { readFile } from 'node:fs/promises';
++import { webcrypto } from 'node:crypto';
++
++// Read the published, self-contained ESM distribution without transforming it.
++// The manifest and the served file always describe the same exact bytes.
++export default function sharedAssets() {
++  const id = 'virtual:shared-assets';
++  const resolvedId = `\0${id}`;
++  const fileName = 'assets/fuse-7.1.0.mjs';
++  let base = '/';
++  const asset = (async () => {
++    const bytes = await readFile(new URL(import.meta.resolve('fuse.js')));
++    const digest = await webcrypto.subtle.digest('SHA-256', bytes);
++    const value = Buffer.from(digest).toString('hex').toLowerCase();
++    return { bytes, hash: { algorithm: 'SHA-256', value } };
++  })();
++
++  return {
++    name: 'shared-assets',
++    configResolved(config) {
++      base = config.base;
++    },
++    resolveId(source) {
++      if (source === id) return resolvedId;
++    },
++    async load(source) {
++      if (source !== resolvedId) return;
++      const { hash } = await asset;
++      return `export const searchLibrary = ${JSON.stringify({
++        url: `${base}${fileName}`,
++        hash,
++        // Fuse is a public MIT-licensed library distributed across unrelated sites.
++        origins: '*',
++      })};`;
++    },
++    configureServer(server) {
++      server.middlewares.use(async (request, response, next) => {
++        const pathname = request.url?.split('?')[0];
++        if (pathname !== `${base}${fileName}` && pathname !== `/${fileName}`) {
++          next();
++          return;
++        }
++        try {
++          const { bytes } = await asset;
++          response.setHeader('Content-Type', 'text/javascript');
++          response.end(bytes);
++        } catch (error) {
++          next(error);
++        }
++      });
++    },
++    async generateBundle() {
++      const { bytes } = await asset;
++      this.emitFile({ type: 'asset', fileName, source: bytes });
++    },
++  };
++}
+diff --git a/package.json b/package.json
+index 5e71a8a..5df1e7b 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,7 @@
+   "type": "module",
+   "version": "0.0.1",
+   "scripts": {
++    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+@@ -17,6 +18,7 @@
+     "@types/react": "^19.2.14",
+     "@types/react-dom": "^19.2.3",
+     "astro": "^7.2.8",
++    "fuse.js": "7.1.0",
+     "react": "^19.2.5",
+     "react-dom": "^19.2.5",
+     "sharp": "^0.35.0",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index ab0416c..46f5010 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -29,6 +29,9 @@ importers:
+       astro:
+         specifier: ^7.2.8
+         version: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
++      fuse.js:
++        specifier: 7.1.0
++        version: 7.1.0
+       react:
+         specifier: ^19.2.5
+         version: 19.2.5
+@@ -1763,6 +1766,10 @@ packages:
+     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+     os: [darwin]
+ 
++  fuse.js@7.1.0:
++    resolution: {integrity: sha512-trLf4SzuuUxfusZADLINj+dE8clK1frKdmqiJNb1Es75fmI5oY6X2mxLVUciLLjxqw/xr72Dhy+lER6dGd02FQ==}
++    engines: {node: '>=10'}
++
+   gensync@1.0.0-beta.2:
+     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
+     engines: {node: '>=6.9.0'}
+@@ -3953,6 +3960,8 @@ snapshots:
+   fsevents@2.3.3:
+     optional: true
+ 
++  fuse.js@7.1.0: {}
++
+   gensync@1.0.0-beta.2: {}
+ 
+   get-tsconfig@5.0.0-beta.4:
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..a69da80 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -6,6 +6,7 @@ interface Article {
+     slug: string;
+     title: string;
+     summary: string;
++    image?: string;
+ }
+ 
+ export default function SearchButton() {
+@@ -14,8 +15,12 @@ export default function SearchButton() {
+     const [isLoading, setIsLoading] = useState(false);
+ 
+     const openSearch = async () => {
++        setIsLoading(true);
+         try {
+-            setArticles([]);
++            const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
++            if (!response.ok) throw new Error(`Search failed (${response.status})`);
++            const data = await response.json();
++            setArticles(data);
+             setIsFlyoutOpen(true);
+         } catch (error) {
+             console.error('Failed to fetch articles:', error);
+@@ -43,7 +48,7 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            {isFlyoutOpen && <SearchFlyout articles={articles} onClose={closeSearch} />}
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..d34e493 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,7 @@
+ 
+ import React, { useState, useMemo, useEffect } from 'react';
++import type Fuse from 'fuse.js';
++import { loadSearchLibrary } from '../utils/searchLibrary';
+ 
+ interface Article {
+     slug: string;
+@@ -21,6 +23,25 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+ export default function SearchFlyout({ articles, onClose }: Props) {
+     const [searchTerm, setSearchTerm] = useState('');
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
++    const [SearchLibrary, setSearchLibrary] = useState<typeof Fuse | null>(null);
++
++    useEffect(() => {
++        let active = true;
++        loadSearchLibrary()
++            .then(library => {
++                if (active) setSearchLibrary(() => library);
++            })
++            .catch(() => {
++                // Keep basic title/summary search available if loading is blocked or fails.
++            });
++        return () => {
++            active = false;
++        };
++    }, []);
++
++    useEffect(() => {
++        setSuggestions(getShuffledItems(articles, 3));
++    }, [articles]);
+ 
+     useEffect(() => {
+         const handleKeyDown = (event: KeyboardEvent) => {
+@@ -29,34 +50,37 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+             }
+         };
+         window.addEventListener('keydown', handleKeyDown);
+-        
+-        // Bug: Redundant fetch for suggestions
+-        const fetchSuggestions = async () => {
+-            try {
+-                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-                const data = await response.json();
+-                setSuggestions(getShuffledItems(data, 3));
+-            } catch (error) {
+-                console.error('Failed to fetch suggestions:', error);
+-            }
+-        };
+-
+-        fetchSuggestions();
+ 
+         return () => {
+             window.removeEventListener('keydown', handleKeyDown);
+         };
+     }, [onClose]);
+ 
++    const searchIndex = useMemo(
++        () =>
++            SearchLibrary
++                ? new SearchLibrary(articles, {
++                      keys: ['title', 'summary'],
++                      threshold: 0.3,
++                      ignoreLocation: true,
++                  })
++                : null,
++        [SearchLibrary, articles]
++    );
++
+     const filteredArticles = useMemo(() => {
+         if (!searchTerm) {
+             return [];
+         }
+-        return articles.filter(article =>
+-            article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+-            article.summary.toLowerCase().includes(searchTerm.toLowerCase())
++        if (searchIndex) {
++            return searchIndex.search(searchTerm).map(result => result.item);
++        }
++        return articles.filter(
++            article =>
++                article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
++                article.summary.toLowerCase().includes(searchTerm.toLowerCase())
+         );
+-    }, [articles, searchTerm]);
++    }, [articles, searchTerm, searchIndex]);
+ 
+     return (
+         <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+diff --git a/src/shared-assets.d.ts b/src/shared-assets.d.ts
+new file mode 100644
+index 0000000..fdc5747
+--- /dev/null
++++ b/src/shared-assets.d.ts
+@@ -0,0 +1,3 @@
++declare module 'virtual:shared-assets' {
++  export const searchLibrary: import('./utils/loadAsset').SharedAsset;
++}
+diff --git a/src/utils/loadAsset.ts b/src/utils/loadAsset.ts
+new file mode 100644
+index 0000000..6353431
+--- /dev/null
++++ b/src/utils/loadAsset.ts
+@@ -0,0 +1,101 @@
++export interface AssetHash {
++  algorithm: 'SHA-256' | 'SHA-384' | 'SHA-512';
++  value: string;
++}
++
++export type SharingScope = '*' | string[];
++
++interface StorageHandle {
++  getFile(): Promise<File>;
++  createWritable(): Promise<{
++    write(data: Blob): Promise<void>;
++    close(): Promise<void>;
++  }>;
++}
++
++interface CrossOriginStorage {
++  requestFileHandle(
++    hash: AssetHash,
++    options?: { create: true; origins?: SharingScope },
++  ): Promise<StorageHandle>;
++}
++
++declare global {
++  interface Navigator {
++    crossOriginStorage?: CrossOriginStorage;
++  }
++}
++
++function isNotAllowed(error: unknown): boolean {
++  return typeof error === 'object' && error !== null &&
++    'name' in error && (error as { name: unknown }).name === 'NotAllowedError';
++}
++
++let lastStorage: CrossOriginStorage | undefined = undefined;
++let isBlocked = false;
++
++/** COS is progressive enhancement. Only the working network path is required for core functionality. */
++export async function loadAsset(
++  url: string,
++  hash: AssetHash,
++  origins?: SharingScope,
++): Promise<Blob> {
++  const storage = typeof navigator === 'undefined' ? undefined :
++    (navigator as Navigator & { crossOriginStorage?: CrossOriginStorage }).crossOriginStorage;
++  const supportsCOS = typeof storage?.requestFileHandle === 'function';
++
++  if (storage !== lastStorage) {
++    lastStorage = storage;
++    isBlocked = false;
++  }
++
++  if (supportsCOS && !isBlocked) {
++    try {
++      const handle = await storage.requestFileHandle(hash);
++      return await handle.getFile();
++    } catch (error: unknown) {
++      // NotFoundError is an expected miss, including for globally shared files:
++      // scope, popularity gating, and privacy GREASE may hide an existing file.
++      // NotAllowedError instead signals denied access; skip write-back and further COS calls.
++      if (isNotAllowed(error)) {
++        isBlocked = true;
++      }
++    }
++  }
++
++  const response = await fetch(url);
++  if (!response.ok) {
++    throw new Error(`Asset download failed (${response.status}): ${url}`);
++  }
++  const blob = await response.blob();
++
++  if (supportsCOS && !isBlocked) {
++    try {
++      const handle = await storage.requestFileHandle(hash, {
++        create: true,
++        ...(origins === undefined ? {} : { origins }),
++      });
++      const writable = await handle.createWritable();
++      await writable.write(blob);
++      await writable.close();
++      // Never read a newly-created handle. We already have the complete blob.
++    } catch (error: unknown) {
++      if (isNotAllowed(error)) {
++        isBlocked = true;
++      }
++      // Quota, policy, and write failures must not break the consuming feature.
++    }
++  }
++  return blob;
++}
++
++export interface SharedAsset {
++  url: string;
++  hash: AssetHash;
++  origins?: SharingScope;
++}
++
++/** Each COS request accepts one hash; distinct resources load concurrently via Promise.all. */
++export function loadAssets(assets: readonly SharedAsset[]): Promise<Blob[]> {
++  return Promise.all(assets.map(({ url, hash, origins }) => loadAsset(url, hash, origins)));
++}
+diff --git a/src/utils/searchLibrary.ts b/src/utils/searchLibrary.ts
+new file mode 100644
+index 0000000..06ec8cf
+--- /dev/null
++++ b/src/utils/searchLibrary.ts
+@@ -0,0 +1,27 @@
++import type Fuse from 'fuse.js';
++import { searchLibrary } from 'virtual:shared-assets';
++import { loadAsset } from './loadAsset';
++
++let pending: Promise<typeof Fuse> | undefined;
++
++/** Load once per page, on demand. Type-only imports do not bundle a second copy. */
++export function loadSearchLibrary(): Promise<typeof Fuse> {
++  if (!pending) {
++    pending = (async () => {
++      const { url, hash, origins } = searchLibrary;
++      const blob = await loadAsset(url, hash, origins);
++      const moduleUrl = URL.createObjectURL(new Blob([blob], { type: 'text/javascript' }));
++      try {
++        const library: { default: typeof Fuse } = await import(/* @vite-ignore */ moduleUrl);
++        if (typeof library.default !== 'function') throw new Error('Invalid search library');
++        return library.default;
++      } finally {
++        URL.revokeObjectURL(moduleUrl);
++      }
++    })().catch((error: unknown) => {
++      pending = undefined;
++      throw error;
++    });
++  }
++  return pending;
++}
+diff --git a/tests/loadAsset.test.mjs b/tests/loadAsset.test.mjs
+new file mode 100644
+index 0000000..0fb2dc3
+--- /dev/null
++++ b/tests/loadAsset.test.mjs
+@@ -0,0 +1,178 @@
++import assert from 'node:assert/strict';
++import { afterEach, test } from 'node:test';
++import { loadAsset, loadAssets } from '../src/utils/loadAsset.ts';
++import sharedAssets from '../build/shared-assets.mjs';
++import { webcrypto } from 'node:crypto';
++import { readFile } from 'node:fs/promises';
++
++const hash = { algorithm: 'SHA-256', value: 'ab'.repeat(32) };
++const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
++const originalFetch = globalThis.fetch;
++const bytes = new Uint8Array([0, 1, 127, 128, 255]);
++
++afterEach(() => {
++  if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator);
++  else delete globalThis.navigator;
++  globalThis.fetch = originalFetch;
++});
++
++function setup(storage) {
++  Object.defineProperty(globalThis, 'navigator', {
++    configurable: true,
++    value: { crossOriginStorage: storage },
++  });
++  const events = [];
++  globalThis.fetch = async url => {
++    events.push(['fetch', url]);
++    return new Response(bytes);
++  };
++  return events;
++}
++
++test('unsupported browsers immediately use the real network URL', async () => {
++  const events = setup(undefined);
++  const blob = await loadAsset('/library.mjs', hash);
++  assert.deepEqual(new Uint8Array(await blob.arrayBuffer()), bytes);
++  assert.deepEqual(events, [['fetch', '/library.mjs']]);
++});
++
++test('a local hit reads the file and makes no network or write calls', async () => {
++  const file = new Blob([bytes]);
++  const events = setup({
++    async requestFileHandle(...args) {
++      assert.deepEqual(args, [hash]);
++      return { async getFile() { return file; } };
++    },
++  });
++  assert.equal(await loadAsset('/library.mjs', hash, '*'), file);
++  assert.deepEqual(events, []);
++});
++
++for (const origins of [undefined, '*', ['https://trusted.example']]) {
++  test(`a miss writes all bytes and closes with scope ${JSON.stringify(origins)}`, async () => {
++    const events = setup({
++      async requestFileHandle(receivedHash, options) {
++        assert.deepEqual(receivedHash, hash);
++        if (!options) {
++          events.push(['lookup']);
++          throw new DOMException('May be hidden by scope, popularity or privacy', 'NotFoundError');
++        }
++        assert.deepEqual(options, { create: true, ...(origins === undefined ? {} : { origins }) });
++        events.push(['create']);
++        return {
++          getFile() { assert.fail('Must not read the create handle'); },
++          async createWritable() {
++            events.push(['writable']);
++            return {
++              async write(blob) {
++                assert.deepEqual(new Uint8Array(await blob.arrayBuffer()), bytes);
++                events.push(['write']);
++              },
++              async close() { events.push(['close']); },
++            };
++          },
++        };
++      },
++    });
++    const blob = await loadAsset('/library.mjs', hash, origins);
++    assert.deepEqual(new Uint8Array(await blob.arrayBuffer()), bytes);
++    assert.deepEqual(events.map(event => event[0]), ['lookup', 'fetch', 'create', 'writable', 'write', 'close']);
++  });
++}
++
++for (const stage of ['requestFileHandle', 'getFile']) {
++  test(`NotAllowedError from ${stage} fetches but skips write-back`, async () => {
++    let calls = 0;
++    const deny = () => { throw new DOMException('Denied', 'NotAllowedError'); };
++    const events = setup({
++      async requestFileHandle() {
++        calls++;
++        if (stage === 'requestFileHandle') deny();
++        return { getFile: deny };
++      },
++    });
++    await loadAsset('/library.mjs', hash);
++    assert.equal(calls, 1);
++    assert.equal(events.length, 1);
++  });
++}
++
++for (const stage of ['lookup', 'read', 'create', 'writable', 'write', 'close']) {
++  test(`other failures at ${stage} preserve the network result`, async () => {
++    const fail = () => { throw new Error('Storage unavailable'); };
++    const events = setup({
++      async requestFileHandle(_hash, options) {
++        if (!options) {
++          if (stage === 'lookup') fail();
++          if (stage === 'read') return { getFile: fail };
++          throw new DOMException('Miss', 'NotFoundError');
++        }
++        if (stage === 'create') fail();
++        return {
++          async createWritable() {
++            if (stage === 'writable') fail();
++            return {
++              async write() { if (stage === 'write') fail(); },
++              async close() { if (stage === 'close') fail(); },
++            };
++          },
++        };
++      },
++    });
++    const blob = await loadAsset('/library.mjs', hash);
++    assert.deepEqual(new Uint8Array(await blob.arrayBuffer()), bytes);
++    assert.equal(events.length, 1);
++  });
++}
++
++test('HTTP failures are rejected rather than stored as assets', async () => {
++  let calls = 0;
++  setup({ async requestFileHandle() { calls++; throw new Error('Miss'); } });
++  globalThis.fetch = async () => new Response('not found', { status: 404 });
++  await assert.rejects(loadAsset('/missing.mjs', hash), /404/);
++  assert.equal(calls, 1);
++});
++
++test('network failures propagate', async () => {
++  setup(undefined);
++  globalThis.fetch = async () => { throw new Error('Offline'); };
++  await assert.rejects(loadAsset('/library.mjs', hash), /Offline/);
++});
++
++test('distinct hashes use concurrent individual lookups', async () => {
++  const received = [];
++  const releases = [];
++  setup({
++    requestFileHandle(receivedHash) {
++      received.push(receivedHash);
++      return new Promise(resolve => releases.push(() => resolve({ getFile: async () => new Blob([bytes]) })));
++    },
++  });
++  const secondHash = { ...hash, value: 'cd'.repeat(32) };
++  const pending = loadAssets([
++    { url: '/one.mjs', hash },
++    { url: '/two.mjs', hash: secondHash },
++  ]);
++  assert.deepEqual(received, [hash, secondHash]);
++  releases.forEach(release => release());
++  assert.equal((await pending).length, 2);
++});
++
++test('build manifest hashes the exact emitted standalone library', async () => {
++  const plugin = sharedAssets();
++  plugin.configResolved({ base: '/devtools-times/' });
++  const code = await plugin.load(plugin.resolveId('virtual:shared-assets'));
++  const { searchLibrary } = await import(`data:text/javascript,${encodeURIComponent(code)}`);
++  let emitted;
++  await plugin.generateBundle.call({ emitFile(file) { emitted = file; } });
++  const source = await readFile(new URL(import.meta.resolve('fuse.js')));
++  assert.deepEqual(emitted.source, source);
++  assert.equal(searchLibrary.url, `/devtools-times/${emitted.fileName}`);
++  assert.equal(searchLibrary.origins, '*');
++  assert.match(searchLibrary.hash.value, /^[0-9a-f]{64}$/);
++  const digest = await webcrypto.subtle.digest(searchLibrary.hash.algorithm, emitted.source);
++  assert.equal(searchLibrary.hash.value, Buffer.from(digest).toString('hex'));
++  const library = await import(`data:text/javascript,${encodeURIComponent(source.toString())}`);
++  const index = new library.default([{ title: 'Science breakthrough' }], { keys: ['title'] });
++  assert.equal(index.search('Science')[0].item.title, 'Science breakthrough');
++});
