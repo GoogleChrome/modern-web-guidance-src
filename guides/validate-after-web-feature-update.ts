@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { features } from 'web-features';
-import { scanAllGuides, scanDisciplineSkills } from '../lib/guide-validation.ts';
+import { scanAllGuides } from '../lib/guide-validation.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,7 +40,7 @@ const recordLocation = (fid: string, location: string) => {
   featureToLocations.get(fid)!.add(location);
 };
 
-const allGuides = [...scanAllGuides(), ...scanDisciplineSkills()];
+const allGuides = scanAllGuides();
 for (const guide of allGuides) {
   const relPath = path.relative(path.resolve(__dirname, '..'), guide.dir);
   const guideMd = path.join(guide.dir, 'guide.md');

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Messaging</title>
+  <style>
+    body {
+      font-family: serif;
+      padding: 20px;
+    }
+
+    #display {
+      border: 2px solid black;
+      height: 150px;
+      width: 300px;
+      overflow-y: scroll;
+      margin-bottom: 10px;
+    }
+
+    #msg {
+      width: 300px;
+      height: 80px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Chat</h1>
+  <div id="display"></div>
+  <textarea id="msg"></textarea>
+  <script>
+      var d = document.getElementById('display');
+      var m = document.getElementById('msg');
+      m.onkeydown = function (e) {
+        if (e.key === 'Enter') {
+          var s = document.createElement('div');
+          s.innerText = m.value;
+          d.appendChild(s);
+              m.value = '';
+            }
+          };
+        </script>
+</body>
+
+</html>

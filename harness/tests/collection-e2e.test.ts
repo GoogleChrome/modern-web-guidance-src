@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { defaultSuiteConfig, Agents } from '../config.ts';
 import { collectResults } from '../lib/collection.ts';
+import { generateNormalizedTrajectory } from '../lib/trajectory-normalizer.ts';
 import { guidesDir } from '../../lib/paths.ts';
 
 const testDir = import.meta.dirname;
@@ -124,6 +125,8 @@ base_app: test-app
         ].join('\n');
         fs.writeFileSync(path.join(targetDir, 'session-mock.jsonl'), sessionLines);
 
+        await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE);
+
         // Execute SUT
         const { allResults } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
 
@@ -143,4 +146,51 @@ base_app: test-app
         if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
     }
 });
+
+test('collectResults extracts model from leaf trajectory_summary.json', async (_t) => {
+    const resultsBase = path.resolve(testDir, 'fixtures-results-e2e-model');
+    const guideName = '_e2e_test_guide_model';
+    const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
+    const tasksDir = path.join(performanceGuideDir, 'tasks');
+    const taskPath = path.join(tasksDir, 'task.md');
+
+    try {
+        if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
+        const graderPath = path.join(performanceGuideDir, 'grader.ts');
+        fs.writeFileSync(graderPath, '// mock grader file');
+
+        fs.writeFileSync(taskPath, `---
+base_app: test-app
+---
+- E2E Mock Prompt`);
+
+        const runNumberDir = path.join(resultsBase, '1');
+        const targetDir = path.join(runNumberDir, guideName, 'task', 'guided');
+        fs.mkdirSync(targetDir, { recursive: true });
+
+        fs.writeFileSync(path.join(targetDir, 'index.html'), '<html>Mock HTML</html>');
+        fs.writeFileSync(path.join(targetDir, 'resources_used.json'), JSON.stringify([]));
+
+        const mockPlaywrightOutput = {
+            suites: [{ specs: [{ title: 'test spec', tests: [{ results: [{ status: 'passed' }] }] }] }]
+        };
+        fs.writeFileSync(path.join(targetDir, `${guideName}_results.json`), JSON.stringify(mockPlaywrightOutput));
+
+        fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), JSON.stringify({
+            agent: Agents.CLAUDE_CODE,
+            model: 'claude-3-7-sonnet-20250219',
+            steps: []
+        }));
+
+        const { allResults, numRuns, model } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
+
+        assert.strictEqual(numRuns, 1);
+        assert.strictEqual(model, 'claude-3-7-sonnet-20250219');
+        assert.ok(allResults[`task - ${guideName} - guided`]);
+    } finally {
+        if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
+        if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
+    }
+});
+
 

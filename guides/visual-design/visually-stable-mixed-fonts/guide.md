@@ -5,6 +5,8 @@ web-feature-ids:
   - font-size-adjust
 ---
 
+# Visually Stable Mixed Fonts
+
 When mixing different font families, for instance when inserting inline code snippets, or switching out font families for different themes, differences in "x-height" (the height of lowercase letters) can make one font appear much smaller or larger than the other font. This can lead to poor legibility and layout shifts.
 
 The `font-size-adjust` property allows you to normalize the visual size of text by adjusting the font size based on a specific font metric (usually the x-height).

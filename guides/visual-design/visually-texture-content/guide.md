@@ -5,6 +5,8 @@ web-feature-ids:
   - masks
 ---
 
+# Visually Texture Content
+
 ## Overview
 To apply realistic weathering or texture patterns (like grunge, noise, or paper texture) to an element, use CSS Masking (`mask-image`) with a repeating texture image. This allows you to make the content itself appear textured by making parts of it semi-transparent, rather than just overlaying a texture on top. This creates a more realistic physical material appearance.
 

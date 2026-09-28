@@ -6,6 +6,8 @@ web-feature-ids:
   - scroll-snap
 ---
 
+# Scroll Snap Real-Time Feedback
+
 ## Overview
 Users expect immediate visual feedback when interacting with UI elements like carousels or galleries. Traditional scroll snap only provides feedback *after* the scroll gesture completes and the element settles. By using Scroll Snap Events, specifically `scrollsnapchanging`, you can provide real-time feedback during the scroll gesture, highlighting the pending snap target before the user releases their touch or mouse.
 

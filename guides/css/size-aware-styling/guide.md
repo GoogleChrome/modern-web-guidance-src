@@ -5,6 +5,8 @@ web-feature-ids:
   - container-queries
 ---
 
+# Size Aware Styling
+
 ## Overview
 
 Size-aware styling allows components to change their layout or appearance based on the space available to them, rather than the size of the whole screen. This is useful for components like cards or navigation bars that might be placed in different parts of a layout (like a narrow sidebar or a wide main area).

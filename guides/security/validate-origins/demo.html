@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Origin Comparison Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 680px;
+      margin: 2rem auto;
+      line-height: 1.5;
+    }
+    pre {
+      background: #f4f4f5;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Origin &amp; Site Comparison</h1>
+  <pre id="output"></pre>
+
+  <script type="module">
+    const TRUSTED_ORIGIN_URL = 'https://trusted-origin.example';
+    const SUBDOMAIN_URL = 'https://sub.trusted-origin.example';
+
+    // When available, both sides must be Origin instances per WHATWG HTML spec:
+    // boolean isSameOrigin(Origin other);
+    // boolean isSameSite(Origin other);
+    const trustedOrigin = 'Origin' in window ? Origin.from(TRUSTED_ORIGIN_URL) : null;
+
+    function isTrustedMessageEvent(event) {
+      if ('Origin' in window) {
+        // Pass event.origin (string) rather than the MessageEvent instance itself,
+        // as MessageEvent does not currently define extract-an-origin steps in HTML/Chromium.
+        return Origin.from(event.origin).isSameOrigin(trustedOrigin);
+      }
+      // Fallback for browsers without Origin support (e.g. Firefox)
+      return event.origin === TRUSTED_ORIGIN_URL;
+    }
+
+    window.addEventListener('message', (event) => {
+      if (!isTrustedMessageEvent(event)) return;
+      // Handle verified message payload safely
+    });
+
+    const SAME_ORIGIN_PATH_URL = 'https://trusted-origin.example/path';
+    const ATTACKER_ORIGIN_URL = 'https://untrusted-attacker.example';
+
+    const trustedEvent = new MessageEvent('message', {
+      origin: TRUSTED_ORIGIN_URL,
+      data: { action: 'update' },
+    });
+    const untrustedEvent = new MessageEvent('message', {
+      origin: ATTACKER_ORIGIN_URL,
+      data: { action: 'update' },
+    });
+
+    const lines = [];
+    lines.push(`Trusted reference origin: ${TRUSTED_ORIGIN_URL}`);
+    lines.push('');
+
+    if ('Origin' in window) {
+      const candidateSameOrigin = Origin.from(SAME_ORIGIN_PATH_URL);
+      const candidateSubdomain = Origin.from(SUBDOMAIN_URL);
+      const opaqueOrigin = new Origin();
+
+      lines.push(`Native Origin supported: true`);
+      lines.push('');
+      lines.push(`isSameOrigin(${SAME_ORIGIN_PATH_URL} vs ${TRUSTED_ORIGIN_URL}): ${candidateSameOrigin.isSameOrigin(trustedOrigin)}`);
+      lines.push(`isSameOrigin(${SUBDOMAIN_URL} vs ${TRUSTED_ORIGIN_URL}): ${candidateSubdomain.isSameOrigin(trustedOrigin)}`);
+      lines.push(`isSameSite  (${SUBDOMAIN_URL} vs ${TRUSTED_ORIGIN_URL}): ${candidateSubdomain.isSameSite(trustedOrigin)}`);
+      lines.push(`new Origin().opaque: ${opaqueOrigin.opaque}`);
+      lines.push('');
+      lines.push(`isTrustedMessageEvent(${TRUSTED_ORIGIN_URL}):  ${isTrustedMessageEvent(trustedEvent)}`);
+      lines.push(`isTrustedMessageEvent(${ATTACKER_ORIGIN_URL}): ${isTrustedMessageEvent(untrustedEvent)}`);
+    } else {
+      lines.push(`Native Origin supported: false (using strict string/URL fallback)`);
+      lines.push(`isTrustedMessageEvent(${TRUSTED_ORIGIN_URL}):  ${isTrustedMessageEvent(trustedEvent)}`);
+      lines.push(`isTrustedMessageEvent(${ATTACKER_ORIGIN_URL}): ${isTrustedMessageEvent(untrustedEvent)}`);
+    }
+
+    document.getElementById('output').textContent = lines.join('\n');
+  </script>
+</body>
+</html>
