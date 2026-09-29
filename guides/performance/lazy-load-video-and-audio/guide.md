@@ -118,7 +118,7 @@ reducedMotionQuery.addEventListener('change', (event) => {
 
 ## Best practices
 
-- **MANDATORY**: Always set explicit `width` and `height` attributes on `<video loading="lazy">` elements. Unloaded videos have a `0`×`0` intrinsic size and will never load if they do not intersect a visible part of the page.
+- **MANDATORY**: Always set explicit `width` and `height` attributes on `<video>` elements. Unloaded videos have a `300`×`150` intrinsic size and will never load if they do not intersect a visible part of the page.
 - **MANDATORY**: Always include the `controls` attribute on `<audio loading="lazy">` elements. Lazy-loaded `<audio>` elements without `controls` are not rendered visibly and will never load or autoplay.
 - **DO NOT** apply `loading="lazy"` to above-the-fold or Largest Contentful Paint (LCP) `<video>` elements, as it delays fetching both the `poster` image and video data.
 - **DO** omit the `loading` attribute when default eager loading is desired rather than explicitly writing `loading="eager"`.
