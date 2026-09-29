@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `isComposing` or `keyCode === 229`.
 - Pressing `Enter` key without `Shift` on a textarea when composition is NOT active MUST submit the form or call the send logic.
 - Pressing `Enter` key on a textarea when composition IS active (`isComposing` is true), or when the browser signals an IME-consumed keystroke (`event.keyCode === 229`), MUST NOT submit the form or send the message.
 - Pressing `Shift+Enter` key on a textarea MUST NOT submit the form and should instead allow normal newline insertion.

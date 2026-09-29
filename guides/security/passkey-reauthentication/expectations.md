@@ -1,5 +1,6 @@
 # Expectations for Passkey Reauthentication
 
+- **Presence check:** the modified source files contain `parseRequestOptionsFromJSON` or `navigator.credentials.get`.
 *   The implementation MUST load a webauthn-polyfills library. 
 *   The UI renders an explicit step-up passkey sign-in button.
 *   The client invokes passkey re-verification by calling the credentials get API upon clicking the button.

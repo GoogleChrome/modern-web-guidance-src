@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `popover` or `popovertarget`.
 - The implementation MUST use the Popover API with `popovertarget` and the `popover` attribute.
 - The implementation MUST set `role="tooltip"` on the popover, and programmatically associate it with the trigger button by setting `aria-describedby` matching the tooltip's ID.
 - The implementation MUST conditionally polyfill the Popover API.

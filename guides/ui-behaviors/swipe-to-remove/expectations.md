@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `scroll-snap-type`.
 - Each list item MUST contain a horizontal scroll container ("track") that holds three full-width snap points: a leading spacer, the visible content element, and a trailing spacer. The spacers MAY be implemented as `::before`/`::after` pseudo-elements on the track or as real elements.
 - The track MUST have `scroll-snap-type: x mandatory` (not `proximity`) so the row always rests on a snap point and is never partially scrolled.
 - The track MUST have `overscroll-behavior-x: none` to prevent the swipe from chaining into the page scroll or the browser's back-navigation gesture.

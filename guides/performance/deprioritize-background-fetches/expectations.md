@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `priority`.
 - A `fetch()` call to `/api/data` is made without the `priority: 'low'` option.
 - A `fetch()` call to `/api/analytics` is made with the `priority: 'low'` option.
 - No `fetch()` calls use the deprecated `importance` option.

@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `:user-invalid`.
 - On page load, the required input field MUST have a neutral border (not red), even if it is empty.
 - Clicking into the required empty input field and clicking away (blur) MUST trigger the `:user-invalid` state (e.g. red border, visible error message) without writing custom JS event listeners.
 - Typing a valid value MUST remove the error state immediately (on input) or after blur.

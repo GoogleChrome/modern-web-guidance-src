@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `Temporal` or `Intl.DurationFormat`.
 - The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` before usage.
 - The implementation MUST conditionally load a Temporal polyfill only if native support is absent.
 - The implementation MUST use `Temporal.Duration.from()` to create duration objects representing spans of time.

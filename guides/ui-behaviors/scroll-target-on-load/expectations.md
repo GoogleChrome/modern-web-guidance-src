@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `scroll-initial-target`.
 - The `.target` element MUST have an ancestor scroll container configured with scrolling (e.g., `overflow: auto`).
 - The `.target` element MUST have the `scroll-initial-target: nearest` CSS property applied directly to it.
 - Media elements (e.g., embedded images) within the scroll container MUST have explicit dimensions applied (e.g., via `height`, `width`, or `aspect-ratio`) to prevent unpredictable layout shifts that would invalidate initial scroll coordinates.

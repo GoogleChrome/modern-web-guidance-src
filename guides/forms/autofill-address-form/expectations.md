@@ -1,5 +1,6 @@
 # Expectations: `autofill-address-form`
 
+- **Presence check:** the modified source files contain `street-address` or `postal-code`.
 - `<input>`, `<select>`, and `<textarea>` elements MUST be within a `<form>` element.
 - Every form control MUST be visually labeled using a `<label>` element.
 - Every `<label>` MUST have a `for` attribute whose value matches the `id` of its associated form control.

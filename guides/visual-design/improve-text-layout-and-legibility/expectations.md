@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `text-wrap`.
 - The `h1` and `h2` elements have a computed `text-wrap` value of `balance`.
 - The `p` and `blockquote` elements have a computed `text-wrap` value of `pretty`.
 - The `p` element does NOT have a computed `text-wrap` value of `balance`.

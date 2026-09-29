@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `mask-image`.
 - The element with class `.shaped-element` has the `mask-image` property applied.
 - The element with class `.shaped-element` has the `-webkit-mask-image` property applied for older browser support.
 - The mask references a valid image URL or an ID of a `<mask>` element in an `<svg>`.

@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `base-select` or `::picker(select)`.
 - The implementation MUST include `appearance: base-select` on both the `<select>` element and its internal picker pseudo-element `select::picker(select)` to unlock customizable styling.
 - The picker container (`select::picker(select)`) MUST use a non-traditional layout (such as `display: grid` or `display: flex`) to arrange options in columns or rows, rather than a simple vertical list.
 - The `<select>` element MUST contain a `<button>` tag directly inside it to serve as the custom trigger.

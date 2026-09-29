@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `scroll-target-group` or `:target-current`.
 - Navigation links use fragment identifiers (e.g., `href="#section-id"`) that match the unique IDs of their target content sections.
 - The navigation container has `scroll-target-group: auto` applied to enable native browser tracking.
 - Navigation links use the `:target-current` pseudo-class for active state styling (preferably using `:is()` to prevent parsing issues in browsers that don't support `:target-current`).

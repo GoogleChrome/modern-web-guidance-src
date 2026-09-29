@@ -1,5 +1,6 @@
 # Expectations for Passkey Registration
 
+- **Presence check:** the modified source files contain `parseCreationOptionsFromJSON` or `navigator.credentials.create`.
 *   The implementation MUST load a webauthn-polyfills library. 
 *   The "Create Passkey" button is gated on PublicKeyCredential.getClientCapabilities and hidden when conditional UI or passkey is unsupported.
 *   The client invokes browser native passkey creation prompt upon clicking the button trigger.

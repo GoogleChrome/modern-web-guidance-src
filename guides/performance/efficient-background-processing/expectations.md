@@ -1,5 +1,6 @@
 # Expectations: `efficient-background-processing`
 
+- **Presence check:** the modified source files contain `content-visibility`.
 - The target element must have `content-visibility: auto` applied in its computed styles.
 - The target element must have a non-zero `contain-intrinsic-size` applied to provide a placeholder height.
 - The application must respond to the `contentvisibilityautostatechange` event.

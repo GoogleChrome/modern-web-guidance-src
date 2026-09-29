@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `popover`.
 - The Popover API is used for the dropdown menu (e.g., `popover` attribute) to ensure proper top-layer behavior.
 - The trigger has a `popovertarget` attribute with the id of the dropdown menu to open the menu and set the implicit anchor.
 - `anchor()` is used on inset properties to position the target relative to the anchor.

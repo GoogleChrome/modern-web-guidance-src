@@ -1,3 +1,4 @@
+1. **Presence check:** the modified source files contain `LanguageDetector`.
 1. The `LanguageDetector` API should be available in the browser on `window.LanguageDetector`, but not on `window.ai.languageDetector`.
 1. The `LanguageDetector.availability()` function should return `available` or `downloadable` or `downloading` or `unavailable`.
 1. The `LanguageDetector.detect()` function should return an array of `LanguageDetectionResult` objects, each containing the detected language and confidence score.

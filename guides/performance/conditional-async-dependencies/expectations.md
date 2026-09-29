@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `await import`.
 - The script checks if `popover` is in `HTMLElement.prototype` to determine if a polyfill is needed.
 - If the feature is missing, a dynamic import is executed using top-level `await`.
 - The conditionally loaded logic is implemented within a single module entry point, preventing simultaneous imports from multiple sibling modules.

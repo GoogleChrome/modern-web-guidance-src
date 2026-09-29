@@ -1,3 +1,4 @@
+1. **Presence check:** the modified source files contain `Translator`.
 1. The `Translator` API should be available in the browser on `window.Translator`, but not on `window.ai.translator`.
 1. The `Translator.availability()` function must be called with both `sourceLanguage` and `targetLanguage` options.
 1. The `Translator.availability()` function should return `available` or `downloadable` or `downloading` or `unavailable`.

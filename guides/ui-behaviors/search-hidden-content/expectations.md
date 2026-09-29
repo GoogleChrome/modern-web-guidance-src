@@ -1,5 +1,6 @@
 # Expectations: `search-hidden-content`
 
+- **Presence check:** the modified source files contain `until-found`.
 - The `wholesale-tab` mutually exclusive regions MUST use the `<details>` element.
 - The `wholesale-tab` mutually exclusive regions MUST share a `name` attribute to link their state.
 - The `coupon-panel` MUST use the `hidden="until-found"` attribute, as its UI control is structurally separated from the hidden content and requires full styling control.

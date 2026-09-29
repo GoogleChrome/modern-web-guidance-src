@@ -1,3 +1,4 @@
+* **Presence check:** the modified source files contain `sibling-index(` or `sibling-count(`.
 * The implementation uses `sibling-index()` and `sibling-count()` to calculate visual properties.
 * A fallback strategy is provided for browsers that do not support these native functions.
 * The fallback uses JavaScript to inject `--sibling-index` and `--sibling-count` custom properties.

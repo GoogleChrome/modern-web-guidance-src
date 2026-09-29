@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `scroll-state`.
 - The header container uses `position: sticky` to remain at the top of the scroller.
 - If any of the stuck styles change layout, `overflow-anchor: none` is applied to the parent of the header container.
 - If none of the stuck styles change layout, `overflow-anchor: none` should NOT be applied to the parent of the header container.

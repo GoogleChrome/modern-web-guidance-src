@@ -1,3 +1,4 @@
+* **Presence check:** the modified source files contain `scroll-state`.
 * The carousel container has `scroll-snap-type: inline mandatory` (or `x mandatory`) applied.
 * Each carousel item has `container-type: scroll-state` applied.
 * The carousel container has `overflow-x: auto` or `overflow-inline: auto`.

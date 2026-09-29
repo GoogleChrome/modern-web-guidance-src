@@ -1,3 +1,4 @@
+* **Presence check:** the modified source files contain `animation-timeline`.
 * The agent has defined an `@keyframes` block that animates the header (e.g., shrinking its height).
 * The agent has applied the animation to the header using `animation-timeline: scroll()` or `scroll(block root)`.
 * The agent has used `animation-range` to specify the scroll distance over which the animation occurs (e.g., `0px 150px`).

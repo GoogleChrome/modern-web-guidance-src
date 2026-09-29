@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `layoutsubtree`.
 - Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API for HTML content export.
 - The `<canvas>` element MUST include the `layoutsubtree` attribute to allow descendant HTML elements to be exposed to canvas rendering and export features.
 - Canvas rendering MUST be executed inside an `onpaint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.

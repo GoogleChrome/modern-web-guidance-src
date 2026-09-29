@@ -1,3 +1,4 @@
+* **Presence check:** the modified source files contain `animation-timeline` or `view-timeline`.
 * The agent has defined an `@keyframes` block that animates the `transform` property (e.g., `translateY`) to create the parallax effect.
 * The agent has defined a `view-timeline` on the wrapper element or uses an anonymous view timeline.
 * The agent has applied the `animation-timeline` property to the layers to link them to the timeline.

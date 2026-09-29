@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `visibility-state`.
 - The implementation provides a boolean indicating if the page was initially loaded in the background.
 - The implementation provides the precise time (in milliseconds) that the page was backgrounded.
 - The implementation prefers the `VisibilityStateEntry` API (buffered performance entries) over `document.visibilityState`.

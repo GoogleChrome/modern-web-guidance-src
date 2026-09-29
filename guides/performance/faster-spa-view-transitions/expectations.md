@@ -1,5 +1,6 @@
 # Expectations: `faster-spa-view-transitions`
 
+- **Presence check:** the modified source files contain `content-visibility`.
 - Inactive view elements must have `content-visibility: hidden` applied in their computed styles.
 - The active view element must not have `content-visibility: hidden` applied (it should be `visible` or default).
 - The implementation must toggle the `content-visibility` state when switching between views.

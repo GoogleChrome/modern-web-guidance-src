@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `@container` or `container-type`.
 - The table uses semantic `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, and `<td>` elements.
 - When the table container is wider than 600px, column headers remain fixed at the top of the scrollable area during vertical scroll.
 - When the table container is wider than 600px, the first column (row headers) remains fixed at the left of the scrollable area during horizontal scroll.

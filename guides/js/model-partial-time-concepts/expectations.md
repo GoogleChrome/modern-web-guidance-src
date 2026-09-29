@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `Temporal`.
 - The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` before usage.
 - The implementation MUST conditionally load a Temporal polyfill only if native support is absent.
 - The implementation MUST manually assign the loaded polyfill to `globalThis.Temporal` to ensure it is globally accessible.

@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `view-transition-class`.
 - Multiple elements on the page have a `view-transition-class` property set to the same value.
 - Every element with a `view-transition-class` also has a unique `view-transition-name`.
 - There are no repeated `view-transition-name` values.

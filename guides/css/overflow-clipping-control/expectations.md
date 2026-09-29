@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `overflow-clip-margin` or `overflow: clip`.
 - The implementation MUST demonstrate controlled clipping on block layout containers using `content-box` alignment to automatically apply concentric curved boundaries on inner child media and footer components.
 - The implementation MUST apply a box-edge keyword (e.g., `content-box`) to configure inner curved clip margins on target layout containers.
 - The implementation MUST apply a length value (e.g., `15px`) to configure extended offset clip margins establishing a visible safety zone to protect child element shadows from border box truncation.

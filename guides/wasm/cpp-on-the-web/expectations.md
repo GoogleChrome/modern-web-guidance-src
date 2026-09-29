@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `WebAssembly` or `.wasm`.
 - The application loads a WebAssembly module
 - The browser console contains no unhandled errors or exceptions during module initialization and execution.
 - The WebAssembly module is built with optimizations enabled and debug info stripped

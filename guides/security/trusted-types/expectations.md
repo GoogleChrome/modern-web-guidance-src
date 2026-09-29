@@ -1,5 +1,6 @@
 # Expectations for Trusted Types
 
+- **Presence check:** the modified source files contain `trustedTypes` or `require-trusted-types-for`.
 * The application includes a `<meta>` tag for Content Security Policy that enforces `require-trusted-types-for 'script'` and `trusted-types my-no-pretzel-policy`.
 * The application defines a Trusted Types policy named `my-no-pretzel-policy` using `window.trustedTypes.createPolicy`.
 * The application provides a "tinyfill" that mocks `window.trustedTypes.createPolicy` if the API is not natively supported by the browser.

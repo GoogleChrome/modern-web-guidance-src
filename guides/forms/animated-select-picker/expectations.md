@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `base-select` or `::picker(select)`.
 - The implementation MUST apply `appearance: base-select` to the `<select>` element and the `::picker(select)` pseudo-element to opt into customizable select.
 - The implementation MUST use `transition-behavior: allow-discrete` (either standalone or within a shorthand `transition` property) on `::picker(select)` to ensure the dropdown animates correctly between `display: none` and visible states.
 - The implementation MUST use `@starting-style` to declare the visual state (e.g., `opacity: 0`, `height: 0`) computed immediately before the picker opens.

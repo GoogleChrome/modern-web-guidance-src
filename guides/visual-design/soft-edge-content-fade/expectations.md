@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `mask-image`.
 - The element with class `.paywall-container` has the `mask-image` property applied with a `linear-gradient`.
 - The element with class `.paywall-container` has the `-webkit-mask-image` property applied with a `linear-gradient`.
 - The gradient transitions from opaque (e.g., black) to transparent to create a fade effect.

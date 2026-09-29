@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `@container style(` or `@container style (`.
 - The implementation MUST use `@container style()` queries to respond to changes in custom property values.
 - The implementation MUST define the queried custom property on an ancestor element of the element being styled.
 - The implementation MUST NOT use JavaScript for applying the styles that react to custom property changes.

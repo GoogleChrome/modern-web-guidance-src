@@ -1,5 +1,6 @@
 # Expectations for Passkey Management
 
+- **Presence check:** the modified source files contain `signalCurrentUserDetails`, `signalAllAcceptedCredentials`, or `PublicKeyCredential`.
 *   The application fetches registered credentials from the credential endpoint on load.
 *   The application automatically invokes signalAllAcceptedCredentials on load via DOMContentLoaded to sync accepted credentials list strings with the password manager.
 *   The application updates passkey providers by immediately calling signalAllAcceptedCredentials within the delete trigger handler upon successful deletions.

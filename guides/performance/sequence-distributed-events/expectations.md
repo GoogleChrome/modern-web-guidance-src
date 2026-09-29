@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `Temporal`.
 - The implementation MUST capture high-frequency timestamps using `Temporal.Now.instant()`.
 - The implementation MUST sort events using the native `Temporal.Instant.compare(a, b)` method to ensure precise nanosecond-level ordering.
 - The implementation MUST NOT use standard `Date.now()` as the primary mechanism for event sorting if native `Temporal` resolution is required for disambiguation.

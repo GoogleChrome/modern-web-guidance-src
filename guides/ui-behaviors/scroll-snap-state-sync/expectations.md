@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `scrollsnapchange`.
 - The scroll container has `scroll-snap-type: y proximity` or `scroll-snap-type: y mandatory` applied.
 - The section headers (e.g., `h2`) within the container have `scroll-snap-align: start` applied.
 - When the user scrolls to a section, the corresponding link in the Table of Contents (TOC) is visually highlighted (e.g., is styled based on  `[aria-current=true]` class).

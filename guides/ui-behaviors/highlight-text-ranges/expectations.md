@@ -1,3 +1,4 @@
+* **Presence check:** the modified source files contain `::highlight` or `CSS.highlights`.
 * The `::highlight()` pseudo-element is used in CSS to style at least one named highlight.
 * `CSS.highlights.set()` is called to register at least one `Highlight` object in the `HighlightRegistry`.
 * `Highlight` objects are constructed from one or more `Range` objects.

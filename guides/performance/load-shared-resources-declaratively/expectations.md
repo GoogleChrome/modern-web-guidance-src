@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `crossoriginstorage`.
 - A `<script>` or `<link>` element that already carries a valid `integrity` attribute adds `crossoriginstorage` to opt into the shared cache, rather than introducing a separate imperative fetch/cache step in JavaScript.
 - The value chosen for `crossoriginstorage` matches the intended sharing scope: a valueless attribute for same-site-only, `crossoriginstorage="*"` for global availability, or a space-separated list of origins for a specific trusted set.
 - For static or dynamic module imports, the `crossOriginStorage` import attribute is supplied alongside `integrity` in the same `with { ... }` block, using an empty string (`""`) for same-site-only, `"*"` for global, or a space-separated string of origins for a specific set.

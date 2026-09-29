@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `color-scheme`.
 - **MANDATORY**: The document includes a `<meta name="color-scheme" content="light dark">` tag in the `<head>` to declare theme support early and minimize the risk of un-themed content flashes.
 - **MANDATORY**: The `color-scheme: light dark;` property is applied to the `html` element or the `:root` pseudo-class to ensure the browser themes the entire viewport, including root scrollbars and the canvas background.
 - **MANDATORY**: The implementation avoids forcing a single theme (e.g., `color-scheme: light` or `color-scheme: dark`) on the entire page or root element, unless done as a result of an explicit user manual toggle.

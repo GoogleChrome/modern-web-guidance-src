@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `mask-image` or `@property`.
 - Moving the mouse over the card sets `--mouse-x` and `--mouse-y` custom properties for the x and y values of the mouse.
 - When the card is not hovered, there is a custom property `--inner-size` set to 0px.
 - When the card is not hovered, there is a custom property `--outer-size` set to 0px.

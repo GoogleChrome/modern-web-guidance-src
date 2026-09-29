@@ -1,5 +1,6 @@
 ## Stack container and views
 
+* **Presence check:** the modified source files contain `scroll-snap-type`.
 * The stack container uses CSS scroll-snap on the horizontal (inline) axis with `scroll-snap-type: x mandatory` and `overflow-x: auto`.
 * Each view is laid out as exactly one full viewport-width column inside the stack (e.g. via `display: grid` with `grid-auto-flow: column` and `grid-auto-columns: 100%`, or an equivalent flex/inline layout).
 * The stack uses `overscroll-behavior-x: none` so the swipe-back gesture does not chain into the browser's history-back gesture or the page's vertical scroll.

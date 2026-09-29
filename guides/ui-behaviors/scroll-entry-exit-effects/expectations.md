@@ -1,3 +1,4 @@
+* **Presence check:** the modified source files contain `animation-timeline`.
 * The agent has defined separate `@keyframes` for entry (e.g., grow) and exit (e.g., shrink) effects.
 * The agent has applied both animations to the target elements (e.g., `animation: grow ..., shrink ...`).
 * The agent has used `animation-timeline: view()` or `view(inline)` to link animations to the view timeline.

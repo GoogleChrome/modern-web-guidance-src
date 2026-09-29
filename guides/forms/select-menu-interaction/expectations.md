@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `:user-invalid`.
 - On page load, the select menu should look neutral (no red border).
 - Selecting a valid option MUST remove the error state.
 - Selecting the "placeholder" option (if enabled) or submitting while empty MUST trigger the error state.

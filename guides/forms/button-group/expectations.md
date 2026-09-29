@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `base-select`.
 - The implementation MUST apply `appearance: base-select` to the `<select>` element to enable customization of the internal listbox layout.
 - The implementation MUST include a `size` attribute greater than 1 or a `multiple` attribute on the `<select>` element to ensure it renders as an inline listbox rather than a dropdown menu.
 - The markup MUST include a `<div>` or other non-semantic container inside the `<select>` to wrap the `<option>` elements, allowing for modern layout techniques like Flexbox or Grid.

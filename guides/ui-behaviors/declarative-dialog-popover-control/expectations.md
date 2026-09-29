@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `commandfor`.
 - The document uses buttons with `commandfor` and `command` attributes to declaratively control UI elements.
 - A button used to toggle a popover has `command="toggle-popover"` and an initial `aria-expanded="false"` attribute.
 - Buttons for explicit popover control use `command="show-popover"` and `command="hide-popover"`.

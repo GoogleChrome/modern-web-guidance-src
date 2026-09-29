@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `fetchpriority`.
 - The `<img>` element for 'hero-lcp.jpg' has the `fetchpriority="high"` attribute.
 - The `<img>` element for 'hero-lcp.jpg' does NOT have the `loading="lazy"` attribute.
 - No more than two `<img>` elements on the page have the `fetchpriority="high"` attribute.

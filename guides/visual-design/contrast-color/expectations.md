@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `contrast-color`.
 - The text color of the badge or button computes to either `rgb(0, 0, 0)` or `rgb(255, 255, 255)` when a background color is applied.
 - The computed text color has a contrast ratio of at least 4.5:1 against the computed background color.
 - When the background color custom property is updated, the computed text color automatically updates to maintain contrast.

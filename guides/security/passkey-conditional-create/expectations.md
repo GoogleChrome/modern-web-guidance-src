@@ -1,5 +1,6 @@
 # Expectations for Passkey Conditional Create
 
+- **Presence check:** the modified source files contain `PublicKeyCredential` or `navigator.credentials.create`.
 *   The implementation MUST load a webauthn-polyfills library. 
 *   The application feature-detects capability support checking PublicKeyCredential.getClientCapabilities before starting enrollment.
 *   The client invokes AbortController.abort() to cancel any potentially-active conditional-get autofill operation before initiating the silent create call.

@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `blocking="render"` or `blocking='render'`.
 - The experiment script is placed in the document `<head>`.
 - The experiment script has the `blocking="render"`
 - The experiment script has either `async` or `type="module"` set (to avoid blocking parsing).

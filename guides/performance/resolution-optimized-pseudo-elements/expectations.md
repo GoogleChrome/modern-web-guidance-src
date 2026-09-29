@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `image-set`.
 - A pseudo-element (`::before` or `::after`) is used on a target element.
 - The pseudo-element has a standard image declaration (like `url()`) acting as a fallback for the `content` or `background-image` property.
 - The pseudo-element uses the `image-set()` function for the same property, defined after the fallback.

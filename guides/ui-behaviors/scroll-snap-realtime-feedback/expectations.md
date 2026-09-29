@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `scrollsnapchanging`.
 - The element with class `.thumbnail` corresponding to the pending snap target receives the class `pending` during a scroll gesture on the `#gallery` element.
 - The element with class `.thumbnail` corresponding to the final snap target receives the class `active` after the scroll gesture on the `#gallery` element completes.
 - The element with class `.thumbnail` corresponding to the final snap target does not have the class `pending` after the scroll gesture on the `#gallery` element completes.

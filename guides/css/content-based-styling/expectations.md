@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `:has(`.
 - The implementation MUST include a container element that may or may not contain a specific child element (e.g., an `<img>` or an `.icon`).
 - The container element's styling (e.g., layout, flex-direction, padding, or background) MUST change based on the presence of that specific child element.
 - The content-based styling MUST be implemented primarily using the CSS `:has()` pseudo-class to select the container based on the child's presence (e.g., `.container:has(img)`).

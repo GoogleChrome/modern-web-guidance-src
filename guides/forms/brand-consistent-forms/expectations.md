@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `accent-color`.
 - The implementation MUST use the `accent-color` CSS property to apply a custom color to form controls.
 - The implementation MUST target at least one of the following elements with `accent-color`: `<input type="checkbox">`, `<input type="radio">`, `<input type="range">`, or `<progress>`.
 - The implementation MUST use `color-scheme: light dark` (in CSS or meta tag) to enable appropriate default styling for forms in dark mode.

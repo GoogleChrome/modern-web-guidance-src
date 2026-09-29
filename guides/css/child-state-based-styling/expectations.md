@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `:has(`.
 - The implementation MUST include a container element that contains an interactive child element (e.g., a checkbox, text input, or button).
 - The container element's styling (e.g., background color, border color) MUST change based on a specific state of the child element (e.g., `:checked`, `:focus`, `:invalid`).
 - The state-based styling MUST be implemented primarily using the CSS `:has()` pseudo-class to select the container based on the child's state (e.g., `.container:has(input:checked)`, `.container:has(input:focus)`).

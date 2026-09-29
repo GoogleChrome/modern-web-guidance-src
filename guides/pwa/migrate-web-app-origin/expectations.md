@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `migrate_to`.
 - The old origin's manifest contains a `migrate_to` field pointing to the new origin.
 - The new origin's manifest contains a `migrate_from` field pointing back to the old origin.
 - The new origin's manifest contains an `id`.

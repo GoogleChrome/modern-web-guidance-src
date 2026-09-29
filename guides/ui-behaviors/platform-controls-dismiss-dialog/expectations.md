@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `closedby` or `showModal`.
 - The modal dialog should be a `<dialog>` element.
 - The `<dialog>` element should have an accessible name using `aria-labelledby`, `aria-label`, or similar.
 - It `<dialog>` element should either have no `closedby` attribute or a `closedby` attribute set to `any`.

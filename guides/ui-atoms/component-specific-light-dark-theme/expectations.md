@@ -1,4 +1,4 @@
-
+- **Presence check:** the modified source files contain `light-dark`.
 - **MANDATORY**: Outside of `@supports` feature detection, `light-dark()` is used with var() references for the two color arguments, not raw color values (e.g., `--card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark))` while `--card-bg-light` and `--card-bg-dark` are the raw tokens that contain the actual color values).
 - **MANDATORY**: The implementation uses the `color-scheme` property (e.g., `color-scheme: light` or `color-scheme: dark`) to force a specific theme on a component or section.
 - **MANDATORY**: `color-scheme` overrides are only applied to elements that also have a `background-color` (or where a background is clearly intended), as per the guide's recommendation.

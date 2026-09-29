@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `scheduler.postTask`.
 - The application implements a mechanism to schedule tasks with different priorities using `scheduler.postTask()`.
 - The application demonstrates the use of different priorities (e.g., `user-blocking`, `user-visible`, `background`).
 - The application uses a polyfill to support task prioritization in browsers that do not support the Scheduler API natively.

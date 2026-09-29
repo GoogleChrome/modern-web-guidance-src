@@ -1,3 +1,4 @@
+- **Presence check:** the modified source files contain `closedby`.
 - The `<dialog>` element must have the `closedby="any"` attribute.
 - The `<dialog>` element should have an accessible name using `aria-labelledby`, `aria-label`, or similar.
 - The dialog must be opened with the `showModal()` method when the trigger button or link is clicked.

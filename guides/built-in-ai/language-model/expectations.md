@@ -1,3 +1,4 @@
+1. **Presence check:** the modified source files contain `LanguageModel`.
 1. `LanguageModel.create()` should be called using the `window.LanguageModel` API.
 1. The deprecated `window.ai.languageModel` API must not be used.
 1. `LanguageModel.availability()` should be called before attempting to create a session. It returns one of `"available"`, `"downloadable"`, `"downloading"`, or `"unavailable"`.
