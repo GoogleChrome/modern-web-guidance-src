@@ -31,6 +31,8 @@ import { parseJetskiCliSession } from './jetski-cli-agent.ts';
 
 /** agy app data directory, relative to HOME. */
 const AGY_APP_DATA_SUBDIR = path.join('.gemini', 'antigravity-cli');
+/** OAuth token file agy writes to its app data directory on Linux. */
+const AGY_OAUTH_TOKEN_FILE = 'antigravity-oauth-token';
 
 interface AgySettings {
   gcp?: { project?: string; location?: string };
@@ -77,6 +79,13 @@ export function setupAntigravityCliCredentials(tempHome: string): void {
     trustedWorkspaces: [tempHome]
   };
   fs.writeFileSync(path.join(agyDest, 'settings.json'), JSON.stringify(settings, null, 2));
+
+  // On Linux, agy stores its OAuth token as a file in the app data dir rather than a keychain.
+  // Copy (not symlink) so concurrent workers refreshing the token don't clobber each other.
+  const tokenSource = path.join(agySource, AGY_OAUTH_TOKEN_FILE);
+  if (fs.existsSync(tokenSource)) {
+    fs.copyFileSync(tokenSource, path.join(agyDest, AGY_OAUTH_TOKEN_FILE));
+  }
 
   linkMacKeychains(originalHome, tempHome);
 }
