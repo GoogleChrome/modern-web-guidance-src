@@ -30,6 +30,7 @@ Do NOT use `@supports at-rule()` to conditionally apply the at-rule being detect
     /* ... */
   }
 }
+```
 
 ## Detecting support for at-rules when `@supports at-rule()` isn’t appropriate { #detecting-at-rules-without-supports-at-rule }
 
