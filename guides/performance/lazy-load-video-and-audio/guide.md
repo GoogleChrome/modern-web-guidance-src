@@ -137,7 +137,7 @@ Browsers that do not recognize `loading="lazy"` on `<video>` and `<audio>` ignor
 
 ### Custom code fallback (`IntersectionObserver`)
 
-When your Baseline target requires strictly deferring `<video poster>` downloads, `preload="metadata"` requests, or viewport-triggered playback in browsers without native support, feature-detect `Object.hasOwn(HTMLMediaElement.prototype, 'loading')` and fall back to `IntersectionObserver`:
+When your Baseline target requires strictly deferring `<video poster>` downloads, `preload="metadata"` requests, or viewport-triggered playback in browsers without native support, feature-detect `Object.hasOwn(HTMLMediaElement.prototype, 'loading')`, then fall back to `IntersectionObserver`:
 
 ```javascript
 // Feature-detect native media lazy loading on HTMLMediaElement.prototype
@@ -153,6 +153,7 @@ if (!supportsLazyMedia) {
     (entries, observer) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
+
         const media = entry.target;
 
         // Restore deferred poster and preload attributes when entering the viewport
@@ -160,14 +161,17 @@ if (!supportsLazyMedia) {
           media.poster = media.dataset.poster;
           delete media.dataset.poster;
         }
+
         if (media.dataset.preload) {
           media.preload = media.dataset.preload;
           delete media.dataset.preload;
         }
+
         if (media.dataset.src) {
           media.src = media.dataset.src;
           delete media.dataset.src;
         }
+
         for (const source of media.querySelectorAll('source[data-src]')) {
           source.src = source.dataset.src;
           delete source.dataset.src;
