@@ -40,7 +40,13 @@ None of the following are ever seen by real-world coding agents:
 
 Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly (e.g., "The input element is styled with a red border only AFTER a blur event").
 
-* **First Bullet: Mandatory "Presence" Check** — The very first bullet in `expectations.md` MUST be a straightforward, high-level presence / smoke check asserting that the core API, attribute, keyword, or CSS property (e.g., `fetchpriority`, `content-visibility`, `toolname`, `@view-transition`) is present in the implementation. In the generated grader, this translates to a fast source-level string/grep check across target files (`targetFiles.some(f => fs.readFileSync(f, 'utf8').includes(...))`). This serves as an immediate sanity check to fail baseline or no-op implementations cleanly before evaluating deeper behaviors.
+* **First Bullet: Mandatory "Presence" Check** — The very first bullet in `expectations.md` MUST be a labeled presence check naming the literal string(s) that a correct implementation must contain in its source. Format:
+  ```md
+  - **Presence check:** the modified source files contain `fetchpriority`.
+  - **Presence check:** the modified source files contain `mask-image` or `@property`.
+  ```
+  The grader turns this into a source-level `includes()` check across target files (`targetFiles.some(f => fs.readFileSync(f, 'utf8').includes(...))`), so no-op or unrelated implementations fail fast before the deeper behavioral assertions run. Pick tokens that the demo contains and that the base apps (`harness/base_apps/`) do NOT already contain (e.g. `setTimeout` or `position: sticky` are unusable). Alternatives joined with "or" are fine.
+  * **Exempt:** discipline hub guides (see `DISCIPLINE_GUIDES` in `lib/guide-validation.ts` and `guides/<category>/<category>/`) cover many techniques at once and have no single representative token. They skip the presence check.
 * **1:1 with grader tests** — Each bullet becomes exactly one test. Write one bullet per assertion. Do not combine multiple checks into a single bullet.
 * **Concrete, Testable Criteria (No API Facts)** — Expectations must be verifiable browser behaviors or static criteria we can check with Playwright (e.g., computed styles, DOM layout), not just factual statements about an API or code structure.
 * **Exercised in Demo**: Ensure that every expectation written here is actively exercised in the accompanying `demo.html`. Expectations that aren't covered by the demo lead to unreliable grader calibration.

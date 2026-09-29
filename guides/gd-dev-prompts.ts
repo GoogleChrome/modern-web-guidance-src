@@ -119,11 +119,11 @@ ${solutionList}
 Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`getCssStyleSheet\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
 ## 2. Assertion Hierarchy
-- **First Test: Source-Level Presence Smoke Test**: The very first test must directly address the first bullet in `${opts.expectationsFile}` by performing a fast string/substring search across `targetFiles` (e.g. `targetFiles.some(f => fs.readFileSync(f, 'utf8').includes('core-token'))`) to verify that the core API, attribute, keyword, or CSS property is present. This acts as an immediate fail-fast smoke test.
+- **First Test: Source-Level Presence Smoke Test**: If the first bullet in \`${opts.expectationsFile}\` starts with "**Presence check:**", the first test must be a plain substring check across \`targetFiles\` for the listed token(s), e.g. \`targetFiles.some(f => fs.readFileSync(f, 'utf8').includes('token-a') || fs.readFileSync(f, 'utf8').includes('token-b'))\`. Do not use AST parsing for this test. This is the one sanctioned exception to the no-regex/no-string-matching rule below.
 - **Static Analysis First**: For subsequent assertions, prioritize static AST analysis over browser execution for structural assertions. Always avoid regex on HTML, CSS, and JavaScript files.
-  - Use **Linkedom** for HTML structure and DOM querying (`getHtmlDocuments`).
-  - Use **CSSOMNom** for CSS rules, at-rules (@media, @supports, @container, @view-transition), and declarations (`getCssStyleSheet`).
-  - Use **ts-morph** for JavaScript/TypeScript syntax, AST analysis, and function/variable querying (`getJsProject`).
+  - Use **Linkedom** for HTML structure and DOM querying (\`getHtmlDocuments\`).
+  - Use **CSSOMNom** for CSS rules, at-rules (@media, @supports, @container, @view-transition), and declarations (\`getCssStyleSheet\`).
+  - Use **ts-morph** for JavaScript/TypeScript syntax, AST analysis, and function/variable querying (\`getJsProject\`).
 - **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary (for requirements that cannot be verified statically, such as runtime click events or dynamic state updates). Omit browser test blocks entirely if static checks are sufficient.
 - **Reference Examples & API Definitions**: Before writing tests, use your file-viewing tools to inspect these reference pattern libraries and API type definitions for implementation patterns:
   - **Test Fixture Helper Signatures (Reference Only)**: [test-fixture.reference.ts](file://${opts.testFixtureReferencePath})
