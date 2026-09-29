@@ -5,6 +5,8 @@ web-feature-ids:
   - container-style-queries
 ---
 
+# Selector & @-rule Combinations
+
 ## The problem
 
 We often need to combine filtering criteria of different types, e.g. selectors + media queries, media queries + container queries, and so on.
