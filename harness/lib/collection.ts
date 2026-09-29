@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { type SuiteConfig } from '../config.ts';
-import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
+import { getTaskMap } from '../../lib/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
@@ -472,13 +472,8 @@ async function collectTaskRunEntry(
 
   const usage = await collectGuideUsage(dir, ctx.runType);
 
-  const isDisciplineSkill = isDisciplineSkillDir(ctx.taskInfo.guideDir);
-  const taskCategory = isDisciplineSkill
-    ? path.basename(ctx.taskInfo.guideDir)
-    : path.basename(path.dirname(ctx.taskInfo.guideDir));
-  const expectedToolPrefixes = isDisciplineSkill
-    ? [taskCategory].filter(Boolean)
-    : ['modern-web'].filter(Boolean);
+  const taskCategory = path.basename(path.dirname(ctx.taskInfo.guideDir));
+  const expectedToolPrefixes = ['modern-web'];
 
   const scenarioResults = evaluateScenarioResults(
     dir,
@@ -489,9 +484,7 @@ async function collectTaskRunEntry(
     ctx.targetFile
   );
 
-  // For skills, placing the discipline name (`guide`) first ensures it is correctly identified 
-  // and displayed as the main category in the dashboard's transposed layout.
-  const testName = isDisciplineSkill ? `${ctx.guide} - ${ctx.taskName} - ${ctx.runType}` : `${ctx.taskName} - ${ctx.guide} - ${ctx.runType}`;
+  const testName = `${ctx.taskName} - ${ctx.guide} - ${ctx.runType}`;
   const tokenUsage = extractTokenUsageFromResults(dir);
   const runtimeData = readRuntimeData(dir);
 
@@ -503,7 +496,6 @@ async function collectTaskRunEntry(
     fileReadGuides: usage.fileReadGuides,
     guidanceToolsUsed: usage.guidanceToolsUsedResult,
     discipline: taskCategory,
-    isDisciplineSkill,
     expectedToolPrefixes,
     guideName: ctx.guide,
     baseApp: ctx.taskInfo.baseApp,

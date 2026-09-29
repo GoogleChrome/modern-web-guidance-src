@@ -25,7 +25,7 @@ function getCliVersion(): string | undefined {
 
 function getSkillVersion(): string | undefined {
   try {
-    const output = execSync('git log -1 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" guides/modern-web-guidance/SKILL.md', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    const output = execSync('git log -1 --abbrev=8 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" guides/modern-web-guidance/SKILL.md', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
     return output || undefined;
   } catch {
     // Ignore git error if log is unavailable

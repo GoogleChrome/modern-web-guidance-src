@@ -10,6 +10,8 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Never emit product telemetry from CI runs.
+  DISABLE_TELEMETRY: '1'
 
 jobs:
   basics:

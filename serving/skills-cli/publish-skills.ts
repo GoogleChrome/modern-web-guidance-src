@@ -143,7 +143,7 @@ async function validate(newVersion: string) {
   execSync('node --test skills-cli/*.test.ts', {
     cwd: SERVING_DIR,
     stdio: 'inherit' ,
-    env: { ...process.env, TEST_REPORTER: 'spec' }
+    env: { ...process.env, TEST_REPORTER: 'spec', DISABLE_TELEMETRY: '1' }
   });
 
   return result;

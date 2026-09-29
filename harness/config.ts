@@ -3,7 +3,8 @@ import os from 'os';
 import { pathToFileURL } from 'url';
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
-// Disable telemetry globally for all evaluation and test harness runs
+// Disable telemetry for eval harness runs. Only covers this process and its
+// children; test files that don't import this module set it themselves.
 process.env.DISABLE_TELEMETRY = '1';
 
 try {

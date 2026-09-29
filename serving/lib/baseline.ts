@@ -8,6 +8,17 @@ export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 type Feature = typeof features[string];
 
 /**
+ * A `tmp-*` feature awaiting an upstream web-features ID. Optional fields
+ * mirror the web-features metadata of the same name.
+ */
+interface PendingWebFeature {
+  issue: string;
+  group?: string | string[];
+}
+
+const pendingFeatures: Record<string, PendingWebFeature> = pendingWebFeatures;
+
+/**
  * Result of a feature validation check.
  */
 export interface FeatureValidationResult {
@@ -210,7 +221,7 @@ export function getAncestorGroups(group: string): string[] {
  * TEMP: child-vs-parent precedence unresolved (first-match, not most-specific).
  */
 export function getFeatureGroups(featureId: string): string[] {
-  const feature = features[featureId] as any;
+  const feature = (features[featureId] ?? pendingFeatures[featureId]) as any;
   if (!feature || !feature.group) {
     return [];
   }
@@ -219,13 +230,14 @@ export function getFeatureGroups(featureId: string): string[] {
 }
 
 /**
- * Maps each feature belonging to one of `ownedGroups` to the subset of those
- * groups it belongs to (sorted). Features in none of the groups are omitted.
+ * Maps each feature (including pending `tmp-*` features) belonging to one of
+ * `ownedGroups` to the subset of those groups it belongs to (sorted). Features
+ * in none of the groups are omitted.
  * @param ownedGroups - The group tags to index features by
  */
 export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string, string[]> {
   return Object.fromEntries(
-    Object.keys(features).sort()
+    [...Object.keys(features), ...Object.keys(pendingFeatures)].sort()
       .map(fid => [fid, getFeatureGroups(fid).filter(group => ownedGroups.has(group)).sort()])
       .filter(([, featureGroups]) => featureGroups.length > 0)
   ) as Record<string, string[]>;
@@ -236,7 +248,7 @@ export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string
  */
 export function validateFeature(id: string): FeatureValidationResult {
   if (id.startsWith('tmp-')) {
-    if (!(id in pendingWebFeatures)) {
+    if (!(id in pendingFeatures)) {
       return {
         isValid: false,
         error: 'unregistered_temp_feature',

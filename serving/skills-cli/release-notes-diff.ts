@@ -487,7 +487,7 @@ export function getGuidePathInDistribution(guideName: string): string | undefine
     return `skills/${guideName}/SKILL.md`;
   }
 
-  // Check discipline or category skills in guides/
+  // The entrypoint skill lives at guides/<name>/SKILL.md and ships as the monoskill
   const categorySkillPath = path.join(rootDir, 'guides', guideName, 'SKILL.md');
   if (fs.existsSync(categorySkillPath)) {
     return `skills/modern-web-guidance/SKILL.md`;

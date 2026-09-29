@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
-import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature } from './baseline.ts';
+import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature, getFeatureGroups, getOwnedFeatureToGroups } from './baseline.ts';
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
     it('returns Baseline since YYYY-MM-DD for known widely available features', () => {
@@ -107,6 +107,28 @@ describe('baseline data', () => {
         error: 'unregistered_temp_feature',
         errorMessage: 'Temporary web feature ID "tmp-pending-feature-xyz" is not registered in features/pending-web-features.json. Please register it with an upstream issue link.'
       });
+    });
+  });
+
+  describe('getFeatureGroups', () => {
+    it('includes ancestor groups for web-features entries', () => {
+      assert.ok(getFeatureGroups('scroll-markers').includes('scrolling'));
+    });
+
+    it('reads groups from pending temporary feature entries', () => {
+      assert.deepStrictEqual(getFeatureGroups('tmp-scroll-axis-lock'), ['scrolling']);
+    });
+
+    it('returns empty array for pending entries without a group', () => {
+      assert.deepStrictEqual(getFeatureGroups('tmp-streaming-api'), []);
+    });
+  });
+
+  describe('getOwnedFeatureToGroups', () => {
+    it('includes pending temporary features in owned groups', () => {
+      const result = getOwnedFeatureToGroups(new Set(['scrolling']));
+      assert.deepStrictEqual(result['tmp-scroll-axis-lock'], ['scrolling']);
+      assert.strictEqual(result['tmp-streaming-api'], undefined);
     });
   });
 
