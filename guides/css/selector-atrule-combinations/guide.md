@@ -60,6 +60,8 @@ The naive approach leads to duplicated code:
 
 A custom property encodes the result of the matching, then rules key on that property.
 
+IMPORTANT: Due to how container queries work, this technique only works if we can set the custom property on an ancestor of any rules that must be matched.
+
 ### 1. Decouple selection logic from applied rules
 
 ```css

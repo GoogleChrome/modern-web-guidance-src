@@ -137,7 +137,9 @@ Any JS reading `matchMedia("(prefers-color-scheme: dark)").matches` MUST also ha
 ## OPTIONAL: Implementing a color-scheme toggle
 
 If you want to allow users to manually override their system default for this site, you can implement a dark mode toggle.
-See {{ GUIDE_REF("dark-mode-toggle") }} for best practices around implementing this.
+Most sites do not need a persistent toggle in the site UI.
+Simply defaulting to the system color scheme is usually enough, optionally with a setting in a separate settings surface.
+See {{ GUIDE_REF("dark-mode-toggle") }} for best practices around implementing a dark mode toggle (persistent or not).
 
 ## OPTIONAL: Component-specific overrides
 
