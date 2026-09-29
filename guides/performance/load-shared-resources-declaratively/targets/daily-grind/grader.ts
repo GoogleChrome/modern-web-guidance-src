@@ -5,12 +5,57 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../test-fixture.ts';
-import { SyntaxKind } from 'ts-morph';
+import { SyntaxKind, Node } from 'ts-morph';
 
 const targetFiles: string[] = getTargetFiles(
   // @ts-ignore
   import.meta.url
 );
+
+/** Scope values the expectations allow: "" (same-site), "*" (global), or space-separated origins. */
+function isValidCosScope(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed === '' || trimmed === '*') return true;
+  return trimmed.split(/\s+/).every((o) => /^https?:\/\/[^\s/]+$/i.test(o));
+}
+
+/**
+ * Checks the value given to crossOriginStorage in an import's `with` block.
+ * String literals must be a valid scope. Identifiers are resolved to their
+ * variable or parameter-default initializer, so a helper such as
+ * `(url, integrity, scope = '*') => import(url, { with: { integrity, crossOriginStorage: scope } })`
+ * is graded on the value it actually uses. Values that can't be resolved
+ * statically (e.g. a required parameter supplied by callers) are accepted.
+ */
+function isValidCosValue(prop: Node): boolean {
+  let value: Node | undefined;
+  let symbol;
+  if (Node.isPropertyAssignment(prop)) {
+    value = prop.getInitializer();
+    if (value && Node.isIdentifier(value)) symbol = value.getSymbol();
+  } else if (Node.isShorthandPropertyAssignment(prop)) {
+    value = prop.getNameNode();
+    symbol = prop.getValueSymbol();
+  }
+  if (!value) return false;
+
+  if (Node.isIdentifier(value)) {
+    const decl = symbol?.getDeclarations()[0];
+    const init = decl && (Node.isVariableDeclaration(decl) || Node.isParameterDeclaration(decl))
+      ? decl.getInitializer()
+      : undefined;
+    if (!init) return true;
+    value = init;
+  }
+  if (Node.isStringLiteral(value) || Node.isNoSubstitutionTemplateLiteral(value)) {
+    return isValidCosScope(value.getLiteralText());
+  }
+  // Booleans, numbers, and null are never a valid scope.
+  if (Node.isTrueLiteral(value) || Node.isFalseLiteral(value) || Node.isNumericLiteral(value) || Node.isNullLiteral(value)) {
+    return false;
+  }
+  return true;
+}
 
 test.describe('load-shared-resources-declaratively Target Grader', () => {
   // Requirement 1: A <script> or <link> element that already carries a valid integrity attribute adds
@@ -130,8 +175,7 @@ test.describe('load-shared-resources-declaratively Target Grader', () => {
         const integrityProp = withObj.getProperty('integrity');
         const cosProp = withObj.getProperty('crossOriginStorage');
         if (!integrityProp || !cosProp) return false;
-        const cosText = cosProp.getText();
-        return /['"*]/.test(cosText);
+        return isValidCosValue(cosProp);
       });
       const staticValid = staticImportsWithCos.every(({ elements }) => {
         const integrityEl = elements.find((e) => e.getName() === 'integrity');
