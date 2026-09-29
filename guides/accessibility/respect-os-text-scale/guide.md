@@ -82,7 +82,7 @@ Test responsive layouts with operating system text scaling and browser zoom enab
 
 When text scales up, elements require more vertical and horizontal space to prevent truncation or overlap. To keep your components robust, design your layouts to expand dynamically around the content rather than forcing rigid coordinates:
 
-* **Avoid Fixed Heights**: Never apply a rigid CSS `height` or `max-height` to text-containing containers (like cards, sidebars, or headers). Use `min-height: auto` or relative boundaries (e.g., `min-height: 10rem`) to let elements grow vertically as text enlarges.
+* **Allow Text Containers to Grow**: Text-containing components and containers MUST be able to grow to accommodate scaled text. Avoid fixed `height` or `block-size` values and restrictive `max-height` or `max-block-size` values that can cause clipping or overflow. Prefer content-driven sizing; use `min-height` or `min-block-size` only when a minimum size is needed.
 * **Allow Natural Wrapping**: Do not restrict inline-axis text wrapping with `white-space: nowrap` on blocks that contain sentences. Let text reflow to new lines naturally.
 * **Employ Flexible Flexbox & Grid wrapping (Optional Example)**: For multi-column card galleries, use reflowing columns like `repeat(auto-fit, minmax(min(100%, 16rem), 1fr))` so items stack vertically if their relative width thresholds are crossed:
 
