@@ -5,7 +5,7 @@ import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
-import { rootDir, guidesDir } from './paths.ts';
+import { rootDir, guidesDir, baseAppsDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
 
 const REPO_ROOT = rootDir;
@@ -264,6 +264,15 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       }
     }
 
+    if (inv.hasExpectations && !inv.expectationsEmpty && !isDisciplineGuide) {
+      for (const error of validateGuidePresenceCheck(inv.dir)) {
+        const msg = `❌ Error: ${error}`;
+        console.error(msg);
+        errors.push(msg);
+        hasError = true;
+      }
+    }
+
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
     const isDraft = Boolean(inv.draft);
@@ -298,6 +307,72 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 function readFileSafe(filePath: string): string {
   if (fs.existsSync(filePath)) return fs.readFileSync(filePath, 'utf-8');
   return '';
+}
+
+export const PRESENCE_LABEL = 'Basic presence:';
+const SOURCE_EXTS = /\.(html?|astro|css|m?js|tsx?|jsx|json)$/;
+const LIST_ITEM = /^\s*(?:[-*]|\d+\.)\s+(.*)$/;
+
+/**
+ * Validates the mandatory first "Basic presence:" bullet of an expectations.md.
+ * `demoSources` is the guide's demo text (null when the guide has no demo);
+ * `baseAppSource` is the concatenated source of all supported base apps.
+ */
+export function validatePresenceCheck(expectations: string, demoSources: string | null, baseAppSource: string, relativePath: string): string[] {
+  const items = expectations.split('\n').map(l => LIST_ITEM.exec(l)?.[1]).filter((l): l is string => l !== undefined);
+  const presenceItems = items.filter(i => i.startsWith(PRESENCE_LABEL));
+  if (items[0] === undefined || !items[0].startsWith(PRESENCE_LABEL)) {
+    return [`First bullet in ${relativePath} must start with "${PRESENCE_LABEL}" (see project-evals skill).`];
+  }
+  if (presenceItems.length > 1) {
+    return [`${relativePath} has ${presenceItems.length} "${PRESENCE_LABEL}" bullets; expected exactly one.`];
+  }
+  const tokens = [...items[0].matchAll(/`([^`]+)`/g)].map(m => m[1]);
+  if (tokens.length === 0) {
+    return [`"${PRESENCE_LABEL}" bullet in ${relativePath} must list at least one backticked token.`];
+  }
+  const errors: string[] = [];
+  if (demoSources !== null && !tokens.some(t => demoSources.includes(t))) {
+    errors.push(`None of the presence tokens (${tokens.join(', ')}) in ${relativePath} appear in the guide's demo.`);
+  }
+  const inBaseApps = tokens.filter(t => baseAppSource.includes(t));
+  if (inBaseApps.length > 0) {
+    errors.push(`Presence token(s) ${inBaseApps.join(', ')} in ${relativePath} already appear in a base app, so the check can't fail on a no-op.`);
+  }
+  return errors;
+}
+
+function collectSource(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name.startsWith('.')) continue;
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...collectSource(p));
+    } else if (SOURCE_EXTS.test(entry.name) && !entry.name.endsWith('-lock.json')) {
+      out.push(fs.readFileSync(p, 'utf-8'));
+    }
+  }
+  return out;
+}
+
+let baseAppSourceCache: string | undefined;
+function getBaseAppSource(): string {
+  baseAppSourceCache ??= SUPPORTED_BASE_APPS.flatMap(app => collectSource(path.join(baseAppsDir, app))).join('\n');
+  return baseAppSourceCache;
+}
+
+/** Demo sources are the guide dir's top-level source files (demo.html, manifest.json, ...), excluding eval artifacts. */
+function getDemoSources(guideDir: string): string | null {
+  const files = fs.readdirSync(guideDir).filter(f =>
+    SOURCE_EXTS.test(f) && f !== GRADER_FILE && f !== NEGATIVE_DEMO_FILE && !f.endsWith('.test.ts'));
+  if (files.length === 0) return null;
+  return files.map(f => fs.readFileSync(path.join(guideDir, f), 'utf-8')).join('\n');
+}
+
+export function validateGuidePresenceCheck(guideDir: string): string[] {
+  const expectations = fs.readFileSync(path.join(guideDir, EXPECTATIONS_FILE), 'utf-8');
+  return validatePresenceCheck(expectations, getDemoSources(guideDir), getBaseAppSource(), path.relative(REPO_ROOT, path.join(guideDir, EXPECTATIONS_FILE)));
 }
 
 export const GUIDE_FILE = 'guide.md';

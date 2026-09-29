@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments } from './guide-validation.ts';
+import { parseExpectations, validatePresenceCheck, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from '../serving/lib/macros.ts';
 
@@ -119,6 +119,53 @@ describe('parseExpectations', () => {
     assert.deepStrictEqual(result.mustPass, []);
     assert.deepStrictEqual(result.mustFail, []);
     assert.deepStrictEqual(result.appAgnostic, []);
+  });
+});
+
+describe('validatePresenceCheck', () => {
+  const rel = 'guides/x/y/expectations.md';
+  const demo = '<img fetchpriority="high">';
+  const base = '<div style="position: sticky"></div>';
+
+  test('passes when first bullet is labeled, token is in demo, absent from base apps', () => {
+    const md = '# Title\n\n- Basic presence: the modified source files contain `fetchpriority`.\n- Other.';
+    assert.deepStrictEqual(validatePresenceCheck(md, demo, base, rel), []);
+  });
+
+  test('accepts numbered lists and alternatives where only one hits the demo', () => {
+    const md = '1. Basic presence: the modified source files contain `nope` or `fetchpriority`.\n1. Other.';
+    assert.deepStrictEqual(validatePresenceCheck(md, demo, base, rel), []);
+  });
+
+  test('fails when the first bullet is not labeled', () => {
+    const md = '- Other.\n- Basic presence: the modified source files contain `fetchpriority`.';
+    assert.match(validatePresenceCheck(md, demo, base, rel)[0], /First bullet/);
+  });
+
+  test('fails on duplicate presence bullets', () => {
+    const line = '- Basic presence: the modified source files contain `fetchpriority`.';
+    assert.match(validatePresenceCheck(`${line}\n${line}`, demo, base, rel)[0], /expected exactly one/);
+  });
+
+  test('fails when no backticked tokens are listed', () => {
+    assert.match(validatePresenceCheck('- Basic presence: something.', demo, base, rel)[0], /backticked token/);
+  });
+
+  test('fails when no token appears in the demo', () => {
+    const md = '- Basic presence: the modified source files contain `scrollend`.';
+    assert.match(validatePresenceCheck(md, demo, base, rel)[0], /appear in the guide's demo/);
+  });
+
+  test('skips the demo check when the guide has no demo', () => {
+    const md = '- Basic presence: the modified source files contain `scrollend`.';
+    assert.deepStrictEqual(validatePresenceCheck(md, null, base, rel), []);
+  });
+
+  test('fails when a token already appears in a base app', () => {
+    const md = '- Basic presence: the modified source files contain `position: sticky`.';
+    const errors = validatePresenceCheck(md, 'position: sticky', base, rel);
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /already appear in a base app/);
   });
 });
 
