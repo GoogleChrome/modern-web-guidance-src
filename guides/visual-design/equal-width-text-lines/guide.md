@@ -36,6 +36,8 @@ Notes/caveats:
 
 {{ FEATURE_FALLBACKS("text-fit") }}
 
+{{ FEATURE_FALLBACKS("text-wrap-balance") }}
+
 Fixed lockups (one block per line) have a short, faithful fallback:
 
 ```css
