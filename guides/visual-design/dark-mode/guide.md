@@ -5,6 +5,8 @@ web-feature-ids:
 - color-scheme
 - prefers-color-scheme
 - light-dark
+- light-dark-image
+- image-function
 - accent-color
 ---
 
@@ -119,6 +121,13 @@ Most browser UI exposes pseudo-elements to fully customize its appearance, such 
 
 You can use `light-dark()` colors on any of these to apply colors that adapt to the used color scheme.
 
+## 4. Varying images for light and dark mode
+
+For CSS images, `light-dark()` can also be used to provide different image values.
+
+IMPORTANT: Both values in `light-dark()` must be on the same type. You cannot combine a color with an image.
+If one of the two must be an image, use `image(<color>)` to wrap the color value.
+
 ## OPTIONAL: Implementing a color-scheme toggle
 
 **DO NOT** set `color-scheme: light` or `color-scheme: dark` on the root element by default.
@@ -183,6 +192,10 @@ For more information about component-specific overrides and their gotchas, see {
 {{ FEATURE_FALLBACKS("color-scheme") }}
 
 {{ FEATURE_FALLBACKS("light-dark") }}
+
+{{ FEATURE_FALLBACKS("light-dark-image") }}
+
+{{ FEATURE_FALLBACKS("image-function") }}
 
 {{ FEATURE_FALLBACKS("scrollbar-color") }}
 
