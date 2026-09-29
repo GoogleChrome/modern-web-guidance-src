@@ -1,0 +1,187 @@
+diff --git a/src/components/ProgressRing.astro b/src/components/ProgressRing.astro
+new file mode 100644
+index 0000000..c519c69
+--- /dev/null
++++ b/src/components/ProgressRing.astro
+@@ -0,0 +1,148 @@
++---
++interface Props {
++  value?: number;
++  label: string;
++  interactive?: boolean;
++}
++
++const { value = 75, label, interactive = false } = Astro.props;
++const percentage = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
++---
++
++<progress-ring>
++  <div class="progress-ring-wrapper">
++    <progress class="progress-ring" value={percentage} max="100" aria-label={label}></progress>
++    <div class="progress-ring-content" aria-hidden="true">
++      <slot><span data-percentage>{percentage}%</span></slot>
++    </div>
++  </div>
++  {interactive && (
++    <label class="progress-ring-control">
++      Adjust progress
++      <input type="range" min="0" max="100" step="1" value={percentage} />
++    </label>
++  )}
++</progress-ring>
++
++<script>
++  class ProgressRing extends HTMLElement {
++    private observer?: MutationObserver;
++    private controller?: AbortController;
++
++    connectedCallback() {
++      const progress = this.querySelector('progress');
++      if (!progress) return;
++      const content = this.querySelector('[data-percentage]');
++      const input = this.querySelector('input');
++      const needsValueFallback = !CSS.supports('width', 'attr(value type(<number>))');
++
++      const sync = () => {
++        const value = progress.value;
++        if (needsValueFallback) progress.style.setProperty('--value', String(value));
++        if (content) content.textContent = `${value}%`;
++        if (input) input.value = String(value);
++      };
++
++      sync();
++      this.observer = new MutationObserver(sync);
++      this.observer.observe(progress, { attributes: true, attributeFilter: ['value'] });
++      this.controller = new AbortController();
++      input?.addEventListener('input', () => {
++        progress.value = input.valueAsNumber;
++      }, { signal: this.controller.signal });
++    }
++
++    disconnectedCallback() {
++      this.observer?.disconnect();
++      this.controller?.abort();
++    }
++  }
++
++  if (!customElements.get('progress-ring')) customElements.define('progress-ring', ProgressRing);
++</script>
++
++<style>
++  @property --value {
++    syntax: '<number>';
++    inherits: true;
++    initial-value: 0;
++  }
++
++  progress-ring {
++    display: grid;
++    justify-items: center;
++    gap: 1rem;
++  }
++
++  .progress-ring-wrapper {
++    position: relative;
++    display: grid;
++    place-items: center;
++    width: fit-content;
++  }
++
++  progress.progress-ring {
++    --size: 140px;
++    --thickness: 12px;
++    --track-color: #e5e7eb;
++    --fill-color: #b45309;
++    --value: attr(value type(<number>));
++    appearance: none;
++    display: block;
++    box-sizing: border-box;
++    width: var(--size);
++    height: var(--size);
++    padding: 0;
++    border-radius: 50%;
++    border: var(--thickness) solid transparent;
++    background: conic-gradient(var(--fill-color) calc(clamp(0, var(--value), 100) * 1%), var(--track-color) 0);
++    background-origin: border-box;
++    background-clip: border-area;
++    transition: --value 0s ease-in-out;
++  }
++
++  progress.progress-ring::-webkit-progress-bar {
++    background: none;
++    display: none;
++  }
++
++  progress.progress-ring::-webkit-progress-value {
++    background: none;
++    display: none;
++  }
++
++  progress.progress-ring::-moz-progress-bar {
++    background: none;
++    display: none;
++  }
++
++  @supports not (background-clip: border-area) {
++    progress.progress-ring {
++      border: 0;
++      mask-image: radial-gradient(circle closest-side, transparent calc(100% - var(--thickness)), black calc(100% - var(--thickness) + 0.5px));
++    }
++  }
++
++  @media (prefers-reduced-motion: no-preference) {
++    progress.progress-ring { transition-duration: 0.4s; }
++  }
++
++  progress.progress-ring[value="100"] { --fill-color: #15803d; }
++
++  .progress-ring-content {
++    position: absolute;
++    font-size: 1.75rem;
++    font-weight: 700;
++    color: #111827;
++  }
++
++  .progress-ring-control {
++    display: grid;
++    gap: 0.5rem;
++    font-size: 0.875rem;
++    color: #4b5563;
++  }
++
++  input { accent-color: #b45309; max-width: 100%; }
++  input:focus-visible { outline: 2px solid #b45309; outline-offset: 4px; }
++</style>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..dfa20ae 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import ProgressRing from '../components/ProgressRing.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -56,6 +57,14 @@ politicsArticles[2] = {
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <section class="mb-6 flex flex-wrap items-center justify-between gap-6 rounded-lg border border-gray-200 bg-amber-50 p-6" aria-labelledby="progress-heading">
++            <div>
++                <h2 id="progress-heading" class="font-brand text-3xl text-gray-900">Your daily reading goal</h2>
++                <p class="mt-2 text-gray-600">Make time for the stories that matter.</p>
++                <p class="mt-1 text-sm text-gray-500">Try the slider to preview your progress.</p>
++            </div>
++            <ProgressRing value={75} label="Daily reading goal progress" interactive />
++        </section>
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+@@ -81,4 +90,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

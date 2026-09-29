@@ -1,0 +1,215 @@
+diff --git a/src/components/ProgressRing.astro b/src/components/ProgressRing.astro
+new file mode 100644
+index 0000000..d806485
+--- /dev/null
++++ b/src/components/ProgressRing.astro
+@@ -0,0 +1,144 @@
++---
++export interface Props {
++  /** Current progress value. */
++  value: number;
++  /** Maximum value the progress can reach. Defaults to 100. */
++  max?: number;
++  /** Accessible label announced to assistive technology. */
++  label: string;
++  /** Optional id, useful for targeting the underlying <progress> element from a script. */
++  id?: string;
++  /** Diameter of the ring, e.g. "150px". */
++  size?: string;
++  /** Thickness of the ring stroke, e.g. "16px". */
++  thickness?: string;
++  /** Extra classes applied to the wrapper element. */
++  class?: string;
++}
++
++const {
++  value,
++  max = 100,
++  label,
++  id,
++  size = "150px",
++  thickness = "16px",
++  class: className,
++} = Astro.props;
++
++const percentage = max > 0 ? Math.round((value / max) * 100) : 0;
++---
++
++<div
++  class:list={["progress-ring-wrapper", className]}
++  style={{ "--size": size, "--thickness": thickness }}
++>
++  <progress class="progress-ring" value={value} max={max} aria-label={label} id={id}
++  ></progress>
++  <div class="progress-ring-content">
++    <slot>{percentage}%</slot>
++  </div>
++</div>
++
++<style>
++  @property --value {
++    syntax: "<number>";
++    inherits: true;
++    initial-value: 0;
++  }
++
++  .progress-ring-wrapper {
++    position: relative;
++    display: grid;
++    place-items: center;
++    width: var(--size);
++    height: var(--size);
++  }
++
++  progress.progress-ring {
++    --track-color: #e2e8f0;
++    --fill-color: #f59e0b;
++    /* Drive the ring's fill directly from the value attribute. */
++    --value: attr(value type(<number>));
++
++    appearance: none;
++    width: var(--size);
++    height: var(--size);
++    vertical-align: middle;
++    border-radius: 50%;
++
++    /* Respect prefers-reduced-motion: jump immediately by default, ... */
++    transition: --value 0s ease-in-out;
++
++    background: conic-gradient(var(--fill-color) calc(var(--value) * 1%), var(--track-color) 0);
++
++    /* MANDATORY: hollow out the center by clipping the background to the border area. */
++    background-clip: border-area;
++    border: var(--thickness) solid transparent;
++    background-origin: border-box;
++  }
++
++  /* ... and only animate smoothly for users with no motion-reduction preference. */
++  @media (prefers-reduced-motion: no-preference) {
++    progress.progress-ring {
++      transition-duration: 0.4s;
++    }
++  }
++
++  /* Fallback for browsers without support for `background-clip: border-area`. */
++  @supports not (background-clip: border-area) {
++    progress.progress-ring {
++      border: 0;
++      padding: 0;
++      background-clip: padding-box;
++      mask-image: radial-gradient(
++        transparent calc(50% - var(--thickness)),
++        black calc(50% - var(--thickness) + 0.5px)
++      );
++    }
++  }
++
++  /* Success state once the ring reaches completion. */
++  progress.progress-ring[value="100"] {
++    --fill-color: #10b981;
++  }
++
++  /* Hide the native progress chrome across browser engines. */
++  progress.progress-ring::-webkit-progress-bar,
++  progress.progress-ring::-webkit-progress-value {
++    background: none;
++  }
++  progress.progress-ring::-moz-progress-bar {
++    background: none;
++  }
++
++  .progress-ring-content {
++    position: absolute;
++    font-weight: 600;
++    color: #1f2937;
++    pointer-events: none;
++  }
++</style>
++
++<script>
++  // Fallback for browsers that don't support attr() on non-content CSS properties:
++  // keep --value in sync with the value attribute via a MutationObserver instead.
++  function syncFallback(progress: HTMLProgressElement) {
++    const sync = () => {
++      progress.style.setProperty("--value", progress.getAttribute("value") ?? "0");
++    };
++    sync();
++    const observer = new MutationObserver(sync);
++    observer.observe(progress, { attributes: true, attributeFilter: ["value"] });
++  }
++
++  function initProgressRings() {
++    if (CSS.supports("width", "attr(value type(<number>))")) return;
++    document
++      .querySelectorAll<HTMLProgressElement>("progress.progress-ring")
++      .forEach(syncFallback);
++  }
++
++  initProgressRings();
++  document.addEventListener("astro:page-load", initProgressRings);
++</script>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..e586f31 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import ProgressRing from '../../components/ProgressRing.astro';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -36,7 +37,16 @@ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+ <Layout title={article.data.title}>
+-    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++    <ProgressRing
++        id="reading-progress-ring"
++        value={0}
++        label="Reading progress"
++        size="64px"
++        thickness="6px"
++        class="reading-progress-ring fixed bottom-6 right-6 z-50 bg-white rounded-full shadow-lg text-xs"
++    />
++
++    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12" id="article-content">
+         <!-- Breadcrumbs/Category -->
+         <div class="text-base text-gray-600 font-semibold mb-2">
+             <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+@@ -123,4 +133,31 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
++
++<script>
++    function updateReadingProgress() {
++        const content = document.getElementById("article-content");
++        const ring = document.getElementById("reading-progress-ring") as HTMLProgressElement | null;
++        if (!content || !ring) return;
++
++        const ringContent = ring.parentElement?.querySelector<HTMLElement>(".progress-ring-content");
++
++        const rect = content.getBoundingClientRect();
++        const total = rect.height - window.innerHeight;
++        const scrolled = Math.min(Math.max(-rect.top, 0), Math.max(total, 0));
++        const percent = total > 0 ? Math.round((scrolled / total) * 100) : 0;
++
++        ring.setAttribute("value", String(percent));
++        if (ringContent) ringContent.textContent = `${percent}%`;
++    }
++
++    document.addEventListener("astro:page-load", () => {
++        updateReadingProgress();
++        window.addEventListener("scroll", updateReadingProgress, { passive: true });
++    });
++
++    document.addEventListener("astro:before-swap", () => {
++        window.removeEventListener("scroll", updateReadingProgress);
++    });
++</script>
+\ No newline at end of file
