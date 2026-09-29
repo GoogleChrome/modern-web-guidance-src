@@ -100,6 +100,7 @@ progress::-moz-progress-bar {
 ```css
 /* Indeterminate state animation */
 progress {
+  /* Optional: use hard stops to create an animated flat area (similar to the UA default)*/
   --indeterminate-track: linear-gradient(to right, 
     transparent 0% 15%, 
     var(--progress-color, currentColor) 15% 45%, 
