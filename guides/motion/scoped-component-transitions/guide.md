@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Scoped Component Transitions
 
-Starting a view transition with `document.startViewTransition()` attaches the `::view-transition` overlay to `:root` in the top layer, which blocks pointer events on the rest of the page, prevents concurrent transitions, and obscures `position: fixed` headers or open `[popover]` elements (even when nested view transition groups are used to prevent overflow bleeding).
+Starting a view transition with `document.startViewTransition()` attaches the `::view-transition` overlay to the `:root` element, which blocks pointer events on the rest of the page, prevents concurrent transitions, and obscures `position: fixed` headers or open `[popover]` elements (even when nested view transition groups are used to prevent overflow bleeding).
 
 Calling `element.startViewTransition()` on a component root scopes the transition to that DOM subtree: the `::view-transition` pseudo-element tree is injected directly onto the element, preserving external stacking contexts and page interactivity while allowing multiple components to transition concurrently.
 
