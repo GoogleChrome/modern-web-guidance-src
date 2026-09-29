@@ -7,7 +7,7 @@
 - Advanced custom styles normalize the element using `appearance: none`.
 - Custom styles are provided for browser-specific pseudo-elements (`::-webkit-progress-bar`, `::-webkit-progress-value`, and `::-moz-progress-bar`).
 - **Mandatory**: -moz- and -webkit- pseudo selectors cannot be grouped. If grouped one of the selectors will be ignored.
-- The custom indeterminate animation respects the `prefers-reduced-motion: reduce` media query by significantly slowing down the animation (e.g., `10s`) and/or simplifying the visual transition to provide a subtle "reduced" motion experience rather than disabling it entirely.
+- The custom indeterminate animation respects the `prefers-reduced-motion: reduce` media query by significantly slowing down the animation (e.g., `10s`) or replacing it with a subtle visual transition (e.g., a slow opacity pulse on a static indicator) rather than disabling it entirely.
 - The `aria-busy` attribute is dynamically updated on the region being updated during a multi-step process.
 - The `aria-describedby` attribute is used on the region being updated to associate it with the separate progress bar it references.
 - If significant updates occur, the progress element may optionally use `tabindex="-1"` and be programmatically focused in JavaScript to force screen reader announcements.

@@ -114,20 +114,34 @@
 
         @keyframes loading {
             from { background-position: 200% 0; }
-            to { background-position: -150% 0; }
+            to { background-position: 100% 0; }
         }
 
         /* Respect prefers-reduced-motion */
         @media (prefers-reduced-motion: reduce) {
+            .advanced-progress {
+                /* Use a centered static gradient for reduced motion */
+                --indeterminate-track: linear-gradient(to right, 
+                    transparent 0% 35%, 
+                    var(--accent-color, currentColor) 35% 65%, 
+                    transparent 65% 100%
+                );
+                --indeterminate-track-size: 100% 100%;
+            }
+
             .advanced-progress:indeterminate::-webkit-progress-bar {
-                /* Slow down the animation significantly */
-                animation-duration: 10s;
+                /* Replace movement with a slow, subtle pulse */
+                animation: pulse 3s infinite ease-in-out;
             }
 
             .advanced-progress:indeterminate::-moz-progress-bar {
-                /* Slow down the animation significantly */
-                animation-duration: 10s;
+                animation: pulse 3s infinite ease-in-out;
             }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .controls {

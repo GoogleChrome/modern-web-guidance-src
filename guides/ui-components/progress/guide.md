@@ -131,15 +131,29 @@ progress:indeterminate::-moz-progress-bar {
 
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
+  progress {
+    /* Use a centered static gradient for reduced motion */
+    --indeterminate-track: linear-gradient(to right, 
+      transparent 0% 35%, 
+      var(--progress-color, currentColor) 35% 65%, 
+      transparent 65% 100%
+    );
+    --indeterminate-track-size: 100% 100%;
+  }
+
   progress:indeterminate::-webkit-progress-bar {
-    /* Slow down the animation significantly */
-    animation-duration: 10s;
+    /* Replace movement with a slow, subtle pulse */
+    animation: pulse 3s infinite ease-in-out;
   }
 
   progress:indeterminate::-moz-progress-bar {
-    /* Slow down the animation significantly */
-    animation-duration: 10s;
+    animation: pulse 3s infinite ease-in-out;
   }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 ```
 
