@@ -14,8 +14,8 @@ package.json @paulirish @micahjo7
 pnpm-lock.yaml @paulirish @micahjo7
 pnpm-workspace.yaml @paulirish @micahjo7
 
-# Eval files
-**/targets/ @paulirish @micahjo7
-**/grader.ts @paulirish @micahjo7
-**/tasks/task.md @paulirish @micahjo7
-**/negative-demo.html @paulirish @micahjo7
+# Eval files (paulirish is requested by atl-triage when the PR has the gd-dev-eval label)
+**/targets/ @TravenReese @micahjo7
+**/grader.ts @TravenReese @micahjo7
+**/tasks/task.md @TravenReese @micahjo7
+**/negative-demo.html @TravenReese @micahjo7
