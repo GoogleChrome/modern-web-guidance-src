@@ -22,17 +22,14 @@ This can contain entire rules, or be used in conjunction with CSS nesting to con
 ```
 
 Do NOT use `@supports at-rule()` to conditionally apply the at-rule being detected and nothing else.
-I.e. don't do this:
 
 ```css
+/* BAD: CSS already ignores rules the browser doesn't understand, so this is unnecessary */
 @supports at-rule(@starting-style) {
   @starting-style {
     /* ... */
   }
 }
-```
-
-Regular CSS graceful parsing will already ignore rules the browser doesn't understand, so this is unnecessary.
 
 ## Detecting support for at-rules without `@supports at-rule()` { #detecting-at-rules-without-supports-at-rule }
 
