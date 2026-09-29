@@ -112,10 +112,10 @@ html {
 }
 ```
 
-Also avoid manually multiplying or calculating the root font size using custom system environment properties:
+Do not combine the `<meta name="text-scale" content="scale">` opt-in with `env(preferred-text-scale)` to apply operating system text scaling manually. The browser applies the scale through the meta opt-in, so using both can result in double-scaling:
 
 ```css
-/* ❌ DO NOT DO THIS: This overrides native behavior and can trigger double-scaling */
+/* ❌ DO NOT DO THIS: The meta opt-in already applies the operating system text scale */
 :root {
   font-size: calc(1rem * env(preferred-text-scale));
 }
