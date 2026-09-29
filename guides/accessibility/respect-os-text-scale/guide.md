@@ -49,6 +49,8 @@ h1 {
 }
 ```
 
+Set the base text size on `body` only when the design needs a size different from the inherited browser default; otherwise, let it inherit. Set sizes on specific elements, such as headings, with relative units such as `rem` or `em`. Use `rem` for a size relative to the root font size, and `em` when the size should depend on the parent element's font size. Do not set a custom font size on `:root` or `html`.
+
 ### Fluid Typography
 
 Fluid typography MAY use viewport-relative units such as `vw`, provided that font sizes also include a font-relative component such as `rem` or `em`.
