@@ -20,6 +20,12 @@ test.describe('<guide-name> Target Grader', () => {
   // Use static assertions to query DOM structure, attributes, CSS rules, and JavaScript syntax on the host.
   // These run instantly and are far more robust for structural verification than starting a browser.
   
+  test('Core feature presence check', () => {
+    // Grep/substring smoke test: assert that the key token/property/attribute appears in modified files
+    // const hasCoreFeature = targetFiles.some(f => fs.readFileSync(f, 'utf8').includes('core-token'));
+    // expect(hasCoreFeature).toBe(true);
+  });
+
   test('Example test containing HTML checks (linkedom)', () => {
     // EXAMPLE: DOM parsing using linkedom across HTML & component templates:
     // const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);

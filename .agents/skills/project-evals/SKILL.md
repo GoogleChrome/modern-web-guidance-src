@@ -40,8 +40,9 @@ None of the following are ever seen by real-world coding agents:
 
 Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly (e.g., "The input element is styled with a red border only AFTER a blur event").
 
+* **First Bullet: Mandatory "Presence" Check** — The very first bullet in `expectations.md` MUST be a straightforward, high-level presence / smoke check asserting that the core API, attribute, keyword, or CSS property (e.g., `fetchpriority`, `content-visibility`, `toolname`, `@view-transition`) is present in the implementation. In the generated grader, this translates to a fast source-level string/grep check across target files (`targetFiles.some(f => fs.readFileSync(f, 'utf8').includes(...))`). This serves as an immediate sanity check to fail baseline or no-op implementations cleanly before evaluating deeper behaviors.
 * **1:1 with grader tests** — Each bullet becomes exactly one test. Write one bullet per assertion. Do not combine multiple checks into a single bullet.
-* **Concrete, Testable Criteria (No API Facts)** — Expectations must be verifiable browser behaviors we can check with Playwright (e.g., computed styles, DOM layout), not just factual statements about an API or code structure.
+* **Concrete, Testable Criteria (No API Facts)** — Expectations must be verifiable browser behaviors or static criteria we can check with Playwright (e.g., computed styles, DOM layout), not just factual statements about an API or code structure.
 * **Exercised in Demo**: Ensure that every expectation written here is actively exercised in the accompanying `demo.html`. Expectations that aren't covered by the demo lead to unreliable grader calibration.
 * **Scoped to this use case** — Only include expectations that apply to the specific use case being graded. Do not copy generic expectations from other guides if they describe behavior that won't appear in an implementation of this guide (e.g., don't include URL input expectations in a sign-in form grader).
 * **No external links** — The grader generator cannot resolve them.
@@ -49,8 +50,9 @@ Write a natural language, bulleted list of assertions that must be true if an ag
 
 ## Grading Note
 * Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files.
-* **AVOID** using static assertions (like regex or `str.includes()` on `fs.readFileSync`) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting.
-* Instead, **PREFER** using Playwright's browser APIs to test computed styles and actual DOM layout. Use `element.evaluate((el) => window.getComputedStyle(el).propertyName)` to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
+* **Presence Check (First Test)**: The first test should be a fast source-level presence check verifying that core tokens or attributes appear in modified files (e.g., `fs.readFileSync(file, 'utf8').includes('...')`).
+* **AVOID** using static assertions (like regex or `str.includes()` on `fs.readFileSync`) to test complex CSS or HTML layout syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting.
+* Instead, **PREFER** using Playwright's browser APIs or AST helpers (Linkedom, CSSOMNom, ts-morph) to test computed styles, actual DOM layout, or structured syntax. Use `element.evaluate((el) => window.getComputedStyle(el).propertyName)` to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
 * A human may manually edit the `.ts` file if the generator struggles to get it perfectly tailored.
 
 ---

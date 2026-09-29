@@ -281,6 +281,7 @@ Guides are read by AI coding agents, not humans directly. Key requirements:
 ### Writing expectations.md
 
 Natural-language bulleted list of assertions. These are the input for automated grader generation. Requirements:
+- **First Bullet (Presence Check)**: The very first bullet must be a straightforward presence / smoke check verifying that the core API, attribute, keyword, or CSS property (e.g. `fetchpriority`, `content-visibility`, `toolname`) appears in the implementation files. This translates to an initial source-level grep check in `grader.ts`.
 - Each assertion should be independently testable
 - Be specific enough that a Playwright test can verify it (e.g., "The input has a red border after blur" rather than "The form looks good")
 - Cover both positive requirements (what should be present) and negative requirements (what should not be present)
