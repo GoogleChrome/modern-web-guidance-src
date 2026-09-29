@@ -77,7 +77,9 @@ export function parseVerifiableExpectations(content: string): string[] {
     }
   }
 
-  return items;
+  // Basic presence checks are validated separately by validateGuidePresenceCheck
+  // and do not require fuzzy semantic matching in grader-coverage.
+  return items.filter(item => !item.startsWith('Basic presence:'));
 }
 
 export interface ExpectationMatch {

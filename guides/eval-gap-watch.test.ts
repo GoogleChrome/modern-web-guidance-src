@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   findMissingEvals,
   findChangedExpectations,
+  hasSubstantiveExpectationsDiff,
   buildMarker,
   parseMarker,
   buildIssue,
@@ -109,6 +110,28 @@ describe('findChangedExpectations', () => {
   it('does not count evals changed in another guide', () => {
     const gaps = findChangedExpectations([makeGuide()], [expectationsPath, 'guides/css/sample-guide-two/grader.ts']);
     assert.strictEqual(gaps.length, 1);
+  });
+});
+
+describe('hasSubstantiveExpectationsDiff', () => {
+  it('returns false when only Basic presence line was added', () => {
+    const diff = `@@ -0,0 +1 @@\n+- Basic presence: the modified source files contain \`content-visibility\`.\n`;
+    assert.strictEqual(hasSubstantiveExpectationsDiff(diff), false);
+  });
+
+  it('returns false when Basic presence line with list marker or number was added/edited', () => {
+    const diff = `@@ -1 +1 @@\n-- Basic presence: the modified source files contain \`old\`.\n+1. Basic presence: the modified source files contain \`new\`.\n`;
+    assert.strictEqual(hasSubstantiveExpectationsDiff(diff), false);
+  });
+
+  it('returns true when substantive expectation bullets are added, edited, or removed', () => {
+    const diff = `@@ -1 +1 @@\n-- The dialog should close.\n+- The dialog must close.\n`;
+    assert.strictEqual(hasSubstantiveExpectationsDiff(diff), true);
+  });
+
+  it('returns true when both Basic presence and a real expectation are changed', () => {
+    const diff = `@@ -1,2 +1,2 @@\n+- Basic presence: the modified source files contain \`token\`.\n+- New requirement.\n`;
+    assert.strictEqual(hasSubstantiveExpectationsDiff(diff), true);
   });
 });
 

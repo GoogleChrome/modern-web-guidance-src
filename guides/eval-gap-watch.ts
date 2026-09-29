@@ -61,17 +61,54 @@ export function findMissingEvals(guides: GuideInventory[]): Gap[] {
     .map(inv => toGap('missing-evals', inv));
 }
 
+/** True when the diff on expectations.md contains changes beyond adding/modifying Basic presence lines. */
+export function hasSubstantiveExpectationsDiff(diffText: string): boolean {
+  const lines = diffText.split('\n');
+  for (const line of lines) {
+    if ((line.startsWith('+') && !line.startsWith('+++')) || (line.startsWith('-') && !line.startsWith('---'))) {
+      const content = line.slice(1).trim();
+      // Ignore added/removed/edited Basic presence bullets or empty lines
+      if (!content || content.startsWith('Basic presence:') || /^([-*]|\d+[.)])\s+Basic presence:/.test(content)) {
+        continue;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Check if expectations.md has substantive changes beyond Basic presence. */
+function hasSubstantiveExpectationsChange(before: string | undefined, expectationsPath: string): boolean {
+  if (!before) return true; // If we can't diff against before commit, conservatively treat as changed
+  try {
+    const diff = child_process.execFileSync('git', ['diff', '-U0', before, 'HEAD', '--', expectationsPath], {
+      encoding: 'utf8',
+      cwd: rootDir,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return hasSubstantiveExpectationsDiff(diff);
+  } catch {
+    return true;
+  }
+}
+
 /** True when the changed files edit a guide's expectations.md without touching its evals. */
-function editsExpectationsOnly(files: string[], guidePath: string): boolean {
+function editsExpectationsOnly(files: string[], guidePath: string, before?: string): boolean {
   const inGuide = files.filter(f => f.startsWith(`${guidePath}/`)).map(f => f.slice(guidePath.length + 1));
-  return inGuide.includes(EXPECTATIONS_FILE) &&
-    !inGuide.some(f => f === GRADER_FILE || f.startsWith('tasks/') || f.startsWith(`${TARGETS_DIR}/`));
+  const hasExpectationsEdit = inGuide.includes(EXPECTATIONS_FILE);
+  if (!hasExpectationsEdit) return false;
+
+  const hasEvalsEdit = inGuide.some(f => f === GRADER_FILE || f.startsWith('tasks/') || f.startsWith(`${TARGETS_DIR}/`));
+  if (hasEvalsEdit) return false;
+
+  const fullExpectationsPath = path.join(guidePath, EXPECTATIONS_FILE);
+  return hasSubstantiveExpectationsChange(before, fullExpectationsPath);
 }
 
 /** Case 2: a complete guide had expectations.md edited in a change that left its evals alone. */
-export function findChangedExpectations(guides: GuideInventory[], changedFiles: string[]): Gap[] {
+export function findChangedExpectations(guides: GuideInventory[], changedFiles: string[], before?: string): Gap[] {
   return guides
-    .filter(inv => getGuideStatus(inv) === null && editsExpectationsOnly(changedFiles, path.relative(rootDir, inv.dir)))
+    .filter(inv => getGuideStatus(inv) === null && editsExpectationsOnly(changedFiles, path.relative(rootDir, inv.dir), before))
     .map(inv => toGap('expectations-changed', inv));
 }
 
@@ -207,7 +244,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   const guides = scanAllGuides();
   const changedFiles = before ? getChangedFiles(before) : [];
 
-  const gaps = [...findMissingEvals(guides), ...findChangedExpectations(guides, changedFiles)];
+  const gaps = [...findMissingEvals(guides), ...findChangedExpectations(guides, changedFiles, before)];
   console.log(`Scanned ${guides.length} guides and ${changedFiles.length} changed file(s), found ${gaps.length} gap(s).`);
 
   const { toCreate, toClose } = planIssues(gaps, githubApi.listIssues());
