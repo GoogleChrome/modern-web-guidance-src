@@ -292,6 +292,12 @@ window.__featuresMapping = {
   "interactions-in-complex-layouts": [
     "content-visibility"
   ],
+  "lazy-load-video-and-audio": [
+    "loading-lazy-media",
+    "video",
+    "audio",
+    "intersection-observer"
+  ],
   "load-shared-resources-declaratively": [
     "tmp-cross-origin-storage",
     "subresource-integrity"
