@@ -70,7 +70,7 @@ Instead, combine a font-relative value with viewport-relative scaling and use re
 }
 ```
 
-Test fluid typography with operating system text scaling, browser text-size settings, and browser zoom of at least 200%. Text MUST remain readable without clipping, overlap, or loss of content or functionality.
+Test that text can be resized to at least 200% of its default size without loss of content or functionality. For fluid typography, a useful rule of thumb is to keep the maximum font size no more than 2.5 times the minimum. Also test reflow at a 320 CSS-pixel viewport width (equivalent to 400% zoom from a 1280 CSS-pixel-wide viewport); content MUST remain available without two-dimensional scrolling, except where essential.
 
 ### 3. Use Scalable Responsive Breakpoints
 
