@@ -2,7 +2,7 @@
 
 This repo is the source repository for [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) and includes the code and documentation for authoring, calibrating, and evaluating its contents.
 
-**Modern Web Guidance** is a set of skills that embed web platform expertise, best practices, and browser compatibility data directly into your coding agents. It helps to steer your coding agents away from legacy patterns, and instead toward solutions that harness the power and capabilities of the modern web platform.
+[**Modern Web Guidance**](https://developer.chrome.com/docs/modern-web-guidance) is a set of skills that embed web platform expertise, best practices, and browser compatibility data directly into your coding agents. It helps to steer your coding agents away from legacy patterns, and instead toward solutions that harness the power and capabilities of the modern web platform.
 
 > [!NOTE]
 > This is a **preview release** of Modern Web Guidance. We're actively adding new content and we [welcome contributions or feedback on GitHub](https://github.com/GoogleChrome/modern-web-guidance-src).
