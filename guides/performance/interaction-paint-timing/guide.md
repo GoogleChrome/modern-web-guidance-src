@@ -11,7 +11,7 @@ web-feature-ids:
 Standard paint and responsiveness metrics leave a measurement gap after the initial page load:
 
 - **`LargestContentfulPaint` (`largest-contentful-paint`)** only measures the initial ("hard") document load and stops emitting entries as soon as the user first interacts with the page.
-- **`PerformanceEventTiming` (`event` / Interaction to Next Paint)** measures input responsiveness up to the *very next frame* (such as a button active state or loading spinner), but does not track subsequent asynchronous paints—such as new content rendered after a `fetch()` resolves or a client-side route transition completes.
+- **`PerformanceEventTiming` and `event` / Interaction to Next Paint (INP)** measures input responsiveness up to the *very next frame* (such as a button active state or loading spinner), but does not track subsequent asynchronous paints—such as new content rendered after a `fetch()` resolves, or a client-side route transition completes.
 
 The `InteractionContentfulPaint` (`interaction-contentful-paint`) and `PerformanceSoftNavigation` (`soft-navigation`) performance entry types fill this gap. They propagate interaction causality across asynchronous tasks (`fetch`, `await`, `setTimeout`) to attribute new contentful paints and Single-Page Application (SPA) route transitions directly back to the user interaction that triggered them.
 
@@ -156,7 +156,7 @@ export function trackSoftNavigationLCP(onSoftNavReport) {
 
 ### 3. Measure Core Web Vitals across soft navigations with `web-vitals`
 
-If your goal is to report standard Core Web Vitals (LCP, FCP, CLS, INP, and TTFB) across both hard and soft navigations to an analytics endpoint, use the `web-vitals` library (v6.0.0+) with `{ reportSoftNavs: true }` rather than manually slicing every metric timeline.
+If your goal is to report standard Core Web Vitals (LCP, CLS, and INP) across both hard and soft navigations to an analytics endpoint, use the `web-vitals` library (v6.0.0+) with `{ reportSoftNavs: true }` rather than manually slicing every metric timeline.
 
 ```javascript
 import { onLCP, onFCP, onCLS, onINP } from 'web-vitals';
