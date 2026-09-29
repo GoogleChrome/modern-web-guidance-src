@@ -22,7 +22,7 @@ Place the `<meta name="text-scale">` element inside your document's `<head>`. Th
 ```html
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width" />
   
   <!-- Opt this page into OS-level dynamic type and accessibility text scaling -->
   <meta name="text-scale" content="scale" />
