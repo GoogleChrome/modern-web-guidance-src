@@ -26,9 +26,9 @@
     "cliVersion": "0.0.187"
   },
   {
-    "testId": "nightly-2026-09-11_17-00-01-agy",
+    "testId": "nightly-2026-09-11_17-00-01-antigravity_cli",
     "timestamp": "2026-09-11T17:45:02.545Z",
-    "agent": "antigravity",
+    "agent": "antigravity_cli",
     "serving": "skills_cli",
     "model": "gemini-3.8-flash-medium",
     "taskCount": 132,
@@ -65,9 +65,9 @@
     "cliVersion": "0.0.187"
   },
   {
-    "testId": "nightly-2026-09-09_17-00-02-agy",
+    "testId": "nightly-2026-09-09_17-00-02-antigravity_cli",
     "timestamp": "2026-09-09T18:03:26.300Z",
-    "agent": "antigravity",
+    "agent": "antigravity_cli",
     "serving": "skills_cli",
     "model": "gemini-3.8-flash-medium",
     "taskCount": 132,
