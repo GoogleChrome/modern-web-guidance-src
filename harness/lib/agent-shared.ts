@@ -11,6 +11,7 @@ import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents
 import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
 import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
+import { setupAntigravityCliCredentials, getAntigravityCliCommandAndArgs } from '../agents/antigravity-cli-agent.ts';
 
 export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return err instanceof Error && 'code' in err;
@@ -31,6 +32,8 @@ export function setupAgentCredentials(agent: Agents, tempHome: string): void {
     setupCodexCliCredentials(tempHome);
   } else if (agent === Agents.PI) {
     setupPiCredentials(tempHome);
+  } else if (agent === Agents.ANTIGRAVITY_CLI) {
+    setupAntigravityCliCredentials(tempHome);
   }
 }
 
@@ -46,6 +49,8 @@ export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command
       return getCodexCliCommandAndArgs(prompt);
     case Agents.PI:
       return getPiCommandAndArgs(prompt);
+    case Agents.ANTIGRAVITY_CLI:
+      return getAntigravityCliCommandAndArgs(prompt);
     default:
       throw new Error(`Unsupported agent: ${agent}`);
   }
@@ -273,6 +278,8 @@ export function copySkills(homeDir: string, agent: Agents, skillsToEnable: strin
     destDir = path.join(homeDir, '.agents', 'skills');
   } else if (agent === Agents.JETSKI_CLI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
+  } else if (agent === Agents.ANTIGRAVITY_CLI) {
+    destDir = path.join(homeDir, '.gemini', 'antigravity-cli', 'skills');
   } else {
     destDir = path.join(homeDir, '.gemini', 'skills');
   }

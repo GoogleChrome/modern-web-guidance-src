@@ -9,14 +9,14 @@ Runs the evaluation for the specified agent.
 Options:
   --help        Show this help message and exit.
   --agent       The agent to run (required).
-                Valid agents: jetski_cli, claude_code, codex_cli
+                Valid agents: antigravity_cli, claude_code, codex_cli
   --prefix      Specify the prefix name of this periodic run (default: "nightly").
   --local       Run using local committed repository HEAD instead of origin/main (optional).
   --workers     The number of concurrent workers to use (optional).
 
 Examples:
-  $0 --agent jetski_cli
-  $0 --agent jetski_cli --prefix "weekly" --local --workers 10
+  $0 --agent antigravity_cli
+  $0 --agent antigravity_cli --prefix "weekly" --local --workers 10
 EOF
 }
 
@@ -201,7 +201,7 @@ pnpm setup:playwright
 STAGE="Configuration Setup"
 # Update Configuration
 case "$AGENT" in
-  "jetski_cli") AGENT_ENUM="JETSKI_CLI" ;;
+  "antigravity_cli") AGENT_ENUM="ANTIGRAVITY_CLI" ;;
   "claude_code") AGENT_ENUM="CLAUDE_CODE" ;;
   "codex_cli")  AGENT_ENUM="CODEX_CLI" ;;
   *) echo "Unknown agent: $AGENT"; exit 1 ;;
