@@ -8,6 +8,8 @@ web-feature-ids:
   - has
 ---
 
+# Dark mode toggles
+
 A dark mode toggle lets users override the system color scheme for one site.
 The override is applied by updating `<meta name="color-scheme">`: `light dark` means "follow the system preference", `light` or `dark` pin an explicit scheme.
 Colors (`light-dark()`), system colors, and native UI all key off the CSS `color-scheme` property, so the toggle works by keeping that property in sync with the `<meta>` (see [Reflect the override in CSS](#reflect-the-override-in-css)).
