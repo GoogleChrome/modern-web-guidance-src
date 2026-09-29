@@ -17,7 +17,7 @@ Adding `loading="lazy"` to offscreen `<video>` and `<audio>` elements instructs 
 ## How to implement
 
 1. **Add `loading="lazy"` to offscreen media**: Apply `loading="lazy"` to `<video>` and `<audio>` elements positioned below the fold. Omit the `loading` attribute on above-the-fold media so it defaults to `eager`.
-2. **Set explicit `width` and `height` on `<video>` elements**: Always specify integer `width` and `height` attributes (in CSS pixels) on `<video loading="lazy">`. Unloaded videos default to `0`×`0` dimensions; without explicit sizing, a lazy-loaded video may fail to intersect the visible viewport and never load, or cause disruptive layout shifts (CLS) when it loads.
+2. **Set explicit `width` and `height` on `<video>` elements**: Always specify integer `width` and `height` attributes (in CSS pixels) on `<video>`. Unloaded videos default to `300`×`150` dimensions; without explicit sizing, a lazy-loaded video may fail to intersect the visible viewport and never load, or cause disruptive layout shifts (CLS) when it loads.
 3. **Include the `controls` attribute on `<audio>` elements**: Always include `controls` on `<audio loading="lazy">`. Because `<audio>` elements have no intrinsic visual box without browser controls, an `<audio loading="lazy">` element without `controls` cannot visibly intersect the viewport and will never load or autoplay.
 4. **Coordinate `preload` and `poster` attributes**:
    - On `<video loading="lazy">`, both the `poster` image fetch and the `preload` behavior (`none`, `metadata`, or `auto`) are deferred until the video approaches the viewport.
