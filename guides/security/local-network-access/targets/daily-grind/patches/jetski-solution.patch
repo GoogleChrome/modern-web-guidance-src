@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+index 66c9173..a28cff1 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,51 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Smart Brew Station */
++    .device-card {
++      position: relative;
++    }
++
++    .permission-status {
++      display: inline-block;
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 2px 8px;
++      border-radius: 10px;
++      margin: 8px 0;
++    }
++
++    .remediation {
++      margin-top: 12px;
++      padding: 10px 12px;
++      background: #fdecea;
++      border: 1px solid #b3261e;
++      color: #b3261e;
++      border-radius: 6px;
++      font-size: 0.85rem;
++      text-align: left;
++    }
++
++    .device-result {
++      margin-top: 12px;
++      font-size: 0.9rem;
++      min-height: 1.2em;
++    }
++
++    .device-frame {
++      width: 100%;
++      max-width: 600px;
++      height: 280px;
++      display: block;
++      margin: 20px auto 0;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +240,50 @@
+         </div>
+       </div>
+     </section>
++
++    <section>
++      <h2 style="text-align: center;">Smart Brew Station</h2>
++      <p style="text-align: center; margin-top: 10px;">
++        Pair this page with hardware on your local network to control your brewer or sync the in-store queue.
++        Access is only requested after you click a connect button below.
++      </p>
++      <div class="grid">
++        <div class="card device-card">
++          <h3>Wi-Fi Coffee Brewer</h3>
++          <p>Connect to your Daily Grind smart brewer on your home Wi-Fi network to start a brew remotely.</p>
++          <div>
++            Permission: <span class="permission-status" id="local-permission-badge" data-testid="local-permission-status" data-permission-status="local-network">unknown</span>
++          </div>
++          <button type="button" id="connect-local-btn" data-testid="connect-local-button" class="btn">Connect to Brewer</button>
++          <div class="remediation" id="local-remediation" data-testid="local-remediation" data-remediation="local-network" hidden>
++            Local network access is blocked. Open this site's browser settings, set "Local network" to Allow, then reload the page.
++          </div>
++          <div class="device-result" id="local-device-result" data-testid="local-output" role="status" aria-live="polite"></div>
++        </div>
++        <div class="card device-card">
++          <h3>Barista Console</h3>
++          <p>Connect to the Barista Console companion app running on this computer to sync the in-store order queue.</p>
++          <div>
++            Permission: <span class="permission-status" id="loopback-permission-badge" data-testid="loopback-permission-status" data-permission-status="loopback-network">unknown</span>
++          </div>
++          <button type="button" id="connect-loopback-btn" data-testid="connect-loopback-button" class="btn">Connect to Console</button>
++          <div class="remediation" id="loopback-remediation" data-testid="loopback-remediation" data-remediation="loopback-network" hidden>
++            Loopback access is blocked. Open this site's browser settings, set "Loopback network" to Allow, then reload the page.
++          </div>
++          <div class="device-result" id="loopback-device-result" data-testid="loopback-output" role="status" aria-live="polite"></div>
++        </div>
++      </div>
++
++      <h3 style="text-align: center; margin-top: 30px;">Hardware Setup Wizard</h3>
++      <iframe
++        id="bridge-iframe"
++        class="device-frame"
++        data-testid="delegated-iframe"
++        src="https://setup.partner.example.com/device-bridge"
++        allow="local-network; loopback-network"
++        title="Local Device Bridge">
++      </iframe>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +296,200 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      /**
++       * Cross-browser permission check for the granular Local Network Access permissions.
++       * Never queries the legacy combined 'local-network-access' name, which can crash
++       * older Chrome renderers; unsupported/unrecognized names are treated as 'prompt'
++       * so the connect button still works and the request itself triggers the browser prompt.
++       * @param {'local-network' | 'loopback-network'} permissionName
++       */
++      async function queryLnaPermissionSafe(permissionName) {
++        if (!navigator.permissions || !navigator.permissions.query) {
++          updatePermissionUI(permissionName, 'prompt');
++          return 'prompt';
++        }
++        try {
++          const status = await navigator.permissions.query({ name: permissionName });
++          if (status.addEventListener) {
++            status.addEventListener('change', () => updatePermissionUI(permissionName, status.state));
++          } else if ('onchange' in status) {
++            status.onchange = () => updatePermissionUI(permissionName, status.state);
++          }
++          updatePermissionUI(permissionName, status.state);
++          return status.state;
++        } catch (err) {
++          updatePermissionUI(permissionName, 'prompt');
++          return 'prompt';
++        }
++      }
++
++      async function checkNetworkPermission(permissionName) {
++        return queryLnaPermissionSafe(permissionName);
++      }
++
++      function updatePermissionUI(permissionName, state) {
++        const statusBadge = document.querySelector(`[data-permission-status="${permissionName}"]`);
++        const remediationBox = document.querySelector(`[data-remediation="${permissionName}"]`);
++        if (statusBadge) {
++          statusBadge.textContent = state;
++        }
++        if (remediationBox) {
++          remediationBox.hidden = state !== 'denied';
++        }
++      }
++
++      function showDeviceResult(elementId, message, isError) {
++        const el = document.getElementById(elementId);
++        if (!el) return;
++        el.textContent = message;
++        el.style.color = isError ? '#b3261e' : 'var(--primary)';
++      }
++
++      /**
++       * Connects to the user's LAN-attached smart brewer.
++       * Example endpoint is illustrative; replace with the paired device's address.
++       */
++      async function fetchLocalDeviceStatus(deviceUrl = 'http://192.168.1.50:8080/api/brew-status') {
++        const request = new Request(deviceUrl, {
++          method: 'GET',
++          mode: 'cors',
++          // Declares the 'local' address space so the browser exempts this http://
++          // request from Mixed Content blocking and gates it on 'local-network' permission.
++          targetAddressSpace: 'local',
++        });
++        const response = await fetch(request);
++        if (!response.ok) {
++          throw new Error(`Brewer responded with HTTP ${response.status}`);
++        }
++        return response.json();
++      }
++
++      async function connectLocalBrewer() {
++        try {
++          showDeviceResult('local-device-result', 'Connecting to brewer (local)...', false);
++          const data = await fetchLocalDeviceStatus('http://192.168.1.50:8080/api/brew-status');
++          showDeviceResult('local-device-result', `Connected — brewer status: ${data.status || 'ready'}`, false);
++          const remediationBox = document.querySelector('[data-remediation="local-network"]');
++          if (remediationBox) {
++            remediationBox.hidden = true;
++          }
++          return data;
++        } catch (err) {
++          showDeviceResult(
++            'local-device-result',
++            `Could not reach your Wi-Fi brewer. Confirm it's powered on, on the same network, and that Local network access is allowed for this site in browser settings. (${err.message})`,
++            true
++          );
++          const remediationBox = document.querySelector('[data-remediation="local-network"]');
++          if (remediationBox) {
++            remediationBox.hidden = false;
++          }
++        }
++      }
++
++      /**
++       * Connects to the Barista Console companion app on the user's loopback interface.
++       * Example endpoint is illustrative; replace with the companion app's port.
++       */
++      async function fetchLoopbackDaemon(daemonUrl = 'http://127.0.0.1:45990/api/queue') {
++        const request = new Request(daemonUrl, {
++          method: 'GET',
++          mode: 'cors',
++          // Declares the 'loopback' address space for the same reasons as 'local' above.
++          targetAddressSpace: 'loopback',
++        });
++        const response = await fetch(request);
++        if (!response.ok) {
++          throw new Error(`Console responded with HTTP ${response.status}`);
++        }
++        return response.json();
++      }
++
++      async function connectBaristaConsole() {
++        try {
++          showDeviceResult('loopback-device-result', 'Connecting to console (loopback)...', false);
++          const data = await fetchLoopbackDaemon('http://127.0.0.1:45990/api/queue');
++          showDeviceResult('loopback-device-result', `Connected — ${data.queueLength ?? 0} orders in queue`, false);
++          const remediationBox = document.querySelector('[data-remediation="loopback-network"]');
++          if (remediationBox) {
++            remediationBox.hidden = true;
++          }
++          return data;
++        } catch (err) {
++          showDeviceResult(
++            'loopback-device-result',
++            `Could not reach the Barista Console companion app. Confirm it's running on this computer and that Loopback access is allowed for this site in browser settings. (${err.message})`,
++            true
++          );
++          const remediationBox = document.querySelector('[data-remediation="loopback-network"]');
++          if (remediationBox) {
++            remediationBox.hidden = false;
++          }
++        }
++      }
++
++      function connectLocalWebSocketSafe(url, { protocols = [], targetAddressSpace = 'local' } = {}) {
++        try {
++          return new WebSocket(url, { protocols, targetAddressSpace });
++        } catch {
++          return new WebSocket(url, protocols);
++        }
++      }
++
++      function openLocalWebSocket(wsUrl = 'ws://192.168.1.100:8080/stream') {
++        return connectLocalWebSocketSafe(wsUrl, {
++          protocols: ['v1.telemetry'],
++          targetAddressSpace: 'local',
++        });
++      }
++
++      async function init() {
++        const [localState, loopbackState] = await Promise.all([
++          queryLnaPermissionSafe('local-network'),
++          queryLnaPermissionSafe('loopback-network'),
++        ]);
++
++        // Only auto-connect when permission is already granted. When the state is
++        // 'prompt' or 'denied', wait for an explicit click on the connect buttons below.
++        if (localState === 'granted') {
++          connectLocalBrewer();
++        }
++        if (loopbackState === 'granted') {
++          connectBaristaConsole();
++        }
++
++        const localBtn = document.getElementById('connect-local-btn');
++        const loopbackBtn = document.getElementById('connect-loopback-btn');
++        if (localBtn) {
++          localBtn.addEventListener('click', connectLocalBrewer);
++        }
++        if (loopbackBtn) {
++          loopbackBtn.addEventListener('click', connectBaristaConsole);
++        }
++      }
++
++      // Expose helpers for global / external access
++      window.queryLnaPermissionSafe = queryLnaPermissionSafe;
++      window.checkNetworkPermission = checkNetworkPermission;
++      window.fetchLocalDeviceStatus = fetchLocalDeviceStatus;
++      window.fetchLoopbackDaemon = fetchLoopbackDaemon;
++      window.connectLocalBrewer = connectLocalBrewer;
++      window.connectBaristaConsole = connectBaristaConsole;
++      window.connectLocalWebSocketSafe = connectLocalWebSocketSafe;
++      window.openLocalWebSocket = openLocalWebSocket;
++      window.updatePermissionUI = updatePermissionUI;
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', init);
++      } else {
++        init();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>
