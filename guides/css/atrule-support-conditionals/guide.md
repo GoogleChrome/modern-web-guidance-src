@@ -133,7 +133,7 @@ sheet.replaceSync(`
     }
   }
 `);
-const SUPPORTS_PAGE_MARGINS = Boolean(sheet.cssRules[0]?.cssRules[0]);
+const SUPPORTS_PAGE_MARGINS = Boolean(sheet.cssRules[0]?.cssRules?.[0]);
 ```
 
 IMPORTANT:
