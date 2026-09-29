@@ -1,0 +1,122 @@
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Vendored detection logic from @vercel/detect-agent@1.2.5
+ * Upstream: https://github.com/vercel/vercel/tree/main/packages/detect-agent
+ *
+ * Checks environment variables and known runtime indicators to detect what AI
+ * agent or automated development environment is executing the CLI.
+ */
+
+import { accessSync, constants } from 'node:fs';
+
+const DEVIN_LOCAL_PATH = '/opt/.devin';
+
+export const KNOWN_AGENTS = {
+  CURSOR: 'cursor',
+  CURSOR_CLI: 'cursor-cli',
+  CLAUDE: 'claude',
+  COWORK: 'cowork',
+  DEVIN: 'devin',
+  REPLIT: 'replit',
+  GEMINI: 'gemini',
+  CODEX: 'codex',
+  ANTIGRAVITY: 'antigravity',
+  AUGMENT_CLI: 'augment-cli',
+  OPENCODE: 'opencode',
+  GITHUB_COPILOT: 'github-copilot',
+  V0: 'v0',
+} as const;
+
+export type KnownAgentNames = typeof KNOWN_AGENTS[keyof typeof KNOWN_AGENTS];
+
+export interface AgentResult {
+  isAgent: boolean;
+  agent?: {
+    name: string;
+  };
+}
+
+/**
+ * Synchronously determine the agent executing the current process based on
+ * environment variables and well-known filesystem markers.
+ */
+export function determineAgent(env: NodeJS.ProcessEnv = process.env): AgentResult {
+  if (env.AI_AGENT) {
+    const name = env.AI_AGENT.trim();
+    if (name) {
+      if (name === KNOWN_AGENTS.GITHUB_COPILOT || name === 'github-copilot-cli') {
+        return {
+          isAgent: true,
+          agent: { name: KNOWN_AGENTS.GITHUB_COPILOT },
+        };
+      }
+      if (name === KNOWN_AGENTS.V0) {
+        return {
+          isAgent: true,
+          agent: { name: KNOWN_AGENTS.V0 },
+        };
+      }
+      return {
+        isAgent: true,
+        agent: { name },
+      };
+    }
+  }
+
+  if (env.CURSOR_TRACE_ID) {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.CURSOR } };
+  }
+
+  if (env.CURSOR_AGENT || env.CURSOR_EXTENSION_HOST_ROLE === 'agent-exec') {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.CURSOR_CLI } };
+  }
+
+  if (env.GEMINI_CLI) {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.GEMINI } };
+  }
+
+  if (env.CODEX_SANDBOX || env.CODEX_CI || env.CODEX_THREAD_ID) {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.CODEX } };
+  }
+
+  if (env.ANTIGRAVITY_AGENT) {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.ANTIGRAVITY } };
+  }
+
+  if (env.AUGMENT_AGENT) {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.AUGMENT_CLI } };
+  }
+
+  if (env.OPENCODE_CLIENT) {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.OPENCODE } };
+  }
+
+  if (env.CLAUDECODE || env.CLAUDE_CODE) {
+    if (env.CLAUDE_CODE_IS_COWORK) {
+      return { isAgent: true, agent: { name: KNOWN_AGENTS.COWORK } };
+    }
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.CLAUDE } };
+  }
+
+  if (env.REPL_ID) {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.REPLIT } };
+  }
+
+  if (env.COPILOT_MODEL || env.COPILOT_ALLOW_ALL || env.COPILOT_GITHUB_TOKEN) {
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.GITHUB_COPILOT } };
+  }
+
+  try {
+    accessSync(DEVIN_LOCAL_PATH, constants.F_OK);
+    return { isAgent: true, agent: { name: KNOWN_AGENTS.DEVIN } };
+  } catch {
+    // Path doesn't exist or is inaccessible
+  }
+
+  return { isAgent: false, agent: undefined };
+}
