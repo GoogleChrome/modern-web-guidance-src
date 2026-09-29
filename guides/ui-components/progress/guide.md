@@ -145,20 +145,21 @@ progress:indeterminate::-moz-progress-bar {
 ### 3. Accessibility Considerations
 * **Mandatory:** Use `<label for="...">`, `aria-labelledby`, or `aria-label` to associate the progress element with a label. 
 * **Contextual state**: Use `aria-describedby` to reference the loading progress of a separate region of a page. Use `aria-busy="true"` on the container being updated. Set `aria-busy` to `"false"` when the task is complete. 
-* **Optional:** Set `tabindex="-1"` and call `.focus()` on the `progress` element in JavaScript when significant updates like the completion of a task occur to force screen readers to announce the new progress.
+* **Optional:** Set `tabindex="-1"` and call `.focus()` on the `progress` element in JavaScript when the completion of a task occurs to force screen readers to announce the new progress.
 * **DO** respect `prefers-reduced-motion` if you apply custom animations.
 * **DO** ensure proper contrast between the progress bar and track when adding custom styles.
 * **Programmatic focus**: Use `:focus-visible` to indicate when a progress element has been programmatically focused. 
 * **Consider alternatives to represent indeterminate state**: Indeterminate progress bar animations displayed in parallel to other content can be considered distracting for some users. 
 
 ```html
-<section id="upload-container" aria-live="polite" aria-describedby="upload-progress">
-  <label for="upload-progress">
-    <span class="sr-only">File Upload Status:</span>
-  </label>
-  <progress id="upload-progress" tabindex="-1"></progress>
-  <p id="status-text">Preparing...</p>
-</section>
+<!-- The progress bar is physically separate from the region it describes -->
+<label for="p-status">Task Progress:</label>
+<progress id="p-status" value="30" max="100"></progress>
+
+<!-- The region being updated references the progress bar using aria-describedby -->
+<div id="loading-region" aria-busy="true" aria-describedby="p-status">
+  <p>Content is currently loading...</p>
+</div>
 ```
 
 ## Best Practices
