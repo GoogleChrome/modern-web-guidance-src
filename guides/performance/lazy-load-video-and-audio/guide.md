@@ -33,7 +33,7 @@ Adding `loading="lazy"` to offscreen `<video>` and `<audio>` elements instructs 
   controls
   width="1280"
   height="720"
-  poster="/images/hero-poster.webp"
+  poster="/images/hero-poster.jpg"
   preload="metadata"
 >
   <source src="/media/keynote.webm" type="video/webm">
@@ -50,7 +50,7 @@ Adding `loading="lazy"` to offscreen `<video>` and `<audio>` elements instructs 
   loading="lazy"
   width="800"
   height="450"
-  poster="/images/tutorial-poster.webp"
+  poster="/images/tutorial-poster.jpg"
   preload="metadata"
 >
   <source src="/media/tutorial.webm" type="video/webm">
@@ -70,7 +70,7 @@ Adding `loading="lazy"` to offscreen `<video>` and `<audio>` elements instructs 
   playsinline
   width="640"
   height="360"
-  poster="/images/feature-loop-poster.webp"
+  poster="/images/feature-loop-poster.jpg"
 >
   <source src="/media/feature-loop.webm" type="video/webm">
   <source src="/media/feature-loop.mp4" type="video/mp4">
