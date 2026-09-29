@@ -31,7 +31,7 @@ Do NOT use `@supports at-rule()` to conditionally apply the at-rule being detect
   }
 }
 
-## Detecting support for at-rules without `@supports at-rule()` { #detecting-at-rules-without-supports-at-rule }
+## Detecting support for at-rules when `@supports at-rule()` isn’t appropriate { #detecting-at-rules-without-supports-at-rule }
 
 When `at-rule()` is not an option, either due to browser support or because deeper detection is needed, you can use the guidance below.
 
@@ -122,7 +122,7 @@ Notes:
 For entire at-rules, check for the presence of certain interfaces in JavaScript.
 For example, if `globalThis.CSSFunctionRule` is defined, then `@function` is supported.
 
-If you don’t know the interface name, or you need to test more deeply (e.g. for certain preludes, nested rules, descriptors), you can set up a test and check how it was parsed:
+If you need to test more deeply (e.g. for certain preludes, nested rules, descriptors), you can set up a test and check how it was parsed:
 
 ```js
 const sheet = new CSSStyleSheet();
