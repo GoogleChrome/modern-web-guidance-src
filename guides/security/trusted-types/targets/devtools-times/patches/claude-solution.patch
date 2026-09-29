@@ -1,0 +1,108 @@
+diff --git a/src/pages/trusted-types.astro b/src/pages/trusted-types.astro
+new file mode 100644
+index 0000000..6aa95d1
+--- /dev/null
++++ b/src/pages/trusted-types.astro
+@@ -0,0 +1,102 @@
++---
++const baseUrl = import.meta.env.BASE_URL;
++---
++
++<!doctype html>
++<html lang="en">
++  <head>
++    <!--
++      This must be the first child of <head> — earlier tags would not be
++      covered by the enforcement.
++    -->
++    <meta
++      http-equiv="Content-Security-Policy"
++      content="require-trusted-types-for 'script'; trusted-types my-no-pretzel-policy;"
++    />
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <title>Trusted Types Demo | The DevTools Times</title>
++    <link rel="icon" href=`${baseUrl}favicon.svg` />
++  </head>
++  <body class="bg-gray-100 font-sans p-8 max-w-2xl mx-auto">
++    <h1 class="text-2xl font-bold mb-4">Trusted Types Demo</h1>
++    <p class="mb-4 text-gray-700">
++      This page enforces a <code>require-trusted-types-for 'script'</code> Content
++      Security Policy. Enter some HTML below (try including the word
++      "pretzel") and compare what happens when it's written to the DOM
++      unsafely versus through the <code>my-no-pretzel-policy</code> Trusted Types
++      policy.
++    </p>
++
++    <label for="input-field" class="block font-semibold mb-1">HTML content</label>
++    <textarea
++      id="input-field"
++      class="w-full border border-gray-300 rounded p-2 mb-4"
++      rows="3">I love eating a soft pretzel.</textarea>
++
++    <div class="flex gap-3 mb-4">
++      <button
++        id="btn-unsafe"
++        class="bg-red-600 text-white font-semibold py-2 px-4 rounded hover:bg-red-700"
++      >
++        Render Unsafely
++      </button>
++      <button
++        id="btn-safe"
++        class="bg-green-600 text-white font-semibold py-2 px-4 rounded hover:bg-green-700"
++      >
++        Render Safely
++      </button>
++    </div>
++
++    <div class="mb-4">
++      <h2 class="font-semibold mb-1">Output</h2>
++      <div id="output" class="border border-gray-300 rounded p-3 min-h-[3rem]"></div>
++    </div>
++
++    <div>
++      <h2 class="font-semibold mb-1">Error Log</h2>
++      <pre
++        id="error-log"
++        style="display: none;"
++        class="border border-red-300 bg-red-50 text-red-700 rounded p-3 min-h-[3rem] whitespace-pre-wrap"></pre>
++    </div>
++
++    <script is:inline>
++      // Tinyfill: provide a minimal mock of the Trusted Types API for
++      // browsers that don't support it natively, so the code below can be
++      // written the same way regardless of browser support.
++      if (!window.trustedTypes) {
++        window.trustedTypes = {
++          createPolicy: (name, rules) => rules,
++        };
++      }
++
++      const policy = window.trustedTypes.createPolicy("my-no-pretzel-policy", {
++        createHTML: (input) => input.replace(/pretzel/g, "popcorn"),
++      });
++
++      const inputField = document.getElementById("input-field");
++      const outputEl = document.getElementById("output");
++      const errorLogEl = document.getElementById("error-log");
++
++      document.getElementById("btn-unsafe").addEventListener("click", () => {
++        try {
++          // Assigning a raw string directly to innerHTML. Under the
++          // enforced Trusted Types CSP, this throws a TypeError.
++          outputEl.innerHTML = inputField.value;
++        } catch (error) {
++          errorLogEl.textContent = `${error.name}: ${error.message}`;
++          errorLogEl.style.display = "";
++        }
++      });
++
++      document.getElementById("btn-safe").addEventListener("click", () => {
++        const trustedHTML = policy.createHTML(inputField.value);
++        outputEl.innerHTML = trustedHTML;
++        errorLogEl.textContent = "";
++        errorLogEl.style.display = "none";
++      });
++    </script>
++  </body>
++</html>
