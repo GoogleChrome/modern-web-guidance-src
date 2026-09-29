@@ -51,7 +51,7 @@ h1 {
 
 Set the base text size on `body` only when the design needs a size different from the inherited browser default; otherwise, let it inherit. Set sizes on specific elements, such as headings, with relative units such as `rem` or `em`. Use `rem` for a size relative to the root font size, and `em` when the size should depend on the parent element's font size. Do not set a custom font size on `:root` or `html`.
 
-### Fluid Typography
+#### Fluid Typography
 
 Fluid typography MAY use viewport-relative units such as `vw`, provided that font sizes also include a font-relative component such as `rem` or `em`. For more fluid-scaling techniques, including container query units and `clamp()`, see {{ GUIDE_REF("fluid-scaling") }}.
 
@@ -80,7 +80,7 @@ Responsive breakpoints MUST NOT assume that text will remain at its default size
 
 Test responsive layouts with operating system text scaling and browser zoom enabled. Text MUST remain readable and content MUST remain visible without overlap, clipping, or horizontal scrolling.
 
-### 5. Ensure Content Wrapping & Flexible Heights
+### 4. Ensure Content Wrapping & Flexible Heights
 
 When text scales up, elements require more vertical and horizontal space to prevent truncation or overlap. To keep your components robust, design your layouts to expand dynamically around the content rather than forcing rigid coordinates:
 
@@ -99,7 +99,7 @@ When text scales up, elements require more vertical and horizontal space to prev
 }
 ```
 
-### 4. DO NOT Override the Root Font Size
+### 5. DO NOT Override the Root Font Size
 
 When opting in via the `<meta name="text-scale" content="scale">` element, **DO NOT** explicitly set the root `font-size` in your stylesheet. This includes declarations on either `:root` or `html`, and applies to absolute units, relative units, and calculated values.
 
