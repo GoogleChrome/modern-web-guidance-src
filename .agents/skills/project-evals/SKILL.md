@@ -42,8 +42,8 @@ Write a natural language, bulleted list of assertions that must be true if an ag
 
 * **First Bullet: Mandatory "Presence" Check** — The very first bullet in `expectations.md` MUST be a labeled presence check naming the literal string(s) that a correct implementation must contain in its source. Format:
   ```md
-  - **Presence check:** the modified source files contain `fetchpriority`.
-  - **Presence check:** the modified source files contain `mask-image` or `@property`.
+  - Basic presence: the modified source files contain `fetchpriority`.
+  - Basic presence: the modified source files contain `mask-image` or `@property`.
   ```
   The grader turns this into a source-level `includes()` check across target files (`targetFiles.some(f => fs.readFileSync(f, 'utf8').includes(...))`), so no-op or unrelated implementations fail fast before the deeper behavioral assertions run. Pick tokens that the demo contains and that the base apps (`harness/base_apps/`) do NOT already contain (e.g. `setTimeout` or `position: sticky` are unusable). Alternatives joined with "or" are fine.
   * **Exempt:** discipline hub guides (see `DISCIPLINE_GUIDES` in `lib/guide-validation.ts` and `guides/<category>/<category>/`) cover many techniques at once and have no single representative token. They skip the presence check.

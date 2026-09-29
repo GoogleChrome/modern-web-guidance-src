@@ -1,4 +1,4 @@
-* **Presence check:** the modified source files contain `sibling-index`.
+* Basic presence: the modified source files contain `sibling-index`.
 * The animation on the first element starts before the animation on the second element.
 * `sibling-index()` is multiplied by a time and used as the `animation-delay`.
 * The implementation provides a fallback for older browsers using CSS custom properties.

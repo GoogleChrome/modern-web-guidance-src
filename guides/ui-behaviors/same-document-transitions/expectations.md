@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `startViewTransition`.
+- Basic presence: the modified source files contain `startViewTransition`.
 - The transition from list view to detail view is wrapped in a `document.startViewTransition` call.
 - When a thumbnail is clicked, the selected element is assigned a `view-transition-name` (e.g., `hero`) before or during the transition.
 - The corresponding hero element in the detail view has the same `view-transition-name` (e.g., `hero`) as the selected thumbnail.

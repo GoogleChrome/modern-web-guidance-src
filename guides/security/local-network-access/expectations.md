@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `local-network` or `loopback-network`.
+- Basic presence: the modified source files contain `local-network` or `loopback-network`.
 - The application queries the granular permission (`'local-network'` or `'loopback-network'`) via `navigator.permissions.query()` with fallback error handling when the permission name is unrecognized.
 - The application never queries the legacy `'local-network-access'` permission name via `navigator.permissions.query()`.
 - Requests targeting a local network endpoint specify `targetAddressSpace: 'local'` in `fetch()` or `Request` options, and requests targeting a loopback endpoint specify `targetAddressSpace: 'loopback'`.

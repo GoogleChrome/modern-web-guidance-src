@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `toolname`.
+- Basic presence: the modified source files contain `toolname`.
 - The form element has both `toolname` and `tooldescription` attributes.
 - Input elements have associated labels or `toolparamdescription` attributes.
 - The `submit` event listener uses `event.preventDefault()`.

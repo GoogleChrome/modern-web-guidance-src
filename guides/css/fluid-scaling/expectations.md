@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `container-type` or `cqi` or `cqw`.
+- Basic presence: the modified source files contain `container-type` or `cqi` or `cqw`.
 - The component wrapper has `container-type: inline-size` (or `size`) applied.
 - The component title has a `font-size` that uses container query units (like `cqi` or `cqw`).
 - The component title uses `clamp()` to constrain the font size between a minimum and maximum value.

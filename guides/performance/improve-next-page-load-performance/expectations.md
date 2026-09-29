@@ -1,6 +1,6 @@
 # Expectations: `improve-next-page-load-performance`
 
-- **Presence check:** the modified source files contain `speculationrules`.
+- Basic presence: the modified source files contain `speculationrules`.
 - The rule is included in a `<script type="speculationrules"></script>` unless referenced from an `Speculation-Rules` HTTP header.
 - The rule is valid JSON.
 - The rule contains one or more of the following top-level keys:

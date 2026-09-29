@@ -1,4 +1,4 @@
-1. **Presence check:** the modified source files contain `Summarizer`.
+1. Basic presence: the modified source files contain `Summarizer`.
 1. The `Summarizer` API should be available in the browser on `window.Summarizer`, but not on `window.ai.summarizer`.
 1. The `Summarizer.availability()` function should return `available` or `downloadable` or `downloading` or `unavailable`.
 1. The same options should be passed to both `Summarizer.availability()` and `Summarizer.create()`.

@@ -1,6 +1,6 @@
 # Expectations: `defer-rendering-heavy-content`
 
-- **Presence check:** the modified source files contain `content-visibility`.
+- Basic presence: the modified source files contain `content-visibility`.
 - Cards with class name `.off-screen-card` must be outside the initial viewport.
 - Cards with class name `.off-screen-card` must set `content-visibility: auto`.
 - Cards with class name `.off-screen-card` must set `contain-intrinsic-size`.

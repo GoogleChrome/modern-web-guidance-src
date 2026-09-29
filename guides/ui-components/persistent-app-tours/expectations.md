@@ -1,4 +1,4 @@
-1. **Presence check:** the modified source files contain `popover`.
+1. Basic presence: the modified source files contain `popover`.
 1. The tour step popover must not close when the user clicks on the element it is highlighting.
 2. The popover must remain in the Top Layer, ensuring it is never obscured by other elements.
 3. The tour step must correctly follow the anchor element if the window is resized.

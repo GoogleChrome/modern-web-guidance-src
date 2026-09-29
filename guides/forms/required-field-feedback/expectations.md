@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `:user-invalid`.
+- Basic presence: the modified source files contain `:user-invalid`.
 - On page load, all required fields must appear neutral.
 - Clicking into a required field and clicking out (blur) WITHOUT typing MUST trigger the error state (red border).
 - Typing into the field MUST remove the error state immediately.

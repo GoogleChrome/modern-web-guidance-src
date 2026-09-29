@@ -1,6 +1,6 @@
 # Expectations
 
-- **Presence check:** the modified source files contain `popover`.
+- Basic presence: the modified source files contain `popover`.
 - The drawer is not visible when the page first loads.
 - The menu trigger button has `aria-expanded="false"` when the drawer is closed.
 - Clicking the menu trigger button makes the drawer visible.

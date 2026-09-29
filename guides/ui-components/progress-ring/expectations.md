@@ -1,6 +1,6 @@
 # Expectations
 
-- **Presence check:** the modified source files contain `<progress`.
+- Basic presence: the modified source files contain `<progress`.
 - The component contains a native HTML `<progress>` element.
 - The component is visible on the page.
 - The visual progress ring is implemented using a CSS `conic-gradient`.

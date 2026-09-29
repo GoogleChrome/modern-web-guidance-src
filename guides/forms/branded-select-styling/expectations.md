@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `base-select` or `::picker(select)`.
+- Basic presence: the modified source files contain `base-select` or `::picker(select)`.
 - The implementation MUST apply `appearance: base-select` to the `<select>` element to opt into the customizable select behavior.
 - The implementation MUST apply `appearance: base-select` to the `::picker(select)` pseudo-element to enable custom styling for the options dropdown.
 - The implementation MUST use the `::picker(select)` pseudo-element to define the visual container for the options list (e.g., borders, shadows, background).

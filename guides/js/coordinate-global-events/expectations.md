@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `Temporal`.
+- Basic presence: the modified source files contain `Temporal`.
 - The implementation MUST feature-detect the `Temporal` API before usage to ensure compatibility.
 - The implementation MUST conditionally load the Temporal polyfill only if native support is absent.
 - The implementation MUST ensure the Temporal API is available globally if the application logic relies on the global `Temporal` object.

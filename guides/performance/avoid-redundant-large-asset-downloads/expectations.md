@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `crossOriginStorage`.
+- Basic presence: the modified source files contain `crossOriginStorage`.
 - The app feature-detects `navigator.crossOriginStorage?.requestFileHandle` once, up front, and falls back to a normal network fetch immediately when it's absent, rather than attempting a call unconditionally.
 - Before fetching a large shared asset (an AI model, Wasm module, fully-bundled JS library, or game engine core) from the network, the app calls `navigator.crossOriginStorage.requestFileHandle(hash)` to check whether it is already available locally.
 - The `hash` object passed to `requestFileHandle()` has a `value` that is a lowercase hexadecimal string and an `algorithm` naming a Web Crypto API hash algorithm (e.g. `'SHA-256'`).

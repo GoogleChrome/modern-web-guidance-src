@@ -1,6 +1,6 @@
 # Expectations: `interactions-in-complex-layouts`
 
-- **Presence check:** the modified source files contain `content-visibility`.
+- Basic presence: the modified source files contain `content-visibility`.
 - Target column elements must have `content-visibility: auto` applied in their computed styles.
 - Target column elements must have a non-zero `contain-intrinsic-size` specified.
 - The implementation must exhibit isolated layout recalculations (verifiable via performance traces showing smaller layout cost when items are mutated within columns).

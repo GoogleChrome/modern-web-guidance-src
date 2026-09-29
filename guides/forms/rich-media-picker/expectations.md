@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `base-select` or `::picker(select)`.
+- Basic presence: the modified source files contain `base-select` or `::picker(select)`.
 - The `<select>` element MUST have `appearance: base-select` applied to opt into the customizable state.
 - The `::picker(select)` pseudo-element MUST have `appearance: base-select` applied to opt into the customizable state.
 - The `<select>` element MUST contain a `<button>` tag as a direct child.

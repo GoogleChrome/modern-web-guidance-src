@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `image-set`.
+- Basic presence: the modified source files contain `image-set`.
 - The element has a standard background image or mask image declaration acting as a fallback.
 - The element uses the `image-set()` function for the same property, defined after the fallback.
 - The `image-set()` function includes multiple pixel density descriptors (e.g., `1x` and `2x`).

@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `linear(`.
+- Basic presence: the modified source files contain `linear(`.
 - The implementation uses the `linear()` timing function for an animation or transition.
 - The `linear()` function includes at least 5 stops to approximate a complex physics-based curve (like a spring or bounce).
 - The `linear()` function on the `spring` box contains at least one progress value greater than 1 or less than 0 to demonstrate overshooting or anticipation.

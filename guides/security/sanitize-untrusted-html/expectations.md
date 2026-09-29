@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `setHTML` or `Sanitizer`.
+- Basic presence: the modified source files contain `setHTML` or `Sanitizer`.
 - After untrusted HTML containing a `<script>` element is rendered, the output container contains no `<script>` elements.
 - After untrusted HTML containing inline event handlers is rendered, no element in the output container has an `on*` attribute (such as `onclick` or `onerror`).
 - Rendering untrusted HTML does not execute any script from the input (no dialogs open and no console messages are logged by the injected markup).

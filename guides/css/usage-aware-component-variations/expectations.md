@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `@container style(` or `@container style (`.
+- Basic presence: the modified source files contain `@container style(` or `@container style (`.
 - The parent containers define semantic context flags using CSS custom properties (e.g., `--surface: featured` vs. the unset default).
 - The component uses `@container style()` queries to adapt its internal visual logic (e.g., button variant, badge visibility) based on these inherited properties.
 - When the surface is `featured`, the component reveals promotional elements (like a badge) and uses a more prominent "filled" button style.

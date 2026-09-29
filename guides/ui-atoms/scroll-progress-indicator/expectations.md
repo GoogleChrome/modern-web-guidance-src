@@ -1,4 +1,4 @@
-* **Presence check:** the modified source files contain `animation-timeline`.
+* Basic presence: the modified source files contain `animation-timeline`.
 * The agent has defined an `@keyframes` block that animates `transform: scaleX()` from 0 to 1 (or similar scaling).
 * The agent has applied the animation to the progress indicator element using `animation-timeline: scroll()`.
 * The progress indicator element has `position: fixed` or `position: absolute` to stay in view.

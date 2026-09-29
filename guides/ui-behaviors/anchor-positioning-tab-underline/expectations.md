@@ -1,4 +1,4 @@
-* **Presence check:** the modified source files contain `anchor-name` or `position-anchor`.
+* Basic presence: the modified source files contain `anchor-name` or `position-anchor`.
 * There is an underline element visible under the active tab item.
 * The underline element is the width of the active tab item.
 * The underline element's inline start edge is aligned to the active tab item's inline start edge.

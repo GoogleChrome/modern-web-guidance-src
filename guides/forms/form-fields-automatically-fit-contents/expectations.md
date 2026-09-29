@@ -1,4 +1,4 @@
-* **Presence check:** the modified source files contain `field-sizing`.
+* Basic presence: the modified source files contain `field-sizing`.
 * The input element has `field-sizing: content` applied.
 * The input element has an explicit `width` of `auto` or `fit-content` applied.
 * The input element has `align-self: start`, `justify-self: start`, or `align-self: flex-start` applied to override implicit stretching.

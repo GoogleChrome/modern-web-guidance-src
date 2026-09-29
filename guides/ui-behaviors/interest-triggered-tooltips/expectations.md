@@ -1,4 +1,4 @@
-* **Presence check:** the modified source files contain `interestfor`.
+* Basic presence: the modified source files contain `interestfor`.
 * The trigger is a `<button>` or `<a>` element.
 * The trigger has an `interestfor` attribute with the idref of the tooltip.
 * The tooltip has a `popover="hint"` attribute.

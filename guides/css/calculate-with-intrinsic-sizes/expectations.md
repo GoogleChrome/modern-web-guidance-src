@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `calc-size`.
+- Basic presence: the modified source files contain `calc-size`.
 - The element uses `calc-size()` to calculate its dimensions.
 - The `calc-size()` function correctly references an intrinsic keyword (like `fit-content`, `auto`, or `max-content`) as its basis.
 - The `calc-size()` function uses the `size` keyword within its second argument, and never within its first argument (`basis`).

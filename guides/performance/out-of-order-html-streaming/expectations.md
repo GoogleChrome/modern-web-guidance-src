@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `<?start` or `template for`.
+- Basic presence: the modified source files contain `<?start` or `template for`.
 - The page should initially render fallback content (such as a loading skeleton) within a range defined by `<?start>` and `<?end>` processing instructions.
 - The fallback content should be automatically replaced by the final content delivered in a `<template for="...">` element once that part of the HTML stream is processed.
 - Placeholder containers should have stable dimensions (e.g. `min-height` or `aspect-ratio`) to prevent layout shifts when the content is patched.

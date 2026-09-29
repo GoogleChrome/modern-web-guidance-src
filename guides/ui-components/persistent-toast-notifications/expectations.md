@@ -1,4 +1,4 @@
-1. **Presence check:** the modified source files contain `popover`.
+1. Basic presence: the modified source files contain `popover`.
 1. Toasts must appear on top of all other page content, including modal dialogs or open menus.
 2. Clicking on the DOM content outside of the popover must not dismiss the toast notification.
 3. Multiple toasts must be able to be open at the same time without closing one another.

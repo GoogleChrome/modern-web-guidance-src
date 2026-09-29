@@ -1,4 +1,4 @@
-* **Presence check:** the modified source files contain `scrollbar-width` or `scrollbar-color`.
+* Basic presence: the modified source files contain `scrollbar-width` or `scrollbar-color`.
 * The agent has created a scrollable element with `overflow: auto` or `overflow: scroll` or `overflow-y` set.
 * The scrollable element has the CSS properties `scrollbar-width` and/or `scrollbar-color` applied.
 * The agent has provided a fallback for older browsers using the legacy `::-webkit-scrollbar` pseudo-elements.

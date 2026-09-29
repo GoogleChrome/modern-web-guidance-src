@@ -1,6 +1,6 @@
 # Expectations: `autofill-payment-form`
 
-- **Presence check:** the modified source files contain `cc-number` or `cc-exp`.
+- Basic presence: the modified source files contain `cc-number` or `cc-exp`.
 - `<input>`, `<select>`, and `<textarea>` elements **MUST** be within a `<form>` element.
 - Every `<input>`, `<select>`, or `<textarea>` element in a form **MUST** be visually labeled using a `<label>` element.
 - Every `<label>` element **MUST** have a `for` attribute with a value that matches the `id` attribute of its associated input.

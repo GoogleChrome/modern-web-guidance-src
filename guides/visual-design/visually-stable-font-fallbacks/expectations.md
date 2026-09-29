@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `font-size-adjust`.
+- Basic presence: the modified source files contain `font-size-adjust`.
 - The text container has the `font-size-adjust` CSS property applied with a value other than `none`.
 - The `font-size-adjust` property is set to either a numeric value or the `from-font` keyword.
 - When the `font-family` is swapped from a font with a high aspect ratio (like Verdana) to one with a lower aspect ratio (like Times New Roman), the computed `font-size` increases to maintain a consistent x-height.

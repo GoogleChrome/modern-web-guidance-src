@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `mask-image`.
+- Basic presence: the modified source files contain `mask-image`.
 - The image element with class `.shaped-avatar` has the `mask-image` and `-webkit-mask-image` properties applied referencing a valid SVG mask ID.
 - The decorative empty element with class `.card-accent` has the `mask-image` and `-webkit-mask-image` properties applied referencing a valid SVG mask ID.
 - The SVG masks (e.g., `#splat-mask` and `#accent-stencil`) use `maskContentUnits="objectBoundingBox"` to scale correctly with the elements' dimensions.

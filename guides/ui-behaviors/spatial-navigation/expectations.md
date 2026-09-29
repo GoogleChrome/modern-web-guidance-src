@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `getBoundingClientRect` or `focusgroup`.
+- Basic presence: the modified source files contain `getBoundingClientRect` or `focusgroup`.
 - **MANDATORY**: The spatial navigation container uses an accessible focus management pattern (such as roving tabindex or `aria-activedescendant`), exposing exactly one tab stop to sequential page navigation.
 - **MANDATORY**: Pressing the Right Arrow key moves focus to the visually closest focusable element located to the right of the currently focused element, using visual bounding client geometries.
 - **MANDATORY**: Pressing the Left Arrow key moves focus to the visually closest focusable element located to the left of the currently focused element.

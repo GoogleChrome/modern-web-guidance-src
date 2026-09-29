@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `container-type` or `@container`.
+- Basic presence: the modified source files contain `container-type` or `@container`.
 - The component wrapper has `container-type: inline-size` (or `size`) applied.
 - The component uses `@container` queries to apply different styles based on the container's width.
 - The component changes layout (e.g., from stacked to side-by-side) when the container width crosses a specific threshold (e.g., `400px`).

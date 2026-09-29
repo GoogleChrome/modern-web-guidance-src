@@ -1,4 +1,4 @@
-* **Presence check:** the modified source files contain `translate:` or `rotate:` or `scale:`.
+* Basic presence: the modified source files contain `translate:` or `rotate:` or `scale:`.
 * The target element's `translate` property is explicitly initialized to its identity value of `translate: 0` in CSS to maintain stable stacking context.
 * The target element's `scale` property is explicitly initialized to its identity value of `scale: 1` in CSS to maintain stable stacking context.
 * The target element's `rotate` property is explicitly initialized to its identity value of `rotate: 0deg` in CSS to maintain stable stacking context.

@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `modelContext`.
+- Basic presence: the modified source files contain `modelContext`.
 - The code checks for `modelContext` in `document` before registering a tool.
 - `document.modelContext.registerTool` is called with a tool definition object.
 - The tool definition includes a `name`, `description`, `inputSchema`, and `execute`.

@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `Temporal`.
+- Basic presence: the modified source files contain `Temporal`.
 - The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` or `!globalThis.Temporal` before usage.
 - The implementation MUST conditionally load a Temporal polyfill only if native support is absent.
 - The implementation MUST use `Temporal.PlainDateTime` (or another specific Temporal type like `Temporal.PlainDate`) as the value in reactive state to ensure immutability.

@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `commandfor`.
+- Basic presence: the modified source files contain `commandfor`.
 - Buttons use the "commandfor" and "command" attributes to trigger actions.
 - All custom command names start with "--".
 - Invoker buttons have initial accessibility attributes (e.g., `aria-expanded="false"`) where appropriate.

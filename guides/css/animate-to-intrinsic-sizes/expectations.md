@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `interpolate-size`.
+- Basic presence: the modified source files contain `interpolate-size`.
 - The `:root` or a parent element has `interpolate-size: allow-keywords` applied to enable intrinsic keyword interpolation globally.
 - The guide or code comments explicitly state that `interpolate-size: allow-keywords` is a mandatory opt-in required to enable transitions for intrinsic keywords, which are disabled by default to maintain backward compatibility with legacy layouts.
 - The interactive element (e.g., accordion, menu) has a `transition` property for logical properties (`block-size`, `inline-size`) or physical properties (`height`, `width`).

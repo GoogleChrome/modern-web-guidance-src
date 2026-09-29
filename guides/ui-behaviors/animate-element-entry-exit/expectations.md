@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `@starting-style`.
+- Basic presence: the modified source files contain `@starting-style`.
 - The element must use the `@starting-style` at-rule to define starting property values for its entry animation.
 - The element's CSS must include `transition-behavior: allow-discrete` or the `allow-discrete` keyword within the `transition` shorthand for the `display` property.
 - When an element is added to the DOM or its `display` changes from `none` to a visible value, it must smoothly transition its properties (e.g., `opacity`, `transform`) from the `@starting-style` values to its visible values.

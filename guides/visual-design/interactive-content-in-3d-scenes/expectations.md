@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `layoutsubtree`.
+- Basic presence: the modified source files contain `layoutsubtree`.
 - Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API.
 - When using WebGL or WebGPU, the `<canvas>` element MUST include the `layoutsubtree` attribute to allow descendant HTML elements to be exposed to browser features.
 - When using WebGL or WebGPU, canvas rendering MUST be executed inside an `onpaint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.

@@ -1,6 +1,6 @@
 # Expectations
 
-- **Presence check:** the modified source files contain `<progress`.
+- Basic presence: the modified source files contain `<progress`.
 - The component contains a native HTML `<progress>` element.
 - The `<progress>` element does not have a `value` attribute, correctly signaling an indeterminate state.
 - The `<progress>` element includes an `aria-label` (e.g., "Loading") for accessibility.

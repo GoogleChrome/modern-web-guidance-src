@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `scheduler.yield`.
+- Basic presence: the modified source files contain `scheduler.yield`.
 - The application processes a heavy computation or large loop asynchronously.
 - The application yields control back to the main thread periodically during the processing.
 - The application uses a time-based deadline (e.g., 50ms) to determine when to yield.

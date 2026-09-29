@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `mask-image`.
+- Basic presence: the modified source files contain `mask-image`.
 - The element with class `.weathered-bg` has the `mask-image` property applied.
 - The element with class `.weathered-bg` has the `-webkit-mask-image` property applied for older browser support.
 - The mask references a repeating image pattern or SVG.

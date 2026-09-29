@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `@view-transition`.
+- Basic presence: the modified source files contain `@view-transition`.
 - Both the source and destination pages include the `@view-transition { navigation: auto; }` CSS at-rule.
 - `<link rel="expect" href="#element-id" blocking="render">` is used in the `<head>` to block rendering until above-the-fold DOM elements have been parsed, ensuring the transition snapshot captures a visually complete page.
 - Scripts that must run before the transition (e.g., theme application) are marked with `blocking="render"` in the `<head>`.

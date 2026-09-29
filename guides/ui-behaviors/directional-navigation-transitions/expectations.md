@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `:active-view-transition-type` or `types:`.
+- Basic presence: the modified source files contain `:active-view-transition-type` or `types:`.
 - Clicking the "Next" button triggers a view transition.
 - Clicking the "Previous" button triggers a view transition.
 - During the "Next" transition, the `forward` transition type is active on the document element.

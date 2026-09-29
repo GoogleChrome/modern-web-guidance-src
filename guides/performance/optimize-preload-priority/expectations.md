@@ -1,4 +1,4 @@
-- **Presence check:** the modified source files contain `fetchpriority`.
+- Basic presence: the modified source files contain `fetchpriority`.
 - The `<link rel="preload" as="image">` for 'poster.jpg' has the `fetchpriority="high"` attribute.
 - The `<link rel="preload" as="font">` for 'brand-font.woff2' does NOT use the `fetchpriority="high"` attribute.
 - The `<link rel="preload" as="font">` for 'secondary-font.woff2' has the `fetchpriority="low"` attribute.

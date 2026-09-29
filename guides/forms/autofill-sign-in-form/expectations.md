@@ -1,6 +1,6 @@
 # Expectations: `autofill-sign-in-form`
 
-- **Presence check:** the modified source files contain `current-password`.
+- Basic presence: the modified source files contain `current-password`.
 - `<input>` elements MUST be within a `<form>` element.
 - The form MUST have a submit button using `<button>` or `<input type="submit">`.
 - Every `<input>` in the form MUST be visually labeled using a `<label>` element.
