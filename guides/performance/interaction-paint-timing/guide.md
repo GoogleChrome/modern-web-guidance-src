@@ -169,6 +169,7 @@ function sendToAnalytics(metric) {
       name: metric.name,
       value: metric.value,
       navigationType: metric.navigationType,
+      navigationURL: metric.navigationURL,
     }),
   );
 }
