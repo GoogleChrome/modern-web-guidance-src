@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import {
   test,
   expect,
@@ -6,125 +7,243 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../test-fixture.ts';
-import { SyntaxKind, type Project } from 'ts-morph';
+import { SyntaxKind, type Project, type CallExpression } from 'ts-morph';
 import type { Document } from 'linkedom';
-import { CSSStyleRule, CSSSupportsRule, type CSSStyleSheet } from 'cssomnom';
+import {
+  CSSRule,
+  CSSGroupingRule,
+  CSSStyleRule,
+  CSSSupportsRule,
+  type CSSStyleSheet,
+} from 'cssomnom';
 
+// @ts-expect-error import.meta is supported by Playwright ESM runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
+function collectStyleRules(rules: CSSRule[]): CSSStyleRule[] {
+  const result: CSSStyleRule[] = [];
+  for (const rule of rules) {
+    if (rule instanceof CSSStyleRule) {
+      result.push(rule);
+    }
+    if ('cssRules' in rule && rule.cssRules) {
+      result.push(...collectStyleRules(Array.from((rule as CSSGroupingRule).cssRules)));
+    }
+  }
+  return result;
+}
+
+function collectSupportsRules(rules: CSSRule[]): CSSSupportsRule[] {
+  const result: CSSSupportsRule[] = [];
+  for (const rule of rules) {
+    if (rule instanceof CSSSupportsRule) {
+      result.push(rule);
+    }
+    if ('cssRules' in rule && rule.cssRules) {
+      result.push(...collectSupportsRules(Array.from((rule as CSSGroupingRule).cssRules)));
+    }
+  }
+  return result;
+}
+
 test.describe('faster-spa-view-transitions Target Grader', () => {
-  // Requirement 1: Inactive view elements must have content-visibility: hidden applied in their computed styles.
-  test('inactive view elements have content-visibility: hidden applied in styles', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const styleRules = rules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-    const hasInactiveHidden = styleRules.some((r) => {
-      const hasHidden = r.style.getPropertyValue('content-visibility') === 'hidden';
-      const targetsInactive =
-        /\b(inactive|hidden)\b/i.test(r.selectorText) || /aria-hidden/i.test(r.selectorText);
-      return hasHidden && targetsInactive;
-    });
-    expect(hasInactiveHidden).toBe(true);
+  // --- STATIC ASSERTIONS (FAST) ---
+
+  test('Basic presence: the modified source files contain content-visibility', () => {
+    const hasContentVisibility = targetFiles.some(
+      (f) => fs.existsSync(f) && fs.readFileSync(f, 'utf8').includes('content-visibility'),
+    );
+    expect(hasContentVisibility).toBe(true);
   });
 
-  // Requirement 2: The active view element must not have content-visibility: hidden applied (it should be visible or default).
-  test('active view elements are defined and do not apply content-visibility: hidden', () => {
+  test('HTML defines multiple focusable SPA view containers', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const styleRules = rules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const viewContainersExist = docs.some((d) =>
-      Boolean(d.document.querySelector('.spa-view, [class*="spa-view"], [data-view]'))
-    );
-    const baseRulesDontHide = !styleRules.some((r) => {
-      const sel = r.selectorText;
-      const isBaseViewRule =
-        /\bspa-view\b/.test(sel) && !/\binactive\b|\bhidden\b|aria-hidden/.test(sel);
-      return isBaseViewRule && r.style.getPropertyValue('content-visibility') === 'hidden';
-    });
-
-    expect(viewContainersExist && baseRulesDontHide).toBe(true);
-  });
-
-  // Requirement 3: The implementation must toggle the content-visibility state when switching between views.
-  test('view switching logic toggles inactive state or content-visibility on view containers', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const stringLiterals = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
-    );
-    const hasInactiveOrViewReference = stringLiterals.some((str) => {
-      const val = str.getLiteralValue();
-      return val === 'inactive' || val === 'spa-view' || val === 'hidden';
-    });
-
-    const callExpressions = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
-    const hasClassOrStyleMutation = callExpressions.some((call) => {
-      const text = call.getText();
-      return (
-        /classList\.(add|toggle|remove)/.test(text) ||
-        /setAttribute\(\s*['"`](class|aria-hidden|style)['"`]/i.test(text)
+    const hasMultipleViews = docs.some((d) => {
+      const views = d.document.querySelectorAll(
+        '.spa-view, [data-view-container], main > section[id], #view-root > section[id]',
       );
+      return views.length >= 2;
     });
-
-    expect(sourceFiles.length > 0 && hasInactiveOrViewReference && hasClassOrStyleMutation).toBe(
-      true
-    );
+    expect(hasMultipleViews).toBe(true);
   });
 
-  // Requirement 4: The implementation must use aria-hidden="true" on inactive view elements to ensure they are removed from the accessibility tree.
-  test('inactive view elements use aria-hidden="true" to remove from accessibility tree', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-
-    const stringLiterals = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
+  test('CSS defines content-visibility: hidden rule for inactive views', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(Array.from(stylesheet.cssRules));
+    const hasHiddenRule = styleRules.some(
+      (r) => r.style.getPropertyValue('content-visibility').trim() === 'hidden',
     );
-    const hasAriaHiddenInJs = stringLiterals.some((str) => str.getLiteralValue() === 'aria-hidden');
-    const hasAriaHiddenInHtml = docs.some((d) => Boolean(d.document.querySelector('[aria-hidden]')));
-
-    expect(hasAriaHiddenInJs || hasAriaHiddenInHtml).toBe(true);
+    expect(hasHiddenRule).toBe(true);
   });
 
-  // Requirement 5: The implementation should maintain focus management by moving focus to the active view container upon transition.
-  test('focus management moves focus to active view container upon navigation', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const callExpressions = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
-    const hasFocusCall = callExpressions.some((call) => {
-      const expr = call.getExpression();
-      if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
-        return expr.getText().endsWith('.focus');
+  test('CSS provides @supports fallback with display: none when content-visibility is not supported', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const supportsRules = collectSupportsRules(Array.from(stylesheet.cssRules));
+    const hasSupportsFallback = supportsRules.some((sr) => {
+      const condition = sr.conditionText.toLowerCase();
+      if (!condition.includes('not') || !condition.includes('content-visibility')) {
+        return false;
       }
-      return false;
+      const nestedRules = collectStyleRules(Array.from(sr.cssRules));
+      return nestedRules.some((r) => r.style.getPropertyValue('display').trim() === 'none');
     });
-
-    expect(sourceFiles.length > 0 && hasFocusCall).toBe(true);
+    expect(hasSupportsFallback).toBe(true);
   });
 
-  // Requirement 6: If content-visibility is not supported, inactive view elements must have display: none applied in their computed styles.
-  test('fallback provides display: none for browsers without content-visibility support', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const supportsRules = rules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
+  test('JavaScript transitions manage aria-hidden and focus on view containers', () => {
+    const project: Project = getJsProject(targetFiles);
+    const callExpressions: CallExpression[] = project
+      .getSourceFiles()
+      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
 
-    const hasFallbackRule = supportsRules.some((r) => {
-      const cond = r.conditionText;
-      const isNegation = cond.includes('not') && cond.includes('content-visibility');
-      const hasDisplayNone = Array.from(r.cssRules).some(
-        (nr) => nr instanceof CSSStyleRule && nr.style.getPropertyValue('display') === 'none'
-      );
-      return isNegation && hasDisplayNone;
+    const setsAriaHidden = callExpressions.some((call) => {
+      const expr = call.getExpression();
+      if (!expr.isKind(SyntaxKind.PropertyAccessExpression)) return false;
+      if (expr.getName() !== 'setAttribute') return false;
+      const firstArg = call.getArguments()[0];
+      return Boolean(firstArg && firstArg.getText().includes('aria-hidden'));
     });
 
-    expect(hasFallbackRule).toBe(true);
+    const callsFocus = callExpressions.some((call) => {
+      const expr = call.getExpression();
+      return expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'focus';
+    });
+
+    expect(setsAriaHidden && callsFocus).toBe(true);
+  });
+
+  // --- BROWSER ASSERTIONS (E2E) ---
+
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
+    });
+
+    test('Inactive view elements have content-visibility: hidden applied in their computed styles', async ({
+      page,
+    }) => {
+      const inactiveViewsHaveHiddenContentVisibility = await page.evaluate(() => {
+        const views = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '.spa-view, [data-view-container], main > section[id], #view-root > section[id]',
+          ),
+        );
+        if (views.length < 2) return false;
+        const inactiveViews = views.filter(
+          (v) => v.classList.contains('inactive') || v.getAttribute('aria-hidden') === 'true',
+        );
+        if (inactiveViews.length === 0) return false;
+        return inactiveViews.every(
+          (v) => window.getComputedStyle(v).contentVisibility === 'hidden',
+        );
+      });
+      expect(inactiveViewsHaveHiddenContentVisibility).toBe(true);
+    });
+
+    test('The active view element does not have content-visibility: hidden applied', async ({
+      page,
+    }) => {
+      const activeViewIsVisible = await page.evaluate(() => {
+        const views = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '.spa-view, [data-view-container], main > section[id], #view-root > section[id]',
+          ),
+        );
+        if (views.length < 2) return false;
+        const activeViews = views.filter(
+          (v) => !v.classList.contains('inactive') && v.getAttribute('aria-hidden') !== 'true',
+        );
+        const inactiveViews = views.filter((v) => !activeViews.includes(v));
+        if (activeViews.length !== 1 || inactiveViews.length === 0) return false;
+        const activeStyle = window.getComputedStyle(activeViews[0]).contentVisibility;
+        return activeStyle !== 'hidden' && (activeStyle === 'visible' || activeStyle === '');
+      });
+      expect(activeViewIsVisible).toBe(true);
+    });
+
+    test('Switching between views toggles the content-visibility state', async ({ page }) => {
+      const menuLink = page.locator('nav a', { hasText: 'Menu' }).first();
+      await menuLink.click();
+
+      const toggledProperly = await page.evaluate(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const views = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '.spa-view, [data-view-container], main > section[id], #view-root > section[id]',
+          ),
+        );
+        if (views.length < 2) return false;
+        const menuView =
+          document.getElementById('menu') ||
+          document.getElementById('view-menu') ||
+          views.find((v) => v.id.includes('menu'));
+        const homeView =
+          document.getElementById('home') ||
+          document.getElementById('view-home') ||
+          views.find((v) => v.id.includes('home'));
+        if (!menuView || !homeView) return false;
+
+        const menuVisibility = window.getComputedStyle(menuView).contentVisibility;
+        const homeVisibility = window.getComputedStyle(homeView).contentVisibility;
+        return menuVisibility !== 'hidden' && homeVisibility === 'hidden';
+      });
+      expect(toggledProperly).toBe(true);
+    });
+
+    test('Inactive view elements have aria-hidden="true" applied across transitions', async ({
+      page,
+    }) => {
+      const menuLink = page.locator('nav a', { hasText: 'Menu' }).first();
+      await menuLink.click();
+
+      const ariaHiddenApplied = await page.evaluate(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const views = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '.spa-view, [data-view-container], main > section[id], #view-root > section[id]',
+          ),
+        );
+        if (views.length < 2) return false;
+        const menuView =
+          document.getElementById('menu') ||
+          document.getElementById('view-menu') ||
+          views.find((v) => v.id.includes('menu'));
+        if (!menuView) return false;
+
+        const inactiveViews = views.filter((v) => v !== menuView);
+        return (
+          inactiveViews.length > 0 &&
+          inactiveViews.every((v) => v.getAttribute('aria-hidden') === 'true') &&
+          menuView.getAttribute('aria-hidden') !== 'true'
+        );
+      });
+      expect(ariaHiddenApplied).toBe(true);
+    });
+
+    test('Focus moves to the active view container upon transition', async ({ page }) => {
+      const menuLink = page.locator('nav a', { hasText: 'Menu' }).first();
+      await menuLink.click();
+
+      const focusMoved = await page.evaluate(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const views = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '.spa-view, [data-view-container], main > section[id], #view-root > section[id]',
+          ),
+        );
+        if (views.length < 2) return false;
+        const menuView =
+          document.getElementById('menu') ||
+          document.getElementById('view-menu') ||
+          views.find((v) => v.id.includes('menu'));
+        if (!menuView) return false;
+
+        return (
+          document.activeElement === menuView ||
+          (document.activeElement instanceof Node && menuView.contains(document.activeElement))
+        );
+      });
+      expect(focusMoved).toBe(true);
+    });
   });
 });
