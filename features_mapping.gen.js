@@ -285,6 +285,10 @@ window.__featuresMapping = {
   "improve-next-page-load-performance": [
     "speculation-rules"
   ],
+  "interaction-paint-timing": [
+    "interaction-contentful-paint",
+    "soft-navigations"
+  ],
   "interactions-in-complex-layouts": [
     "content-visibility"
   ],
