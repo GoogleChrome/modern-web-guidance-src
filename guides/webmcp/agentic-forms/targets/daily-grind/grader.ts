@@ -1,7 +1,17 @@
 import * as fs from 'fs';
-import { parseHTML } from 'linkedom';
-import { SyntaxKind, Node, type Project } from 'ts-morph';
-import { tokenize, CSSStyleRule } from 'cssomnom';
+import {
+  Node,
+  SyntaxKind,
+  type Project,
+  type SourceFile,
+} from 'ts-morph';
+import * as cssomnom from 'cssomnom';
+import {
+  CSSGroupingRule,
+  CSSStyleRule,
+  type CSSRuleList,
+  type CSSStyleSheet,
+} from 'cssomnom';
 import {
   test,
   expect,
@@ -11,231 +21,314 @@ import {
   getHtmlDocuments,
 } from '../../../../test-fixture.ts';
 
-// @ts-ignore - import.meta is available in ESM runner
+const cssomnomModule = cssomnom as any;
+if (cssomnomModule.Parser?.prototype?.createStyleRule) {
+  const origCreateStyleRule = cssomnomModule.Parser.prototype.createStyleRule;
+  cssomnomModule.Parser.prototype.createStyleRule = function (
+    prelude: any[],
+    blockContents: any[],
+    isNested = false
+  ) {
+    const rule = origCreateStyleRule.call(this, prelude, blockContents, isNested);
+    if (rule) return rule;
+    const mapped = prelude.map((t: any) =>
+      t.type === 'ident' && (t.value === 'tool-form-active' || t.value === 'tool-submit-active')
+        ? { ...t, value: 'active', originalText: 'active' }
+        : t
+    );
+    const fallback = origCreateStyleRule.call(this, mapped, blockContents, isNested);
+    if (fallback) {
+      fallback._selectorAST = null;
+      fallback._selectorText = cssomnomModule.serialize(prelude).trim();
+    }
+    return fallback;
+  };
+}
+
+// @ts-expect-error -- import.meta is provided by the Playwright ESM runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getTargetCssText(files: string[]): string {
-  const cssBlocks: string[] = [];
-  for (const file of files) {
-    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
-    const content = fs.readFileSync(file, 'utf8');
-    if (file.endsWith('.css')) {
-      cssBlocks.push(content);
-    } else if (/\.(html|htm|astro)$/i.test(file)) {
-      try {
-        const { document } = parseHTML(content);
-        document.querySelectorAll('style').forEach((style: any) => {
-          if (style.textContent) cssBlocks.push(style.textContent);
-        });
-      } catch {
-        const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-        if (styleMatches) {
-          for (const match of styleMatches) {
-            cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
-          }
-        }
-      }
-    }
-  }
-  return cssBlocks.join('\n');
-}
+function getSubmitHandlerNodes(project: Project): Node[] {
+  const handlers: Node[] = [];
 
-function hasPseudoClassRule(cssText: string, pseudoClassName: string): boolean {
-  if (!cssText.trim()) return false;
-  const tokens = tokenize(cssText);
-  for (let i = 0; i < tokens.length - 1; i++) {
-    if (tokens[i].type === 'colon' && tokens[i + 1].type === 'ident' && tokens[i + 1].value === pseudoClassName) {
-      let openBraceIdx = -1;
-      for (let j = i + 2; j < tokens.length; j++) {
-        if (tokens[j].type === '{') {
-          openBraceIdx = j;
-          break;
-        }
-        if (tokens[j].type === '}' || tokens[j].type === 'semicolon') {
-          break;
-        }
-      }
-      if (openBraceIdx !== -1) {
-        let hasDecl = false;
-        for (let k = openBraceIdx + 1; k < tokens.length; k++) {
-          if (tokens[k].type === '}') break;
-          if (tokens[k].type !== 'whitespace' && tokens[k].type !== 'comment') {
-            hasDecl = true;
-            break;
-          }
-        }
-        if (hasDecl) return true;
-      }
-    }
-  }
-  return false;
-}
-
-function getSubmitListenerNodes(project: Project): Node[] {
-  const listeners: Node[] = [];
-  const sourceFiles = project.getSourceFiles();
-
-  for (const sf of sourceFiles) {
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
+  for (const sourceFile of project.getSourceFiles()) {
+    for (const call of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
       const expr = call.getExpression();
-      if (expr.getText().endsWith('addEventListener')) {
-        const args = call.getArguments();
-        if (args.length >= 2) {
-          const firstArgText = args[0].getText().replace(/['"]/g, '');
-          if (firstArgText === 'submit') {
-            listeners.push(args[1]);
+      const isAddEventListener =
+        (Node.isPropertyAccessExpression(expr) && expr.getName() === 'addEventListener') ||
+        (Node.isIdentifier(expr) && expr.getText() === 'addEventListener');
+      if (!isAddEventListener) continue;
+
+      const args = call.getArguments();
+      if (args.length < 2) continue;
+
+      const eventArg = args[0];
+      const eventName = Node.isStringLiteral(eventArg)
+        ? eventArg.getLiteralText()
+        : Node.isNoSubstitutionTemplateLiteral(eventArg)
+          ? eventArg.getLiteralText()
+          : '';
+      if (eventName !== 'submit') continue;
+
+      const handlerArg = args[1];
+      handlers.push(handlerArg);
+
+      if (Node.isIdentifier(handlerArg)) {
+        const refName = handlerArg.getText();
+        for (const fn of sourceFile.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+          if (fn.getName() === refName) {
+            handlers.push(fn);
+          }
+        }
+        for (const varDecl of sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+          if (varDecl.getName() === refName) {
+            const init = varDecl.getInitializer();
+            if (init) handlers.push(init);
           }
         }
       }
     }
 
-    const binaryExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-    for (const be of binaryExprs) {
-      if (be.getOperatorToken().getText() === '=') {
-        const left = be.getLeft().getText();
-        if (left.endsWith('.onsubmit') || left === 'onsubmit') {
-          listeners.push(be.getRight());
+    for (const bin of sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+      const left = bin.getLeft();
+      if (
+        Node.isPropertyAccessExpression(left) &&
+        left.getName() === 'onsubmit' &&
+        bin.getOperatorToken().getKind() === SyntaxKind.EqualsToken
+      ) {
+        handlers.push(bin.getRight());
+      }
+    }
+  }
+
+  return handlers;
+}
+
+function isPromiseExpression(node: Node, sourceFile: SourceFile, visited = new Set<string>()): boolean {
+  if (Node.isParenthesizedExpression(node)) {
+    return isPromiseExpression(node.getExpression(), sourceFile, visited);
+  }
+
+  if (Node.isNewExpression(node)) {
+    return node.getExpression().getText() === 'Promise';
+  }
+
+  if (Node.isCallExpression(node)) {
+    const callee = node.getExpression();
+    if (Node.isPropertyAccessExpression(callee)) {
+      const propName = callee.getName();
+      if (callee.getExpression().getText() === 'Promise') {
+        return true;
+      }
+      if (propName === 'then' || propName === 'catch' || propName === 'finally') {
+        return true;
+      }
+    }
+
+    if (Node.isIdentifier(callee)) {
+      const fnName = callee.getText();
+      if (fnName === 'fetch') return true;
+      if (visited.has(fnName)) return false;
+      visited.add(fnName);
+
+      for (const fn of sourceFile.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+        if (fn.getName() === fnName) {
+          if (fn.isAsync()) return true;
+          const hasPromise = fn
+            .getDescendantsOfKind(SyntaxKind.Identifier)
+            .some((id) => id.getText() === 'Promise' || id.getText() === 'fetch');
+          if (hasPromise) return true;
+        }
+      }
+
+      for (const varDecl of sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        if (varDecl.getName() === fnName) {
+          const init = varDecl.getInitializer();
+          if (init) {
+            if (
+              (Node.isArrowFunction(init) || Node.isFunctionExpression(init)) &&
+              init.isAsync()
+            ) {
+              return true;
+            }
+            const hasPromise = init
+              .getDescendantsOfKind(SyntaxKind.Identifier)
+              .some((id) => id.getText() === 'Promise' || id.getText() === 'fetch');
+            if (hasPromise) return true;
+          }
         }
       }
     }
   }
 
-  const resolved = listeners.map((node) => {
-    if (Node.isIdentifier(node)) {
-      const name = node.getText();
-      const sf = node.getSourceFile();
-      const fnDecl = sf.getFunction(name);
-      if (fnDecl) return fnDecl;
-      const varDecl = sf.getVariableDeclaration(name);
-      if (varDecl) {
+  if (Node.isIdentifier(node)) {
+    const varName = node.getText();
+    if (visited.has(varName)) return false;
+    visited.add(varName);
+
+    for (const varDecl of sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+      if (varDecl.getName() === varName) {
         const init = varDecl.getInitializer();
-        if (init) return init;
+        if (init && isPromiseExpression(init, sourceFile, visited)) {
+          return true;
+        }
       }
     }
-    return node;
-  }).filter((n): n is Node => Boolean(n));
-
-  if (resolved.length > 0) {
-    return resolved;
   }
 
-  return sourceFiles;
+  return node
+    .getDescendantsOfKind(SyntaxKind.Identifier)
+    .some((id) => id.getText() === 'Promise' || id.getText() === 'fetch');
 }
 
-test.describe('daily-grind Target Grader', () => {
+function collectStyleRules(ruleList: CSSRuleList): CSSStyleRule[] {
+  const styleRules: CSSStyleRule[] = [];
+  for (const rule of Array.from(ruleList)) {
+    if (rule instanceof CSSStyleRule) {
+      styleRules.push(rule);
+    }
+    if (rule instanceof CSSGroupingRule && rule.cssRules) {
+      styleRules.push(...collectStyleRules(rule.cssRules));
+    }
+  }
+  return styleRules;
+}
+
+test.describe('agentic-forms Target Grader', () => {
+  test('Basic presence: the modified source files contain toolname', () => {
+    const hasToolname = targetFiles.some(
+      (f) => fs.existsSync(f) && fs.readFileSync(f, 'utf8').includes('toolname')
+    );
+    expect(hasToolname).toBe(true);
+  });
 
   test('The form element has both toolname and tooldescription attributes', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasToolForm = docs.some(({ document }) => {
-      const forms = Array.from(document.querySelectorAll('form'));
-      return forms.some((form: any) => {
-        const toolName = form.getAttribute('toolname');
-        const toolDesc = form.getAttribute('tooldescription');
-        return Boolean(toolName && toolName.trim() && toolDesc && toolDesc.trim());
-      });
-    });
-    expect(hasToolForm).toBe(true);
+    const hasAnnotatedForm = docs.some(({ document }) =>
+      Array.from(document.querySelectorAll('form')).some((form: any) => {
+        const toolName = form.getAttribute('toolname')?.trim();
+        const toolDesc = form.getAttribute('tooldescription')?.trim();
+        return Boolean(toolName && toolDesc);
+      })
+    );
+    expect(hasAnnotatedForm).toBe(true);
   });
 
   test('Input elements have associated labels or toolparamdescription attributes', () => {
     const docs = getHtmlDocuments(targetFiles);
-    let foundValidForm = false;
-
-    for (const { document } of docs) {
-      const forms = Array.from(document.querySelectorAll('form[toolname]'));
-      for (const form of forms) {
-        const inputs = Array.from(
-          (form as any).querySelectorAll('input:not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]), select, textarea')
+    const hasDescribedInputs = docs.some(({ document }) =>
+      Array.from(document.querySelectorAll('form[toolname], form')).some((form: any) => {
+        const controls = Array.from(
+          form.querySelectorAll(
+            'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), select, textarea'
+          )
         );
-        if (inputs.length === 0) continue;
+        if (controls.length === 0) return false;
 
-        const allInputsValid = inputs.every((el: any) => {
-          const hasToolParamDesc = Boolean(
-            el.getAttribute('toolparamdescription')?.trim() ||
-            el.closest('fieldset[toolparamdescription]')?.getAttribute('toolparamdescription')?.trim()
+        return controls.every((ctrl: any) => {
+          const hasToolParamDesc = Boolean(ctrl.getAttribute('toolparamdescription')?.trim());
+          const hasFieldsetDesc = Boolean(
+            ctrl.closest('fieldset')?.getAttribute('toolparamdescription')?.trim()
           );
-          const id = el.getAttribute('id');
-          const hasForLabel = Boolean(id && document.querySelector(`label[for="${id}"]`));
-          const hasWrappingLabel = Boolean(el.closest('label'));
-          const hasAriaLabel = Boolean(
-            el.getAttribute('aria-label')?.trim() ||
-            el.getAttribute('aria-labelledby')?.trim() ||
-            el.getAttribute('aria-description')?.trim()
+          const hasWrappingLabel = Boolean(ctrl.closest('label')?.textContent?.trim());
+          const id = ctrl.getAttribute('id')?.trim();
+          const hasForLabel = Boolean(
+            id &&
+              Array.from(document.querySelectorAll('label')).some(
+                (lbl: any) => lbl.getAttribute('for') === id && Boolean(lbl.textContent?.trim())
+              )
+          );
+          const hasAriaDesc = Boolean(
+            ctrl.getAttribute('aria-description')?.trim() ||
+              ctrl.getAttribute('aria-label')?.trim()
           );
 
-          return hasToolParamDesc || hasForLabel || hasWrappingLabel || hasAriaLabel;
+          return (
+            hasToolParamDesc ||
+            hasFieldsetDesc ||
+            hasWrappingLabel ||
+            hasForLabel ||
+            hasAriaDesc
+          );
         });
-
-        if (allInputsValid) {
-          foundValidForm = true;
-          break;
-        }
-      }
-      if (foundValidForm) break;
-    }
-
-    expect(foundValidForm).toBe(true);
+      })
+    );
+    expect(hasDescribedInputs).toBe(true);
   });
 
   test('The submit event listener uses event.preventDefault()', () => {
-    const project = getJsProject(targetFiles);
-    const nodes = getSubmitListenerNodes(project);
-    const hasPreventDefault = nodes.some((node) => {
-      const calls = node.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some((call) => {
-        const propAccess = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
-        return propAccess?.getName() === 'preventDefault' || call.getExpression().getText().endsWith('.preventDefault');
-      });
-    });
-    expect(hasPreventDefault).toBe(true);
+    const project: Project = getJsProject(targetFiles);
+    const handlers = getSubmitHandlerNodes(project);
+    const usesPreventDefault = handlers.some((handler) =>
+      handler.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const expr = call.getExpression();
+        return Node.isPropertyAccessExpression(expr) && expr.getName() === 'preventDefault';
+      })
+    );
+    expect(usesPreventDefault).toBe(true);
   });
 
   test('The submit event listener checks event.agentInvoked', () => {
-    const project = getJsProject(targetFiles);
-    const nodes = getSubmitListenerNodes(project);
-    const hasAgentInvoked = nodes.some((node) => {
-      const propAccesses = node.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
-      const hasProp = propAccesses.some((pa) => pa.getName() === 'agentInvoked');
-      const identifiers = node.getDescendantsOfKind(SyntaxKind.Identifier);
-      const hasId = identifiers.some((id) => id.getText() === 'agentInvoked');
-      return hasProp || hasId;
-    });
-    expect(hasAgentInvoked).toBe(true);
+    const project: Project = getJsProject(targetFiles);
+    const handlers = getSubmitHandlerNodes(project);
+    const checksAgentInvoked = handlers.some(
+      (handler) =>
+        handler
+          .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+          .some((prop) => prop.getName() === 'agentInvoked') ||
+        handler
+          .getDescendantsOfKind(SyntaxKind.BindingElement)
+          .some((binding) => binding.getName() === 'agentInvoked') ||
+        handler
+          .getDescendantsOfKind(SyntaxKind.ElementAccessExpression)
+          .some(
+            (elem) =>
+              elem.getArgumentExpression()?.asKind(SyntaxKind.StringLiteral)?.getLiteralText() ===
+              'agentInvoked'
+          )
+    );
+    expect(checksAgentInvoked).toBe(true);
   });
 
   test('The submit event listener calls event.respondWith() with a Promise', () => {
-    const project = getJsProject(targetFiles);
-    const nodes = getSubmitListenerNodes(project);
-    const hasRespondWith = nodes.some((node) => {
-      const calls = node.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some((call) => {
-        const propAccess = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
-        const isRespondWith = propAccess?.getName() === 'respondWith' || call.getExpression().getText().endsWith('.respondWith');
-        return isRespondWith && call.getArguments().length > 0;
-      });
-    });
-    expect(hasRespondWith).toBe(true);
+    const project: Project = getJsProject(targetFiles);
+    const handlers = getSubmitHandlerNodes(project);
+    const callsRespondWithPromise = handlers.some((handler) =>
+      handler.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const expr = call.getExpression();
+        const isRespondWith =
+          (Node.isPropertyAccessExpression(expr) && expr.getName() === 'respondWith') ||
+          (Node.isIdentifier(expr) && expr.getText() === 'respondWith');
+        if (!isRespondWith) return false;
+
+        const args = call.getArguments();
+        if (args.length === 0) return false;
+
+        return isPromiseExpression(args[0], handler.getSourceFile());
+      })
+    );
+    expect(callsRespondWithPromise).toBe(true);
   });
 
   test('The :tool-form-active pseudo-class is used to provide visual feedback', () => {
-    const cssText = getTargetCssText(targetFiles);
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const hasStyleRule = Array.from(stylesheet.cssRules).some(
-      (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes(':tool-form-active') && r.style.length > 0
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const hasToolFormActive = styleRules.some(
+      (rule) =>
+        rule.selectorText.includes(':tool-form-active') &&
+        (rule.style.length > 0 || Boolean(rule.style.cssText?.trim()))
     );
-    const hasRule = hasStyleRule || hasPseudoClassRule(cssText, 'tool-form-active');
-    expect(hasRule).toBe(true);
+    expect(hasToolFormActive).toBe(true);
   });
 
   test('The :tool-submit-active pseudo-class is used to provide visual feedback', () => {
-    const cssText = getTargetCssText(targetFiles);
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const hasStyleRule = Array.from(stylesheet.cssRules).some(
-      (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes(':tool-submit-active') && r.style.length > 0
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const hasToolSubmitActive = styleRules.some(
+      (rule) =>
+        rule.selectorText.includes(':tool-submit-active') &&
+        (rule.style.length > 0 || Boolean(rule.style.cssText?.trim()))
     );
-    const hasRule = hasStyleRule || hasPseudoClassRule(cssText, 'tool-submit-active');
-    expect(hasRule).toBe(true);
+    expect(hasToolSubmitActive).toBe(true);
   });
-
 });
