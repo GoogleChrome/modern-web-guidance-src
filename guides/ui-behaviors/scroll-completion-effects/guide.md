@@ -116,7 +116,7 @@ targetHeading.focus({ preventScroll: true });
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("scroll-promises") }}
+{{ BASELINE_STATUS("scroll-promises") }}
 
 In browsers that do not support scroll method promises, `scrollIntoView()`, `scroll()`, `scrollTo()`, and `scrollBy()` return `undefined` instead of a `Promise`.
 
