@@ -679,7 +679,7 @@ describe('handlePR', () => {
     assert.deepStrictEqual(result, [EVAL_PR_REVIEWER]);
   });
 
-  it('requests review from ATL and labels content when demo.html is modified, even with gd-dev-eval label', () => {
+  it('labels content but does not request ATL review when demo.html is modified with gd-dev-eval label', () => {
     addPrLabelsMock.mock.resetCalls();
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/grader.ts',
@@ -690,7 +690,7 @@ describe('handlePR', () => {
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
     try {
       const result = handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, ['gd-dev-eval']);
-      assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'rviscomi', 'paulirish'].sort());
+      assert.deepStrictEqual(result, [EVAL_PR_REVIEWER]);
       assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
       assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content']]);
     } finally {
@@ -891,16 +891,33 @@ describe('handlePR', () => {
     }
   });
 
-  it('labels PR with content when touching demo.html', () => {
+  it('labels PR with content but requests no review when touching only demo.html', () => {
     addPrLabelsMock.mock.resetCalls();
     const filesMock = mock.method(githubApi, 'getPrFiles', () => [
       'guides/css-layout/grid-layout/demo.html'
     ]);
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
     try {
-      handlePR(99999, 'some-contributor', mockConfig);
+      const result = handlePR(99999, 'some-contributor', mockConfig);
+      assert.deepStrictEqual(result, []);
+      assert.strictEqual(addReviewersMock.mock.callCount(), 0);
       assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
       assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content']]);
+    } finally {
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
+    }
+  });
+
+  it('does not request review for demo.html even when the PR is labelled content', () => {
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'guides/css-layout/grid-layout/demo.html'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
+    try {
+      const result = handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, ['content']);
+      assert.deepStrictEqual(result, []);
+      assert.strictEqual(addReviewersMock.mock.callCount(), 0);
     } finally {
       filesMock.mock.restore();
       reviewStateMock.mock.restore();
@@ -996,7 +1013,7 @@ describe('handlePR', () => {
     }
   });
 
-  it('labels PR with content and needs-atl when touching demo.html in a category with no ATL', () => {
+  it('labels PR with content but not needs-atl when touching only demo.html in a category with no ATL', () => {
     addPrLabelsMock.mock.resetCalls();
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atl-demo-test-'));
     try {
@@ -1014,7 +1031,7 @@ describe('handlePR', () => {
       try {
         handlePR(99999, 'some-contributor', emptyConfig, undefined, tmpDir);
         assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
-        assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content', 'needs-atl']]);
+        assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content']]);
       } finally {
         filesMock.mock.restore();
         reviewStateMock.mock.restore();
