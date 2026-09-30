@@ -849,10 +849,6 @@ export function handlePR(
       }
       const guideName = parts[2];
       const filename = parts[parts.length - 1];
-      // demo.html changes still get the `content` label, but don't request ATL review.
-      if (filename === DEMO_FILE) {
-        continue;
-      }
       if (SME_CONTENT_FILENAMES.has(filename) || isContentLabelled) {
         hasEvaluatedContent = true;
         const relativeGuidePath = `guides/${category}/${guideName}/${GUIDE_FILE}`;
