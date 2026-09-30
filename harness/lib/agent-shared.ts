@@ -68,6 +68,7 @@ export function setupIsolatedWorkDir(
 
   setupAgentCredentials(agent, tempHome);
   process.env.HOME = tempHome;
+  process.env.ZDOTDIR = tempHome;
 
   if (runType === 'guided') {
     const suiteConfig = getSuiteConfig();
