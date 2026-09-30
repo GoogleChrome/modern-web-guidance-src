@@ -110,76 +110,62 @@
       >
       <div id="output-custom" class="output-box"></div>
 
-      <span class="output-label">Output 3: <code>Sanitized String Output</code></span>
-      <div id="output-sanitized" class="output-box"></div>
+      <span class="output-label">Output 3: <code>Document.parseHTML()</code> (Sanitized Nodes)</span>
+      <div id="output-parsed" class="output-box"></div>
     </section>
 
     <script type="module">
+      // Pinned exact version; in production, bundle DOMPurify and code-split it instead.
+      const DOMPURIFY_URL = "https://unpkg.com/dompurify@3.4.16/dist/purify.es.mjs";
       let domPurifyPromise;
 
       function loadDOMPurify() {
-        if (!domPurifyPromise) {
-          domPurifyPromise =
-            import("https://unpkg.com/dompurify@3/dist/purify.es.mjs").then(
-              (mod) => mod.default ?? mod,
-            );
-        }
+        domPurifyPromise ??= import(DOMPURIFY_URL).then((mod) => mod.default ?? mod);
         return domPurifyPromise;
       }
-      async function safeSetHTML(el, html) {
-        if (Object.hasOwn(Element.prototype, "setHTML")) {
-          el.setHTML(html);
-        } else {
-          // Load DOMPurify only in browsers that do not support Element.setHTML()
-          const DOMPurify = await loadDOMPurify();
-          el.innerHTML = DOMPurify.sanitize(html);
-        }
-      }
-      if (!("setHTML" in Element.prototype) || !("parseHTML" in Document)) {
+
+      const hasSetHTML = "setHTML" in Element.prototype;
+      const hasParseHTML = "parseHTML" in Document;
+      if (!hasSetHTML || !hasParseHTML) {
         loadDOMPurify();
       }
 
-      const input = document.getElementById("untrusted-input");
+      const customConfig = {
+        elements: ["p", "b", "i", "strong", "em"],
+        attributes: ["class"],
+      };
 
+      const input = document.getElementById("untrusted-input");
       const outSet = document.getElementById("output-set");
       const outCustom = document.getElementById("output-custom");
-      const outputSanitized = document.getElementById("output-sanitized");
+      const outParsed = document.getElementById("output-parsed");
 
-      document.getElementById("btn-run").addEventListener("click", () => {
+      document.getElementById("btn-run").addEventListener("click", async () => {
         const rawHTML = input.value;
-        // 1. Using setHTML
-        outSet.innerHTML = "";
-        safeSetHTML(outSet, rawHTML);
 
-        // 2. Using setHTML() with a custom config
-        outCustom.innerHTML = "";
-        if (Object.hasOwn(Element.prototype, "setHTML") && 'Sanitizer' in window) {
-          const config = {
-            elements: ["p", "b", "i", "strong", "em"],
-            attributes: ["class"],
-            replaceWithChildrenElements: ['div']
-          };
-
-          const mySanitizer = new Sanitizer(config);
-          outCustom.setHTML(rawHTML, { sanitizer: mySanitizer });
+        // 1. setHTML() with the default sanitizer
+        // 2. setHTML() with a custom configuration
+        if (hasSetHTML) {
+          outSet.setHTML(rawHTML);
+          outCustom.setHTML(rawHTML, { sanitizer: customConfig });
         } else {
-          // Load DOMPurify only in browsers that do not support Element.setHTML()
-          loadDOMPurify().then((dompurify) => {
-            outCustom.innerHTML = dompurify.sanitize(rawHTML, {
-              ALLOWED_TAGS: ["p", "b", "i", "strong", "em"],
-              ALLOWED_ATTR: ["class"],
-            });
+          const DOMPurify = await loadDOMPurify();
+          outSet.innerHTML = DOMPurify.sanitize(rawHTML);
+          outCustom.innerHTML = DOMPurify.sanitize(rawHTML, {
+            ALLOWED_TAGS: [...customConfig.elements, "#text"],
+            ALLOWED_ATTR: customConfig.attributes,
+            // Match the native Sanitizer: remove disallowed elements with their content
+            KEEP_CONTENT: false,
           });
         }
 
-        // 3. Sanitized HTML output
-        if (Object.hasOwn(Document, "parseHTML")) {
+        // 3. Document.parseHTML(): move the sanitized nodes into the page
+        if (hasParseHTML) {
           const doc = Document.parseHTML(rawHTML);
-          outputSanitized.innerText = doc.body.innerHTML;
+          outParsed.replaceChildren(...doc.body.childNodes);
         } else {
-          loadDOMPurify().then((dompurify) => {
-            outputSanitized.innerText = dompurify.sanitize(rawHTML);
-          });
+          const DOMPurify = await loadDOMPurify();
+          outParsed.replaceChildren(DOMPurify.sanitize(rawHTML, { RETURN_DOM_FRAGMENT: true }));
         }
       });
     </script>

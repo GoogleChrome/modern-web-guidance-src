@@ -48,7 +48,9 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
         fs.copyFileSync(lockfilePath, path.join(targetDir, 'pnpm-lock.yaml'));
       }
       console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
-      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force'], {
+      // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, and the copied
+      // workspace lockfile's overrides never match the standalone base app, so install would fail.
+      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force', '--no-frozen-lockfile'], {
         cwd: targetDir,
         stdio: 'ignore',
         shell: process.platform === 'win32'

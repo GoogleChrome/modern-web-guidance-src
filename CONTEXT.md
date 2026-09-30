@@ -69,6 +69,10 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 | `targets/<base_app>/task.md` | Generated (`gd dev`) | Task frontmatter (`base_app`) and developer prompt instructions fed to evaluation agents. |
 | `test-app-results/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
 
+### Discipline guides
+
+Most guides are task-based use cases. Discipline guides are the orientation "hubs" for a category and link to its use-case guides via `{{ GUIDE_REF("guide-slug") }}`. A guide is a discipline guide if it is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements, and are reported as bundled core guides by `serving/scripts/audit-build.ts`.
+
 ### Guide Development Stages
 
 A guide progresses through three main stages:

@@ -1,0 +1,233 @@
+diff --git a/src/components/DirectionalStoryNavigator.astro b/src/components/DirectionalStoryNavigator.astro
+new file mode 100644
+index 0000000..97cfc49
+--- /dev/null
++++ b/src/components/DirectionalStoryNavigator.astro
+@@ -0,0 +1,134 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++export interface Props {
++  articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++const stories = articles.map((article) => ({
++  title: article.data.title,
++  summary: article.data.summary,
++  category: article.data.category,
++  href: `${import.meta.env.BASE_URL}articles/${article.id}`,
++}));
++---
++
++<section
++  class="mx-4 mt-6 border-y border-gray-200 py-4 sm:mx-6"
++  aria-labelledby="story-navigator-heading"
++  data-story-navigator
++>
++  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
++    <div class="min-w-0" aria-live="polite" aria-atomic="true">
++      <div class="mb-1 flex items-center gap-3">
++        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-800">
++          Editor's picks
++        </p>
++        <span class="text-xs tabular-nums text-gray-500" data-story-count>
++          1 / {stories.length}
++        </span>
++      </div>
++      <h2 id="story-navigator-heading" class="font-brand text-xl leading-tight text-gray-900" data-story-title>
++        {stories[0]?.title}
++      </h2>
++      <p class="mt-1 max-w-3xl truncate text-sm text-gray-600" data-story-summary>
++        {stories[0]?.summary}
++      </p>
++      <a class="sr-only" href={stories[0]?.href} data-story-link>Read selected story</a>
++    </div>
++
++    <div class="flex shrink-0 items-center gap-2" aria-label="Browse editor's picks">
++      <button
++        type="button"
++        class="rounded-sm border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition-colors hover:border-amber-700 hover:text-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
++        data-story-previous
++        aria-label="Previous"
++      >
++        <span aria-hidden="true">←</span> Previous
++      </button>
++      <button
++        type="button"
++        class="rounded-sm bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
++        data-story-next
++        aria-label="Next"
++      >
++        Next <span aria-hidden="true">→</span>
++      </button>
++    </div>
++  </div>
++
++  <script type="application/json" data-story-data set:html={JSON.stringify(stories)} />
++</section>
++
++<script>
++  type Direction = 'forward' | 'backward';
++  type Story = {
++    title: string;
++    summary: string;
++    category: string;
++    href: string;
++  };
++  type DirectionalViewTransition = {
++    update: () => void;
++    types: Direction[];
++  };
++  type ViewTransitionDocument = Document & {
++    startViewTransition?: (options: DirectionalViewTransition) => unknown;
++  };
++
++  function initializeStoryNavigator() {
++    const navigator = document.querySelector<HTMLElement>('[data-story-navigator]');
++    if (!navigator || navigator.dataset.initialized === 'true') return;
++
++    const dataElement = navigator.querySelector<HTMLScriptElement>('[data-story-data]');
++    const title = navigator.querySelector<HTMLElement>('[data-story-title]');
++    const summary = navigator.querySelector<HTMLElement>('[data-story-summary]');
++    const count = navigator.querySelector<HTMLElement>('[data-story-count]');
++    const link = navigator.querySelector<HTMLAnchorElement>('[data-story-link]');
++    const previous = navigator.querySelector<HTMLButtonElement>('[data-story-previous]');
++    const next = navigator.querySelector<HTMLButtonElement>('[data-story-next]');
++
++    if (!dataElement || !title || !summary || !count || !link || !previous || !next) return;
++
++    const stories = JSON.parse(dataElement.textContent ?? '[]') as Story[];
++    if (stories.length === 0) return;
++
++    navigator.dataset.initialized = 'true';
++    let currentIndex = 0;
++
++    const renderStory = (newIndex: number) => {
++      currentIndex = newIndex;
++      const story = stories[currentIndex];
++      if (!story) return;
++
++      title.textContent = story.title;
++      summary.textContent = story.summary;
++      link.href = story.href;
++      count.textContent = `${currentIndex + 1} / ${stories.length}`;
++    };
++
++    const navigate = (newIndex: number, direction: Direction) => {
++      const wrappedIndex = (newIndex + stories.length) % stories.length;
++
++      const update = () => renderStory(wrappedIndex);
++      const transitionDocument = document as ViewTransitionDocument;
++
++      if (!transitionDocument.startViewTransition) {
++        update();
++        return;
++      }
++
++      transitionDocument.startViewTransition({
++        update,
++        types: [direction],
++      });
++    };
++
++    previous.addEventListener('click', () => navigate(currentIndex - 1, 'backward'));
++    next.addEventListener('click', () => navigate(currentIndex + 1, 'forward'));
++  }
++
++  document.addEventListener('astro:page-load', initializeStoryNavigator);
++  initializeStoryNavigator();
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..8d8b09b 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import DirectionalStoryNavigator from '../components/DirectionalStoryNavigator.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+ const articles = await getCollection('articles');
+@@ -59,6 +60,8 @@ politicsArticles[2] = {
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
++    <DirectionalStoryNavigator articles={articles.slice(0, 5)} />
++
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+@@ -81,4 +84,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..9c9405d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,58 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@keyframes slide-to-left {
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-to-right {
++  to {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++}
++
++::view-transition-group(root) {
++  animation-duration: 0.4s;
++  animation-timing-function: ease-in-out;
++  animation-fill-mode: both;
++}
++
++html:active-view-transition-type(forward)::view-transition-old(root) {
++  animation-name: slide-to-left;
++}
++
++html:active-view-transition-type(forward)::view-transition-new(root) {
++  animation-name: slide-from-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-old(root) {
++  animation-name: slide-to-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-new(root) {
++  animation-name: slide-from-left;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(root),
++  ::view-transition-old(root),
++  ::view-transition-new(root) {
++    animation: none !important;
++  }
++}
