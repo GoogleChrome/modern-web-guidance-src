@@ -115,7 +115,7 @@ export function compareGuides(modifiedGuides: string[], baseline: string = BASEL
     } else {
       const anchor = guide.replace(/\//g, "-");
       try {
-        execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
+        execSync(`git diff --no-index --no-ext-diff --no-color --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
         // If no difference is resolved, classify as verbatim changes only
         verbatimCount++;
         verbatimList += `- \`${guide}\` (whitespace changes only)\n`;
