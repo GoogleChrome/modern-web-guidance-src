@@ -129,7 +129,7 @@ async function run() {
 
     try {
       stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'Antigravity CLI');
+      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'Antigravity CLI', runType);
     } finally {
       stopWatchingMcpLog();
       exportAntigravityTrajectories(workDir, targetDir);

@@ -29,7 +29,7 @@ import {
 } from '../lib/guide-validation.ts';
 import { rootDir } from '../lib/paths.ts';
 
-export const EVAL_OWNERS = ['micahjo7', 'paulirish', 'TravenReese'];
+export const EVAL_OWNERS = ['micahjo7', 'TravenReese'];
 export const EVAL_GAP_LABEL = 'eval-gap';
 
 export type GapKind = 'missing-evals' | 'expectations-changed';
