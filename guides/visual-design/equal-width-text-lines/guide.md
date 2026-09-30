@@ -71,5 +71,5 @@ if (!CSS.supports('text-fit', 'grow per-line-all')) {
 ```
 
 Dynamic copy has no faithful fallback (line breaks are unknown until layout): progressive enhancement to a balanced heading with a fluid base size such as `clamp(2rem, 1rem + 5cqi, 5rem)`.
-{# Perhaps there is some kind of polyfill to recommend for cases this effect is critical? #}
 
+If text fitting is critical, consider using a JS library (e.g. `fitty`), conditionally loaded only if `text-fit` is not supported.
