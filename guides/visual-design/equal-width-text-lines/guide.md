@@ -16,8 +16,13 @@ For a single line filling its container (e.g. a heading or pull quote), see {{ G
 
 ## Basic implementation
 
-These guidelines apply to all types of lockups:
+Note: Line breaks in a lockup are either **forced** (each line is its own block) or **free** (the browser wraps). This is a continuum: a lockup can be all forced, all free, or a mix.
 
+For forced lines:
+- Wrap each line in a `<span>` with `display: block`.
+- Apply `white-space: nowrap` to each forced line `<span>`.
+
+Implementation guidelines:
 - Use `text-fit: grow per-line-all <percentage>` on the heading itself.
 - Use `per-line-all`, not `per-line`. `per-line` skips the last line and any line ending in a forced break, so with one block per line it scales nothing.
 - `grow` cannot be combined with `shrink`. Either set the base `font-size` to a maximum or a minimum depending on what would be a better fallback or easier to calculate, and set `text-fit` to `shrink` or `grow` accordingly. If you don’t have a reason to use `shrink`, prefer `grow` + setting `font-size` to a minimum, as it's safer for most cases.
@@ -25,15 +30,9 @@ These guidelines apply to all types of lockups:
 - The container needs a definite inline size. `text-fit` never changes intrinsic size, so it does nothing on `fit-content`/`max-content` widths or content-sized flex/grid items.
 - Trim the leading above the first and below the last line: see {{ GUIDE_REF('precise-text-alignment') }}.
 - Keep `line-height` small, `1` or under, otherwise gaps between lines of different font-sizes become unwieldy.
+- IMPORTANT: Note that computed `font-size` is unchanged, so `em` spacing does not scale.
+- To avoid accidental over-emphasized orphans, apply `text-wrap: balance` or `text-wrap: pretty` if there are free lines.
 
-Notes/caveats:
-- Note that computed `font-size` is unchanged, so `em` spacing does not scale.
-
-Line breaks in a lockup are either **forced** (each line is its own block) or **free** (the browser wraps). This is a continuum: a lockup can be all forced, all free, or a mix.
-
-For forced lines:
-- Wrap each line in a `<span>` with `display: block`.
-- Apply `white-space: nowrap` to each forced line `<span>`.
 
 ### Spacing
 
