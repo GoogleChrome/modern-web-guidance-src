@@ -67,12 +67,17 @@
             }
         });
 
-    window.addEventListener('toolactivated', ({ toolName }) => {
-        console.log(`Tool "${toolName}" was activated by the agent.`);
+    // Chrome 156+ dispatches these on document.modelContext; older versions use window.
+    const targetFor = (type, listener, options) =>
+        (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
+            .addEventListener(type, listener, options);
+
+    targetFor('toolactivated', ({ toolName }) => {
+        console.log(`Tool "${toolName}" started execution.`);
     });
 
-    window.addEventListener('toolcancel', ({ toolName }) => {
-        console.log(`Tool "${toolName}" interaction was cancelled.`);
+    targetFor('toolcancel', ({ toolName }) => {
+        console.log(`Tool "${toolName}" execution is cancelled.`);
     });
     </script>
 </body>

@@ -80,7 +80,8 @@ async function run() {
         commandArgs,
         workDir,
         targetDir,
-        'Gemini CLI'
+        'Gemini CLI',
+        runType
       );
     } finally {
       stopWatchingMcpLog();
