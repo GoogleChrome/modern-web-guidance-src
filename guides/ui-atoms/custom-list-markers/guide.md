@@ -17,7 +17,7 @@ web-feature-ids:
 This is meant to function as the first stop for any use case involving a list with custom markers of any sort, including interactive ones.
 
 - `list-style: <string>` for very basic customization
-- `::marker`, but note caveats and switch to `::before` otherwise
+- `::marker`, but note caveats (limited styling, layout constraints) and switch to `::before` otherwise
 - `--icon-marker` once the icons guide is written (guide ref to `icons`)
 - `.marker` for actual HTML (e.g. checkboxes)
 - subgrid for layout, but note that this can backfire without a content wrapper
