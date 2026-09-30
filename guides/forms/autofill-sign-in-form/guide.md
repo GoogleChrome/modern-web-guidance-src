@@ -38,7 +38,7 @@ Always use `type="email"` for email addresses and `type="tel"` for phone numbers
 
 Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
 
-Username and email inputs hold identifiers, not prose. Add `autocorrect="off"`, `autocapitalize="off"`, and `spellcheck="false"` so the browser does not rewrite them into something the account does not match.
+Username and email inputs hold identifiers, not prose. Add `spellcheck="false"` so the browser does not rewrite them into something the account does not match. `autocorrect` and `autocapitalize` are always disabled for `input type="email"`, but are required for non-email usernames.
 
 ### Make buttons helpful
 
