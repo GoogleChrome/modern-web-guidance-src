@@ -64,24 +64,28 @@ Position the hovercard relative to its trigger using **CSS Anchor Positioning**.
 
 {{ FEATURE("interst-invokers", "timing" }}
 
-See the {{ GUIDE_REF("animate-to-from-top-layer")}} guide to see how to use `transition` with `allow-discrete` and `@starting-style` to animate the hovercard's appearance and disappearance from the top layer.
+See the {{ GUIDE_REF("animate-to-from-top-layer") }} guide to see how to use `transition` with `allow-discrete` and `@starting-style` to animate the hovercard's appearance and disappearance from the top layer.
 
 Always respect reduced motion.
 
 ```css
-/* MANDATORY: Respect user preference for reduced motion by disabling transitions. */
+/* MANDATORY: Respect user preference for reduced motion by selectively applying transitions. */
 @media (prefers-reduced-motion: reduce) {
   [popover] {
-    transition: none;
+    transition:
+      display 0.4s allow-discrete,
+      overlay 0.4s allow-discrete,
+      opacity 0.4s,
+      transform 0.4s;
   }
 }
 ```
 
-## 4. Seamlessly morphing to the next page
+## 4. OPTIONAL: Seamlessly morphing to the next page
 
-You can use **Cross-Document View Transitions** to create a seamless "morph" animation between the hovercard and the destination page. By assigning matching `view-transition-name` values to elements in the hovercard and their counterparts on the next page, the browser will animate them across the navigation.
+You can optionally use **Cross-Document View Transitions** to create a seamless "morph" animation between the hovercard and the destination page. See {{ GUIDE_REF("consistent-cross-document-transitions") }} for guidance on implementation.
 
-You can name multiple elements (e.g. titles, images, bylines) to create a complex, multi-element morphing effect. Assign the `view-transition-name` to elements on the open popover using `:popover-open`, to avoid creating duplicate `view-transition-name`s or requiring link-specific `view-transition-name`s.
+By assigning matching `view-transition-name` values to elements in the hovercard and their counterparts on the next page, the browser will animate them across the navigation. You can name multiple elements (e.g. titles, images, bylines) to create a complex, multi-element morphing effect. Assign the `view-transition-name` to elements on the open popover using `:popover-open`, to avoid creating duplicate `view-transition-name`s or requiring link-specific `view-transition-name`s.
 
 ```css
 /* Opt-in to cross-document transitions on both pages */
@@ -90,13 +94,11 @@ You can name multiple elements (e.g. titles, images, bylines) to create a comple
 }
 
 /* Only show transitions when a popover is open */
-::view-transition-old(*),
-::view-transition-new(*) {
+::view-transition-group(*) {
   animation-duration: 0s;
 }
 :root:has([popover]:popover-open) {
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
+  ::view-transition-group {
     animation-duration: 0.4s;
   }
 }

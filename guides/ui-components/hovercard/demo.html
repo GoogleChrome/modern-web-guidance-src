@@ -62,12 +62,6 @@
         width: 300px;
         background: white;
 
-        /* Entry animation setup */
-        transition:
-          display 0.4s allow-discrete,
-          overlay 0.4s allow-discrete,
-          opacity 0.4s,
-          transform 0.4s;
         opacity: 0;
         transform-origin: top;
       }
@@ -85,9 +79,14 @@
       }
 
       /* Respect reduced motion */
-      @media (prefers-reduced-motion: reduce) {
+      @media (prefers-reduced-motion: no-preference) {
         [popover] {
-          transition: none;
+           /* Entry animation setup */
+        transition:
+          display 0.4s allow-discrete,
+          overlay 0.4s allow-discrete,
+          opacity 0.4s,
+          transform 0.4s;
         }
       }
 
@@ -111,14 +110,12 @@
         border-radius: 6px;
         margin-bottom: 0.5rem;
       }
-      ::view-transition-old(*),
-      ::view-transition-new(*) {
+      ::view-transition-group(*) {
         animation-duration: 0s;
       }
 
       :root:has([popover]:popover-open) {
-        ::view-transition-old(*),
-        ::view-transition-new(*) {
+        ::view-transition-group(*) {
           animation-duration: 0.4s;
         }
       }
