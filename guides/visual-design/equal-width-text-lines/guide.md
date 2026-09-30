@@ -29,6 +29,7 @@ Notes/caveats:
 
 - Keep `line-height` small, `1` or under, otherwise gaps between lines of different font-sizes become unwieldy.
 - Lockups look best when there is significant variance in font sizes between lines. Avoid creating lockups from text with mostly uniform lines, as it will result in font sizes that are neither the same, nor sufficiently different, violating the design principle of _contrast_. You can ensure this by creating forced short lines by wrapping certain words to emphasize in `<span>`s and giving them `display: block`. This is especially important when combining with `text-wrap: balance`.
+- Prefer combining this with `text-transform: uppercase` when used with Western scripts, as ascenders and descenders tend to create trapped space and/or overlap adjacent lines, which creates a less aesthetically pleasing result.
 - When forcing short lines, pick words that would enhance the message if emphasized.
 - **Limitation:** Growing text will also increase in visual weight and its strokes will be perceived as stronger. There is currently no way to counterbalance this e.g. by reducing `font-weight` for larger text, since there is no unit to use in a calculation, since the scaling does not affect font-relative units like `em`.
 
