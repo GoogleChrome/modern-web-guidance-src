@@ -25,6 +25,8 @@
         background: white;
         resize: horizontal;
         overflow: auto;
+        /* So the lockup's gap can be relative to the poster's width */
+        container-type: inline-size;
       }
 
       .lockup {
@@ -48,13 +50,36 @@
         margin: 0;
       }
 
-      /* Fixed lockup: one block per line */
+      /* Forced lines: one block per line */
       .lockup > span {
         display: block;
       }
 
-      /* Dynamic copy: balance the line lengths first, then each line scales */
-      .lockup.dynamic {
+      /* Fixed lockup: every line forced. Each line's box is trimmed to its
+         cap-height and baseline, so the gap between lines is exactly `gap`,
+         uniform regardless of each line's font-size. line-height is a no-op
+         here and only serves as the fallback where text-box is unsupported.
+         Not for lockups with free lines: trimming only their outer lines
+         would make gaps inconsistent. */
+      .lockup.fixed {
+        display: flex;
+        flex-direction: column;
+        gap: 2cqi;
+
+        > span {
+          text-box: trim-both cap alphabetic;
+        }
+      }
+
+      /* Forced lines must never wrap: the base font-size is the minimum, so a
+         line that wraps at it would be fitted as two lines, not one. */
+      .lockup > span:not(.free) {
+        white-space: nowrap;
+      }
+
+      /* Free lines: the browser wraps them, balanced so they scale evenly */
+      .lockup.dynamic,
+      .lockup > .free {
         text-wrap: balance;
       }
 
@@ -63,7 +88,6 @@
       @supports not (text-fit: grow) {
         .lockup > span {
           width: fit-content;
-          white-space: nowrap;
           /* --text-fit-scale is measured by the script; the cap mirrors the text-fit percentage */
           font-size: min(var(--text-fit-scale, 1) * 1em, 500%);
         }
@@ -79,7 +103,7 @@
     <section>
       <p>Fixed lockup: one block per line. Resize the poster and every line stays edge to edge.</p>
       <div class="poster">
-        <h1 class="lockup">
+        <h1 class="lockup fixed">
           <span>Summer</span>
           <span>Sale</span>
           <span>Up to fifty percent</span>
@@ -92,6 +116,18 @@
       <p>Dynamic copy: the text wraps naturally, <code>text-wrap: balance</code> evens out the lines, then each line scales.</p>
       <div class="poster">
         <h2 class="lockup dynamic">The quick brown fox jumps over the lazy dog</h2>
+      </div>
+    </section>
+
+    <section>
+      <p>Mixed: the emphasized words are forced onto their own lines, the rest wraps freely between them.</p>
+      <div class="poster">
+        <h2 class="lockup">
+          <span>Summer</span>
+          <span>Sale</span>
+          <span class="free">Up to fifty percent off everything in store</span>
+          <span>Ends Sunday</span>
+        </h2>
       </div>
     </section>
 
