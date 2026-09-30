@@ -17,7 +17,7 @@ For a single line filling its container (e.g. a heading or pull quote), see {{ G
 
 - Use `text-fit: grow per-line-all <percentage>` on the heading itself.
 - Use `per-line-all`, not `per-line`. `per-line` skips the last line and any line ending in a forced break, so with one block per line it scales nothing.
-- `grow` cannot be combined with `shrink`. Either set the base `font-size` to a maximum or a minimum depending on what would be a better fallback or easier to calculate, and set `text-fit` to `shrink` or `grow` accordingly.
+- `grow` cannot be combined with `shrink`. Either set the base `font-size` to a maximum or a minimum depending on what would be a better fallback or easier to calculate, and set `text-fit` to `shrink` or `grow` accordingly. If you don’t have a reason to use `shrink`, prefer `grow` + setting `font-size` to a minimum, as it's safer for most cases.
 - Always limit growth or shrinkage with the percentage (e.g. `300%`) as a guardrail.
 - The container needs a definite inline size. `text-fit` never changes intrinsic size, so it does nothing on `fit-content`/`max-content` widths or content-sized flex/grid items.
 - Trim the leading above the first and below the last line: see {{ GUIDE_REF('precise-text-alignment') }}.
