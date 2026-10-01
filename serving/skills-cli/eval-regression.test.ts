@@ -41,10 +41,12 @@ test('Eval Pass Rate Regression Check', async () => {
   const currentSummary = JSON.parse(await fs.readFile(currentSummaryPath, 'utf8'));
   const prevSummary = JSON.parse(prevSummaryJson);
 
-  const agents = ['claude_code', 'codex_cli', 'antigravity'];
+  const agents = ['claude_code', 'codex_cli', 'antigravity_cli'];
+  // Summaries published before the rename labeled Antigravity runs as "antigravity".
+  const LEGACY_AGENT_NAMES: Record<string, string> = { antigravity: 'antigravity_cli' };
 
   function getLatestRunForAgent(summary: any[], agentName: string) {
-    const runs = summary.filter((r: any) => r.agent === agentName);
+    const runs = summary.filter((r: any) => (LEGACY_AGENT_NAMES[r.agent] ?? r.agent) === agentName);
     if (runs.length === 0) return null;
     runs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return runs[0];

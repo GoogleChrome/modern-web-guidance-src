@@ -103,7 +103,8 @@ async function run() {
         commandArgs,
         workDir,
         targetDir,
-        'Codex CLI'
+        'Codex CLI',
+        runType
       );
     } finally {
       stopWatchingMcpLog();

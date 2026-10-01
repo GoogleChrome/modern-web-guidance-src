@@ -15,6 +15,7 @@ const AGENT_CONFIGS: Record<string, { file: string; agent: string }> = {
   'claude-code': { file: 'claude-code-agent.ts', agent: Agents.CLAUDE_CODE },
   'codex-cli': { file: 'codex-cli-agent.ts', agent: Agents.CODEX_CLI },
   'pi': { file: 'pi-agent.ts', agent: Agents.PI },
+  'antigravity-cli': { file: 'antigravity-cli-agent.ts', agent: Agents.ANTIGRAVITY_CLI },
 };
 
 const RUN_TYPES = ['guided', 'unguided'] as const;

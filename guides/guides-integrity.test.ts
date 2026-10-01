@@ -119,7 +119,8 @@ describe('Guides Validation (Single Source of Truth)', () => {
     const targetsDir = path.join(guide.dir, 'targets');
     const expectationsPath = path.join(guide.dir, 'expectations.md');
 
-    if (fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
+    // Discipline guide graders only cover the expectations relevant to each target app.
+    if (!guide.isDisciplineGuide && fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
       const targetApps = fs.readdirSync(targetsDir, { withFileTypes: true })
         .filter(e => e.isDirectory() && !e.name.startsWith('.'))
         .map(e => e.name);
