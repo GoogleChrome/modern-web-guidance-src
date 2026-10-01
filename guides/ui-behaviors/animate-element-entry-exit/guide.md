@@ -107,34 +107,61 @@ element.remove();
 ## Fallback strategies
 
 {{ BASELINE_STATUS("starting-style") }}
+{{ BASELINE_STATUS("transition-behavior") }}
+{{ BASELINE_STATUS("transition-behavior", "css.properties.transition-behavior.transitionable_display") }}
 
-For browsers that do not support these features, elements will toggle `display: none` instantly. You can detect support in JavaScript using `CSS.supports()` to conditionally apply manual animation logic.
+Entry animations using `@starting-style` work across all modern browsers without JavaScript. However, Firefox 129+ parses `transition-behavior: allow-discrete` (`CSS.supports('transition-behavior', 'allow-discrete')` returns `true`) without actually transitioning the `display` property (Firefox bug 1882408), causing elements to disappear immediately on exit.
+
+To reliably detect discrete `display` transition support, test whether a temporary element's computed `display` stays visible when transitioned to `none`:
 
 ```javascript
-// Detect support for discrete transitions and starting-style
-const supportsModernTransitions =
-  window.CSS &&
-  CSS.supports('transition-behavior', 'allow-discrete');
-
-if (!supportsModernTransitions) {
-  // Implement manual JS-based fallback for entry/exit
+let supportsDisplayTransition;
+function canTransitionDisplay() {
+  if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
+  if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
+    return false;
+  }
+  const probe = document.createElement('div');
+  probe.style.cssText = 'transition: display 1s allow-discrete; display: block;';
+  document.body.appendChild(probe);
+  getComputedStyle(probe).display;
+  probe.style.display = 'none';
+  supportsDisplayTransition = getComputedStyle(probe).display === 'block';
+  probe.remove();
+  return supportsDisplayTransition;
 }
 ```
 
-### Manual Entry Animation (JS Fallback)
+### Exit fallback when discrete `display` transitions are unsupported
+
+Separate the visual exit state (`[data-closing]`) from `display: none` (`[hidden]`) so browsers that cannot transition `display` still animate `opacity` and `translate` before hiding the element:
+
+```css
+.card:where(.hidden, [hidden], [data-closing]) {
+  opacity: 0;
+  translate: 0 -20px;
+}
+
+.card:where(.hidden, [hidden]) {
+  display: none;
+}
+```
 
 ```javascript
-// To show:
-el.style.display = '';
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    el.classList.remove('hidden');
-  });
-});
+async function hideElement(el) {
+  if (canTransitionDisplay()) {
+    el.hidden = true;
+    return;
+  }
 
-// To hide:
-el.setAttribute('hidden', true);
-el.addEventListener('transitionend', () => {
-  if (el.classList.contains('hidden')) el.style.display = 'none';
-}, { once: true });
+  el.setAttribute('data-closing', '');
+  const animations = el.getAnimations();
+  if (animations.length > 0) {
+    await Promise.allSettled(animations.map((a) => a.finished));
+  }
+  if (el.hasAttribute('data-closing')) {
+    el.removeAttribute('data-closing');
+    el.hidden = true;
+  }
+}
 ```

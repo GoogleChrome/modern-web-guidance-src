@@ -66,11 +66,10 @@ dialog,
 dialog::backdrop,
 [popover]::backdrop {
   background-color: rgba(0, 0, 0, 0);
-  /* The transition shorthand can also be used with allow-discrete */
-  transition:
-    display 0.3s allow-discrete,
-    overlay 0.3s allow-discrete,
-    background-color 0.3s ease-out;
+  transition-property: background-color, display, overlay;
+  transition-duration: 0.3s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
 }
 
 dialog[open]::backdrop,
@@ -114,21 +113,63 @@ dialog[open]::backdrop,
 
 {{ BASELINE_STATUS("starting-style") }}
 {{ BASELINE_STATUS("transition-behavior") }}
+{{ BASELINE_STATUS("transition-behavior", "css.properties.transition-behavior.transitionable_display") }}
 {{ BASELINE_STATUS("overlay") }}
 
-For browsers that do not support these features, top-layer elements will appear and disappear instantly. To provide animations in older browsers, you must use JavaScript to coordinate classes and wait for `transitionend` events or use the Web Animations API.
+Entry animations work in pure CSS across all browsers that support `@starting-style`—no `.is-opening` class is needed because entry transitions do not depend on `overlay` or discrete `display` transitions.
+
+Exit animations require both `overlay` and discrete `display` transition support. Because `overlay` is unsupported in Firefox and Safari, and Firefox 129+ parses `transition-behavior: allow-discrete` (`CSS.supports('transition-behavior', 'allow-discrete')` returns `true`) without actually transitioning `display` (Firefox bug 1882408), top-layer elements snap shut on close in those browsers without a JavaScript exit fallback.
+
+To detect true discrete `display` transition support, probe computed styles on a temporary element rather than relying solely on `CSS.supports('transition-behavior', 'allow-discrete')`. When native top-layer exit transitions are unsupported, exclude `[data-closing]` from the open selector so setting `data-closing` triggers the exit transition while the element remains in the top layer, then wait for `getAnimations()` to settle before calling `.close()` or `.hidePopover()`:
+
+```css
+dialog[open]:not([data-closing]),
+[popover]:popover-open:not([data-closing]) {
+  opacity: 1;
+  transform: scale(1);
+}
+
+dialog[open]:not([data-closing])::backdrop,
+[popover]:popover-open:not([data-closing])::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+```
 
 ```javascript
-// Feature detection for top-layer animations
-const supportsTopLayerAnimation =
-  window.CSS &&
-  CSS.supports('transition-behavior', 'allow-discrete') &&
-  CSS.supports('overlay', 'auto');
+let supportsDisplayTransition;
+function canTransitionDisplay() {
+  if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
+  if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
+    return false;
+  }
+  const probe = document.createElement('div');
+  probe.style.cssText = 'transition: display 1s allow-discrete; display: block;';
+  document.body.appendChild(probe);
+  getComputedStyle(probe).display;
+  probe.style.display = 'none';
+  supportsDisplayTransition = getComputedStyle(probe).display === 'block';
+  probe.remove();
+  return supportsDisplayTransition;
+}
 
-if (!supportsTopLayerAnimation) {
-  // Manual JS fallback for entry/exit animations:
-  // 1. Add an `.is-opening` class for entry.
-  // 2. On close, add an `.is-closing` class, wait for the `transitionend` event, then call .close() or hide the popover.
+const supportsTopLayerExit =
+  window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+
+async function closeTopLayer(element) {
+  if (supportsTopLayerExit) {
+    element instanceof HTMLDialogElement ? element.close() : element.hidePopover();
+    return;
+  }
+
+  element.setAttribute('data-closing', '');
+  const animations = element.getAnimations({ subtree: true });
+  if (animations.length > 0) {
+    await Promise.allSettled(animations.map((a) => a.finished));
+  }
+  if (element.hasAttribute('data-closing')) {
+    element.removeAttribute('data-closing');
+    element instanceof HTMLDialogElement ? element.close() : element.hidePopover();
+  }
 }
 ```
 
