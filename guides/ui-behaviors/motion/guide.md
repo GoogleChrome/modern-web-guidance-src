@@ -88,7 +88,8 @@ progress:not([value]) {
 On both the `AnimationEvent` (`animationstart`, `animationiteration`, `animationend`, `animationcancel`) and `TransitionEvent` (`transitionrun`, `transitionstart`, `transitionend`, `transitioncancel`) interfaces, use the readonly `event.animation` attribute to access the associated `Animation` object (`CSSAnimation` or `CSSTransition`) that triggered the event.
 
 - **DO** use `event.animation` (and `event.animation.effect.target`) to directly inspect the `Animation` instance and identify the exact element (or pseudo-element via `event.animation.effect.pseudoElement`) that fired the animation or transition event.
-- **DO NOT** blindly read `event.animationName` (or `event.propertyName`) and manually loop over `document.getAnimations()` to find the matching animation or target element when multiple elements can share the same `animation-name`.
+- **DO NOT** blindly read `event.animationName` and manually loop over `document.getAnimations()` to find the matching animation or target element when multiple elements can share the same `animation-name`.
+- **DO NOT** blindly read `event.transitionProperty` and manually loop over `document.getAnimations()` to find the matching animation or target element when multiple elements have transitions on the same property.
 
 ```js
 // BAD: Fragile when multiple elements use the same animation-name
