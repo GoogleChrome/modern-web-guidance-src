@@ -20,5 +20,8 @@
   },
   "tmp-iterator-includes": {
     "issue": "https://github.com/web-platform-dx/web-features/pull/4405"
+  },
+  "tmp-webcrypto-modern-algos": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4267"
   }
 }
