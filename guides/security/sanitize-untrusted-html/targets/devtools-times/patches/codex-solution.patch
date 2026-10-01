@@ -1,0 +1,222 @@
+diff --git a/package.json b/package.json
+index 5e71a8a..a1e088d 100644
+--- a/package.json
++++ b/package.json
+@@ -10,6 +10,7 @@
+     "astro": "astro"
+   },
+   "dependencies": {
++    "dompurify": "^3.3.3",
+     "@astrojs/node": "^11.0.2",
+     "@astrojs/react": "^5.0.4",
+     "@heroicons/react": "^2.2.0",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index ab0416c..6abcab2 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -29,6 +29,9 @@ importers:
+       astro:
+         specifier: ^7.2.8
+         version: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
++      dompurify:
++        specifier: ^3.3.3
++        version: 3.4.16
+       react:
+         specifier: ^19.2.5
+         version: 19.2.5
+@@ -1479,6 +1482,9 @@ packages:
+   '@types/react@19.2.14':
+     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
+ 
++  '@types/trusted-types@2.0.7':
++    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
++
+   '@types/unist@3.0.3':
+     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
+ 
+@@ -1666,6 +1672,9 @@ packages:
+     resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
+     engines: {node: '>= 4'}
+ 
++  dompurify@3.4.16:
++    resolution: {integrity: sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ==}
++
+   domutils@3.2.2:
+     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
+ 
+@@ -3590,6 +3599,9 @@ snapshots:
+     dependencies:
+       csstype: 3.2.3
+ 
++  '@types/trusted-types@2.0.7':
++    optional: true
++
+   '@types/unist@3.0.3': {}
+ 
+   '@ungap/structured-clone@1.3.0': {}
+@@ -3827,6 +3839,10 @@ snapshots:
+     dependencies:
+       domelementtype: 2.3.0
+ 
++  dompurify@3.4.16:
++    optionalDependencies:
++      '@types/trusted-types': 2.0.7
++
+   domutils@3.2.2:
+     dependencies:
+       dom-serializer: 2.0.0
+diff --git a/src/components/CommentPreview.astro b/src/components/CommentPreview.astro
+new file mode 100644
+index 0000000..8433055
+--- /dev/null
++++ b/src/components/CommentPreview.astro
+@@ -0,0 +1,55 @@
++<reader-comment-preview class="block p-4 md:p-6 border-t border-gray-200">
++  <h2 class="text-2xl font-brand mb-2">Preview your comment</h2>
++  <p class="text-sm text-gray-600 mb-4" id="comment-help">
++    Try formatting your comment with paragraphs, bold, italics, lists, or quotes.
++    This preview is private and is not published or saved.
++  </p>
++  <form>
++    <label for="comment-html" class="block font-semibold mb-2">Comment HTML</label>
++    <textarea id="comment-html" name="html" rows="5" aria-describedby="comment-help"
++      class="block w-full border border-gray-400 rounded p-3 font-mono text-sm"
++      placeholder="<p>Hello <b>readers</b>!</p>"></textarea>
++    <button type="submit" class="mt-3 rounded bg-gray-800 px-4 py-2 text-white hover:bg-gray-700 disabled:opacity-50">
++      Preview comment
++    </button>
++  </form>
++  <p role="status" class="text-sm text-gray-600 mt-3"></p>
++  <h3 class="font-semibold mt-4 mb-2" id="comment-preview-heading">Preview</h3>
++  <div id="output" role="region" aria-labelledby="comment-preview-heading"
++    class="prose max-w-none min-h-20 border border-gray-200 rounded p-4 break-words"></div>
++</reader-comment-preview>
++
++<script>
++  import { safeSetHTML } from '../utils/safeSetHTML';
++
++  class ReaderCommentPreview extends HTMLElement {
++    connectedCallback() {
++      const form = this.querySelector('form');
++      const input = this.querySelector('textarea');
++      const button = this.querySelector('button');
++      const output = this.querySelector<HTMLElement>('[role="region"]');
++      const status = this.querySelector<HTMLElement>('[role="status"]');
++      if (!form || !input || !button || !output || !status) return;
++
++      form.onsubmit = async event => {
++        event.preventDefault();
++        if (button.disabled) return;
++        button.disabled = true;
++        status.textContent = 'Preparing preview…';
++        try {
++          await safeSetHTML(output, input.value);
++          status.textContent = 'Preview updated. Only supported formatting is shown.';
++        } catch {
++          output.replaceChildren();
++          status.textContent = 'Unable to prepare a safe preview. Please try again.';
++        } finally {
++          button.disabled = false;
++        }
++      };
++    }
++  }
++
++  if (!customElements.get('reader-comment-preview')) {
++    customElements.define('reader-comment-preview', ReaderCommentPreview);
++  }
++</script>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..1e10a68 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../../layouts/Layout.astro';
++import CommentPreview from '../../components/CommentPreview.astro';
+ import Ad from '../../components/AdSlotBanner.tsx';
+ 
+ import { getCollection, getEntry, render } from 'astro:content';
+@@ -110,6 +111,7 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- ADVERTISEMENT -->
++        <CommentPreview />
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:load />
+         </section>
+@@ -123,4 +125,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..a262763 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,5 +1,6 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
++import CommentPreview from '../components/CommentPreview.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+@@ -60,6 +61,7 @@ politicsArticles[2] = {
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <CommentPreview />
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+@@ -81,4 +83,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/utils/safeSetHTML.ts b/src/utils/safeSetHTML.ts
+new file mode 100644
+index 0000000..29878cf
+--- /dev/null
++++ b/src/utils/safeSetHTML.ts
+@@ -0,0 +1,36 @@
++const elements = ['p', 'b', 'i', 'strong', 'em', 'br', 'ul', 'ol', 'li', 'blockquote'];
++const attributes: string[] = [];
++
++type SafeHTMLElement = Element & {
++  setHTML: (html: string, options: {
++    sanitizer: { elements: string[]; attributes: string[] };
++  }) => void;
++};
++
++let purifierPromise: Promise<typeof import('dompurify')['default']> | undefined;
++
++/** Parse untrusted input only through a sanitizer, never through a live DOM sink. */
++export async function safeSetHTML(container: Element, html: string): Promise<void> {
++  if ('setHTML' in Element.prototype) {
++    (container as SafeHTMLElement).setHTML(html, {
++      sanitizer: { elements, attributes },
++    });
++    return;
++  }
++
++  purifierPromise ??= import('dompurify').then(module => module.default).catch(error => {
++    purifierPromise = undefined;
++    throw error;
++  });
++  const purifier = await purifierPromise;
++  const fragment = purifier.sanitize(html, {
++    ALLOWED_TAGS: [...elements, '#text'],
++    ALLOWED_ATTR: attributes,
++    ALLOW_ARIA_ATTR: false,
++    ALLOW_DATA_ATTR: false,
++    KEEP_CONTENT: false,
++    RETURN_DOM_FRAGMENT: true,
++  });
++  // Move sanitized nodes directly; do not serialize and reparse the result.
++  container.replaceChildren(fragment);
++}
