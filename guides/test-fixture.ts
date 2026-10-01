@@ -151,6 +151,42 @@ const HTML_EXTS = /\.(html|htm|astro)$/i;
 const CSS_EXTS = /\.css$/i;
 const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
 
+function unwrapGlobalPseudo(css: string): string {
+  let result = css;
+  const token = ':global(';
+  let idx = result.indexOf(token);
+  while (idx !== -1) {
+    let depth = 1;
+    let i = idx + token.length;
+    while (i < result.length && depth > 0) {
+      if (result[i] === '(') depth++;
+      else if (result[i] === ')') depth--;
+      i++;
+    }
+    if (depth === 0) {
+      const inner = result.slice(idx + token.length, i - 1);
+      result = result.slice(0, idx) + inner + result.slice(i);
+      idx = result.indexOf(token, idx + inner.length);
+    } else {
+      break;
+    }
+  }
+  return result;
+}
+
+function isValidInlineStyle(style: string): boolean {
+  if (!style || style.startsWith('{')) return false;
+  let depth = 0;
+  for (const ch of style) {
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth < 0) return false;
+    }
+  }
+  return depth === 0;
+}
+
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
  * and inline styles into a CSSOMNom CSSStyleSheet object.
@@ -165,13 +201,18 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       cssBlocks.push(content);
     } else if (HTML_EXTS.test(file)) {
       try {
-        const { document } = parseHTML(content);
+        const htmlContent = file.endsWith('.astro')
+          ? content.replace(/^---[\r\n]+[\s\S]*?[\r\n]+---/, '')
+          : content;
+        const { document } = parseHTML(htmlContent);
         document.querySelectorAll('style').forEach((style: any) => {
           if (style.textContent) cssBlocks.push(style.textContent);
         });
         document.querySelectorAll('[style]').forEach((el: any) => {
-          const inlineStyle = el.getAttribute('style');
-          if (inlineStyle) cssBlocks.push(`[style] { ${inlineStyle} }`);
+          const inlineStyle = el.getAttribute('style')?.trim();
+          if (inlineStyle && isValidInlineStyle(inlineStyle)) {
+            cssBlocks.push(`[style] { ${inlineStyle} }`);
+          }
         });
       } catch {
         const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
@@ -190,7 +231,7 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       }
     }
   }
-  return parse(cssBlocks.join('\n'));
+  return parse(unwrapGlobalPseudo(cssBlocks.join('\n')));
 }
 
 export function populateJsProject(project: Project, files: string[]): void {
