@@ -344,6 +344,14 @@ window.__featuresMapping = {
   "migrate-web-app-origin": [
     "app-migration"
   ],
+  "client-side-encryption": [
+    "tmp-webcrypto-modern-algos",
+    "web-cryptography"
+  ],
+  "digital-signatures": [
+    "tmp-webcrypto-modern-algos",
+    "web-cryptography"
+  ],
   "local-network-access": [
     "local-network-access"
   ],
