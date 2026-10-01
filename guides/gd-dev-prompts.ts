@@ -10,6 +10,8 @@ import { type SolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, REPORT_FILE } from '
 import { Agents } from '../harness/config.ts';
 import type { TargetEvalSummary } from './lib/dev-report.ts';
 
+const DISCIPLINE_RELEVANCE_RULE = 'An expectation is relevant only if it applies to any web application (such as document metadata or response headers) or the application already contains the kind of element or feature it governs (such as forms, credential inputs, images, overlays or flyouts, cookies or sessions, iframes, external scripts, or a logout flow). Judge relevance by whether that element or feature exists, not by whether the technique the expectation recommends is already used: an existing element that lacks the recommended technique is exactly what should be implemented and tested.';
+
 export interface PatchPromptOptions {
   guideFile: string;
   expectationsFile: string;
@@ -19,11 +21,12 @@ export interface PatchPromptOptions {
 
 export function buildSolutionPrompt(opts: PatchPromptOptions): string {
   const disciplineInstruction = opts.isDisciplineGuide
-    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to this application. You do NOT need to satisfy every expectation. Only implement the expectations that are relevant to this application.`
+    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to this application. You do NOT need to satisfy every expectation. ${DISCIPLINE_RELEVANCE_RULE} Implement the relevant expectations and skip expectations for patterns the application does not have. Do NOT add new features, pages, routes, servers, forms, scripts, or content just to satisfy an expectation.`
     : '';
+  const scope = opts.isDisciplineGuide ? 'the relevant' : 'all';
 
   return `# GOAL
-Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy all must-pass expectations in \`${opts.expectationsFile}\`.${disciplineInstruction}
+Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy ${scope} must-pass expectations in \`${opts.expectationsFile}\`.${disciplineInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -40,7 +43,7 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 
 export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
   const disciplineInstruction = opts.isDisciplineGuide
-    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to this application. You do NOT need to fail every expectation. Only remove implementations of the expectations that are relevant to this application.`
+    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to this application. You do NOT need to fail every expectation. ${DISCIPLINE_RELEVANCE_RULE} Only remove existing implementations of relevant expectations. Do NOT add features or anti-patterns the application does not already have. Do NOT remove or degrade anything the application already does correctly; the grader will skip expectations the application already satisfies.`
     : '';
 
   return `# GOAL
@@ -113,7 +116,7 @@ Analyze this failure and modify the existing grader file to fix these assertions
     : '';
 
   const disciplineInstruction = opts.isDisciplineGuide
-    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to the \`${opts.baseApp}\` application. You do NOT need to write a test for every expectation.`
+    ? `\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation in \`${opts.expectationsFile}\` will be relevant to the \`${opts.baseApp}\` application. You do NOT need to write a test for every expectation. ${DISCIPLINE_RELEVANCE_RULE} Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
     : '';
 
   return `${contextBlock}# GOAL
