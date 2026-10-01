@@ -26,14 +26,12 @@ todo-web-feature-ids:
 
 - Use unitless numbers for `line-height` (e.g., `1.5`) to ensure relative scaling during font-size inheritance.
 - Use `overflow-wrap: break-word` (or `anywhere`) to contain long URLs.
-- **DON'T** use `px` for font-size. Prefer `rem` to honor the user's browser font-size preferences (root font size), or `em` for contextual sizing.
+- **DON'T** use `px` for font-size. Prefer `rem` to honor the user's browser font-size preferences (root font size), or `em`/percentages for contextual sizing.
 
 ## Readability
 
-- **Relative font size units**: Use `rem` or `em` for font sizes instead of `px`.
-- **Consistent or Start alignment**: Avoid `justify` alignment as it can be more difficult to read.
 - **Avoid long lines of text**: Cap paragraph blocks to a maximum of 80 characters width.
-- **Don't use Justified Text Alignment**: Avoid `text-align: justify`.
+- **Avoid rivers of whitespace**: Avoid `text-align: justify` as it can make text harder to read. If you must use it, combine it with `hyphens: auto` to avoid excessive whitespace between words.
 - **Don't use Ornate fonts**: Omit cursive typefaces for main reading content.
 - **Don't rely on all-caps for emphasis**: Prefer bolding for visual emphasis, and use `<em>`/`<strong>` when the emphasis is semantic.
 - **Limit emphasis overall**: Emphasis loses meaning when it's everywhere — apply it only where it changes how the content should be read.
