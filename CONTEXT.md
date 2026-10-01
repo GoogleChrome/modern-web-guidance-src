@@ -328,7 +328,7 @@ All runtime configuration lives in `harness/config.ts` and environment variables
 # .env (at repo root)
 GEMINI_API_KEY='your_api_key_here'
 GEMINI_MODEL='gemini-3.6-flash'
-ANTIGRAVITY_GCP_PROJECT=<project-id> # Antigravity CLI is the default agent for 'gd dev'
+# ANTIGRAVITY_GCP_PROJECT=<project-id> # Optional: only if agy (default 'gd dev' agent) uses a GCP project
 GD_DEV_USE_JETSKI=1 # Optional: use Jetski CLI instead for 'gd dev'
 
 # For Claude Code (optional)

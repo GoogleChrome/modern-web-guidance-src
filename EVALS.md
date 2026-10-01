@@ -88,8 +88,9 @@ curl -fsSL https://antigravity.google/cli/install.sh | bash
 Then run `agy` once interactively to sign in.
 
 **Configuration:**
-Set the GCP project in `~/.gemini/antigravity-cli/settings.json` (`gcp.project`), or override it in your `.env` file:
+All settings are optional. If you sign in with a personal Antigravity account, no GCP project is needed. If you use agy through a GCP project, set it in `~/.gemini/antigravity-cli/settings.json` (`gcp.project`), or override it in your `.env` file:
 ```bash
+# Optional: GCP project (only for GCP-project auth)
 ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID>
 # Optional: path to the agy binary if it is not on your PATH (e.g. under cron)
 ANTIGRAVITY_CLI_BIN=/home/<you>/.local/bin/agy

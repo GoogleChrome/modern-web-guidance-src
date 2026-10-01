@@ -183,10 +183,10 @@ All evaluation and environment configuration is centralized in [`harness/config.
 
 ### API Keys & Environment Setup
 
-For setup of core guide development workflows (`gd dev`), install and sign in to Antigravity CLI (the default `gd dev` agent; see [EVALS.md](./EVALS.md#antigravity-cli)) and configure your environment or `.env` file:
+For setup of core guide development workflows (`gd dev`), install and sign in to Antigravity CLI (the default `gd dev` agent; see [EVALS.md](./EVALS.md#antigravity-cli)). Optionally configure your environment or `.env` file:
 
 ```bash
-ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID>
+# ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID> # Optional: only if you use agy through a GCP project
 # GD_DEV_USE_JETSKI=1 # Optional: use Jetski CLI instead of Antigravity CLI for 'gd dev'
 ```
 
