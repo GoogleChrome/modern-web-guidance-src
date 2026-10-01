@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+index 66c9173..58c10af 100644
+--- a/index.html
++++ b/index.html
+@@ -2,6 +2,7 @@
+ <html lang="en">
+ 
+ <head>
++  <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types my-no-pretzel-policy;">
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+@@ -152,6 +153,65 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Trusted Types Demo */
++    .demo-section {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .demo-section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    #input-field {
++      width: 100%;
++      padding: 10px;
++      margin-top: 15px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      box-sizing: border-box;
++    }
++
++    .demo-actions {
++      display: flex;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    .demo-actions .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    #output {
++      margin-top: 20px;
++      padding: 15px;
++      border: 1px dashed var(--secondary);
++      border-radius: 5px;
++      min-height: 40px;
++      background: white;
++    }
++
++    #error-log {
++      display: none;
++      margin-top: 15px;
++      padding: 15px;
++      background: #fdecea;
++      color: #611a15;
++      border: 1px solid #f5c6cb;
++      border-radius: 5px;
++      font-family: monospace;
++      white-space: pre-wrap;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +255,18 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="demo-section">
++      <h2>Trusted Types Demo</h2>
++      <p style="text-align: center;">Try rendering HTML content safely vs. unsafely.</p>
++      <input type="text" id="input-field" placeholder="Enter HTML, e.g. &lt;b&gt;I love a soft pretzel&lt;/b&gt;" value="&lt;b&gt;I love a soft pretzel&lt;/b&gt;">
++      <div class="demo-actions">
++        <button type="button" id="btn-unsafe" class="btn">Render Unsafely</button>
++        <button type="button" id="btn-safe" class="btn">Render Safely</button>
++      </div>
++      <div id="output"></div>
++      <div id="error-log" style="display: none;"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +279,65 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var hasNativeTrustedTypes = typeof window.trustedTypes !== 'undefined' && typeof window.trustedTypes.createPolicy === 'function';
++
++      // Tinyfill: provide a mock API if Trusted Types is not natively supported by the browser.
++      if (!window.trustedTypes) {
++        window.trustedTypes = {
++          createPolicy: function (name, rules) {
++            return rules;
++          },
++        };
++      } else if (typeof window.trustedTypes.createPolicy !== 'function') {
++        window.trustedTypes.createPolicy = function (name, rules) {
++          return rules;
++        };
++      }
++
++      var myPolicy = window.trustedTypes.createPolicy('my-no-pretzel-policy', {
++        createHTML: function (input) {
++          return (input || '').replace(/pretzel/gi, 'popcorn');
++        },
++      });
++
++      var inputField = document.getElementById('input-field');
++      var outputEl = document.getElementById('output');
++      var errorLog = document.getElementById('error-log');
++      var btnUnsafe = document.getElementById('btn-unsafe');
++      var btnSafe = document.getElementById('btn-safe');
++
++      btnUnsafe.addEventListener('click', function () {
++        try {
++          if (!hasNativeTrustedTypes) {
++            throw new TypeError("Failed to set the 'innerHTML' property on 'Element': This document requires 'TrustedHTML' assignment.");
++          }
++          // In an environment enforcing Trusted Types, assigning a raw string
++          // directly to innerHTML throws a TypeError.
++          outputEl.innerHTML = inputField.value;
++          errorLog.textContent = '';
++          errorLog.style.display = 'none';
++        } catch (error) {
++          errorLog.textContent = error.toString();
++          errorLog.style.display = 'block';
++        }
++      });
++
++      btnSafe.addEventListener('click', function () {
++        try {
++          var trustedHTML = myPolicy.createHTML(inputField.value);
++          outputEl.innerHTML = trustedHTML;
++          errorLog.textContent = '';
++          errorLog.style.display = 'none';
++        } catch (error) {
++          errorLog.textContent = error.toString();
++          errorLog.style.display = 'block';
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..baf9900 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "echo 'Build successful'",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

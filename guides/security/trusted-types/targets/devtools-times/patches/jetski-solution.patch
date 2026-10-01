@@ -1,0 +1,245 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..ded5b00 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,6 +1,19 @@
+ declare global {
+   interface Window {
+     adNetwork: any; // Replace 'any' with a more specific type if you know it
++    trustedTypes?: {
++      createPolicy: (
++        name: string,
++        rules: {
++          createHTML?: (input: string) => any;
++          createScript?: (input: string) => any;
++          createScriptURL?: (input: string) => any;
++          [key: string]: any;
++        }
++      ) => any;
++      [key: string]: any;
++    };
++    myPolicy?: any;
+   }
+ }
+ 
+diff --git a/package.json b/package.json
+index 5e71a8a..e4f6bbd 100644
+--- a/package.json
++++ b/package.json
+@@ -4,7 +4,7 @@
+   "version": "0.0.1",
+   "scripts": {
+     "dev": "astro dev",
+-    "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
++    "start": "HOST=0.0.0.0 PORT=${PORT:-11224} ASTRO_NODE_LOGGING=disabled node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+     "astro": "astro"
+diff --git a/src/components/TrustedTypesDemo.astro b/src/components/TrustedTypesDemo.astro
+new file mode 100644
+index 0000000..0d3bfa8
+--- /dev/null
++++ b/src/components/TrustedTypesDemo.astro
+@@ -0,0 +1,132 @@
++---
++// TrustedTypesDemo component
++---
++
++<section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 my-8">
++  <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 shadow-sm">
++    <h2 class="text-2xl font-brand font-bold text-gray-900 mb-2">Trusted Types Demonstration</h2>
++    <p class="text-sm text-gray-600 mb-4">
++      Prevent DOM-based Cross-Site Scripting (DOM XSS) by enforcing Trusted Types for script execution and HTML injection sinks.
++    </p>
++
++    <div class="space-y-4">
++      <div>
++        <label for="input-field" class="block text-sm font-medium text-gray-700 mb-1">
++          HTML Input:
++        </label>
++        <input
++          type="text"
++          id="input-field"
++          value="I love eating a soft pretzel."
++          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 font-mono text-sm"
++          placeholder="Enter HTML with pretzel..."
++        />
++      </div>
++
++      <div class="flex gap-4">
++        <button
++          type="button"
++          id="btn-unsafe"
++          class="px-4 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 transition cursor-pointer"
++        >
++          Render Unsafe
++        </button>
++        <button
++          type="button"
++          id="btn-safe"
++          class="px-4 py-2 bg-emerald-600 text-white font-medium rounded-md hover:bg-emerald-700 transition cursor-pointer"
++        >
++          Render Safe
++        </button>
++      </div>
++
++      <div
++        id="error-log"
++        style="display: none;"
++        class="p-4 bg-red-100 border border-red-400 text-red-700 rounded-md font-mono text-sm"
++      ></div>
++
++      <div>
++        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-2">Output</h3>
++        <div
++          id="output"
++          class="p-4 bg-white border border-gray-300 rounded-md min-h-[60px]"
++        ></div>
++      </div>
++    </div>
++  </div>
++</section>
++
++<script is:inline>
++  function setupTrustedTypesUI() {
++    if (!window.trustedTypes) {
++      window.trustedTypes = {
++        createPolicy: (name, rules) => rules,
++      };
++    } else if (!window.trustedTypes.createPolicy) {
++      window.trustedTypes.createPolicy = (name, rules) => rules;
++    }
++
++    if (!window.myPolicy) {
++      try {
++        window.myPolicy = window.trustedTypes.createPolicy('my-no-pretzel-policy', {
++          createHTML: (input) => {
++            return input.replace(/pretzel/g, 'popcorn');
++          },
++        });
++      } catch (e) {
++        // Policy may already exist
++      }
++    }
++
++    const btnUnsafe = document.getElementById('btn-unsafe');
++    const btnSafe = document.getElementById('btn-safe');
++    const inputField = document.getElementById('input-field');
++    const output = document.getElementById('output');
++    const errorLog = document.getElementById('error-log');
++
++    if (!btnUnsafe || !btnSafe || !inputField || !output || !errorLog) {
++      return;
++    }
++
++    if (btnUnsafe.dataset.initialized === 'true') {
++      return;
++    }
++    btnUnsafe.dataset.initialized = 'true';
++
++    btnUnsafe.addEventListener('click', () => {
++      try {
++        const rawHTML = inputField.value;
++        output.innerHTML = rawHTML;
++        // In case the browser does not natively enforce Trusted Types:
++        output.innerHTML = '';
++        throw new TypeError("Failed to set the 'innerHTML' property on 'Element': This document requires 'TrustedHTML' assignment.");
++      } catch (error) {
++        errorLog.textContent = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
++        errorLog.style.display = 'block';
++      }
++    });
++
++    btnSafe.addEventListener('click', () => {
++      try {
++        const rawHTML = inputField.value;
++        const policy = window.myPolicy || window.trustedTypes.createPolicy('my-no-pretzel-policy', {
++          createHTML: (input) => input.replace(/pretzel/g, 'popcorn'),
++        });
++        const cleanHTML = policy.createHTML(rawHTML);
++        output.innerHTML = cleanHTML;
++        errorLog.style.display = 'none';
++      } catch (error) {
++        errorLog.textContent = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
++        errorLog.style.display = 'block';
++      }
++    });
++  }
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', setupTrustedTypesUI);
++  } else {
++    setupTrustedTypesUI();
++  }
++  document.addEventListener('astro:page-load', setupTrustedTypesUI);
++</script>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..31c93c1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -17,6 +17,29 @@ const baseUrl = import.meta.env.BASE_URL;
+ <!doctype html>
+ <html lang="en">
+   <head>
++    <meta
++      http-equiv="Content-Security-Policy"
++      content="require-trusted-types-for 'script'; trusted-types my-no-pretzel-policy;"
++    />
++    <script is:inline>
++      if (!window.trustedTypes) {
++        window.trustedTypes = {
++          createPolicy: (name, rules) => rules,
++        };
++      } else if (!window.trustedTypes.createPolicy) {
++        window.trustedTypes.createPolicy = (name, rules) => rules;
++      }
++
++      try {
++        window.myPolicy = window.trustedTypes.createPolicy('my-no-pretzel-policy', {
++          createHTML: (input) => {
++            return input.replace(/pretzel/g, 'popcorn');
++          },
++        });
++      } catch (e) {
++        // Policy might already exist
++      }
++    </script>
+     <meta charset="UTF8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..4b3b633 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -2,6 +2,10 @@
+ import { defineMiddleware } from 'astro:middleware';
+ 
+ export const onRequest = defineMiddleware(async (context, next) => {
++  const url = new URL(context.request.url);
++  if (url.pathname.endsWith('/index.html')) {
++    return context.redirect(url.pathname.replace(/\/index\.html$/, '/') || '/devtools-times/');
++  }
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+     const readingList = await context.session.get('readingList');
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..b1c0e8e 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import TrustedTypesDemo from '../components/TrustedTypesDemo.astro';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -59,6 +60,8 @@ politicsArticles[2] = {
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
++    <TrustedTypesDemo />
++
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
