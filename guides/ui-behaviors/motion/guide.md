@@ -37,7 +37,7 @@ web-feature-ids:
 ### Accessibility
 
 Use `prefers-reduced-motion` media queries to turn off heavy motion for users who prefer it.
-- **Provide Pause mechanism**: Allow users to stop auto-running carousels banners or other persistent animations.
+- **Provide Pause mechanism**: Allow users to stop auto-running carousels, banners, or other persistent animations.
 - **Default to static views**: Consider defaulting to static states and allowing users to opt-in to motion.
 - **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures.
 
