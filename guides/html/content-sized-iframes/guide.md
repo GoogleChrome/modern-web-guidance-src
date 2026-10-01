@@ -1,25 +1,27 @@
 ---
 name: content-sized-iframes
-description: Size embedded iframes—such as comment widgets, embedded forms, content previews, and third-party embeds—to fit their content so they never show an inner scrollbar, including after the embedded content changes.
+description: Responsively size embedded iframes—such as comment widgets, embedded forms, content previews, and third-party embeds—to fit their content so they never show an inner scrollbar, including after the embedded content changes.
 web-feature-ids:
   - frame-sizing
   - resize-observer
 ---
 
-# Content-sized iframes
+# Content-sized responsive iframes
 
-By default an `<iframe>` is a fixed-size viewport (300×150px unless sized otherwise), so content taller than the frame gets an inner scrollbar. The legacy fix—measuring the embedded document in script, sending its height with `postMessage()`, and setting `iframe.style.height` in the parent—is fragile and needs code on both sides.
+By default an `<iframe>` is a fixed-size viewport (300×150px unless sized otherwise), so content taller than the frame gets an inner scrollbar.
 
-Responsive iframes replace that with a **double opt-in**:
+**Responsive iframes** let the browser size an `<iframe>` to its content. The feature consists of the CSS `frame-sizing` property on the embedding page plus an opt-in in the embedded document. It replaces the legacy fix—measuring the embedded document in script, sending its height with `postMessage()`, and setting `iframe.style.height` in the parent—which is fragile because the measuring, messaging, and origin checks are all hand-written.
 
-- The **embedding page** sets `frame-sizing: content-height` on the `<iframe>`.
-- The **embedded document** declares `<meta name="responsive-embedded-sizing" content="allow-origins=...">` and calls `window.requestResize()` when its content changes after load.
+Responsive iframes still need a small change on both sides, as a **double opt-in**:
 
-Both opt-ins are required. The iframe keeps its style, script, and origin isolation; only the content height is exposed, and only to the origins the embedded document allows.
+- The **embedding page** declares `frame-sizing: …` in its CSS, targeting the `<iframe>`.
+- The **embedded document** declares `<meta name="responsive-embedded-sizing" content="allow-origins=...">` in HTML and calls `window.requestResize()` when its content changes.
+
+Both opt-ins are required. The iframe keeps its style, script, and origin isolation; only the content size is exposed, and only to the origins the embedded document allows.
 
 ## Implementation steps
 
-1. **Embedding page: opt the iframe in.** Set `frame-sizing: content-height` and give the iframe a definite width (for example `width: 100%`). Leave the height `auto`: a `height` attribute or CSS `height` overrides the content height.
+1. **Embedding page: MANDATORY `frame-sizing` opt-in.** Set `frame-sizing` on the iframe for the axis that should follow the content—usually `content-height` (or `content-block-size`) for embeds that grow vertically, as in the examples below. Give the other axis a definite size (for example `width: 100%`). Leave the content-sized axis `auto`: an explicit size on that axis (for `content-height`, a `height` attribute or CSS `height`) overrides the content size. For iframes that should follow the content width, follow a similar approach using `content-width`.
 2. **Embedded document: MANDATORY meta opt-in.** Add `<meta name="responsive-embedded-sizing" content="allow-origins=...">` to the server-rendered `<head>`, before any `<body>` content. The `content="allow-origins=..."` value is required.
 3. **Embedded document: request a resize after dynamic changes.** The browser measures the content after `DOMContentLoaded` and again at `load`. Later changes are **not** picked up automatically. Call `window.requestResize()` after each change that affects the content height.
 4. **Optional: constrain the size.** Use `min-height` and `max-height` on the iframe. They clamp the content height like any other replaced element. Content taller than `max-height` scrolls inside the frame again.
@@ -77,8 +79,8 @@ Logical values resolve against the writing mode of the `<iframe>` element, not t
           content="allow-origins=https://blog.example https://news.example">
     <style>
       /* DO NOT size the content with viewport units (vh/dvh/svh) or height: 100% on
-         html/body. The frame's viewport is locked at its first layout, so these
-         resolve to the initial frame height instead of following the content. */
+         html/body. The frame's initial containing block (ICB) is locked at its first
+         layout, so these resolve to the initial frame height instead of following the content. */
     </style>
   </head>
   <body>…</body>
@@ -111,7 +113,7 @@ async function loadMoreComments() {
 }
 ```
 
-**Optional:** Height can also change without your code doing anything, for example when images decode, web fonts swap, or a `<details>` element toggles. For these cases, observe the document and request a resize whenever its size changes. Growing the frame does not change the embedded viewport, so this doesn't cause a resize loop.
+**Optional:** Height can also change without your code doing anything, for example when images decode, web fonts swap, or a `<details>` element toggles. For these cases, observe the document and request a resize whenever its size changes. Growing the frame does not change the embedded document's initial containing block, so this doesn't cause a resize loop.
 
 ```js
 // OPTIONAL: catch height changes your code doesn't trigger directly.
@@ -122,8 +124,8 @@ new ResizeObserver(() => requestFrameResize()).observe(document.documentElement)
 
 - **Both opt-ins are required.** Without the `<meta>` (or with an origin that isn't allowed), the iframe keeps its default 150px height even with `frame-sizing` set. Without `frame-sizing`, the `<meta>` does nothing.
 - **Explicit heights win.** A `height` attribute or CSS `height` disables content sizing. When you keep a legacy height as a fallback, override it with `height: auto` inside `@supports (frame-sizing: content-height)`.
-- **The frame never gets shorter than it was at the embedded document's first layout.** The embedded viewport is locked at that size (150px for an unsized iframe, or the `min-height` if one is set). Content shorter than that leaves empty space, and `requestResize()` can't shrink the frame below it.
-- **Width changes after load are not re-measured.** Because the viewport is locked, content that reflows when the iframe's width changes later (window resize, device rotation, a container animating its width) doesn't update the frame height, even after `requestResize()`. Size the iframe to its final width before it loads, for example `width: 100%` of a stable container. If an exact fit matters after a large width change, reload a stateless embed by reassigning its `src`.
+- **The frame never gets shorter than it was at the embedded document's first layout.** The embedded document's initial containing block (ICB) is locked at that size (150px for an unsized iframe, or the `min-height` if one is set). Content shorter than that leaves empty space, and `requestResize()` can't shrink the frame below it.
+- **Width changes after load are not re-measured.** Because the ICB is locked, content that reflows when the iframe's width changes later (window resize, device rotation, a container animating its width) doesn't update the frame height, even after `requestResize()`. Size the iframe to its final width before it loads, for example `width: 100%` of a stable container. If an exact fit matters after a large width change, reload a stateless embed by reassigning its `src`.
 - **Layout shift.** The frame grows when the embedded document loads, after the host page renders. For embeds in the first viewport, reserve space with `min-height`. Use `loading="lazy"` for embeds below the fold.
 
 ### Load the embedded document after the host lays out the frame
