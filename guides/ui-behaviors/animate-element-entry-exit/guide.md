@@ -43,7 +43,7 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 }
 
 /* Exit animation: transition TO these values when hidden */
-.card:where(.hidden, [hidden]) {
+.card[hidden] {
   display: none;
   opacity: 0;
   translate: 0 -20px;
@@ -63,7 +63,7 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
     }
   }
 
-  .card:where(.hidden, [hidden]) {
+  .card[hidden] {
     translate: none;
   }
 }
@@ -74,11 +74,11 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 For elements added via `appendChild()` or removed via `remove()`:
 
 - **Entry**: Use `@starting-style` as shown above. The browser will automatically detect the style change from "nothing" to the element's initial styles and trigger the transition from the `@starting-style` values.
-- **Removal**: Since `element.remove()` is instantaneous and doesn't trigger a CSS transition on its own, you must trigger the exit transition first (e.g., by adding a class) and wait for it to finish before removing the node from the DOM.
+- **Removal**: Since `element.remove()` is instantaneous and doesn't trigger a CSS transition on its own, you must trigger the exit transition first and wait for it to finish before removing the node from the DOM.
 
 ```javascript
-// Trigger exit transition
-element.setAttribute('hidden', true);
+// 1. Trigger exit transition
+element.hidden = true;
 
 // 2. Wait for all active transitions/animations to finish,
 //    with a failsafe timeout in case an animation never ends (e.g. for looping animations)
@@ -112,15 +112,15 @@ element.remove();
 
 ### Exit fallback when discrete `display` transitions are unsupported
 
-Entry animations using `@starting-style` work across all modern browsers without JavaScript. When discrete `display` transitions are unsupported (`!canTransitionDisplay()`), separate the visual exit state (`[data-closing]`) from `display: none` (`[hidden]`) so `opacity` and `translate` finish animating before hiding the element:
+Entry animations using `@starting-style` work across all modern browsers without JavaScript. When discrete `display` transitions are unsupported (`!canTransitionDisplay()`), setting `hidden` applies `display: none` immediately and skips the exit animation (both when hiding and before `element.remove()`). Separate the visual exit state (`[data-closing]`) from `display: none` (`[hidden]`) so `opacity` and `translate` finish animating before hiding or removing the element:
 
 ```css
-.card:where(.hidden, [hidden], [data-closing]) {
+.card:where([hidden], [data-closing]) {
   opacity: 0;
   translate: 0 -20px;
 }
 
-.card:where(.hidden, [hidden]) {
+.card[hidden] {
   display: none;
 }
 ```
@@ -129,17 +129,26 @@ Entry animations using `@starting-style` work across all modern browsers without
 async function hideElement(el) {
   if (canTransitionDisplay()) {
     el.hidden = true;
-    return;
+  } else {
+    el.setAttribute('data-closing', '');
   }
 
-  el.setAttribute('data-closing', '');
   const animations = el.getAnimations();
   if (animations.length > 0) {
-    await Promise.allSettled(animations.map((a) => a.finished));
+    await Promise.race([
+      Promise.allSettled(animations.map((a) => a.finished)),
+      new Promise((r) => setTimeout(r, 2000)),
+    ]);
   }
+
   if (el.hasAttribute('data-closing')) {
     el.removeAttribute('data-closing');
     el.hidden = true;
   }
+}
+
+async function removeElement(el) {
+  await hideElement(el);
+  el.remove();
 }
 ```

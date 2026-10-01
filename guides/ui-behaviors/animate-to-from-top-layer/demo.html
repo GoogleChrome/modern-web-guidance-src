@@ -143,7 +143,7 @@
         transition-behavior: allow-discrete;
       }
 
-      dialog[open] {
+      dialog[open]:not([data-closing]) {
         /* Open state */
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -158,14 +158,13 @@
       /* Dialog Backdrop */
       dialog::backdrop {
         background-color: rgb(0 0 0 / 0%);
-        /* The transition shorthand can also be used with allow-discrete */
-        transition:
-          display 0.5s allow-discrete,
-          overlay 0.5s allow-discrete,
-          background-color 0.5s ease;
+        transition-property: background-color, display, overlay;
+        transition-duration: 0.5s;
+        transition-timing-function: ease;
+        transition-behavior: allow-discrete;
       }
 
-      dialog[open]::backdrop {
+      dialog[open]:not([data-closing])::backdrop {
         background-color: rgb(0 0 0 / 50%);
 
         @starting-style {
@@ -187,7 +186,7 @@
         transition-behavior: allow-discrete;
       }
 
-      [popover]:popover-open {
+      [popover]:popover-open:not([data-closing]) {
         opacity: 1;
         transform: scale(1);
 
@@ -199,14 +198,13 @@
 
       [popover]::backdrop {
         background-color: rgb(0 0 0 / 0%);
-        /* The transition shorthand can also be used with allow-discrete */
-        transition:
-          display 0.4s allow-discrete,
-          overlay 0.4s allow-discrete,
-          background-color 0.4s ease;
+        transition-property: background-color, display, overlay;
+        transition-duration: 0.4s;
+        transition-timing-function: ease;
+        transition-behavior: allow-discrete;
       }
 
-      [popover]:popover-open::backdrop {
+      [popover]:popover-open:not([data-closing])::backdrop {
         background-color: rgb(15 23 42 / 70%);
 
         @starting-style {
@@ -274,6 +272,42 @@
     </div>
 
     <script>
+      let supportsDisplayTransition;
+      function canTransitionDisplay() {
+        if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
+        if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
+          return false;
+        }
+        const probe = document.createElement('div');
+        probe.style.cssText = 'transition: display 1s allow-discrete; display: block;';
+        document.body.appendChild(probe);
+        getComputedStyle(probe).display;
+        probe.style.display = 'none';
+        supportsDisplayTransition = getComputedStyle(probe).display === 'block';
+        probe.remove();
+        return supportsDisplayTransition;
+      }
+
+      const supportsTopLayerExit =
+        window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+
+      async function closeTopLayer(element) {
+        if (!supportsTopLayerExit) {
+          element.setAttribute('data-closing', '');
+          const animations = element.getAnimations({ subtree: true });
+          if (animations.length > 0) {
+            await Promise.race([
+              Promise.allSettled(animations.map((a) => a.finished)),
+              new Promise((r) => setTimeout(r, 2000)),
+            ]);
+          }
+          if (!element.hasAttribute('data-closing')) return;
+          element.removeAttribute('data-closing');
+        }
+
+        element.close();
+      }
+
       const dialog = document.getElementById('my-dialog');
       const openBtn = document.getElementById('open-dialog-btn');
       const closeBtn = document.getElementById('close-dialog-btn');
@@ -283,7 +317,7 @@
       });
 
       closeBtn.addEventListener('click', () => {
-        dialog.close();
+        closeTopLayer(dialog);
       });
     </script>
   </body>

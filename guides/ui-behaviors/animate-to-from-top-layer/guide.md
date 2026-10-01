@@ -138,20 +138,22 @@ const supportsTopLayerExit =
   window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
 
 async function closeTopLayer(element) {
-  if (supportsTopLayerExit) {
-    element instanceof HTMLDialogElement ? element.close() : element.hidePopover();
-    return;
+  if (!supportsTopLayerExit) {
+    element.setAttribute('data-closing', '');
+    const animations = element.getAnimations({ subtree: true });
+    if (animations.length > 0) {
+      await Promise.race([
+        Promise.allSettled(animations.map((a) => a.finished)),
+        new Promise((r) => setTimeout(r, 2000)),
+      ]);
+    }
+    if (!element.hasAttribute('data-closing')) return;
+    element.removeAttribute('data-closing');
   }
 
-  element.setAttribute('data-closing', '');
-  const animations = element.getAnimations({ subtree: true });
-  if (animations.length > 0) {
-    await Promise.allSettled(animations.map((a) => a.finished));
-  }
-  if (element.hasAttribute('data-closing')) {
-    element.removeAttribute('data-closing');
-    element instanceof HTMLDialogElement ? element.close() : element.hidePopover();
-  }
+  element.close();
+  // Or for popover:
+  // element.hidePopover();
 }
 ```
 
