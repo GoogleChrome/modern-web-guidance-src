@@ -48,13 +48,7 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
   fs.writeFileSync(path.join(targetDir, 'suite_config.json'), JSON.stringify(suiteConfig, null, 2));
 
   try {
-    const agentScript = path.join(harnessDir, 'agents',
-      agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-        agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-          agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-            agent === Agents.PI ? 'pi-agent.ts' :
-              'gemini-cli-agent.ts'
-    );
+    const agentScript = getAgentScript(agent);
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
     await runCommand('node', [
@@ -412,9 +406,11 @@ export function generateTransientPackage(
     let templateContent = fs.readFileSync(templatePath, 'utf8');
     templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
 
-    const npxWrapperPath = path.join(targetDir, 'npx');
-    fs.writeFileSync(npxWrapperPath, templateContent);
-    fs.chmodSync(npxWrapperPath, 0o755); // Make executable
+    for (const binName of ['npx', 'pnpx', 'pnpm']) {
+      const wrapperPath = path.join(targetDir, binName);
+      fs.writeFileSync(wrapperPath, templateContent);
+      fs.chmodSync(wrapperPath, 0o755); // Make executable
+    }
   } else {
     console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
   }
@@ -527,7 +523,8 @@ function getAgentScript(agent: string): string {
       agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
         agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
           agent === Agents.PI ? 'pi-agent.ts' :
-            'gemini-cli-agent.ts'
+            agent === Agents.ANTIGRAVITY_CLI ? 'antigravity-cli-agent.ts' :
+              'gemini-cli-agent.ts'
   );
 }
 

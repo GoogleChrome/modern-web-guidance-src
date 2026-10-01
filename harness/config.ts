@@ -18,7 +18,8 @@ export const Agents = {
   GEMINI_CLI: 'gemini_cli',
   CLAUDE_CODE: 'claude_code',
   CODEX_CLI: 'codex_cli',
-  PI: 'pi'
+  PI: 'pi',
+  ANTIGRAVITY_CLI: 'antigravity_cli'
 } as const;
 
 export type Agents = typeof Agents[keyof typeof Agents];
@@ -44,6 +45,9 @@ export const environmentConfig: EnvironmentConfig = {
 
   // Pi Configuration
   piBin: process.env.PI_BIN || 'pi',
+
+  antigravityCliBin: process.env.ANTIGRAVITY_CLI_BIN || 'agy',
+  antigravityGcpProject: process.env.ANTIGRAVITY_GCP_PROJECT || undefined,
 };
 
 export const defaultSuiteConfig: SuiteConfig = {
@@ -91,6 +95,8 @@ export interface EnvironmentConfig {
   claudeCodeCliBin: string;
   codexCliBin: string;
   piBin: string;
+  antigravityCliBin: string;
+  antigravityGcpProject?: string;
   gcpCredentials: string;
 }
 

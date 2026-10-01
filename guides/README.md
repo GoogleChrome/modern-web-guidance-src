@@ -50,7 +50,7 @@ This will automatically:
 3. Push your feature branch to `origin`.
 4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
-   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`.
+   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`. When the PR is marked ready for review, the ATL triage bot requests review from `EVAL_PR_REVIEWER` in `guides/atl-triage.ts`.
 5. Open a new draft Pull Request (or update the existing PR description and sync labels if a PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description.
 
 ### Checking Status: `gd audit`
