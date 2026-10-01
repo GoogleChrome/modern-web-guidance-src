@@ -22,6 +22,9 @@ window.__featuresMapping = {
     "calc-size",
     "interpolate-size"
   ],
+  "atrule-support-conditionals": [
+    "supports-at-rule"
+  ],
   "calculate-with-intrinsic-sizes": [
     "calc-size",
     "interpolate-size"
