@@ -562,7 +562,7 @@ el.addEventListener('animationend', (e) => {
 });
 ```
 
-The code above only works if there is only 1 animation with that name on the element, and if the animation was created as a CSS Animation. A WAAPI-created animation does not have a name, and can therefor not be filtered in the same way.
+The code above only works if there is only 1 animation with that name on the element, and if the animation was created as a CSS Animation. A WAAPI-created animation does not have a name, and can therefore not be filtered in the same way.
 
 ## 10. Generated content
 
