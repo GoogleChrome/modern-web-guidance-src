@@ -13,7 +13,6 @@ describe('runAgent routing and argument building', () => {
   let originalAntigravityCli: string;
   let originalJetskiCli: string;
   let originalGdUseJetski: string | undefined;
-  let originalAntigravityModel: string | undefined;
 
   before(() => {
     // Create temporary directory and mock CLI
@@ -30,8 +29,6 @@ echo "mock-cli ran with args: $@"
     originalAntigravityCli = config.environment.antigravityCliBin;
     originalJetskiCli = config.environment.jetskiCliBin;
     originalGdUseJetski = process.env.GD_DEV_USE_JETSKI;
-    originalAntigravityModel = process.env.ANTIGRAVITY_MODEL;
-    delete process.env.ANTIGRAVITY_MODEL;
 
     // Override config paths to point to the mock CLI
     config.environment.antigravityCliBin = mockCliPath;
@@ -47,9 +44,6 @@ echo "mock-cli ran with args: $@"
       delete process.env.GD_DEV_USE_JETSKI;
     } else {
       process.env.GD_DEV_USE_JETSKI = originalGdUseJetski;
-    }
-    if (originalAntigravityModel !== undefined) {
-      process.env.ANTIGRAVITY_MODEL = originalAntigravityModel;
     }
 
     // Clean up temp directory
