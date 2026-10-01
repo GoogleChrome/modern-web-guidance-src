@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
-  <title>Origin Comparison Demo</title>
+  <title>Origin &amp; Site Validation Demo</title>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -46,7 +46,7 @@
   </style>
 </head>
 <body>
-  <h1>Origin &amp; Site Comparison (`Origin` API)</h1>
+  <h1>Origin &amp; Site Validation (`Origin` API)</h1>
   <p>
     Trusted reference origin: <code>https://app.trusted-origin.example</code>
     (trusted site domain: <code>trusted-origin.example</code>)
@@ -62,7 +62,7 @@
         value="https://app.trusted-origin.example:443/account"
         aria-label="Candidate URL or origin"
       >
-      <button id="btn-test-url" data-testid="test-url-button" type="button">Compare URL</button>
+      <button id="btn-test-url" data-testid="test-url-button" type="button">Validate URL / Redirect</button>
       <button id="btn-send-msg" data-testid="send-msg-button" type="button">Simulate postMessage</button>
     </div>
     <div class="controls">
@@ -76,10 +76,10 @@
     <pre id="interactive-result" data-testid="interactive-result"></pre>
   </section>
 
-  <h2>Automated Verification Summary</h2>
+  <h2>Application Scenario Verification</h2>
   <a id="trusted-link" href="https://app.trusted-origin.example:443/account" hidden>Account</a>
-  <iframe id="sandbox-a" sandbox="allow-scripts" srcdoc="<script>parent.postMessage({ source: 'sandbox-a', seq: 1 }, '*'); parent.postMessage({ source: 'sandbox-a', seq: 2 }, '*');</script>"></iframe>
-  <iframe id="sandbox-b" sandbox="allow-scripts" srcdoc="<script>parent.postMessage({ source: 'sandbox-b', seq: 1 }, '*');</script>"></iframe>
+  <iframe id="sandbox-a" sandbox="allow-scripts" srcdoc="<script>parent.postMessage({ source: 'sandbox-a', type: 'init', seq: 1 }, '*'); parent.postMessage({ source: 'sandbox-a', type: 'action', seq: 2 }, '*');</script>"></iframe>
+  <iframe id="sandbox-b" sandbox="allow-scripts" srcdoc="<script>parent.postMessage({ source: 'sandbox-b', type: 'init', seq: 1 }, '*');</script>"></iframe>
   <pre id="output" data-testid="origin-output"></pre>
 
   <script type="module">
@@ -101,16 +101,18 @@
       return candidate?.href ?? '';
     }
 
+    function extractOrigin(candidate) {
+      try {
+        return Origin.from(candidate);
+      } catch {
+        return Origin.from(extractUrlString(candidate));
+      }
+    }
+
     function checkSameOrigin(candidate) {
       try {
         if ('Origin' in globalThis) {
-          let candidateOrigin;
-          try {
-            candidateOrigin = Origin.from(candidate);
-          } catch {
-            candidateOrigin = Origin.from(extractUrlString(candidate));
-          }
-          return candidateOrigin.isSameOrigin(Origin.from(TRUSTED_ORIGIN_URL));
+          return extractOrigin(candidate).isSameOrigin(Origin.from(TRUSTED_ORIGIN_URL));
         }
         const candidateUrl = new URL(extractUrlString(candidate));
         const trustedUrl = new URL(TRUSTED_ORIGIN_URL);
@@ -123,13 +125,7 @@
     function checkSameSite(candidate) {
       try {
         if ('Origin' in globalThis) {
-          let candidateOrigin;
-          try {
-            candidateOrigin = Origin.from(candidate);
-          } catch {
-            candidateOrigin = Origin.from(extractUrlString(candidate));
-          }
-          return candidateOrigin.isSameSite(Origin.from(TRUSTED_ORIGIN_URL));
+          return extractOrigin(candidate).isSameSite(Origin.from(TRUSTED_ORIGIN_URL));
         }
         const candidateUrl = new URL(extractUrlString(candidate));
         const trustedUrl = new URL(TRUSTED_ORIGIN_URL);
@@ -144,9 +140,25 @@
       }
     }
 
+    const expectedSandboxWindow = document.getElementById('sandbox-a').contentWindow;
+    let pinnedSandboxOrigin = 'Origin' in globalThis ? new Origin() : null;
+    let isSandboxPinned = false;
+
+    function handleSandboxedWidgetMessage(event) {
+      if ('Origin' in globalThis) {
+        const senderOrigin = Origin.from(event);
+        if (!isSandboxPinned && event.source === expectedSandboxWindow && event.data?.type === 'init') {
+          pinnedSandboxOrigin = senderOrigin;
+          isSandboxPinned = true;
+        }
+        return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
+      }
+      return event.source === expectedSandboxWindow;
+    }
+
     const acceptedMessages = [];
     const rejectedMessages = [];
-    const sandboxOrigins = {};
+    const sandboxResults = {};
 
     function updateInteractiveResult(candidateValue) {
       let opaqueState = 'n/a (fallback)';
@@ -159,9 +171,9 @@
       }
       document.getElementById('interactive-result').textContent = [
         `Candidate: ${candidateValue}`,
-        `isSameOrigin: ${checkSameOrigin(candidateValue)}`,
-        `isSameSite:   ${checkSameSite(candidateValue)}`,
-        `opaque:       ${opaqueState}`,
+        `isSameOrigin (privileged action): ${checkSameOrigin(candidateValue)}`,
+        `isSameSite   (redirect / link):   ${checkSameSite(candidateValue)}`,
+        `opaque:                           ${opaqueState}`,
       ].join('\n');
     }
 
@@ -192,14 +204,10 @@
         const opaqueB = Origin.from(DATA_URL_B);
         lines.push(`opaqueA.opaque: ${opaqueA.opaque}`);
         lines.push(`opaqueA.isSameOrigin(opaqueB): ${opaqueA.isSameOrigin(opaqueB)}`);
-        if (sandboxOrigins['sandbox-a-1'] && sandboxOrigins['sandbox-a-2'] && sandboxOrigins['sandbox-b-1']) {
-          lines.push(
-            `sandboxA1.isSameOrigin(sandboxA2): ${sandboxOrigins['sandbox-a-1'].isSameOrigin(sandboxOrigins['sandbox-a-2'])}`
-          );
-          lines.push(
-            `sandboxA1.isSameOrigin(sandboxB1): ${sandboxOrigins['sandbox-a-1'].isSameOrigin(sandboxOrigins['sandbox-b-1'])}`
-          );
-        }
+      }
+      if ('sandbox-a-2' in sandboxResults && 'sandbox-b-1' in sandboxResults) {
+        lines.push(`pinnedSandboxAccepted(sandbox-a#2): ${sandboxResults['sandbox-a-2']}`);
+        lines.push(`pinnedSandboxAccepted(sandbox-b#1): ${sandboxResults['sandbox-b-1']}`);
       }
 
       document.getElementById('output').textContent = lines.join('\n');
@@ -229,9 +237,8 @@
 
     window.addEventListener('message', (event) => {
       if (event.data?.source?.startsWith('sandbox-')) {
-        if ('Origin' in globalThis) {
-          sandboxOrigins[`${event.data.source}-${event.data.seq}`] = Origin.from(event);
-        }
+        const key = `${event.data.source}-${event.data.seq}`;
+        sandboxResults[key] = handleSandboxedWidgetMessage(event);
         if (!checkSameOrigin(event)) {
           rejectedMessages.push(`${event.data.source}#${event.data.seq}`);
         }
