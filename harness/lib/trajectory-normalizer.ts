@@ -9,6 +9,7 @@ import { parseGeminiTrajectory } from '../agents/gemini-cli-agent.ts';
 import { parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
 import { parseJetskiTrajectory } from '../agents/jetski-cli-agent.ts';
 import { parsePiTrajectory } from '../agents/pi-agent.ts';
+import { parseAntigravityTrajectory } from '../agents/antigravity-cli-agent.ts';
 
 // Re-export for test compatibility and legacy callers
 export {
@@ -232,6 +233,8 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
 
     if (agentName === Agents.JETSKI_CLI) {
       summary = await parseJetskiTrajectory(targetDir);
+    } else if (agentName === Agents.ANTIGRAVITY_CLI) {
+      summary = await parseAntigravityTrajectory(targetDir);
     } else {
       let allFiles: string[] = [];
       try {

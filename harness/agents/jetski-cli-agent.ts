@@ -60,6 +60,18 @@ export function setupJetskiCliCredentials(tempHome: string): string {
     copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
   }
 
+  // On macOS the CLI keeps its OAuth token in the login Keychain, which is
+  // located via $HOME/Library/Keychains. Without this, the isolated HOME makes
+  // silent auth fail and the CLI falls back to an interactive login prompt.
+  if (process.platform === 'darwin') {
+    const keychainsSource = path.join(originalHome, 'Library', 'Keychains');
+    const keychainsDest = path.join(tempHome, 'Library', 'Keychains');
+    if (fs.existsSync(keychainsSource) && !fs.existsSync(keychainsDest)) {
+      fs.mkdirSync(path.dirname(keychainsDest), { recursive: true });
+      fs.symlinkSync(keychainsSource, keychainsDest);
+    }
+  }
+
   process.env.JETSKI_DIR = jetskiDest;
   createTrustedFolders(geminiDest, [tempHome]);
   return jetskiDest;
@@ -107,7 +119,8 @@ async function run() {
         commandArgs,
         workDir,
         targetDir,
-        'Jetski CLI'
+        'Jetski CLI',
+        runType
       );
     } finally {
       stopWatchingMcpLog();

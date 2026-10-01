@@ -15,6 +15,11 @@ export const DEMO_FILE = 'demo.html';
 
 export const SME_CONTENT_FILENAMES = new Set([GUIDE_FILE, DEMO_FILE, EXPECTATIONS_FILE, SKILL_FILE]);
 
+// PRs carrying this label (applied by `gd pr` when task.md/grader.ts changes are recommended)
+// get review requested from EVAL_PR_REVIEWER. Other eval owners are covered by CODEOWNERS.
+export const EVAL_PR_LABEL = 'gd-dev-eval';
+export const EVAL_PR_REVIEWER = 'paulirish';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_GUIDES_DIR = path.join(path.resolve(__dirname, '..'), 'guides');
@@ -908,6 +913,12 @@ export function handlePR(
         }
       }
     }
+  }
+
+  // Request review from EVAL_PR_REVIEWER if the PR has the gd-dev-eval label.
+  if (labels.some(l => l.toLowerCase() === EVAL_PR_LABEL)) {
+    console.log(`PR has the "${EVAL_PR_LABEL}" label. Eval reviewer: @${EVAL_PR_REVIEWER}`);
+    matchedAtls.add(EVAL_PR_REVIEWER);
   }
 
   const prLabelsToAdd: string[] = [];
