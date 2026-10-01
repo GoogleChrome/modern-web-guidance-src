@@ -33,13 +33,15 @@ Place the `<meta name="text-scale">` element inside your document's `<head>`. Th
 
 ### 2. Use Relative Typography & Spacing
 
-Always define your font-size, line-height, margin, and padding using relative units (`rem` or `em`) instead of fixed pixels (`px`). This ensures that your entire typography system and spatial layouts expand and contract in proportion to the root font scale:
+Define font sizes using relative units (`rem` or `em`) rather than fixed pixels (`px`). Use unitless values for line heights so they scale proportionally with each element's computed font size.
+
+Use relative units for margins and padding where the spacing is coupled to text size or must adapt as text is scaled. Spacing that is independent of text may use fixed units when appropriate, provided that scaling does not cause text clipping, overlap, loss of content, or an unusable layout:
 
 ```css
 body {
   font-family: system-ui, sans-serif;
-  font-size: 1rem;       /* Automatically scales with the OS setting (e.g. scales up to 24px) */
-  line-height: 1.5;      /* Relative to font-size */
+  /* Inherits the root font-size, which scales automatically with the OS setting */
+  line-height: 1.5;      /* Unitless so it scales proportionally with computed font-size */
   padding: 1.5rem;       /* Scales proportionally to prevent dense crowding at larger scales */
 }
 
