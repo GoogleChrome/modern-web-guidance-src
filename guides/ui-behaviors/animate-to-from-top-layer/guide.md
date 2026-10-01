@@ -109,18 +109,16 @@ dialog[open]::backdrop,
 
 ## Fallback strategies
 
-### Top-layer animation features
-
 {{ BASELINE_STATUS("starting-style") }}
-{{ BASELINE_STATUS("transition-behavior") }}
-{{ BASELINE_STATUS("transition-behavior", "css.properties.transition-behavior.transitionable_display") }}
 {{ BASELINE_STATUS("overlay") }}
+
+{{ FEATURE_FALLBACKS("transition-behavior") }}
+
+### Top-layer exit fallback
 
 Entry animations work in pure CSS across all browsers that support `@starting-style`—no `.is-opening` class is needed because entry transitions do not depend on `overlay` or discrete `display` transitions.
 
-Exit animations require both `overlay` and discrete `display` transition support. Because `overlay` is unsupported in Firefox and Safari, and Firefox 129+ parses `transition-behavior: allow-discrete` (`CSS.supports('transition-behavior', 'allow-discrete')` returns `true`) without actually transitioning `display` (Firefox bug 1882408), top-layer elements snap shut on close in those browsers without a JavaScript exit fallback.
-
-To detect true discrete `display` transition support, probe computed styles on a temporary element rather than relying solely on `CSS.supports('transition-behavior', 'allow-discrete')`. When native top-layer exit transitions are unsupported, exclude `[data-closing]` from the open selector so setting `data-closing` triggers the exit transition while the element remains in the top layer, then wait for `getAnimations()` to settle before calling `.close()` or `.hidePopover()`:
+Exit animations require both `overlay` and discrete `display` transition support. When either is unsupported (such as in Firefox and Safari), exclude `[data-closing]` from the open selector so setting `data-closing` triggers the exit transition while the element remains in the top layer, then wait for `getAnimations()` to settle before calling `.close()` or `.hidePopover()`:
 
 ```css
 dialog[open]:not([data-closing]),
@@ -136,22 +134,6 @@ dialog[open]:not([data-closing])::backdrop,
 ```
 
 ```javascript
-let supportsDisplayTransition;
-function canTransitionDisplay() {
-  if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
-  if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
-    return false;
-  }
-  const probe = document.createElement('div');
-  probe.style.cssText = 'transition: display 1s allow-discrete; display: block;';
-  document.body.appendChild(probe);
-  getComputedStyle(probe).display;
-  probe.style.display = 'none';
-  supportsDisplayTransition = getComputedStyle(probe).display === 'block';
-  probe.remove();
-  return supportsDisplayTransition;
-}
-
 const supportsTopLayerExit =
   window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
 

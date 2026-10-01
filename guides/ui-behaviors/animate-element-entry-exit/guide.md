@@ -107,34 +107,12 @@ element.remove();
 ## Fallback strategies
 
 {{ BASELINE_STATUS("starting-style") }}
-{{ BASELINE_STATUS("transition-behavior") }}
-{{ BASELINE_STATUS("transition-behavior", "css.properties.transition-behavior.transitionable_display") }}
 
-Entry animations using `@starting-style` work across all modern browsers without JavaScript. However, Firefox 129+ parses `transition-behavior: allow-discrete` (`CSS.supports('transition-behavior', 'allow-discrete')` returns `true`) without actually transitioning the `display` property (Firefox bug 1882408), causing elements to disappear immediately on exit.
-
-To reliably detect discrete `display` transition support, test whether a temporary element's computed `display` stays visible when transitioned to `none`:
-
-```javascript
-let supportsDisplayTransition;
-function canTransitionDisplay() {
-  if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
-  if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
-    return false;
-  }
-  const probe = document.createElement('div');
-  probe.style.cssText = 'transition: display 1s allow-discrete; display: block;';
-  document.body.appendChild(probe);
-  getComputedStyle(probe).display;
-  probe.style.display = 'none';
-  supportsDisplayTransition = getComputedStyle(probe).display === 'block';
-  probe.remove();
-  return supportsDisplayTransition;
-}
-```
+{{ FEATURE_FALLBACKS("transition-behavior") }}
 
 ### Exit fallback when discrete `display` transitions are unsupported
 
-Separate the visual exit state (`[data-closing]`) from `display: none` (`[hidden]`) so browsers that cannot transition `display` still animate `opacity` and `translate` before hiding the element:
+Entry animations using `@starting-style` work across all modern browsers without JavaScript. When discrete `display` transitions are unsupported (`!canTransitionDisplay()`), separate the visual exit state (`[data-closing]`) from `display: none` (`[hidden]`) so `opacity` and `translate` finish animating before hiding the element:
 
 ```css
 .card:where(.hidden, [hidden], [data-closing]) {
