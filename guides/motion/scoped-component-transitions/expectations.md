@@ -4,7 +4,4 @@
 - Child elements that animate within the scoped container are assigned a `view-transition-name` (such as `match-element` or a scope-unique identifier).
 - When reordering or updating existing child elements inside the scoped container, the DOM update preserves and moves existing element nodes rather than recreating them from scratch.
 - The scoped container element does not set `view-transition-name: none` so that it remains self-participating and clips its transitioning children when `overflow: clip` (or `hidden`/`scroll`) is applied.
-- Multiple component containers can run independent element-scoped view transitions concurrently without skipping each other.
-- Re-triggering a transition on the same scoped container while a transition is already active updates the DOM and skips the previous transition without throwing an unhandled promise rejection.
-- Interactive elements and overlays outside the transitioning component scope (such as a fixed toolbar or popover) remain interactive and properly layered above the component while a scoped view transition is active.
 - A `@media (prefers-reduced-motion: reduce)` rule disables view transition animations (setting `animation: none`) on `::view-transition-group(*)`, `::view-transition-old(*)`, and `::view-transition-new(*)`.
