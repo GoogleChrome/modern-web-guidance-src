@@ -481,10 +481,10 @@ We developed a robust eval harness to ensure that the content is **empirically p
 | :--- | :--- | :---: | :---: |
 | Sep 11 | codex_cli (gpt-5.6-sol) | 132 / 1124 | 59% → 81% (**+22pp**) |
 | Sep 11 | claude_code (sonnet-5) | 132 / 1124 | 54% → 87% (**+33pp**) |
-| Sep 11 | antigravity (gemini-3.8-flash-medium) | 132 / 1124 | 65% → 91% (**+26pp**) |
+| Sep 11 | antigravity_cli (gemini-3.8-flash-medium) | 132 / 1124 | 65% → 91% (**+26pp**) |
 | Sep 9 | codex_cli (gpt-5.6-sol) | 132 / 1045 | 61% → 83% (**+22pp**) |
 | Sep 9 | claude_code (sonnet-5) | 132 / 1124 | 53% → 85% (**+32pp**) |
-| Sep 9 | antigravity (gemini-3.8-flash-medium) | 132 / 1124 | 69% → 92% (**+23pp**) |
+| Sep 9 | antigravity_cli (gemini-3.8-flash-medium) | 132 / 1124 | 69% → 92% (**+23pp**) |
 | Sep 7 | codex_cli (gpt-5.6-sol) | 132 / 1124 | 61% → 82% (**+21pp**) |
 | Sep 7 | claude_code (sonnet-5) | 132 / 1124 | 54% → 86% (**+32pp**) |
 | Sep 4 | codex_cli (gpt-5.6-sol) | 132 / 1092 | 59% → 80% (**+21pp**) |
