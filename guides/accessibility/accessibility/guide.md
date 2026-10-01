@@ -258,8 +258,7 @@ function toggleWidgetState() {
 
 ### Focus indicators
 
-- **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide overrides with sufficient contrast.
-- Use `:focus-visible` to define custom focus rings, not `:focus`.
+- **Visible Focus Indicators**: Always style `:focus-visible` states (not `:focus`) explicitly. If disabling defaults, provide overrides with sufficient contrast.
 - **Don't disable outlines without replacements**: Avoid `outline: none` without styling alternatives.
 - Prefer `outline` over other properties (e.g. `box-shadow`) for focus rings. If you must rely on `box-shadow` for focus rings, provide an `outline`-based fallback for High Contrast Mode using the `forced-colors` media query.
 - Pair focus outlines with `outline-offset` to visually separate the ring from the element.
