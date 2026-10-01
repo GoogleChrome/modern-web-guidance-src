@@ -1,6 +1,6 @@
 ---
 name: css
-description: Action-oriented guidelines for modern CSS architecture, layouts, and performance. Use this guide when authoring styles, managing design systems, or optimizing web rendering.
+description: Action-oriented guidelines for modern CSS architecture, including the cascade, selectors, scoping, nesting, and design tokens. Use this guide when authoring styles or managing design systems.
 web-feature-ids:
   - currentcolor
   - inherit-value
@@ -23,24 +23,30 @@ web-feature-ids:
   - border-radius
 ---
 
-# CSS: Modern Architecture and Performance
+# CSS: Modern Architecture
 
-These guidelines provide a high-density reference for writing maintainable, performant, and standard-compliant CSS.
+These guidelines provide a high-density reference for writing maintainable and standard-compliant CSS.
 
-1. [1. Foundations](#1-foundations)
-2. [2. Inheritance and The Cascade](#2-inheritance-and-the-cascade)
-3. [3. Selectors and scoping](#3-selectors-and-scoping)
-   1. [Prefer CSS selectors over JS for complex element targeting](#prefer-css-selectors-over-js-for-complex-element-targeting)
-   2. [Use `:is()` (or `:where()`) instead of CSS rule duplication for fallbacks](#use-is-or-where-instead-of-css-rule-duplication-for-fallbacks)
-   3. [Avoid overmatching](#avoid-overmatching)
-   4. [Nesting and scoping](#nesting-and-scoping)
-4. [4. Interactivity](#4-interactivity)
-5. [5. Design Tokens and Theming](#5-design-tokens-and-theming)
-6. [6. Responsive design](#6-responsive-design)
-7. [7. Typography](#7-typography)
-8. [8. Visual effects](#8-visual-effects)
-9. [9. Transitions \& animations](#9-transitions--animations)
-10. [10. Generated content](#10-generated-content)
+- [1. Foundations](#1-foundations)
+- [2. Inheritance and The Cascade](#2-inheritance-and-the-cascade)
+- [3. Selectors and scoping](#3-selectors-and-scoping)
+  - [Prefer CSS selectors over JS for complex element targeting](#prefer-css-selectors-over-js-for-complex-element-targeting)
+  - [Use `:is()` (or `:where()`) instead of CSS rule duplication for fallbacks](#use-is-or-where-instead-of-css-rule-duplication-for-fallbacks)
+  - [Avoid overmatching](#avoid-overmatching)
+    - [Use `:not()` instead of overrides to exclude irrelevant states/targets](#use-not-instead-of-overrides-to-exclude-irrelevant-statestargets)
+    - [Prefer `@scope` over `:not()` for excluding (potentially deeply nested) subtrees](#prefer-scope-over-not-for-excluding-potentially-deeply-nested-subtrees)
+    - [Overrides are fine for specialization](#overrides-are-fine-for-specialization)
+    - [No global resets](#no-global-resets)
+  - [Nesting and scoping](#nesting-and-scoping)
+- [4. Interactivity](#4-interactivity)
+- [5. Design Tokens and Theming](#5-design-tokens-and-theming)
+  - [Theming](#theming)
+- [6. Responsive design](#6-responsive-design)
+- [7. Typography](#7-typography)
+- [8. Visual effects](#8-visual-effects)
+- [9. Shapes](#9-shapes)
+- [10. Transitions \& animations](#10-transitions--animations)
+- [11. Generated content](#11-generated-content)
 
 
 ## 1. Foundations
@@ -242,15 +248,15 @@ Check for any existing conventions around naming and levels before inventing you
 
 ## 6. Responsive design
 
-See {{ GUIDE_REF('responsive-design') }}.
+See {{ GUIDE_REF('responsive-design') }} for components that adapt to the space they are given, layouts that survive mobile browser UI appearing and disappearing, reserving space for media before it loads, and text that scales with the viewport.
 
 ## 7. Typography
 
-See {{ GUIDE_REF('typography') }}.
+See {{ GUIDE_REF('typography') }} for guidelines around readability, accessibility, and aesthetics of text on Web UIs.
 
 ## 8. Visual effects
 
-See {{ GUIDE_REF('visual-effects') }}.
+See {{ GUIDE_REF('visual-effects') }} for look & feel enhancements such as conveying depth, texture, and elevation, blending layers, aesthetically pleasing gradients, and flexible pattern backgrounds.
 
 ## 9. Shapes
 
@@ -265,4 +271,4 @@ See {{ GUIDE_REF('motion') }}. For rendering performance (`content-visibility`, 
 
 ## 11. Generated content
 
-See {{ GUIDE_REF('accessible-generated-content') }}.
+See {{ GUIDE_REF('accessible-generated-content') }} for adding decorative or supplementary content with CSS without breaking screen readers or copy-paste.
