@@ -87,7 +87,7 @@ Analyze this failure and modify the existing grader file to fix these assertions
     : '';
 
   const agentLabels: Record<SolutionAgent, string> = {
-    [Agents.GEMINI_CLI]: 'Gemini CLI',
+    [Agents.ANTIGRAVITY_CLI]: 'Antigravity CLI',
     [Agents.JETSKI_CLI]: 'Jetski CLI',
     [Agents.CLAUDE_CODE]: 'Claude Code',
     [Agents.CODEX_CLI]: 'Codex CLI',

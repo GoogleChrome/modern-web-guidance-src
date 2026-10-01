@@ -55,7 +55,7 @@ export const defaultSuiteConfig: SuiteConfig = {
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   skillsToEnable: ['modern-web-guidance'],
-  agent: Agents.GEMINI_CLI,
+  agent: Agents.ANTIGRAVITY_CLI,
   workerCount: undefined,
   includeTrace: false,
 };

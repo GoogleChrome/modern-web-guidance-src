@@ -10,9 +10,10 @@ import { getDefaultSolutionAgent } from '../../lib/guide-validation.ts';
 describe('runAgent routing and argument building', () => {
   let tempDir: string;
   let mockCliPath: string;
-  let originalGeminiCli: string;
+  let originalAntigravityCli: string;
   let originalJetskiCli: string;
-  let originalGdUseGemini: string | undefined;
+  let originalGdUseJetski: string | undefined;
+  let originalAntigravityModel: string | undefined;
 
   before(() => {
     // Create temporary directory and mock CLI
@@ -26,46 +27,51 @@ echo "mock-cli ran with args: $@"
     fs.writeFileSync(mockCliPath, scriptContent, { mode: 0o755 });
 
     // Backup original configs
-    originalGeminiCli = config.environment.geminiCliBin;
+    originalAntigravityCli = config.environment.antigravityCliBin;
     originalJetskiCli = config.environment.jetskiCliBin;
-    originalGdUseGemini = process.env.GD_DEV_USE_GEMINI;
+    originalGdUseJetski = process.env.GD_DEV_USE_JETSKI;
+    originalAntigravityModel = process.env.ANTIGRAVITY_MODEL;
+    delete process.env.ANTIGRAVITY_MODEL;
 
     // Override config paths to point to the mock CLI
-    config.environment.geminiCliBin = mockCliPath;
+    config.environment.antigravityCliBin = mockCliPath;
     config.environment.jetskiCliBin = mockCliPath;
   });
 
   after(() => {
     // Restore config paths and environment variables
-    config.environment.geminiCliBin = originalGeminiCli;
+    config.environment.antigravityCliBin = originalAntigravityCli;
     config.environment.jetskiCliBin = originalJetskiCli;
     
-    if (originalGdUseGemini === undefined) {
-      delete process.env.GD_DEV_USE_GEMINI;
+    if (originalGdUseJetski === undefined) {
+      delete process.env.GD_DEV_USE_JETSKI;
     } else {
-      process.env.GD_DEV_USE_GEMINI = originalGdUseGemini;
+      process.env.GD_DEV_USE_JETSKI = originalGdUseJetski;
+    }
+    if (originalAntigravityModel !== undefined) {
+      process.env.ANTIGRAVITY_MODEL = originalAntigravityModel;
     }
 
     // Clean up temp directory
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test('should invoke Jetski CLI by default without --yolo', async () => {
-    delete process.env.GD_DEV_USE_GEMINI;
+  test('should invoke Antigravity CLI by default', async () => {
+    delete process.env.GD_DEV_USE_JETSKI;
     
     const output = await runAgent(getDefaultSolutionAgent(), 'hello world', tempDir, { captureOutput: true });
-    assert.ok(output.includes('mock-cli ran with args: -p hello world'));
-    assert.ok(!output.includes('--yolo'));
+    assert.ok(output.includes('mock-cli ran with args: -p hello world --dangerously-skip-permissions'));
   });
 
-  test('should invoke Gemini CLI when GD_DEV_USE_GEMINI=1', async () => {
-    process.env.GD_DEV_USE_GEMINI = '1';
+  test('should invoke Jetski CLI without --yolo when GD_DEV_USE_JETSKI=1', async () => {
+    process.env.GD_DEV_USE_JETSKI = '1';
 
     try {
       const output = await runAgent(getDefaultSolutionAgent(), 'hello world', tempDir, { captureOutput: true });
-      assert.ok(output.includes('mock-cli ran with args: -p hello world --yolo'));
+      assert.ok(output.includes('mock-cli ran with args: -p hello world'));
+      assert.ok(!output.includes('--yolo'));
     } finally {
-      delete process.env.GD_DEV_USE_GEMINI;
+      delete process.env.GD_DEV_USE_JETSKI;
     }
   });
 });

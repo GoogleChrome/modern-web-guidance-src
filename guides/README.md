@@ -122,7 +122,7 @@ gd dev <path/to/guide_dir>
 
 This runs the following pipeline after the grader calibrates successfully:
 
-1. **Generate `tasks/task.md`** if missing — uses the default solution agent (Jetski CLI, or Gemini CLI with `GD_DEV_USE_GEMINI=1`) to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
+1. **Generate `tasks/task.md`** if missing — uses the default solution agent (Antigravity CLI, or Jetski CLI with `GD_DEV_USE_JETSKI=1`) to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
 2. **Grade the base app as-is** (pre-score) — establishes a baseline before any agent runs
 3. **Run the agent** in both `unguided` (no guide access) and `guided` (with guidance access) modes against the base app
 4. **Grade both outputs** and print a comparison:

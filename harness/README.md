@@ -121,6 +121,7 @@ If no model env var is set:
 - **Pi**: Uses the model from `~/.pi/agent/settings.json` (`defaultModel`)
 - **Gemini CLI**: Uses the model from `~/.gemini/settings.json` or prompts
 - **Codex CLI**: Uses default model (configurable via `codex settings`)
+- **Antigravity CLI**: Uses agy's default model (override with `ANTIGRAVITY_MODEL`)
 - **Jetski CLI**: Uses default model from Jetski config
 - **Claude Code**: Uses model from Vertex AI project config
 
@@ -393,15 +394,12 @@ export interface EnvironmentConfig {
 
 ### Step 3: Wire Up Integrations
 
-**run_suite.ts** - Agent script mapping:
+**run_suite.ts** - Agent script mapping (unknown agents throw):
 ```typescript
-function getAgentScript(agent: string): string {
-  return path.join(harnessDir, 'agents',
-    agent === Agents.MY_AGENT ? 'my-agent.ts' :
-    // ... other agents
-    'gemini-cli-agent.ts'
-  );
-}
+const AGENT_SCRIPTS: Record<string, string> = {
+  // ... other agents
+  [Agents.MY_AGENT]: 'my-agent.ts',
+};
 ```
 
 **lib/collection.ts** - Model and token extraction:
@@ -699,7 +697,7 @@ test('collectPiGuidesFromTrajectory extracts guide reads', async () => {
 The `gd` CLI provides a convenient wrapper around the eval harness:
 
 ```bash
-# Run with default agent (Gemini CLI)
+# Run with default agent (Antigravity CLI)
 gd eval <task-name>
 
 # Run with Pi agent
