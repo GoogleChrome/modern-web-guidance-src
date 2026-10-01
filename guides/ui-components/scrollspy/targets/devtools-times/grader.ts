@@ -28,15 +28,47 @@ test.describe('Scrollspy Target Grader', () => {
 
   test('Navigation links use fragment identifiers matching unique IDs of target content sections', () => {
     const docs = getHtmlDocuments(targetFiles);
+    const project = getJsProject(targetFiles);
+
     const navLinks = docs.flatMap(d =>
       Array.from(d.document.querySelectorAll('nav a, [role="navigation"] a, [data-scrollspy] a, [data-scrollspy-nav] a, a[class*="scrollspy"], a[class*="section-nav"]'))
     );
-    const hasFragmentLinks = navLinks.some(a => ((a as any).getAttribute('href') || '').includes('#'));
-    const sectionIds = docs.flatMap(d =>
+    const hasHtmlFragmentLinks = navLinks.some(a => ((a as any).getAttribute('href') || '').includes('#'));
+
+    const hasJsxFragmentLinks = project.getSourceFiles().some(sf => {
+      const jsxElements = [
+        ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
+        ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
+      ];
+      const anchorElements = jsxElements.filter(el => el.getTagNameNode().getText() === 'a');
+      return anchorElements.some(el => {
+        const hrefAttr = el.getDescendantsOfKind(SyntaxKind.JsxAttribute).find(
+          attr => attr.getNameNode().getText() === 'href'
+        );
+        if (!hrefAttr) return false;
+        const initText = hrefAttr.getInitializer()?.getText() || '';
+        if (initText.includes('#') && !/^[{'"`]*#[}'"`]*$/.test(initText)) return true;
+        if (initText.startsWith('{')) {
+          const hasFragmentLiteral = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(s => /^#[\w-]+$/.test(s.getLiteralValue()));
+          const hasFragmentTemplate = sf.getDescendantsOfKind(SyntaxKind.TemplateExpression).some(t => t.getHead().getText().includes('#'));
+          return hasFragmentLiteral || hasFragmentTemplate;
+        }
+        return false;
+      });
+    });
+
+    const htmlSectionIds = docs.flatMap(d =>
       Array.from(d.document.querySelectorAll('[id]')).map((el: any) => el.id || el.getAttribute('id') || '')
     ).filter(id => id && !id.includes('{'));
 
-    const matchesRequirements = hasFragmentLinks && sectionIds.length >= 3;
+    const jsxSectionIds = project.getSourceFiles().flatMap(sf =>
+      sf.getDescendantsOfKind(SyntaxKind.JsxAttribute)
+        .filter(attr => attr.getNameNode().getText() === 'id')
+        .map(attr => attr.getInitializer()?.getText().replace(/^['"{]|['"}]$/g, '') || '')
+    ).filter(Boolean);
+
+    const sectionIds = new Set([...htmlSectionIds, ...jsxSectionIds]);
+    const matchesRequirements = (hasHtmlFragmentLinks || hasJsxFragmentLinks) && sectionIds.size >= 3;
     expect(matchesRequirements).toBe(true);
   });
 
