@@ -143,7 +143,6 @@
       font-weight: bold;
     }
 
-    /* CSS-driven Icon Engine styling */
     .icon {
       display: inline-block;
       width: var(--icon-size, 1.25em);
@@ -153,36 +152,15 @@
       color: inherit;
     }
 
-    .icon:empty {
-      --icon-start: var(--icon);
-    }
-
-    @container style(--icon-start) {
-      ::before {
-        --icon-start: inherit;
-        content: "";
-        display: inline-block;
-        width: var(--icon-size, 1.25em);
-        height: var(--icon-size, 1.25em);
-        background-color: currentColor;
-        mask: var(--icon-start) no-repeat center / contain;
-        -webkit-mask: var(--icon-start) no-repeat center / contain;
-        vertical-align: middle;
-      }
-    }
-
-    /* High-compatibility fallback for browsers without style queries */
-    @supports not (container-name: style(any)) {
-      .icon:empty[style*="--icon"]::before {
-        content: "";
-        display: inline-block;
-        width: var(--icon-size, 1.25em);
-        height: var(--icon-size, 1.25em);
-        background-color: currentColor;
-        mask: var(--icon) no-repeat center / contain;
-        -webkit-mask: var(--icon) no-repeat center / contain;
-        vertical-align: middle;
-      }
+    .icon:empty::before {
+      content: "";
+      display: inline-block;
+      width: var(--icon-size, 1.25em);
+      height: var(--icon-size, 1.25em);
+      background-color: currentColor;
+      mask: var(--icon) no-repeat center / contain;
+      -webkit-mask: var(--icon) no-repeat center / contain;
+      vertical-align: middle;
     }
   </style>
 </head>
