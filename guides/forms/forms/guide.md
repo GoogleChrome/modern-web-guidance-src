@@ -89,8 +89,9 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** use `inputmode` to optimize on-screen keyboards (e.g., `inputmode="numeric"` for PINs).
 - **DO** use `enterkeyhint` to set the Enter key label (e.g., `next`, `done`).
 - **DO** use single-field inputs for complex numbers (credit cards, phones) to help autofill.
+- **DO** use a single `<input type="text" inputmode="numeric" autocomplete="one-time-code">` and the WebOTP API for SMS one-time passcode verification. See guide {{ GUIDE_REF("sms-otp-form") }}.
 
-- **DON'T** use `type="number"` for credit cards or ZIP codes (causes UI scroll issues and removes leading zeros).
+- **DON'T** use `type="number"` for credit cards, ZIP codes, or one-time passcodes (causes UI scroll issues and removes leading zeros).
 
 ### Code Example
 
