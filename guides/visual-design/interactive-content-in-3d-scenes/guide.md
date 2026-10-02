@@ -102,7 +102,7 @@ requestAnimationFrame(render);
 
 canvas.onpaint = (event) => {
   if (event.changedElements && event.changedElements.length > 0) {
-    // Update the texture with texElementImage2D, and update the CSS transform as shown in step 6
+    // Update the texture with texElementImage2D, and update the CSS transform as shown in step 5
   }
 };
 ```
