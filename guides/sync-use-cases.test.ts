@@ -425,6 +425,20 @@ describe('buildFeatureToIssueMap', () => {
     assert.strictEqual(map.get('scroll-axis-lock')?.number, 1265);
     assert.strictEqual(map.get('tmp-scroll-axis-lock'), undefined);
   });
+
+  test('prefers open issue over closed duplicate matching the same stripped feature ID', () => {
+    const issuesFirstOpen = [
+      { number: 100, body: '### web-feature-id\n\nscroll-axis-lock', labels: [], state: 'open' },
+      { number: 101, body: '### web-feature-id\n\ntmp-scroll-axis-lock', labels: [], state: 'closed' },
+    ];
+    assert.strictEqual(buildFeatureToIssueMap(issuesFirstOpen).get('scroll-axis-lock')?.number, 100);
+
+    const issuesSecondOpen = [
+      { number: 101, body: '### web-feature-id\n\ntmp-scroll-axis-lock', labels: [], state: 'closed' },
+      { number: 100, body: '### web-feature-id\n\nscroll-axis-lock', labels: [], state: 'open' },
+    ];
+    assert.strictEqual(buildFeatureToIssueMap(issuesSecondOpen).get('scroll-axis-lock')?.number, 100);
+  });
 });
 
 describe('buildUseCaseMaps', () => {
@@ -754,6 +768,13 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].closeReason, null);
     assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
+  });
+
+  test('matches feature sets symmetrically regardless of tmp- prefix on map key or set entry', () => {
+    const featureMap = makeFeatureMap([['tmp-scroll-axis-lock', { number: 1265, state: 'open' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(['scroll-axis-lock']), new Set(['scroll-axis-lock']));
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsEvals);
   });
 });
 

@@ -178,7 +178,11 @@ export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueD
         .map((l: any) => (typeof l === 'string' ? l : l.name))
         .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
       const milestoneNumber = issue.milestone ? issue.milestone.number : null;
-      map.set(stripTmpPrefix(fid), { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
+      const key = stripTmpPrefix(fid);
+      const existing = map.get(key);
+      if (!existing || (existing.state === 'closed' && issue.state === 'open')) {
+        map.set(key, { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
+      }
     }
   }
   return map;
@@ -244,7 +248,10 @@ export function getFeaturesNeedingSync(
   featuresNeedingInvestigation: Set<string> = new Set(),
   projectDetails: ProjectDetails | null = null
 ): FeatureToSync[] {
-  const hasFeature = (set: Set<string>, id: string) => set.has(id) || set.has(`tmp-${id}`);
+  const hasFeature = (set: Set<string>, id: string) => {
+    const base = stripTmpPrefix(id);
+    return set.has(base) || set.has(`tmp-${base}`);
+  };
   const result: FeatureToSync[] = [];
   for (const [featureId, featureData] of featureToIssueMap) {
     const isInvestigatingFeature = projectDetails?.issueStatusMap.get(featureData.number) === ProjectStatus.NeedsInvestigation;
