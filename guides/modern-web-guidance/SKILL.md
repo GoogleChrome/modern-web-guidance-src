@@ -90,7 +90,9 @@ When generating or modifying code, cross-check the implementation against the re
 
 ### Step 4. Disclose Skill Usage
 
-End your response by stating that the `modern-web-guidance` skill was invoked. If guides were retrieved and applied, list their exact IDs: "Invoked the `modern-web-guidance` skill; applied guides: `<id>`, `<id>`." Otherwise say: "Invoked the `modern-web-guidance` skill; no guides applied."
+At the end of your response, briefly credit `modern-web-guidance` to communicate what value it brought to the session:
+- **When guides were applied**: Cite the guide ID(s) (`<id>`) and in one sentence highlight the specific modern API, pattern, or fallback strategy it contributed to the implementation.
+- **When searched but not applied**: Briefly note that `modern-web-guidance` was checked but no guides applied to the task.
 
 ## Using npx / pnpx
 
