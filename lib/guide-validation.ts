@@ -77,6 +77,11 @@ interface GuideData {
 /** String `draft` values interpreted as not-a-draft (a quoted/typed-out boolean). */
 const FALSY_DRAFT = new Set(['', 'false', 'no', 'off', '0']);
 
+/** Returns true when frontmatter `draft` is explicitly set to `"stub"` (case-insensitive). */
+export function isDraftStub(draft: unknown): boolean {
+  return typeof draft === 'string' && draft.trim().toLowerCase() === 'stub';
+}
+
 interface ValidationResult {
   errors: string[];
   data: GuideData;
@@ -160,7 +165,7 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateMacros(maskedBody, relativePath));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
-  errors.push(...validateBaselineClaims(maskedBody, relativePath));
+  errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
   return { errors, data, body, filePath };
 }
@@ -491,8 +496,6 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
   const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
   const hasContent = stripAllComments(content).trim().length > 0;
-  const isStub = hasFrontmatter && !hasContent;
-  const hasGuide = hasContent;
 
   // Any truthy `draft` withholds the guide, but treat explicitly falsy-looking
   // strings (e.g. `draft: "false"`, `draft: no`) as not-draft — quoting a
@@ -500,6 +503,8 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   const draft = typeof data.draft === 'string' && FALSY_DRAFT.has(data.draft.trim().toLowerCase())
     ? false
     : data.draft ?? false;
+  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
+  const hasGuide = hasContent && !isDraftStub(draft);
   const isPublished = hasGuide && !draft;
 
   const targetsDir = path.join(dir, TARGETS_DIR);
@@ -789,7 +794,7 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
  */
 export function validateGuideTitle(body: string, relativePath: string, data?: GuideData, options?: { requireTitle?: boolean }): string[] {
   const errors = validateHeadings(body, relativePath, data);
-  const isStub = stripAllComments(body).trim().length === 0;
+  const isStub = stripAllComments(body).trim().length === 0 || isDraftStub(data?.draft);
 
   if (options?.requireTitle && !isStub) {
     const hasH1 = Boolean(extractH1Heading(body));
@@ -842,7 +847,12 @@ export const LEGITIMATE_BASELINE_EXCLUSIONS = [
  * Validates that guide markdown does not contain hardcoded Baseline availability claims,
  * ensuring authors use {{ BASELINE_STATUS("feature-id") }} macros instead.
  */
-export function validateBaselineClaims(body: string, relativePath: string): string[] {
+export function validateBaselineClaims(body: string, relativePath: string, data?: GuideData): string[] {
+  const isStub = stripAllComments(body).trim().length === 0 || isDraftStub(data?.draft);
+  if (isStub) {
+    return [];
+  }
+
   const errors: string[] = [];
   const lines = body.split('\n');
   let inCodeBlock = false;
