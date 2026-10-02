@@ -274,13 +274,13 @@ async function processSingleGuideFile(
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
 
-  if (!data.description || !frontmatter) {
-    throw new Error(`Missing frontmatter or description in ${filePath}`);
-  }
-
   if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
     // Just a stub guide. No content to index.
     return;
+  }
+
+  if (!data.description || !frontmatter) {
+    throw new Error(`Missing frontmatter or description in ${filePath}`);
   }
 
   const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });

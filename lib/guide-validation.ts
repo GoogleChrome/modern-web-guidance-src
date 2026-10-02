@@ -165,7 +165,7 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateMacros(maskedBody, relativePath));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
-  errors.push(...validateBaselineClaims(maskedBody, relativePath));
+  errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
   return { errors, data, body, filePath };
 }
@@ -847,7 +847,12 @@ export const LEGITIMATE_BASELINE_EXCLUSIONS = [
  * Validates that guide markdown does not contain hardcoded Baseline availability claims,
  * ensuring authors use {{ BASELINE_STATUS("feature-id") }} macros instead.
  */
-export function validateBaselineClaims(body: string, relativePath: string): string[] {
+export function validateBaselineClaims(body: string, relativePath: string, data?: GuideData): string[] {
+  const isStub = stripAllComments(body).trim().length === 0 || isDraftStub(data?.draft);
+  if (isStub) {
+    return [];
+  }
+
   const errors: string[] = [];
   const lines = body.split('\n');
   let inCodeBlock = false;

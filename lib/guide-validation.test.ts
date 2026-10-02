@@ -807,6 +807,12 @@ The <details> element is Baseline Widely available.
     assert.deepStrictEqual(errors, []);
   });
 
+  test('skips baseline claim validation for draft: stub guides', () => {
+    const body = '## Notes for guide authors\n\n- Mention that `<details>` is Baseline Widely available.\n';
+    const errors = validateBaselineClaims(body, 'guides/test/guide.md', { draft: 'stub' });
+    assert.deepStrictEqual(errors, []);
+  });
+
   test('validateGuide integrates baseline claims validation', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-baseline-test-'));
     const guideDir = path.join(tmpDir, 'test-guide');
