@@ -6,6 +6,7 @@ import * as net from 'net';
 import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
 import { Project } from 'ts-morph';
+import { parse, CSSStyleSheet } from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../lib/patch-utils.ts';
 
 export { expect } from '@playwright/test';
@@ -47,7 +48,9 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
         fs.copyFileSync(lockfilePath, path.join(targetDir, 'pnpm-lock.yaml'));
       }
       console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
-      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force'], {
+      // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, and the copied
+      // workspace lockfile's overrides never match the standalone base app, so install would fail.
+      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force', '--no-frozen-lockfile'], {
         cwd: targetDir,
         stdio: 'ignore',
         shell: process.platform === 'win32'
@@ -150,7 +153,11 @@ const HTML_EXTS = /\.(html|htm|astro)$/i;
 const CSS_EXTS = /\.css$/i;
 const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
 
-export function extractAllCss(files: string[]): string {
+/**
+ * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
+ * and inline styles into a CSSOMNom CSSStyleSheet object.
+ */
+export function getCssStyleSheet(files: string[]): CSSStyleSheet {
   const cssBlocks: string[] = [];
   for (const file of files) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
@@ -166,11 +173,15 @@ export function extractAllCss(files: string[]): string {
         });
         document.querySelectorAll('[style]').forEach((el: any) => {
           const inlineStyle = el.getAttribute('style');
-          if (inlineStyle) cssBlocks.push(inlineStyle);
+          if (inlineStyle) cssBlocks.push(`[style] { ${inlineStyle} }`);
         });
       } catch {
         const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-        if (styleMatches) cssBlocks.push(...styleMatches);
+        if (styleMatches) {
+          for (const match of styleMatches) {
+            cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
+          }
+        }
       }
     } else if (JS_EXTS.test(file)) {
       const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
@@ -181,7 +192,7 @@ export function extractAllCss(files: string[]): string {
       }
     }
   }
-  return cssBlocks.join('\n').replace(/\s+/g, ' ');
+  return parse(cssBlocks.join('\n'));
 }
 
 export function populateJsProject(project: Project, files: string[]): void {

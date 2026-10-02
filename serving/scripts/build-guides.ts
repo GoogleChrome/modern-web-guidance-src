@@ -17,7 +17,7 @@ export interface StoreUseCase {
 }
 import { replaceMacros, type BuildTarget, formatTitle } from "../lib/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
@@ -161,7 +161,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   // 2. Scan & Hash
   let readyGuides = scanAllGuides().filter(inv => {
     const excluded = config.monoskill.excludeFromBundling || [];
-    return inv.hasGuide && !excluded.includes(inv.category) && !excluded.includes(inv.name);
+    return inv.isPublished && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
 
@@ -278,7 +278,7 @@ async function processSingleGuideFile(
     throw new Error(`Missing frontmatter or description in ${filePath}`);
   }
 
-  if (markdownBody.replace(/<!--[\s\S]*?-->/g, '').trim().length === 0) {
+  if (stripAllComments(markdownBody).trim().length === 0) {
     // Just a stub guide. No content to index.
     return;
   }
@@ -286,7 +286,7 @@ async function processSingleGuideFile(
   const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
 
   if (TARGET === 'static-site') {
-    const h1Title = extractH1Heading(markdownBody);
+    const h1Title = extractH1Heading(processedMarkdown);
     const title = h1Title || data.title || formatTitle(id);
     const genericFrontmatter = `---
 title: ${JSON.stringify(title)}

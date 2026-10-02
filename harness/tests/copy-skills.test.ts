@@ -28,8 +28,8 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         // 1. Create isolated home
         homeDir = createIsolatedHome('test-copy-skills');
         
-        // 2. Run copySkills (cli = true). This might trigger a build if dist is missing
-        const success = copySkills(homeDir, Agents.JETSKI, true, ['modern-web-guidance']);
+        // 2. Run copySkills. This might trigger a build if dist is missing
+        const success = copySkills(homeDir, Agents.JETSKI_CLI, ['modern-web-guidance']);
         assert.ok(success, 'copySkills should succeed');
 
         const skillDir = path.join(homeDir, '.gemini', 'jetski', 'skills', 'modern-web-guidance');
@@ -81,12 +81,11 @@ test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip:
 
         // Set up the suite config
         const suiteConfig = {
-            serving: 'skills_cli',
             agent: 'gemini_cli',
             name: 'test-run',
             numRuns: 1,
             tasks: [],
-            mcpServersToEnable: [],
+            skillsToEnable: ['modern-web-guidance'],
             negative: false
         };
 

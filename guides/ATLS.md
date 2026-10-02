@@ -43,8 +43,8 @@ ATLs ensure that all guidance within their domain is technically accurate, align
 * If a recommended feature is newly available or limited availability, verify that the guide mandates (and `expectations.md` tests for) appropriate fallback strategies or progressive enhancement patterns.
 
 ### 9. Discipline Guide Decomposition
-* Ensure discipline-level skills (e.g., CSS, JS, Performance) are broken down into granular, focused subskills rather than monolithic mega-guides.
-* The primary discipline-level guide (e.g., `guides/css/css/guide.md`) should serve as a conceptual hub that establishes the agent's mental model and links granular subskills via the `{{ GUIDE_REF("guide-slug") }}` macro.
+* Ensure discipline-level guides (e.g., CSS, JS, Performance) are broken down into granular, focused subguides rather than monolithic mega-guides.
+* The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual hub that establishes the agent's mental model and links granular subguides via the `{{ GUIDE_REF("guide-slug") }}` macro.
 * **Specification**: See [`.agents/skills/project-discipline-guides/SKILL.md`](../.agents/skills/project-discipline-guides/SKILL.md).
 
 

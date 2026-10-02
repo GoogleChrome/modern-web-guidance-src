@@ -14,13 +14,27 @@ Supported agents and canonical configurations are defined in [`harness/config.ts
 
 Configure API keys and environment variables in a `.env` file at the repository root:
 
-### 1. Antigravity / Jetski
-Antigravity (`jetski_cli`) is the default agent used by guide development workflows (`gd dev`).
+### 1. Jetski CLI
+Jetski CLI (`jetski_cli`) is the default agent used by guide development workflows (`gd dev`).
 ```bash
-JETSKI_MODEL='gemini-3.6-flash'
+JETSKI_MODEL='Gemini 3.8 Flash (Medium)'
 ```
 
-### 2. Gemini CLI
+### 2. Antigravity CLI
+Antigravity CLI (`antigravity_cli`) is supported for evaluation harness runs. Install `agy` and run it once interactively to sign in:
+```bash
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+```
+Set the GCP project in `~/.gemini/antigravity-cli/settings.json` (`gcp.project`), or override it in your `.env` file:
+```bash
+ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID>
+# Optional: path to the agy binary if it is not on your PATH (e.g. under cron)
+ANTIGRAVITY_CLI_BIN=/home/<you>/.local/bin/agy
+# Optional: model override for Antigravity CLI agent runs
+ANTIGRAVITY_MODEL=gemini-3.8-flash-medium
+```
+
+### 3. Gemini CLI
 Gemini CLI (`gemini_cli`) is supported for evaluation harness runs and can be used in `gd dev` via `GD_DEV_USE_GEMINI`:
 ```bash
 GEMINI_API_KEY='your_api_key_here'
@@ -28,7 +42,7 @@ GEMINI_MODEL='gemini-3-flash-preview'
 GD_DEV_USE_GEMINI=1  # Required to use Gemini CLI for 'gd dev'
 ```
 
-### 3. Claude Code (Vertex AI)
+### 4. Claude Code (Vertex AI)
 Implemented via [Claude Code on Vertex AI](https://code.claude.com/docs/en/google-vertex-ai):
 ```bash
 gcloud config set project <YOUR-GCP-PROJECT-ID>
@@ -40,12 +54,12 @@ ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
 ANTHROPIC_MODEL=<enabled-model-in-vertex>
 ```
 
-### 4. Codex CLI
+### 5. Codex CLI
 ```bash
 CODEX_MODEL='gpt-5.5'
 ```
 
-### 5. Pi
+### 6. Pi
 ```bash
 PI_MODEL='anthropic/claude-sonnet'
 ```
@@ -128,13 +142,14 @@ This section covers the internal architecture of the evaluation harness agent ru
 ```
 harness/
   agents/                    # Agent-specific runners
+    antigravity-cli-agent.ts
     gemini-cli-agent.ts
     claude-code-agent.ts
     codex-cli-agent.ts
     jetski-cli-agent.ts
     pi-agent.ts
   lib/
-    agent-shared.ts          # Common utilities (isolation, MCP config, etc.)
+    agent-shared.ts          # Common utilities (isolation, skills setup, etc.)
     collection.ts            # Results aggregation
     guidance_validation.ts   # Guide/tool usage extraction
   config.ts                  # Suite configuration
@@ -185,7 +200,8 @@ The harness does **not** centrally hardcode which model each agent uses. Instead
 
 | Agent | Environment Variable | Example Value | Notes |
 |-------|---------------------|---------------|-------|
-| **Antigravity / Jetski CLI** | `JETSKI_MODEL` | `gemini-3.6-flash` | Read directly by Jetski CLI |
+| **Jetski CLI** | `JETSKI_MODEL` | `Gemini 3.8 Flash (Medium)` | Read directly by Jetski CLI |
+| **Antigravity CLI** | `ANTIGRAVITY_MODEL` | `gemini-3.8-flash-medium` | Passed via `--model` to `agy` |
 | **Gemini CLI** | `GEMINI_MODEL` | `gemini-3-flash-preview` | Read directly by Gemini CLI |
 | **Pi** | `PI_MODEL` or `PROMPT_MODEL` | `anthropic/claude-sonnet` | `PROMPT_MODEL` is fallback |
 | **Codex CLI** | `CODEX_MODEL` | `gpt-5.5` | Read directly by Codex CLI |
@@ -197,6 +213,7 @@ If no model env var is set:
 - **Gemini CLI**: Uses the model from `~/.gemini/settings.json` or prompts
 - **Codex CLI**: Uses default model (configurable via `codex settings`)
 - **Jetski CLI**: Uses default model from Jetski config
+- **Antigravity CLI**: Uses default model from Antigravity CLI config
 - **Claude Code**: Uses model from Vertex AI project config
 
 #### Token Efficiency Tips
@@ -253,6 +270,8 @@ Each agent has different auth file locations copied to the isolated environment:
 | Pi | `auth.json`, `settings.json`, `trust.json` | `~/.pi/agent/` |
 | Claude Code | GCP credentials via env | `gcloud` config |
 | Codex CLI | OAuth via login flow | `~/.codex/` |
+| Jetski CLI | `installation_id`, `user_settings.pb`; on macOS the OAuth token lives in the login Keychain, so `~/Library/Keychains` is symlinked into the isolated HOME | `~/.gemini/jetski/` |
+| Antigravity CLI | `settings.json`, `antigravity-oauth-token` (Linux) or Keychain symlink (macOS) | `~/.gemini/antigravity-cli/` |
 
 Example for Pi:
 ```typescript
@@ -266,24 +285,12 @@ copyFileIfExists(
 );
 ```
 
-### 3. Skills/MCP Configuration
+### 3. Skills Configuration
 
-Guided runs inject `modern-web-guidance` via two serving approaches:
+Guided runs inject `modern-web-guidance` via the Skills CLI distribution:
 
-**Skills CLI** (copies guide files):
 ```typescript
-copySkills(tempHome, Agents.PI, true, skillsToEnable);
-```
-
-**MCP** (configures MCP server):
-```typescript
-updateMcpConfig(
-  path.join(piDest, 'agent', 'mcp_servers.json'),
-  ['modern-web-guidance'],
-  config.environment.modernWebServerPath,
-  config.environment.mcpApiKey,
-  Agents.PI
-);
+copySkills(tempHome, Agents.PI, skillsToEnable);
 ```
 
 ### 4. Trajectory Capture
@@ -296,7 +303,8 @@ Each agent outputs trajectories in distinct formats:
 | Pi | JSONL | `.pi/agent/sessions/*.jsonl` | Line-by-line JSON |
 | Claude Code | JSON | `~/.claude/projects/*/sessions/` | `JSON.parse()` |
 | Codex CLI | TOML config + JSONL | `~/.codex/` | Custom parser |
-| Jetski CLI | Protocol Buffers | `.gemini/jetski/conversations/*.pb` | `protobuf` lib |
+| Jetski CLI | Protocol Buffers / SQLite | `.gemini/jetski/conversations/*` | `parseJetskiCliSession` |
+| Antigravity CLI | SQLite | `.gemini/antigravity-cli/conversations/*.db` | `parseJetskiCliSession` |
 
 Example extraction for Pi:
 ```typescript
@@ -328,14 +336,9 @@ The harness tracks which guides the agent retrieved or read:
 ```typescript
 // harness/lib/guidance_validation.ts
 export async function collectGuidesUsed(
-  dirPath: string,
-  serving: Serving,
-  agent: string
-): Promise<GuidedUsage> {
-  if (agent === Agents.PI) {
-    return collectPiGuidesFromTrajectory(dirPath, serving);
-  }
-  // ... other agents
+  dirPath: string
+): Promise<GuideUsage> {
+  // Reads from trajectory_summary.json
 }
 ```
 
@@ -367,6 +370,24 @@ The grader reads this to distinguish:
 - **Early failures**: Agent crashed, no output generated
 - **Grader failures**: Agent generated code, but tests failed
 
+### 7. Filesystem Sandbox
+
+An isolated HOME alone doesn't stop an agent from finding this repo (e.g. via `$PATH` or `find /`) and reading `guides/`, `expectations.md` and `grader.ts`. `runCliAgentCommand()` therefore wraps every agent in an OS-level sandbox (`harness/lib/sandbox.ts`) that hides the repo root:
+
+- **Linux**: `bwrap` (bubblewrap) mounts an empty tmpfs over the repo root. Requires `sudo apt install bubblewrap`.
+- **macOS**: `sandbox-exec` denies file access under the repo root.
+
+Only these paths are re-exposed:
+
+| Path | Access | Why |
+|------|--------|-----|
+| `node_modules`, `harness/node_modules` | read-only | Agent CLI binaries |
+| `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
+| `dist/skills-cli/skills/.cache` | writable, guided only | transformers.js tokenizer cache |
+| per-run `targetDir` | writable | npx shim, `modern-web.log` |
+
+If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
+
 ---
 
 ## Adding a New Agent Runner
@@ -377,7 +398,7 @@ Copy an existing harness (e.g., `harness/agents/pi-agent.ts`) and create `harnes
 
 ```typescript
 // harness/agents/my-agent.ts
-import config, { Agents, Serving } from '../config.ts';
+import config, { Agents } from '../config.ts';
 import { ... } from '../lib/agent-shared.ts';
 
 function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
@@ -399,9 +420,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
   // Copy skills for guided runs
   if (runType === 'guided') {
     const suiteConfig = getSuiteConfig();
-    if (suiteConfig.serving === Serving.SKILLS_CLI) {
-      copySkills(tempHome, Agents.MY_AGENT, true, suiteConfig.skillsToEnable);
-    }
+    copySkills(tempHome, Agents.MY_AGENT, suiteConfig.skillsToEnable);
   }
   
   return workDir;
@@ -417,7 +436,8 @@ async function run() {
     userPrompt
   ];
   
-  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent');
+  // runType ('guided' | 'unguided') controls what the filesystem sandbox exposes
+  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
   
   // Export trajectories
   const sessionsDir = path.join(path.dirname(workDir), '.my-agent', 'sessions');
@@ -436,7 +456,7 @@ export function collectMyAgentToolsFromTrajectory(dir: string): string[] {
   // Parse trajectory files to extract tools used
 }
 
-export function collectMyAgentGuidesFromTrajectory(dirPath: string, serving: string) {
+export function collectMyAgentGuidesFromTrajectory(dirPath: string) {
   // Parse trajectory files to extract guides retrieved
 }
 
@@ -473,46 +493,30 @@ function getAgentScript(agent: string): string {
   return path.join(harnessDir, 'agents',
     agent === Agents.MY_AGENT ? 'my-agent.ts' :
     // ... other agents
-    'jetski-agent.ts'
+    'gemini-cli-agent.ts'
   );
 }
 ```
 
 **`lib/collection.ts`** - Model and token extraction:
 ```typescript
-import { extractMyAgentModel, extractMyAgentTokenUsage } from '../agents/my-agent.ts';
-
-export function extractModelFromResults(resultsDir: string, agent: string): string {
-  if (agent === Agents.MY_AGENT) {
-    return extractMyAgentModel(resultsDir);
-  }
-  // ... other agents
+export function extractModelFromResults(resultsDir: string): string {
+  // Reads model from trajectory_summary.json
 }
 
-export function extractTokenUsageFromResults(resultsDir: string, agent: string) {
-  if (agent === Agents.MY_AGENT) {
-    return extractMyAgentTokenUsage(resultsDir) ?? null;
-  }
-  // ... other agents
+export function extractTokenUsageFromResults(resultsDir: string) {
+  // Reads token usage from trajectory_summary.json
 }
 ```
 
 **`lib/guidance_validation.ts`** - Guide and tool usage collection:
 ```typescript
-import { collectMyAgentGuidesFromTrajectory, collectMyAgentToolsFromTrajectory } from '../agents/my-agent.ts';
-
-export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string) {
-  if (agent === Agents.MY_AGENT) {
-    return collectMyAgentGuidesFromTrajectory(dirPath, serving);
-  }
-  // ... other agents
+export async function collectGuidesUsed(dirPath: string) {
+  // Reads retrieved and read guides from trajectory_summary.json
 }
 
-export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string) {
-  if (agent === Agents.MY_AGENT) {
-    return collectMyAgentToolsFromTrajectory(dir);
-  }
-  // ... other agents
+export async function collectGuidanceToolsUsed(dir: string) {
+  // Reads tools used from trajectory_summary.json
 }
 ```
 
@@ -567,14 +571,6 @@ try {
 }
 ```
 
-### 5. MCP vs Skills Mode
-Not all agents support both modes. If an agent does not support MCP, document limitations:
-```typescript
-if (approach === Serving.MCP) {
-  console.warn('Warning: MCP mode is not supported by this agent.');
-}
-```
-
 ---
 
 ## Debugging & Diagnostics
@@ -598,10 +594,10 @@ cat /tmp/ghh-pi-*/.pi/agent/sessions/*.jsonl | jq '.'
 grep -o '"use_case_id":"[^"]*"' trajectory.jsonl
 ```
 
-### Test MCP Server Independently
+### Test the Skills CLI Independently
 ```bash
-# Run MCP server directly to verify it works
-node serving/mcp-server/index.ts
+# Run the skills CLI directly to verify it works
+node serving/bin/modern-web.ts search "address form"
 ```
 
 ### Check Guide Validation
@@ -624,7 +620,7 @@ node --experimental-strip-types quick-smoke.ts
 # Test specific agent
 node --experimental-strip-types quick-smoke.ts <agent> [guided|unguided]
 
-# Available agents: jetski, jetski-cli, gemini-cli, claude-code, codex-cli, pi
+# Available agents: antigravity-cli, jetski-cli, gemini-cli, claude-code, codex-cli, pi
 node --experimental-strip-types quick-smoke.ts pi unguided
 node --experimental-strip-types quick-smoke.ts gemini-cli guided
 
@@ -648,9 +644,7 @@ export async function runMyAgentSmokeTest() {
     name: 'smoke-test',
     numRuns: 1,
     tasks: [],
-    mcpServersToEnable: [],
     skillsToEnable: [],
-    serving: 'skills_cli',
     agent: 'my_agent'
   };
   
@@ -684,8 +678,8 @@ node --test --experimental-strip-types tests/pi-parsing.test.ts
 
 #### Manual Trajectory Inspection
 ```bash
-# Run with sessions enabled (not ephemeral)
-PI_NO_SESSION=false GD_SUITE_CONFIG='{"agent":"pi","serving":"skills_cli"}' \
+# Run full eval suite with Pi (sessions enabled by default)
+GD_SUITE_CONFIG='{"agent":"pi"}' \
   node --experimental-strip-types harness/run_suite.ts <task>
 
 # Sessions are saved to the isolated HOME, then exported to results dir

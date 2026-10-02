@@ -1,0 +1,419 @@
+diff --git a/package.json b/package.json
+index 5e71a8a..1a53fd3 100644
+--- a/package.json
++++ b/package.json
+@@ -6,6 +6,7 @@
+     "dev": "astro dev",
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
++    "build:wasm": "bash scripts/build-wasm.sh",
+     "preview": "astro preview",
+     "astro": "astro"
+   },
+diff --git a/public/wasm/image-gen.mjs b/public/wasm/image-gen.mjs
+new file mode 100644
+index 0000000..f4d654d
+--- /dev/null
++++ b/public/wasm/image-gen.mjs
+@@ -0,0 +1,2 @@
++async function createImageGenModule(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=true;var ENVIRONMENT_IS_WORKER=false;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("image-gen.wasm")}return new URL("image-gen.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};var getCFunc=ident=>{var func=Module["_"+ident];return func};var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var UTF8Decoder=new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>{if(!ptr)return"";var end=findStringEnd(HEAPU8,ptr,maxBytesToRead,ignoreNul);return UTF8Decoder.decode(HEAPU8.subarray(ptr,end))};var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(stack===0)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack!==0)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};var cwrap=(ident,returnType,argTypes,opts)=>{var numericArgs=!argTypes||argTypes.every(type=>type==="number"||type==="boolean");var numericRet=returnType!=="string";if(numericRet&&numericArgs&&!opts){return getCFunc(ident)}return(...args)=>ccall(ident,returnType,argTypes,args,opts)};{}Module["cwrap"]=cwrap;var _get_buffer,_free,_malloc,_generate_image,__emscripten_timeout,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_get_buffer=Module["_get_buffer"]=wasmExports["h"];_free=Module["_free"]=wasmExports["i"];_malloc=Module["_malloc"]=wasmExports["j"];_generate_image=Module["_generate_image"]=wasmExports["k"];__emscripten_timeout=wasmExports["l"];__emscripten_stack_restore=wasmExports["m"];__emscripten_stack_alloc=wasmExports["n"];_emscripten_stack_get_current=wasmExports["o"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={c:__abort_js,b:__emscripten_runtime_keepalive_clear,d:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}export default createImageGenModule;
+diff --git a/public/wasm/image-gen.wasm b/public/wasm/image-gen.wasm
+new file mode 100755
+index 0000000..b92f4aa
+Binary files /dev/null and b/public/wasm/image-gen.wasm differ
+diff --git a/scripts/build-wasm.sh b/scripts/build-wasm.sh
+new file mode 100755
+index 0000000..d02054d
+--- /dev/null
++++ b/scripts/build-wasm.sh
+@@ -0,0 +1,34 @@
++#!/usr/bin/env bash
++# Compiles src/wasm/image-gen/image_gen.cpp to a WebAssembly ES module.
++#
++# Requires the Emscripten SDK (emcc) on PATH: https://emscripten.org/docs/getting_started/downloads.html
++#
++# Output is written to public/wasm/ so Astro serves it as a static asset and
++# the compiled artifacts can be checked into the repo, letting `astro build`
++# run without needing Emscripten installed.
++
++set -euo pipefail
++
++SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
++
++SRC="${ROOT_DIR}/src/wasm/image-gen/image_gen.cpp"
++OUT_DIR="${ROOT_DIR}/public/wasm"
++OUT_JS="${OUT_DIR}/image-gen.mjs"
++
++mkdir -p "${OUT_DIR}"
++
++emcc "${SRC}" \
++  -sEXPORT_ES6 \
++  -sENVIRONMENT=web \
++  -sSTRICT \
++  -sALLOW_MEMORY_GROWTH \
++  -sMODULARIZE \
++  -sEXPORT_NAME=createImageGenModule \
++  -sEXPORTED_FUNCTIONS=_generate_image,_get_buffer,_malloc,_free \
++  -sEXPORTED_RUNTIME_METHODS=cwrap,HEAPU8 \
++  -sFILESYSTEM=0 \
++  -Oz -flto \
++  -o "${OUT_JS}"
++
++echo "Built ${OUT_JS} ($(du -h "${OUT_JS}" | cut -f1)) and its companion .wasm"
+diff --git a/src/components/ImageGenerator.tsx b/src/components/ImageGenerator.tsx
+new file mode 100644
+index 0000000..7c518ab
+--- /dev/null
++++ b/src/components/ImageGenerator.tsx
+@@ -0,0 +1,130 @@
++import React, { useEffect, useRef, useState } from 'react';
++
++const IMAGE_WIDTH = 480;
++const IMAGE_HEIGHT = 320;
++
++type WorkerResponse =
++  | { type: 'ready' }
++  | { type: 'result'; requestId: number; width: number; height: number; pixels: ArrayBuffer }
++  | { type: 'error'; message: string; requestId?: number };
++
++export default function ImageGenerator() {
++  const canvasRef = useRef<HTMLCanvasElement>(null);
++  const workerRef = useRef<Worker | null>(null);
++  const requestIdRef = useRef(0);
++  const pendingRequestIdRef = useRef<number | null>(null);
++
++  const [isReady, setIsReady] = useState(false);
++  const [isGenerating, setIsGenerating] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [hasImage, setHasImage] = useState(false);
++
++  const drawPixels = (width: number, height: number, pixels: ArrayBuffer) => {
++    const canvas = canvasRef.current;
++    const context = canvas?.getContext('2d');
++    if (!canvas || !context) return;
++
++    canvas.width = width;
++    canvas.height = height;
++    const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height);
++    context.putImageData(imageData, 0, 0);
++    setHasImage(true);
++  };
++
++  useEffect(() => {
++    const worker = new Worker(new URL('../workers/image-gen.worker.ts', import.meta.url), {
++      type: 'module',
++    });
++    workerRef.current = worker;
++
++    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
++      const message = event.data;
++
++      if (message.type === 'ready') {
++        setIsReady(true);
++        requestImage();
++        return;
++      }
++
++      if (message.type === 'result') {
++        if (message.requestId !== pendingRequestIdRef.current) return;
++        drawPixels(message.width, message.height, message.pixels);
++        setIsGenerating(false);
++        setError(null);
++        return;
++      }
++
++      if (message.type === 'error') {
++        setError(message.message);
++        setIsGenerating(false);
++      }
++    };
++
++    worker.onerror = (event: ErrorEvent) => {
++      event.preventDefault();
++      setError(event.message || 'The image generator worker crashed.');
++      setIsGenerating(false);
++    };
++
++    worker.postMessage({
++      type: 'init',
++      wasmUrl: `${import.meta.env.BASE_URL}wasm/image-gen.mjs`,
++    });
++
++    return () => {
++      worker.terminate();
++      workerRef.current = null;
++    };
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, []);
++
++  const requestImage = () => {
++    const worker = workerRef.current;
++    if (!worker) return;
++
++    const requestId = requestIdRef.current + 1;
++    requestIdRef.current = requestId;
++    pendingRequestIdRef.current = requestId;
++
++    setIsGenerating(true);
++    setError(null);
++
++    worker.postMessage({
++      type: 'generate',
++      requestId,
++      width: IMAGE_WIDTH,
++      height: IMAGE_HEIGHT,
++      seed: Math.floor(Math.random() * 0xffffffff),
++    });
++  };
++
++  return (
++    <div className="flex flex-col items-center gap-4">
++      <div
++        className="relative w-full max-w-lg overflow-hidden rounded-lg border border-gray-300 bg-gray-900"
++        style={{ aspectRatio: `${IMAGE_WIDTH} / ${IMAGE_HEIGHT}` }}
++      >
++        <canvas ref={canvasRef} className="h-full w-full" aria-label="Generated fractal image" />
++        {!hasImage && (
++          <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">
++            {error ? 'Unable to render image.' : 'Loading image generator…'}
++          </div>
++        )}
++      </div>
++
++      <div className="flex items-center gap-3">
++        <button
++          type="button"
++          onClick={requestImage}
++          disabled={!isReady}
++          className="rounded-md bg-amber-400 px-4 py-2 font-semibold text-gray-900 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
++        >
++          Generate new image
++        </button>
++        {isGenerating && <span className="text-sm text-gray-500">Rendering…</span>}
++      </div>
++
++      {error && <p className="text-sm text-red-600">{error}</p>}
++    </div>
++  );
++}
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..06d620f 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -1,6 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+ import { getCollection } from 'astro:content';
++import ImageGenerator from '../components/ImageGenerator';
+ 
+ const multimedia = await getCollection('multimedia');
+ ---
+@@ -17,5 +18,14 @@ const multimedia = await getCollection('multimedia');
+                 ))}
+             </ul>
+         </div>
++
++        <div class="mt-10 pt-8 border-t-2">
++            <h2 class="text-2xl font-bold text-gray-900 mb-2">AI Art Generator</h2>
++            <p class="text-gray-600 mb-6">
++                Generate a one-of-a-kind fractal image, rendered instantly in your browser by a
++                WebAssembly module.
++            </p>
++            <ImageGenerator client:load />
++        </div>
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/wasm/image-gen/image_gen.cpp b/src/wasm/image-gen/image_gen.cpp
+new file mode 100644
+index 0000000..78865d6
+--- /dev/null
++++ b/src/wasm/image-gen/image_gen.cpp
+@@ -0,0 +1,96 @@
++// Procedural fractal image generator compiled to WebAssembly with Emscripten.
++//
++// Rebuild with `npm run build:wasm` (see scripts/build-wasm.sh). The compiled
++// output (public/wasm/image-gen.mjs + image-gen.wasm) is checked in so the
++// site does not need Emscripten installed to run `astro build`.
++
++#include <cstdint>
++#include <cstdlib>
++#include <emscripten/emscripten.h>
++
++extern "C" {
++
++static uint8_t* g_buffer = nullptr;
++static int g_buffer_width = 0;
++static int g_buffer_height = 0;
++
++// Ensures a pixel buffer (RGBA8, width * height * 4 bytes) of the requested
++// size is available and returns a pointer to it so JS can read it out of
++// wasm memory once generate_image() has populated it.
++EMSCRIPTEN_KEEPALIVE
++uint8_t* get_buffer(int width, int height) {
++  if (g_buffer != nullptr &&
++      (g_buffer_width != width || g_buffer_height != height)) {
++    free(g_buffer);
++    g_buffer = nullptr;
++  }
++
++  g_buffer_width = width;
++  g_buffer_height = height;
++
++  if (g_buffer == nullptr) {
++    g_buffer = static_cast<uint8_t*>(malloc(static_cast<size_t>(width) *
++                                             static_cast<size_t>(height) * 4));
++  }
++
++  return g_buffer;
++}
++
++// Renders a Julia-set fractal into the shared pixel buffer. `seed` drives the
++// complex constant and color palette so every call produces a distinct image.
++EMSCRIPTEN_KEEPALIVE
++void generate_image(int width, int height, uint32_t seed) {
++  uint8_t* buffer = get_buffer(width, height);
++  if (buffer == nullptr) {
++    return;
++  }
++
++  // Simple xorshift PRNG seeded per-call, kept deterministic for a given seed.
++  uint32_t rng = seed == 0 ? 1 : seed;
++  auto next_rand = [&rng]() -> uint32_t {
++    rng ^= rng << 13;
++    rng ^= rng >> 17;
++    rng ^= rng << 5;
++    return rng;
++  };
++
++  const double cReal = -0.8 + (static_cast<double>(next_rand() % 1000) / 1000.0 - 0.5) * 0.6;
++  const double cImag = 0.156 + (static_cast<double>(next_rand() % 1000) / 1000.0 - 0.5) * 0.6;
++  const int hueShift = static_cast<int>(next_rand() % 256);
++  const int maxIterations = 220;
++
++  for (int py = 0; py < height; py++) {
++    for (int px = 0; px < width; px++) {
++      double x = (px - width / 2.0) * (3.0 / width);
++      double y = (py - height / 2.0) * (3.0 / height);
++
++      int iteration = 0;
++      while (x * x + y * y <= 4.0 && iteration < maxIterations) {
++        double xTemp = x * x - y * y + cReal;
++        y = 2.0 * x * y + cImag;
++        x = xTemp;
++        iteration++;
++      }
++
++      int index = (py * width + px) * 4;
++      if (iteration == maxIterations) {
++        buffer[index + 0] = 8;
++        buffer[index + 1] = 8;
++        buffer[index + 2] = 16;
++        buffer[index + 3] = 255;
++      } else {
++        double t = static_cast<double>(iteration) / maxIterations;
++        int r = static_cast<int>(9.0 * (1.0 - t) * t * t * t * 255.0);
++        int g = static_cast<int>(15.0 * (1.0 - t) * (1.0 - t) * t * t * 255.0);
++        int b = static_cast<int>(8.5 * (1.0 - t) * (1.0 - t) * (1.0 - t) * t * 255.0);
++
++        buffer[index + 0] = static_cast<uint8_t>((r + hueShift) % 256);
++        buffer[index + 1] = static_cast<uint8_t>((g + hueShift / 2) % 256);
++        buffer[index + 2] = static_cast<uint8_t>((b + hueShift / 3) % 256);
++        buffer[index + 3] = 255;
++      }
++    }
++  }
++}
++
++}  // extern "C"
+diff --git a/src/workers/image-gen.worker.ts b/src/workers/image-gen.worker.ts
+new file mode 100644
+index 0000000..e06bff8
+--- /dev/null
++++ b/src/workers/image-gen.worker.ts
+@@ -0,0 +1,83 @@
++// Runs the image-gen WebAssembly module off the main thread so generating a
++// new image never blocks page interactivity (hover states, clicks, etc).
++
++interface ImageGenModule {
++  HEAPU8: Uint8Array;
++  cwrap: (
++    ident: string,
++    returnType: string | null,
++    argTypes: string[]
++  ) => (...args: number[]) => number;
++}
++
++type WorkerRequest =
++  | { type: 'init'; wasmUrl: string }
++  | { type: 'generate'; requestId: number; width: number; height: number; seed: number };
++
++type WorkerResponse =
++  | { type: 'ready' }
++  | { type: 'result'; requestId: number; width: number; height: number; pixels: ArrayBuffer }
++  | { type: 'error'; message: string; requestId?: number };
++
++let modulePromise: Promise<ImageGenModule> | null = null;
++let generateImage: ((width: number, height: number, seed: number) => void) | null = null;
++let getBuffer: ((width: number, height: number) => number) | null = null;
++
++async function loadModule(wasmUrl: string): Promise<ImageGenModule> {
++  const createImageGenModule = (await import(/* @vite-ignore */ wasmUrl)).default as (
++    args?: Record<string, unknown>
++  ) => Promise<ImageGenModule>;
++  return createImageGenModule();
++}
++
++self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
++  const message = event.data;
++
++  try {
++    if (message.type === 'init') {
++      modulePromise ??= loadModule(message.wasmUrl);
++      const wasmModule = await modulePromise;
++      generateImage = wasmModule.cwrap('generate_image', null, ['number', 'number', 'number']) as (
++        width: number,
++        height: number,
++        seed: number
++      ) => void;
++      getBuffer = wasmModule.cwrap('get_buffer', 'number', ['number', 'number']) as (
++        width: number,
++        height: number
++      ) => number;
++      const ready: WorkerResponse = { type: 'ready' };
++      self.postMessage(ready);
++      return;
++    }
++
++    if (message.type === 'generate') {
++      if (!modulePromise || !generateImage || !getBuffer) {
++        throw new Error('WebAssembly module has not been initialized yet.');
++      }
++
++      const wasmModule = await modulePromise;
++      const { width, height, seed, requestId } = message;
++
++      generateImage(width, height, seed);
++      const bufferPointer = getBuffer(width, height);
++      const pixels = wasmModule.HEAPU8.slice(bufferPointer, bufferPointer + width * height * 4);
++
++      const response: WorkerResponse = {
++        type: 'result',
++        requestId,
++        width,
++        height,
++        pixels: pixels.buffer,
++      };
++      self.postMessage(response, [pixels.buffer]);
++    }
++  } catch (error) {
++    const response: WorkerResponse = {
++      type: 'error',
++      message: error instanceof Error ? error.message : 'Unknown error generating image.',
++      requestId: message.type === 'generate' ? message.requestId : undefined,
++    };
++    self.postMessage(response);
++  }
++};

@@ -121,14 +121,14 @@ function buildGuideSummaryPrompt({ type, guideNames, guideDiff }: BuildGuideSumm
     ? 'what the new guide introduces and what use case or problem it solves'
     : 'key improvements, best practices, or platform evolutions added to the guide';
   const boldExample = isNew
-    ? '* Introduced a new guide for **State-Aware Sticky Headers** detailing how to build UI headers that react to scroll changes.'
-    : '* Updated the **Prompt API** guide to include best practices for session cloning and model pre-warming.';
+    ? `* Introduced a new guide for **state-aware-sticky-headers** detailing how to build UI headers that react to scroll changes.`
+    : `* Updated the **translator** guide to require accessing the API exclusively via the global \`Translator\` interface.`;
   const focusDesc = isNew ? 'developer guidance and use cases' : 'developer guidance and API patterns';
 
   return `You are writing concise release note bullet points for ${label} in GoogleChrome/modern-web-guidance.
 
 ### ${sectionHeader} (${guideNames.length} total):
-${guideNames.map(g => `- ${g}`).join('\n')}
+${guideNames.map(g => `- ${g.endsWith('-skill') ? `${g.slice(0, -'-skill'.length)} skill` : g}`).join('\n')}
 
 ### Content Diff:
 ${guideDiff}
@@ -137,7 +137,7 @@ ${guideDiff}
 1. Output exactly ${guideNames.length} Markdown bullet points (starting with '* ' or '- '), one for each ${targetDesc}.
 2. Each bullet must describe ${contentDesc} in a single concise sentence or short paragraph.
 3. Keep each bullet point on a single line without manual line breaks.
-4. Bold the title or subject of the guide in each bullet (e.g., "${boldExample}").
+4. Bold the guide identifier or skill name in each bullet using Markdown bold syntax (e.g., "* Updated the **modern-web-guidance** skill to..." or "${boldExample}").
 5. NEVER use nested sub-bullets or multiple bullet points for a single guide.
 6. Do NOT mention Baseline status or browser compatibility updates (these are tracked separately in the Browser Support section). Focus on substantive ${focusDesc}.
 7. Do NOT include headings, sections, benchmark tables, code blocks, or preamble. Output ONLY the ${guideNames.length} bullet points.`;
@@ -229,7 +229,7 @@ ${pluginDiff}
 
 ### Core Formatting Rules:
 1. Output concise Markdown bullet points (starting with '* ' or '- ') describing what was added or updated across the affected agent platforms, IDEs, or marketplaces.
-2. Bold the name of each agent platform, IDE, or marketplace (e.g., "* Added support for the **Grok** plugin marketplace.").
+2. Bold the specific name of each target agent platform, IDE, or marketplace (e.g., **GitHub Copilot**, **Claude Code**, **Cursor**, **Grok**, **Gemini CLI**) derived from the plugin directory or manifest, rather than the generic package name.
 3. Output at least 1 and at most ${pluginFiles.length} bullet points.
 4. Do NOT mention rote version bumps.
 5. Keep each bullet point on a single line without manual line breaks.

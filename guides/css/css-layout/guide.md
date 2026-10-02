@@ -35,12 +35,12 @@ Walk the decision tree top-to-bottom and stop at the first match. Note that layo
 
 ### 1.2 Working principles
 
-**Do:**
-
 - Use logical properties (`inline-size`, `block-size`, `margin-inline`, `padding-block`, `inset-inline-start`) for layout dimensions and spacing — see {{ GUIDE_REF("css") }} for full coverage.
 - Apply the content-first vs layout-first mental model: flexbox when items dictate flow, grid when you define the skeleton first.
 - Use the `place-*` shorthands (`place-content`, `place-items`, `place-self`) to align across both axes in one declaration.
 - Reach for intrinsic sizing (`min-content`, `max-content`, `fit-content()`) and flexible tracks (`fr`, `minmax()`) before fixed `width`/`height` — fewer media queries, more resilient layouts.
+- Do NOT use `overflow: hidden` to mask layout issues — fix them at the source.
+For example certain replaced elements like `<canvas>`, `<img>`, `<svg>`, `<video>`, `<iframe>` use `display: inline` by default, which can add a gap in certain layouts. Instead of clipping the gap with `overflow`, remove it by applying a block display-outside value (e.g. `display: block`, `grid`, `flex` etc).
 - Use `aspect-ratio` to reserve space for media and prevent layout shift before assets load.
 
 ```css
@@ -274,7 +274,8 @@ Manage layout shifts, scrollbars, and clipping predictably.
 
 ## 8 Grid lanes (aka masonry)
 
-{{ BASELINE_STATUS("masonry") }}
+{{ BASELINE_STATUS("grid-lanes") }}
+
 
 The spec is in development. The currently agreed-upon name is "grid lanes" (e.g., `display: grid-lanes`). Firefox ships `grid-template-rows: masonry` behind a flag; no other engines ship it in stable as of this writing.
 
