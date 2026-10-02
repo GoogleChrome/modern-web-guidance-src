@@ -118,7 +118,6 @@
     }
 
     .site-menu {
-      display: grid;
       align-content: start;
       gap: 0.25rem;
       inline-size: fit-content;
@@ -132,6 +131,10 @@
       color: var(--text);
       box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
       list-style: none;
+    }
+
+    .site-menu:popover-open {
+      display: grid;
     }
 
     .site-menu::backdrop {
