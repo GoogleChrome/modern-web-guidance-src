@@ -49,7 +49,7 @@ function analyzeTelemetry(sortedEvents) {
     const duration = curr.timestamp.since(prev.timestamp);
     const nsDiff = duration.total('nanoseconds');
     
-    console.log(`Delay between Event ${prev.eventType} and Event ${curr.eventType}: ${nsDiff}ns`);
+    console.log(`Delay between Event ${prev.eventType} and Event ${curr.eventType}: ${nsDiff.toString()}ns`);
   }
 }
 ```
