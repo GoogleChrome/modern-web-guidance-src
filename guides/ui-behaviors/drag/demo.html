@@ -152,8 +152,6 @@
       handle.classList.remove('dragging');
     }
 
-    handle.addEventListener('pointerup', stopDragging);
-    handle.addEventListener('pointercancel', stopDragging);
     handle.addEventListener('lostpointercapture', stopDragging);
 
     handle.addEventListener('keydown', (event) => {
