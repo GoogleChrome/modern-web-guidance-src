@@ -99,7 +99,7 @@ If the primary implementation uses features that are not Baseline Widely Availab
 
 | Macro | What it emits |
 |---|---|
-| `{{ BASELINE_STATUS("feature-id"[, "bcd.key"]) }}` | `"Baseline since YYYY-MM-DD"` or `"limited availability"`. |
+| `{{ BASELINE_STATUS("feature-id"[, "bcd.key"]) }}` | `"Baseline status for <Feature>: Widely/Newly available..."` or `"Browser support for <Feature>: Limited availability"`. |
 | `{{ INCLUDE("path[#section]") }}` | Whole markdown file (frontmatter + leading `# H1` stripped) or one section (its heading dropped). Bare paths resolve from repo root; `./`/`../` resolve relative to the calling file. |
 | `{{ FEATURE("feature-id", "section") }}` | Sugar for `INCLUDE("features/<feature-id>.md#<section>")`. |
 | `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section. If `#fallbacks` is empty, emits only `BASELINE_STATUS` (no heading). |

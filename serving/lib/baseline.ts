@@ -372,7 +372,7 @@ function formatStatusMessage(featureName: string, status: { baseline?: string | 
     return `${featureName} is not natively supported by any major browser yet.`;
   }
 
-  return `${featureName} has limited availability.${supportStr}`;
+  return `Browser support for ${featureName}: Limited availability.${supportStr}`;
 }
 
 /**
