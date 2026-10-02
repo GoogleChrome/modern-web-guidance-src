@@ -269,9 +269,11 @@
         position: fixed;
         inset: auto;
 
-        /* Anchor Positioning declarations. */
+        /* Fallback followed by Anchor Positioning declarations. */
+        inset-block-start: 4.75rem; /* fallback */
         inset-block-start: anchor(--menu-button bottom);
-        inset-inline-end: anchor(--menu-button right);
+        inset-inline-end: 1rem; /* fallback */
+        inset-inline-end: anchor(--menu-button end);
 
         inline-size: 80dvw;
         max-inline-size: calc(100dvw - 2rem);
@@ -291,15 +293,6 @@
         padding-block: 0.25rem;
         padding-inline-start: 1.5rem;
         /* Indented inline nested style for mobile */
-      }
-
-      /*
-        Fallback for browsers that do not support anchor positioning.
-      */
-      .site-menu {
-        inset-block-start: 4.75rem; /* fallback */
-        inset-block-start: anchor(--menu-button bottom);
-        inset-inline-end: 1rem;
       }
     }
 
