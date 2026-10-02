@@ -1,0 +1,329 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..08cf491 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,47 @@
+ declare global {
++  type TranslatorAvailability =
++    | 'available'
++    | 'downloadable'
++    | 'downloading'
++    | 'unavailable';
++
++  interface TranslatorLanguageOptions {
++    sourceLanguage: string;
++    targetLanguage: string;
++  }
++
++  interface TranslatorDownloadProgressEvent extends Event {
++    loaded: number;
++  }
++
++  interface TranslatorDownloadMonitor extends EventTarget {
++    addEventListener(
++      type: 'downloadprogress',
++      listener: (event: TranslatorDownloadProgressEvent) => void,
++    ): void;
++  }
++
++  interface TranslatorCreateOptions extends TranslatorLanguageOptions {
++    monitor: (monitor: TranslatorDownloadMonitor) => void;
++  }
++
++  interface TranslatorInstance {
++    translate(input: string): Promise<string>;
++    translateStreaming(input: string): ReadableStream<string>;
++    destroy?: () => void;
++  }
++
++  interface TranslatorFactory {
++    availability(
++      options: TranslatorLanguageOptions,
++    ): Promise<TranslatorAvailability>;
++    create(options: TranslatorCreateOptions): Promise<TranslatorInstance>;
++  }
++
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: unknown;
++    Translator?: TranslatorFactory;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/ArticleTranslator.tsx b/src/components/ArticleTranslator.tsx
+new file mode 100644
+index 0000000..86f72ec
+--- /dev/null
++++ b/src/components/ArticleTranslator.tsx
+@@ -0,0 +1,222 @@
++import { useEffect, useMemo, useRef, useState } from 'react';
++
++const languages = [
++  { code: 'es', name: 'Spanish' },
++  { code: 'fr', name: 'French' },
++  { code: 'de', name: 'German' },
++  { code: 'it', name: 'Italian' },
++  { code: 'pt', name: 'Portuguese' },
++  { code: 'ja', name: 'Japanese' },
++  { code: 'ko', name: 'Korean' },
++  { code: 'zh', name: 'Chinese' },
++  { code: 'hi', name: 'Hindi' },
++] as const;
++
++const translatableSelector = [
++  '[data-translate-title]',
++  '[data-translate-summary]',
++  '[data-translate-body] h1',
++  '[data-translate-body] h2',
++  '[data-translate-body] h3',
++  '[data-translate-body] h4',
++  '[data-translate-body] p',
++  '[data-translate-body] li',
++  '[data-translate-body] blockquote',
++].join(',');
++
++type TranslationState = 'idle' | 'translating' | 'translated' | 'error';
++
++export default function ArticleTranslator() {
++  const [targetLanguage, setTargetLanguage] = useState('es');
++  const [isSupported, setIsSupported] = useState<boolean | null>(null);
++  const [availability, setAvailability] = useState<TranslatorAvailability | null>(null);
++  const [state, setState] = useState<TranslationState>('idle');
++  const [status, setStatus] = useState('');
++  const originals = useRef(new Map<HTMLElement, string>());
++  const activeTranslator = useRef<TranslatorInstance | null>(null);
++  const languageOptions = useMemo<TranslatorLanguageOptions>(
++    () => ({ sourceLanguage: 'en', targetLanguage }),
++    [targetLanguage],
++  );
++
++  useEffect(() => {
++    // The Translator API is exposed directly on the global scope.
++    const translatorApi = window.Translator;
++    const supported = 'Translator' in window && Boolean(translatorApi);
++    setIsSupported(supported);
++    setAvailability(null);
++
++    if (!translatorApi) {
++      setStatus('Client-side translation is currently unsupported in this browser.');
++      return;
++    }
++
++    let cancelled = false;
++    setStatus('Checking language availability…');
++    translatorApi.availability(languageOptions).then((result) => {
++      if (cancelled) return;
++      setAvailability(result);
++
++      const availabilityMessages: Record<TranslatorAvailability, string> = {
++        available: 'Ready to translate privately on this device.',
++        downloadable: 'A language pack will be downloaded when you translate.',
++        downloading: 'The language pack is already downloading. Select translate to continue.',
++        unavailable: 'This language pair is not available on your device.',
++      };
++      setStatus(availabilityMessages[result]);
++    }).catch((error: unknown) => {
++      if (cancelled) return;
++      console.error('Could not check translation availability:', error);
++      setAvailability('unavailable');
++      setStatus('Client-side translation is not available on this device.');
++    });
++
++    return () => {
++      cancelled = true;
++    };
++  }, [languageOptions]);
++
++  useEffect(() => {
++    return () => activeTranslator.current?.destroy?.();
++  }, []);
++
++  const translateArticle = async () => {
++    const translatorApi = window.Translator;
++    if (!translatorApi) {
++      setIsSupported(false);
++      setState('error');
++      setStatus('Client-side translation is currently unsupported in this browser.');
++      return;
++    }
++
++    try {
++      if (availability === 'unavailable') {
++        setState('error');
++        setStatus('This language pair is not available on your device.');
++        return;
++      }
++
++      if (availability === null) {
++        setStatus('Language availability is still being checked.');
++        return;
++      }
++
++      setState('translating');
++      if (availability === 'downloadable') {
++        setStatus('Preparing the on-device language pack…');
++      } else if (availability === 'downloading') {
++        setStatus('Connecting to the language-pack download…');
++      } else {
++        setStatus('Translating article…');
++      }
++
++      activeTranslator.current?.destroy?.();
++      // Invoke create() synchronously in the click handler so downloadable and
++      // downloading models receive the browser-required user gesture.
++      const translatorPromise = translatorApi.create({
++        ...languageOptions,
++        monitor(monitor) {
++          monitor.addEventListener('downloadprogress', (event) => {
++            const percent = Math.round(event.loaded * 100);
++            setStatus(`Downloading language pack… ${percent}%`);
++          });
++        },
++      });
++      const translator = await translatorPromise;
++      activeTranslator.current = translator;
++
++      const elements = Array.from(
++        document.querySelectorAll<HTMLElement>(translatableSelector),
++      ).filter((element) => element.textContent?.trim());
++
++      for (const element of elements) {
++        if (!originals.current.has(element)) {
++          originals.current.set(element, element.textContent ?? '');
++        }
++
++        const originalText = originals.current.get(element);
++        if (originalText) {
++          element.textContent = await translator.translate(originalText);
++        }
++      }
++
++      document.documentElement.lang = targetLanguage;
++      setState('translated');
++      setStatus(`Article translated to ${languages.find(({ code }) => code === targetLanguage)?.name ?? targetLanguage}.`);
++    } catch (error) {
++      console.error('On-device translation failed:', error);
++      setState('error');
++      setStatus('The article could not be translated. Please try again.');
++    }
++  };
++
++  const restoreArticle = () => {
++    for (const [element, originalText] of originals.current) {
++      if (element.isConnected) element.textContent = originalText;
++    }
++    document.documentElement.lang = 'en';
++    setState('idle');
++    setStatus('Original English article restored.');
++  };
++
++  const handleLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
++    if (state === 'translated') restoreArticle();
++    setTargetLanguage(event.target.value);
++  };
++
++  return (
++    <section
++      className="mb-6 rounded-sm border border-gray-200 bg-gray-50 p-4"
++      aria-labelledby="article-translation-heading"
++    >
++      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
++        <div>
++          <h2 id="article-translation-heading" className="font-semibold text-gray-900">
++            Read in another language
++          </h2>
++          <label htmlFor="translation-language" className="mt-2 block text-sm font-medium text-gray-700">
++            Translate from English to
++          </label>
++          <select
++            id="translation-language"
++            value={targetLanguage}
++            onChange={handleLanguageChange}
++            disabled={state === 'translating' || isSupported === false}
++            className="mt-1 min-w-48 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
++          >
++            {languages.map((language) => (
++              <option key={language.code} value={language.code}>
++                {language.name}
++              </option>
++            ))}
++          </select>
++        </div>
++
++        <div className="flex gap-2">
++          {state === 'translated' && (
++            <button
++              type="button"
++              onClick={restoreArticle}
++              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-100"
++            >
++              Show original
++            </button>
++          )}
++          <button
++            id="translate-article-button"
++            type="button"
++            onClick={translateArticle}
++            disabled={state === 'translating' || isSupported !== true || availability === null || availability === 'unavailable'}
++            className="rounded bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 hover:text-gray-950 disabled:cursor-not-allowed disabled:opacity-50"
++          >
++            {state === 'translating' ? 'Translating…' : state === 'translated' ? 'Translate again' : 'Translate article'}
++          </button>
++        </div>
++      </div>
++
++      <p className="mt-3 text-sm text-gray-600" role="status" aria-live="polite">
++        {isSupported === null ? 'Checking browser support…' : status}
++      </p>
++    </section>
++  );
++}
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..29dda25 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import ArticleTranslator from '../../components/ArticleTranslator.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -43,12 +44,12 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
++        <h1 data-translate-title class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+             {article.data.title}
+         </h1>
+         
+         <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++        <p data-translate-summary class="text-lg md:text-xl text-gray-700 font-light mb-5">
+             {article.data.summary}
+         </p>
+ 
+@@ -104,8 +105,10 @@ const isBookmarked = readingList.includes(article.slug);
+ 
+         </div>
+ 
++        <ArticleTranslator client:load />
++
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div data-translate-body class="prose max-w-none">
+             <Content />
+         </div>
+ 
+@@ -123,4 +126,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>

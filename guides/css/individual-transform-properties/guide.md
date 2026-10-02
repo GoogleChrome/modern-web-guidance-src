@@ -5,6 +5,8 @@ web-feature-ids:
   - individual-transforms
 ---
 
+# Individual Transform Properties
+
 The `transform` property allows you to apply multiple transformations in a specified order, but any changes to a single transformation require re-specifying the entire transformation chain. This makes it tricky to animate or transition a single transformation.
 
 The individual CSS transform properties (`translate`, `rotate`, and `scale`) allow you to apply transformations independently of the `transform` property. This approach makes it simpler to override a single transformation, for instance on `:hover`.

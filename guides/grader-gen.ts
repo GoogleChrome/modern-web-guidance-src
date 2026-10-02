@@ -16,7 +16,8 @@ import {
   GRADER_FILE,
   TARGETS_DIR,
   PATCHES_DIR,
-  SUPPORTED_BASE_APPS
+  SUPPORTED_BASE_APPS,
+  isDisciplineGuide,
 } from '../lib/guide-validation.ts';
 import { cCyan, cGreen } from '../lib/colors.ts';
 
@@ -82,6 +83,10 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       path.resolve(repoRoot, 'guides', 'node_modules', 'linkedom', 'types', 'index.d.ts'),
       path.join(workDir, 'linkedom.d.ts')
     );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'guides', 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+      path.join(workDir, 'cssomnom.d.ts')
+    );
 
     const sourcePatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
     if (fs.existsSync(sourcePatches)) {
@@ -108,7 +113,9 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       playwrightPatternLibraryPath: path.join(workDir, 'playwright-pattern-library.grader.ts'),
       tsMorphDtsPath: path.join(workDir, 'ts-morph.d.ts'),
       linkedomDtsPath: path.join(workDir, 'linkedom.d.ts'),
+      cssomnomDtsPath: path.join(workDir, 'cssomnom.d.ts'),
       failureContext,
+      isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
     });
 
     await runAgent(getDefaultSolutionAgent(), prompt, workDir);

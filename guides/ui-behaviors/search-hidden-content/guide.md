@@ -124,9 +124,11 @@ accordion.addEventListener('beforematch', (e) => {
 
 ## Browser support and fallback strategies
 
-The `<details>` element is Baseline Widely available, so a fallback strategy is not required.
+{{ BASELINE_STATUS("details") }}
 
-The `hidden="until-found"` attribute is not yet Baseline Widely available, but it can be safely used with a fallback in unsupporting browsers. **DO NOT** avoid `hidden="until-found"` because of missing browser support, as its accessibility benefits far outweigh the cost of implementing a fallback.
+{{ BASELINE_STATUS("hidden-until-found") }}
+
+**DO NOT** avoid `hidden="until-found"` because of missing browser support, as its accessibility benefits far outweigh the cost of implementing a fallback.
 
 #### `hidden="until-found"` fallback
 

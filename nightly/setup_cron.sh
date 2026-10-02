@@ -13,14 +13,14 @@ Options:
   --prefix      Specify the prefix name of this periodic run (default: "nightly").
                 e.g. "weekly", "nightly", "daily".
   --agents      Specify a space-separated list of agents to run
-                (default: "jetski_cli claude_code codex_cli").
+                (default: "antigravity_cli claude_code codex_cli").
   --workers     The number of concurrent workers to use (optional).
 
 Examples:
   $0
   $0 --schedule "30 3 * * *"
   $0 --schedule "0 22 * * 0" --prefix "weekly"
-  $0 --agents "jetski_cli codex_cli"
+  $0 --agents "antigravity_cli codex_cli"
   $0 --workers 10
 EOF
 }
@@ -28,7 +28,7 @@ EOF
 # Default values
 SCHEDULE="0 2 * * *"
 PREFIX="nightly"
-AGENTS="jetski_cli claude_code codex_cli"
+AGENTS="antigravity_cli claude_code codex_cli"
 WORKERS="20"
 
 # Parse flags

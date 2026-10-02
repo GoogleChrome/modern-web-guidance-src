@@ -48,14 +48,7 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
   fs.writeFileSync(path.join(targetDir, 'suite_config.json'), JSON.stringify(suiteConfig, null, 2));
 
   try {
-    const agentScript = path.join(harnessDir, 'agents',
-      agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
-        agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-          agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-            agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-              agent === Agents.PI ? 'pi-agent.ts' :
-                'jetski-agent.ts'
-    );
+    const agentScript = getAgentScript(agent);
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
     await runCommand('node', [
@@ -189,9 +182,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         try {
           const pnpmArgs = ['-r', '--no-bail'];
-          if (agent === Agents.JETSKI) {
-            pnpmArgs.push('--workspace-concurrency', '1');
-          } else if (suiteConfig.workerCount) {
+          if (suiteConfig.workerCount) {
             pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }
           pnpmArgs.push('run-agent');
@@ -415,9 +406,11 @@ export function generateTransientPackage(
     let templateContent = fs.readFileSync(templatePath, 'utf8');
     templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
 
-    const npxWrapperPath = path.join(targetDir, 'npx');
-    fs.writeFileSync(npxWrapperPath, templateContent);
-    fs.chmodSync(npxWrapperPath, 0o755); // Make executable
+    for (const binName of ['npx', 'pnpx', 'pnpm']) {
+      const wrapperPath = path.join(targetDir, binName);
+      fs.writeFileSync(wrapperPath, templateContent);
+      fs.chmodSync(wrapperPath, 0o755); // Make executable
+    }
   } else {
     console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
   }
@@ -525,12 +518,14 @@ process.exit(graderStatus !== null ? graderStatus : result.status ?? 0);
 }
 
 function getAgentScript(agent: string): string {
-  return path.join(harnessDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+  return path.join(harnessDir, 'agents',
     agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-    agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-    agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-    agent === Agents.PI ? 'pi-agent.ts' :
-      'jetski-agent.ts');
+      agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+        agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+          agent === Agents.PI ? 'pi-agent.ts' :
+            agent === Agents.ANTIGRAVITY_CLI ? 'antigravity-cli-agent.ts' :
+              'gemini-cli-agent.ts'
+  );
 }
 
 // If invoked directly, retain legacy fallback logic if strictly required (optional).

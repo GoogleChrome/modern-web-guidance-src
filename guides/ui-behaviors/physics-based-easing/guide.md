@@ -5,6 +5,8 @@ web-feature-ids:
   - linear-easing
 ---
 
+# Physics Based Easing
+
 Traditional CSS easing functions like `ease-in` or `cubic-bezier()` are limited to simple curves, making it impossible to create complex physics-based effects like bounces or springs. The `linear()` timing function solves this by allowing you to provide a series of stops that can approximate complex curves. Transitions and animations are interpolated based on straight lines between the stops, but within enough stops, it can appear smooth.
 
 ### Implementation Steps

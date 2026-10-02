@@ -1,6 +1,6 @@
 /**
  * Centralized, typed prompt builder functions for the gd dev evaluation generation process.
- * 
+ *
  * Having these prompts in one dedicated module ensures high visibility, easy tuning of AI
  * behavior across target capsules (patches, grader.ts, task.md), and
  * type-safe parameter interpolation.
@@ -10,15 +10,24 @@ import { type SolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, REPORT_FILE } from '
 import { Agents } from '../harness/config.ts';
 import type { TargetEvalSummary } from './lib/dev-report.ts';
 
+/** Shared discipline-guide preamble for the solution, zero-passrate, and grader prompts. */
+const DISCIPLINE_RELEVANCE_RULE = '\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation will be relevant to this application. An expectation is relevant only if it applies to any web application (such as document metadata or response headers) or the application already contains the kind of element or feature it governs (such as forms, credential inputs, images, overlays or flyouts, cookies or sessions, iframes, external scripts, or a logout flow). Judge relevance by whether that element or feature exists, not by whether the technique the expectation recommends is already used: an existing element that lacks the recommended technique is exactly what should be implemented and tested.';
+
 export interface PatchPromptOptions {
   guideFile: string;
   expectationsFile: string;
   workDir: string;
+  isDisciplineGuide?: boolean;
 }
 
 export function buildSolutionPrompt(opts: PatchPromptOptions): string {
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to satisfy every expectation. Implement the relevant expectations and skip expectations for patterns the application does not have. Do NOT add new features, pages, routes, servers, forms, scripts, or content just to satisfy an expectation.`
+    : '';
+  const scope = opts.isDisciplineGuide ? 'the relevant' : 'all';
+
   return `# GOAL
-Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy all must-pass expectations in \`${opts.expectationsFile}\`.
+Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy ${scope} must-pass expectations in \`${opts.expectationsFile}\`.${disciplineInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -34,12 +43,16 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 }
 
 export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to fail every expectation. Only remove existing implementations of relevant expectations. Do NOT add features or anti-patterns the application does not already have. Do NOT remove or degrade anything the application already does correctly; the grader will skip expectations the application already satisfies.`
+    : '';
+
   return `# GOAL
 Inspect the clean codebase in the directory \`${opts.workDir}\`. Your goal is to ensure the codebase does NOT implement any part of the feature described in \`${opts.guideFile}\` and does NOT satisfy any criteria in \`${opts.expectationsFile}\`.
 
 If the codebase is already clean of this feature (meaning the feature is not present and assertions verifying the feature would naturally fail), do NOT modify any files (leave the workspace unchanged).
 
-If the codebase already contains partial, complete, or conflicting implementations of the feature, disable, unset, revert, or remove those implementations.
+If the codebase already contains partial, complete, or conflicting implementations of the feature, disable, unset, revert, or remove those implementations.${disciplineInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -69,12 +82,11 @@ export interface GraderPromptOptions {
   playwrightPatternLibraryPath?: string;
   tsMorphDtsPath?: string;
   linkedomDtsPath?: string;
+  cssomnomDtsPath?: string;
   failureContext?: string;
+  isDisciplineGuide?: boolean;
 }
 
-// TODO: Future CSSOMNom OSPO integration
-// When the cssomnom package is published to npm and installed in guides/package.json,
-// update Rule 2 (Assertion Hierarchy) in buildTargetGraderPrompt and the CSS test example in template.grader.ts to use CSSOMNom AST verification instead of regex.
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
   const contextBlock = opts.failureContext
     ? `### ⚠️ PREVIOUS FAILURE CONTEXT
@@ -104,8 +116,12 @@ Analyze this failure and modify the existing grader file to fix these assertions
     ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because any of the golden solution patches or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
     : '';
 
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to write a test for every expectation. Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
+    : '';
+
   return `${contextBlock}# GOAL
-Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${patchInstruction}
+Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${disciplineInstruction}${patchInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -118,29 +134,35 @@ ${solutionList}
 # VERIFICATION & SCOPING RULES
 
 ## 1. Strictly Follow the Boilerplate Template
-Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`extractAllCss\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
+Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`getCssStyleSheet\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
 ## 2. Assertion Hierarchy
-- **Static Analysis First**: Prioritize static analysis over browser execution for structural assertions.
+- **Static Analysis First**: Prioritize static AST analysis over browser execution for structural assertions. Always avoid regex on HTML, CSS, and JavaScript files.
+  - Use **Linkedom** for HTML structure and DOM querying (\`getHtmlDocuments\`).
+  - Use **CSSOMNom** for CSS rules, at-rules (@media, @supports, @container, @view-transition), and declarations (\`getCssStyleSheet\`).
+  - Use **ts-morph** for JavaScript/TypeScript syntax, AST analysis, and function/variable querying (\`getJsProject\`).
 - **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary (for requirements that cannot be verified statically, such as runtime click events or dynamic state updates). Omit browser test blocks entirely if static checks are sufficient.
 - **Reference Examples & API Definitions**: Before writing tests, use your file-viewing tools to inspect these reference pattern libraries and API type definitions for implementation patterns:
   - **Test Fixture Helper Signatures (Reference Only)**: [test-fixture.reference.ts](file://${opts.testFixtureReferencePath})
-  - **Static Analysis Patterns (Linkedom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
+  - **Static Analysis Patterns (Linkedom, CSSOMNom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
   - **Browser Analysis Patterns (Playwright)**: [playwright-pattern-library.grader.ts](file://${opts.playwrightPatternLibraryPath})
   - **TS Morph Type Definitions**: [ts-morph.d.ts](file://${opts.tsMorphDtsPath})
-  - **Linkedom Type Definitions**: [index.d.ts](file://${opts.linkedomDtsPath})
+  - **Linkedom Type Definitions**: [linkedom.d.ts](file://${opts.linkedomDtsPath})
+  - **CSSOMNom Type Definitions**: [cssomnom.d.ts](file://${opts.cssomnomDtsPath})
 
 ## 3. Granular Assertions: Single Assertion per Test
 Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
 
 ## 4. Precision & Matching Rules
 - **Outcome-Based Assertions**: Verify structural and functional requirements in static checks rather than forcing a single narrow implementation when valid alternatives exist.
+- **Utility CSS Flexibility**: In apps using utility-first CSS frameworks (e.g., Tailwind), accept either standard CSS declarations (\`getCssStyleSheet\`) or equivalent utility classes on elements in template markup (\`getHtmlDocuments\`).
 - **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
 - **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
 
 ## 5. Dependencies & Sandbox Constraints
-Do not install any npm packages or execute application dev/build commands (like astro build or vite build) in your workspace. However, you MUST verify that your generated grader code compiles cleanly. Run this command in your workspace to check for TypeScript compilation/syntax errors and fix them before ending your turn:
-\`npx tsc --noEmit --skipLibCheck --target esnext --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --esModuleInterop grader.ts\`
+Do not install any npm packages or execute application dev/build commands (like astro build or vite build) in your workspace. However, you MUST verify that your generated grader code compiles cleanly and passes linting. Run these verification commands in your workspace and fix any errors before ending your turn:
+1. \`npx tsc --noEmit --skipLibCheck --target esnext --module nodenext --moduleResolution nodenext --allowImportingTsExtensions --esModuleInterop grader.ts\`
+2. \`npx oxlint grader.ts\`
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
@@ -198,14 +220,15 @@ Analyze the evaluation test results across all target applications for the guide
    - \`grader.ts\` (Playwright validation suite)
    - \`patches/zero-passrate.patch\` (anti-pattern baseline)
    - \`patches/*-solution.patch\` (golden solution diffs)
-4. **Target Evaluation Reports & Flags**:
+4. **Evaluation Run Artifacts**: For each target, \`test-app-results/<target>/\` contains various artifacts, such as \`agent.patch\` (code changes generated by the agent), \`chat_log.txt\` (the agent's conversation log), etc.
+5. **Target Evaluation Reports & Flags**:
 ${targetSections}
 
 Note: \`${REPORT_FILE}\` is already seeded with each target's \`### Evaluation Results\` (copied directly from \`evals.md\`). Your task is to investigate the artifacts and fill in \`### Diagnostic Analysis & Actionable Recommendations\` under each target.
 
 # SYSTEM WORKFLOW CONTEXT
 To accurately diagnose failures, understand how \`gd dev\` generates and executes these components:
-1. **Ground Truth**: \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` define the canonical implementation and must-pass requirements.
+1. **Ground Truth**: \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` define the canonical, framework-agnostic implementation and must-pass requirements.
 2. **Patches**: Golden solution diffs and the zero-passrate baseline are generated from \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`.
 3. **Task Prompt**: \`task.md\` is generated from the \`description\` frontmatter of \`${GUIDE_FILE}\` and the target app's codebase.
 4. **Grader**: \`grader.ts\` validates the requirements in \`${EXPECTATIONS_FILE}\` against the application workspace and is calibrated against the golden patches (must pass 100%) and zero-passrate patch (must fail 100%).
@@ -235,11 +258,13 @@ Diagnose each target according to its assigned flag:
    - **Root Cause Investigation**: Review the failed assertions in \`${REPORT_FILE}\` and examine \`${GUIDE_FILE}\`, \`${EXPECTATIONS_FILE}\`, and \`targets/<target>/grader.ts\` to understand why the agent fell short. Consider:
      - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide lack essential modern web practices, clear syntax examples, fallback patterns, or common pitfalls?
      - **Expectations Alignment (\`${EXPECTATIONS_FILE}\`)**: Are the must-pass expectations ambiguous, conflicting, or missing key constraints?
-     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader failing valid implementations due to brittle regex, rigid file/syntax assumptions, or over-constrained assertions rather than testing observable outcomes?
-   - **Recommendation Rules (Mutually Exclusive)**:
+     - **Grader Robustness (\`targets/<target>/grader.ts\`)**: Is the grader failing valid implementations due to overly rigid syntax checks, hardcoded selectors/names, or fragile AST queries?
+     - **Miscellaneous Issues**: Any other issues discovered.
+   - **Recommendation Rules**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
        \`*(Note: After modifying source files, delete the targets/ directory and re-run gd dev to regenerate all target artifacts)*\`
-     - **Grader Fixes**: Only recommend direct edits to \`targets/<target>/grader.ts\` if \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` require **NO** changes.
+     - **Grader Fixes**: When grader fixes are necessary, only recommend direct edits to \`targets/<target>/grader.ts\` if \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` require **NO** changes.
+     - **Miscellaneous Fixes**: Any other recommended fixes (do not have to be file-specific).
 
 5. **\`HEALTHY\`**:
    - The target achieved ≥ 90% guided pass rate with all guidance tools and guides correctly consumed.

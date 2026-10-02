@@ -5,6 +5,8 @@ web-feature-ids:
   - container-scroll-state-queries
 ---
 
+# Carousel Snap Highlights
+
 Scroll-state container queries allow you to style elements based on their current scroll state, such as whether an element is "stuck" (via sticky positioning) or "snapped" (via scroll snapping). This enables carousel or gallery experiences where the active item can be visually distinguished without relying on JavaScript intersection observers or scroll event listeners.
 
 ### Core implementation

@@ -61,7 +61,14 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
   return md;
 }
 
-export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string, totalRuntime?: number, skillVersion?: string, cliVersion?: string): EvalsReport {
+/**
+ * Skills (CLI) is the only supported serving approach. The field is retained in
+ * the report shape so the dashboard can keep comparing against historical runs
+ * that were produced by now-removed approaches (`mcp`, `skills`).
+ */
+const SERVING = 'skills_cli';
+
+export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, model: string, totalRuntime?: number, skillVersion?: string, cliVersion?: string): EvalsReport {
   return {
     summary: metrics.summary,
     results: allResults,
@@ -69,7 +76,7 @@ export function generateJsonReport(metrics: Metrics, allResults: Record<string, 
     timestamp,
     runCount,
     agent,
-    serving,
+    serving: SERVING,
     model,
     totalRuntime,
     skillVersion,

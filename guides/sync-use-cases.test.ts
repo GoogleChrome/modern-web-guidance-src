@@ -113,6 +113,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = validateGuide(filePath);
@@ -126,6 +129,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 Body content here.
 `);
     const result = validateGuide(filePath);
@@ -165,6 +171,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 {{ BASELINE_STATUS(fake-feature-id) }}
 `);
     const result = validateGuide(filePath);
@@ -178,6 +187,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 {{ BASELINE_STATUS(dialog-closedby) }}
 `);
     const result = validateGuide(filePath);
@@ -191,6 +203,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 {{ BASELINE_STATUS() }}
 `);
     const result = validateGuide(filePath);
@@ -205,6 +220,9 @@ web-feature-ids:
   - dialog-closedby
   - view-transitions
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = validateGuide(filePath);
@@ -220,6 +238,9 @@ web-feature-ids:
   - fake-one
   - fake-two
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = validateGuide(filePath);
@@ -254,6 +275,22 @@ describe('getStatusName', () => {
 
   test('returns "Needs guidance" before "Needs evals" since guidance must come first', () => {
     assert.strictEqual(getStatusName('', false, false), ProjectStatus.NeedsGuidance);
+  });
+
+  test('returns "Needs guidance" when isDraft is true even if body and evals are present', () => {
+    assert.strictEqual(getStatusName('Some content.', true, true, true), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getStatusName('Some content.', false, false, true), ProjectStatus.NeedsGuidance);
+  });
+
+  test('returns "Needs guidance" when hasExpectations is false even if body is present', () => {
+    assert.strictEqual(getStatusName('Some content.', false, false, false, false), ProjectStatus.NeedsGuidance);
+    assert.strictEqual(getStatusName('Some content.', true, true, false, false), ProjectStatus.NeedsGuidance);
+  });
+
+  test('accepts a precomputed has-guidance flag in place of the body', () => {
+    assert.strictEqual(getStatusName(true, true, true), null);
+    assert.strictEqual(getStatusName(true, false, true), ProjectStatus.NeedsEvals);
+    assert.strictEqual(getStatusName(false, true, true), ProjectStatus.NeedsGuidance);
   });
 });
 
@@ -430,7 +467,9 @@ describe('buildRequiredFilesChecklist', () => {
       hasGrader: false,
       hasTask: false,
       featureIds: [],
-      isDisciplineSkill: false,
+      isDisciplineGuide: false,
+      draft: false,
+      isPublished: false,
       ...overrides,
     };
   }
@@ -486,6 +525,31 @@ describe('buildRequiredFilesChecklist', () => {
     const result = buildRequiredFilesChecklist(inv);
     assert.ok(result.includes('- [ ] expectations.md'));
   });
+
+  test('does not check off guide.md and appends draft annotation when draft is truthy', () => {
+    const invBool = makeInventory({
+      hasGuide: true,
+      draft: true,
+    });
+    const resultBool = buildRequiredFilesChecklist(invBool);
+    assert.ok(resultBool.includes('- [ ] Use case guidance (guide.md) *(draft: true)*'));
+
+    const invBlocked = makeInventory({
+      hasGuide: true,
+      draft: 'blocked',
+    });
+    const resultBlocked = buildRequiredFilesChecklist(invBlocked);
+    assert.ok(resultBlocked.includes('- [ ] Use case guidance (guide.md) *(draft: blocked)*'));
+
+    const invStubDraft = makeInventory({
+      hasGuide: false,
+      isStub: true,
+      draft: 'blocked',
+    });
+    const resultStubDraft = buildRequiredFilesChecklist(invStubDraft);
+    assert.ok(resultStubDraft.includes('- [ ] Use case guidance (guide.md)'));
+    assert.ok(!resultStubDraft.includes('*(draft'));
+  });
 });
 
 describe('buildIssueContent', () => {
@@ -504,7 +568,9 @@ describe('buildIssueContent', () => {
       hasGrader: false,
       hasTask: false,
       featureIds: [],
-      isDisciplineSkill: false,
+      isDisciplineGuide: false,
+      draft: false,
+      isPublished: false,
     };
   }
 
@@ -765,7 +831,9 @@ describe('processGuideInventory', () => {
       hasGrader: false,
       hasTask: false,
       featureIds: [],
-      isDisciplineSkill: false,
+      isDisciplineGuide: false,
+      draft: false,
+      isPublished: false,
       ...overrides,
     };
   }
@@ -777,6 +845,9 @@ description: A description
 web-feature-ids:
   - invalid-feature-id-test
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = processGuideInventory([makeInventory()]);
@@ -791,6 +862,9 @@ description: A description
 web-feature-ids:
   - dialog-closedby
 ---
+
+# My Use Case
+
 Body content.
 `);
     const result = processGuideInventory([makeInventory()]);

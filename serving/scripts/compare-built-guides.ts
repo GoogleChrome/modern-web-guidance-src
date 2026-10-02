@@ -23,6 +23,14 @@ const TEMP_REPO_DIR = "/tmp/guides-baseline-repo";
 const safeEnv = { ...process.env };
 delete safeEnv.GIT_DIR;
 delete safeEnv.GIT_WORK_TREE;
+// Clear any GIT_CONFIG variables that might be set by the environment to prevent interference
+Object.keys(safeEnv).forEach(key => {
+  if (key.startsWith('GIT_CONFIG_') && key !== 'GIT_CONFIG_GLOBAL' && key !== 'GIT_CONFIG_SYSTEM') {
+    delete safeEnv[key];
+  }
+});
+delete safeEnv.GIT_EXTERNAL_DIFF;
+delete safeEnv.GIT_PAGER;
 
 let mergeBase = "";
 
@@ -31,9 +39,6 @@ function runCommand(cmd: string, cwd?: string): string {
 }
 
 function setupBaselineWorkspace() {
-  mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
-  console.log(`Resolved base git merge ancestor: ${mergeBase}`);
-
   try {
     runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
   } catch (e) {}
@@ -48,7 +53,10 @@ function setupBaselineWorkspace() {
 
     fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
     fs.mkdirSync(BASELINE_DIR, { recursive: true });
-    fs.cpSync(path.join(TEMP_REPO_DIR, "serving/build/guides"), BASELINE_DIR, { recursive: true });
+    const baselineGuidesDir = path.join(TEMP_REPO_DIR, "serving/build/guides");
+    if (fs.existsSync(baselineGuidesDir)) {
+      fs.cpSync(baselineGuidesDir, BASELINE_DIR, { recursive: true });
+    }
   } catch (err) {
     console.error("Fatal: Failed to bootstrap baseline comparison guide assets.", err);
     process.exit(1);
@@ -107,7 +115,7 @@ export function compareGuides(modifiedGuides: string[], baseline: string = BASEL
     } else {
       const anchor = guide.replace(/\//g, "-");
       try {
-        execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
+        execSync(`git diff --no-index --no-ext-diff --no-color --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
         // If no difference is resolved, classify as verbatim changes only
         verbatimCount++;
         verbatimList += `- \`${guide}\` (whitespace changes only)\n`;
@@ -153,15 +161,18 @@ function cleanupWorkspace() {
 }
 
 function main() {
+  mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
+  console.log(`Resolved base git merge ancestor: ${mergeBase}`);
+
+  const modifiedGuides = getModifiedGuides();
+  if (modifiedGuides.length === 0) {
+    writeReport("### 📝 Built Guides Diff Review\n\nNo modified guides detected compared to baseline.");
+    return;
+  }
+
   setupBaselineWorkspace();
 
   try {
-    const modifiedGuides = getModifiedGuides();
-    if (modifiedGuides.length === 0) {
-      writeReport("### 📝 Built Guides Diff Review\n\nNo modified guides detected compared to baseline.");
-      return;
-    }
-
     const report = compareGuides(modifiedGuides);
     writeReport(report);
   } finally {
