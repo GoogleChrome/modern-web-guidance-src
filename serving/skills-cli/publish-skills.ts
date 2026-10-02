@@ -143,7 +143,7 @@ async function validate(newVersion: string) {
   execSync('node --test skills-cli/*.test.ts', {
     cwd: SERVING_DIR,
     stdio: 'inherit' ,
-    env: { ...process.env, TEST_REPORTER: 'spec' }
+    env: { ...process.env, TEST_REPORTER: 'spec', DISABLE_TELEMETRY: '1' }
   });
 
   return result;
@@ -208,10 +208,22 @@ async function main() {
 
     await publishToDistributionRepo(publishCliDir, newVersion, latestTag);
 
+    console.log('Committing automated documentation updates to source repo...');
+    try {
+      execSync('git diff --quiet README.md serving/skills-cli/eval-results-summary.json', { cwd: ROOT_DIR });
+      console.log("No changes in README.md or eval-results-summary.json to commit.");
+    } catch (err) {
+      console.log("Changes found in README.md or eval-results-summary.json, committing...");
+      execSync('git add README.md serving/skills-cli/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
+      execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
+      const ref = process.env.GITHUB_REF || 'main';
+      execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });
+    }
+
     // Create and push tag on current repo
     console.log(`Creating and pushing Git tag v${newVersion}...`);
-    execSync(`git tag v${newVersion}`, { stdio: 'inherit' });
-    execSync(`git push origin v${newVersion}`, { stdio: 'inherit' });
+    execSync(`git tag v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
+    execSync(`git push origin v${newVersion}`, { stdio: 'inherit', cwd: ROOT_DIR });
 
     console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/modern-web-guidance  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
     console.log(`${useCasesCount} usecases.`);

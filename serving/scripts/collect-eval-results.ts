@@ -4,11 +4,14 @@ import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { resultsDir } from '../../lib/paths.ts';
 
-const ALLOWED_AGENTS = ['claudecode', 'geminicli', 'codex', 'claude', 'codexcli', 'antigravity'];
+const ALLOWED_AGENTS = ['claude_code', 'codex_cli', 'gemini_cli', 'antigravity_cli'];
+
+// Compare case-insensitively and ignore '-'/'_' so spelling variants (e.g. claude-code) still match.
+const normalizeAgent = (name: string) => name.toLowerCase().replace(/[-_]/g, '');
+const NORMALIZED_ALLOWED_AGENTS = new Set(ALLOWED_AGENTS.map(normalizeAgent));
 
 function isAgentAllowed(agent: string): boolean {
-  const normalized = agent.toLowerCase().replace(/[-_]/g, '');
-  return ALLOWED_AGENTS.includes(normalized);
+  return NORMALIZED_ALLOWED_AGENTS.has(normalizeAgent(agent));
 }
 
 const SERVING_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -99,8 +102,8 @@ function collectResults() {
 
       let agent = data.agent || 'unknown';
       if (agent.startsWith('jetski')) {
-        agent = 'antigravity';
-        folderName = folderName.replace('jetski_cli', 'agy');
+        agent = 'antigravity_cli';
+        folderName = folderName.replace('jetski_cli', 'antigravity_cli');
       }
 
       if (!isAgentAllowed(agent)) {
@@ -125,11 +128,8 @@ function collectResults() {
         continue;
       }
 
-      // Extract serving info, default to skills_cli if not specified
-      let serving = data.serving || 'unknown';
-      if (data.serving === undefined && data.enableSkills !== undefined) {
-        serving = data.enableSkills ? 'skills_cli' : 'mcp';
-      }
+      // Historical runs may record a now-removed serving approach (e.g. `mcp`).
+      const serving = data.serving || 'unknown';
 
       summaries.push({
         testId: folderName,

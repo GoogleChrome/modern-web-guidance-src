@@ -19,10 +19,12 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Modern Web Guidance",
-    "shortDescription": "Keep your coding agent up to date with modern web platform best practices",
+    "shortDescription": "Web platform expertise",
     "longDescription": "Modern Web Guidance is an agent skill and CLI tool designed to help AI coding agents build web applications using modern, secure, and high-performance APIs rather than outdated workarounds. Supported by the Google Chrome team, it injects expert-curated web platform best practices directly into an agent's context window to prevent the generation of bloated, legacy code.",
     "developerName": "Google Chrome",
-    "category": "Development",
+    "category": "Developer Tools",
+    "composerIcon": "./assets/logo.png",
+    "logo": "./assets/logo.png",
     "capabilities": [
       "Read"
     ],

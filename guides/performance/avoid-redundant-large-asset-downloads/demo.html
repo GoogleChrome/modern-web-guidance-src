@@ -14,15 +14,6 @@
   <div id="status"></div>
 
   <script type="module">
-    // The hash a real deployment would compute once, ahead of time, from
-    // the exact bytes of the shared library (e.g. via crypto.subtle.digest()).
-    // Recomputing it on every page load would defeat the point of a
-    // content-addressable cache.
-    const hash = {
-      algorithm: 'SHA-256',
-      value: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
-    };
-
     const statusEl = document.getElementById('status');
     const loadBtn = document.getElementById('load-btn');
 
@@ -36,12 +27,38 @@
 
     loadBtn.addEventListener('click', async () => {
       loadBtn.disabled = true;
-      const fileBlob = await loadLibrary();
+      const fileBlob = await loadAsset(
+        '/assets/shared-library.js',
+        {
+          algorithm: 'SHA-256',
+          // The hash a real deployment computes once at build time from the
+          // exact bytes of the shared library (via crypto.subtle.digest()).
+          // Computing it on page load would require downloading the file first.
+          value: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
+        },
+        // MANDATORY: origins: '*' is only appropriate for genuinely popular,
+        // non-proprietary resources -- this stands in for a widely-shared
+        // public library. A proprietary asset should instead use an
+        // explicit origins list, or omit origins for same-site-only sharing.
+        '*',
+      );
       statusEl.textContent = `Library ready (${fileBlob.size} bytes).`;
       loadBtn.disabled = false;
     });
 
-    async function loadLibrary() {
+    /**
+     * Loads a large shared asset from COS when available, otherwise from the
+     * network, and stores network responses in COS for the next origin.
+     * @param {string} url The asset's real, working network URL.
+     * @param {{algorithm: string, value: string}} hash The build-time hash.
+     * @param {'*' | string[]} [origins] Sharing scope; omit for same-site only.
+     * @returns {Promise<Blob>}
+     */
+    async function loadAsset(url, hash, origins) {
+      // Set when Permissions Policy blocks COS in this context, since every
+      // further COS call here rejects the same way.
+      let blocked = false;
+
       if (supportsCOS) {
         try {
           // Check COS first. If another origin already stored this exact
@@ -55,27 +72,25 @@
           // way, fall back to the network; never treat this as fatal.
           //
           // NotAllowedError means Permissions Policy blocks COS in this
-          // context -- distinct from a cache miss, but the fallback is the
-          // same: load over the network instead.
+          // context -- distinct from a cache miss, so skip the write-back too.
+          blocked = err.name === 'NotAllowedError';
           statusEl.textContent = err.name === 'NotFoundError'
             ? 'Not found in Cross-Origin Storage -- downloading instead.'
             : `Cross-Origin Storage unavailable (${err.name}) -- downloading instead.`;
         }
       }
 
-      const response = await fetch('/assets/shared-library.js');
+      const response = await fetch(url);
       const fileBlob = await response.blob();
 
-      if (supportsCOS) {
+      if (supportsCOS && !blocked) {
         // Store the file for the next origin that requests the same hash.
-        // MANDATORY: origins: '*' is only appropriate for genuinely popular,
-        // non-proprietary resources -- this stands in for a widely-shared
-        // public library. A proprietary asset should instead use an
-        // explicit origins list, or omit origins for same-site-only sharing.
         try {
           const handle = await navigator.crossOriginStorage.requestFileHandle(hash, {
             create: true,
-            origins: '*',
+            // Only pass `origins` when the caller chose a scope, so omitting it
+            // keeps the same-site-only default.
+            ...(origins && { origins }),
           });
           const writable = await handle.createWritable();
           // Always write the complete file, even if it might already exist
@@ -83,9 +98,8 @@
           // is what prevents a write from being used to probe prior presence.
           await writable.write(fileBlob);
           await writable.close();
-          // Never call getFile() on this handle -- it would reject with
-          // NotAllowedError until this very write()/close() has resolved,
-          // which it just did. The blob already in hand is what's used below.
+          // Never call getFile() on this handle before write()/close() has
+          // resolved; the blob already in hand is what's returned below.
         } catch {
           // Storing is a nice-to-have for future visitors, not required for
           // this page to work -- the file is already loaded and usable.

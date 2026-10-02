@@ -1,6 +1,6 @@
 /**
  * Centralized, typed prompt builder functions for the gd dev evaluation generation process.
- * 
+ *
  * Having these prompts in one dedicated module ensures high visibility, easy tuning of AI
  * behavior across target capsules (patches, grader.ts, task.md), and
  * type-safe parameter interpolation.
@@ -10,15 +10,24 @@ import { type SolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, REPORT_FILE } from '
 import { Agents } from '../harness/config.ts';
 import type { TargetEvalSummary } from './lib/dev-report.ts';
 
+/** Shared discipline-guide preamble for the solution, zero-passrate, and grader prompts. */
+const DISCIPLINE_RELEVANCE_RULE = '\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation will be relevant to this application. An expectation is relevant only if it applies to any web application (such as document metadata or response headers) or the application already contains the kind of element or feature it governs (such as forms, credential inputs, images, overlays or flyouts, cookies or sessions, iframes, external scripts, or a logout flow). Judge relevance by whether that element or feature exists, not by whether the technique the expectation recommends is already used: an existing element that lacks the recommended technique is exactly what should be implemented and tested.';
+
 export interface PatchPromptOptions {
   guideFile: string;
   expectationsFile: string;
   workDir: string;
+  isDisciplineGuide?: boolean;
 }
 
 export function buildSolutionPrompt(opts: PatchPromptOptions): string {
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to satisfy every expectation. Implement the relevant expectations and skip expectations for patterns the application does not have. Do NOT add new features, pages, routes, servers, forms, scripts, or content just to satisfy an expectation.`
+    : '';
+  const scope = opts.isDisciplineGuide ? 'the relevant' : 'all';
+
   return `# GOAL
-Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy all must-pass expectations in \`${opts.expectationsFile}\`.
+Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy ${scope} must-pass expectations in \`${opts.expectationsFile}\`.${disciplineInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -34,12 +43,16 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 }
 
 export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to fail every expectation. Only remove existing implementations of relevant expectations. Do NOT add features or anti-patterns the application does not already have. Do NOT remove or degrade anything the application already does correctly; the grader will skip expectations the application already satisfies.`
+    : '';
+
   return `# GOAL
 Inspect the clean codebase in the directory \`${opts.workDir}\`. Your goal is to ensure the codebase does NOT implement any part of the feature described in \`${opts.guideFile}\` and does NOT satisfy any criteria in \`${opts.expectationsFile}\`.
 
 If the codebase is already clean of this feature (meaning the feature is not present and assertions verifying the feature would naturally fail), do NOT modify any files (leave the workspace unchanged).
 
-If the codebase already contains partial, complete, or conflicting implementations of the feature, disable, unset, revert, or remove those implementations.
+If the codebase already contains partial, complete, or conflicting implementations of the feature, disable, unset, revert, or remove those implementations.${disciplineInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -71,6 +84,7 @@ export interface GraderPromptOptions {
   linkedomDtsPath?: string;
   cssomnomDtsPath?: string;
   failureContext?: string;
+  isDisciplineGuide?: boolean;
 }
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
@@ -102,8 +116,12 @@ Analyze this failure and modify the existing grader file to fix these assertions
     ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because any of the golden solution patches or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
     : '';
 
+  const disciplineInstruction = opts.isDisciplineGuide
+    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to write a test for every expectation. Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
+    : '';
+
   return `${contextBlock}# GOAL
-Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${patchInstruction}
+Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${disciplineInstruction}${patchInstruction}
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
@@ -210,7 +228,7 @@ Note: \`${REPORT_FILE}\` is already seeded with each target's \`### Evaluation R
 
 # SYSTEM WORKFLOW CONTEXT
 To accurately diagnose failures, understand how \`gd dev\` generates and executes these components:
-1. **Ground Truth**: \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` define the canonical implementation and must-pass requirements.
+1. **Ground Truth**: \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` define the canonical, framework-agnostic implementation and must-pass requirements.
 2. **Patches**: Golden solution diffs and the zero-passrate baseline are generated from \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`.
 3. **Task Prompt**: \`task.md\` is generated from the \`description\` frontmatter of \`${GUIDE_FILE}\` and the target app's codebase.
 4. **Grader**: \`grader.ts\` validates the requirements in \`${EXPECTATIONS_FILE}\` against the application workspace and is calibrated against the golden patches (must pass 100%) and zero-passrate patch (must fail 100%).

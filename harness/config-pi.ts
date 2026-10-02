@@ -7,15 +7,13 @@
  * instead of the default Gemini CLI.
  */
 
-import { mergeSuiteConfig, Agents, Serving } from './config.ts';
+import { mergeSuiteConfig, Agents } from './config.ts';
 
 export default mergeSuiteConfig({
   name: 'pi-eval',
   agent: Agents.PI,
-  serving: Serving.SKILLS_CLI,
   numRuns: 1,  // Single run for faster feedback
   tasks: [],   // Empty = run all tasks, or specify: ['forms/light-dismiss-dialog/task']
-  mcpServersToEnable: [],
   skillsToEnable: ['modern-web-guidance'],
   includeTrace: false,
 });

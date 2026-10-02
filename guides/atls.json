@@ -13,7 +13,9 @@
       "malchata"
     ],
     "privacy": "rowan-m",
+    "pwa": "dmurph",
     "security": "rowan-m",
+    "wasm": "sbc100",
     "webmcp": [
       "beaufortfrancois",
       "Kulikowski"
@@ -26,10 +28,13 @@
     "prefers-reduced-motion": "bramus"
   },
   "web_features_groups": {
+    "css": "LeaVerou",
     "scrolling": "bramus",
     "animation": "bramus",
     "transitions": "bramus",
     "view-transitions": "bramus",
-    "webauthn": "agektmr"
+    "webassembly": "sbc100",
+    "webauthn": "agektmr",
+    "security": "rowan-m"
   }
 }

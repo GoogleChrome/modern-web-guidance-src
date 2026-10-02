@@ -244,14 +244,23 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
 
   let featureName = '';
   let statusRank = 3;
-  let statusDescription = 'Updated browser engine support';
+  let statusDescription = '';
 
   // 1. Check added lines for a status transition
   for (const line of addedLines) {
     const match = line.match(/Baseline status for\s+(.+?):\s*(Widely available|Newly available)/i);
     if (match) {
-      featureName = match[1].trim();
       const status = match[2].trim().toLowerCase();
+      // An upstream rename keeps the same status on both sides of the diff.
+      const removedStatus = removedLines
+        .map(l => l.match(/Baseline status for\s+.+?:\s*(Widely available|Newly available)/i))
+        .find(Boolean)?.[1]
+        ?.toLowerCase();
+      if (removedStatus === status) {
+        return null;
+      }
+
+      featureName = match[1].trim();
       if (status.includes('widely')) {
         statusRank = 1;
         statusDescription = 'Now **Baseline Widely available**';
@@ -265,10 +274,13 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
 
   // 2. If status line didn't change (e.g. engine update in Limited status), extract featureName from context lines
   if (!featureName) {
-    const candidateLine = addedLines.find(l => /has limited availability/i.test(l) || /Baseline status for/i.test(l))
-      || allStrippedLines.find(l => /has limited availability/i.test(l) || /Baseline status for/i.test(l));
+    const isStatusLine = (l: string) =>
+      /has limited availability/i.test(l) ||
+      /Baseline status for/i.test(l) ||
+      /is not natively supported/i.test(l);
+    const candidateLine = addedLines.find(isStatusLine) || allStrippedLines.find(isStatusLine);
     if (candidateLine) {
-      const match = candidateLine.match(/(?:Baseline status for\s+(.+?):|(.+?)\s+has limited availability)/i);
+      const match = candidateLine.match(/(?:Baseline status for\s+(.+?):|(.+?)\s+(?:has limited availability|is not natively supported))/i);
       if (match) {
         featureName = (match[1] || match[2]).trim();
       }
@@ -286,52 +298,65 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
   if (statusRank === 3) {
     const addedSupported = addedLines.find(l => l.includes('Supported by:'));
     const removedSupported = removedLines.find(l => l.includes('Supported by:'));
-    if (addedSupported) {
-      const addedMap = parseEngineMap(addedSupported);
-      const removedMap = parseEngineMap(removedSupported);
+    if (!addedSupported) {
+      if (!removedSupported) return null;
+      const dropped = [...parseEngineMap(removedSupported).values()].map(i => i.name);
+      if (dropped.length === 0) return null;
+      return {
+        featureName,
+        featureId: resolveWebFeatureId(featureName),
+        statusRank: 3,
+        statusDescription: `Removed **${formatList(dropped)}** support`,
+        guideName,
+      };
+    }
 
-      const brandNew: string[] = [];
-      const removedEngines: string[] = [];
-      const versionUpdated: string[] = [];
+    const addedMap = parseEngineMap(addedSupported);
+    const removedMap = parseEngineMap(removedSupported);
 
-      for (const [key, info] of addedMap.entries()) {
-        if (!removedMap.has(key)) {
-          brandNew.push(info.raw);
-        } else if (removedMap.get(key)!.version !== info.version) {
-          versionUpdated.push(info.name);
-        }
-      }
+    const brandNew: string[] = [];
+    const removedEngines: string[] = [];
+    const versionUpdated: string[] = [];
 
-      for (const [key, info] of removedMap.entries()) {
-        if (!addedMap.has(key)) {
-          // If a mobile-specific variant (e.g. safari_ios, chrome_android, firefox_android)
-          // is omitted because the desktop base engine is now supported, it was consolidated into full support.
-          const baseKey = key.replace(/_(?:ios|android)$/, '');
-          if (baseKey !== key && addedMap.has(baseKey)) {
-            continue;
-          }
-          removedEngines.push(info.name);
-        }
-      }
-
-      const clauses: string[] = [];
-      if (brandNew.length > 0) {
-        clauses.push(`Added **${formatList(brandNew)}** support`);
-      }
-      if (removedEngines.length > 0) {
-        const verb = clauses.length > 0 ? 'removed' : 'Removed';
-        clauses.push(`${verb} **${formatList(removedEngines)}** support`);
-      }
-      if (versionUpdated.length > 0) {
-        const plural = versionUpdated.length > 1 ? 'versions' : 'version';
-        const verb = clauses.length > 0 ? 'updated' : 'Updated';
-        clauses.push(`${verb} supported browser ${plural} for **${formatList(versionUpdated)}**`);
-      }
-
-      if (clauses.length > 0) {
-        statusDescription = formatList(clauses);
+    for (const [key, info] of addedMap.entries()) {
+      if (!removedMap.has(key)) {
+        brandNew.push(info.raw);
+      } else if (removedMap.get(key)!.version !== info.version) {
+        versionUpdated.push(info.name);
       }
     }
+
+    for (const [key, info] of removedMap.entries()) {
+      if (!addedMap.has(key)) {
+        // If a mobile-specific variant (e.g. safari_ios, chrome_android, firefox_android)
+        // is omitted because the desktop base engine is now supported, it was consolidated into full support.
+        const baseKey = key.replace(/_(?:ios|android)$/, '');
+        if (baseKey !== key && addedMap.has(baseKey)) {
+          continue;
+        }
+        removedEngines.push(info.name);
+      }
+    }
+
+    const clauses: string[] = [];
+    if (brandNew.length > 0) {
+      clauses.push(`Added **${formatList(brandNew)}** support`);
+    }
+    if (removedEngines.length > 0) {
+      const verb = clauses.length > 0 ? 'removed' : 'Removed';
+      clauses.push(`${verb} **${formatList(removedEngines)}** support`);
+    }
+    if (versionUpdated.length > 0) {
+      const plural = versionUpdated.length > 1 ? 'versions' : 'version';
+      const verb = clauses.length > 0 ? 'updated' : 'Updated';
+      clauses.push(`${verb} supported browser ${plural} for **${formatList(versionUpdated)}**`);
+    }
+
+    if (clauses.length === 0) {
+      return null;
+    }
+
+    statusDescription = formatList(clauses);
   }
 
   const featureId = resolveWebFeatureId(featureName);
@@ -462,7 +487,7 @@ export function getGuidePathInDistribution(guideName: string): string | undefine
     return `skills/${guideName}/SKILL.md`;
   }
 
-  // Check discipline or category skills in guides/
+  // The entrypoint skill lives at guides/<name>/SKILL.md and ships as the monoskill
   const categorySkillPath = path.join(rootDir, 'guides', guideName, 'SKILL.md');
   if (fs.existsSync(categorySkillPath)) {
     return `skills/modern-web-guidance/SKILL.md`;

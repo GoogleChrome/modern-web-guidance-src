@@ -17,7 +17,7 @@ harness/
     jetski-cli-agent.ts
     pi-agent.ts
   lib/
-    agent-shared.ts          # Common utilities (isolation, MCP config, etc.)
+    agent-shared.ts          # Common utilities (isolation, skills setup, etc.)
     collection.ts            # Results aggregation
     guidance_validation.ts   # Guide/tool usage extraction
   config.ts                  # Suite configuration
@@ -75,7 +75,6 @@ The harness does **not** centrally configure which model each agent uses. Instea
 | **Codex CLI** | `CODEX_MODEL` | `gpt-5` | Read directly by Codex CLI |
 | **Jetski CLI** | `JETSKI_MODEL` | `Gemini 2.5 Flash` | Read directly by Jetski CLI |
 | **Claude Code** | `ANTHROPIC_MODEL` | `claude-sonnet-4-5-20250929` | Via Vertex AI config |
-| **Jetski (IDE)** | `JETSKI_MODEL` | `Gemini 2.5 Flash` | Same as CLI |
 
 ### Usage Examples
 
@@ -93,7 +92,7 @@ CODEX_MODEL=gpt-5 node --experimental-strip-types harness/quick-smoke.ts codex-c
 JETSKI_MODEL='Gemini 2.5 Flash' node --experimental-strip-types harness/quick-smoke.ts jetski-cli
 
 # Run full eval suite with Pi and specific model
-PI_MODEL=google/gemini-2.5-flash GD_SUITE_CONFIG='{"agent":"pi","serving":"skills_cli"}' \
+PI_MODEL=google/gemini-2.5-flash GD_SUITE_CONFIG='{"agent":"pi"}' \
   node --experimental-strip-types harness/run_suite.ts <task>
 ```
 
@@ -105,7 +104,7 @@ Each agent harness passes the model to the CLI binary:
 // harness/agents/pi-agent.ts
 const piModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
 const modelArg = piModel ? ['--model', piModel] : [];
-const commandArgs = ['-p', '--no-session', '--offline', ...modelArg, userPrompt];
+const commandArgs = ['-p', '--offline', ...modelArg, userPrompt];
 
 // harness/agents/codex-cli-agent.ts
 const model = process.env.CODEX_MODEL;
@@ -181,6 +180,7 @@ Each agent has different auth file locations:
 | Pi | `auth.json`, `settings.json`, `trust.json` | `~/.pi/agent/` |
 | Claude Code | GCP credentials via env | `gcloud` config |
 | Codex CLI | OAuth via login flow | `~/.codex/` |
+| Jetski CLI | `installation_id`, `user_settings.pb`; on macOS the OAuth token lives in the login Keychain, so `~/Library/Keychains` is symlinked into the isolated HOME | `~/.gemini/jetski/` |
 
 Example for Pi:
 ```typescript
@@ -194,24 +194,12 @@ copyFileIfExists(
 );
 ```
 
-### 3. Skills/MCP Configuration
+### 3. Skills Configuration
 
-Guided runs inject modern-web-guidance via two approaches:
+Guided runs inject modern-web-guidance via the Skills CLI distribution:
 
-**Skills CLI** (copies guide files):
 ```typescript
-copySkills(tempHome, Agents.PI, cli: true, skillsToEnable);
-```
-
-**MCP** (configures MCP server):
-```typescript
-updateMcpConfig(
-  path.join(piDest, 'agent', 'mcp_servers.json'),
-  ['modern-web-guidance'],
-  config.environment.modernWebServerPath,
-  config.environment.mcpApiKey,
-  Agents.PI
-);
+copySkills(tempHome, Agents.PI, skillsToEnable);
 ```
 
 ### 4. Trajectory Capture
@@ -290,6 +278,24 @@ The grader reads this to distinguish:
 - **Early failures**: Agent crashed, no output generated
 - **Grader failures**: Agent generated code, but tests failed
 
+### 7. Filesystem Sandbox
+
+An isolated HOME alone doesn't stop an agent from finding this repo (e.g. via `$PATH` or `find /`) and reading `guides/`, `expectations.md` and `grader.ts`. `runCliAgentCommand()` therefore wraps every agent in an OS-level sandbox (`harness/lib/sandbox.ts`) that hides the repo root:
+
+- **Linux**: `bwrap` (bubblewrap) mounts an empty tmpfs over the repo root. Requires `sudo apt install bubblewrap`.
+- **macOS**: `sandbox-exec` denies file access under the repo root.
+
+Only these paths are re-exposed:
+
+| Path | Access | Why |
+|------|--------|-----|
+| `node_modules`, `harness/node_modules` | read-only | Agent CLI binaries |
+| `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
+| `dist/skills-cli/skills/.cache` | writable, guided only | transformers.js tokenizer cache |
+| per-run `targetDir` | writable | npx shim, `modern-web.log` |
+
+If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
+
 ## Adding a New Agent
 
 ### Step 1: Create Agent Harness
@@ -298,7 +304,7 @@ Copy an existing harness (e.g., `pi-agent.ts`) and update:
 
 ```typescript
 // harness/agents/my-agent.ts
-import config, { Agents, Serving } from '../config.ts';
+import config, { Agents } from '../config.ts';
 import { ... } from '../lib/agent-shared.ts';
 
 function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
@@ -320,9 +326,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: 
   // Copy skills for guided runs
   if (runType === 'guided') {
     const suiteConfig = getSuiteConfig();
-    if (suiteConfig.serving === Serving.SKILLS_CLI) {
-      copySkills(tempHome, Agents.MY_AGENT, true, suiteConfig.skillsToEnable);
-    }
+    copySkills(tempHome, Agents.MY_AGENT, suiteConfig.skillsToEnable);
   }
   
   return workDir;
@@ -338,7 +342,8 @@ async function run() {
     userPrompt
   ];
   
-  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent');
+  // runType ('guided' | 'unguided') controls what the filesystem sandbox exposes
+  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
   
   // Export trajectories
   const sessionsDir = path.join(path.dirname(workDir), '.my-agent', 'sessions');
@@ -394,7 +399,7 @@ function getAgentScript(agent: string): string {
   return path.join(harnessDir, 'agents',
     agent === Agents.MY_AGENT ? 'my-agent.ts' :
     // ... other agents
-    'jetski-agent.ts'
+    'gemini-cli-agent.ts'
   );
 }
 ```
@@ -451,9 +456,7 @@ export async function runMyAgentSmokeTest() {
     name: 'smoke-test',
     numRuns: 1,
     tasks: [],
-    mcpServersToEnable: [],
     skillsToEnable: [],
-    serving: 'skills_cli',
     agent: 'my_agent'
   };
   
@@ -530,16 +533,6 @@ try {
 }
 ```
 
-### 5. MCP vs Skills Mode
-
-Not all agents support both modes. Pi explicitly doesn't support MCP (per their philosophy docs). Document limitations:
-
-```typescript
-if (approach === Serving.MCP) {
-  console.warn('Warning: MCP mode is not supported by this agent.');
-}
-```
-
 ## Debugging Tips
 
 ### Check Isolated HOME Contents
@@ -564,11 +557,11 @@ cat /tmp/ghh-pi-*/.pi/agent/sessions/*.jsonl | jq '.'
 grep -o '"use_case_id":"[^"]*"' trajectory.jsonl
 ```
 
-### Test MCP Server Independently
+### Test the Skills CLI Independently
 
 ```bash
-# Run MCP server directly to verify it works
-node serving/mcp-server/index.ts
+# Run the skills CLI directly to verify it works
+node serving/bin/modern-web.ts search "address form"
 ```
 
 ### Check Guide Validation
@@ -604,7 +597,7 @@ node --experimental-strip-types quick-smoke.ts
 # Test specific agent
 node --experimental-strip-types quick-smoke.ts <agent> [guided|unguided]
 
-# Available agents: jetski, jetski-cli, gemini-cli, claude-code, codex-cli, pi
+# Available agents: jetski-cli, gemini-cli, claude-code, codex-cli, pi
 node --experimental-strip-types quick-smoke.ts pi unguided
 node --experimental-strip-types quick-smoke.ts gemini-cli guided
 
@@ -657,8 +650,8 @@ node --experimental-strip-types quick-smoke.ts pi unguided
 To inspect actual Pi trajectories from a run:
 
 ```bash
-# Run with sessions enabled (not ephemeral)
-PI_NO_SESSION=false GD_SUITE_CONFIG='{"agent":"pi","serving":"skills_cli"}' \
+# Run full eval suite with Pi (sessions enabled by default)
+GD_SUITE_CONFIG='{"agent":"pi"}' \
   node --experimental-strip-types harness/run_suite.ts <task>
 
 # Sessions are saved to the isolated HOME, then exported to results dir
