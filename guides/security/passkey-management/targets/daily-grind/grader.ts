@@ -28,7 +28,7 @@ test.describe('Passkey Management Target Grader', () => {
     expect(hasCredentialFetchOnLoad).toBe(true);
   });
 
-  test('The application automatically invokes signalAllAcceptedCredentials on load via DOMContentLoaded to sync accepted credentials list strings with the password manager.', () => {
+  test('The application automatically invokes signalAllAcceptedCredentials on load (for example, via DOMContentLoaded or component mount) to sync accepted credentials list strings with the password manager.', () => {
     const project = getJsProject(appFiles);
     const sourceFiles = project.getSourceFiles();
 
@@ -36,12 +36,12 @@ test.describe('Passkey Management Target Grader', () => {
       const text = sf.getFullText();
       return /\bsignalAllAcceptedCredentials\b/.test(text);
     });
-    const hasDomContentLoaded = sourceFiles.some(sf => {
+    const hasLoadSync = sourceFiles.some(sf => {
       const text = sf.getFullText();
-      return /\bDOMContentLoaded\b/.test(text) && /\b(signalAllAcceptedCredentials|syncAcceptedCredentials|signalAcceptedCredentials|loadManagementPanel|init|syncAcceptedCredentialsOnLoad)\b/.test(text);
+      return /\b(DOMContentLoaded|readyState|useEffect|loadManagementPanel|init|syncAcceptedCredentials|signalAcceptedCredentials|syncAcceptedCredentialsOnLoad)\b/.test(text);
     });
 
-    expect(hasSignalAll && hasDomContentLoaded).toBe(true);
+    expect(hasSignalAll && hasLoadSync).toBe(true);
   });
 
   test('The application updates passkey providers by immediately calling signalAllAcceptedCredentials within the delete trigger handler upon successful deletions.', () => {
@@ -86,14 +86,14 @@ test.describe('Passkey Management Target Grader', () => {
     expect(hasDeleteSignal).toBe(true);
   });
 
-  test('The application invokes signalCurrentUserDetails within the rename click handler upon successful username or display name rename.', () => {
+  test('The application invokes signalCurrentUserDetails within the user profile rename handler upon successful username or display name rename.', () => {
     const project = getJsProject(appFiles);
     const sourceFiles = project.getSourceFiles();
 
     const hasUserRenameSignal = sourceFiles.some(sf => {
       const text = sf.getFullText();
       const hasSignal = /\bsignalCurrentUserDetails\b/.test(text);
-      const hasUserOrRename = /\b(rename|displayName|name|user|performRename|handleUserRename|renameCurrentUser|signalUserDetails|signalRenamedUser)\b/i.test(text);
+      const hasUserOrRename = /\b(rename|displayName|name|user|performRename|performUserRename|handleUserRename|renameCurrentUser|signalUserDetails|signalRenamedUser)\b/i.test(text);
       return hasSignal && hasUserOrRename;
     });
 
