@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, isDraftStub } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from '../serving/lib/macros.ts';
 
@@ -375,6 +375,19 @@ Setup instructions.
     assert.deepStrictEqual(errors, []);
   });
 
+  test('validateGuideTitle allows draft: stub guide with author notes in body and no H1 or title', () => {
+    const notesBody = `## Notes for guide authors\n\n- Core guidance: use \`background-clip: border-area\`\n`;
+    const errors = validateGuideTitle(notesBody, 'test.md', { draft: 'stub' }, { requireTitle: true });
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('validateGuideTitle still validates H1 headings on draft: stub guides if present', () => {
+    const vagueStubBody = `# Overview\n\n## Notes for guide authors\n`;
+    const errors = validateGuideTitle(vagueStubBody, 'test.md', { draft: 'stub' }, { requireTitle: true });
+    assert.strictEqual(errors.length, 1);
+    assert.ok(errors[0].includes('Vague H1 heading "# Overview"'));
+  });
+
   test('validateGuide integrates heading validation', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-val-test-'));
     const guideDir = path.join(tmpDir, 'test-guide');
@@ -438,6 +451,32 @@ web-feature-ids: []
 ---
 
 <!-- stub guide -->
+`);
+
+    try {
+      const result = validateGuide(guideFile);
+      assert.strictEqual(result.errors.length, 0);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('validateGuide allows draft: stub guides with author notes and no H1 heading', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-val-draft-stub-'));
+    const guideDir = path.join(tmpDir, 'test-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    const guideFile = path.join(guideDir, 'guide.md');
+
+    fs.writeFileSync(guideFile, `---
+name: test-guide
+description: Test description
+draft: stub
+web-feature-ids: []
+---
+
+## Implementation notes for guide authors
+
+- Core guidance: \`background-clip: border-area\`
 `);
 
     try {
@@ -616,6 +655,32 @@ describe('guide draft flag (publish control)', () => {
     assert.strictEqual(invMultiLine.isStub, true);
     assert.strictEqual(invMultiLine.hasGuide, false);
     assert.strictEqual(classifyGuide(invMultiLine), 'stub');
+  });
+
+  test('a guide with draft: stub is considered a stub even when its body contains author notes', () => {
+    const inv = inventory('---\nname: g\ndraft: stub\n---\n# G\n\n## Notes for guide authors\n\n- Use modern CSS\n');
+    assert.strictEqual(inv.draft, 'stub');
+    assert.strictEqual(inv.isPublished, false);
+    assert.strictEqual(inv.isStub, true);
+    assert.strictEqual(inv.hasGuide, false);
+    assert.strictEqual(classifyGuide(inv), 'stub');
+
+    const invCaseInsensitive = inventory('---\nname: g\ndraft: " STUB "\n---\n## Notes for guide authors\n');
+    assert.strictEqual(invCaseInsensitive.isPublished, false);
+    assert.strictEqual(invCaseInsensitive.isStub, true);
+    assert.strictEqual(invCaseInsensitive.hasGuide, false);
+    assert.strictEqual(classifyGuide(invCaseInsensitive), 'stub');
+  });
+
+  test('isDraftStub matches only stub draft values', () => {
+    assert.strictEqual(isDraftStub('stub'), true);
+    assert.strictEqual(isDraftStub('STUB'), true);
+    assert.strictEqual(isDraftStub('  stub  '), true);
+    assert.strictEqual(isDraftStub(true), false);
+    assert.strictEqual(isDraftStub(false), false);
+    assert.strictEqual(isDraftStub('future'), false);
+    assert.strictEqual(isDraftStub('blocked'), false);
+    assert.strictEqual(isDraftStub(undefined), false);
   });
 });
 
