@@ -53,3 +53,12 @@ export function extractFeatureIds(description: string): string[] {
 
   return Array.from(cleanedFeatures);
 }
+
+/**
+ * Strips the temporary `tmp-` prefix from a web-feature ID when matching
+ * against GitHub issues so issues only need the predicted final ID.
+ */
+export function stripTmpPrefix(id: string): string {
+  return id.replace(/^tmp-/, '');
+}
+

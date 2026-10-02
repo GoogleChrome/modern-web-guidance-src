@@ -57,10 +57,17 @@ if (fs.existsSync(atlsPath)) {
   }
 }
 
-// 3. Check for expired / graduating registered temporary feature IDs (primary, moved, or split)
+// 3. Check for expired / graduating registered temporary feature IDs (primary, moved, split, or matched via compat_features)
+interface PendingEntry {
+  issue?: string;
+  group?: string | string[];
+  compat_features?: string | string[];
+}
+
 interface ExpiredTempItem {
   tmpId: string;
   realId: string;
+  matchedBcdKey?: string;
   kind: 'feature' | 'moved' | 'split';
   redirectTarget?: string;
   redirectTargets?: string[];
@@ -69,11 +76,33 @@ interface ExpiredTempItem {
   locations: string[];
 }
 
+const bcdToFeatureId = new Map<string, string>();
+for (const [fid, feat] of Object.entries(features)) {
+  for (const key of (feat as any)?.compat_features ?? []) {
+    if (!bcdToFeatureId.has(key)) {
+      bcdToFeatureId.set(key, fid);
+    }
+  }
+}
+
 const expiredTemps: ExpiredTempItem[] = [];
-for (const id of Object.keys(pending)) {
+for (const [id, rawEntry] of Object.entries(pending as Record<string, PendingEntry>)) {
   if (!id.startsWith('tmp-')) continue;
-  const realId = id.slice(4);
-  const feat = features[realId] as any;
+  let realId = id.slice(4);
+  let matchedBcdKey: string | undefined;
+  let feat = features[realId] as any;
+  if (!feat) {
+    const compatKeys = rawEntry?.compat_features ? [rawEntry.compat_features].flat() : [];
+    for (const key of compatKeys) {
+      const viaBcd = bcdToFeatureId.get(key);
+      if (viaBcd && features[viaBcd]) {
+        realId = viaBcd;
+        matchedBcdKey = key;
+        feat = features[viaBcd] as any;
+        break;
+      }
+    }
+  }
   if (!feat) continue;
 
   const hasSnippet = fs.existsSync(path.join(featuresDir, `${id}.md`));
@@ -84,6 +113,7 @@ for (const id of Object.keys(pending)) {
     expiredTemps.push({
       tmpId: id,
       realId,
+      matchedBcdKey,
       kind: 'moved',
       redirectTarget: feat.redirect_target,
       hasSnippet,
@@ -94,6 +124,7 @@ for (const id of Object.keys(pending)) {
     expiredTemps.push({
       tmpId: id,
       realId,
+      matchedBcdKey,
       kind: 'split',
       redirectTargets: feat.redirect_targets || [],
       hasSnippet,
@@ -104,6 +135,7 @@ for (const id of Object.keys(pending)) {
     expiredTemps.push({
       tmpId: id,
       realId,
+      matchedBcdKey,
       kind: 'feature',
       hasSnippet,
       snippetFile,
@@ -116,12 +148,13 @@ if (expiredTemps.length > 0) {
   hasError = true;
   console.log('⚠️ Expired/graduated temporary feature IDs detected:');
   for (const item of expiredTemps) {
+    const bcdNote = item.matchedBcdKey ? ` (matched via compat_features "${item.matchedBcdKey}")` : '';
     if (item.kind === 'split') {
-      console.log(`  - ${item.tmpId} was split upstream into: ${item.redirectTargets?.join(', ')}`);
+      console.log(`  - ${item.tmpId} was split upstream into: ${item.redirectTargets?.join(', ')}${bcdNote}`);
     } else if (item.kind === 'moved') {
-      console.log(`  - ${item.tmpId} was moved upstream to: "${item.redirectTarget}"`);
+      console.log(`  - ${item.tmpId} was moved upstream to: "${item.redirectTarget}"${bcdNote}`);
     } else {
-      console.log(`  - ${item.tmpId} is now available upstream as "${item.realId}"`);
+      console.log(`  - ${item.tmpId} is now available upstream as "${item.realId}"${bcdNote}`);
     }
     if (item.hasSnippet) {
       console.log(`    ↳ Remember to remove or rename ${item.snippetFile}`);
@@ -196,12 +229,13 @@ if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatu
   if (expiredTemps.length > 0) {
     sections.push('### 1. Graduated Temporary Feature IDs (`tmp-*`)');
     for (const item of expiredTemps) {
+      const bcdNote = item.matchedBcdKey ? ` via \`compat_features\` (\`${item.matchedBcdKey}\`)` : '';
       if (item.kind === 'split') {
-        sections.push(`- **⚠️ \`${item.tmpId}\` was split upstream into:** \`${item.redirectTargets?.join('`, `')}\` — inspect affected files to assign appropriate sub-feature ID(s)`);
+        sections.push(`- **⚠️ \`${item.tmpId}\` was split upstream into:** \`${item.redirectTargets?.join('`, `')}\`${bcdNote} — inspect affected files to assign appropriate sub-feature ID(s)`);
       } else if (item.kind === 'moved') {
-        sections.push(`- **\`${item.tmpId}\` was moved upstream to:** \`${item.redirectTarget}\``);
+        sections.push(`- **\`${item.tmpId}\` was moved upstream to:** \`${item.redirectTarget}\`${bcdNote}`);
       } else {
-        sections.push(`- **\`${item.tmpId}\` → \`${item.realId}\`** (Primary feature available upstream)`);
+        sections.push(`- **\`${item.tmpId}\` → \`${item.realId}\`** (Primary feature available upstream${bcdNote})`);
       }
       if (item.hasSnippet) {
         sections.push(`  ↳ *Action:* Rename or delete \`${item.snippetFile}\``);

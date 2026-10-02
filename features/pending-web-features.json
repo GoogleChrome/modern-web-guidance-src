@@ -1,27 +1,27 @@
 {
-  "tmp-linked-parameters": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/3492"
-  },
-  "tmp-streaming-api": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4117"
-  },
   "tmp-cross-origin-storage": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4029"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4029",
+    "compat_features": "api.Navigator.crossOriginStorage"
   },
   "tmp-scroll-axis-lock": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4213",
-    "group": "scrolling"
+    "group": "scrolling",
+    "compat_features": "css.properties.scroll-axis-lock"
   },
   "tmp-aria-actions": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4108"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4108",
+    "compat_features": "api.Element.ariaActionsElements"
   },
   "tmp-animations-css-animation-accessor": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4107"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4107",
+    "compat_features": "api.AnimationEvent.animation"
   },
   "tmp-iterator-includes": {
-    "issue": "https://github.com/web-platform-dx/web-features/pull/4405"
+    "issue": "https://github.com/web-platform-dx/web-features/pull/4405",
+    "compat_features": "javascript.builtins.Iterator.includes"
   },
   "tmp-webcrypto-modern-algos": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4267"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4267",
+    "compat_features": "api.SubtleCrypto.encapsulateKey"
   }
 }

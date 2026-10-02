@@ -11,12 +11,13 @@ type Feature = typeof features[string];
  * A `tmp-*` feature awaiting an upstream web-features ID. Optional fields
  * mirror the web-features metadata of the same name.
  */
-interface PendingWebFeature {
+export interface PendingWebFeature {
   issue: string;
   group?: string | string[];
+  compat_features?: string | string[];
 }
 
-const pendingFeatures: Record<string, PendingWebFeature> = pendingWebFeatures;
+export const pendingFeatures: Record<string, PendingWebFeature> = pendingWebFeatures;
 
 /**
  * Result of a feature validation check.

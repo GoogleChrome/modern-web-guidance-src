@@ -5,6 +5,7 @@ import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/lib/baseline.ts';
+import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
 
@@ -277,8 +278,9 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
-      featuresWithAnyUseCases.add(id);
-      if (isActive) featuresWithActiveUseCases.add(id);
+      const normalizedId = stripTmpPrefix(id);
+      featuresWithAnyUseCases.add(normalizedId);
+      if (isActive) featuresWithActiveUseCases.add(normalizedId);
     }
 
     if (isIncomplete) {
