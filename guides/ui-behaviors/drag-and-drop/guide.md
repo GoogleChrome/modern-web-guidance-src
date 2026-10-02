@@ -6,9 +6,6 @@ web-feature-ids:
   - pointer-events-api
   - user-select
   - reading-flow
-  - container-style-queries
-  - masks
-  - registered-custom-properties
 guides:
   - drag
   - move-dom-element-without-losing-state
