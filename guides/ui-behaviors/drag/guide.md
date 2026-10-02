@@ -83,8 +83,8 @@ A `<dialog>` or `[popover]` can use this mechanism with its header as the handle
 
 ## Fallback strategies
 
-When dragging only repositions a component, treat it as progressive enhancement: without JavaScript, keep the element, its content, and its controls visible, readable, and functional in a sensible default position. Do not show a drag handle that cannot provide dragging; hide it by default and reveal it when JavaScript initialises the behaviour.
-
-## Browser support and fallback strategies
+When dragging only repositions a component, treat it as progressive enhancement: without JavaScript, keep the element, its content, and its controls visible, readable, and functional in a sensible default position. Do not expose a non-functional drag handle: if the handle is a standalone grip control, hide it by default and reveal it when JavaScript initialises; if a header doubles as the handle, attach its drag affordances when JavaScript initialises.
 
 {{ FEATURE_FALLBACKS("user-select") }}
+
+Include `-webkit-user-select: none` before `user-select: none` so text selection stays suppressed during dragging in Safari.
