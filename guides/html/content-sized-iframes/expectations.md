@@ -1,8 +1,8 @@
 - The embedding page's `<iframe>` has a computed `frame-sizing` value of `content-height` (or `content-block-size`) in browsers that support the property.
-- The `<iframe>` has no explicit height in supporting browsers (no `height` attribute, and no CSS `height` other than `auto`), so the content height determines its size.
+- The `<iframe>` has no explicit height in supporting browsers (no `height` attribute, and no CSS `height` other than `auto` when inspected via `computedStyleMap().get('height')`), so the content height determines its size.
 - The embedded document's initial HTML contains `<meta name="responsive-embedded-sizing">` inside `<head>` with a `content` value that starts with `allow-origins=` and allows the embedding page's origin (either listed explicitly or `*`).
 - After the embedded document loads, the rendered height of the `<iframe>` (excluding its borders and padding) matches the embedded document's content height (allowing up to 1px for subpixel rounding), and the embedded document does not scroll vertically.
 - After a user action inside the embedded document adds content that makes it taller (for example, submitting a comment or loading more items), the `<iframe>` grows to the new content height (allowing up to 1px for subpixel rounding) without an inner vertical scrollbar.
-- After a user action inside the embedded document removes content (for example, collapsing a section), the `<iframe>` shrinks to the new content height (never below the height it had at the embedded document's first layout), allowing up to 1px for subpixel rounding.
+- After a user action inside the embedded document removes content (for example, collapsing a section), the `<iframe>` shrinks to the new content height (never below the iframe's initial containing block height—150px by default, or its `min-height`), allowing up to 1px for subpixel rounding.
 - Opening the embedded document directly as a top-level page and triggering the same content changes produces no uncaught errors in the console, because calls to `window.requestResize()` are guarded.
 - The page produces no uncaught errors in the console during load and interaction.
