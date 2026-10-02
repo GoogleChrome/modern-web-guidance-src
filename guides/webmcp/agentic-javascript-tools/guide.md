@@ -122,6 +122,26 @@ execute(input) {
 }
 ```
 
+### Handling errors in `execute`
+
+When `execute` throws (or returns a rejected promise), the agent receives only a generic execution failure. The error message is not forwarded to the agent. If your tool encounters an actionable or recoverable error (such as invalid input, missing items, or a failed HTTP status), **DO NOT** `throw new Error(...)`. Instead, return a structured error payload via the tool's normal return value so the AI agent receives the diagnostic details and can self-correct or retry:
+
+```javascript
+execute({ itemName }) {
+  const item = menuItems.find((entry) => entry.name.toLowerCase() === itemName.toLowerCase());
+  if (!item) {
+    // Return the error as a value instead of throwing, so the agent receives the message:
+    return {
+      error: `Menu item "${itemName}" not found.`,
+      availableItems: menuItems.map((entry) => entry.name),
+    };
+  }
+  return item;
+}
+```
+
+Only re-throw `AbortError` when an execution is cancelled via `signal`.
+
 ### Cancelling in-flight executions
 
 Cancellation is initiated by the user or the agent. **MANDATORY:** Any tool that performs network requests or other long-running async work MUST honor `signal`, otherwise cancelled executions keep consuming resources and can write stale data into the UI after the agent has moved on.
@@ -151,14 +171,22 @@ await document.modelContext.registerTool({
     try {
       // Passing `signal` aborts the network request the moment execution is cancelled.
       const response = await fetch(url, { priority, signal });
+      if (!response.ok) {
+        output.textContent = "";
+        return { error: `Request failed with status ${response.status}` };
+      }
       const text = await response.text();
       output.textContent = text;
       return text;
     } catch (err) {
       // Roll back the UI state this execution set, so a cancelled run leaves no trace.
       output.textContent = "";
-      // Re-throw, including AbortError: it carries the caller's cancellation reason.
-      throw err;
+      if (err?.name === "AbortError") {
+        // Re-throw AbortError: it carries the caller's cancellation reason.
+        throw err;
+      }
+      // Return other errors as a value instead of throwing, so the agent receives the message.
+      return { error: err instanceof Error ? err.message : String(err) };
     }
   },
   annotations: { readOnlyHint: true }
@@ -320,7 +348,7 @@ export function createInventoryTool(inventoryManager) {
     *   **exposedTo**: (Optional) An array of secure origin strings controlling which documents in the document tree are allowed to discover and execute the tool across frame boundaries.
 *   **Tool Discovery Options (`ModelContextGetToolOptions`)**:
     *   **fromOrigins**: (Optional) An array of secure origin strings to query in accessible frames. Calling `getTools()` without `fromOrigins` queries only same-origin documents.
-*   **Return Format**: The `execute` function can return any value (object, array, string, number, boolean). Select a structure that best serves your specific use case while ensuring the content is optimized for the LLM to process. The output may encompass raw data, specific error logs, or direct instructions to influence the agent's next action.
+*   **Return Format**: The `execute` function can return any JSON-serializable value (object, array, string, number, boolean). The message of an exception thrown from `execute` is not forwarded to the agent, so return actionable errors as structured error payloads (e.g. `{ error: "..." }`) via the tool's return value so the agent can read and act on them.
 *   **Secure Context**: WebMCP requires HTTPS. All origins in `exposedTo` and `fromOrigins` must also be potentially trustworthy.
 *   **Deprecated/Removed**: `navigator.modelContext` (deprecated in Chromium 150), `unregisterTool()`, `provideContext()`, and `clearContext()` are no longer supported.
 
