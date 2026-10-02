@@ -413,7 +413,7 @@ window.__featuresMapping = {
     "svg",
     "container-style-queries",
     "registered-custom-properties",
-    "tmp-linked-parameters"
+    "link-parameters"
   ],
   "position-aware-tooltips": [
     "container-anchor-position-queries",
