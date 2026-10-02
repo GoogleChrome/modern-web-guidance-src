@@ -118,27 +118,39 @@ dialog[open]::backdrop,
 
 Entry animations work in pure CSS across all browsers that support `@starting-style`—no `.is-opening` class is needed because entry transitions do not depend on `overlay` or discrete `display` transitions.
 
-Exit animations require both `overlay` and discrete `display` transition support. When either is unsupported (such as in Firefox and Safari), exclude `[data-closing]` from the open selector so setting `data-closing` triggers the exit transition while the element remains in the top layer, then wait for `getAnimations()` to settle before calling `.close()` or `.hidePopover()`:
+Exit animations require both `overlay` and discrete `display` transition support. When either is unsupported (such as in Firefox and Safari), add `:not([data-closing])` to the open-state selectors from the Example (keeping the nested `@starting-style`) so setting `data-closing` triggers the exit transition while the element remains in the top layer, then wait for `getAnimations()` to settle before calling `.close()` or `.hidePopover()`:
 
 ```css
 dialog[open]:not([data-closing]),
 [popover]:popover-open:not([data-closing]) {
   opacity: 1;
   transform: scale(1);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.9);
+  }
 }
 
 dialog[open]:not([data-closing])::backdrop,
 [popover]:popover-open:not([data-closing])::backdrop {
   background-color: rgba(0, 0, 0, 0.5);
+
+  @starting-style {
+    background-color: rgba(0, 0, 0, 0);
+  }
 }
 ```
 
 ```javascript
-const supportsTopLayerExit =
-  window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+// Evaluate lazily: canTransitionDisplay() needs document.body, so a top-level
+// const would be permanently false if this script runs in <head>.
+function supportsTopLayerExit() {
+  return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+}
 
 async function closeTopLayer(element) {
-  if (!supportsTopLayerExit) {
+  if (!supportsTopLayerExit()) {
     element.setAttribute('data-closing', '');
     const animations = element.getAnimations({ subtree: true });
     if (animations.length > 0) {
@@ -155,6 +167,15 @@ async function closeTopLayer(element) {
   // Or for popover:
   // element.hidePopover();
 }
+
+// Route native close requests (Esc, closedby light dismiss) through the same
+// helper so they animate too, instead of closing instantly.
+dialog.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  closeTopLayer(dialog);
+});
 ```
+
+Popover light dismiss and `popovertarget` toggles cannot be intercepted (`beforetoggle` is only cancelable when opening), so in browsers that need the fallback those exits are instant. Provide an explicit close control that calls `closeTopLayer()` if the exit animation matters.
 
 {{ FEATURE_FALLBACKS("popover") }}

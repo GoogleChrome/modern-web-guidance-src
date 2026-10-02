@@ -264,11 +264,14 @@
     <div id="my-popover" popover class="card">
       <h2>HTML Popover API</h2>
       <p>
-        This popover works entirely without JavaScript. It uses the new
-        <code>popover</code> attribute and is fully animated using the latest
-        CSS top-layer transition features along with
-        <code>allow-discrete</code>.
+        Opening is pure CSS via <code>@starting-style</code>. In browsers that
+        support <code>overlay</code> and discrete <code>display</code>
+        transitions, light dismiss animates too; elsewhere, only the close
+        button below runs the animated exit fallback.
       </p>
+      <div style="text-align: right">
+        <button id="close-popover-btn" class="primary">Close Popover</button>
+      </div>
     </div>
 
     <script>
@@ -279,7 +282,9 @@
           return false;
         }
         const probe = document.createElement('div');
-        probe.style.cssText = 'transition: display 1s allow-discrete; display: block;';
+        // Shorthand is intentional: unsupported browsers drop the whole declaration.
+        // !important guards against global `* { transition: none !important }` resets.
+        probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
         document.body.appendChild(probe);
         getComputedStyle(probe).display;
         probe.style.display = 'none';
@@ -288,11 +293,13 @@
         return supportsDisplayTransition;
       }
 
-      const supportsTopLayerExit =
-        window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+      // Evaluate lazily so this works even if the script runs before <body> exists.
+      function supportsTopLayerExit() {
+        return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+      }
 
       async function closeTopLayer(element) {
-        if (!supportsTopLayerExit) {
+        if (!supportsTopLayerExit()) {
           element.setAttribute('data-closing', '');
           const animations = element.getAnimations({ subtree: true });
           if (animations.length > 0) {
@@ -305,12 +312,18 @@
           element.removeAttribute('data-closing');
         }
 
-        element.close();
+        if (element.hasAttribute('popover')) {
+          element.hidePopover();
+        } else {
+          element.close();
+        }
       }
 
       const dialog = document.getElementById('my-dialog');
       const openBtn = document.getElementById('open-dialog-btn');
       const closeBtn = document.getElementById('close-dialog-btn');
+      const popover = document.getElementById('my-popover');
+      const closePopoverBtn = document.getElementById('close-popover-btn');
 
       openBtn.addEventListener('click', () => {
         dialog.showModal();
@@ -318,6 +331,16 @@
 
       closeBtn.addEventListener('click', () => {
         closeTopLayer(dialog);
+      });
+
+      // Route Esc (and closedby light dismiss) through the animated helper.
+      dialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        closeTopLayer(dialog);
+      });
+
+      closePopoverBtn.addEventListener('click', () => {
+        closeTopLayer(popover);
       });
     </script>
   </body>

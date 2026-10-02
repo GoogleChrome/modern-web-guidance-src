@@ -186,7 +186,9 @@
         return false;
       }
       const probe = document.createElement('div');
-      probe.style.cssText = 'transition: display 1s allow-discrete; display: block;';
+      // Shorthand is intentional: unsupported browsers drop the whole declaration.
+      // !important guards against global `* { transition: none !important }` resets.
+      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
       document.body.appendChild(probe);
       getComputedStyle(probe).display;
       probe.style.display = 'none';
@@ -210,10 +212,16 @@
         ]);
       }
 
+      // Skipped if showElement() cancelled the close mid-animation.
       if (el.hasAttribute('data-closing')) {
         el.removeAttribute('data-closing');
         el.hidden = true;
       }
+    }
+
+    function showElement(el) {
+      el.removeAttribute('data-closing');
+      el.hidden = false;
     }
 
     async function removeElement(el) {
@@ -226,8 +234,8 @@
     const toggleCard = document.getElementById('toggleCard');
 
     toggleBtn.addEventListener('click', () => {
-      if (toggleCard.hidden) {
-        toggleCard.hidden = false;
+      if (toggleCard.hidden || toggleCard.hasAttribute('data-closing')) {
+        showElement(toggleCard);
       } else {
         hideElement(toggleCard);
       }

@@ -16,7 +16,11 @@ function canTransitionDisplay() {
     return false;
   }
   const probe = document.createElement('div');
-  probe.style.cssText = 'transition: display 1s allow-discrete; display: block;';
+  // The shorthand is intentional here: browsers that don't parse allow-discrete
+  // drop the whole declaration, so display: none applies instantly and the probe
+  // correctly returns false. !important guards against global reduced-motion
+  // resets like `* { transition: none !important }`.
+  probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
   document.body.appendChild(probe);
   getComputedStyle(probe).display;
   probe.style.display = 'none';

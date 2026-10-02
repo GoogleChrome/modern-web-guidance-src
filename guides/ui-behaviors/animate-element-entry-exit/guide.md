@@ -112,7 +112,7 @@ element.remove();
 
 ### Exit fallback when discrete `display` transitions are unsupported
 
-Entry animations using `@starting-style` work across all modern browsers without JavaScript. When discrete `display` transitions are unsupported (`!canTransitionDisplay()`), setting `hidden` applies `display: none` immediately and skips the exit animation (both when hiding and before `element.remove()`). Separate the visual exit state (`[data-closing]`) from `display: none` (`[hidden]`) so `opacity` and `translate` finish animating before hiding or removing the element:
+Entry animations using `@starting-style` work across all modern browsers without JavaScript. When discrete `display` transitions are unsupported (`!canTransitionDisplay()`), setting `hidden` applies `display: none` immediately and skips the exit animation (both when hiding and before `element.remove()`). Separate the visual exit state (`[data-closing]`) from `display: none` (`[hidden]`) so `opacity` and `translate` finish animating before hiding or removing the element. Replace the `.card[hidden]` rules from step 1 (including the `prefers-reduced-motion` override) with:
 
 ```css
 .card:where([hidden], [data-closing]) {
@@ -122,6 +122,12 @@ Entry animations using `@starting-style` work across all modern browsers without
 
 .card[hidden] {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card:where([hidden], [data-closing]) {
+    translate: none;
+  }
 }
 ```
 
@@ -141,10 +147,16 @@ async function hideElement(el) {
     ]);
   }
 
+  // Skipped if showElement() cancelled the close mid-animation.
   if (el.hasAttribute('data-closing')) {
     el.removeAttribute('data-closing');
     el.hidden = true;
   }
+}
+
+function showElement(el) {
+  el.removeAttribute('data-closing');
+  el.hidden = false;
 }
 
 async function removeElement(el) {
