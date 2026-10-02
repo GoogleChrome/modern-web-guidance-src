@@ -1,8 +1,7 @@
 ---
 name: custom-window-title-bar
-description: Replace the default operating system title bar in an installed desktop web app with a custom draggable header and custom minimize, maximize, restore, and resize controls.
+description: Render custom content such as a menu bar or toolbar in the allocated title bar area of an installed desktop web app and designate draggable regions that move the window.
 web-feature-ids:
   - window-drag
   - window-controls-overlay
-  - tmp-additional-windowing-controls
 ---
