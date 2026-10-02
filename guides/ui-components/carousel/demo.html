@@ -33,6 +33,7 @@
     }
 
     .carousel-track {
+      anchor-name: --carousel-track;
       display: flex;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
@@ -78,13 +79,20 @@
     @supports selector(::scroll-button(*)) {
       .carousel-track::scroll-button(inline-start) {
         content: "‹";
+        inset-inline-start: calc(anchor(start) + 0.5rem);
       }
 
       .carousel-track::scroll-button(inline-end) {
         content: "›";
+        inset-inline-end: calc(anchor(end) + 0.5rem);
       }
 
       .carousel-track::scroll-button(*) {
+        /* Pull the buttons out of the flex flow and centre them on the track */
+        position: fixed;
+        position-anchor: --carousel-track;
+        inset-block-start: anchor(center);
+        translate: 0 -50%;
         font-size: 1.5rem;
         line-height: 1;
         inline-size: 2.5rem;
@@ -152,6 +160,12 @@
       justify-content: center;
       gap: 0.5rem;
       margin-block-start: 0.75rem;
+    }
+
+    /* display on the classes above would otherwise override the hidden attribute */
+    .fallback-controls[hidden],
+    .fallback-markers[hidden] {
+      display: none;
     }
 
     .fallback-markers button {

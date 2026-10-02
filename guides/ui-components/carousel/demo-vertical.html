@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width">
   <title>Vertical carousel</title>
   <style>
     :root {
@@ -36,6 +36,7 @@
     }
 
     .carousel-track {
+      anchor-name: --carousel-track;
       display: flex;
       flex-direction: column;
       overflow-y: auto;
@@ -85,14 +86,21 @@
       .carousel-track::scroll-button(block-start) {
         content: "‹";
         rotate: 90deg;
+        inset-block-start: calc(anchor(start) + 0.5rem);
       }
 
       .carousel-track::scroll-button(block-end) {
         content: "›";
         rotate: 90deg;
+        inset-block-end: calc(anchor(end) + 0.5rem);
       }
 
       .carousel-track::scroll-button(*) {
+        /* Pull the buttons out of the flex flow and centre them on the track */
+        position: fixed;
+        position-anchor: --carousel-track;
+        inset-inline-start: anchor(center);
+        translate: -50% 0;
         font-size: 1.5rem;
         line-height: 1;
         inline-size: 2.5rem;
@@ -160,6 +168,12 @@
       flex-direction: column;
       justify-content: center;
       gap: 0.5rem;
+    }
+
+    /* display on the classes above would otherwise override the hidden attribute */
+    .fallback-controls[hidden],
+    .fallback-markers[hidden] {
+      display: none;
     }
 
     .fallback-markers button {
