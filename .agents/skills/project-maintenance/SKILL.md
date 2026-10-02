@@ -1,42 +1,24 @@
 ---
 name: project-maintenance
-description: Routine maintenance workflows: checking vendored deps, web-features/compat dataset updates, and doc coherence.
+description: "Routine maintenance notes: checking vendored deps, web-features/compat dataset updates, and doc coherence."
 ---
 
 # Repository Maintenance
 
-## 1. Check Vendored Dependencies
+Things that should happen with some regularity across the repository:
 
+### Vendored Dependencies
+Check if upstream packages have newer releases than what we vendored:
 ```bash
-# @vercel/detect-agent
 echo "Upstream: $(npm info @vercel/detect-agent version)" && echo "Vendored: $(grep -o 'detect-agent@[0-9.]*' serving/skills-cli/telemetry/detect-agent.ts)"
 ```
+If updated, sync changes to `serving/skills-cli/telemetry/detect-agent.ts`, bump the version comment, and run `node --test serving/skills-cli/telemetry/detect-agent.test.ts serving/skills-cli/telemetry/ClearcutLogger.test.ts`.
 
-When updating:
-1. Update `serving/skills-cli/telemetry/detect-agent.ts` with upstream changes and bump the version header comment.
-2. Run tests:
-   ```bash
-   node --test serving/skills-cli/telemetry/detect-agent.test.ts serving/skills-cli/telemetry/ClearcutLogger.test.ts
-   ```
+### Web Standards & Compatibility Datasets
+- **`web-features`**: Automated via `.github/workflows/update-web-features.yml` (Mon/Thu). Can also be run manually with `pnpm update --recursive web-features`, followed by `guides/generate-feature-to-groups.ts` and `guides/validate-after-web-feature-update.ts`.
+- **Compat & WebRef**: Periodically bump `@mdn/browser-compat-data`, `@webref/css`, `@webref/elements`, `@webref/idl`, `caniuse-lite`, and `mdn-data`.
 
-## 2. Web Standards & Compatibility Datasets
-
-### web-features
-Automated by `.github/workflows/update-web-features.yml` (Mon/Thu). To run or test manually:
-```bash
-pnpm update --recursive web-features
-node --experimental-strip-types guides/generate-feature-to-groups.ts
-node --experimental-strip-types guides/validate-after-web-feature-update.ts
-```
-
-### Browser Compat & WebRef Data
-Periodically update baseline compat packages:
-```bash
-pnpm update @mdn/browser-compat-data @webref/css @webref/elements @webref/idl caniuse-lite mdn-data
-```
-
-## 3. Document Coherence & Link Integrity
-
+### Document Coherence & Link Integrity
 ```bash
 node --experimental-strip-types scripts/coherence-audit.ts
 ```

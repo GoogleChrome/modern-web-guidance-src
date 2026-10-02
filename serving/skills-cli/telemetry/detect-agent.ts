@@ -1,11 +1,10 @@
 /**
  * @license
+ * Copyright 2025 Vercel, Inc.
  * Copyright 2026 Google LLC
  * SPDX-License-Identifier: Apache-2.0
- */
-
-/**
- * Vendored detection logic from @vercel/detect-agent@1.2.5
+ *
+ * Vendored and adapted from @vercel/detect-agent@1.2.5
  * Upstream: https://github.com/vercel/vercel/tree/main/packages/detect-agent
  *
  * Checks environment variables and known runtime indicators to detect what AI
@@ -41,29 +40,36 @@ export interface AgentResult {
   };
 }
 
+function pathExists(path: string): boolean {
+  try {
+    accessSync(path, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Synchronously determine the agent executing the current process based on
  * environment variables and well-known filesystem markers.
  */
-export function determineAgent(env: NodeJS.ProcessEnv = process.env): AgentResult {
+export function determineAgent(
+  env: NodeJS.ProcessEnv = process.env,
+  exists: (path: string) => boolean = pathExists,
+): AgentResult {
   if (env.AI_AGENT) {
     const name = env.AI_AGENT.trim();
     if (name) {
-      if (name === KNOWN_AGENTS.GITHUB_COPILOT || name === 'github-copilot-cli') {
+      if (name === 'github-copilot-cli') {
         return {
           isAgent: true,
           agent: { name: KNOWN_AGENTS.GITHUB_COPILOT },
         };
       }
-      if (name === KNOWN_AGENTS.V0) {
-        return {
-          isAgent: true,
-          agent: { name: KNOWN_AGENTS.V0 },
-        };
-      }
+      const known = Object.values(KNOWN_AGENTS).find((a) => a === name);
       return {
         isAgent: true,
-        agent: { name },
+        agent: { name: known ?? name },
       };
     }
   }
@@ -111,11 +117,8 @@ export function determineAgent(env: NodeJS.ProcessEnv = process.env): AgentResul
     return { isAgent: true, agent: { name: KNOWN_AGENTS.GITHUB_COPILOT } };
   }
 
-  try {
-    accessSync(DEVIN_LOCAL_PATH, constants.F_OK);
+  if (exists(DEVIN_LOCAL_PATH)) {
     return { isAgent: true, agent: { name: KNOWN_AGENTS.DEVIN } };
-  } catch {
-    // Path doesn't exist or is inaccessible
   }
 
   return { isAgent: false, agent: undefined };
