@@ -15,11 +15,12 @@ Last updated: 2026-07-10.
 1. **Create high-quality guidance** — structured markdown documents that teach coding agents how to use modern web features correctly.
 2. **Prove the guidance works** — an evaluation harness that measures whether agents with access to the guidance produce better output than agents without it.
 
-### People involved
+### People involved (see [`GOVERNANCE.md`](./GOVERNANCE.md))
 
-- **Content Area Tech Leads (Content ATLs)**: Domain experts who oversee individual categories (Performance, Forms, Accessibility, etc.), review PRs, triage content quality issues, and manage the category's health.
-- **~15 subject matter experts (SMEs)**: Google engineers with deep knowledge of specific web features. They write the guides, demo files, and expectations. They contribute via PRs into the `guides/` directory.
-- **~3 infrastructure engineers** (Paul, Rick, Micah, and others): Maintain the CLI tooling, eval harness, skills serving pipeline, dashboard, and grader generation pipeline.
+- **Contributors**: Community members who propose use cases via issues and submit PRs for bug fixes, doc updates, and improvements to existing guides.
+- **Peers (~15 onboarded SMEs)**: Subject matter experts who author brand-new Stage 1–2 guidance (`guide.md`, `demo.html`, and `expectations.md`) and provide peer reviews.
+- **Content Area Tech Leads (Content ATLs)**: Domain experts ([`guides/atls.json`](./guides/atls.json), [`guides/ATLS.md`](./guides/ATLS.md)) who steward specific categories or feature horizontals, validate Stage 1 use cases, review/approve Stage 2 guidance PRs, and partner with engineering to triage content-related evaluation failures.
+- **Owners & Infrastructure Engineers**: Govern the project and maintain Stage 3 evaluation infrastructure (`gd` CLI, eval harness, target/grader generation pipeline, serving distribution, and dashboard).
 
 ### Repository structure
 
@@ -78,19 +79,19 @@ Most guides are task-based use cases. Discipline guides are the orientation "hub
 A guide progresses through three main stages:
 
 1. **Stage 1: Identifying use cases (Needs use cases)**
-   - **Goal**: Translate a web platform feature into distinct use cases.
-   - **Artifacts**: Directory structure, `guide.md` with only YAML frontmatter (stub), and a basic `demo.html`.
-   - Contributor submits via PR for review. *(SMEs may fast-track and skip directly to Stage 2).*
+   - **Goal**: Translate a web platform feature into distinct, action-oriented use cases.
+   - **Artifacts**: Directory structure (`guides/<category>/<use-case-slug>/`) and a stub `guide.md` containing only YAML frontmatter (`name`, `description`, `web-feature-ids`).
+   - Contributor aligns with the category Content ATL via an issue or stub PR. *(Onboarded Peers may fast-track and proceed directly to Stage 2).*
 
 2. **Stage 2: Authoring guidance (Needs guidance)**
-   - **Goal**: Flesh out the guidance and define testable expectations.
-   - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
-   - Created after use case approval (or authored directly by SMEs).
+   - **Goal**: Flesh out the guidance, build a working reference demo, and define testable expectations.
+   - **Artifacts**: Full `guide.md` content (`MANDATORY:` / `DO` / `DO NOT` directives, commented snippets, fallback macros), standalone `demo.html` (recommended; required by CI/audit when `targets/` do not yet exist), and `expectations.md`.
+   - Validated using the [`project-guide-validation`](./.agents/skills/project-guide-validation/SKILL.md) skill and reviewed/approved by the category Content ATL. **Content contributors stop here.**
 
 3. **Stage 3: Evaluating guidance (Needs evals)**
    - **Goal**: Generate evaluation capsules, calibrate graders, run evaluations, and generate reports.
    - **Artifacts**: `targets/<base_app>/`, `grader.ts`, `patches/`, `task.md`, and `test-app-results/report.md`.
-   - Handled automatically by `gd dev`.
+   - Handled downstream by the engineering/evaluation pipeline (`gd dev`).
 
 ---
 
@@ -242,27 +243,28 @@ See `gd audit` for the full list of eval-ready guides covering performance, css-
 
 ---
 
-## 8. Contributor Workflow (Current + Planned)
+## 8. Contributor Workflow (see [`guides/CONTRIBUTING.md`](./guides/CONTRIBUTING.md))
 
-### Two-checkpoint contribution model (Use Case, then Implementation)
+### Two-stage content contribution model (with downstream Stage 3 evals)
 
-To prevent SMEs from investing time writing full guides for use cases that might be rejected (due to overlap, scope, or platform maturity), the contribution process has two distinct phases to avoid wasted effort:
+To prevent authors from investing time writing full guides for use cases that might be rejected (due to overlap, scope, or platform maturity), content contributions follow two stages, while evaluation artifacts are handled downstream:
 
-**Checkpoint 1 — Use case identification:**
-- SME picks a web feature from the tracking sheet
-- Creates directory structure under `guides/<discipline>/`
-- Writes `guide.md` with **only YAML frontmatter** (name, description, web-feature-ids) — this is a stub
-- Creates a basic `demo.html` showing the concept
-- Opens a PR for review — the team validates that the use cases are well-chosen, distinct, and don't overlap with existing guides
-- `gd audit` shows these as "stub" status
+**Stage 1 — Identifying use cases:**
+- Author picks a web feature and identifies 2–5 distinct, action-oriented developer tasks
+- Creates directory structure under `guides/<category>/<use-case-slug>/`
+- Writes `guide.md` with **only YAML frontmatter** (`name`, `description`, `web-feature-ids`) — this is a stub (`demo.html` is not created yet)
+- Aligns with the category Content ATL via an issue or draft PR (`gd audit` shows these as "stub" status; onboarded Peers may fast-track directly to Stage 2)
 
-**Checkpoint 2 — Implementation and evaluation:**
-- After use cases are approved, SME fleshes out `guide.md` with full content (DO/DO NOT directives, code snippets, fallback strategies)
-- Writes `expectations.md` with testable assertions
-- Completes `demo.html` as a gold-standard implementation
-- Runs `gd dev <dir>` to auto-generate negative-demo, grader, calibrate, and run agent tests
-- Opens a follow-up PR with all artifacts
-- `gd audit` should show these as "eval-ready" after the pipeline succeeds
+**Stage 2 — Authoring guidance (where content contribution stops):**
+- After use cases are aligned, the Peer/author fleshes out `guide.md` with full content (`MANDATORY:` / `DO` / `DO NOT` directives, commented code snippets, fallback strategies)
+- Creates `demo.html` as a clean, standalone reference implementation
+- Writes `expectations.md` with testable, observable assertions
+- Runs the [`project-guide-validation`](./.agents/skills/project-guide-validation/SKILL.md) skill to verify `demo.html` in DevTools and check alignment across `guide.md`, `demo.html`, and `expectations.md`
+- Opens a guidance PR reviewed and approved by the category Content ATL
+
+**Stage 3 — Downstream evaluation & calibration (engineering pipeline):**
+- Handled downstream via `gd dev <dir>` and `gd pr <dir>` to generate `targets/<base_app>/` (`task.md`, multi-agent solution patches, `zero-passrate.patch`, and calibrated Playwright `grader.ts`) and run guided vs. unguided agent evaluations
+- `gd audit` marks the guide as "eval-ready" once target graders and tasks are in place
 
 ### Writing guide.md
 

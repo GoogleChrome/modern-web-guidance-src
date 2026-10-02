@@ -45,7 +45,7 @@ Content ATLs:
 * Triage issues, validate proposed use cases, and participate in evaluation investigations within their domain.
 * Review, approve, and merge Stage 2 guidance pull requests within their domain.
 * Maintain guidance accuracy, eval readiness, and Baseline fallback alignment.
-* Have their own pull requests reviewed and approved by another Content ATL or an Owner prior to merging.
+* Have their own pull requests reviewed and approved by another Content ATL, a domain [Peer](#peers), or an [Owner](#owners) prior to merging.
 
 Content ATLs are appointed by the Owners based on domain expertise and active stewardship.
 

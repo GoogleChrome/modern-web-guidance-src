@@ -11,24 +11,25 @@ This is the second of three stages in creating guidance:
 2. Stage 2: Authoring guidance for a use case (you are here)
 3. Stage 3: Evaluating guidance for a use case
 
-> **SME Fast-Track**: While non-SME contributors align on use cases via Stage 1 first, Subject Matter Experts (SMEs) are trusted to define appropriate use cases directly and can go straight to Stage 2 (authoring `guide.md`, `demo.html`, and `expectations.md`).
+> **Peer Fast-Track**: While community contributors align on use cases via Stage 1 first, onboarded Subject Matter Experts ([Peers](../../../GOVERNANCE.md#peers)) are trusted to define appropriate use cases directly and can go straight to Stage 2 (authoring `guide.md`, `demo.html`, and `expectations.md`).
 >
-> **SME Review Requirement**: Every guide in this repository must be written or reviewed by an SME. If a guide is drafted by a non-SME contributor, a domain SME or Content ATL **must** review and approve the technical accuracy before the guide can be merged and published.
+> **Peer & ATL Review Requirement**: Every guide in this repository must be authored or co-authored by a Peer and reviewed by a Peer or [Content ATL](../../../guides/ATLS.md) for technical accuracy before it can be merged and published.
 
 ## What a real-world coding agent sees
 
-When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is eval infrastructure:
+When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is reference or eval infrastructure:
 
 | File/Directory | Purpose | Seen by real-world agents? |
 |---|---|---|
 | `guide.md` | Guidance for implementing the use case | ✅ Yes — this is the only file |
+| `demo.html` | Canonical standalone reference implementation used for Stage 2 validation and review | ❌ No |
 | `expectations.md` | Verification criteria used to generate target evaluation suites | ❌ No |
-| `targets/<base_app>/solution.patch` | Golden diff against clean base app used to calibrate the grader | ❌ No |
-| `targets/<base_app>/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
+| `targets/<base_app>/patches/*-solution.patch` | Golden diffs against clean base apps used to calibrate the grader | ❌ No |
+| `targets/<base_app>/patches/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
 | `targets/<base_app>/grader.ts` | Playwright test suite run against the eval agent's output | ❌ No |
 | `targets/<base_app>/task.md` | Simulated developer prompts fed to the eval agent by the harness | ❌ No |
 
-**Implication for authoring (`guide.md` & `expectations.md`):** Authors and SMEs strictly author `guide.md` and `expectations.md`. You do not hand-author `solution.patch`, `zero-passrate.patch`, `grader.ts`, or `task.md`. Once `guide.md` and `expectations.md` are authored, running `gd dev <guide>` automatically loops across `SUPPORTED_BASE_APPS` (`daily-grind` and `devtools-times`) inside safe temporary `/tmp/` sandboxes to generate and calibrate the evaluation capsules under `targets/<base_app>/`, runs agent evaluations, and produces an evaluation diagnostic report (`test-app-results/report.md`). Running `gd pr <guide>` then automatically commits, pushes, detects PR labels (`gd-dev-content` or `gd-dev-eval`), and opens the Pull Request.
+**Implication for Stage 2 authoring (`guide.md`, `demo.html`, & `expectations.md`):** Content contributors and Peers strictly author `guide.md`, `demo.html`, and `expectations.md` (and self-validate with the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill). You do not hand-author solution patches, `grader.ts`, or `task.md`—Stage 3 evaluation generation and calibration (`gd dev` and `gd pr`) are handled downstream by maintainers and evaluation tooling (see [`harness/README.md`](../../../harness/README.md)).
 
 **Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `expectations.md`, any target patch, or any external link to understand how to implement the use case.
 

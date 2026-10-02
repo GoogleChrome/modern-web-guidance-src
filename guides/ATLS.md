@@ -14,7 +14,7 @@ ATLs ensure that all guidance within their domain is technically accurate, align
 ### 2. Authoring & Peer Review
 * Act as the primary author or designated reviewer/approver for all guide content created within your category.
 * Author high-quality guidance for new use cases and provide thorough technical review for PRs submitted by other contributors.
-* **Technical Review & Sign-Off**: Ensure that every guide in your category has been authored or formally reviewed and approved by a Peer before it is merged.
+* **Technical Review & Sign-Off**: Ensure that every guide in your category is authored (or co-authored/sponsored) by a Peer or Content ATL and is formally reviewed and approved by the category Content ATL (or, for PRs authored by the category's sole Content ATL, by another Content ATL, a domain Peer, or an Owner) before it is merged.
 
 ### 3. Coverage Strategy
 * Proactively research the web platform landscape and identify gaps where new guidance is needed to address low AI agent performance or developer pain points.
