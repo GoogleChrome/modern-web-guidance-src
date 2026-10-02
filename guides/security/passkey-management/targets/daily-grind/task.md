@@ -1,1 +1,1 @@
-- Implement a feature that allows users to view and manage the passkeys registered to their account.
+- Let users view and manage the passkeys registered to their account.

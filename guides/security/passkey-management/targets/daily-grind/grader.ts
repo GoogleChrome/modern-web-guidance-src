@@ -1,3 +1,6 @@
+import * as path from 'path';
+import { pathToFileURL } from 'url';
+import { SyntaxKind } from 'ts-morph';
 import {
   test,
   expect,
@@ -5,141 +8,142 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../test-fixture.ts';
-import { SyntaxKind } from 'ts-morph';
 
-// @ts-ignore
-const targetFiles: string[] = getTargetFiles(import.meta.url);
+const currentFileUrl = typeof __filename !== 'undefined'
+  ? pathToFileURL(__filename).href
+  : pathToFileURL(path.resolve(process.cwd(), 'grader.ts')).href;
+
+const targetFiles: string[] = getTargetFiles(currentFileUrl);
 
 test.describe('Passkey Management Target Grader', () => {
-  const appFiles = targetFiles.filter(f => !f.includes('node_modules'));
 
-  test('The application fetches registered credentials from the credential endpoint on load.', () => {
-    const project = getJsProject(appFiles);
+  test('The application fetches registered credentials from the credential endpoint on load', () => {
+    const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasCredentialFetchOnLoad = sourceFiles.some(sf => {
-      const text = sf.getFullText();
-      const hasCredentialEndpoint = /\/api\/credentials|\/credentials\b/i.test(text);
-      const hasFetchOrApi = /\b(fetch|listFetch|listCredentials|apiFetch|getCredentials|loadManagementPanel)\b/.test(text);
-      const hasLoadTrigger = /\b(DOMContentLoaded|loadManagementPanel|refreshCredentials|syncAcceptedCredentialsOnLoad|onload|init)\b/i.test(text);
-      return hasCredentialEndpoint && (hasFetchOrApi || hasLoadTrigger);
-    });
-
-    expect(hasCredentialFetchOnLoad).toBe(true);
-  });
-
-  test('The application automatically invokes signalAllAcceptedCredentials on load (for example, via DOMContentLoaded or component mount) to sync accepted credentials list strings with the password manager.', () => {
-    const project = getJsProject(appFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const hasSignalAll = sourceFiles.some(sf => {
-      const text = sf.getFullText();
-      return /\bsignalAllAcceptedCredentials\b/.test(text);
-    });
-    const hasLoadSync = sourceFiles.some(sf => {
-      const text = sf.getFullText();
-      return /\b(DOMContentLoaded|readyState|useEffect|loadManagementPanel|init|syncAcceptedCredentials|signalAcceptedCredentials|syncAcceptedCredentialsOnLoad)\b/.test(text);
-    });
-
-    expect(hasSignalAll && hasLoadSync).toBe(true);
-  });
-
-  test('The application updates passkey providers by immediately calling signalAllAcceptedCredentials within the delete trigger handler upon successful deletions.', () => {
-    const project = getJsProject(appFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const signalFunctions = new Set<string>(['signalAllAcceptedCredentials']);
-    for (let iter = 0; iter < 3; iter++) {
-      for (const sf of sourceFiles) {
-        for (const fn of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
-          const fnText = fn.getFullText();
-          const name = fn.getName();
-          if (name && Array.from(signalFunctions).some(sig => new RegExp(`\\b${sig}\\b`).test(fnText))) {
-            signalFunctions.add(name);
-          }
-        }
-        for (const varDecl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
-          const varText = varDecl.getFullText();
-          const name = varDecl.getName();
-          if (name && Array.from(signalFunctions).some(sig => new RegExp(`\\b${sig}\\b`).test(varText))) {
-            signalFunctions.add(name);
-          }
-        }
-      }
-    }
-
-    const hasDeleteSignal = sourceFiles.some(sf => {
-      const functions = [
-        ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
-        ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
-        ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
-      ];
-
-      return functions.some(fn => {
-        const text = fn.getFullText();
-        const isDeleteRelated = /\b(delete|DELETE|deleteFetch|deleteCredential|handleDelete|performDelete)\b/.test(text);
-        if (!isDeleteRelated) return false;
-        return Array.from(signalFunctions).some(sigFn => new RegExp(`\\b${sigFn}\\b`).test(text)) || /\b(sync|signal).*credential/i.test(text);
+    const hasCredentialEndpointCall = sourceFiles.some(sf => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      return calls.some(call => {
+        const callText = call.getText();
+        const args = call.getArguments().map(a => a.getText());
+        return (/fetch|api/i.test(call.getExpression().getText()) || callText.includes('fetch(')) &&
+          (args.some(a => /credential/i.test(a)) || callText.includes('/api/credentials'));
       });
     });
 
-    expect(hasDeleteSignal).toBe(true);
+    const hasLoadTrigger = sourceFiles.some(sf => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const hasListener = calls.some(call => {
+        const text = call.getText();
+        return text.includes('addEventListener') && (/DOMContentLoaded/i.test(text) || /\bload\b/i.test(text));
+      });
+      const hasTopLevelInvocation = sf.getStatements().some(stmt => {
+        const text = stmt.getText();
+        return /loadManagementPanel|load.*credential|init/i.test(text);
+      });
+      return hasListener || hasTopLevelInvocation;
+    });
+
+    expect(hasCredentialEndpointCall && hasLoadTrigger).toBe(true);
   });
 
-  test('The application invokes signalCurrentUserDetails within the user profile rename handler upon successful username or display name rename.', () => {
-    const project = getJsProject(appFiles);
+  test('The application automatically invokes signalAllAcceptedCredentials on load to sync credentials with the password manager', () => {
+    const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasUserRenameSignal = sourceFiles.some(sf => {
-      const text = sf.getFullText();
-      const hasSignal = /\bsignalCurrentUserDetails\b/.test(text);
-      const hasUserOrRename = /\b(rename|displayName|name|user|performRename|performUserRename|handleUserRename|renameCurrentUser|signalUserDetails|signalRenamedUser)\b/i.test(text);
-      return hasSignal && hasUserOrRename;
+    const hasSignalAllAccepted = sourceFiles.some(sf => {
+      return sf.getDescendantsOfKind(SyntaxKind.Identifier).some(id => id.getText() === 'signalAllAcceptedCredentials');
     });
 
-    expect(hasUserRenameSignal).toBe(true);
+    const hasLoadSync = sourceFiles.some(sf => {
+      const text = sf.getFullText();
+      return (/DOMContentLoaded|load|mount|init/i.test(text)) &&
+        /signalAllAcceptedCredentials|sync.*AcceptedCredentials|sync.*Credentials/i.test(text);
+    });
+
+    expect(hasSignalAllAccepted && hasLoadSync).toBe(true);
   });
 
-  test('Each credential row resolved against the AAGUID registry renders info such as the provider icon, name and a human-readable last-used timestamp.', () => {
-    const project = getJsProject(appFiles);
-    const sourceFiles = project.getSourceFiles();
-    const htmlDocs = getHtmlDocuments(appFiles);
-
-    const hasAaguidResolution = sourceFiles.some(sf => {
-      const text = sf.getFullText();
-      return /\b(aaguid|aaguids|resolveProvider|providerFor|aaguidRegistry)\b/i.test(text);
-    }) || appFiles.some(f => /aaguid/i.test(f));
-
-    const hasLastUsedFormatting = sourceFiles.some(sf => {
-      const text = sf.getFullText();
-      const hasLastUsed = /\blastUsed(At)?\b/i.test(text);
-      const hasFormatting = /\b(toLocale|Intl|Date|formatDate|formatTimestamp|time)\b/i.test(text);
-      return hasLastUsed && hasFormatting;
-    });
-
-    const hasProviderRendering = sourceFiles.some(sf => {
-      const text = sf.getFullText();
-      const hasIcon = /\b(providerIcon|icon|icon_light|icon_dark|credential-icon|icon-button)\b/i.test(text);
-      const hasName = /\b(credential-name|name|displayName|provider\.name)\b/i.test(text);
-      return hasIcon && hasName;
-    }) || htmlDocs.some(doc => {
-      return doc.document.querySelector('.credential-icon, [class*="icon"], img, template') !== null;
-    });
-
-    expect(hasAaguidResolution && hasLastUsedFormatting && hasProviderRendering).toBe(true);
-  });
-
-  test('The "Create Passkey" entry-point button is gated on PublicKeyCredential.getClientCapabilities and hidden when passkey is unsupported.', () => {
-    const project = getJsProject(appFiles);
+  test('The application updates passkey providers by immediately calling signalAllAcceptedCredentials within the delete trigger handler upon successful deletions', () => {
+    const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasGatedCreateButton = sourceFiles.some(sf => {
-      const text = sf.getFullText();
-      const hasCapabilities = /\bgetClientCapabilities\b/.test(text);
-      const hasButtonGating = /\b(hidden|display|passkeySupport|supported|createPasskey|create-passkey|createButton|create-actions|passkey-unsupported)\b/i.test(text);
-      return hasCapabilities && hasButtonGating;
+    const hasDeleteWithSignal = sourceFiles.some(sf => {
+      const callableNodes = [
+        ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
+        ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
+        ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
+        ...sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration),
+      ];
+      return callableNodes.some(node => {
+        const text = node.getText();
+        const isDeleteHandler = /delete/i.test(text) && (text.includes('DELETE') || text.includes('deleteFetch') || /api.*credential/i.test(text));
+        const callsSignal = text.includes('signalAllAcceptedCredentials') || /sync.*AcceptedCredentials|sync.*Credentials/i.test(text);
+        return isDeleteHandler && callsSignal;
+      });
     });
 
-    expect(hasGatedCreateButton).toBe(true);
+    expect(hasDeleteWithSignal).toBe(true);
   });
+
+  test('The application invokes signalCurrentUserDetails within the user profile rename handler upon successful username or display name rename', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const hasUserRenameWithSignal = sourceFiles.some(sf => {
+      const callableNodes = [
+        ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
+        ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
+        ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
+        ...sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration),
+      ];
+      return callableNodes.some(node => {
+        const text = node.getText();
+        const isUserRenameHandler = (/displayName/i.test(text) || /username/i.test(text) || /profile/i.test(text) || /updateUser/i.test(text) || text.includes('/api/user')) &&
+          (/rename/i.test(text) || /update/i.test(text) || /submit/i.test(text) || /save/i.test(text));
+        const callsSignal = text.includes('signalCurrentUserDetails') || /syncCurrentUserDetails/i.test(text);
+        return isUserRenameHandler && callsSignal;
+      });
+    });
+
+    expect(hasUserRenameWithSignal).toBe(true);
+  });
+
+  test('Each credential row resolved against the AAGUID registry renders info such as the provider icon, name and a human-readable last-used timestamp', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const fullProjectText = sourceFiles.map(sf => sf.getFullText()).join('\n');
+    const hasAaguidLookup = /aaguid/i.test(fullProjectText) && (/registry|resolve|aaguids/i.test(fullProjectText));
+    const hasLastUsedFormatting = /lastUsed/i.test(fullProjectText) && (/toLocaleDateString|DateTimeFormat|formatDate|formatTimestamp|new Date/i.test(fullProjectText));
+    const hasProviderIcon = /providerIcon|icon_light|icon_dark|provider-icon/i.test(fullProjectText);
+    const hasNameRendering = /name/i.test(fullProjectText);
+
+    expect(hasAaguidLookup && hasLastUsedFormatting && hasProviderIcon && hasNameRendering).toBe(true);
+  });
+
+  test('The "Create Passkey" entry-point button is gated on PublicKeyCredential.getClientCapabilities and hidden when passkey is unsupported', () => {
+    const project = getJsProject(targetFiles);
+    const docs = getHtmlDocuments(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const hasClientCapabilitiesCheck = sourceFiles.some(sf => {
+      const hasMethod = sf.getDescendantsOfKind(SyntaxKind.Identifier).some(id => id.getText() === 'getClientCapabilities');
+      const text = sf.getFullText();
+      const gatesButton = /hidden|display/i.test(text) && /create.*passkey|createButton|btn.*create/i.test(text);
+      return hasMethod && gatesButton;
+    });
+
+    const hasCreateButtonInHtml = docs.some(d => {
+      const allButtons = Array.from(d.document.querySelectorAll('button, [role="button"], a'));
+      return allButtons.some((el: any) =>
+        /create.*passkey/i.test(el.textContent || '') ||
+        /create-passkey/i.test(el.id || '') ||
+        /create-passkey/i.test(el.getAttribute('data-testid') || '')
+      );
+    });
+
+    expect(hasClientCapabilitiesCheck && hasCreateButtonInHtml).toBe(true);
+  });
+
 });

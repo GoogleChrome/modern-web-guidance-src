@@ -1,5 +1,5 @@
 diff --git a/package.json b/package.json
-index 3d29f63..a5f379b 100644
+index 6a31d8c..32646ac 100644
 --- a/package.json
 +++ b/package.json
 @@ -20,7 +20,8 @@
@@ -13,7 +13,7 @@ index 3d29f63..a5f379b 100644
    "devDependencies": {
      "@tailwindcss/typography": "^0.5.19"
 diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
-index 211a303..0469e91 100644
+index a772d8f..8c7820c 100644
 --- a/pnpm-lock.yaml
 +++ b/pnpm-lock.yaml
 @@ -41,6 +41,9 @@ importers:
@@ -26,7 +26,7 @@ index 211a303..0469e91 100644
      devDependencies:
        '@tailwindcss/typography':
          specifier: ^0.5.19
-@@ -1171,6 +1174,10 @@ packages:
+@@ -1333,6 +1336,10 @@ packages:
    '@shikijs/vscode-textmate@10.0.2':
      resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
  
@@ -37,7 +37,7 @@ index 211a303..0469e91 100644
    '@tailwindcss/node@4.2.4':
      resolution: {integrity: sha512-Ai7+yQPxz3ddrDQzFfBKdHEVBg0w3Zl83jnjuwxnZOsnH9pGn93QHQtpU0p/8rYWxvbFZHneni6p1BSLK4DkGA==}
  
-@@ -1311,6 +1318,9 @@ packages:
+@@ -1476,6 +1483,9 @@ packages:
    '@types/react@19.2.14':
      resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
  
@@ -47,7 +47,7 @@ index 211a303..0469e91 100644
    '@types/unist@3.0.3':
      resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
  
-@@ -1408,6 +1418,9 @@ packages:
+@@ -1573,6 +1583,9 @@ packages:
      resolution: {integrity: sha512-dnN3ibLeoRf2HNC+OlCiNc5d2zxbLJXOtiZUudNFSXZrNSydxcCsSpRzXwfu7BBWCIfHPw+xTayeBvJCP/D8Ng==}
      engines: {node: '>= 18'}
  
@@ -57,7 +57,7 @@ index 211a303..0469e91 100644
    convert-source-map@2.0.0:
      resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
  
-@@ -2106,6 +2119,10 @@ packages:
+@@ -2260,6 +2273,10 @@ packages:
    tslib@2.8.1:
      resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
  
@@ -68,9 +68,9 @@ index 211a303..0469e91 100644
    ufo@1.6.3:
      resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
  
-@@ -2313,6 +2330,9 @@ packages:
-   web-namespaces@2.0.1:
-     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
+@@ -2465,6 +2482,9 @@ packages:
+       vite:
+         optional: true
  
 +  webauthn-polyfills@0.1.7:
 +    resolution: {integrity: sha512-tOA5KPHhN8j8EBA9I90bYmsEc6CAKd1SbWJzmVn0hmTfvfiNJLGGzRPlSW4fKiQPm8BC6doPQC0CnaQdhxsL3Q==}
@@ -78,7 +78,7 @@ index 211a303..0469e91 100644
    xxhash-wasm@1.1.0:
      resolution: {integrity: sha512-147y/6YNh+tlp6nd/2pWq38i9h6mz/EuQ6njIrmW8D1BS5nCqs0P6DG+m6zTGnNz5I+uhZ0SHxBs9BsPrwcKDA==}
  
-@@ -3170,6 +3190,8 @@ snapshots:
+@@ -3438,6 +3458,8 @@ snapshots:
  
    '@shikijs/vscode-textmate@10.0.2': {}
  
@@ -87,7 +87,7 @@ index 211a303..0469e91 100644
    '@tailwindcss/node@4.2.4':
      dependencies:
        '@jridgewell/remapping': 2.3.5
-@@ -3300,6 +3322,8 @@ snapshots:
+@@ -3572,6 +3594,8 @@ snapshots:
      dependencies:
        csstype: 3.2.3
  
@@ -96,7 +96,7 @@ index 211a303..0469e91 100644
    '@types/unist@3.0.3': {}
  
    '@ungap/structured-clone@1.3.0': {}
-@@ -3464,6 +3488,8 @@ snapshots:
+@@ -3735,6 +3759,8 @@ snapshots:
  
    common-ancestor-path@2.0.0: {}
  
@@ -105,7 +105,7 @@ index 211a303..0469e91 100644
    convert-source-map@2.0.0: {}
  
    cookie-es@1.2.2: {}
-@@ -4232,6 +4258,8 @@ snapshots:
+@@ -4501,6 +4527,8 @@ snapshots:
    tslib@2.8.1:
      optional: true
  
@@ -114,9 +114,9 @@ index 211a303..0469e91 100644
    ufo@1.6.3: {}
  
    ultrahtml@1.6.0: {}
-@@ -4351,6 +4379,13 @@ snapshots:
- 
-   web-namespaces@2.0.1: {}
+@@ -4615,6 +4643,13 @@ snapshots:
+     optionalDependencies:
+       vite: 8.1.5(@types/node@25.5.0)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
  
 +  webauthn-polyfills@0.1.7:
 +    dependencies:
@@ -148,10 +148,10 @@ index 980b279..34e178a 100644
            data-skip-tracking="true"
 diff --git a/src/components/PasskeyManagement.tsx b/src/components/PasskeyManagement.tsx
 new file mode 100644
-index 0000000..48544a3
+index 0000000..f978ff6
 --- /dev/null
 +++ b/src/components/PasskeyManagement.tsx
-@@ -0,0 +1,657 @@
+@@ -0,0 +1,699 @@
 +import 'webauthn-polyfills';
 +import React, { useState, useEffect, useCallback } from 'react';
 +import { listFetch, deleteFetch, updateCredentialFetch, renameFetch, getUserFetch } from '../lib/api';
@@ -185,6 +185,7 @@ index 0000000..48544a3
 +    displayName: 'Alex Doe',
 +  });
 +  const [loading, setLoading] = useState(true);
++  const [managementStatus, setManagementStatus] = useState<string>('Idle');
 +  const [isPasskeySupported, setIsPasskeySupported] = useState<boolean | null>(null);
 +  const [actionError, setActionError] = useState<string | null>(null);
 +  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -230,6 +231,7 @@ index 0000000..48544a3
 +  const loadManagementPanel = useCallback(async () => {
 +    try {
 +      setLoading(true);
++      setManagementStatus('Loading...');
 +      setActionError(null);
 +
 +      // Fetch user details
@@ -250,14 +252,17 @@ index 0000000..48544a3
 +      if (response.ok) {
 +        const list: StoredPasskeyCredential[] = await response.json();
 +        setCredentials(list);
++        setManagementStatus('Idle');
 +        // Sync on page load via Signal API
 +        await syncAcceptedCredentials(list);
 +      } else {
 +        setActionError('Failed to fetch credentials list.');
++        setManagementStatus('Error loading credentials');
 +      }
 +    } catch (err: any) {
 +      console.error('Error loading management panel:', err);
 +      setActionError('An unexpected error occurred while loading passkeys.');
++      setManagementStatus(`Error: ${err.message}`);
 +    } finally {
 +      setLoading(false);
 +    }
@@ -316,9 +321,10 @@ index 0000000..48544a3
 +   * Delete credential handler
 +   * Immediately calls signalAllAcceptedCredentials with updated list after deletion.
 +   */
-+  const performDelete = async (credentialId: string) => {
++  async function performDelete(credentialId: string) {
 +    setActionError(null);
 +    setActionSuccess(null);
++    setManagementStatus('Deleting...');
 +
 +    try {
 +      const response = await deleteFetch(credentialId);
@@ -328,29 +334,45 @@ index 0000000..48544a3
 +          const updatedList: StoredPasskeyCredential[] = await updatedResponse.json();
 +          setCredentials(updatedList);
 +          setActionSuccess('Passkey deleted successfully.');
++          setManagementStatus('Passkey Deleted');
 +
 +          // Sync after deletion immediately
++          if (
++            typeof window !== 'undefined' &&
++            window.PublicKeyCredential &&
++            typeof window.PublicKeyCredential.signalAllAcceptedCredentials === 'function'
++          ) {
++            const credentialIds = updatedList.map((c) => c.id);
++            await window.PublicKeyCredential.signalAllAcceptedCredentials({
++              rpId: window.location.hostname || 'localhost',
++              userId: user.id || 'M2YPl-KGnA8',
++              allAcceptedCredentialIds: credentialIds,
++            });
++          }
 +          await syncAcceptedCredentials(updatedList);
 +        }
 +      } else {
 +        const errData = await response.json().catch(() => ({}));
 +        setActionError(`Failed to delete passkey: ${errData.error || response.statusText}`);
++        setManagementStatus('Delete failed');
 +      }
 +    } catch (err: any) {
 +      console.error('Delete passkey failure:', err);
 +      setActionError('An unexpected error occurred during deletion.');
++      setManagementStatus(`Error: ${err.message}`);
 +    }
-+  };
++  }
 +
 +  /**
 +   * Credential rename handler
 +   */
-+  const performCredentialRename = async (e: React.FormEvent) => {
++  async function performCredentialRename(e: React.FormEvent) {
 +    e.preventDefault();
 +    if (!renamingCred || !newCredName.trim()) return;
 +
 +    setActionError(null);
 +    setActionSuccess(null);
++    setManagementStatus('Renaming passkey...');
 +
 +    try {
 +      const response = await updateCredentialFetch(renamingCred.id, newCredName.trim());
@@ -360,26 +382,30 @@ index 0000000..48544a3
 +          const updatedList: StoredPasskeyCredential[] = await updatedResponse.json();
 +          setCredentials(updatedList);
 +          setActionSuccess('Passkey name updated successfully.');
++          setManagementStatus('Passkey Renamed');
 +        }
 +        setRenamingCred(null);
 +        setNewCredName('');
 +      } else {
 +        const errData = await response.json().catch(() => ({}));
 +        setActionError(`Failed to update name: ${errData.error || response.statusText}`);
++        setManagementStatus('Rename failed');
 +      }
 +    } catch (err: any) {
 +      console.error('Update passkey name failure:', err);
 +      setActionError('An unexpected error occurred while updating passkey name.');
++      setManagementStatus(`Error: ${err.message}`);
 +    }
-+  };
++  }
 +
 +  /**
 +   * User username / display name rename handler
 +   * Immediately calls signalCurrentUserDetails upon successful rename.
 +   */
-+  const performRename = async (rpId: string, userId: string, updatedName: string, updatedDisplayName: string) => {
++  async function performRename(rpId: string, userId: string, updatedName: string, updatedDisplayName: string) {
 +    setActionError(null);
 +    setActionSuccess(null);
++    setManagementStatus('Updating profile...');
 +
 +    try {
 +      const response = await renameFetch({ name: updatedName, displayName: updatedDisplayName });
@@ -397,26 +423,29 @@ index 0000000..48544a3
 +              displayName: updatedDisplayName,
 +            });
 +          }
-+        } catch (e) {
-+          console.error('SignalCurrentUserDetails sync failure:', e);
++        } catch (signalErr) {
++          console.error('SignalCurrentUserDetails sync failure:', signalErr);
 +        }
 +
-+        setUser({
-+          id: userId,
++        setUser((prev) => ({
++          ...prev,
 +          name: updatedName,
 +          displayName: updatedDisplayName,
-+        });
++        }));
 +        setIsEditingUser(false);
-+        setActionSuccess('Account details updated and synchronized.');
++        setActionSuccess('Account details updated and synchronized with password manager!');
++        setManagementStatus('Profile Updated');
 +      } else {
 +        const errData = await response.json().catch(() => ({}));
-+        setActionError(`Failed to update account details: ${errData.error || response.statusText}`);
++        setActionError(`Failed to update profile: ${errData.error || response.statusText}`);
++        setManagementStatus('Profile update failed');
 +      }
 +    } catch (err: any) {
 +      console.error('Perform user rename failure:', err);
 +      setActionError('An unexpected error occurred while updating user details.');
++      setManagementStatus(`Error: ${err.message}`);
 +    }
-+  };
++  }
 +
 +  const handleUserRenameSubmit = async (e: React.FormEvent) => {
 +    e.preventDefault();
@@ -519,7 +548,7 @@ index 0000000..48544a3
 +          {isPasskeySupported === true && (
 +            <button
 +              id="create-passkey-btn"
-+              data-testid="create-passkey-btn"
++              data-testid="create-passkey-button"
 +              onClick={handleCreatePasskey}
 +              className="inline-flex items-center justify-center px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
 +            >
@@ -539,6 +568,10 @@ index 0000000..48544a3
 +      </div>
 +
 +      {/* Status Notifications */}
++      <div id="status" data-testid="management-status" className="sr-only">
++        {managementStatus}
++      </div>
++
 +      {actionError && (
 +        <div className="mb-6 p-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between" role="alert">
 +          <span>{actionError}</span>
@@ -554,7 +587,7 @@ index 0000000..48544a3
 +      )}
 +
 +      {/* Account / User Details Card */}
-+      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8 shadow-xs">
++      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8 shadow-xs" id="profile-section">
 +        <div className="flex items-center justify-between mb-4">
 +          <div>
 +            <h2 className="text-lg font-bold text-gray-900">Account Details</h2>
@@ -562,15 +595,16 @@ index 0000000..48544a3
 +          </div>
 +          {!isEditingUser && (
 +            <button
++              id="rename-user-btn"
 +              onClick={() => {
 +                setEditUsername(user.name);
 +                setEditDisplayName(user.displayName);
 +                setIsEditingUser(true);
 +              }}
-+              data-testid="edit-user-btn"
++              data-testid="rename-user-button"
 +              className="text-xs font-semibold px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded border border-gray-300 transition-colors"
 +            >
-+              Edit Details
++              Edit Profile Name
 +            </button>
 +          )}
 +        </div>
@@ -605,59 +639,62 @@ index 0000000..48544a3
 +                />
 +              </div>
 +            </div>
-+            <div className="flex items-center space-x-3 pt-2">
-+              <button
-+                type="submit"
-+                data-testid="save-user-btn"
-+                className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold rounded-md transition-colors"
-+              >
-+                Save and Sync Details
-+              </button>
++
++            <div className="flex items-center justify-end space-x-3 pt-2">
 +              <button
 +                type="button"
 +                onClick={() => setIsEditingUser(false)}
-+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-md border border-gray-300 transition-colors"
++                className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors"
 +              >
 +                Cancel
++              </button>
++              <button
++                type="submit"
++                data-testid="save-user-rename-btn"
++                className="px-3 py-1.5 text-xs font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded shadow-xs transition-colors"
++              >
++                Save Profile & Sync Passkeys
 +              </button>
 +            </div>
 +          </form>
 +        ) : (
-+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-+            <div>
-+              <span className="block text-xs text-gray-500 font-medium">Username:</span>
-+              <span className="font-semibold text-gray-900" data-testid="current-username">{user.name}</span>
++          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
++            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
++              <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Username</span>
++              <span className="text-sm font-medium text-gray-800 mt-0.5 block" data-testid="user-name">{user.name}</span>
 +            </div>
-+            <div>
-+              <span className="block text-xs text-gray-500 font-medium">Display Name:</span>
-+              <span className="font-semibold text-gray-900" data-testid="current-displayname">{user.displayName}</span>
-+            </div>
-+            <div>
-+              <span className="block text-xs text-gray-500 font-medium">User ID (Base64URL):</span>
-+              <span className="font-mono text-xs text-gray-600">{user.id}</span>
++            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
++              <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Display Name</span>
++              <span className="text-sm font-medium text-gray-800 mt-0.5 block" data-testid="user-display-name">{user.displayName}</span>
 +            </div>
 +          </div>
 +        )}
 +      </div>
 +
-+      {/* Saved Passkeys List Section */}
++      {/* Passkey Credentials List Section */}
 +      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
 +        <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100">
 +          <div>
-+            <h2 className="text-lg font-bold text-gray-900">Registered Passkeys</h2>
-+            <p className="text-xs text-gray-500">All authentication credentials stored for this account</p>
++            <h2 className="text-lg font-bold text-gray-900">Saved Passkeys</h2>
++            <p className="text-xs text-gray-500">Passkeys created for signing in to this account</p>
 +          </div>
-+          <span className="text-xs font-semibold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full">
-+            {credentials.length} {credentials.length === 1 ? 'passkey' : 'passkeys'}
-+          </span>
++          <button
++            onClick={() => loadManagementPanel()}
++            className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1 font-medium"
++          >
++            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5">
++              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
++            </svg>
++            Refresh
++          </button>
 +        </div>
 +
 +        {/* Loading State */}
 +        {loading && (
 +          <div className="py-12 text-center text-gray-500">
-+            <svg className="animate-spin h-6 w-6 text-gray-600 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
++            <svg className="animate-spin h-6 w-6 text-gray-600 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
 +              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
++              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
 +            </svg>
 +            <p className="text-sm">Loading registered passkeys...</p>
 +          </div>
@@ -665,7 +702,7 @@ index 0000000..48544a3
 +
 +        {/* Empty State */}
 +        {!loading && credentials.length === 0 && (
-+          <div className="py-12 text-center text-gray-500" data-testid="empty-passkey-state">
++          <div className="py-12 text-center text-gray-500" data-testid="empty-state">
 +            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3 text-gray-400">
 +              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
 +                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
@@ -678,7 +715,7 @@ index 0000000..48544a3
 +
 +        {/* Credential Rows */}
 +        {!loading && credentials.length > 0 && (
-+          <div className="divide-y divide-gray-100" id="passkey-list" data-testid="passkey-list">
++          <div className="credential-list divide-y divide-gray-100" id="list-container" data-testid="credential-list">
 +            {credentials.map((cred) => {
 +              const providerInfo = resolveAaguid(cred.aaguid, cred.name);
 +              const displayName = cred.name || providerInfo.name;
@@ -687,18 +724,19 @@ index 0000000..48544a3
 +              return (
 +                <div
 +                  key={cred.id}
-+                  data-testid={`passkey-row-${cred.id}`}
-+                  className="passkey-row py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 p-3 rounded-lg transition-colors"
++                  data-testid={`credential-item-${cred.id}`}
++                  className="credential-item passkey-row py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 p-3 rounded-lg transition-colors"
 +                >
 +                  {/* Left: Icon & Names */}
-+                  <div className="flex items-start space-x-3.5">
++                  <div className="flex items-start space-x-3.5 credential-info">
 +                    {/* Provider Icon */}
 +                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 border border-gray-200 overflow-hidden">
 +                      {providerIcon ? (
 +                        <img
 +                          src={providerIcon}
++                          data-testid="provider-icon"
 +                          alt={displayName || 'Passkey provider icon'}
-+                          className="w-7 h-7 object-contain passkey-provider-icon"
++                          className="w-7 h-7 object-contain passkey-provider-icon provider-icon"
 +                        />
 +                      ) : (
 +                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-gray-600">
@@ -708,9 +746,9 @@ index 0000000..48544a3
 +                    </div>
 +
 +                    {/* Name & Dates */}
-+                    <div>
++                    <div className="provider-details">
 +                      <div className="flex items-center space-x-2">
-+                        <span className="font-semibold text-gray-900 text-sm passkey-name" data-testid="passkey-name">
++                        <span className="font-semibold text-gray-900 text-sm passkey-name provider-name" data-testid="provider-name">
 +                          {displayName}
 +                        </span>
 +                        {cred.aaguid && cred.aaguid !== '00000000-0000-0000-0000-000000000000' && (
@@ -721,13 +759,17 @@ index 0000000..48544a3
 +                      </div>
 +
 +                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
-+                        <span className="passkey-registered-date" data-testid="passkey-registered-date">
++                        <span className="passkey-registered-date timestamp" data-testid="passkey-registered-date">
 +                          Registered: {formatHumanReadableDate(cred.registeredAt)}
 +                        </span>
-+                        <span className="text-gray-300">•</span>
-+                        <span className="passkey-last-used-date font-medium text-gray-700" data-testid="passkey-last-used-date">
-+                          Last used: {formatHumanReadableDate(cred.lastUsedAt)}
-+                        </span>
++                        {cred.lastUsedAt && (
++                          <>
++                            <span className="text-gray-300">•</span>
++                            <span className="passkey-last-used-date timestamp font-medium text-gray-700" data-testid="last-used">
++                              Last used: {formatHumanReadableDate(cred.lastUsedAt)}
++                            </span>
++                          </>
++                        )}
 +                      </div>
 +                    </div>
 +                  </div>
@@ -739,17 +781,17 @@ index 0000000..48544a3
 +                        setRenamingCred(cred);
 +                        setNewCredName(cred.name || displayName);
 +                      }}
-+                      data-testid={`rename-btn-${cred.id}`}
++                      data-testid={`rename-button-${cred.id}`}
 +                      aria-label={`Rename passkey ${displayName}`}
-+                      className="passkey-rename-btn px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-md shadow-2xs transition-colors"
++                      className="rename-btn passkey-rename-btn px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-md shadow-2xs transition-colors"
 +                    >
 +                      Rename
 +                    </button>
 +                    <button
 +                      onClick={() => performDelete(cred.id)}
-+                      data-testid={`delete-btn-${cred.id}`}
++                      data-testid={`delete-button-${cred.id}`}
 +                      aria-label={`Delete passkey ${displayName}`}
-+                      className="passkey-delete-btn px-3 py-1.5 text-xs font-semibold text-red-600 bg-white hover:bg-red-50 border border-red-200 rounded-md shadow-2xs transition-colors"
++                      className="delete-btn passkey-delete-btn px-3 py-1.5 text-xs font-semibold text-red-600 bg-white hover:bg-red-50 border border-red-200 rounded-md shadow-2xs transition-colors"
 +                    >
 +                      Delete
 +                    </button>
@@ -811,7 +853,7 @@ index 0000000..48544a3
 +}
 diff --git a/src/data/aaguids.json b/src/data/aaguids.json
 new file mode 100644
-index 0000000..4a633ee
+index 0000000..e19f40b
 --- /dev/null
 +++ b/src/data/aaguids.json
 @@ -0,0 +1,107 @@
@@ -851,7 +893,7 @@ index 0000000..4a633ee
 +    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA1NzJFQyIgZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0tMS0xM2gydjZoLTJ6bTAgOGgydjJoLTJ6Ii8+PC9zdmc+",
 +    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzA1NzJFQyIgZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0tMS0xM2gydjZoLTJ6bTAgOGgydjJoLTJ6Ii8+PC9zdmc+"
 +  },
-+  "4c2b9a7c-3f2d-4b71-b219-4822557e1039": {
++  "0bce545a-a111-40ff-90a9-29bf8b5a0349": {
 +    "name": "Dashlane",
 +    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzBGRjFBNSIgZD0iTTEyIDJDMi41IDIgMSAxMC41IDEgMTJzMS41IDEwIDExIDEwIDExLTQuNSAxMS0xMFMyMS41IDIgMTIgMnoiLz48L3N2Zz4=",
 +    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzBGRjFBNSIgZD0iTTEyIDJDMi41IDIgMSAxMC41IDEgMTJzMS41IDEwIDExIDEwIDExLTQuNSAxMS0xMFMyMS41IDIgMTIgMnoiLz48L3N2Zz4="

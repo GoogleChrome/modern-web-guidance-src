@@ -4,136 +4,270 @@ import {
   getTargetFiles,
   getJsProject,
 } from '../../../../test-fixture.ts';
-import { SyntaxKind } from 'ts-morph';
+import { SyntaxKind, Node } from 'ts-morph';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('passkey-management Target Grader', () => {
-
-  // --- REQUIREMENT 1: Registered credentials fetching on load ---
-  test('The application fetches registered credentials from the credential endpoint on load.', () => {
+test.describe('Passkey Management Target Grader', () => {
+  // Requirement 1: The application fetches registered credentials from the credential endpoint on load.
+  test('The application fetches registered credentials from the credential endpoint on load', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const fetchesCredentials = sourceFiles.some((sf) => {
-      const text = sf.getFullText();
-      const hasCredEndpoint = /api\/credentials?|\bcredentials?\b/i.test(text);
-      const hasFetchCall = sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
-        const expr = call.getExpression().getText();
-        return expr === 'fetch' || expr.endsWith('.fetch') || /fetch/i.test(expr);
+    const hasCredentialEndpoint = sourceFiles.some((sf) => {
+      const strings = [
+        ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+        ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+      ];
+      return strings.some((s) => {
+        const val = s.getLiteralValue().toLowerCase();
+        return (val.includes('credential') || val.includes('credentials')) && !val.includes('authenticatorselection');
       });
-      return hasCredEndpoint && hasFetchCall;
     });
 
-    expect(fetchesCredentials).toBe(true);
+    const calls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const hasLoadFetch = calls.some((call) => {
+      const expr = call.getExpression().getText();
+      const isLoad = expr === 'useEffect' || expr === 'React.useEffect' ||
+        (expr.includes('addEventListener') && call.getArguments().some((a) => a.getText().includes('DOMContentLoaded')));
+      if (!isLoad) return false;
+      return call.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => {
+        const name = id.getText().toLowerCase();
+        return name.includes('load') || name.includes('credential') || name.includes('list');
+      });
+    });
+
+    expect(hasCredentialEndpoint && hasLoadFetch).toBe(true);
   });
 
-  // --- REQUIREMENT 2: signalAllAcceptedCredentials invocation on page load ---
-  test('The application automatically invokes signalAllAcceptedCredentials on load (for example, via DOMContentLoaded or component mount) to sync accepted credentials list strings with the password manager.', () => {
+  // Requirement 2: The application automatically invokes signalAllAcceptedCredentials on load to sync accepted credentials.
+  test('The application automatically invokes signalAllAcceptedCredentials on load to sync accepted credentials', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const syncsOnLoad = sourceFiles.some((sf) => {
-      const text = sf.getFullText();
-      const callsSignalAll = text.includes('signalAllAcceptedCredentials');
-      const handlesLoadEvent = text.includes('DOMContentLoaded') || text.includes('readyState') || text.includes('useEffect') || /loadManagement|syncAcceptedCredentials/i.test(text);
-      const passesCredentialIds = text.includes('allAcceptedCredentialIds') || /credentialIds|currentCredentials/i.test(text);
-      return callsSignalAll && handlesLoadEvent && passesCredentialIds;
+    const hasSignalAll = sourceFiles.some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalAllAcceptedCredentials')
+    );
+    const calls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const invokesOnLoad = calls.some((call) => {
+      const expr = call.getExpression().getText();
+      const isLoad = expr === 'useEffect' || expr === 'React.useEffect' ||
+        (expr.includes('addEventListener') && call.getArguments().some((a) => a.getText().includes('DOMContentLoaded')));
+      if (!isLoad) return false;
+      const ids = call.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
+      return ids.some((id) =>
+        id === 'signalAllAcceptedCredentials' ||
+        id === 'syncAcceptedCredentials' ||
+        id === 'loadCredentials' ||
+        id === 'loadManagementPanel' ||
+        id === 'load'
+      );
     });
 
-    expect(syncsOnLoad).toBe(true);
+    expect(hasSignalAll && invokesOnLoad).toBe(true);
   });
 
-  // --- REQUIREMENT 3: signalAllAcceptedCredentials invocation in delete handler ---
-  test('The application updates passkey providers by immediately calling signalAllAcceptedCredentials within the delete trigger handler upon successful deletions.', () => {
+  // Requirement 3: The application updates passkey providers by immediately calling signalAllAcceptedCredentials within delete trigger handler.
+  test('The application updates passkey providers by calling signalAllAcceptedCredentials within the delete trigger handler', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const syncsOnDelete = sourceFiles.some((sf) => {
-      const functions = [
+    const updatesOnDelete = sourceFiles.some((sf) => {
+      const fns = [
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
         ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
-        ...sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration),
       ];
-
-      return functions.some((fn) => {
-        const fnText = fn.getFullText();
-        const parentVarText = fn.getParent()?.getKind() === SyntaxKind.VariableDeclaration
-          ? fn.getParent()?.getText() || ''
-          : '';
-        const fnName = 'getName' in fn && typeof (fn as any).getName === 'function'
-          ? (fn as any).getName() || ''
-          : '';
-
-        const isDeleteHandler =
-          /delete/i.test(fnName) ||
-          /delete/i.test(parentVarText) ||
-          /method:\s*['"`]DELETE['"`]|deleteFetch|\.delete\(/i.test(fnText);
-
+      return fns.some((fn) => {
+        const parent = fn.getParent();
+        const fnName = parent && Node.isVariableDeclaration(parent)
+          ? parent.getName()
+          : (Node.isFunctionDeclaration(fn) ? (fn.getName() || '') : '');
+        const isDeleteHandler = fnName.toLowerCase().includes('delete') ||
+          fn.getDescendantsOfKind(SyntaxKind.StringLiteral).some((lit) => lit.getLiteralValue() === 'DELETE') ||
+          fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText().toLowerCase().includes('delete'));
         if (!isDeleteHandler) return false;
 
-        return /signalAllAcceptedCredentials|syncAcceptedCredentials/i.test(fnText);
+        const calls = fn.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => {
+          const e = c.getExpression();
+          return Node.isPropertyAccessExpression(e) ? e.getName() : e.getText();
+        });
+        const hasSignal = calls.some((n) =>
+          n === 'signalAllAcceptedCredentials' ||
+          n === 'syncAcceptedCredentials' ||
+          n === 'loadCredentials'
+        );
+        return hasSignal && sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalAllAcceptedCredentials');
       });
     });
 
-    expect(syncsOnDelete).toBe(true);
+    expect(updatesOnDelete).toBe(true);
   });
 
-  // --- REQUIREMENT 4: signalCurrentUserDetails invocation in rename handler ---
-  test('The application invokes signalCurrentUserDetails within the user profile rename handler upon successful username or display name rename.', () => {
+  // Requirement 4: The application invokes signalCurrentUserDetails within the user profile rename handler upon successful rename.
+  test('The application invokes signalCurrentUserDetails within the user profile rename handler upon successful rename', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const signalsUserDetails = sourceFiles.some((sf) => {
-      const text = sf.getFullText();
-      const callsSignalUserDetails = text.includes('signalCurrentUserDetails');
-      const hasNameProps = /displayName|name/i.test(text);
-      const hasUserContext = /user|profile|account|rename/i.test(text);
-      return callsSignalUserDetails && hasNameProps && hasUserContext;
+    const updatesOnRename = sourceFiles.some((sf) => {
+      const fns = [
+        ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
+        ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
+        ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
+      ];
+      return fns.some((fn) => {
+        const parent = fn.getParent();
+        const fnName = parent && Node.isVariableDeclaration(parent)
+          ? parent.getName()
+          : (Node.isFunctionDeclaration(fn) ? (fn.getName() || '') : '');
+        const isUserRename = fnName.toLowerCase().includes('user') ||
+          fnName.toLowerCase().includes('profile') ||
+          fnName.toLowerCase().includes('rename') ||
+          fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => {
+            const t = id.getText();
+            return t === 'displayName' || t === 'username' || t === 'nameDraft' || t === 'editUsername';
+          });
+        if (!isUserRename) return false;
+
+        const calls = fn.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => {
+          const e = c.getExpression();
+          return Node.isPropertyAccessExpression(e) ? e.getName() : e.getText();
+        });
+        const hasSignalCall = calls.some((n) => n.includes('signalCurrentUserDetails'));
+        const hasSignalId = fn.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText() === 'signalCurrentUserDetails');
+        return hasSignalCall || hasSignalId;
+      });
     });
 
-    expect(signalsUserDetails).toBe(true);
+    expect(updatesOnRename).toBe(true);
   });
 
-  // --- REQUIREMENT 5: AAGUID registry resolution and credential row rendering ---
-  test('Each credential row resolved against the AAGUID registry renders info such as the provider icon, name and a human-readable last-used timestamp.', () => {
+  // Requirement 5A: Passkey provider metadata is resolved against an AAGUID registry.
+  test('Passkey provider metadata is resolved against an AAGUID registry', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     const hasAaguidResolution = sourceFiles.some((sf) => {
-      const text = sf.getFullText();
-      const hasAaguidRef = /aaguid/i.test(text);
-      const hasFallbackOrLookup =
-        /00000000-0000-0000-0000-000000000000|ZERO_AAGUID|aaguids|aaguidRegistry|AAGUID_REGISTRY/i.test(text);
-      return hasAaguidRef && hasFallbackOrLookup;
-    }) || targetFiles.some((f) => /aaguid.*\.json$/i.test(f));
-
-    const rendersCredentialInfo = sourceFiles.some((sf) => {
-      const text = sf.getFullText();
-      const hasLastUsed = /lastUsedAt|lastUsed|last-used/i.test(text);
-      const hasDateFormatting = /DateTimeFormat|toLocale|Date|formatDate|formatTimestamp|formatHumanReadableDate/i.test(text);
-      const hasIconOrName = /providerIcon|iconLight|icon_light|icon_dark|provider-icon|displayName|passkey-name|name/i.test(text);
-      return hasLastUsed && hasDateFormatting && hasIconOrName;
+      const hasAaguid = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => id.getText().toLowerCase().includes('aaguid'));
+      const ids = sf.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
+      const hasRegistry = ids.some((id) =>
+        id === 'aaguids' ||
+        id === 'registry' ||
+        id === 'aaguidRegistry' ||
+        id === 'passkeyProvider' ||
+        id === 'resolveAaguid'
+      );
+      const strings = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((s) => s.getLiteralValue());
+      const hasRegistryFile = strings.some((s) => s.includes('aaguids'));
+      return hasAaguid && (hasRegistry || hasRegistryFile);
     });
 
-    expect(hasAaguidResolution && rendersCredentialInfo).toBe(true);
+    expect(hasAaguidResolution).toBe(true);
   });
 
-  // --- REQUIREMENT 6: Create Passkey button capability gating ---
-  test('The "Create Passkey" entry-point button is gated on PublicKeyCredential.getClientCapabilities and hidden when passkey is unsupported.', () => {
+  // Requirement 5B: Each credential row renders the passkey provider icon.
+  test('Each credential row renders the passkey provider icon', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const gatesCreatePasskey = sourceFiles.some((sf) => {
-      const text = sf.getFullText();
-      const hasGetClientCapabilities = text.includes('getClientCapabilities');
-      const checksPlatformAuth = /passkeyPlatformAuthenticator|userVerifyingPlatformAuthenticator/i.test(text);
-      const gatesButton = /create.*passkey|canCreatePasskey|isPasskeySupported|createButton|unsupported|hidden|display/i.test(text);
-      return hasGetClientCapabilities && (checksPlatformAuth || gatesButton);
+    const rendersProviderIcon = sourceFiles.some((sf) => {
+      const filePath = sf.getFilePath().toLowerCase();
+      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
+      const jsxElements = [
+        ...sf.getDescendantsOfKind(SyntaxKind.JsxElement),
+        ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
+      ];
+      return jsxElements.some((el) => {
+        const tagName = Node.isJsxElement(el)
+          ? el.getOpeningElement().getTagNameNode().getText()
+          : el.getTagNameNode().getText();
+        const isIconTag = tagName === 'img' || tagName.toLowerCase().includes('icon');
+        if (!isIconTag) return false;
+        const text = el.getText();
+        return text.toLowerCase().includes('icon') || text.includes('provider');
+      });
     });
 
-    expect(gatesCreatePasskey).toBe(true);
+    expect(rendersProviderIcon).toBe(true);
+  });
+
+  // Requirement 5C: Each credential row renders the credential or provider name.
+  test('Each credential row renders the credential or provider name', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const rendersName = sourceFiles.some((sf) => {
+      const filePath = sf.getFilePath().toLowerCase();
+      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
+      const jsxExpressions = sf.getDescendantsOfKind(SyntaxKind.JsxExpression);
+      return jsxExpressions.some((expr) => {
+        const ids = expr.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
+        return ids.some((id) => id === 'name' || id === 'displayName' || id === 'nickname');
+      });
+    });
+
+    expect(rendersName).toBe(true);
+  });
+
+  // Requirement 5D: Each credential row renders a formatted human-readable last-used timestamp.
+  test('Each credential row renders a formatted human-readable last-used timestamp', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const rendersFormattedLastUsed = sourceFiles.some((sf) => {
+      const filePath = sf.getFilePath().toLowerCase();
+      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
+      const hasLastUsed = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) =>
+        id.getText().toLowerCase().includes('lastused')
+      );
+      if (!hasLastUsed) return false;
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      return calls.some((c) => {
+        const expr = c.getExpression();
+        const name = Node.isPropertyAccessExpression(expr) ? expr.getName() : expr.getText();
+        return name === 'toLocaleDateString' ||
+          name === 'toLocaleString' ||
+          name === 'formatDate' ||
+          name === 'formatHumanReadableDate' ||
+          name === 'date';
+      });
+    });
+
+    expect(rendersFormattedLastUsed).toBe(true);
+  });
+
+  // Requirement 6A: Passkey platform authenticator capability is detected via PublicKeyCredential.getClientCapabilities.
+  test('Passkey platform authenticator capability is detected via PublicKeyCredential.getClientCapabilities', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const calls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const hasGetClientCaps = calls.some((call) => {
+      const expr = call.getExpression();
+      const propName = Node.isPropertyAccessExpression(expr) ? expr.getName() : '';
+      return propName === 'getClientCapabilities';
+    });
+
+    expect(hasGetClientCaps).toBe(true);
+  });
+
+  // Requirement 6B: The "Create Passkey" entry-point button is conditionally gated and hidden when passkeys are unsupported.
+  test('The "Create Passkey" entry-point button is conditionally gated and hidden when passkeys are unsupported', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const buttons = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.JsxElement).filter((el) =>
+        el.getOpeningElement().getTagNameNode().getText() === 'button'
+      )
+    );
+    const createButton = buttons.find((b) => b.getText().toLowerCase().includes('create'));
+    const isGated = Boolean(createButton && createButton.getAncestors().some((a) =>
+      a.getKind() === SyntaxKind.BinaryExpression ||
+      a.getKind() === SyntaxKind.ConditionalExpression ||
+      a.getKind() === SyntaxKind.IfStatement
+    ));
+
+    expect(isGated).toBe(true);
   });
 });
-
