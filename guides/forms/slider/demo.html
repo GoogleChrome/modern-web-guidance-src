@@ -138,13 +138,7 @@
       outline-offset: 4px;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      input[type="range"] {
-        scroll-behavior: auto;
-      }
-    }
-
-    [dir="rtl"] input[type="range"] {
+    input[type="range"]:dir(rtl) {
       --slider-direction: to left;
     }
   </style>
