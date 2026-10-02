@@ -1,10 +1,9 @@
-- **OPTIONAL**: When pointer dragging is supported, dragging an item—preferably from a dedicated drag handle—changes the item's DOM and visible position within the collection.
-- **OPTIONAL**: During a pointer drag, provide visual feedback that follows the pointer without blocking detection of destination items. If that feedback is a faded copy of the item, make the original item visibly distinct until the drag ends.
-- **MANDATORY**: Reordering moves the existing item rather than replacing it, so state in controls inside that item is retained.
-- **MANDATORY**: Each item provides an accessible keyboard reordering mechanism, such as an appropriately named, focusable drag handle that supports `ArrowUp` and `ArrowDown`, or separate movement buttons (or an options menu containing them).
-- **MANDATORY**: The keyboard reordering mechanism moves the item up in the collection.
-- **MANDATORY**: The keyboard reordering mechanism moves the item down in the collection.
-- **MANDATORY**: Focus remains on the keyboard reordering mechanism after reordering, shifting to an alternative control on the same item when necessary to prevent focus loss.
-- **MANDATORY**: The keyboard reordering mechanism prevents movement beyond the first and last items.
-- **MANDATORY**: Keyboard reordering actions are announced in a live region with the item's final position.
-- **MANDATORY WHEN REORDERING IS SUPPLEMENTARY**: The collection remains readable and usable in its default DOM order without JavaScript.
+- Dragging an item with a pointer—preferably from a dedicated drag handle—changes the item's DOM and visible position within the collection.
+- Reordering moves the existing DOM element rather than recreating it, preserving state in controls inside that item.
+- Each item provides an accessible keyboard reordering mechanism, such as an appropriately named, focusable drag handle that supports `ArrowUp` and `ArrowDown`, or separate movement buttons (or an options menu containing them).
+- The keyboard reordering mechanism moves the item up in the collection.
+- The keyboard reordering mechanism moves the item down in the collection.
+- Focus remains on the keyboard reordering mechanism after reordering, shifting to an alternative control on the same item when necessary to prevent focus loss.
+- The keyboard reordering mechanism prevents movement beyond the first and last items.
+- Reordering actions are announced in a live region with the item's new position.
+- The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.
