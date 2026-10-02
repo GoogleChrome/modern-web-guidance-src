@@ -383,6 +383,20 @@ Some description.
     assert.deepStrictEqual(result, ['override-issue-reviewer']);
   });
 
+  it('resolves unprefixed feature IDs in issue descriptions against tmp-* pending feature groups and overrides', () => {
+    const description = `
+### web-feature-id
+
+scroll-axis-lock
+
+### Feature description
+Some description.
+`;
+    // 'tmp-scroll-axis-lock' is registered under 'scrolling' in features/pending-web-features.json
+    const result = handleIssue(123, [], description, mockConfig);
+    assert.deepStrictEqual(result, ['group-issue-reviewer']);
+  });
+
   it('supports extracting Web Feature ID from webstatus.dev URLs in the issue template', () => {
     const description = `
 ### web-feature-id

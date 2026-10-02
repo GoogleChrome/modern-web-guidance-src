@@ -3,7 +3,7 @@ import path from 'path';
 import { Octokit } from '@octokit/rest';
 import { fileURLToPath } from 'url';
 import { ProjectStatus, processGuideInventory, scanAllGuides, type GuideInventory } from '../lib/guide-validation.ts';
-import { extractFeatureIds } from '../lib/feature-parser.ts';
+import { extractFeatureIds, stripTmpPrefix } from '../lib/feature-parser.ts';
 import { parseBooleanEnv } from '../lib/env.ts';
 
 // --- Types ---
@@ -136,7 +136,7 @@ export function buildIssueContent(
   let milestoneNumber: number | null = null;
 
   for (const id of featureIds) {
-    const featureData = featureToIssueMap.get(id);
+    const featureData = featureToIssueMap.get(stripTmpPrefix(id));
     if (featureData) {
       relatedLinks.push(`#${featureData.number}`);
       if (!priorityLabel && featureData.priorityLabel) {
@@ -175,7 +175,7 @@ export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueD
         .map((l: any) => (typeof l === 'string' ? l : l.name))
         .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
       const milestoneNumber = issue.milestone ? issue.milestone.number : null;
-      map.set(fid, { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
+      map.set(stripTmpPrefix(fid), { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
     }
   }
   return map;
@@ -241,14 +241,15 @@ export function getFeaturesNeedingSync(
   featuresNeedingInvestigation: Set<string> = new Set(),
   projectDetails: ProjectDetails | null = null
 ): FeatureToSync[] {
+  const hasFeature = (set: Set<string>, id: string) => set.has(id) || set.has(`tmp-${id}`);
   const result: FeatureToSync[] = [];
   for (const [featureId, featureData] of featureToIssueMap) {
     const isInvestigatingFeature = projectDetails?.issueStatusMap.get(featureData.number) === ProjectStatus.NeedsInvestigation;
-    const hasActiveUseCases = featuresWithActiveUseCases.has(featureId) || isInvestigatingFeature;
-    const hasCompletedUseCases = !hasActiveUseCases && featuresWithAnyUseCases.has(featureId);
+    const hasActiveUseCases = hasFeature(featuresWithActiveUseCases, featureId) || isInvestigatingFeature;
+    const hasCompletedUseCases = !hasActiveUseCases && hasFeature(featuresWithAnyUseCases, featureId);
 
     if (hasActiveUseCases) {
-      const isInvestigating = featuresNeedingInvestigation.has(featureId) || isInvestigatingFeature;
+      const isInvestigating = hasFeature(featuresNeedingInvestigation, featureId) || isInvestigatingFeature;
       result.push({
         featureId,
         issueNumber: featureData.number,
@@ -264,7 +265,7 @@ export function getFeaturesNeedingSync(
         closeReason: 'completed',
         targetStatus: null,
       });
-    } else if (!featuresWithAnyUseCases.has(featureId) && (featureData.state === 'open' || isInvestigatingFeature)) {
+    } else if (!hasFeature(featuresWithAnyUseCases, featureId) && (featureData.state === 'open' || isInvestigatingFeature)) {
       result.push({
         featureId,
         issueNumber: featureData.number,
@@ -603,14 +604,16 @@ async function processUseCases(
 
     if (currentProjectStatus === ProjectStatus.NeedsInvestigation) {
       for (const id of featureIds) {
-        featuresWithActiveUseCases.add(id);
-        featuresNeedingInvestigation.add(id);
+        const normalizedId = stripTmpPrefix(id);
+        featuresWithActiveUseCases.add(normalizedId);
+        featuresNeedingInvestigation.add(normalizedId);
       }
     }
 
     for (const id of featureIds) {
-      if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);
-      featureUseCaseMap.get(id)!.push({ name, issueNumber, complete: statusName === null && currentProjectStatus !== ProjectStatus.NeedsInvestigation });
+      const normalizedId = stripTmpPrefix(id);
+      if (!featureUseCaseMap.has(normalizedId)) featureUseCaseMap.set(normalizedId, []);
+      featureUseCaseMap.get(normalizedId)!.push({ name, issueNumber, complete: statusName === null && currentProjectStatus !== ProjectStatus.NeedsInvestigation });
     }
 
     let statusChanged = false;

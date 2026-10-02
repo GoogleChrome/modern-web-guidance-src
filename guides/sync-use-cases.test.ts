@@ -417,6 +417,13 @@ describe('buildFeatureToIssueMap', () => {
     const map = buildFeatureToIssueMap(issues);
     assert.strictEqual(map.get('my-feature')?.priorityLabel, 'P2');
   });
+
+  test('strips tmp- prefix from feature IDs extracted from issue bodies', () => {
+    const issues = [{ number: 1265, body: '### web-feature-id\n\ntmp-scroll-axis-lock', labels: ['P0', 'new-feature'], state: 'open' }];
+    const map = buildFeatureToIssueMap(issues);
+    assert.strictEqual(map.get('scroll-axis-lock')?.number, 1265);
+    assert.strictEqual(map.get('tmp-scroll-axis-lock'), undefined);
+  });
 });
 
 describe('buildUseCaseMaps', () => {
@@ -606,6 +613,14 @@ describe('buildIssueContent', () => {
     assert.ok(issueBody.includes('Related features: #99'));
     assert.strictEqual(priorityLabel, 'P1');
     assert.strictEqual(milestoneNumber, 2);
+  });
+
+  test('strips tmp- prefix when matching guide feature IDs to feature issues', () => {
+    const featureMap = new Map([['scroll-axis-lock', { number: 1265, priorityLabel: 'P0', milestoneNumber: 3, state: 'open', body: '' }]]);
+    const { issueBody, priorityLabel, milestoneNumber } = buildIssueContent('diagonal-panning', 'desc', ['tmp-scroll-axis-lock'], 'guides/ui-behaviors/diagonal-panning', featureMap, makeInventory());
+    assert.ok(issueBody.includes('Related features: #1265'));
+    assert.strictEqual(priorityLabel, 'P0');
+    assert.strictEqual(milestoneNumber, 3);
   });
 
   test('uses priority label from first matched feature only', () => {
@@ -871,5 +886,24 @@ Body content.
     assert.strictEqual(result.errors.length, 0);
     assert.strictEqual(result.hasError, false);
     assert.strictEqual(result.preparedGuides.length, 1);
+  });
+
+  test('strips tmp- prefix from featuresWithAnyUseCases and featuresWithActiveUseCases', () => {
+    fs.writeFileSync(path.join(tempDir, 'my-use-case', 'guide.md'), `---
+name: my-use-case
+description: A description
+web-feature-ids:
+  - tmp-scroll-axis-lock
+---
+
+# My Use Case
+
+Body content.
+`);
+    const result = processGuideInventory([makeInventory()]);
+    assert.strictEqual(result.errors.length, 0);
+    assert.ok(result.featuresWithAnyUseCases.has('scroll-axis-lock'));
+    assert.ok(result.featuresWithActiveUseCases.has('scroll-axis-lock'));
+    assert.ok(!result.featuresWithAnyUseCases.has('tmp-scroll-axis-lock'));
   });
 });
