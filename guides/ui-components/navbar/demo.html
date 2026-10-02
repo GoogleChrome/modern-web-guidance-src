@@ -349,7 +349,6 @@
         inset: auto;
         inset-block: auto;
         height: auto;
-        display: grid;
         gap: 0.25rem;
         inline-size: max-content;
         min-inline-size: 12rem;
@@ -363,6 +362,10 @@
         border-radius: 0.5rem;
         background: var(--surface-raised);
         box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 15%);
+      }
+
+      .dropdown-list:popover-open {
+        display: grid;
       }
 
       .dropdown-list .menu-link {
