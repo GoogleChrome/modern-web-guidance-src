@@ -264,7 +264,11 @@
     }
 
     function moveItem(item, before) {
-      list.moveBefore(item, before);
+      if ('moveBefore' in Element.prototype) {
+        list.moveBefore(item, before);
+      } else {
+        list.insertBefore(item, before);
+      }
     }
 
     function finishPointerReorder() {
@@ -294,9 +298,9 @@
     }
 
     list.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
       const handle = event.target.closest('.drag-handle');
       if (!handle) return;
-
       event.preventDefault();
       pointerItem = handle.closest('.task');
       const rect = pointerItem.getBoundingClientRect();
