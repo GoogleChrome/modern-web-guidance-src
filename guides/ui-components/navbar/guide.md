@@ -193,9 +193,12 @@ For collision-aware submenu positioning, see {{ GUIDE_REF("resilient-context-men
     position-try-fallbacks: flip-block;
     inset: auto;
     height: auto;
-    display: grid;
     inline-size: max-content;
     min-inline-size: 12rem;
+  }
+
+  .dropdown-list:popover-open {
+    display: grid;
   }
 }
 ```
