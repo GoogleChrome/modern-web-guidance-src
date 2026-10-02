@@ -73,3 +73,24 @@ Configure the preferred model for Jetski CLI agent runs:
 # Model selection for Jetski CLI agent runs
 JETSKI_MODEL='Gemini 3.8 Flash (Medium)'
 ```
+
+---
+
+### Antigravity CLI
+
+**Installation:**
+Antigravity CLI (`agy`) must be installed first:
+```bash
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+```
+Then run `agy` once interactively to sign in.
+
+**Configuration:**
+Set the GCP project in `~/.gemini/antigravity-cli/settings.json` (`gcp.project`), or override it in your `.env` file:
+```bash
+ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID>
+# Optional: path to the agy binary if it is not on your PATH (e.g. under cron)
+ANTIGRAVITY_CLI_BIN=/home/<you>/.local/bin/agy
+# Optional: model override for Antigravity CLI agent runs
+ANTIGRAVITY_MODEL=gemini-3.8-flash-medium
+```

@@ -37,7 +37,8 @@ import {
   resetGuidesMap,
   inventoryGuide,
   classifyGuide,
-  scanAllGuides
+  scanAllGuides,
+  isDisciplineGuide,
 } from '../lib/guide-validation.ts';
 import { runDevReport } from './lib/dev-report.ts';
 
@@ -224,9 +225,15 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
     // Git init is required for capturePatchFromGit to extract git diffs
     initGitRepo(workDir);
 
+    const promptOpts = {
+      guideFile: GUIDE_FILE,
+      expectationsFile: EXPECTATIONS_FILE,
+      workDir,
+      isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+    };
     const prompt = patchType === 'zero-passrate'
-      ? buildZeroPassratePrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir })
-      : buildSolutionPrompt({ guideFile: GUIDE_FILE, expectationsFile: EXPECTATIONS_FILE, workDir });
+      ? buildZeroPassratePrompt(promptOpts)
+      : buildSolutionPrompt(promptOpts);
 
     await runAgent(agent, prompt, workDir);
 

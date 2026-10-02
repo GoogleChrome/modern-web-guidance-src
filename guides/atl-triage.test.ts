@@ -10,6 +10,7 @@ import {
   getKnownCategories,
   KNOWN_CATEGORIES,
   extractFeatureIdsFromContent,
+  EVAL_PR_REVIEWER,
   githubApi
 } from './atl-triage.ts';
 import { getTranscludedFeatureIds, parseArguments } from '../serving/lib/macro-parsing.ts';
@@ -654,7 +655,19 @@ describe('handlePR', () => {
     assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton'].sort());
   });
 
-  it('returns empty array when no content files are touched and gd-dev-content label is not set', () => {
+  it('returns empty array when only eval files are touched and no gd-dev labels are set', () => {
+    const mockFiles = [
+      'guides/performance/deliver-optimized-decorative-images/grader.ts',
+      'guides/performance/deliver-optimized-decorative-images/tasks/task.md',
+      'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/grader.ts',
+      'README.md'
+    ];
+
+    const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles);
+    assert.deepStrictEqual(result, []);
+  });
+
+  it('requests review from the eval reviewer only (not ATLs) when gd-dev-eval label is set on eval-only changes', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/grader.ts',
       'guides/performance/deliver-optimized-decorative-images/tasks/task.md',
@@ -663,7 +676,7 @@ describe('handlePR', () => {
     ];
 
     const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']);
-    assert.deepStrictEqual(result, []);
+    assert.deepStrictEqual(result, [EVAL_PR_REVIEWER]);
   });
 
   it('requests review from ATL and labels content when demo.html is modified, even with gd-dev-eval label', () => {
@@ -778,6 +791,21 @@ describe('handlePR', () => {
     // 'scrollbar-color' belongs to group 'scrolling' -> 'scrolling-group-owner'
     // and is transcluded in 'visual-design' -> 'visual-owner'
     assert.deepStrictEqual(result.sort(), ['scrolling-group-owner', 'visual-owner'].sort());
+  });
+
+  it('resolves pending temporary features to their group owner', () => {
+    const config = {
+      default: {},
+      web_features: {},
+      web_features_groups: {
+        scrolling: 'scrolling-group-owner'
+      }
+    };
+
+    // 'tmp-scroll-axis-lock' is registered under 'scrolling' in features/pending-web-features.json
+    const mockFiles = ['guides/ui-behaviors/diagonal-panning/guide.md'];
+    const result = handlePR(99999, 'some-contributor', config, mockFiles);
+    assert.deepStrictEqual(result, ['scrolling-group-owner']);
   });
 
   it('auto-assigns category owners across multiple categories where a feature is transcluded', () => {

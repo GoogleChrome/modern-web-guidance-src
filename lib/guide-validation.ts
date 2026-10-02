@@ -36,6 +36,7 @@ export const DISCIPLINE_GUIDES = new Set([
 
   // Named orientation guides
   'cpp-on-the-web',
+  'css-conditionals',
   'css-layout',
   'passkeys',
 ]);
