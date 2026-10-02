@@ -52,6 +52,16 @@ handle.addEventListener('pointerdown', (event) => {
   handle.setPointerCapture(event.pointerId);
 });
 
+handle.addEventListener('pointermove', (event) => {
+  if (!handle.hasPointerCapture(event.pointerId)) return;
+  handle.classList.add('dragging');
+  moveTo(event.clientX - offsetX, event.clientY - offsetY);
+});
+
+handle.addEventListener('lostpointercapture', () => {
+  handle.classList.remove('dragging');
+});
+
 function moveTo(left, top) {
   const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
   const maxTop = Math.max(0, window.innerHeight - draggable.offsetHeight);
