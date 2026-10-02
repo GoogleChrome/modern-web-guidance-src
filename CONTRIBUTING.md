@@ -42,7 +42,7 @@ Where would you like to contribute? Follow the link for your pathway:
 | **✍️ Guidance Content** | Author or update web platform guidance (Stages 1 & 2: use cases, `guide.md`, `demo.html`, `expectations.md`, self-validation). Shielded from eval infrastructure. | **[`guides/CONTRIBUTING.md`](./guides/CONTRIBUTING.md)** |
 | **🛡️ Category Stewardship** | Content Area Tech Leads (ATLs) triaging use cases, reviewing guidance PRs, and maintaining domain category health. | **[`guides/ATLS.md`](./guides/ATLS.md)** |
 | **⚙️ Tooling, Infra & Evals** | Develop the unified `gd` CLI, prompt benchmarking harness, Playwright grader generators, serving compiler, and dashboard. | **[`harness/README.md`](./harness/README.md)** |
-| **🏛️ Project Governance** | Contributor roles (Contributors, Peers, Owners), rights, decision-making model, and meeting cadences. | **[`GOVERNANCE.md`](./GOVERNANCE.md)** |
+| **🏛️ Project Governance** | Contributor roles (Contributors, Peers, Content ATLs, Owners), rights, decision-making model, and meeting cadences. | **[`GOVERNANCE.md`](./GOVERNANCE.md)** |
 
 
 ## Repository Architecture

@@ -7,7 +7,7 @@ description: Protocol for validating the technical accuracy, framework nuances, 
 
 This protocol defines the process for an AI agent to validate the technical accuracy, framework nuances, and evaluation readiness of web guidance. In **Stage 2** (after authoring `guide.md`, `demo.html`, and `expectations.md`), authors are strongly encouraged to run their draft guides through this protocol to catch edge cases, verify demo behaviors, and ensure expectation alignment prior to opening a PR.
 
-> **Human SME Sign-Off**: Automated agent validation aids authors, maintainers, and reviewers in checking technical consistency and test calibration, but it does not replace human expertise. Every guide must be written or reviewed and approved by a human Subject Matter Expert (SME) before merging and publishing.
+> **Human SME Sign-Off**: Automated agent validation aids authors, maintainers, and reviewers in checking technical consistency, demo behavior, and expectation alignment, but it does not replace human expertise. Every guide must be authored (or co-authored) by a human Subject Matter Expert ([Peer](../../../GOVERNANCE.md#peers) or [Content ATL](../../../guides/ATLS.md)) and reviewed and approved by the category's Content ATL (or, when authored by that category's sole Content ATL, by another Content ATL, a domain Peer, or an Owner) before merging and publishing.
 
 ## Validation Checklist
 

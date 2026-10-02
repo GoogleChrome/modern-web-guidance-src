@@ -2,28 +2,30 @@
 
 The goal of this project is to create Modern Web Guidance for web platform features. This guidance will be used by other AI agents to create web pages.
 
-The development process for creating modern web guidance is split into two distinct checkpoints. This ensures that the core use cases are reviewed and approved before significant effort is invested in documentation and evaluation logic.
+The content contribution process for creating modern web guidance consists of two authoring stages (see [`guides/CONTRIBUTING.md`](./CONTRIBUTING.md) and [`GOVERNANCE.md`](../GOVERNANCE.md)). This ensures that core use cases are aligned before effort is invested in full guide authoring, while keeping content authors shielded from downstream evaluation infrastructure.
 
-**Checkpoint 1: Use case identification**
+**Stage 1: Identifying use cases**
 
 The first priority is to identify the right set of use cases for a given feature.
 
-- **Goal:** Define 2-5 action-oriented use cases that solve real-world developer problems.
-- **Deliverable:** Create a Pull Request containing **only** the use cases metadata and `demo.html` files. This includes creating the directory structure and outlining the use case definitions.
+- **Goal:** Define 2–5 action-oriented use cases that solve real-world developer problems.
+- **Deliverable:** Create `guides/<category>/<use-case-slug>/guide.md` containing **only** the YAML frontmatter stub (`name`, `description`, `web-feature-ids`) and align with the category's [Content Area Tech Lead (ATL)](./ATLS.md) via an issue or draft PR. *(Onboarded [Peers](../GOVERNANCE.md#peers) may fast-track and proceed directly to Stage 2).*
 
 Always refer to the [Use Cases](../.agents/skills/project-use-cases/SKILL.md) skill for detailed instructions.
 
-**Checkpoint 2: Implementation and evaluation**
+**Stage 2: Authoring guidance (where content contribution stops)**
 
-Once the use cases are approved, the second stage is to complete the documentation and validate them through the evals pipeline.
+Once use cases are aligned, complete the guidance, reference demo, and testable expectations.
 
-- **Goal:** Write the full content for the guides, define expectations, and generate the evaluation harness via `gd dev`.
-- **Deliverable:** A follow-up Pull Request with the complete `guide.md`, `expectations.md`, and `demo.html` for each use case, plus the auto-generated evaluation files (`grader.ts`, `negative-demo.html`, `task.md`, etc.).
+- **Goal:** Write the full content for `guide.md`, build a clean standalone `demo.html`, define observable assertions in `expectations.md`, and self-validate using the [Guide Validation](../.agents/skills/project-guide-validation/SKILL.md) skill.
+- **Deliverable:** A Pull Request containing the completed `guide.md`, `demo.html`, and `expectations.md` for review and approval by the category Content ATL.
 
-Always refer to the [Guides](../.agents/skills/project-guides/SKILL.md) and [Evaluations](../.agents/skills/project-evals/SKILL.md) skills for detailed instructions.
+Always refer to the [Guides](../.agents/skills/project-guides/SKILL.md) and [Guide Validation](../.agents/skills/project-guide-validation/SKILL.md) skills for detailed instructions.
 
-When writing content, note that it is intended to be read by *other* coding agents. In particular, `guide.md` will be read by general web developers' coding agents to learn how to use the features. Other files like `demo.html` and `expectations.md` will be used by coding agents within this project to validate that the guidance is correct. Therefore, your writing must be highly structured, deterministic, and command-oriented.
+> **Stage 3 (Evaluations & Graders):** Target evaluation suites (`targets/<base_app>/grader.ts`, solution patches, `task.md`) and calibration runs (`gd dev`) are handled downstream by the engineering pipeline and are not required in Stage 2 content PRs.
+
+When writing content, note that it is intended to be read by *other* coding agents. In particular, `guide.md` is the only file read by general web developers' coding agents to learn how to use the features. Other files like `demo.html` and `expectations.md` are used within this project to validate and evaluate the guidance. Therefore, your writing must be highly structured, deterministic, and command-oriented.
 
 **Discipline guides**
 
-If you add a discipline guide, you MUST add its slug to `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`.
+A discipline guide is either a category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`) or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts` (such as `guides/wasm/cpp-on-the-web/guide.md`). Refer to the [Discipline Guides](../.agents/skills/project-discipline-guides/SKILL.md) skill when creating or updating one.
