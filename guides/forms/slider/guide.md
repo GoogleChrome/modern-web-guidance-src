@@ -70,11 +70,7 @@ input[type="range"] {
   padding: 0;
   border: 0;
   border-radius: 0;
-  background: linear-gradient(
-    var(--slider-direction),
-    var(--slider-fill-color) var(--slider-progress),
-    var(--slider-track-color) var(--slider-progress)
-  ) center / 100% var(--slider-track-size) no-repeat;
+  background: transparent;
   cursor: pointer;
 }
 
@@ -83,7 +79,11 @@ input[type="range"]::-webkit-slider-runnable-track {
   block-size: var(--slider-track-size);
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: linear-gradient(
+    var(--slider-direction),
+    var(--slider-fill-color) var(--slider-progress),
+    var(--slider-track-color) var(--slider-progress)
+  );
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -104,7 +104,7 @@ input[type="range"]::-moz-range-track {
   block-size: var(--slider-track-size);
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: var(--slider-track-color);
 }
 
 input[type="range"]::-moz-range-progress {
