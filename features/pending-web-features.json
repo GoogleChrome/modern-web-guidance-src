@@ -23,5 +23,20 @@
   },
   "tmp-webcrypto-modern-algos": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4267"
+  },
+  "tmp-path-length": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4307"
+  },
+  "tmp-text-decoration-skip-spaces": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4344"
+  },
+  "tmp-text-decoration-inset": {
+    "issue": "https://github.com/GoogleChrome/modern-web-guidance-src/issues/1349"
+  },
+  "tmp-additional-windowing-controls": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4257"
+  },
+  "tmp-camera-microphone": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4199"
   }
 }
