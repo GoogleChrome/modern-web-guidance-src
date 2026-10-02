@@ -215,6 +215,9 @@
   "container-anchor-position-queries": [
     "css"
   ],
+  "container-name-queries": [
+    "css"
+  ],
   "container-queries": [
     "css"
   ],
@@ -996,6 +999,12 @@
   "supports-compat": [
     "css"
   ],
+  "supports-named-feature": [
+    "css"
+  ],
+  "symbols-function": [
+    "css"
+  ],
   "system-color": [
     "css"
   ],
@@ -1073,6 +1082,18 @@
     "css"
   ],
   "time-relative-selectors": [
+    "css"
+  ],
+  "tmp-column-wrap": [
+    "css"
+  ],
+  "tmp-path-length": [
+    "css"
+  ],
+  "tmp-polygon-round": [
+    "css"
+  ],
+  "tmp-revert-rule": [
     "css"
   ],
   "tmp-scroll-axis-lock": [

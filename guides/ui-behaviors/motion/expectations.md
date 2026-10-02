@@ -1,0 +1,2 @@
+- The implementation MUST use `transition-behavior: allow-discrete` and `@starting-style` when animating discrete entry and exit states (such as `<dialog>` or `[popover]` elements).
+- The implementation MUST honor `@media (prefers-reduced-motion: reduce)` by disabling or dampening animations without using a blanket `* { animation-duration: 0.01ms !important; }` override.
