@@ -180,6 +180,7 @@ Each agent has different auth file locations:
 | Pi | `auth.json`, `settings.json`, `trust.json` | `~/.pi/agent/` |
 | Claude Code | GCP credentials via env | `gcloud` config |
 | Codex CLI | OAuth via login flow | `~/.codex/` |
+| Jetski CLI | `installation_id`, `user_settings.pb`; on macOS the OAuth token lives in the login Keychain, so `~/Library/Keychains` is symlinked into the isolated HOME | `~/.gemini/jetski/` |
 
 Example for Pi:
 ```typescript
@@ -277,6 +278,24 @@ The grader reads this to distinguish:
 - **Early failures**: Agent crashed, no output generated
 - **Grader failures**: Agent generated code, but tests failed
 
+### 7. Filesystem Sandbox
+
+An isolated HOME alone doesn't stop an agent from finding this repo (e.g. via `$PATH` or `find /`) and reading `guides/`, `expectations.md` and `grader.ts`. `runCliAgentCommand()` therefore wraps every agent in an OS-level sandbox (`harness/lib/sandbox.ts`) that hides the repo root:
+
+- **Linux**: `bwrap` (bubblewrap) mounts an empty tmpfs over the repo root. Requires `sudo apt install bubblewrap`.
+- **macOS**: `sandbox-exec` denies file access under the repo root.
+
+Only these paths are re-exposed:
+
+| Path | Access | Why |
+|------|--------|-----|
+| `node_modules`, `harness/node_modules` | read-only | Agent CLI binaries |
+| `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
+| `dist/skills-cli/skills/.cache` | writable, guided only | transformers.js tokenizer cache |
+| per-run `targetDir` | writable | npx shim, `modern-web.log` |
+
+If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
+
 ## Adding a New Agent
 
 ### Step 1: Create Agent Harness
@@ -323,7 +342,8 @@ async function run() {
     userPrompt
   ];
   
-  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent');
+  // runType ('guided' | 'unguided') controls what the filesystem sandbox exposes
+  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
   
   // Export trajectories
   const sessionsDir = path.join(path.dirname(workDir), '.my-agent', 'sessions');

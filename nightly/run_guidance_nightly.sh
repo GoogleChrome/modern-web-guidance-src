@@ -13,21 +13,21 @@ Options:
   --local       Run using local committed repository HEAD instead of origin/main (optional).
                 Highly useful for testing orchestration script updates locally.
   --agents      Specify a space-separated list of agents to run
-                (default: "jetski_cli claude_code codex_cli").
-                Valid agents: jetski_cli, claude_code, codex_cli
+                (default: "antigravity_cli claude_code codex_cli").
+                Valid agents: antigravity_cli, claude_code, codex_cli
   --workers     The number of concurrent workers to use (optional).
 
 Examples:
   $0
   $0 --prefix "weekly"
   $0 --prefix "weekly" --local
-  $0 --agents "jetski_cli" --workers 10
+  $0 --agents "antigravity_cli" --workers 10
 EOF
 }
 
 # Default values
 PREFIX="nightly"
-AGENTS_TO_RUN="jetski_cli claude_code codex_cli"
+AGENTS_TO_RUN="antigravity_cli claude_code codex_cli"
 WORKERS="20"
 RUN_LOCAL="false"
 

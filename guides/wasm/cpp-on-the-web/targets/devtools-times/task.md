@@ -1,1 +1,1 @@
-- Update index.html to include a fractal flame image along with a button to regenerate a new one at random.  Use the open-source C/C++ flam3 library (https://github.com/scottdraves/flam3) to generate these images client-side.
+- Compile the open-source smallpt C++ path tracer (http://www.kevinbeason.com/smallpt/) to WebAssembly so it runs client-side in the browser. Then show its output on index.html, with a button that runs it again with randomized sphere colors.

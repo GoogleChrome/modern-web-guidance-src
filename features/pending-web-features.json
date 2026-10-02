@@ -9,18 +9,35 @@
     "issue": "https://github.com/web-platform-dx/web-features/issues/4029"
   },
   "tmp-scroll-axis-lock": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4213"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4213",
+    "group": "scrolling"
+  },
+  "tmp-aria-actions": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4108"
+  },
+  "tmp-animations-css-animation-accessor": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4107"
+  },
+  "tmp-iterator-includes": {
+    "issue": "https://github.com/web-platform-dx/web-features/pull/4405"
+  },
+  "tmp-webcrypto-modern-algos": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4267"
   },
   "tmp-polygon-round": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4429"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4429",
+    "group": "css"
   },
   "tmp-column-wrap": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4430"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4430",
+    "group": "css"
   },
   "tmp-revert-rule": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4431"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4431",
+    "group": "css"
   },
   "tmp-path-length": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4307"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4307",
+    "group": "css"
   }
 }
