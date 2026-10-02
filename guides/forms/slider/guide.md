@@ -160,7 +160,7 @@ When `control-value()` is supported, this JavaScript can move to a fallback or b
 Do not hard-code a left-to-right fill. Set the gradient direction from the document direction for horizontal sliders:
 
 ```css
-[dir="rtl"] input[type="range"] {
+input[type="range"]:dir(rtl) {
   --slider-direction: to left;
 }
 ```
