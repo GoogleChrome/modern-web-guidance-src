@@ -884,6 +884,10 @@ describe('handlePR', () => {
 
       const result = handlePR(99999, 'some-contributor', config, ['features/my-feature.md'], tmpDir);
       assert.deepStrictEqual(result.sort(), ['my-feature-owner', 'custom-cat-owner'].sort());
+
+      // Also matches when the feature file or transclusion has a tmp- prefix difference
+      const resultTmp = handlePR(99999, 'some-contributor', config, ['features/tmp-my-feature.md'], tmpDir);
+      assert.deepStrictEqual(resultTmp.sort(), ['my-feature-owner', 'custom-cat-owner'].sort());
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

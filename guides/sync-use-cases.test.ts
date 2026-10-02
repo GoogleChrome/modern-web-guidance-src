@@ -615,10 +615,11 @@ describe('buildIssueContent', () => {
     assert.strictEqual(milestoneNumber, 2);
   });
 
-  test('strips tmp- prefix when matching guide feature IDs to feature issues', () => {
+  test('strips tmp- prefix when matching guide feature IDs to feature issues and generating webstatus links', () => {
     const featureMap = new Map([['scroll-axis-lock', { number: 1265, priorityLabel: 'P0', milestoneNumber: 3, state: 'open', body: '' }]]);
     const { issueBody, priorityLabel, milestoneNumber } = buildIssueContent('diagonal-panning', 'desc', ['tmp-scroll-axis-lock'], 'guides/ui-behaviors/diagonal-panning', featureMap, makeInventory());
     assert.ok(issueBody.includes('Related features: #1265'));
+    assert.ok(issueBody.includes('Affected web-feature IDs: [scroll-axis-lock](https://webstatus.dev/features/scroll-axis-lock)'));
     assert.strictEqual(priorityLabel, 'P0');
     assert.strictEqual(milestoneNumber, 3);
   });

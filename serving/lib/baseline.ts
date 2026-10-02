@@ -14,6 +14,7 @@ type Feature = typeof features[string];
 interface PendingWebFeature {
   issue: string;
   group?: string | string[];
+  compat_features?: string | string[];
 }
 
 const pendingFeatures: Record<string, PendingWebFeature> = pendingWebFeatures;

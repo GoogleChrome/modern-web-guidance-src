@@ -150,7 +150,10 @@ export function buildIssueContent(
 
   const relatedFeaturesStr = relatedLinks.length > 0 ? `\n\nRelated features: ${relatedLinks.join(' ')}` : '';
   const subdirUrl = `https://github.com/${ORG}/${REPO}/tree/main/${relativeSubdir}`;
-  const linkedFeatures = featureIds.map(id => `[${id}](https://webstatus.dev/features/${id})`).join(', ');
+  const linkedFeatures = featureIds.map(id => {
+    const cleanId = stripTmpPrefix(id);
+    return `[${cleanId}](https://webstatus.dev/features/${cleanId})`;
+  }).join(', ');
 
   const checklist = buildRequiredFilesChecklist(inv);
   const checklistSection = `\n\n${REQUIRED_FILES_START}\n**Required files:**\n${checklist}\n${REQUIRED_FILES_END}`;

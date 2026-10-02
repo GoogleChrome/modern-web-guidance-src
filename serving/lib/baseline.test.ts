@@ -97,7 +97,7 @@ describe('baseline data', () => {
     });
 
     it('returns valid for a registered pending temporary feature ID', () => {
-      assert.deepStrictEqual(validateFeature('tmp-streaming-api'), { isValid: true });
+      assert.deepStrictEqual(validateFeature('tmp-linked-parameters'), { isValid: true });
     });
 
     it('returns error for an unregistered temporary feature ID', () => {
@@ -120,7 +120,7 @@ describe('baseline data', () => {
     });
 
     it('returns empty array for pending entries without a group', () => {
-      assert.deepStrictEqual(getFeatureGroups('tmp-streaming-api'), []);
+      assert.deepStrictEqual(getFeatureGroups('tmp-linked-parameters'), []);
     });
   });
 
@@ -128,7 +128,7 @@ describe('baseline data', () => {
     it('includes pending temporary features in owned groups', () => {
       const result = getOwnedFeatureToGroups(new Set(['scrolling']));
       assert.deepStrictEqual(result['tmp-scroll-axis-lock'], ['scrolling']);
-      assert.strictEqual(result['tmp-streaming-api'], undefined);
+      assert.strictEqual(result['tmp-linked-parameters'], undefined);
     });
   });
 

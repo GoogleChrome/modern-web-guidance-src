@@ -775,7 +775,8 @@ export function findGuidesTranscludingFeature(
         try {
           const content = fs.readFileSync(fullPath, 'utf8');
           const transcluded = getTranscludedFeatureIds(content);
-          if (transcluded.includes(featureId)) {
+          const targetBaseId = stripTmpPrefix(featureId);
+          if (transcluded.some(t => stripTmpPrefix(t) === targetBaseId)) {
             matches.push({
               category,
               relativePath: path.relative(path.resolve(__dirname, '..'), fullPath),
