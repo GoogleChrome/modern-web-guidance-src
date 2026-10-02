@@ -53,14 +53,14 @@
       border: 0;
       padding: 0;
       display: block;
-      /* Opt in: use the embedded document's content height as the iframe's natural height. */
-      frame-sizing: content-height;
-      /* DO NOT set an explicit height here or use a height attribute. */
+      /* Fallback height for browsers without frame-sizing, used until the fallback script reports a height. */
+      height: 500px;
     }
 
     @supports (frame-sizing: content-height) {
       .embed {
-        height: auto;
+        height: auto; /* MANDATORY: remove the fixed height so the content height applies. */
+        /* Opt in: use the embedded document's content height as the iframe's natural height. */
         frame-sizing: content-height;
       }
     }
@@ -84,16 +84,6 @@
   </main>
 
   <script type="module">
-    // Guarded resize helper used inside the embedded document.
-    export function requestFrameResize() {
-      if (typeof window.requestResize !== 'function') return;
-      try {
-        window.requestResize();
-      } catch {
-        // Not embedded or not opted in: there is nothing to resize.
-      }
-    }
-
     const embeddedHtml = `<!doctype html>
 <html lang="en">
 <head>
@@ -377,7 +367,6 @@
 
     // Fallback listener on the embedding page when native frame-sizing is unavailable.
     if (typeof CSS === 'undefined' || !CSS.supports('frame-sizing', 'content-height')) {
-      frame.style.height = '500px';
       window.addEventListener('message', (event) => {
         if (event.source !== frame.contentWindow) return;
         if (event.data?.type !== 'embed-height' || !Number.isFinite(event.data.height)) return;
