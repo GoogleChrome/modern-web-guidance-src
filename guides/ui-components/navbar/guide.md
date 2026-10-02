@@ -139,9 +139,11 @@ CSS changes the presentation, but JavaScript must also synchronise the `popover`
 
 Use `<details>` and `<summary>` for nested site navigation, with the submenu represented by a nested list. Keep the submenu inline inside the narrow navigation popover. If the wide layout requires a floating submenu, promote that list to a native `popover="auto"` and synchronise it with the disclosure; keep the reusable disclosure behaviour in {{ GUIDE_REF("responsive-disclosure") }}.
 
-The site-navigation-specific synchronisation is (use one shared layout-state function for the outer navigation as shown in the demo):
+Synchronise the `popover` attributes across the container breakpoint and bind the submenu disclosure state:
 
 ```js
+const header = document.querySelector(".site-header");
+const menu = document.querySelector("#site-menu");
 const details = document.querySelector(".nav-dropdown");
 const summary = details.querySelector("summary");
 const submenu = details.querySelector(".dropdown-list");
@@ -158,6 +160,25 @@ details.addEventListener("toggle", () => {
 submenu.addEventListener("toggle", (event) => {
   details.open = event.newState === "open";
 });
+
+function syncLayoutState(width) {
+  const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const isWide = width >= 45 * rootFontSize;
+
+  if (isWide && menu.hasAttribute("popover")) {
+    menu.removeAttribute("popover");
+    submenu.setAttribute("popover", "auto");
+    details.open = false;
+  } else if (!isWide && !menu.hasAttribute("popover")) {
+    menu.setAttribute("popover", "auto");
+    submenu.removeAttribute("popover");
+  }
+}
+
+const layoutObserver = new ResizeObserver(([entry]) => {
+  syncLayoutState(entry.contentRect.width);
+});
+layoutObserver.observe(header);
 ```
 
 Do not add document-level click-outside, Escape, focus-restoration, or expanded-state handlers. Native disclosure and popover behaviour provide those interactions. Let `<details>` own the summary click: intercepting it can reopen a submenu that light dismiss is trying to close. The `source: summary` option supplies the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
