@@ -316,7 +316,7 @@ function renderAll() {
 
 async function loadLocalTests() {
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
+        return; // Avoid 404s by skipping local network fetches when hosted on GitHub Pages
     }
     
     try {
