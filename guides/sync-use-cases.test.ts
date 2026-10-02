@@ -5,6 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, buildRequiredFilesChecklist } from './sync-use-cases.ts';
 import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../lib/guide-validation.ts';
+import { pendingFeatures } from '../serving/lib/baseline.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'sync-use-cases-test-'));
@@ -890,21 +891,28 @@ Body content.
   });
 
   test('strips tmp- prefix from featuresWithAnyUseCases and featuresWithActiveUseCases', () => {
-    fs.writeFileSync(path.join(tempDir, 'my-use-case', 'guide.md'), `---
+    pendingFeatures['tmp-mock-feature'] = {
+      issue: 'https://github.com/web-platform-dx/web-features/issues/99999'
+    };
+    try {
+      fs.writeFileSync(path.join(tempDir, 'my-use-case', 'guide.md'), `---
 name: my-use-case
 description: A description
 web-feature-ids:
-  - tmp-scroll-axis-lock
+  - tmp-mock-feature
 ---
 
 # My Use Case
 
 Body content.
 `);
-    const result = processGuideInventory([makeInventory()]);
-    assert.strictEqual(result.errors.length, 0);
-    assert.ok(result.featuresWithAnyUseCases.has('scroll-axis-lock'));
-    assert.ok(result.featuresWithActiveUseCases.has('scroll-axis-lock'));
-    assert.ok(!result.featuresWithAnyUseCases.has('tmp-scroll-axis-lock'));
+      const result = processGuideInventory([makeInventory()]);
+      assert.strictEqual(result.errors.length, 0);
+      assert.ok(result.featuresWithAnyUseCases.has('mock-feature'));
+      assert.ok(result.featuresWithActiveUseCases.has('mock-feature'));
+      assert.ok(!result.featuresWithAnyUseCases.has('tmp-mock-feature'));
+    } finally {
+      delete pendingFeatures['tmp-mock-feature'];
+    }
   });
 });

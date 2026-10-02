@@ -123,7 +123,7 @@ export interface AtlConfig {
 }
 
 const FEATURE_GROUPS_PATH = path.join(__dirname, 'feature-to-groups.generated.json');
-let featureGroups: Record<string, string[]> = {};
+export let featureGroups: Record<string, string[]> = {};
 try {
   if (fs.existsSync(FEATURE_GROUPS_PATH)) {
     featureGroups = JSON.parse(fs.readFileSync(FEATURE_GROUPS_PATH, 'utf8'));

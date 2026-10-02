@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
-import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature, getFeatureGroups, getOwnedFeatureToGroups } from './baseline.ts';
+import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature, getFeatureGroups, getOwnedFeatureToGroups, pendingFeatures } from './baseline.ts';
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
     it('returns Baseline since YYYY-MM-DD for known widely available features', () => {
@@ -97,7 +97,14 @@ describe('baseline data', () => {
     });
 
     it('returns valid for a registered pending temporary feature ID', () => {
-      assert.deepStrictEqual(validateFeature('tmp-cross-origin-storage'), { isValid: true });
+      pendingFeatures['tmp-mock-feature'] = {
+        issue: 'https://github.com/web-platform-dx/web-features/issues/99999'
+      };
+      try {
+        assert.deepStrictEqual(validateFeature('tmp-mock-feature'), { isValid: true });
+      } finally {
+        delete pendingFeatures['tmp-mock-feature'];
+      }
     });
 
     it('returns error for an unregistered temporary feature ID', () => {
@@ -116,19 +123,46 @@ describe('baseline data', () => {
     });
 
     it('reads groups from pending temporary feature entries', () => {
-      assert.deepStrictEqual(getFeatureGroups('tmp-scroll-axis-lock'), ['scrolling']);
+      pendingFeatures['tmp-mock-grouped'] = {
+        issue: 'https://github.com/web-platform-dx/web-features/issues/99999',
+        group: 'scrolling'
+      };
+      try {
+        assert.deepStrictEqual(getFeatureGroups('tmp-mock-grouped'), ['scrolling']);
+      } finally {
+        delete pendingFeatures['tmp-mock-grouped'];
+      }
     });
 
     it('returns empty array for pending entries without a group', () => {
-      assert.deepStrictEqual(getFeatureGroups('tmp-cross-origin-storage'), []);
+      pendingFeatures['tmp-mock-ungrouped'] = {
+        issue: 'https://github.com/web-platform-dx/web-features/issues/99998'
+      };
+      try {
+        assert.deepStrictEqual(getFeatureGroups('tmp-mock-ungrouped'), []);
+      } finally {
+        delete pendingFeatures['tmp-mock-ungrouped'];
+      }
     });
   });
 
   describe('getOwnedFeatureToGroups', () => {
     it('includes pending temporary features in owned groups', () => {
-      const result = getOwnedFeatureToGroups(new Set(['scrolling']));
-      assert.deepStrictEqual(result['tmp-scroll-axis-lock'], ['scrolling']);
-      assert.strictEqual(result['tmp-cross-origin-storage'], undefined);
+      pendingFeatures['tmp-mock-grouped'] = {
+        issue: 'https://github.com/web-platform-dx/web-features/issues/99999',
+        group: 'scrolling'
+      };
+      pendingFeatures['tmp-mock-ungrouped'] = {
+        issue: 'https://github.com/web-platform-dx/web-features/issues/99998'
+      };
+      try {
+        const result = getOwnedFeatureToGroups(new Set(['scrolling']));
+        assert.deepStrictEqual(result['tmp-mock-grouped'], ['scrolling']);
+        assert.strictEqual(result['tmp-mock-ungrouped'], undefined);
+      } finally {
+        delete pendingFeatures['tmp-mock-grouped'];
+        delete pendingFeatures['tmp-mock-ungrouped'];
+      }
     });
   });
 
