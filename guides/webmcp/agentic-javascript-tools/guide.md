@@ -140,7 +140,7 @@ execute({ itemName }) {
 }
 ```
 
-Only re-throw `AbortError` when an execution is cancelled via `signal`.
+Only re-throw when the execution was cancelled (`signal.aborted` is `true`).
 
 ### Cancelling in-flight executions
 
@@ -181,8 +181,8 @@ await document.modelContext.registerTool({
     } catch (err) {
       // Roll back the UI state this execution set, so a cancelled run leaves no trace.
       output.textContent = "";
-      if (err?.name === "AbortError") {
-        // Re-throw AbortError: it carries the caller's cancellation reason.
+      if (signal.aborted) {
+        // The execution was cancelled: re-throw instead of returning an error value.
         throw err;
       }
       // Return other errors as a value instead of throwing, so the agent receives the message.
