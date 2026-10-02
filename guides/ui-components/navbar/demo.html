@@ -527,10 +527,11 @@
       const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
       const isWide = width >= 45 * rootFontSize;
 
-      if (isWide) {
+      if (isWide && menu.hasAttribute("popover")) {
         menu.removeAttribute("popover");
         submenu.setAttribute("popover", "auto");
-      } else {
+        details.open = false;
+      } else if (!isWide && !menu.hasAttribute("popover")) {
         menu.setAttribute("popover", "auto");
         submenu.removeAttribute("popover");
       }
@@ -541,7 +542,6 @@
     });
 
     layoutObserver.observe(header);
-    syncLayoutState(header.getBoundingClientRect().width);
   </script>
 </body>
 
