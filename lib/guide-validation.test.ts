@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, isDraftStub } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, isDraftStub, checkOriginTrialGraduations } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments } from '../serving/lib/macros.ts';
 
@@ -922,5 +922,31 @@ The feature is Baseline widely available on line 10.
     }
   });
 });
+
+describe('checkOriginTrialGraduations', () => {
+  test('asserts no graduated features linger in features/origin-trials.json', () => {
+    const graduated = checkOriginTrialGraduations();
+    assert.deepStrictEqual(
+      graduated,
+      [],
+      `Graduated Origin Trial features still registered in features/origin-trials.json: ${JSON.stringify(graduated)}`
+    );
+  });
+
+  test('detects graduated feature when present in custom registry', () => {
+    // "fetch-priority" is widely supported and has browser support in web-features
+    const mockRegistry = {
+      'fetch-priority': {
+        name: 'Fetch Priority',
+        chromestatus_url: 'https://chromestatus.com/feature/5273474901803008',
+      },
+    };
+    const graduated = checkOriginTrialGraduations(mockRegistry);
+    assert.strictEqual(graduated.length, 1);
+    assert.strictEqual(graduated[0].featureId, 'fetch-priority');
+    assert.ok(graduated[0].supportedBrowsers.length > 0);
+  });
+});
+
 
 

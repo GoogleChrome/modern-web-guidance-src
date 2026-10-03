@@ -2,8 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { features } from 'web-features';
-import { scanAllGuides, getOriginTrialsRegistry } from '../lib/guide-validation.ts';
-import { resolveFeatureId } from '../serving/lib/baseline.ts';
+import { scanAllGuides, checkOriginTrialGraduations } from '../lib/guide-validation.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -222,39 +221,19 @@ if (changedRegularFeatures.length > 0) {
 }
 
 // 5. Check for graduated Origin Trial features (features in features/origin-trials.json that now have browser support)
-interface GraduatedOriginTrial {
+interface GraduatedOriginTrialWithLocations {
   featureId: string;
   supportedBrowsers: string[];
   locations: string[];
 }
 
-const originTrials = getOriginTrialsRegistry();
-const graduatedOriginTrials: GraduatedOriginTrial[] = [];
-for (const featureId of Object.keys(originTrials)) {
-  const resolvedIds = resolveFeatureId(featureId);
-  const supportedBrowsers: string[] = [];
-  for (const id of resolvedIds) {
-    const f = (features as Record<string, any>)[id];
-    if (f?.status?.support) {
-      for (const [browser, version] of Object.entries(f.status.support)) {
-        if (version && version !== '-') {
-          supportedBrowsers.push(`${browser} ${version}`);
-        }
-      }
-    }
-  }
-  if (supportedBrowsers.length > 0) {
-    const locations = Array.from(featureToLocations.get(featureId) || []);
-    graduatedOriginTrials.push({
-      featureId,
-      supportedBrowsers,
-      locations,
-    });
-    hasError = true;
-  }
-}
-
+const rawGraduated = checkOriginTrialGraduations();
+const graduatedOriginTrials: GraduatedOriginTrialWithLocations[] = rawGraduated.map(item => ({
+  ...item,
+  locations: Array.from(featureToLocations.get(item.featureId) || []),
+}));
 if (graduatedOriginTrials.length > 0) {
+  hasError = true;
   console.log('🎓 Graduated Origin Trial feature IDs detected:');
   for (const item of graduatedOriginTrials) {
     console.log(`  - "${item.featureId}" now has browser support (${item.supportedBrowsers.join(', ')})`);

@@ -60,6 +60,7 @@ export interface PreparedGuide {
 }
 
 export interface OriginTrialMetadata {
+  id?: string;
   name?: string;
   chromestatus_url?: string;
 }
@@ -69,15 +70,15 @@ let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
 
 export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
   if (!cachedOriginTrials) {
-    if (fs.existsSync(ORIGIN_TRIALS_FILE)) {
-      try {
-        const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
-        cachedOriginTrials = JSON.parse(raw);
-      } catch (e) {
+    try {
+      const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
+      cachedOriginTrials = JSON.parse(raw);
+    } catch (e: unknown) {
+      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
         cachedOriginTrials = {};
+      } else {
+        throw new Error(`Failed to parse Origin Trials registry at ${ORIGIN_TRIALS_FILE}: ${(e as Error).message}`);
       }
-    } else {
-      cachedOriginTrials = {};
     }
   }
   return cachedOriginTrials!;
@@ -85,7 +86,8 @@ export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
 
 export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
   const registry = getOriginTrialsRegistry();
-  return registry[featureId];
+  const entry = registry[featureId];
+  return entry ? { ...entry, id: featureId } : undefined;
 }
 
 export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
@@ -93,19 +95,25 @@ export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[
   const found: OriginTrialMetadata[] = [];
   for (const id of featureIds) {
     if (registry[id]) {
-      found.push(registry[id]);
+      found.push({ ...registry[id], id });
     }
   }
   return found;
 }
 
+export interface GraduatedOriginTrial {
+  featureId: string;
+  supportedBrowsers: string[];
+}
+
 /**
  * Checks all features in the Origin Trials registry against the web-features package.
- * Returns warnings for any feature that has graduated (supported by any major browser).
+ * Returns any Origin Trial feature that now has browser support in web-features.
  */
-export function checkOriginTrialGraduations(): string[] {
-  const registry = getOriginTrialsRegistry();
-  const warnings: string[] = [];
+export function checkOriginTrialGraduations(
+  registry: Record<string, OriginTrialMetadata> = getOriginTrialsRegistry()
+): GraduatedOriginTrial[] {
+  const graduated: GraduatedOriginTrial[] = [];
   for (const featureId of Object.keys(registry)) {
     const resolvedIds = resolveFeatureId(featureId);
     const supportedBrowsers: string[] = [];
@@ -120,12 +128,13 @@ export function checkOriginTrialGraduations(): string[] {
       }
     }
     if (supportedBrowsers.length > 0) {
-      warnings.push(
-        `Graduation Alert: Origin Trial feature "${featureId}" now has browser support (${supportedBrowsers.join(', ')}). The feature must be removed from features/origin-trials.json.`
-      );
+      graduated.push({
+        featureId,
+        supportedBrowsers,
+      });
     }
   }
-  return warnings;
+  return graduated;
 }
 
 
