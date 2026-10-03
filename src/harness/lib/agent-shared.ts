@@ -439,11 +439,22 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
   if (templateDir === '') {
     const workDir = path.join(homeDir, runType);
     fs.mkdirSync(workDir, { recursive: true });
+    // Eval sandboxes represent projects where the developer has already opted in to guidance,
+    // allowing guided evals of Origin Trial tasks (like agentic-forms) to retrieve guidance
+    // without hitting the non-interactive/agent gate. Writing before git init ensures .mwgrc
+    // is committed in the initial root commit and never leaks into agent.patch.
+    fs.writeFileSync(path.join(workDir, '.mwgrc'), JSON.stringify({ allowOriginTrials: true }, null, 2) + '\n', 'utf8');
+    initGitRepo(workDir);
     return workDir;
   }
   // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
   execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   const workDir = path.join(homeDir, path.basename(templateDir));
+  // Eval sandboxes represent projects where the developer has already opted in to guidance,
+  // allowing guided evals of Origin Trial tasks (like agentic-forms) to retrieve guidance
+  // without hitting the non-interactive/agent gate. Writing before git init ensures .mwgrc
+  // is committed in the initial root commit and never leaks into agent.patch.
+  fs.writeFileSync(path.join(workDir, '.mwgrc'), JSON.stringify({ allowOriginTrials: true }, null, 2) + '\n', 'utf8');
   initGitRepo(workDir);
   return workDir;
 }

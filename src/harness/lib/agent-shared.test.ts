@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawn, spawnSync } from 'child_process';
-import { getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
+import { getGraderScriptContent, runCliAgentCommand, createWorkDir } from './agent-shared.ts';
 import { UNSAFE_NO_SANDBOX_ENV } from './sandbox.ts';
 
 describe('getGraderScriptContent', () => {
@@ -130,4 +130,50 @@ describe('runCliAgentCommand', () => {
     }
   });
 });
+
+describe('createWorkDir', () => {
+  test('provisions .mwgrc with allowOriginTrials: true before git init in single-task workDir', () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-test-'));
+    try {
+      const workDir = createWorkDir('', tempHome, 'guided');
+      const mwgrcPath = path.join(workDir, '.mwgrc');
+      assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
+      const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
+      assert.deepStrictEqual(config, { allowOriginTrials: true });
+
+      // Verify .mwgrc is tracked in git and clean in git status
+      const status = spawnSync('git', ['status', '--porcelain'], { cwd: workDir, encoding: 'utf8' }).stdout.trim();
+      assert.strictEqual(status, '', 'workDir git status should be clean after initGitRepo');
+
+      // Verify .mwgrc is in the root commit
+      const rootFiles = spawnSync('git', ['ls-tree', '--name-only', 'HEAD'], { cwd: workDir, encoding: 'utf8' }).stdout.trim().split('\n');
+      assert.ok(rootFiles.includes('.mwgrc'), '.mwgrc must be part of the initial git commit');
+    } finally {
+      fs.rmSync(tempHome, { recursive: true, force: true });
+    }
+  });
+
+  test('provisions .mwgrc with allowOriginTrials: true before git init in templated suite workDir', () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-suite-'));
+    const templateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'template-test-'));
+    fs.writeFileSync(path.join(templateDir, 'package.json'), '{"name":"test-app"}\n');
+    try {
+      const workDir = createWorkDir(templateDir, tempHome, 'guided');
+      const mwgrcPath = path.join(workDir, '.mwgrc');
+      assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
+      const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
+      assert.deepStrictEqual(config, { allowOriginTrials: true });
+
+      const status = spawnSync('git', ['status', '--porcelain'], { cwd: workDir, encoding: 'utf8' }).stdout.trim();
+      assert.strictEqual(status, '', 'workDir git status should be clean after initGitRepo');
+
+      const rootFiles = spawnSync('git', ['ls-tree', '--name-only', 'HEAD'], { cwd: workDir, encoding: 'utf8' }).stdout.trim().split('\n');
+      assert.ok(rootFiles.includes('.mwgrc'), '.mwgrc must be part of the initial git commit');
+    } finally {
+      fs.rmSync(tempHome, { recursive: true, force: true });
+      fs.rmSync(templateDir, { recursive: true, force: true });
+    }
+  });
+});
+
 
