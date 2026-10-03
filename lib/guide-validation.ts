@@ -4,7 +4,8 @@ import matter from 'gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from '../serving/lib/macros.ts';
-import { validateFeature } from '../serving/lib/baseline.ts';
+import { validateFeature, resolveFeatureId } from '../serving/lib/baseline.ts';
+import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
@@ -55,7 +56,87 @@ export interface PreparedGuide {
   featureIds: string[];
   relativeSubdir: string;
   statusName: ProjectStatus | null;
+  originTrials?: OriginTrialMetadata[];
 }
+
+export interface OriginTrialMetadata {
+  id?: string;
+  name?: string;
+  chromestatus_url?: string;
+}
+
+const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
+let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
+
+export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
+  if (!cachedOriginTrials) {
+    try {
+      const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
+      cachedOriginTrials = JSON.parse(raw);
+    } catch (e: unknown) {
+      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
+        cachedOriginTrials = {};
+      } else {
+        throw new Error(`Failed to parse Origin Trials registry at ${ORIGIN_TRIALS_FILE}: ${(e as Error).message}`);
+      }
+    }
+  }
+  return cachedOriginTrials!;
+}
+
+export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
+  const registry = getOriginTrialsRegistry();
+  const entry = registry[featureId];
+  return entry ? { ...entry, id: featureId } : undefined;
+}
+
+export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
+  const registry = getOriginTrialsRegistry();
+  const found: OriginTrialMetadata[] = [];
+  for (const id of featureIds) {
+    if (registry[id]) {
+      found.push({ ...registry[id], id });
+    }
+  }
+  return found;
+}
+
+export interface GraduatedOriginTrial {
+  featureId: string;
+  supportedBrowsers: string[];
+}
+
+/**
+ * Checks all features in the Origin Trials registry against the web-features package.
+ * Returns any Origin Trial feature that now has browser support in web-features.
+ */
+export function checkOriginTrialGraduations(
+  registry: Record<string, OriginTrialMetadata> = getOriginTrialsRegistry()
+): GraduatedOriginTrial[] {
+  const graduated: GraduatedOriginTrial[] = [];
+  for (const featureId of Object.keys(registry)) {
+    const resolvedIds = resolveFeatureId(featureId);
+    const supportedBrowsers: string[] = [];
+    for (const id of resolvedIds) {
+      const f = (features as Record<string, any>)[id];
+      if (f?.status?.support) {
+        for (const [browser, version] of Object.entries(f.status.support)) {
+          if (version && version !== '-') {
+            supportedBrowsers.push(`${browser} ${version}`);
+          }
+        }
+      }
+    }
+    if (supportedBrowsers.length > 0) {
+      graduated.push({
+        featureId,
+        supportedBrowsers,
+      });
+    }
+  }
+  return graduated;
+}
+
 
 export interface GuideInventoryResult {
   errors: string[];
@@ -296,6 +377,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       featureIds,
       relativeSubdir,
       statusName,
+      originTrials: getGuideOriginTrials(featureIds),
     });
   }
 
