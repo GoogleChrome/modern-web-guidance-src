@@ -2,7 +2,7 @@
 
 ## Issues
 
-- When placing visual elements over the accent color (e.g. a checkbox checkmark), Chrome and Safari will automatically select a contrasting color, whereas Safari will modify the accent color, and may not maintain adequate contrast.
+- When placing visual elements over the accent color (e.g. a checkbox checkmark), Chrome and Firefox will automatically select a contrasting color, whereas Safari will modify the accent color, and may not maintain adequate contrast.
 
 ## Fallbacks
 
