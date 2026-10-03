@@ -26,7 +26,17 @@ export interface StaticSiteGuideMetadata {
 }
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub, stripLeadingH1 } from "../core/guide-validation.ts";
+import {
+  scanAllGuides,
+  type GuideInventory,
+  getGuideMarkdownPath,
+  extractH1Heading,
+  stripAllComments,
+  isDraftStub,
+  stripLeadingH1,
+  getGuideOriginTrials,
+  type OriginTrialMetadata,
+} from "../core/guide-validation.ts";
 import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
@@ -42,6 +52,7 @@ interface UseCase {
   category: string;
   featuresUsed: string[];
   tokenCount?: number;
+  originTrials?: OriginTrialMetadata[];
 }
 
 export interface BuildOptions {
@@ -374,6 +385,7 @@ web-feature-ids: ${JSON.stringify(featureIds)}
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
+  const originTrials = getGuideOriginTrials(featureIds);
   const tokenCount = await embedder.countTokens(processedMarkdown);
 
   useCases.push({
@@ -382,6 +394,7 @@ web-feature-ids: ${JSON.stringify(featureIds)}
     category,
     featuresUsed,
     tokenCount,
+    ...(originTrials.length > 0 ? { originTrials } : {}),
   });
 
   const h1Title = extractH1Heading(processedMarkdown);
