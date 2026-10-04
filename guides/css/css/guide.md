@@ -474,9 +474,10 @@ Rendering performance is critical for smooth user experiences, especially in hea
 .popover-reveal {
   /* Transition discrete display and top-layer overlay alongside opacity */
   transition:
-    opacity 0.2s ease-out,
-    display 0.2s,
-    overlay 0.2s;
+    opacity ease-out,
+    display,
+    overlay;
+  transition-duration: 0.2s;
   transition-behavior: allow-discrete;
 }
 ```

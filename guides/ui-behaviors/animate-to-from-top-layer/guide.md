@@ -134,10 +134,10 @@ dialog[open]:not([data-closing]),
 
 dialog[open]:not([data-closing])::backdrop,
 [popover]:popover-open:not([data-closing])::backdrop {
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgb(0 0 0 / 0.5);
 
   @starting-style {
-    background-color: rgba(0, 0, 0, 0);
+    background-color: transparent;
   }
 }
 ```
