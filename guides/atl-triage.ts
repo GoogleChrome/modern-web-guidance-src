@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import child_process from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { extractFeatureIds } from '../lib/feature-parser.ts';
+import { extractFeatureIds, stripTmpPrefix } from '../lib/feature-parser.ts';
 import { getTranscludedFeatureIds } from '../serving/lib/macro-parsing.ts';
 
 // Define content file name constants inline to avoid importing from 'lib/guide-validation.ts'
@@ -123,7 +123,7 @@ export interface AtlConfig {
 }
 
 const FEATURE_GROUPS_PATH = path.join(__dirname, 'feature-to-groups.generated.json');
-let featureGroups: Record<string, string[]> = {};
+export let featureGroups: Record<string, string[]> = {};
 try {
   if (fs.existsSync(FEATURE_GROUPS_PATH)) {
     featureGroups = JSON.parse(fs.readFileSync(FEATURE_GROUPS_PATH, 'utf8'));
@@ -225,6 +225,11 @@ export function getFeatureIdsFromGuide(guidePath: string): string[] {
   }
 }
 
+function getFeatureIdVariants(fid: string): string[] {
+  const base = stripTmpPrefix(fid);
+  return [fid, base, `tmp-${base}`];
+}
+
 export function resolveAtl(category: string, featureIds: string[], atlConfig: AtlConfig): string[] {
   const resolved = new Set<string>();
 
@@ -241,25 +246,29 @@ export function resolveAtl(category: string, featureIds: string[], atlConfig: At
   if (featureIds && featureIds.length > 0) {
     // Check specific feature ID overrides
     for (const fid of featureIds) {
-      if (atlConfig.web_features[fid]) {
-        const override = atlConfig.web_features[fid];
-        if (Array.isArray(override)) {
-          override.forEach(a => resolved.add(a));
-        } else {
-          resolved.add(override);
+      for (const variant of getFeatureIdVariants(fid)) {
+        if (atlConfig.web_features[variant]) {
+          const override = atlConfig.web_features[variant];
+          if (Array.isArray(override)) {
+            override.forEach(a => resolved.add(a));
+          } else {
+            resolved.add(override);
+          }
         }
       }
     }
     // Check feature group overrides
     for (const fid of featureIds) {
-      const groups = featureGroups[fid] || [];
-      for (const group of groups) {
-        if (atlConfig.web_features_groups[group]) {
-          const override = atlConfig.web_features_groups[group];
-          if (Array.isArray(override)) {
-            override.forEach(a => resolved.add(a));
-          } else {
-            resolved.add(override);
+      for (const variant of getFeatureIdVariants(fid)) {
+        const groups = featureGroups[variant] || [];
+        for (const group of groups) {
+          if (atlConfig.web_features_groups[group]) {
+            const override = atlConfig.web_features_groups[group];
+            if (Array.isArray(override)) {
+              override.forEach(a => resolved.add(a));
+            } else {
+              resolved.add(override);
+            }
           }
         }
       }
@@ -283,24 +292,26 @@ export function getAtlsFromDescription(description: string, atlConfig: AtlConfig
 
   const resolvedAtls = new Set<string>();
   for (const fid of featureIds) {
-    // 1. Direct match
-    if (atlConfig.web_features[fid]) {
-      const val = atlConfig.web_features[fid];
-      if (Array.isArray(val)) {
-        val.forEach(a => resolvedAtls.add(a));
-      } else {
-        resolvedAtls.add(val);
-      }
-    }
-    // 2. Group match
-    const groups = featureGroups[fid] || [];
-    for (const group of groups) {
-      if (atlConfig.web_features_groups[group]) {
-        const val = atlConfig.web_features_groups[group];
+    for (const variant of getFeatureIdVariants(fid)) {
+      // 1. Direct match
+      if (atlConfig.web_features[variant]) {
+        const val = atlConfig.web_features[variant];
         if (Array.isArray(val)) {
           val.forEach(a => resolvedAtls.add(a));
         } else {
           resolvedAtls.add(val);
+        }
+      }
+      // 2. Group match
+      const groups = featureGroups[variant] || [];
+      for (const group of groups) {
+        if (atlConfig.web_features_groups[group]) {
+          const val = atlConfig.web_features_groups[group];
+          if (Array.isArray(val)) {
+            val.forEach(a => resolvedAtls.add(a));
+          } else {
+            resolvedAtls.add(val);
+          }
         }
       }
     }
@@ -764,7 +775,8 @@ export function findGuidesTranscludingFeature(
         try {
           const content = fs.readFileSync(fullPath, 'utf8');
           const transcluded = getTranscludedFeatureIds(content);
-          if (transcluded.includes(featureId)) {
+          const targetBaseId = stripTmpPrefix(featureId);
+          if (transcluded.some(t => stripTmpPrefix(t) === targetBaseId)) {
             matches.push({
               category,
               relativePath: path.relative(path.resolve(__dirname, '..'), fullPath),

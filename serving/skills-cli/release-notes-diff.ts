@@ -62,6 +62,7 @@ const GH_PUBLISH_PATTERNS = [
 // Canonical lines produced by formatStatusMessage() in serving/lib/baseline.ts and baseline macros
 export const BASELINE_OUTPUT_PATTERNS = [
   /^Baseline status for /i,
+  /^Browser support for /i,
   /has limited availability/i,
   /is not natively supported by any major browser yet/i,
   /^Supported by:\s*(Chrome|Firefox|Safari|Edge|iOS)/i,
@@ -277,10 +278,11 @@ export function parseBaselineUpdateFromHunk(guideName: string, hunk: string): Ba
     const isStatusLine = (l: string) =>
       /has limited availability/i.test(l) ||
       /Baseline status for/i.test(l) ||
+      /Browser support for/i.test(l) ||
       /is not natively supported/i.test(l);
     const candidateLine = addedLines.find(isStatusLine) || allStrippedLines.find(isStatusLine);
     if (candidateLine) {
-      const match = candidateLine.match(/(?:Baseline status for\s+(.+?):|(.+?)\s+(?:has limited availability|is not natively supported))/i);
+      const match = candidateLine.match(/(?:(?:Baseline status|Browser support) for\s+(.+?):|(.+?)\s+(?:has limited availability|is not natively supported))/i);
       if (match) {
         featureName = (match[1] || match[2]).trim();
       }
