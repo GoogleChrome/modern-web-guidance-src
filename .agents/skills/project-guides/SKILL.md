@@ -112,15 +112,13 @@ If the primary implementation uses features that are not Baseline Widely Availab
 
 #### Cross-referencing other guides with `GUIDE_REF`
 
-Ideally, an agent retrieves every guide it needs upfront in a single command (`retrieve "a,b"`) from `search` or `list` results and completes the task without extra round-trips. A sequential `GUIDE_REF` hop costs an extra turn, CLI call, and context window tokens — so cross-references should optimize for **precision** (helping an agent recover or branch *only* when its task genuinely requires another guide), never for maximizing click-throughs.
+Coding agents mostly discover and batch-retrieve guides upfront (`retrieve "a,b"`) from `search` or `list` results, and rarely follow cross-references after reading a guide.
 
-* **Prefer build-time transclusion (`INCLUDE`/`FEATURE`) over runtime hops:** Never use `GUIDE_REF` for core requirements, shared prerequisites, accessibility rules, or fallbacks needed to implement *this* guide's use case. Inline them or transclude them at build time so the agent gets everything in one retrieval.
-* **Never mandate unconditional secondary retrievals:** Telling an agent to "always retrieve" a companion guide wastes turns and tokens whenever that companion topic isn't relevant to the user's prompt. (The only exception is a pure router hub that intentionally omits implementation code and delegates to mutually exclusive sub-guides.)
-* **Always gate `GUIDE_REF` behind a narrow, explicit condition (`If your task requires X...`):**
-  1. **Disambiguation ("When to use this guide"):** Contrasting two easily confused primitives near the top of a guide so an agent that retrieved the wrong one can pivot immediately (e.g., `progress-ring` vs. `spinner` for determinate vs. indeterminate loading, or `usage-aware-component-variations` vs. `design-token-reactivity`).
-  2. **Router hubs & decision tables:** Orientation or discipline guides that map distinct sub-problems to specialized guides (e.g., `passkeys` routing to `passkey-registration`, `passkey-authentication`, etc.), so the agent fetches only the sub-guide matching its task.
-  3. **Conditional sub-problems:** Pointing to a companion guide only when a specific optional scenario applies, stating the exact trigger condition inline (e.g., `forms` pointing to `ime-safe-enter-submit` when handling custom `Enter`-key submission in text inputs).
-* **Avoid vague "See also" links:** Do not add bare "For more information, see `{{ GUIDE_REF(...) }}`" asides or footer lists without stating the exact condition under which the agent needs that guide. Vague links either go ignored or tempt over-eager agents into wasting tokens on irrelevant retrievals.
+* **Never rely on `GUIDE_REF` for requirements of the current guide:** Anything needed to implement *this* guide's use case — core rules, shared prerequisites, accessibility requirements, or fallbacks — must be inlined in `guide.md` or transcluded at build time via `INCLUDE`/`FEATURE`.
+* **Use `GUIDE_REF` to point to a separate use case that is out of scope for the current guide:**
+  * **Router / orientation hubs** routing to specialized sub-guides (e.g., `passkeys` or `web-components` routing to specific use-case guides).
+  * **Disambiguating closely related sibling guides** so an agent that retrieved the wrong primitive can pivot (e.g., `progress-ring` vs. `spinner` for determinate vs. indeterminate loading, or `usage-aware-component-variations` vs. `design-token-reactivity`).
+  * **Referencing an adjacent use case** (e.g., `forms` pointing to `ime-safe-enter-submit` for `Enter`-key submission during IME composition).
 
 ### 7. Reusing per-feature content via `features/`
 
