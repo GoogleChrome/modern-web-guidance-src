@@ -40,11 +40,7 @@ The trigger must have a visual indicator to indicate that there is additional in
 
 ### Accessibility built in to `interestfor`
 
-`interestfor` handles the assistive-technology wiring for you, so you generally do not need to add ARIA attributes manually:
-
-- A target with `popover="hint"` gains an implicit minimum role of `tooltip`. **DO NOT** set `role="tooltip"` yourself.
-- The browser implicitly associates the source element with the target via `aria-describedby` when the target is plaintext, or via `aria-details` when the target contains interactive content. **DO NOT** add `aria-describedby` or `aria-details` to the trigger.
-- Because the association switches to `aria-details` when needed, the target IS allowed to contain interactive content (e.g. a link inside an "interest card").
+{{ FEATURE("interest-invokers", "accessibility") }}
 
 ### Accessibility Constraints (WCAG 1.4.13)
 
@@ -84,17 +80,6 @@ Also, the polyfill does not support `position-area` on popovers, so **MANDATORY:
 ### Fallback strategies
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
-
-Interest invokers must be conditionally polyfilled using the `interestfor` polyfill package from NPM. Do prefer bundling the polyfill over using the CDN.
-
-```html
-<script type="module">
-  if(!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")){
-    // CDN link only used for example, prefer bundling.
-    await import("https://unpkg.com/interestfor@latest");
-  }
-</script>
-```
 
 {{ FEATURE_FALLBACKS("popover") }}
 

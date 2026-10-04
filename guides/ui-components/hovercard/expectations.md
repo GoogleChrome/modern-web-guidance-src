@@ -1,0 +1,11 @@
+- Hovering over the link opens its associated popover.
+- Focusing the link opens its associated popover.
+- The popover uses `position-area` to position itself relative to the trigger link.
+- The popover has a transition that includes `display: allow-discrete` and `overlay: allow-discrete`.
+- The popover has a `@starting-style` block that defines its initial state for entry animations (e.g. `opacity: 0`).
+- If `prefers-reduced-motion: reduce` is active, the popover opens without a transform or opacity transition.
+- The document includes a `@view-transition` rule with `navigation: auto`.
+- The popover is assigned a `view-transition-name` only when it is in the `:popover-open` state.
+- Elements inside the popover (like `h2` or `img`) are assigned `view-transition-name` values only when the popover is in the `:popover-open` state.
+- The `view-transition-name` values on the initial page match the values on the page the link navigates to.
+- The destination page uses `blocking="render"` and `<link rel="expect">` to ensure a stable view transition snapshot.
