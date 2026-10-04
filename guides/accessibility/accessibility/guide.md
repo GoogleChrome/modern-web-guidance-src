@@ -20,7 +20,12 @@ Keep these principles in mind throughout:
 - **Place all content within landmarks**: Wrap each relevant part of the page in `<header>`, `<nav>`, `<main>`, `<aside>`, and `<footer>` elements so assistive-tech users can jump between regions.
 - **Structure main content with headings**: Use `<h1>`–`<h6>` sequentially (no jumping `<h1>` → `<h4>`) so screen-reader users get a navigable outline.
 - **Use lists for repeated, contiguous content**: `<ul>`/`<ol>` give assistive tech a count up front and let users skip the entire group.
-- **Provide skip links** prior to repeated content like site headers with navigation or long/infinite lists, so that keyboard users can easily bypass them. Make sure the target is focusable (e.g. `<main id="content" tabindex="-1">`).
+- **Provide skip links** prior to repeated content like site headers with navigation or long/infinite lists, so that keyboard users can easily bypass them.
+    - **Caveat**: Sometimes screen magnifiers do not follow the focus when a skip link’s target is not normally focusable.
+      A common workaround is to make the target programmatically focusable, but not a part of the tab order, using `tabindex="-1"`.
+      If the target contains focusable elements this can create another usability issue as clicking within the target will always set the <i>sequential focus navigation start point</i> to the target rather than at a point between focusable elements as would be expected.
+      A solution that can satisfy both user expectations is to make the first meaningful element within the intended target, the actual target of the skip link, e.g. a heading.
+      Beware that any content prior to such an element will be skipped, including other relevant content within the targetted section and this can create usability gaps for other assistive tech users.
 - **Semantic Tables**: Use `<caption>` and `<th scope="col">` (or `<th scope="row">`) for data tables.
 
 #### DON'Ts
@@ -35,15 +40,15 @@ Keep these principles in mind throughout:
 ```html
 <!-- Good: Semantic landmarks, heading hierarchy, skip link -->
 <header>
-  <a href="#content" class="skip-link visually-hidden">Skip to content</a>
+  <a href="#platform-dashboard" class="skip-link visually-hidden">Skip to content</a>
   <nav aria-label="Primary">
     <ul>
       <li><a href="/">Home</a></li>
     </ul>
   </nav>
 </header>
-<main id="content" tabindex="-1">
-  <h1>Platform Dashboard</h1>
+<main>
+  <h1 id="platform-dashboard">Platform Dashboard</h1>
   <section>
     <h2>User Statistics</h2>
     <table>
