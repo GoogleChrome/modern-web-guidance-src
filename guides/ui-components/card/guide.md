@@ -1,12 +1,156 @@
 ---
 name: card
-description: "Build a card component: a self-contained content container (image, heading, text, actions) that adapts its layout to its own size and contents."
+description: "Build a card component that adapts its presentation to its own available space and contents."
 web-feature-ids:
   - has
   - container-queries
-  - container-style-queries
 guides:
   - size-aware-styling
   - content-based-styling
-  - style-parent-with-has
 ---
+
+# Build a Card
+
+## Overview
+
+A card groups one related piece of content or one choice. It is a visual pattern,
+not a fixed semantic or interaction model. The implementation must preserve the
+content's meaning, use the native interaction that matches its purpose, and remain
+usable when optional styling or layout enhancements are unavailable.
+
+## Guidelines
+
+Choose semantics from the card's purpose:
+
+- use an `article` for independently understandable content;
+- use one native link when the whole card is one destination;
+- use separate links or buttons when it has independent actions;
+- use labelled radios or checkboxes when cards represent choices;
+- use a native `select` when the interaction is a select.
+
+Keep media, title, supporting content, and actions in meaningful source order.
+Optional media, metadata, and actions must not make the remaining content
+ambiguous. Do not duplicate markup or use CSS `order` to contradict source order;
+see {{ GUIDE_REF("css-layout") }}.
+
+## Implementation
+
+Start with a complete stacked layout. Adapt the card to its allocated inline size,
+not the viewport, when it appears in grids, sidebars, or other variable-width
+layouts. A media card may place media beside its content when there is enough
+space; a card without media must remain complete without special markup.
+
+Put the query container on a wrapper around the card when the card's own layout
+needs to respond to that space. A card cannot query its own size. For the
+container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
+
+```html
+<div class="card-container">
+  <article class="card">
+    <img src="recipe.jpg" alt="Poached eggs on toast">
+    <hgroup>
+      <h3><a href="/recipes/poached-eggs">Poached eggs</a></h3>
+      <p>Breakfast special</p>
+    </hgroup>
+    <p>Two poached eggs served on toasted sourdough.</p>
+    <footer>
+      <button>Favorite</button>
+      <a href="/recipes/poached-eggs">View recipe</a>
+    </footer>
+  </article>
+</div>
+```
+
+The example shows a card with a primary destination and independent actions. A
+card may instead include a badge or metadata in its header, a hero image, or a
+footer containing a price and actions. Keep each region optional where the
+content allows it, and use layout rather than duplicated markup to arrange them.
+
+Constrain media to an intentional size or aspect ratio and avoid distortion. An
+informative image needs an appropriate text alternative; decorative media should
+use an empty alternative. A hero image may be decorative when the adjacent title
+already communicates the same information.
+
+### Align cards in a grid
+
+Let the parent grid control columns and gaps. Align corresponding regions, such
+as titles, descriptions, or actions, only when that improves comparison. Do not
+force equal heights when natural content height is more appropriate.
+
+When cards need shared internal tracks, `subgrid` can align them without changing
+source order:
+
+```css
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-rows: repeat(3, auto);
+}
+
+.card {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+}
+```
+
+Use `:has()` only when the card's content changes its presentation, such as when
+media changes the layout or a text-only card receives a different treatment. Do
+not use it when a class, element selector, or unconditional rule expresses the
+requirement more clearly. See {{ GUIDE_REF("content-based-styling") }}.
+
+## Interaction models
+
+When the card is one destination and has no independent actions, it may be one
+native link. Do not nest links, buttons, or form controls inside it:
+
+```html
+<a class="card" href="/recipes/poached-eggs">
+  <h3>Poached eggs</h3>
+  <p>Two poached eggs served on toasted sourdough.</p>
+</a>
+```
+
+When a card has a primary destination and independent actions, link the title to
+the destination and keep the other links or buttons separate. Each action must
+remain independently operable.
+
+When cards represent choices, style their native controls and labels as cards.
+Use radios for one choice and checkboxes for independent choices:
+
+```html
+<fieldset class="option-cards">
+  <legend>Choose a delivery method</legend>
+  <label class="option-card">
+    <input type="radio" name="delivery" value="standard">
+    <span>Standard delivery</span>
+  </label>
+  <label class="option-card">
+    <input type="radio" name="delivery" value="express">
+    <span>Express delivery</span>
+  </label>
+</fieldset>
+```
+
+Use a native `select` when the interaction is a select; do not represent its
+options as arbitrary card markup. Use a button when selecting a card performs an
+immediate action rather than setting form state.
+
+## Accessibility
+
+Keep native links, buttons, and form controls keyboard-operable, with accessible
+names and visible focus indicators. A card-level focus treatment may provide
+context, but must not replace the focused link or control's own indicator.
+
+Preserve the reading order when changing the visual layout. Do not make the card
+or its actions depend on hover, pointer input, colour alone, or a visual icon
+without an accessible name. For related semantic, focus, and control guidance,
+see {{ GUIDE_REF("accessibility") }}.
+
+## Fallback strategies
+
+Without container queries or `:has()`, the semantic HTML and stacked layout must
+remain usable. Do not make enhanced layout or styling necessary for the card's
+content or interaction. If a card's enhanced presentation depends on `:has()`,
+provide the same essential content and interaction through the default structure
+rather than requiring a script-only replacement.
