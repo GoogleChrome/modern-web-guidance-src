@@ -3,6 +3,10 @@ window.__featuresMapping = {
   "accessible-error-announcement": [
     "user-pseudos"
   ],
+  "accessible-generated-content": [
+    "content",
+    "alt-text-generated-content"
+  ],
   "respect-os-text-scale": [
     "meta-text-scale"
   ],
@@ -37,6 +41,27 @@ window.__featuresMapping = {
     "has",
     "not"
   ],
+  "css": [
+    "currentcolor",
+    "inherit-value",
+    "initial-value",
+    "unset-value",
+    "revert-value",
+    "em-unit",
+    "container-queries",
+    "logical-properties",
+    "cascade-layers",
+    "where",
+    "is",
+    "has",
+    "nth-child-of",
+    "scope",
+    "nesting",
+    "custom-properties",
+    "popover",
+    "corner-shape",
+    "border-radius"
+  ],
   "css-conditionals": [
     "if",
     "container-style-queries",
@@ -65,6 +90,13 @@ window.__featuresMapping = {
   "reduce-style-repetition": [
     "function"
   ],
+  "responsive-design": [
+    "container-queries",
+    "viewport-unit-variants",
+    "aspect-ratio",
+    "min-max-clamp",
+    "viewport-units"
+  ],
   "size-aware-styling": [
     "container-queries"
   ],
@@ -89,10 +121,12 @@ window.__featuresMapping = {
     "inputmode"
   ],
   "autofill-sign-in-form": [
+    "autocorrect",
     "input-email-tel-url",
     "inputmode"
   ],
   "autofill-sign-up-form": [
+    "autocorrect",
     "input-email-tel-url",
     "inputmode"
   ],
@@ -526,6 +560,20 @@ window.__featuresMapping = {
   "light-dismiss-a-dialog": [
     "dialog-closedby"
   ],
+  "motion": [
+    "transitions",
+    "animations-css",
+    "clip-path",
+    "masks",
+    "scroll-driven-animations",
+    "view-transitions",
+    "individual-transforms",
+    "transition-behavior",
+    "starting-style",
+    "display-animation",
+    "prefers-reduced-motion",
+    "registered-custom-properties"
+  ],
   "move-dom-element-without-losing-state": [
     "move-before"
   ],
@@ -732,6 +780,34 @@ window.__featuresMapping = {
   "apply-webgl-shaders": [
     "canvas-html"
   ],
+  "browser-ui-theming": [
+    "selection",
+    "user-select",
+    "accent-color",
+    "color-scheme",
+    "scrollbar-color",
+    "scrollbar-width",
+    "user-pseudos",
+    "placeholder-shown",
+    "placeholder",
+    "field-sizing",
+    "resize",
+    "customizable-select",
+    "appearance",
+    "has",
+    "file-selector-button"
+  ],
+  "color": [
+    "prefers-color-scheme",
+    "color-scheme",
+    "prefers-contrast",
+    "forced-colors",
+    "system-color",
+    "color-mix",
+    "oklab",
+    "lab",
+    "relative-color"
+  ],
   "color-ramps": [
     "relative-color",
     "function",
@@ -760,11 +836,19 @@ window.__featuresMapping = {
     "corner-shape",
     "border-radius"
   ],
+  "equal-width-text-lines": [
+    "text-fit",
+    "text-wrap-balance",
+    "text-box"
+  ],
   "export-html-media-from-canvas": [
     "canvas-html"
   ],
   "expose-canvas-content-to-browser-features": [
     "canvas-html"
+  ],
+  "fit-text-to-container": [
+    "text-fit"
   ],
   "generate-derived-colors": [
     "relative-color"
@@ -784,6 +868,33 @@ window.__featuresMapping = {
   ],
   "soft-edge-content-fade": [
     "masks"
+  ],
+  "typography": [
+    "font-size",
+    "rem",
+    "em-unit",
+    "line-height",
+    "overflow-wrap",
+    "text-wrap",
+    "text-wrap-balance",
+    "text-wrap-pretty",
+    "min-max-clamp",
+    "viewport-units"
+  ],
+  "visual-effects": [
+    "box-shadow",
+    "filter",
+    "mix-blend-mode",
+    "background-blend-mode",
+    "isolation",
+    "gradients",
+    "gradient-interpolation",
+    "conic-gradients",
+    "color-mix",
+    "oklab",
+    "supports",
+    "custom-properties",
+    "aspect-ratio"
   ],
   "visually-stable-font-fallbacks": [
     "font-size-adjust"
