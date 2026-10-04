@@ -86,8 +86,9 @@ If the primary implementation uses features that are not Baseline Widely Availab
 
 #### Baseline Status Macros
 * **MANDATORY:** Include `{{ FEATURE_FALLBACKS("feature-id") }}` (preferred) or `{{ BASELINE_STATUS("feature-id") }}` as a standalone line for *every* non-widely available feature used.
-  * Prefer `FEATURE_FALLBACKS` even when no `features/<feature-id>.md` exists yet — it gracefully degrades to just the baseline status, and any shared fallback content added later flows in automatically without a guide-side edit.
-  * Use `BASELINE_STATUS` directly only when you need the BCD-key second argument: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
+  * Prefer `FEATURE_FALLBACKS` so that fallbacks can be centralized. If there is no `features/<feature-id>.md`, create it.
+  * Use `BASELINE_STATUS` directly when you need the BCD-key second argument: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
+  * Use `BASELINE_STATUS` directly when the fallback strategy is too specific to the use case or the feature is only used in one guide, so creating a separate `features/<feature-id>.md` would be premature.
 * **Placement:** Use separate subsections with their own macros if multiple features are used. **DO NOT** use these macros outside the fallback section.
 
 #### Polyfill Guidelines
