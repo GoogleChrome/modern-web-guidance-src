@@ -11,6 +11,8 @@ The primary goal of this stage is to translate a technical web platform feature 
 2. Stage 2: Authoring guidance for a use case
 3. Stage 3: Evaluating guidance for a use case
 
+> **Peer Fast-Track**: The purpose of Stage 1 (submitting stub use cases first) is to prevent wasted effort if a proposed use case is poorly formed, duplicate, or overly API-centric. However, onboarded Subject Matter Experts ([Peers](../../../GOVERNANCE.md#peers)) possess deep domain knowledge of how a web platform feature is intended to be used. **Peers are trusted to define their use cases directly and may skip Stage 1 review, proceeding straight to Stage 2** (authoring `guide.md`, `demo.html`, and `expectations.md`). Community contributors should always complete Stage 1 alignment with Content ATLs first.
+
 ## Identifying action-oriented tasks
 
 A "use case" in this project is not a description of a feature; it's a task that the user is trying to implement, or a problem they're trying to solve. The feature is only relevant in the sense that it's part of the recommended solution for the use case.
@@ -24,8 +26,8 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
 * **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
 * **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage. If the implementation across proposed use cases is 90% identical, consolidate them.
-* **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline skill file.
-* **Granular Guide Decomposition (Avoid Monoliths)**: For discipline-level guides, ensure the guidance is broken down into granular "subskills" (i.e., smaller, focused guides) rather than a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously. The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for the discipline, explaining when and how to reference each granular subskill guide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
+* **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline guide.
+* **Granular Guide Decomposition (Avoid Monoliths)**: For discipline-level guides, ensure the guidance is broken down into granular "subguides" (i.e., smaller, focused guides) rather than a single monolithic guide. Monolithic guides are too complex to evaluate in the harness, as they present too many best practices to test simultaneously. The primary discipline-level guide (either a category root guide at `guides/<category>/<category>/guide.md`, such as `guides/css/css/guide.md`, or a named guide registered in `DISCIPLINE_GUIDES` in `lib/guide-validation.ts`, such as `guides/wasm/cpp-on-the-web/guide.md`) should serve as a conceptual "hub" that establishes the agent's mental model for the discipline, explaining when and how to reference each granular subguide, and linking them via the `{{ GUIDE_REF("guide-slug") }}` macro.
 
 
 
@@ -87,20 +89,12 @@ The following steps are REQUIRED for creating a new use case:
   ---
   ```
 
-* **Step 5: Create the `expectations.md` stub**
+* **Step 5: Validate the use case stub**
 
-  Create an `expectations.md` file in the new subdirectory outlining the must-pass verification criteria for any application implementing this guidance.
+  Run `pnpm --filter guides test` (or `gd audit`) to validate the frontmatter and directory structure.
 
-* **Step 6: Generate base-app evaluation capsules**
+* **Step 6: Get the use case approved**
 
-  Once `guide.md` and `expectations.md` are authored, run `gd dev guides/<category>/<guide>` to automatically generate and calibrate the evaluation capsules across `SUPPORTED_BASE_APPS` under `targets/<base_app>/`.
+  Open an issue or a draft/stub Pull Request containing the `guide.md` frontmatter stub for review by the category's [Content Area Tech Lead (ATL)](../../../guides/ATLS.md). *(Note: Peers fast-tracking to Stage 2 may proceed directly to the [`project-guides`](../project-guides/SKILL.md) skill to author the full `guide.md`, `demo.html`, and `expectations.md`).*
 
-* **Step 7: Validate the use case**
-
-  Run `pnpm --filter guides test` to validate the use case structure and target integrity.
-
-* **Step 8: Get the use case approved**
-
-  Submit the use case for review by creating a Pull Request containing the authored `guide.md` and `expectations.md` along with the generated `targets/` directory.
-
-After the use case is approved, you can proceed to refining the guidance and expectations as needed. Additional guidance for these stages is provided by the `project-guides` and `project-evals` skills.
+After the use case is approved, proceed to **Stage 2** using the [`project-guides`](../project-guides/SKILL.md) skill to author `guide.md`, `demo.html`, and `expectations.md`.

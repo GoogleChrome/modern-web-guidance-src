@@ -1,11 +1,13 @@
 ---
 name: project-guide-validation
-description: Protocol for validating the technical accuracy, framework nuances, and evaluation readiness of web guidance. Use this skill when assigned to validate or review a guide, demo, or expectations file.
+description: Protocol for validating the technical accuracy, framework nuances, and evaluation readiness of web guidance. Use this skill when authoring new guides to self-validate your work before opening a PR, or when assigned to review and validate a guide, demo, or expectations file.
 ---
 
 # Guide Validation
 
-This protocol defines the process for an AI agent to validate the technical accuracy, framework nuances, and evaluation readiness of web guidance. It ensures that guidance is not only correct according to documentation but also robust in practice across different framework reactivity models and target environments.
+This protocol defines the process for an AI agent to validate the technical accuracy, framework nuances, and evaluation readiness of web guidance. In **Stage 2** (after authoring `guide.md`, `demo.html`, and `expectations.md`), authors are strongly encouraged to run their draft guides through this protocol to catch edge cases, verify demo behaviors, and ensure expectation alignment prior to opening a PR.
+
+> **Human SME Sign-Off**: Automated agent validation aids authors, maintainers, and reviewers in checking technical consistency, demo behavior, and expectation alignment, but it does not replace human expertise. Every guide must be authored (or co-authored) by a human Subject Matter Expert ([Peer](../../../GOVERNANCE.md#peers) or [Content ATL](../../../guides/ATLS.md)) and reviewed and approved by the category's Content ATL (or, when authored by that category's sole Content ATL, by another Content ATL, a domain Peer, or an Owner) before merging and publishing.
 
 ## Validation Checklist
 

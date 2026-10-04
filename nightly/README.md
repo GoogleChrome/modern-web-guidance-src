@@ -4,7 +4,7 @@ This directory contains scripts to automate nightly evaluation runs.
 
 ## 1. Setup a Dedicated Nightly Repository
 To avoid interference with active work, clone a dedicated repository on your local gLinux cloudtop.
-Please make sure to follow `<repo_root>/EVALS.md` on setting up credentials for Antigravity CLI, Claude and Codex.
+Please make sure to follow `<repo_root>/harness/README.md` on setting up credentials for Antigravity CLI, Claude and Codex.
 Related environment variables can be set at `<repo_root>/.env`.
 
 **Sandbox requirement:** Eval agents run inside a filesystem sandbox that hides the repo (so they can't read guides/graders). On Linux this requires bubblewrap: `sudo apt install bubblewrap`, then verify with `bwrap --dev-bind / / true`. Without it every agent run fails. See "Filesystem Sandbox" in `harness/README.md`.

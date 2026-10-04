@@ -6,7 +6,7 @@ import { config } from '../lib/skills-config.ts';
 import { TEST_APP_RESULTS_DIR } from '../lib/guide-validation.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
-const CANONICAL_ROOT_MD = new Set(['README.md', 'CONTEXT.md', 'CONTRIBUTING.md', 'EVALS.md', 'GEMINI.md', 'CODE_OF_CONDUCT.md']);
+const CANONICAL_ROOT_MD = new Set(['README.md', 'CONTEXT.md', 'CONTRIBUTING.md', 'GOVERNANCE.md', 'GEMINI.md', 'CODE_OF_CONDUCT.md']);
 
 const run = (cmd: string) => {
   try { return execSync(cmd, { cwd: REPO_ROOT, encoding: 'utf8' }).trim(); }
@@ -61,7 +61,7 @@ if (fs.existsSync(mapPath)) {
 
 // 5. TODOs
 console.log('\n📝 Scanning for TODOs/TBDs...');
-const todos = run('git grep -n -I -E "TODO|TBD|FIXME|unresolved|decision needed" -- "guides/*.md" "skills-src/*.md" README.md CONTEXT.md CONTRIBUTING.md EVALS.md GEMINI.md CODE_OF_CONDUCT.md');
+const todos = run('git grep -n -I -E "TODO|TBD|FIXME|unresolved|decision needed" -- "guides/*.md" "skills-src/*.md" README.md CONTEXT.md CONTRIBUTING.md GOVERNANCE.md GEMINI.md CODE_OF_CONDUCT.md');
 if (todos) console.warn('⚠️  Found items needing attention:\n' + todos.split('\n').map(l => '    ' + l).join('\n'));
 else console.log('✅ No TODOs/TBDs found.');
 
