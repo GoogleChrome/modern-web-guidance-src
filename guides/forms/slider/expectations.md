@@ -1,0 +1,10 @@
+- The implementation MUST use a native `<input type="range">` element rather than recreating the slider with generic elements, custom pointer handlers, or a second interactive control.
+- The range input MUST have an accessible name, preferably through a programmatically associated `<label>`; `aria-labelledby` is acceptable when a label element is not suitable.
+- The implementation MUST configure an initial `value` and, when the use case differs from the native defaults (`min="0"`, `max="100"`, `step="1"`), appropriate `min`, `max`, and `step` attributes.
+- The implementation MUST preserve a usable interaction area and MUST provide a visible `:focus-visible` indicator with sufficient contrast after changing the native appearance.
+- For custom visual styling, the implementation MUST use `appearance: none` and the established browser-specific slider pseudo-elements, including the relevant `::-webkit-slider-runnable-track`, `::-webkit-slider-thumb`, `::-moz-range-track`, `::-moz-range-thumb`, or `::-moz-range-progress` selectors.
+- Consumer-facing styling values SHOULD be exposed as custom properties on the range input, allowing themes to customise the slider without targeting pseudo-elements directly.
+- The implementation MUST retain a usable track, thumb, and active-value indication across supported browsers. Where the active fill needs the control’s value, it MUST derive progress from the actual `min`, `max`, and `value` rather than assuming a 0–100 range.
+- The implementation MUST NOT rely on generated content from slider pseudo-elements for labels, values, instructions, or other essential information.
+- The implementation MUST account for right-to-left layouts and MUST NOT hard-code a left-to-right active-track direction without an explicit RTL strategy.
+- If the numeric value requires a human-readable unit, the implementation MUST expose that formatted value in ordinary DOM content and update `aria-valuetext` whenever the value changes. Otherwise, it SHOULD rely on the native numeric value.
