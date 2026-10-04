@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
-  <title>Origin Comparison Demo</title>
+  <title>Origin &amp; Site Validation Demo</title>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -18,73 +18,260 @@
       border-radius: 6px;
       overflow-x: auto;
     }
+    iframe {
+      display: none;
+    }
+    .tester {
+      border: 1px solid #d4d4d8;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 0.5rem 0;
+    }
+    input[type="text"] {
+      flex: 1;
+      min-width: 260px;
+      padding: 0.4rem 0.6rem;
+      font-family: monospace;
+    }
+    button {
+      padding: 0.4rem 0.75rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <h1>Origin &amp; Site Comparison</h1>
-  <pre id="output"></pre>
+  <h1>Origin &amp; Site Validation (`Origin` API)</h1>
+  <p>
+    Trusted reference origin: <code>https://app.trusted-origin.example</code>
+    (trusted site domain: <code>trusted-origin.example</code>)
+  </p>
+
+  <section class="tester" aria-labelledby="interactive-heading">
+    <h2 id="interactive-heading">Interactive Candidate Tester</h2>
+    <div class="controls">
+      <input
+        id="candidate-input"
+        data-testid="candidate-input"
+        type="text"
+        value="https://app.trusted-origin.example:443/account"
+        aria-label="Candidate URL or origin"
+      >
+      <button id="btn-test-url" data-testid="test-url-button" type="button">Validate URL / Redirect</button>
+      <button id="btn-send-msg" data-testid="send-msg-button" type="button">Simulate postMessage</button>
+    </div>
+    <div class="controls">
+      <button type="button" data-preset="https://app.trusted-origin.example:443/path">Same Origin (default :443)</button>
+      <button type="button" data-preset="https://sub.trusted-origin.example:8443/checkout">Same Site Subdomain</button>
+      <button type="button" data-preset="http://sub.trusted-origin.example/checkout">Scheme Downgrade (HTTP)</button>
+      <button type="button" data-preset="https://app.trusted-origin.example.attacker.example">Prefix Spoof</button>
+      <button type="button" data-preset="data:text/plain,hello">Opaque data: URL</button>
+      <button type="button" data-preset="://not-a-valid-url">Malformed Input</button>
+    </div>
+    <pre id="interactive-result" data-testid="interactive-result"></pre>
+  </section>
+
+  <h2>Application Scenario Verification</h2>
+  <a id="trusted-link" href="https://app.trusted-origin.example:443/account" hidden>Account</a>
+  <iframe id="sandbox-a" sandbox="allow-scripts" srcdoc="<script>parent.postMessage({ source: 'sandbox-a', type: 'init', seq: 1 }, '*'); parent.postMessage({ source: 'sandbox-a', type: 'action', seq: 2 }, '*');</script>"></iframe>
+  <iframe id="sandbox-b" sandbox="allow-scripts" srcdoc="<script>parent.postMessage({ source: 'sandbox-b', type: 'init', seq: 1 }, '*');</script>"></iframe>
+  <pre id="output" data-testid="origin-output"></pre>
 
   <script type="module">
-    const TRUSTED_ORIGIN_URL = 'https://trusted-origin.example';
-    const SUBDOMAIN_URL = 'https://sub.trusted-origin.example';
+    const TRUSTED_ORIGIN_URL = 'https://app.trusted-origin.example';
+    const TRUSTED_SITE_DOMAIN = 'trusted-origin.example';
+    const SUBDOMAIN_URL = 'https://sub.trusted-origin.example:8443/checkout';
+    const INSECURE_SUBDOMAIN_URL = 'http://sub.trusted-origin.example/checkout';
+    const SAME_ORIGIN_PATH_URL = 'https://app.trusted-origin.example:443/path';
+    const SPOOFED_PREFIX_URL = 'https://app.trusted-origin.example.attacker.example';
+    const DATA_URL_A = 'data:text/plain,first';
+    const DATA_URL_B = 'data:text/plain,second';
+    const MALFORMED_URL = '://not-a-valid-url';
 
-    // When available, both sides must be Origin instances per WHATWG HTML spec:
-    // boolean isSameOrigin(Origin other);
-    // boolean isSameSite(Origin other);
-    const trustedOrigin = 'Origin' in window ? Origin.from(TRUSTED_ORIGIN_URL) : null;
-
-    function isTrustedMessageEvent(event) {
-      if ('Origin' in window) {
-        // Pass event.origin (string) rather than the MessageEvent instance itself,
-        // as MessageEvent does not currently define extract-an-origin steps in HTML/Chromium.
-        return Origin.from(event.origin).isSameOrigin(trustedOrigin);
+    function extractUrlString(candidate) {
+      if (typeof candidate === 'string') return candidate;
+      if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
+        return candidate.origin;
       }
-      // Fallback for browsers without Origin support (e.g. Firefox)
-      return event.origin === TRUSTED_ORIGIN_URL;
+      return candidate?.href ?? '';
     }
+
+    function extractOrigin(candidate) {
+      try {
+        return Origin.from(candidate);
+      } catch {
+        return Origin.from(extractUrlString(candidate));
+      }
+    }
+
+    function checkSameOrigin(candidate) {
+      try {
+        if ('Origin' in globalThis) {
+          return extractOrigin(candidate).isSameOrigin(Origin.from(TRUSTED_ORIGIN_URL));
+        }
+        const candidateUrl = new URL(extractUrlString(candidate));
+        const trustedUrl = new URL(TRUSTED_ORIGIN_URL);
+        return candidateUrl.origin !== 'null' && candidateUrl.origin === trustedUrl.origin;
+      } catch {
+        return false;
+      }
+    }
+
+    function checkSameSite(candidate) {
+      try {
+        if ('Origin' in globalThis) {
+          return extractOrigin(candidate).isSameSite(Origin.from(TRUSTED_ORIGIN_URL));
+        }
+        const candidateUrl = new URL(extractUrlString(candidate));
+        const trustedUrl = new URL(TRUSTED_ORIGIN_URL);
+        return (
+          candidateUrl.origin !== 'null' &&
+          candidateUrl.protocol === trustedUrl.protocol &&
+          (candidateUrl.hostname === TRUSTED_SITE_DOMAIN ||
+            candidateUrl.hostname.endsWith(`.${TRUSTED_SITE_DOMAIN}`))
+        );
+      } catch {
+        return false;
+      }
+    }
+
+    const expectedSandboxWindow = document.getElementById('sandbox-a').contentWindow;
+    let pinnedSandboxOrigin = 'Origin' in globalThis ? new Origin() : null;
+    let isSandboxPinned = false;
+
+    function handleSandboxedWidgetMessage(event) {
+      if ('Origin' in globalThis) {
+        const senderOrigin = Origin.from(event);
+        if (!isSandboxPinned && event.source === expectedSandboxWindow && event.data?.type === 'init') {
+          pinnedSandboxOrigin = senderOrigin;
+          isSandboxPinned = true;
+        }
+        return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
+      }
+      return event.source === expectedSandboxWindow;
+    }
+
+    const acceptedMessages = [];
+    const rejectedMessages = [];
+    const sandboxResults = {};
+
+    function updateInteractiveResult(candidateValue) {
+      let opaqueState = 'n/a (fallback)';
+      if ('Origin' in globalThis) {
+        try {
+          opaqueState = String(Origin.from(candidateValue).opaque);
+        } catch {
+          opaqueState = 'invalid (Origin.from threw TypeError)';
+        }
+      }
+      document.getElementById('interactive-result').textContent = [
+        `Candidate: ${candidateValue}`,
+        `isSameOrigin (privileged action): ${checkSameOrigin(candidateValue)}`,
+        `isSameSite   (redirect / link):   ${checkSameSite(candidateValue)}`,
+        `opaque:                           ${opaqueState}`,
+      ].join('\n');
+    }
+
+    function renderOutput() {
+      const linkEl = document.getElementById('trusted-link');
+      const lines = [
+        `Trusted reference origin: ${TRUSTED_ORIGIN_URL}`,
+        `Native Origin supported: ${'Origin' in globalThis}`,
+        '',
+        `sameOrigin(${SAME_ORIGIN_PATH_URL}): ${checkSameOrigin(SAME_ORIGIN_PATH_URL)}`,
+        `sameOrigin(anchor#trusted-link): ${checkSameOrigin(linkEl)}`,
+        `sameOrigin(${SUBDOMAIN_URL}): ${checkSameOrigin(SUBDOMAIN_URL)}`,
+        `sameOrigin(${SPOOFED_PREFIX_URL}): ${checkSameOrigin(SPOOFED_PREFIX_URL)}`,
+        `sameOrigin(${DATA_URL_A}): ${checkSameOrigin(DATA_URL_A)}`,
+        `sameOrigin(${MALFORMED_URL}): ${checkSameOrigin(MALFORMED_URL)}`,
+        '',
+        `sameSite(${SUBDOMAIN_URL}): ${checkSameSite(SUBDOMAIN_URL)}`,
+        `sameSite(${INSECURE_SUBDOMAIN_URL}): ${checkSameSite(INSECURE_SUBDOMAIN_URL)}`,
+        `sameSite(${SPOOFED_PREFIX_URL}): ${checkSameSite(SPOOFED_PREFIX_URL)}`,
+        `sameSite(${MALFORMED_URL}): ${checkSameSite(MALFORMED_URL)}`,
+        '',
+        `Accepted messages: ${acceptedMessages.join(', ')}`,
+        `Rejected messages: ${rejectedMessages.join(', ')}`,
+      ];
+
+      if ('Origin' in globalThis) {
+        const opaqueA = Origin.from(DATA_URL_A);
+        const opaqueB = Origin.from(DATA_URL_B);
+        lines.push(`opaqueA.opaque: ${opaqueA.opaque}`);
+        lines.push(`opaqueA.isSameOrigin(opaqueB): ${opaqueA.isSameOrigin(opaqueB)}`);
+      }
+      if ('sandbox-a-2' in sandboxResults && 'sandbox-b-1' in sandboxResults) {
+        lines.push(`pinnedSandboxAccepted(sandbox-a#2): ${sandboxResults['sandbox-a-2']}`);
+        lines.push(`pinnedSandboxAccepted(sandbox-b#1): ${sandboxResults['sandbox-b-1']}`);
+      }
+
+      document.getElementById('output').textContent = lines.join('\n');
+    }
+
+    const candidateInput = document.getElementById('candidate-input');
+    document.getElementById('btn-test-url').addEventListener('click', () => {
+      updateInteractiveResult(candidateInput.value.trim());
+    });
+    document.getElementById('btn-send-msg').addEventListener('click', () => {
+      const val = candidateInput.value.trim();
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: val,
+          data: { label: `interactive(${val})` },
+        })
+      );
+      updateInteractiveResult(val);
+    });
+    for (const btn of document.querySelectorAll('[data-preset]')) {
+      btn.addEventListener('click', () => {
+        candidateInput.value = btn.dataset.preset;
+        updateInteractiveResult(candidateInput.value);
+      });
+    }
+    updateInteractiveResult(candidateInput.value);
 
     window.addEventListener('message', (event) => {
-      if (!isTrustedMessageEvent(event)) return;
-      // Handle verified message payload safely
+      if (event.data?.source?.startsWith('sandbox-')) {
+        const key = `${event.data.source}-${event.data.seq}`;
+        sandboxResults[key] = handleSandboxedWidgetMessage(event);
+        if (!checkSameOrigin(event)) {
+          rejectedMessages.push(`${event.data.source}#${event.data.seq}`);
+        }
+        renderOutput();
+        return;
+      }
+
+      if (checkSameOrigin(event)) {
+        acceptedMessages.push(event.data?.label ?? event.origin);
+      } else {
+        rejectedMessages.push(event.data?.label ?? event.origin);
+      }
+      renderOutput();
     });
 
-    const SAME_ORIGIN_PATH_URL = 'https://trusted-origin.example/path';
-    const ATTACKER_ORIGIN_URL = 'https://untrusted-attacker.example';
-
-    const trustedEvent = new MessageEvent('message', {
-      origin: TRUSTED_ORIGIN_URL,
-      data: { action: 'update' },
-    });
-    const untrustedEvent = new MessageEvent('message', {
-      origin: ATTACKER_ORIGIN_URL,
-      data: { action: 'update' },
-    });
-
-    const lines = [];
-    lines.push(`Trusted reference origin: ${TRUSTED_ORIGIN_URL}`);
-    lines.push('');
-
-    if ('Origin' in window) {
-      const candidateSameOrigin = Origin.from(SAME_ORIGIN_PATH_URL);
-      const candidateSubdomain = Origin.from(SUBDOMAIN_URL);
-      const opaqueOrigin = new Origin();
-
-      lines.push(`Native Origin supported: true`);
-      lines.push('');
-      lines.push(`isSameOrigin(${SAME_ORIGIN_PATH_URL} vs ${TRUSTED_ORIGIN_URL}): ${candidateSameOrigin.isSameOrigin(trustedOrigin)}`);
-      lines.push(`isSameOrigin(${SUBDOMAIN_URL} vs ${TRUSTED_ORIGIN_URL}): ${candidateSubdomain.isSameOrigin(trustedOrigin)}`);
-      lines.push(`isSameSite  (${SUBDOMAIN_URL} vs ${TRUSTED_ORIGIN_URL}): ${candidateSubdomain.isSameSite(trustedOrigin)}`);
-      lines.push(`new Origin().opaque: ${opaqueOrigin.opaque}`);
-      lines.push('');
-      lines.push(`isTrustedMessageEvent(${TRUSTED_ORIGIN_URL}):  ${isTrustedMessageEvent(trustedEvent)}`);
-      lines.push(`isTrustedMessageEvent(${ATTACKER_ORIGIN_URL}): ${isTrustedMessageEvent(untrustedEvent)}`);
-    } else {
-      lines.push(`Native Origin supported: false (using strict string/URL fallback)`);
-      lines.push(`isTrustedMessageEvent(${TRUSTED_ORIGIN_URL}):  ${isTrustedMessageEvent(trustedEvent)}`);
-      lines.push(`isTrustedMessageEvent(${ATTACKER_ORIGIN_URL}): ${isTrustedMessageEvent(untrustedEvent)}`);
-    }
-
-    document.getElementById('output').textContent = lines.join('\n');
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: TRUSTED_ORIGIN_URL,
+        data: { label: 'trusted-msg' },
+      })
+    );
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: SPOOFED_PREFIX_URL,
+        data: { label: 'spoofed-msg' },
+      })
+    );
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'null',
+        data: { label: 'opaque-null-msg' },
+      })
+    );
   </script>
 </body>
 </html>
