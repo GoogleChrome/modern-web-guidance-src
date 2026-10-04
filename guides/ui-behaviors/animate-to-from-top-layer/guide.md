@@ -118,11 +118,10 @@ dialog[open]::backdrop,
 
 Entry animations work in pure CSS across all browsers that support `@starting-style`—no `.is-opening` class is needed because entry transitions do not depend on `overlay` or discrete `display` transitions.
 
-Exit animations require both `overlay` and discrete `display` transition support. When either is unsupported (such as in Firefox and Safari), add `:not([data-closing])` to the open-state selectors from the Example (keeping the nested `@starting-style`) so setting `data-closing` triggers the exit transition while the element remains in the top layer, then wait for `getAnimations()` to settle before calling `.close()` or `.hidePopover()`:
+Exit animations require both `overlay` and discrete `display` transition support. When either is unsupported (such as in Firefox and Safari), wrap the open-state selectors in `:is()` and append `:where(:not([data-closing]))` (nesting `&::backdrop` and `@starting-style`) so setting `data-closing` triggers the exit transition while the element remains in the top layer, then wait for `getAnimations()` to settle before calling `.close()` or `.hidePopover()`:
 
 ```css
-dialog[open]:not([data-closing]),
-[popover]:popover-open:not([data-closing]) {
+:is(dialog[open], [popover]:popover-open):where(:not([data-closing])) {
   opacity: 1;
   transform: scale(1);
 
@@ -130,14 +129,13 @@ dialog[open]:not([data-closing]),
     opacity: 0;
     transform: scale(0.9);
   }
-}
 
-dialog[open]:not([data-closing])::backdrop,
-[popover]:popover-open:not([data-closing])::backdrop {
-  background-color: rgb(0 0 0 / 0.5);
+  &::backdrop {
+    background-color: rgb(0 0 0 / 0.5);
 
-  @starting-style {
-    background-color: transparent;
+    @starting-style {
+      background-color: transparent;
+    }
   }
 }
 ```
