@@ -1088,6 +1088,9 @@
   "tmp-navigation-source": [
     "css"
   ],
+  "tmp-path-length": [
+    "css"
+  ],
   "tmp-resizable": [
     "css"
   ],
@@ -1097,6 +1100,12 @@
   "tmp-scroll-triggered-animations": [
     "animation",
     "scrolling"
+  ],
+  "tmp-text-decoration-inset": [
+    "css"
+  ],
+  "tmp-text-decoration-skip-spaces": [
+    "css"
   ],
   "tmp-webcrypto-modern-algos": [
     "security"
