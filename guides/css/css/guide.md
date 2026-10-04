@@ -446,7 +446,7 @@ Simple pie chart:
 Rendering performance is critical for smooth user experiences, especially in heavy DOM trees.
 
 - Prefer to animate `opacity` and `transform` (including individual transform properties, e.g. `translate` instead of `left/right/top/bottom`) to ensure animations stay on the compositor thread.
-- Use `transition-behavior: allow-discrete` + `@starting-style` to animate layout properties like `display` or `<dialog>` state natively.
+- Use `transition-behavior: allow-discrete`, `@starting-style`, and (for top-layer elements like `<dialog>` or `[popover]`) `overlay` to animate discrete entry and exit states natively; see {{ GUIDE_REF("animate-element-entry-exit") }} and {{ GUIDE_REF("animate-to-from-top-layer") }}.
 - Always pair `content-visibility` with `contain-intrinsic-size` to prevent scrollbar jumps (CLS).
 - When setting `contain-intrinsic-size` use the `auto` keyword and a value that’s derived from what is known about the contents (i.e. text size, spacing, size of graphics, character count). Preferably use units such as `rem`, `lh`, `cap`, or `ch` that match values used for the elements within the contents rather than `px`. If the content for items in a group is not consistently sized, then use an average size.
 - Use `contain: layout style paint` to isolate component rendering updates.
@@ -472,8 +472,12 @@ Rendering performance is critical for smooth user experiences, especially in hea
 }
 
 .popover-reveal {
-  /* Allow discrete animations for display transitions */
-  transition: display 0.2s allow-discrete;
+  /* Transition discrete display and top-layer overlay alongside opacity */
+  transition:
+    opacity 0.2s ease-out,
+    display 0.2s,
+    overlay 0.2s;
+  transition-behavior: allow-discrete;
 }
 ```
 
