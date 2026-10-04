@@ -76,18 +76,22 @@
   },
   "tmp-polygon-round": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4429",
-    "group": "css"
+    "group": "css",
+    "compat_features": "css.types.basic-shape.polygon.round"
   },
   "tmp-column-wrap": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4430",
-    "group": "css"
+    "group": "css",
+    "compat_features": "css.properties.column-wrap"
   },
   "tmp-revert-rule": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4431",
-    "group": "css"
+    "group": "css",
+    "compat_features": "css.types.global_keywords.revert-rule"
   },
   "tmp-path-length": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4307",
-    "group": "css"
+    "group": "css",
+    "compat_features": "css.properties.path-length"
   }
 }
