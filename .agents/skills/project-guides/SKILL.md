@@ -50,7 +50,7 @@ web-feature-ids:
 
 * **Formatting Directives:** Use strict imperative directives (`MANDATORY:`, `DO`, `DO NOT`) only when emphasis is strictly needed (e.g., for critical constraints, security, or common pitfalls). Do not overuse them for every single instruction. Coding agents respond best to rigid constraints when they are selectively applied.
 * **Focus:** Keep the guidance focused on the specific use case and short. No fluff. No conversational text. Include a brief overview of the use case and explanation of why the solution outlined in the guide is the recommended approach.
-* **Self-Contained:** DO NOT include any external links in the markdown body (`[link text](url)`). All required knowledge to use the feature MUST be fully synthesized into the markdown body. Agents must not be slowed down or require additional resources to implement the guidance.
+* **Self-Contained:** DO NOT include any external links in the markdown body (`[link text](url)`), and DO NOT rely on internal `{{ GUIDE_REF("...") }}` cross-references to supply required implementation details. All required knowledge to use the feature MUST be fully synthesized into the markdown body (or transcluded at build time via `INCLUDE`/`FEATURE`). Agents must not be slowed down or require additional retrievals to implement the guidance.
 
 ### 3. Code Snippets
 
@@ -104,10 +104,23 @@ If the primary implementation uses features that are not Baseline Widely Availab
 | `{{ FEATURE("feature-id", "section") }}` | Sugar for `INCLUDE("features/<feature-id>.md#<section>")`. |
 | `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section. If `#fallbacks` is empty, emits only `BASELINE_STATUS` (no heading). |
 | `{{ FEATURE_ISSUES("feature-id") }}` | `### Issues to be aware of when using <Feature name>` + the `#issues` section. Returns `""` if `#issues` is empty/missing. |
+| `{{ GUIDE_REF("guide-slug") }}` | Cross-reference to another guide (`\`guide-slug\` (via \`npx -y modern-web-guidance@latest retrieve "guide-slug"\`)` in `skills-cli`; relative path in `local-dev`; markdown link in `static-site`). |
 
-* **Errors**: invalid feature ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* (file or section) → silent `""`, so guides can reference content that doesn't exist yet.
+* **Errors**: invalid feature/guide ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* in `INCLUDE`/`FEATURE` (file or section) → silent `""`, so guides can reference content that doesn't exist yet.
 * **Section IDs**: slugified heading text (`### Fallback strategies` → `fallback-strategies`), or an explicit `{#id}` suffix on the heading.
 * **Recursion**: macros inside transcluded content expand normally. No cycle detection — don't write self-referential includes.
+
+#### Cross-referencing other guides with `GUIDE_REF`
+
+Ideally, an agent retrieves every guide it needs upfront in a single command (`retrieve "a,b"`) from `search` or `list` results and completes the task without extra round-trips. A sequential `GUIDE_REF` hop costs an extra turn, CLI call, and context window tokens — so cross-references should optimize for **precision** (helping an agent recover or branch *only* when its task genuinely requires another guide), never for maximizing click-throughs.
+
+* **Prefer build-time transclusion (`INCLUDE`/`FEATURE`) over runtime hops:** Never use `GUIDE_REF` for core requirements, shared prerequisites, accessibility rules, or fallbacks needed to implement *this* guide's use case. Inline them or transclude them at build time so the agent gets everything in one retrieval.
+* **Never mandate unconditional secondary retrievals:** Telling an agent to "always retrieve" a companion guide wastes turns and tokens whenever that companion topic isn't relevant to the user's prompt. (The only exception is a pure router hub that intentionally omits implementation code and delegates to mutually exclusive sub-guides.)
+* **Always gate `GUIDE_REF` behind a narrow, explicit condition (`If your task requires X...`):**
+  1. **Disambiguation ("When to use this guide"):** Contrasting two easily confused primitives near the top of a guide so an agent that retrieved the wrong one can pivot immediately (e.g., `progress-ring` vs. `spinner` for determinate vs. indeterminate loading, or `usage-aware-component-variations` vs. `design-token-reactivity`).
+  2. **Router hubs & decision tables:** Orientation or discipline guides that map distinct sub-problems to specialized guides (e.g., `passkeys` routing to `passkey-registration`, `passkey-authentication`, etc.), so the agent fetches only the sub-guide matching its task.
+  3. **Conditional sub-problems:** Pointing to a companion guide only when a specific optional scenario applies, stating the exact trigger condition inline (e.g., `forms` pointing to `ime-safe-enter-submit` when handling custom `Enter`-key submission in text inputs).
+* **Avoid vague "See also" links:** Do not add bare "For more information, see `{{ GUIDE_REF(...) }}`" asides or footer lists without stating the exact condition under which the agent needs that guide. Vague links either go ignored or tempt over-eager agents into wasting tokens on irrelevant retrievals.
 
 ### 7. Reusing per-feature content via `features/`
 
