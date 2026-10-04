@@ -1,0 +1,29 @@
+# Expectations
+
+- **MANDATORY**: The page uses a single semantic `<nav>` element with an explicit accessibility label (e.g., `aria-label="Primary"`) that functions across both mobile and desktop layouts.
+- **MANDATORY**: The mobile navigation trigger is a native `<button>` element with `type="button"` and links to the popover menu element (such as `<ul>`) using declarative `popovertarget` and `aria-controls` attributes.
+- **MANDATORY**: Any decorative SVG icons inside the trigger button have `aria-hidden="true"` and `focusable="false"`.
+- **MANDATORY**: The current/active page link inside the navigation panel is indicated using the `aria-current="page"` attribute.
+- **MANDATORY**: The semantic `<header>` element (the component boundary) declares `container-type: inline-size` to support container query layouts on descendants.
+- **MANDATORY**: Spacing, sizing, and positioning of the navigation elements use CSS logical properties (e.g., `inline-size`, `block-size`, `margin-inline`, `padding-block`, `inset-block-start`, `inset-inline-end`) instead of physical coordinates.
+- **MANDATORY**: Default base selectors are kept at low specificity using `:where()` to prevent stylesheet override collisions.
+- **MANDATORY**: State selectors are grouped cleanly using `:is()`, and hover/active states exclude disabled buttons using `:not(:disabled)`.
+- **MANDATORY**: The containing header's styles are dynamically updated based on the popover's open state using the `:has()` selector (e.g., `.site-header:has(.site-menu:popover-open)`) instead of manual JS state classes, with no nested `:has()` selectors used.
+- **MANDATORY**: Viewport-relative sizing uses modern viewport units (`dvh` and `dvw`) instead of traditional `vh`/`vw`.
+- **MANDATORY**: Fluid sizing and typography are defined using `clamp()` combining `rem` and container query inline width units (`cqi`).
+- **MANDATORY**: Headings and body copy apply modern text-wrapping controls (`text-wrap: balance` on headings, and `text-wrap: pretty` on paragraphs).
+- **MANDATORY**: Interactive controls (such as buttons, links, and summaries) define a minimum target size of at least `min-inline-size: 24px` and `min-block-size: 24px`.
+- **MANDATORY**: Focusable controls provide a clearly visible focus indicator using `:focus-visible` with a distinct offset.
+- **MANDATORY**: Under narrow layouts (`@container (inline-size < 45rem)`), the popover element functions as a native popover using `popover="auto"` and is positioned relative to the trigger button using CSS Anchor Positioning (`anchor-name` and `anchor()`).
+- **MANDATORY**: Under wide layouts (`@container (inline-size >= 45rem)`), the mobile trigger button is hidden (`display: none`), and the popover element is transformed into a static horizontal inline layout by resetting its styles (including `position: static`, `display: block` or `display: flex`, and `::backdrop { display: none }`).
+- **MANDATORY**: JavaScript synchronises the outer navigation's `popover` attribute with the header's responsive layout so the navigation is a native popover only in the narrow layout and becomes a normal inline element in the wide layout.
+- **MANDATORY**: The current page link uses `[aria-current="page"]` as its styling hook, and the attribute is set at build time or via JavaScript.
+- **MANDATORY**: Popover open/close transitions on mobile layouts implement `@starting-style` and `transition` with `allow-discrete` to ensure smooth entry and exit animation of the popover elements, animating only `opacity` and `transform`.
+- **MANDATORY**: Transitions are completely disabled or dampened under a `@media (prefers-reduced-motion: reduce)` media query.
+- **MANDATORY**: The CSS Anchor Positioning declarations include a declaration-level fallback before the `anchor()` declaration for browsers that do not support CSS Anchor Positioning.
+- **MANDATORY**: Second-level navigation items use native `<details class="nav-dropdown">` and `<summary>` elements for disclosure semantics, and their nested list is promoted to a popover only in the wide layout.
+- **MANDATORY**: On narrow layouts, the sub-navigation expands vertically inline inside the popover navigation panel, pushing other sibling list links down.
+- **MANDATORY**: On wide layouts, each nested submenu is a top-layer popover positioned relative to its `<summary>` source using CSS Anchor Positioning, with a declaration-level fallback where required.
+- **MANDATORY**: On wide layouts, each nested submenu synchronises its native `<details>` state with a `popover="auto"` state so the browser provides light dismiss, Escape handling, focus restoration, and expanded-state semantics.
+- **MANDATORY**: High-contrast system support is provided under a `@media (forced-colors: active)` query to adapt custom borders, boundaries, and active-state visual indicators (e.g., using values like `CanvasText` and `Highlight`).
+- **OPTIONAL**: Reusable design tokens for color, typography, and spacing are defined on `:root`, using `color-scheme: light dark` and `light-dark()` values for theme compliance.
