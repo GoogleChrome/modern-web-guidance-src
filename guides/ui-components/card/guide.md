@@ -62,6 +62,39 @@ container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
 </div>
 ```
 
+```css
+.card-container {
+  /* Query the wrapper's inline size because a card cannot query its own container size */
+  container-type: inline-size;
+}
+
+.card {
+  display: grid;
+  gap: 0.75rem; /* Example spacing */
+}
+
+/* Switch to two columns only when the container is wide enough (32rem is an example threshold) AND media is present */
+@container (min-width: 32rem) {
+  .card:has(> :is(img, picture, video, svg)) {
+    grid-template-columns: 9rem 1fr; /* Example media column width */
+    grid-template-rows: auto 1fr auto; /* Size hgroup and footer to content; let body text flex */
+    gap: 0.5rem 1.25rem;
+  }
+
+  .card:has(> :is(img, picture, video, svg)) > :is(img, picture, video, svg) {
+    grid-column: 1;
+    /* Span all explicit text rows (-1) instead of an arbitrary span count, which would create empty implicit tracks that still accumulate row-gap */
+    grid-row: 1 / -1;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
+  .card:has(> :is(img, picture, video, svg)) > :not(:is(img, picture, video, svg)) {
+    grid-column: 2;
+  }
+}
+```
+
 The example shows a card with a primary destination and independent actions. A
 card may instead include a badge or metadata in its header, a hero image, or a
 footer containing a price and actions. Keep each region optional where the
