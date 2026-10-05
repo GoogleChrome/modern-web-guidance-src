@@ -83,7 +83,7 @@ Put the query container on a wrapper around the card when the card's own layout 
 
 The example shows a card with a primary destination and independent actions. A card may instead include a badge or metadata in its header, a hero image, or a footer containing a price and actions. Keep each region optional where the content allows it, and use layout rather than duplicated markup to arrange them.
 
-Constrain media to an intentional size or aspect ratio and avoid distortion. An informative image needs an appropriate text alternative; decorative media should use an empty alternative. A hero image may be decorative when the adjacent title already communicates the same information.
+Constrain media to an intentional size or aspect ratio and avoid distortion, for example with `aspect-ratio` and `object-fit: cover`. An informative image needs an appropriate text alternative; decorative media should use an empty alternative. A hero image may be decorative when the adjacent title already communicates the same information.
 
 ### Align cards in a grid
 
