@@ -57,8 +57,16 @@ input[type="range"] {
   --slider-track-color: light-dark(#d9d9d9, #404040);
   --slider-fill-color: light-dark(#06c, #66b3ff);
   --slider-thumb-color: var(--slider-fill-color);
-  --slider-progress: 0%;
   --slider-direction: to right;
+
+  /* Mirror the input's min, max, and value; kept in sync by the script below. */
+  --attr-min: 0;
+  --attr-max: 100;
+  --control-value: 50;
+  --slider-progress: calc(
+    (var(--control-value) - var(--attr-min)) /
+    (var(--attr-max) - var(--attr-min)) * 100%
+  );
 
   appearance: none;
   inline-size: 100%;
@@ -130,24 +138,19 @@ input[type="range"]:focus-visible {
 
 ## Style the active track
 
-The Firefox `::-moz-range-progress` pseudo-element exposes the filled portion of the track. WebKit/Blink do not provide an equivalent interoperable pseudo-element, so set a percentage custom property when the fill must be styled there. Keep this enhancement small and derive the percentage from the control’s actual `min`, `max`, and `value` rather than assuming a 0–100 range.
+The Firefox `::-moz-range-progress` pseudo-element exposes the filled portion of the track. WebKit/Blink do not provide an equivalent interoperable pseudo-element, so expose the control's `min`, `max`, and value as the `--attr-min`, `--attr-max`, and `--control-value` custom properties declared in the CSS above. The CSS derives `--slider-progress` from them, so the fill follows the control's actual range rather than assuming 0–100. Keep this enhancement small:
 
 ```js
 const slider = document.querySelector('#range-slider');
 
-function updateSliderProgress() {
-  const min = Number(slider.min || 0);
-  const max = Number(slider.max || 100);
-  const value = Number(slider.value);
-  const progress = max > min
-    ? ((value - min) / (max - min)) * 100
-    : 0;
-
-  slider.style.setProperty('--slider-progress', `${progress}%`);
+function syncSliderProperties() {
+  slider.style.setProperty('--attr-min', slider.min || 0);
+  slider.style.setProperty('--attr-max', slider.max || 100);
+  slider.style.setProperty('--control-value', slider.value);
 }
 
-updateSliderProgress();
-slider.addEventListener('input', updateSliderProgress);
+syncSliderProperties();
+slider.addEventListener('input', syncSliderProperties);
 ```
 
 ## Support right-to-left layouts

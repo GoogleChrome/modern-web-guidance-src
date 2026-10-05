@@ -78,8 +78,14 @@
       --slider-track-color: var(--track-bg);
       --slider-fill-color: var(--brand-color);
       --slider-thumb-color: var(--slider-fill-color);
-      --slider-progress: 0%;
       --slider-direction: to right;
+
+      /* Mirror the input's min, max, and value; kept in sync by the script below. */
+      --attr-min: 0;
+      --attr-max: 100;
+      --control-value: 50;
+      --slider-progress: calc((var(--control-value) - var(--attr-min)) /
+          (var(--attr-max) - var(--attr-min)) * 100%);
 
       appearance: none;
       inline-size: 100%;
@@ -159,15 +165,11 @@
     const valueDisplay = document.getElementById('value-display');
 
     function updateSlider() {
-      const min = Number(slider.min || 0);
-      const max = Number(slider.max || 100);
-      const value = Number(slider.value);
-      const progress = max > min
-        ? ((value - min) / (max - min)) * 100
-        : 0;
-      const formattedValue = `${value}%`;
+      const formattedValue = `${slider.value}%`;
 
-      slider.style.setProperty('--slider-progress', `${progress}%`);
+      slider.style.setProperty('--attr-min', slider.min || 0);
+      slider.style.setProperty('--attr-max', slider.max || 100);
+      slider.style.setProperty('--control-value', slider.value);
       valueDisplay.value = formattedValue;
       valueDisplay.textContent = formattedValue;
       slider.setAttribute('aria-valuetext', formattedValue);
