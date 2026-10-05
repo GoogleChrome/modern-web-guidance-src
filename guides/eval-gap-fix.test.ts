@@ -19,7 +19,6 @@ function makeGuide(name: string, overrides: Partial<GuideInventory> = {}): Guide
     expectationsEmpty: false,
     hasGrader: false,
     hasTask: false,
-    isDisciplineGuide: false,
     draft: false,
     ...overrides,
   } as GuideInventory;
@@ -36,12 +35,6 @@ describe('planFixes', () => {
   it('queues a missing-evals issue whose guide still needs evals and has no PR', () => {
     const { toFix, skipped } = planFixes([issueFor('scrollspy', 1)], [], [makeGuide('scrollspy')], new Set());
     assert.deepStrictEqual(toFix.map(g => [g.issueNumber, g.guidePath]), [[1, 'guides/css/scrollspy']]);
-    assert.deepStrictEqual(skipped, []);
-  });
-
-  it('includes discipline guides', () => {
-    const { toFix, skipped } = planFixes([issueFor('css', 1)], [], [makeGuide('css', { isDisciplineGuide: true })], new Set());
-    assert.deepStrictEqual(toFix.map(g => [g.issueNumber, g.guidePath]), [[1, 'guides/css/css']]);
     assert.deepStrictEqual(skipped, []);
   });
 
