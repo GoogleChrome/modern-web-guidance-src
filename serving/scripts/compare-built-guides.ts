@@ -23,6 +23,14 @@ const TEMP_REPO_DIR = "/tmp/guides-baseline-repo";
 const safeEnv = { ...process.env };
 delete safeEnv.GIT_DIR;
 delete safeEnv.GIT_WORK_TREE;
+// Clear any GIT_CONFIG variables that might be set by the environment to prevent interference
+Object.keys(safeEnv).forEach(key => {
+  if (key.startsWith('GIT_CONFIG_') && key !== 'GIT_CONFIG_GLOBAL' && key !== 'GIT_CONFIG_SYSTEM') {
+    delete safeEnv[key];
+  }
+});
+delete safeEnv.GIT_EXTERNAL_DIFF;
+delete safeEnv.GIT_PAGER;
 
 let mergeBase = "";
 
@@ -107,7 +115,7 @@ export function compareGuides(modifiedGuides: string[], baseline: string = BASEL
     } else {
       const anchor = guide.replace(/\//g, "-");
       try {
-        execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
+        execSync(`git diff --no-index --no-ext-diff --no-color --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
         // If no difference is resolved, classify as verbatim changes only
         verbatimCount++;
         verbatimList += `- \`${guide}\` (whitespace changes only)\n`;

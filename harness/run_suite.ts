@@ -7,7 +7,7 @@ import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../lib/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../lib/patch-utils.ts';
-import { getGraderScriptContent } from './lib/agent-shared.ts';
+import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
 import { copyBaseAppToWorkspace } from '../guides/lib/utils.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
@@ -421,6 +421,7 @@ export function generateTransientPackage(
   // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
   const runnerContent = `import { spawnSync } from 'child_process';
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -442,19 +443,25 @@ env.PATH = \`${targetDir}:\${env.PATH}\`;
 const start = Date.now();
 let result;
 let attempts = 0;
-const maxAttempts = 5; // 1 initial attempt + 4 retries with exponential backoff
+const maxAttempts = 3; // 1 initial attempt + 2 retries with exponential backoff
 const baseDelay = 15000; // 15 seconds base delay
+const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
 
 while (attempts < maxAttempts) {
   attempts++;
-  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env });
+  fs.rmSync(failureFile, { force: true });
+  // Assign the isolated HOME here so it is removed even if the timeout kills the agent
+  // wrapper before its own cleanup runs.
+  const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);
+  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
+  fs.rmSync(isolatedHome, { recursive: true, force: true });
   if (result.status === 0) break;
 
   // Check if this is a rate limit error (429)
   const isRateLimit = result.status === 1 || (result.stderr && result.stderr.toString().includes('429'));
 
   if (attempts < maxAttempts) {
-    // Exponential backoff: 15s, 30s, 60s, 120s (with some jitter)
+    // Exponential backoff: 15s, 30s (with some jitter)
     // For rate limits, use longer delays
     const base = isRateLimit ? 30000 : baseDelay;
     const delay = base * Math.pow(2, attempts - 1) + Math.random() * 5000;
@@ -474,25 +481,21 @@ let graderRuntime = null;
 let graderStatus = null;
 
 if (result.status === 0) {
-  const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
-  if (fs.existsSync(failureFile)) {
-    fs.unlinkSync(failureFile);
-  }
   const gradeStart = Date.now();
   const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
   const gradeResult = spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
-  graderStatus = gradeResult.status;
-} else {
-  const failureFile = path.join(${JSON.stringify(targetDir)}, 'generation_failed.json');
-  if (!fs.existsSync(failureFile)) {
-    fs.writeFileSync(failureFile, JSON.stringify({
-      agentName: path.basename(${JSON.stringify(agentScript)}),
-      exitCode: result.status,
-      stderr: 'Agent execution failed unexpectedly during setup or wrapper invocation',
-      stdout: ''
-    }, null, 2));
-  }
+  graderStatus = gradeResult.status ?? 1;
+} else if (!fs.existsSync(failureFile)) {
+  const timedOut = result.error?.code === 'ETIMEDOUT';
+  fs.writeFileSync(failureFile, JSON.stringify({
+    agentName: path.basename(${JSON.stringify(agentScript)}),
+    exitCode: timedOut ? 'TIMEOUT (10m)' : result.status,
+    stderr: timedOut
+      ? 'Agent timed out after 10 minutes'
+      : 'Agent execution failed unexpectedly during setup or wrapper invocation',
+    stdout: ''
+  }, null, 2));
 }
 
 fs.writeFileSync(path.join(${JSON.stringify(targetDir)}, 'runtime.json'), JSON.stringify({
@@ -502,7 +505,7 @@ fs.writeFileSync(path.join(${JSON.stringify(targetDir)}, 'runtime.json'), JSON.s
   graderStatus: graderStatus
 }, null, 2));
 
-process.exit(graderStatus !== null ? graderStatus : result.status ?? 0);
+process.exit(graderStatus !== null ? graderStatus : (result.status ?? 1));
 `.trim();
 
   fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);

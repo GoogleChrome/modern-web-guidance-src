@@ -68,6 +68,7 @@ export function setupIsolatedWorkDir(
 
   setupAgentCredentials(agent, tempHome);
   process.env.HOME = tempHome;
+  process.env.ZDOTDIR = tempHome;
 
   if (runType === 'guided') {
     const suiteConfig = getSuiteConfig();
@@ -139,6 +140,9 @@ export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): 
   }
 }
 
+/** Env var through which run.mjs assigns the isolated HOME path for each agent attempt. */
+export const ISOLATED_HOME_ENV = 'GD_ISOLATED_HOME';
+
 /**
  * Creates a unique isolated HOME directory in /tmp.
  * @param prefix The prefix for the directory name
@@ -148,7 +152,9 @@ export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): 
 export function createIsolatedHome(prefix: string, targetDir?: string): string {
   // Use /tmp/ deliberately because os.tmpdir() on macOS can return paths that are 
   // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
-  const tempHome = `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
+  // run.mjs assigns the path via GD_ISOLATED_HOME so it can remove the directory after each
+  // attempt, even when the attempt is killed by the timeout before cleanupIsolatedHome runs.
+  const tempHome = process.env[ISOLATED_HOME_ENV] || `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
 
   if (targetDir) {
@@ -572,7 +578,11 @@ export async function runCliAgentCommand(
   agentName: string,
   runType: string
 ): Promise<void> {
-  const sanitizedEnv = { ...process.env, PWD: workDir };
+  const sanitizedEnv = {
+    ...process.env,
+    PWD: workDir,
+    PWTEST_CACHE_DIR: path.join(process.env.HOME || workDir, '.cache', 'playwright-transform'),
+  };
   // Hide the repo from the agent so it can't read guides/expectations/graders.
   const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(targetDir, runType));
   const child = spawn(sandboxed.command, sandboxed.commandArgs, {
