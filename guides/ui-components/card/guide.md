@@ -117,15 +117,25 @@ source order:
 ```css
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  grid-template-rows: repeat(3, auto);
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); /* 18rem is an example minimum card width */
+  /* Define 4 implicit tracks per wrapped card row: media, heading, flexible body (1fr), and footer */
+  grid-auto-rows: auto auto 1fr auto;
+  gap: 1.5rem; /* Example grid gap */
 }
 
 .card {
   display: grid;
-  grid-row: span 3;
+  /* Span all 4 shared tracks; do not set container-type on .card or an intermediate wrapper, as layout containment disables subgrid */
+  grid-row: span 4;
   grid-template-rows: subgrid;
+  row-gap: 0.75rem;
 }
+
+/* Assign each region to its track so omitting optional media or footer does not shift sibling tracks */
+.card > :is(img, picture, video, svg) { grid-row: 1; }
+.card > hgroup { grid-row: 2; }
+.card > p { grid-row: 3; }
+.card > footer { grid-row: 4; }
 ```
 
 Use `:has()` only when the card's content changes its presentation, such as when
