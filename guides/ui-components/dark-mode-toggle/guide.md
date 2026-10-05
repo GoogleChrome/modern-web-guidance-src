@@ -76,7 +76,7 @@ document.querySelector('meta[name="color-scheme"]').content = localStorage.getIt
 </script>
 ```
 
-- This inline script exists **only** for FOUC prevention. Keep it as small as possible; the rest of the component's JS can load later.
+- This inline script exists **only** for FOUC prevention. Keep it as small as possible; additional JS for handling color scheme toggling can load later.
 - In rare cases `localStorage` access can throw (e.g. site data blocked), but since this script does nothing else, the only side effect would be a console error. Wrap in `try .. catch` if this matters. Ensure the theme is still applied to the page, even if it cannot be persisted.
 - The override can change from another tab: handle `window`'s `storage` event to stay in sync.
 - **DO NOT** use `matchMedia()` to remove the stored value when the system preference changes to match it.
@@ -125,7 +125,7 @@ The only two states should be:
 
 Essentially, it is a tri-state control (`light dark`, `light`, `dark`) where the explicit state matching the current system preference is unreachable.
 
-On each toggle:
+When the user toggles:
 
 1. Target scheme = the opposite of the currently *rendered* scheme (stored value if any, else system preference). The user intent is "select the opposite of what I see right now", NOT "select the inverse of the system default".
 2. If the target differs from the current system preference, store it literally.
