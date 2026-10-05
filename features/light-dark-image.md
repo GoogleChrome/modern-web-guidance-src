@@ -3,25 +3,25 @@
 ## Fallbacks
 
 For browsers that do not support `light-dark()` for images, use `image-set()` as a switch:
-give each image a resolution from a custom property, and set the inactive one to `0x` so it is never selected.
-Browsers pick the smallest resolution that is at least the device pixel ratio, or the largest one if none qualifies, so the `1x` option always wins over `0x`.
+give each option a `type()` from a custom property, and set the inactive one to an unsupported MIME type so the browser discards that option.
+The active option gets an empty value, so it is a plain `image-set()` option with no `type()`.
 
 Define the switch once on `:root`. Every use site then only needs both images inline, like `light-dark()`.
 
 ```css
 :root {
-  --light-res: 1x;
-  --dark-res: 0x;
+  --light-type: ;
+  --dark-type: type("image/do-not-use");
 
   /* MANDATORY: Fallback for browsers without light-dark() image support */
   @media (prefers-color-scheme: dark) {
-    --light-res: 0x;
-    --dark-res: 1x;
+    --light-type: type("image/do-not-use");
+    --dark-type: ;
   }
 }
 
 .hero {
-  background-image: image-set(url(hero-light.png) var(--light-res), url(hero-dark.png) var(--dark-res));
+  background-image: image-set(url(hero-light.png) var(--light-type), url(hero-dark.png) var(--dark-type));
 
   @supports (background-image: light-dark(url("a"), url("b"))) {
     background-image: light-dark(url(hero-light.png), url(hero-dark.png));
@@ -29,9 +29,10 @@ Define the switch once on `:root`. Every use site then only needs both images in
 }
 ```
 
-- **DO NOT** use a huge resolution (e.g. `1000x`) for the inactive option. On high-DPI screens no option is at least the device pixel ratio, so the largest one gets picked.
 - Only the selected image is downloaded.
-- If a manual color-scheme toggle exists, it MUST also flip `--light-res` and `--dark-res`.
+- Resolutions still work: `image-set(url(a-1x.png) 1x var(--light-type), url(a-2x.png) 2x var(--light-type), url(b-1x.png) 1x var(--dark-type), url(b-2x.png) 2x var(--dark-type))`.
+- **DO NOT** use `type("")` for the active option. Browsers treat the empty string as unsupported and drop every option.
+- Unlike `light-dark()`, the switch does not follow `color-scheme` set on a subtree. A manual toggle, or any subtree that sets `color-scheme`, MUST also flip `--light-type` and `--dark-type`.
 
 ### Alternative: one custom property per image
 
