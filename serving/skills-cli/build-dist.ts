@@ -238,6 +238,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         sourcesContent: false,
         metafile: true,
         minify: true,
+        legalComments: "none",
         plugins: [{
           // TFJS deep imports fail in pure Node ESM because they lack extensions.
           // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
