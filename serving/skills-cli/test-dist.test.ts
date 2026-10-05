@@ -260,6 +260,10 @@ test('packaged dist contains tokenizer files and no .cache', async () => {
   const cacheFiles = paths.filter((p: string) => p.includes('.cache'));
   assert.strictEqual(cacheFiles.length, 0, `Expected 0 .cache files in pack, found: ${cacheFiles.join(', ')}`);
 
+  // Must not have build metadata files
+  const metaFiles = paths.filter((p: string) => p.endsWith('.meta.json'));
+  assert.strictEqual(metaFiles.length, 0, `Expected 0 .meta.json files in pack, found: ${metaFiles.join(', ')}`);
+
   // Must have tokenizer files
   assert.ok(
     paths.some((p: string) => p.endsWith('tfjs_model_minilm/tokenizer.json.gz')),

@@ -256,7 +256,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       });
 
       fs.writeFileSync(
-        path.join(publishRoot, "skills/modern-web-guidance/search.meta.json"),
+        path.join(ROOT_DIST_DIR, "search.meta.json"),
         JSON.stringify(resultSearch.metafile)
       );
 

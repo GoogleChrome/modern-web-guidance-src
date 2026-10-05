@@ -31,221 +31,71 @@ export interface BundleSnapshot {
   shippedFiles: Record<string, ShippedFileStats>;
 }
 
-let bareNameToScopedMap: Map<string, string[]> | null = null;
-
-export function buildScopedPackageMap(scopedPackages: Iterable<string>): Map<string, string[]> {
-  const map = new Map<string, string[]>();
-  for (const pkg of scopedPackages) {
-    if (!pkg.startsWith("@")) continue;
-    const slashIdx = pkg.indexOf("/");
-    if (slashIdx === -1) continue;
-    const bare = pkg.slice(slashIdx + 1);
-    const list = map.get(bare) || [];
-    if (!list.includes(pkg)) {
-      list.push(pkg);
-    }
-    map.set(bare, list);
-  }
-  return map;
-}
-
-export function getBareNameToScopedMap(): Map<string, string[]> {
-  if (bareNameToScopedMap) return bareNameToScopedMap;
-
-  const scopedPackages = new Set<string>();
-
-  function addFromPkg(pkgPath: string) {
-    try {
-      if (!fs.existsSync(pkgPath)) return;
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-      for (const dep of Object.keys(pkg.dependencies || {})) {
-        if (dep.startsWith("@")) scopedPackages.add(dep);
-      }
-      for (const dep of Object.keys(pkg.devDependencies || {})) {
-        if (dep.startsWith("@")) scopedPackages.add(dep);
-      }
-    } catch {}
-  }
-
-  addFromPkg(path.resolve(import.meta.dirname, "../package.json"));
-  addFromPkg(path.resolve(import.meta.dirname, "../../package.json"));
-
-  for (const nmBase of ["../../node_modules/.pnpm", "../node_modules/.pnpm"]) {
-    const pnpmDir = path.resolve(import.meta.dirname, nmBase);
-    try {
-      if (fs.existsSync(pnpmDir)) {
-        for (const entry of fs.readdirSync(pnpmDir)) {
-          if (entry.startsWith("@")) {
-            const atIdx = entry.indexOf("@", 1);
-            const pkgName = atIdx !== -1 ? entry.slice(0, atIdx) : entry;
-            scopedPackages.add(pkgName.replace("+", "/"));
-          }
-        }
-      }
-    } catch {}
-  }
-
-  bareNameToScopedMap = buildScopedPackageMap(scopedPackages);
-  return bareNameToScopedMap;
-}
-
-export function resolveBarePackageName(bareName: string, customMap?: Map<string, string[]>): string {
-  const map = customMap || getBareNameToScopedMap();
-  const matches = map.get(bareName) || [];
-  if (matches.length === 1) {
-    return matches[0]!;
-  }
-  if (matches.length === 0) {
-    throw new Error(`Unmatched bare package name in sourcemap: "${bareName}"`);
-  }
-  throw new Error(
-    `Ambiguous bare package name in sourcemap: "${bareName}" matches multiple scoped packages: ${matches.join(", ")}`
-  );
-}
-
-export function getPackageName(source: string, customMap?: Map<string, string[]>): string {
-  if (!source.includes("node_modules")) {
-    return "serving/lib";
-  }
-  const norm = source.replace(/\\/g, "/");
-  const pnpmIdx = norm.indexOf("/.pnpm/");
-  if (pnpmIdx !== -1) {
-    const afterPnpm = norm.slice(pnpmIdx + "/.pnpm/".length);
-    const innerNm = afterPnpm.lastIndexOf("/node_modules/");
-    if (innerNm !== -1) {
-      const afterInner = afterPnpm.slice(innerNm + "/node_modules/".length);
-      const parts = afterInner.split("/");
-      return parts[0].startsWith("@") ? `${parts[0]}/${parts[1]}` : parts[0];
-    }
-    const top = afterPnpm.split("/")[0];
-    const atIdx = top.indexOf("@", 1);
-    if (atIdx === -1 && !top.startsWith("@")) {
-      return resolveBarePackageName(top, customMap);
-    }
-    const raw = atIdx !== -1 ? top.slice(0, atIdx) : top;
-    return raw.replace("+", "/");
-  }
-
+export function getPackageName(inputPath: string): string {
+  const norm = inputPath.replace(/\\/g, "/");
+  if (!norm.includes("node_modules/")) return "serving/lib";
   const nm = "node_modules/";
-  const lastNm = norm.lastIndexOf(nm);
-  const after = norm.slice(lastNm + nm.length);
+  const after = norm.slice(norm.lastIndexOf(nm) + nm.length);
   const parts = after.split("/");
   return parts[0].startsWith("@") ? `${parts[0]}/${parts[1]}` : parts[0];
 }
 
-export function decodeMetafileBreakdown(
-  metafile: { outputs: Record<string, { bytes: number; inputs: Record<string, { bytesInOutput: number }> }> },
-  searchRawBytes: number
-): { packages: PackageBreakdown; totalAccounted: number } {
+export function decodeMetafileBreakdown(metafile: {
+  outputs: Record<string, { bytes: number; inputs: Record<string, { bytesInOutput: number }> }>;
+}): PackageBreakdown {
   const outputKey =
     Object.keys(metafile.outputs).find((k) => k.endsWith("search.mjs")) ||
     Object.keys(metafile.outputs)[0];
   const output = outputKey ? metafile.outputs[outputKey] : undefined;
-  if (!output) {
-    throw new Error("No output entry found in metafile");
-  }
+  if (!output) throw new Error("No output entry found in metafile");
 
   const packages: PackageBreakdown = {};
-  let totalMappedBytes = 0;
-
   for (const [inputPath, info] of Object.entries(output.inputs)) {
     const pkg = getPackageName(inputPath);
     packages[pkg] = (packages[pkg] || 0) + info.bytesInOutput;
-    totalMappedBytes += info.bytesInOutput;
   }
-
-  const unmappedBytes = Math.max(0, searchRawBytes - totalMappedBytes);
-  if (unmappedBytes > 0) {
-    packages["<unmapped/license>"] = unmappedBytes;
-  }
-
-  return { packages, totalAccounted: searchRawBytes };
-}
-
-function findFile(dir: string, fileName: string): string | null {
-  const direct = path.join(dir, fileName);
-  try {
-    if (fs.statSync(direct).isFile()) return direct;
-  } catch {}
-
-  const queue = [dir];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(current, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      const full = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name !== "node_modules" && entry.name !== ".git") {
-          queue.push(full);
-        }
-      } else if (entry.isFile() && entry.name === fileName) {
-        return full;
-      }
-    }
-  }
-  return null;
+  return packages;
 }
 
 export function measureDirectory(dir: string): BundleSnapshot {
-  const searchPath = findFile(dir, "search.mjs");
-  if (!searchPath) {
+  const allEntries = fs.readdirSync(dir, { recursive: true, withFileTypes: true });
+  const fileEntries = allEntries.filter((e) => e.isFile());
+
+  const searchEntry = fileEntries.find((e) => e.name === "search.mjs");
+  if (!searchEntry) {
     throw new Error(`Could not find search.mjs in ${dir}`);
   }
-
+  const searchPath = path.join(searchEntry.parentPath, searchEntry.name);
   const searchRaw = fs.readFileSync(searchPath, "utf8");
   const searchRawBytes = Buffer.byteLength(searchRaw, "utf8");
   const searchGzipBytes = zlib.gzipSync(Buffer.from(searchRaw, "utf8")).length;
 
-  const searchMetaPath = findFile(dir, "search.meta.json");
+  const metaCandidates = [
+    path.join(dir, "search.meta.json"),
+    path.join(path.dirname(dir), "search.meta.json"),
+    path.join(dir, "skills/modern-web-guidance/search.meta.json"),
+  ];
+  const searchMetaPath = metaCandidates.find((p) => fs.existsSync(p));
   let packages: PackageBreakdown = {};
   if (searchMetaPath) {
     const metaJson = JSON.parse(fs.readFileSync(searchMetaPath, "utf8"));
-    const decoded = decodeMetafileBreakdown(metaJson, searchRawBytes);
-    packages = decoded.packages;
+    packages = decodeMetafileBreakdown(metaJson);
   }
 
-  // Scan shipped files
   const shippedFiles: Record<string, ShippedFileStats> = {};
-  const scanQueue = [dir];
-  while (scanQueue.length > 0) {
-    const current = scanQueue.shift()!;
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(current, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      const full = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name !== "node_modules" && entry.name !== ".git") {
-          scanQueue.push(full);
-        }
-      } else if (entry.isFile()) {
-        const rel = path.relative(dir, full).replace(/\\/g, "/");
-        const content = fs.readFileSync(full);
-        shippedFiles[rel] = {
-          rawBytes: content.length,
-          gzipBytes: zlib.gzipSync(content).length,
-        };
-      }
-    }
+  for (const entry of fileEntries) {
+    const full = path.join(entry.parentPath, entry.name);
+    if (full.includes("/node_modules/") || full.includes("/.git/")) continue;
+    const rel = path.relative(dir, full).replace(/\\/g, "/");
+    const content = fs.readFileSync(full);
+    shippedFiles[rel] = {
+      rawBytes: content.length,
+      gzipBytes: zlib.gzipSync(content).length,
+    };
   }
 
-  // Run npm pack --dry-run --json if package.json exists in target directory
   let npmPackData: BundleSnapshot["npmPack"] = undefined;
-  const pkgJsonPath = path.join(dir, "package.json");
-  let hasPkgJson = false;
-  try {
-    hasPkgJson = fs.statSync(pkgJsonPath).isFile();
-  } catch {}
-
-  if (hasPkgJson) {
+  if (fs.existsSync(path.join(dir, "package.json"))) {
     try {
       const packOutput = execFileSync("npm", ["pack", "--dry-run", "--json"], {
         cwd: dir,
@@ -294,15 +144,13 @@ export function measureTarget(targetPath: string): { snapshot: BundleSnapshot; c
     try {
       execFileSync("tar", ["-xzf", resolved, "-C", tmpDir]);
       const pkgDir = path.join(tmpDir, "package");
-      const dirToMeasure = fs.existsSync(pkgDir) ? pkgDir : tmpDir;
-      snapshot = measureDirectory(dirToMeasure);
+      snapshot = measureDirectory(fs.existsSync(pkgDir) ? pkgDir : tmpDir);
     } catch (err) {
       try {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       } catch {}
       throw err;
     }
-    // When measuring a .tgz directly, record the packed .tgz file size
     if (!snapshot.npmPack) {
       snapshot.npmPack = {
         size: stat.size,
@@ -328,20 +176,15 @@ export function measureTarget(targetPath: string): { snapshot: BundleSnapshot; c
   }
 
   if (stat.isDirectory()) {
-    const snapshot = measureDirectory(resolved);
-    return { snapshot };
+    return { snapshot: measureDirectory(resolved) };
   }
 
   throw new Error(`Target ${targetPath} is neither a directory nor a .tgz file`);
 }
 
 function formatBytes(bytes: number): string {
-  if (Math.abs(bytes) >= 1024 * 1024) {
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  }
-  if (Math.abs(bytes) >= 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
+  if (Math.abs(bytes) >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  if (Math.abs(bytes) >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${bytes} B`;
 }
 
@@ -433,8 +276,7 @@ export function printSnapshot(snapshot: BundleSnapshot, baseline?: BundleSnapsho
   ];
   const allShippedKeys = Object.keys(snapshot.shippedFiles).filter((file) =>
     keyArtifactPatterns.some((pattern) => pattern.test(file))
-  );
-  allShippedKeys.sort();
+  ).sort();
 
   if (baseline) {
     console.log(
@@ -472,7 +314,7 @@ function printHelp(): void {
   console.log(`
 Usage: bundle-size [dist-dir-or-tarball] [options]
 
-Measures bundle and package sizes with sourcemap breakdown and npm pack analysis.
+Measures bundle and package sizes with esbuild metafile breakdown and npm pack analysis.
 
 Arguments:
   [dist-dir-or-tarball]    Path to dist directory or .tgz tarball (default: <repo-root>/dist/skills-cli)
@@ -485,14 +327,12 @@ Options:
 }
 
 async function main(): Promise<void> {
-  const options = {
-    compare: { type: "string" as const },
-    json: { type: "string" as const },
-    help: { type: "boolean" as const, short: "h" },
-  };
-
   const { values, positionals } = parseArgs({
-    options,
+    options: {
+      compare: { type: "string" },
+      json: { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
     allowPositionals: true,
     strict: true,
   });
@@ -513,8 +353,7 @@ async function main(): Promise<void> {
   try {
     let baseline: BundleSnapshot | undefined = undefined;
     if (comparePath) {
-      const baselineRaw = fs.readFileSync(comparePath, "utf8");
-      baseline = JSON.parse(baselineRaw) as BundleSnapshot;
+      baseline = JSON.parse(fs.readFileSync(comparePath, "utf8")) as BundleSnapshot;
     }
 
     if (jsonPath) {
