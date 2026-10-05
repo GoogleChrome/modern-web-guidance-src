@@ -12,21 +12,22 @@ Use the native HTML `switch` attribute when supported, with a CSS polyfill fallb
 
 An accessible switch implementation requires:
 
-1. **Semantic Foundation:** A standard `<input type="checkbox" switch>` inside an associated `<label>`, preserving form submission, keyboard navigation, and screen reader semantics (see {{ GUIDE_REF("checkbox") }} and {{ GUIDE_REF("forms") }}).
+1. **Semantic Foundation:** A standard `<input type="checkbox" role="switch" switch>` with an associated `<label>`, preserving form submission, keyboard navigation, and screen reader semantics (see {{ GUIDE_REF("checkbox") }} and {{ GUIDE_REF("forms") }}).
 2. **Early Feature Detection:** A one-line JavaScript check in `<head>` that detects native switch support before first paint.
-3. **Polyfill Fallback:** A concise CSS stylesheet that uses the existing checkbox for semantics and the associated label's pseudo-elements for a visual toggle switch in browsers lacking native support.
+3. **Polyfill Fallback:** A concise CSS stylesheet that restyles the checkbox itself (`appearance: none` plus a `::before` thumb) in browsers lacking native support.
 
 ## Markup
 
-Add the boolean `switch` attribute to a standard checkbox input:
+Add the boolean `switch` attribute and `role="switch"` to a standard checkbox input. The role exposes switch semantics in browsers that don't implement `switch` yet.
 
 ```html
-<label class="switch">
+<label>
   Enable notifications
-  <input class="switch__control" id="notifications" type="checkbox" switch>
+  <input id="notifications" type="checkbox" role="switch" switch>
 </label>
 ```
 
+- The label can wrap the input or be associated with `for`/`id`. All styling targets the input, so it doesn't depend on the label structure.
 - When checked, the input submits its standard checkbox value. In JavaScript, listen for `change` (or `input`) events and read `.checked` rather than `.value`.
 
 ## Feature Detection
@@ -64,10 +65,10 @@ input[type="checkbox"][switch]:focus-visible {
 
 ## Polyfill Fallback
 
-For browsers without native switch support, use the existing checkbox for semantics and interaction, and use the associated label's pseudo-elements for the visual switch when the `no-native-switch` class is present. Do not rely on pseudo-elements on the checkbox itself; form controls are replaced elements and support is inconsistent.
+For browsers without native switch support, restyle the checkbox itself when the `no-native-switch` class is present. With `appearance: none`, a checkbox accepts a `::before` pseudo-element, which is used for the thumb. The input stays the single visible, focusable control, so the shared `:focus-visible` rule above applies, and it works with any label arrangement.
 
 ```css
-.switch {
+html.no-native-switch input[type="checkbox"][switch] {
   --switch-block-size: 1.75rem;
   --switch-inline-size: 3rem;
   --switch-border-size: 2px;
@@ -75,77 +76,45 @@ For browsers without native switch support, use the existing checkbox for semant
     var(--switch-block-size) - (2 * var(--switch-border-size))
   );
 
+  appearance: none;
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 1rem;
-  padding-inline-end: var(--switch-inline-size);
-  cursor: pointer;
-}
-
-/* Keep the checkbox as the semantic and interactive control. */
-html.no-native-switch .switch__control {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* The label pseudo-elements provide the fallback track and thumb. */
-html.no-native-switch .switch::before {
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-end: 0;
+  box-sizing: border-box;
   inline-size: var(--switch-inline-size);
   block-size: var(--switch-block-size);
-  box-sizing: border-box;
+  margin: 0;
   border: var(--switch-border-size) solid var(--border-color, #808080);
   border-radius: 999em;
   background-color: var(--track-off, #e5e5e5);
-  content: "";
+  cursor: pointer;
   transition: background-color 150ms ease, border-color 150ms ease;
-  margin-block-start: calc(var(--switch-block-size) / -2);
 }
 
-html.no-native-switch .switch::after {
+/* The thumb. Logical offsets keep it correct in right-to-left layouts. */
+html.no-native-switch input[type="checkbox"][switch]::before {
   position: absolute;
-  inset-block-start: 50%;
-  inset-inline-end: calc(
-    var(--switch-inline-size) - var(--switch-border-size) - var(--switch-thumb-size)
-  );
+  inset-block-start: 0;
+  inset-inline-start: 0;
   inline-size: var(--switch-thumb-size);
   block-size: var(--switch-thumb-size);
-  box-sizing: border-box;
-  border: var(--switch-border-size) solid var(--border-color, #808080);
   border-radius: 50%;
   background-color: Canvas;
   box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
   content: "";
-  transition: inset-inline-end 150ms ease, border-color 150ms ease;
-  margin-block-start: calc(var(--switch-thumb-size) / -2);
+  transition: inset-inline-start 150ms ease;
 }
 
-html.no-native-switch .switch:has(.switch__control:checked)::before {
+html.no-native-switch input[type="checkbox"][switch]:checked {
   background-color: var(--accent-color, #1769e0);
   border-color: var(--accent-color, #1769e0);
 }
 
-html.no-native-switch .switch:has(.switch__control:checked)::after {
-  inset-inline-end: var(--switch-border-size);
-  border-color: var(--accent-color, #1769e0);
-}
-
-html.no-native-switch .switch:focus-within {
-  outline: 3px solid var(--focus-color, #ff8c00);
-  outline-offset: 4px;
+html.no-native-switch input[type="checkbox"][switch]:checked::before {
+  inset-inline-start: calc(100% - var(--switch-thumb-size));
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.no-native-switch .switch::before,
-  html.no-native-switch .switch::after {
+  html.no-native-switch input[type="checkbox"][switch],
+  html.no-native-switch input[type="checkbox"][switch]::before {
     transition: none;
   }
 }

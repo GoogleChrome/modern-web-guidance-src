@@ -61,16 +61,12 @@
             background: var(--surface-background);
         }
 
-        .switch {
-            display: inline-flex;
+        .setting {
+            display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
             cursor: pointer;
-        }
-
-        .switch__control {
-            flex: 0 0 auto;
         }
 
         /* Native switch styling */
@@ -83,13 +79,13 @@
         }
 
         /* Focus outline for both native and polyfilled controls */
-        input[type="checkbox"][switch]:focus-visible,
-        html.no-native-switch .switch:focus-within {
+        input[type="checkbox"][switch]:focus-visible {
             outline: 3px solid var(--focus-color);
             outline-offset: 4px;
         }
 
-        .switch {
+        /* Polyfill: restyle the checkbox itself when native switch is unsupported */
+        html.no-native-switch input[type="checkbox"][switch] {
             --switch-block-size: 1.75rem;
             --switch-inline-size: 3rem;
             --switch-border-size: 2px;
@@ -97,68 +93,45 @@
                 var(--switch-block-size) - (2 * var(--switch-border-size))
             );
 
+            appearance: none;
             position: relative;
-            padding-inline-end: var(--switch-inline-size);
-        }
-
-        /* Keep the checkbox as the semantic and interactive control. */
-        html.no-native-switch .switch__control {
-            position: absolute;
-            inline-size: 1px;
-            block-size: 1px;
-            margin: -1px;
-            overflow: hidden;
-            clip-path: inset(50%);
-            white-space: nowrap;
-        }
-
-        /* The label pseudo-elements provide the fallback track and thumb. */
-        html.no-native-switch .switch::before {
-            position: absolute;
-            inset-block-start: 50%;
-            inset-inline-end: 0;
+            flex: none;
+            box-sizing: border-box;
             inline-size: var(--switch-inline-size);
             block-size: var(--switch-block-size);
-            box-sizing: border-box;
+            margin: 0;
             border: var(--switch-border-size) solid var(--border-color);
             border-radius: 999em;
             background-color: var(--track-off);
-            content: "";
+            cursor: pointer;
             transition: background-color 150ms ease, border-color 150ms ease;
-            margin-block-start: calc(var(--switch-block-size) / -2);
         }
 
-        html.no-native-switch .switch::after {
+        html.no-native-switch input[type="checkbox"][switch]::before {
             position: absolute;
-            inset-block-start: 50%;
-            inset-inline-end: calc(
-                var(--switch-inline-size) - var(--switch-border-size) - var(--switch-thumb-size)
-            );
+            inset-block-start: 0;
+            inset-inline-start: 0;
             inline-size: var(--switch-thumb-size);
             block-size: var(--switch-thumb-size);
-            box-sizing: border-box;
-            border: var(--switch-border-size) solid var(--border-color);
             border-radius: 50%;
             background-color: Canvas;
             box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
             content: "";
-            transition: inset-inline-end 150ms ease, border-color 150ms ease;
-            margin-block-start: calc(var(--switch-thumb-size) / -2);
+            transition: inset-inline-start 150ms ease;
         }
 
-        html.no-native-switch .switch:has(.switch__control:checked)::before {
+        html.no-native-switch input[type="checkbox"][switch]:checked {
             background-color: var(--accent-color);
             border-color: var(--accent-color);
         }
 
-        html.no-native-switch .switch:has(.switch__control:checked)::after {
-            inset-inline-end: var(--switch-border-size);
-            border-color: var(--accent-color);
+        html.no-native-switch input[type="checkbox"][switch]:checked::before {
+            inset-inline-start: calc(100% - var(--switch-thumb-size));
         }
 
         @media (prefers-reduced-motion: reduce) {
-            html.no-native-switch .switch::before,
-            html.no-native-switch .switch::after {
+            html.no-native-switch input[type="checkbox"][switch],
+            html.no-native-switch input[type="checkbox"][switch]::before {
                 transition: none;
             }
         }
@@ -176,9 +149,9 @@
         <section class="switches" aria-labelledby="switches-heading">
             <h2 id="switches-heading">Preferences</h2>
 
-            <label class="switch">
+            <label class="setting">
                 Enable notifications
-                <input class="switch__control" id="notifications" type="checkbox" switch>
+                <input id="notifications" type="checkbox" role="switch" switch>
             </label>
         </section>
     </main>
