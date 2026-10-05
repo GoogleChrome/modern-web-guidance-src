@@ -15,12 +15,11 @@ guides:
 
 # Build an application command menu
 
-Use a command menu for actions that change the current interface, such as creating, saving, or changing preferences. Use ordinary links inside a [`<nav>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/nav) landmark when items primarily take users to destinations. That navigation pattern normally uses `Tab` and `Shift` + `Tab`; it is not automatically an ARIA menu.
+Use a command menu for actions that change the current interface, such as creating, saving, or changing preferences. Use ordinary links inside a `<nav>` landmark when items primarily take users to destinations. That navigation pattern normally uses `Tab` and `Shift` + `Tab`; it is not automatically an ARIA menu.
 
-> [!NOTE]
-> **Choose the pattern deliberately.** `role="menu"` and `role="menubar"` describe composite application widgets with managed focus and arrow-key navigation. They are not required for every navigation bar. Use the menu pattern only when that interaction model is appropriate for the component, including application navigation that intentionally behaves like a desktop menubar.
+**IMPORTANT: Choose the pattern deliberately.** `role="menu"` and `role="menubar"` describe composite application widgets with managed focus and arrow-key navigation. They are not required for every navigation bar. Use the menu pattern only when that interaction model is appropriate for the component, including application navigation that intentionally behaves like a desktop menubar.
 
-This guide uses the proposed [`focusgroup`](https://open-ui.org/components/scoped-focusgroup.explainer/) attribute as the progressive-enhancement hook. A menu focusgroup supplies the relevant menu roles to its container and managed items, together with the keyboard behaviour associated with those roles. Selection and activation remain the author's responsibility. The examples use `nomemory` so opening a menu always starts at its first item, and provide a small local fallback for browsers without native support. This avoids the current Microsoft [focusgroup polyfill](https://github.com/microsoft/polyfills/tree/main/packages/focusgroup) lifecycle leak and ensures Safari handles directional keys instead of scrolling the page. The fallback does not replace the native feature when it becomes available.
+Use the `focusgroup="menu nomemory"` attribute on the menu container. A menu focusgroup supplies the `menu` and `menuitem` roles to its container and managed items, together with directional and boundary arrow-key navigation. Selection and activation remain the author's responsibility, and the `nomemory` token ensures reopening a menu always starts at its first item.
 
 ## Setup a sticky menu bar with scroll-state queries
 
