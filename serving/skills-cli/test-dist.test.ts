@@ -244,7 +244,7 @@ test.skip('THIRD_PARTY_NOTICES validation', async () => {
   
   // Check for some expected dependencies
   assert.ok(content.includes('Name: @tensorflow/tfjs-core'), 'Should contain @tensorflow/tfjs-core');
-  assert.ok(content.includes('Name: @huggingface/transformers'), 'Should contain @huggingface/transformers');
+  assert.ok(content.includes('Name: @huggingface/tokenizers'), 'Should contain @huggingface/tokenizers');
   
   // Check structure
   assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
@@ -281,6 +281,25 @@ test('search operates strictly offline with zero socket or fetch calls', async (
     console.log(JSON.stringify(res));
   '`, { encoding: 'utf8', cwd: ROOT_DIR });
   assertSearchResults(searchOut);
+});
+
+test('bundled search handles linguistic and sequence edge cases with precise kernels', async () => {
+  const edgeQueries = [
+    "",
+    "a ".repeat(600),
+    "中文 日本語 한국어",
+    "CSS :has() & @container — naïve résumé 🚀",
+  ];
+  for (const q of edgeQueries) {
+    const out = execSync(`node --input-type=module -e '
+      const { searchUseCases } = await import("./dist/skills-cli/skills/modern-web-guidance/search.mjs");
+      const res = await searchUseCases(${JSON.stringify(q)}, 2);
+      console.log(JSON.stringify(res));
+    '`, { encoding: 'utf8', cwd: ROOT_DIR });
+    const parsed = JSON.parse(out);
+    assert.ok(Array.isArray(parsed), `Expected array for query "${q.slice(0, 30)}"`);
+    assert.ok(parsed.length <= 2, `Expected at most 2 results for query "${q.slice(0, 30)}"`);
+  }
 });
 
 

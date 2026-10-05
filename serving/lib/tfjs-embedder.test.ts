@@ -75,11 +75,38 @@ describe("TfjsEmbedder", () => {
     ]);
     assert.strictEqual(memory().numTensors, baselineTensors, "Tensor leak detected after concurrent calls");
 
-    // Call that throws
+    // Call that throws during prediction (verifies tensor disposal in finally block)
+    const model = (embedder as any).model;
+    const origPredict = model.predict;
+    model.predict = () => {
+      throw new Error("Simulated prediction fault");
+    };
     try {
-      await embedder.embed(null as any);
-    } catch {}
-    assert.strictEqual(memory().numTensors, baselineTensors, "Tensor leak detected after throwing call");
+      await embedder.embed("valid input that fails during predict");
+      assert.fail("Should have thrown simulated prediction fault");
+    } catch (err: unknown) {
+      assert.ok(err instanceof Error && err.message === "Simulated prediction fault");
+    } finally {
+      model.predict = origPredict;
+    }
+    assert.strictEqual(memory().numTensors, baselineTensors, "Tensor leak detected after predict failure");
+  });
+
+  test("supports concurrent init and concurrent initial embed calls safely", async () => {
+    TfjsEmbedder.clearInstance();
+    const embedder = TfjsEmbedder.getInstance();
+    const [res1, res2] = await Promise.all([
+      embedder.embed("concurrent init query 1"),
+      embedder.embed("concurrent init query 2"),
+    ]);
+    assert.strictEqual(res1.length, 384);
+    assert.strictEqual(res2.length, 384);
+    for (const val of res1) {
+      assert.ok(Number.isFinite(val), "Embedding values must be finite numbers");
+    }
+    for (const val of res2) {
+      assert.ok(Number.isFinite(val), "Embedding values must be finite numbers");
+    }
   });
 
   test("tokenizer matches BertTokenizer reference on query pool and edge cases", async () => {
@@ -163,5 +190,20 @@ describe("TfjsEmbedder", () => {
       const sim = cosineSimilarity(vec, refVec);
       assert.ok(sim >= 0.95, `Embedding cosine similarity for "${query}" should be >= 0.95, got ${sim}`);
     }
+  });
+
+  test("truncates sequences exceeding model_max_length to a valid 384-dim finite vector", async () => {
+    const embedder = TfjsEmbedder.getInstance();
+    await embedder.init();
+    const longInput = "tokenizer sequence truncation test ".repeat(100); // ~400 words, >512 tokens
+    const embedding = await embedder.embed(longInput);
+    assert.strictEqual(embedding.length, 384, "Embedding should have dimension 384");
+    for (const val of embedding) {
+      assert.ok(Number.isFinite(val), "Embedding values must be finite numbers");
+    }
+    let normSq = 0;
+    for (const val of embedding) normSq += val * val;
+    const norm = Math.sqrt(normSq);
+    assert.ok(Math.abs(norm - 1.0) < 0.001, `Embedding norm should be ~1.0, got ${norm}`);
   });
 });
