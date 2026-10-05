@@ -42,8 +42,6 @@ Decide to use either the HTML `<install>` element or the JavaScript
     * The number of installation UI elements is not limited by the browser.
   * Cons:
     * Requires JavaScript to trigger the installation.
-    * Requires the user to approve an initial permission prompt asking them to
-      allow the installation of web apps.
 
 ## Prepare the web app
 

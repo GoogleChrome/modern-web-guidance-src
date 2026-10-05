@@ -68,26 +68,45 @@
           <h2>Browser-provided control</h2>
           <p>The browser controls the appearance and installation prompt.</p>
           <install></install>
+          <p id="browser-install-status" role="status"></p>
         </section>
 
         <section>
           <h2>Custom control</h2>
           <p>This control appears only when installation can be requested.</p>
-          <button id="install-app" type="button" hidden>Install app</button>
-          <p id="install-status" role="status"></p>
+          <button id="custom-install-app" type="button" hidden>Install app</button>
+          <p id="custom-install-status" role="status"></p>
         </section>
       </div>
     </main>
 
     <script type="module">
-      const installButton = document.querySelector("#install-app");
-      const installStatus = document.querySelector("#install-status");
+      const installButton = document.querySelector("install");
+      const installStatus = document.querySelector("#browser-install-status");
+      const customInstallButton = document.querySelector("#custom-install-app");
+      const customInstallStatus = document.querySelector("#custom-install-status");
       const supportsWebInstall =
         typeof Navigator.prototype.install === "function";
       let deferredInstallPrompt;
 
+      installButton.addEventListener("installresult", (event) => {
+        switch (event.result) {
+          case "success":
+            installStatus.textContent = "The app was installed.";
+            break;
+          case "aborted":
+            installStatus.textContent =
+              "Installation was canceled or could not complete.";
+            break;
+          case "invalid_data":
+            installStatus.textContent =
+              "Installation could not start because the app data is invalid.";
+            break;
+        }
+      });
+
       if (supportsWebInstall) {
-        installButton.hidden = false;
+        customInstallButton.hidden = false;
       }
 
       window.addEventListener("beforeinstallprompt", (event) => {
@@ -95,49 +114,49 @@
         deferredInstallPrompt = event;
 
         if (!supportsWebInstall) {
-          installButton.hidden = false;
+          customInstallButton.hidden = false;
         }
       });
 
-      installButton.addEventListener("click", async () => {
-        installButton.disabled = true;
+      customInstallButton.addEventListener("click", async () => {
+        customInstallButton.disabled = true;
 
         try {
           if (supportsWebInstall) {
             // Calling directly from this handler preserves transient user activation.
             await navigator.install();
-            installStatus.textContent = "The app was installed.";
-            installButton.hidden = true;
+            customInstallStatus.textContent = "The app was installed.";
+            customInstallButton.hidden = true;
           } else if (deferredInstallPrompt) {
             // Clear the single-use event before awaiting the user's choice.
             const promptEvent = deferredInstallPrompt;
             deferredInstallPrompt = undefined;
             promptEvent.prompt();
             const { outcome } = await promptEvent.userChoice;
-            installStatus.textContent =
+            customInstallStatus.textContent =
               outcome === "accepted"
                 ? "The app was installed."
                 : "Installation canceled.";
 
-            installButton.hidden = true;
+            customInstallButton.hidden = true;
           }
         } catch (error) {
           if (error.name === "AbortError") {
-            installStatus.textContent = "Installation canceled.";
-            installButton.hidden = true;
+            customInstallStatus.textContent = "Installation canceled.";
+            customInstallButton.hidden = true;
           } else {
-            installStatus.textContent = "Installation could not start.";
+            customInstallStatus.textContent = "Installation could not start.";
             console.error(error);
           }
         } finally {
-          installButton.disabled = false;
+          customInstallButton.disabled = false;
         }
       });
 
       window.addEventListener("appinstalled", () => {
         deferredInstallPrompt = undefined;
-        installButton.hidden = true;
-        installStatus.textContent = "The app was installed.";
+        customInstallButton.hidden = true;
+        customInstallStatus.textContent = "The app was installed.";
       });
     </script>
   </body>
