@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { getPackageName, decodeSourcemapBreakdown, measureDirectory } from "./bundle-size.ts";
+import { getPackageName, measureDirectory } from "./bundle-size.ts";
 
 test("getPackageName correctly extracts package identities", () => {
   assert.equal(getPackageName("serving/lib/search.ts"), "serving/lib");

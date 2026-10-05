@@ -122,7 +122,7 @@ export class TfjsEmbedder {
       inputIdsData = [...inputIdsData.slice(0, maxLen - 1), 102];
       attentionMaskData = attentionMaskData.slice(0, maxLen);
     }
-    const tokenTypeIdsData = new Array(inputIdsData.length).fill(0);
+    const tokenTypeIdsData = Array.from({ length: inputIdsData.length }, () => 0);
 
     const inputIds = tensor2d([inputIdsData], undefined, "int32");
     const attentionMask = tensor2d([attentionMaskData], undefined, "int32");

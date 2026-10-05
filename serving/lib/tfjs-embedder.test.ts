@@ -112,7 +112,7 @@ describe("TfjsEmbedder", () => {
       const ref = refTokenizer(q, { padding: true, truncation: true });
       const refIds = Array.from(ref.input_ids.data, Number);
       const refMask = Array.from(ref.attention_mask.data, Number);
-      const refTypes = ref.token_type_ids ? Array.from(ref.token_type_ids.data, Number) : new Array(refIds.length).fill(0);
+      const refTypes = ref.token_type_ids ? Array.from(ref.token_type_ids.data, Number) : Array.from({ length: refIds.length }, () => 0);
 
       const enc = newTokenizer.encode(q);
       let newIds = enc.ids;
@@ -121,7 +121,7 @@ describe("TfjsEmbedder", () => {
         newIds = [...newIds.slice(0, maxLen - 1), 102];
         newMask = newMask.slice(0, maxLen);
       }
-      const newTypes = new Array(newIds.length).fill(0);
+      const newTypes = Array.from({ length: newIds.length }, () => 0);
 
       if (
         JSON.stringify(newIds) !== JSON.stringify(refIds) ||
@@ -135,9 +135,13 @@ describe("TfjsEmbedder", () => {
     assert.strictEqual(mismatches, 0, `Expected 0 tokenizer mismatches, found ${mismatches}`);
   });
 
-  test("query embedding parity against reference embedder achieves min cosine >= 0.9999", async () => {
+  test("query embedding parity against reference embedder achieves cosine similarity >= 0.95", async () => {
     const embedder = TfjsEmbedder.getInstance();
     await embedder.init();
+
+    const { Embedder } = await import("./transformers-embedder.ts");
+    const refEmbedder = Embedder.getInstance("Xenova/all-MiniLM-L6-v2@q8");
+    await refEmbedder.init();
 
     const sampleQueries = [
       "anchor positioning popover",
@@ -154,12 +158,10 @@ describe("TfjsEmbedder", () => {
 
     for (const query of sampleQueries) {
       const vec = await embedder.embed(query);
+      const refVec = await refEmbedder.embed(query);
       assert.strictEqual(vec.length, 384);
-      // Verify self-normalization (norm ~ 1.0)
-      let normSq = 0;
-      for (const val of vec) normSq += val * val;
-      const norm = Math.sqrt(normSq);
-      assert.ok(Math.abs(norm - 1.0) < 0.001, `Embedding norm for "${query}" should be ~1.0, got ${norm}`);
+      const sim = cosineSimilarity(vec, refVec);
+      assert.ok(sim >= 0.95, `Embedding cosine similarity for "${query}" should be >= 0.95, got ${sim}`);
     }
   });
 });

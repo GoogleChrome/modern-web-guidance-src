@@ -77,9 +77,9 @@ export function decodeSourcemapBreakdown(
   let unmappedBytes = 0;
 
   let sourceIdx = 0;
-  let origLine = 0;
-  let origCol = 0;
-  let nameIdx = 0;
+  let _origLine = 0;
+  let _origCol = 0;
+  let _nameIdx = 0;
 
   for (let lineIndex = 0; lineIndex < jsLines.length; lineIndex++) {
     const lineStr = jsLines[lineIndex] ?? "";
@@ -128,9 +128,9 @@ export function decodeSourcemapBreakdown(
         sourceIdx += fields[1];
         segSource = sourceIdx;
       }
-      if (fieldCount > 2) origLine += fields[2];
-      if (fieldCount > 3) origCol += fields[3];
-      if (fieldCount > 4) nameIdx += fields[4];
+      if (fieldCount > 2) _origLine += fields[2];
+      if (fieldCount > 3) _origCol += fields[3];
+      if (fieldCount > 4) _nameIdx += fields[4];
 
       segments.push({ genCol, sourceIdx: segSource });
     }
