@@ -38,7 +38,8 @@ Use a viewport-relative positioning model such as `position: fixed` when clampin
 
 - Start a drag only for the primary pointer button (`event.button === 0`).
 - Record the pointer offset on `pointerdown` and use it on every move so the element does not jump when grabbed away from its corner.
-- Keep the drag active after the pointer leaves the handle, preferably with `setPointerCapture()`; document-level `pointermove`, `pointerup`, and `pointercancel` listeners are an alternative. Consider waiting for roughly 4px of movement before entering the dragging state, so a click on the handle does not trigger drag styling. Remove that state on `lostpointercapture`, which covers both pointer release and cancellation.
+- Keep the drag active after the pointer leaves the handle. Default to `setPointerCapture()` and clear the dragging state on `lostpointercapture`. If the handle may be removed or re-rendered mid-drag, use document-level `pointermove`, `pointerup`, and `pointercancel` listeners instead, since capture is lost in that case.
+- Optionally, wait for roughly 4px of movement before entering the dragging state, so a click on the handle does not trigger drag styling.
 
 With pointer capture, the movement listeners can remain on the handle:
 
