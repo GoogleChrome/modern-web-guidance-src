@@ -230,6 +230,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
           "node-fetch": path.resolve(SERVING_DIR, "lib/fetch-shim.ts"),
         },
         outfile: path.join(publishRoot, "skills/modern-web-guidance/search.mjs"),
+        // Required because @tensorflow/tfjs-core's PlatformNode constructor executes this.util = require('util')
         banner: {
           js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
         },
@@ -252,6 +253,11 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
           },
         }],
       });
+
+      fs.writeFileSync(
+        path.join(publishRoot, "skills/modern-web-guidance/search.meta.json"),
+        JSON.stringify(resultSearch.metafile)
+      );
 
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({

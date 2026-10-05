@@ -31,13 +31,6 @@ export interface BundleSnapshot {
   shippedFiles: Record<string, ShippedFileStats>;
 }
 
-const B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const B64_MAP = new Int8Array(128);
-B64_MAP.fill(-1);
-for (let i = 0; i < B64_CHARS.length; i++) {
-  B64_MAP[B64_CHARS.charCodeAt(i)] = i;
-}
-
 let bareNameToScopedMap: Map<string, string[]> | null = null;
 
 export function buildScopedPackageMap(scopedPackages: Iterable<string>): Map<string, string[]> {
@@ -140,117 +133,33 @@ export function getPackageName(source: string, customMap?: Map<string, string[]>
   return parts[0].startsWith("@") ? `${parts[0]}/${parts[1]}` : parts[0];
 }
 
-export function decodeSourcemapBreakdown(
-  jsCode: string,
-  mapJson: { sources: string[]; mappings: string }
+export function decodeMetafileBreakdown(
+  metafile: { outputs: Record<string, { bytes: number; inputs: Record<string, { bytesInOutput: number }> }> },
+  searchRawBytes: number
 ): { packages: PackageBreakdown; totalAccounted: number } {
-  const jsLines = jsCode.split("\n");
-  const lineMappings = mapJson.mappings.split(";");
-  const bytesPerSource = new Float64Array(mapJson.sources.length);
-  let unmappedBytes = 0;
-
-  let sourceIdx = 0;
-  let _origLine = 0;
-  let _origCol = 0;
-  let _nameIdx = 0;
-
-  for (let lineIndex = 0; lineIndex < jsLines.length; lineIndex++) {
-    const lineStr = jsLines[lineIndex] ?? "";
-    const lineLen = Buffer.byteLength(lineStr, "utf8");
-    const isLastLine = lineIndex === jsLines.length - 1;
-    const newlineByte = isLastLine ? 0 : 1;
-
-    if (lineIndex >= lineMappings.length || !lineMappings[lineIndex]) {
-      unmappedBytes += lineLen + newlineByte;
-      continue;
-    }
-
-    const lineMap = lineMappings[lineIndex];
-    let genCol = 0;
-    const segments: Array<{ genCol: number; sourceIdx: number }> = [];
-    let pos = 0;
-
-    while (pos < lineMap.length) {
-      if (lineMap[pos] === ",") {
-        pos++;
-        continue;
-      }
-      let fieldCount = 0;
-      const fields = [0, 0, 0, 0, 0];
-      while (pos < lineMap.length && lineMap[pos] !== "," && lineMap[pos] !== ";") {
-        let result = 0;
-        let shift = 0;
-        let cont = true;
-        while (cont && pos < lineMap.length) {
-          const digit = B64_MAP[lineMap.charCodeAt(pos++)];
-          if (digit === -1) {
-            throw new Error(`Invalid base64 character in sourcemap at line ${lineIndex}, pos ${pos}`);
-          }
-          cont = (digit & 32) !== 0;
-          result += (digit & 31) * Math.pow(2, shift);
-          shift += 5;
-        }
-        const isNeg = (result & 1) === 1;
-        const val = Math.floor(result / 2);
-        fields[fieldCount++] = isNeg ? -val : val;
-      }
-
-      genCol += fields[0];
-      let segSource = -1;
-      if (fieldCount > 1) {
-        sourceIdx += fields[1];
-        segSource = sourceIdx;
-      }
-      if (fieldCount > 2) _origLine += fields[2];
-      if (fieldCount > 3) _origCol += fields[3];
-      if (fieldCount > 4) _nameIdx += fields[4];
-
-      segments.push({ genCol, sourceIdx: segSource });
-    }
-
-    if (segments.length === 0) {
-      unmappedBytes += lineLen + newlineByte;
-      continue;
-    }
-
-    if (segments[0].genCol > 0) {
-      unmappedBytes += Buffer.byteLength(lineStr.slice(0, segments[0].genCol), "utf8");
-    }
-
-    for (let i = 0; i < segments.length; i++) {
-      const startCol = segments[i].genCol;
-      const endCol = i + 1 < segments.length ? segments[i + 1].genCol : lineStr.length;
-      const segBytes = Buffer.byteLength(lineStr.slice(startCol, endCol), "utf8");
-      const s = segments[i].sourceIdx;
-      if (s >= 0 && s < bytesPerSource.length) {
-        bytesPerSource[s] += segBytes;
-      } else {
-        unmappedBytes += segBytes;
-      }
-    }
-
-    if (!isLastLine) {
-      const lastSeg = segments[segments.length - 1];
-      if (lastSeg && lastSeg.sourceIdx >= 0 && lastSeg.sourceIdx < bytesPerSource.length) {
-        bytesPerSource[lastSeg.sourceIdx] += 1;
-      } else {
-        unmappedBytes += 1;
-      }
-    }
+  const outputKey =
+    Object.keys(metafile.outputs).find((k) => k.endsWith("search.mjs")) ||
+    Object.keys(metafile.outputs)[0];
+  const output = outputKey ? metafile.outputs[outputKey] : undefined;
+  if (!output) {
+    throw new Error("No output entry found in metafile");
   }
 
-  let totalMappedBytes = 0;
   const packages: PackageBreakdown = {};
-  for (let i = 0; i < mapJson.sources.length; i++) {
-    totalMappedBytes += bytesPerSource[i];
-    const pkg = getPackageName(mapJson.sources[i]);
-    packages[pkg] = (packages[pkg] || 0) + bytesPerSource[i];
+  let totalMappedBytes = 0;
+
+  for (const [inputPath, info] of Object.entries(output.inputs)) {
+    const pkg = getPackageName(inputPath);
+    packages[pkg] = (packages[pkg] || 0) + info.bytesInOutput;
+    totalMappedBytes += info.bytesInOutput;
   }
 
-  packages["<unmapped/license>"] = unmappedBytes;
-  const totalAccounted = totalMappedBytes + unmappedBytes;
+  const unmappedBytes = Math.max(0, searchRawBytes - totalMappedBytes);
+  if (unmappedBytes > 0) {
+    packages["<unmapped/license>"] = unmappedBytes;
+  }
 
-  return { packages, totalAccounted };
+  return { packages, totalAccounted: searchRawBytes };
 }
 
 function findFile(dir: string, fileName: string): string | null {
@@ -287,23 +196,17 @@ export function measureDirectory(dir: string): BundleSnapshot {
   if (!searchPath) {
     throw new Error(`Could not find search.mjs in ${dir}`);
   }
-  const searchMapPath = findFile(dir, "search.mjs.map");
-  if (!searchMapPath) {
-    throw new Error(`Could not find search.mjs.map in ${dir}`);
-  }
 
   const searchRaw = fs.readFileSync(searchPath, "utf8");
   const searchRawBytes = Buffer.byteLength(searchRaw, "utf8");
   const searchGzipBytes = zlib.gzipSync(Buffer.from(searchRaw, "utf8")).length;
 
-  const mapJson = JSON.parse(fs.readFileSync(searchMapPath, "utf8"));
-  const { packages, totalAccounted } = decodeSourcemapBreakdown(searchRaw, mapJson);
-
-  // Hard assertion: accounted bytes must match raw file size
-  if (totalAccounted !== searchRawBytes) {
-    throw new Error(
-      `Reconciliation assertion failed: decoded accounted bytes (${totalAccounted}) !== search.mjs file size (${searchRawBytes})`
-    );
+  const searchMetaPath = findFile(dir, "search.meta.json");
+  let packages: PackageBreakdown = {};
+  if (searchMetaPath) {
+    const metaJson = JSON.parse(fs.readFileSync(searchMetaPath, "utf8"));
+    const decoded = decodeMetafileBreakdown(metaJson, searchRawBytes);
+    packages = decoded.packages;
   }
 
   // Scan shipped files

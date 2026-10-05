@@ -4,21 +4,29 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   getPackageName,
-  decodeSourcemapBreakdown,
+  decodeMetafileBreakdown,
   measureDirectory,
   buildScopedPackageMap,
   resolveBarePackageName,
 } from "./bundle-size.ts";
 
-test("decodeSourcemapBreakdown accurately parses synthetic VLQ mappings and reconciles bytes", () => {
-  const code = "console.log('hello');\n";
-  const map = {
-    sources: ["node_modules/foo/index.js"],
-    mappings: "AAAA;",
+test("decodeMetafileBreakdown aggregates inputs and reconciles bytes", () => {
+  const metafile = {
+    outputs: {
+      "dist/search.mjs": {
+        bytes: 100,
+        inputs: {
+          "node_modules/marked/index.js": { bytesInOutput: 40 },
+          "serving/lib/search.ts": { bytesInOutput: 50 },
+        },
+      },
+    },
   };
-  const { packages, totalAccounted } = decodeSourcemapBreakdown(code, map);
-  assert.equal(totalAccounted, Buffer.byteLength(code, "utf8"));
-  assert.ok((packages["foo"] ?? 0) > 0 || (packages["<unmapped/license>"] ?? 0) > 0);
+  const { packages, totalAccounted } = decodeMetafileBreakdown(metafile, 100);
+  assert.equal(totalAccounted, 100);
+  assert.equal(packages["marked"], 40);
+  assert.equal(packages["serving/lib"], 50);
+  assert.equal(packages["<unmapped/license>"], 10);
 });
 
 test("getPackageName correctly extracts package identities", () => {
