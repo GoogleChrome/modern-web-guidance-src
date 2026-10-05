@@ -3,6 +3,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
+import { parseArgs } from "node:util";
 
 export interface PackageBreakdown {
   [pkg: string]: number;
@@ -459,7 +460,9 @@ export function printSnapshot(snapshot: BundleSnapshot, baseline?: BundleSnapsho
     for (const file of allShippedKeys) {
       const cur = snapshot.shippedFiles[file];
       const base = baseline.shippedFiles[file];
-      const curStr = `${formatBytes(cur.rawBytes)} / ${formatBytes(cur.gzipBytes)}`;
+      const isAlreadyGz = file.endsWith(".gz") || file.endsWith(".tgz");
+      const gzStr = isAlreadyGz ? "—" : formatBytes(cur.gzipBytes);
+      const curStr = `${formatBytes(cur.rawBytes)} / ${gzStr}`;
       const baseStr = base ? formatBytes(base.rawBytes) : "(absent)";
       const deltaStr = base ? formatDelta(cur.rawBytes, base.rawBytes) : "+NEW";
       console.log(
@@ -471,49 +474,68 @@ export function printSnapshot(snapshot: BundleSnapshot, baseline?: BundleSnapsho
     console.log("-".repeat(78));
     for (const file of allShippedKeys) {
       const f = snapshot.shippedFiles[file];
+      const isAlreadyGz = file.endsWith(".gz") || file.endsWith(".tgz");
+      const gzStr = isAlreadyGz ? "—" : formatBytes(f.gzipBytes);
       console.log(
-        `${file.padEnd(48)} ${formatBytes(f.rawBytes).padStart(14)} ${formatBytes(f.gzipBytes).padStart(14)}`
+        `${file.padEnd(48)} ${formatBytes(f.rawBytes).padStart(14)} ${gzStr.padStart(14)}`
       );
     }
   }
   console.log();
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  let targetPath = "dist/skills-cli";
-  let comparePath: string | null = null;
-  let jsonPath: string | null = null;
+function printHelp(): void {
+  console.log(`
+Usage: bundle-size [dist-dir-or-tarball] [options]
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--compare" || arg.startsWith("--compare=")) {
-      comparePath = arg.includes("=") ? arg.split("=")[1] : args[++i];
-    } else if (arg === "--json" || arg.startsWith("--json=")) {
-      if (arg.includes("=")) {
-        jsonPath = arg.split("=")[1];
-      } else if (i + 1 < args.length && !args[i + 1].startsWith("--")) {
-        jsonPath = args[++i];
-      } else {
-        jsonPath = "bundle-size-snapshot.json";
-      }
-    } else if (!arg.startsWith("--")) {
-      targetPath = arg;
-    }
+Measures bundle and package sizes with sourcemap breakdown and npm pack analysis.
+
+Arguments:
+  [dist-dir-or-tarball]    Path to dist directory or .tgz tarball (default: <repo-root>/dist/skills-cli)
+
+Options:
+  --compare <baseline.json> Compare current measurements against a saved baseline JSON
+  --json [output.json]      Save current measurements to JSON snapshot file
+  -h, --help                Show this help message
+`);
+}
+
+async function main(): Promise<void> {
+  const options = {
+    compare: { type: "string" as const },
+    json: { type: "string" as const },
+    help: { type: "boolean" as const, short: "h" },
+  };
+
+  const { values, positionals } = parseArgs({
+    options,
+    allowPositionals: true,
+    strict: true,
+  });
+
+  if (values.help) {
+    printHelp();
+    return;
   }
+
+  const defaultTarget = path.resolve(import.meta.dirname, "../../dist/skills-cli");
+  const targetPath = positionals[0] ? path.resolve(process.cwd(), positionals[0]) : defaultTarget;
+  const comparePath = values.compare ? path.resolve(process.cwd(), values.compare) : null;
+  const jsonPath = values.json !== undefined
+    ? path.resolve(process.cwd(), values.json || "bundle-size-snapshot.json")
+    : null;
 
   const { snapshot, cleanup } = measureTarget(targetPath);
   try {
     let baseline: BundleSnapshot | undefined = undefined;
     if (comparePath) {
-      const baselineRaw = fs.readFileSync(path.resolve(comparePath), "utf8");
+      const baselineRaw = fs.readFileSync(comparePath, "utf8");
       baseline = JSON.parse(baselineRaw) as BundleSnapshot;
     }
 
     if (jsonPath) {
-      const resolvedJson = path.resolve(jsonPath);
-      fs.writeFileSync(resolvedJson, JSON.stringify(snapshot, null, 2), "utf8");
-      console.log(`Saved bundle snapshot to ${resolvedJson}`);
+      fs.writeFileSync(jsonPath, JSON.stringify(snapshot, null, 2), "utf8");
+      console.log(`Saved bundle snapshot to ${jsonPath}`);
     }
 
     printSnapshot(snapshot, baseline);
