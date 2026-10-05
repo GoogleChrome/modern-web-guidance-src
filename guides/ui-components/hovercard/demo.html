@@ -114,31 +114,30 @@
         animation-duration: 0s;
       }
 
-      :root:has([popover]:popover-open) {
-        ::view-transition-group(*) {
-          animation-duration: 0.4s;
-        }
-      }
-
       @view-transition {
         navigation: auto;
       }
 
       [popover]:popover-open {
         view-transition-name: --hovercard;
+        view-transition-class: morph;
         h2 {
           view-transition-name: --title;
+          view-transition-class: morph;
           width: fit-content;
         }
         img {
           view-transition-name: --image;
+          view-transition-class: morph;
         }
         .byline {
           view-transition-name: --byline;
+          view-transition-class: morph;
           width: fit-content;
         }
         p {
           view-transition-name: --p;
+          view-transition-class: morph;
         }
       }
     </style>

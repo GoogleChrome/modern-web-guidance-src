@@ -50,38 +50,44 @@
       @view-transition {
         navigation: auto;
       }
-      ::view-transition-old(*),
-      ::view-transition-new(*) {
+      /* By default no transition */
+      ::view-transition-group(*) {
         animation-duration: 0s;
       }
-
-      :root:has([popover]:popover-open) {
-        ::view-transition-old(*),
-        ::view-transition-new(*) {
-          animation-duration: 0.4s;
-        }
+      /* Short transition for morphing elements */
+      ::view-transition-group(.morph) {
+        animation-duration: 0.4s;
+      }
+      /* Disable transition if no `old` view */
+      ::view-transition-new(.morph):only-child {
+        animation-duration: 0s;
       }
 
       #article-content {
         view-transition-name: --hovercard;
+        view-transition-class: morph;
       }
 
       h1 {
         view-transition-name: --title;
+        view-transition-class: morph;
         width: fit-content;
       }
 
       img {
         view-transition-name: --image;
+        view-transition-class: morph;
       }
 
       .byline {
         view-transition-name: --byline;
+        view-transition-class: morph;
         width: fit-content;
       }
 
       p {
         view-transition-name: --p;
+        view-transition-class: morph;
       }
     </style>
   </head>

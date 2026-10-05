@@ -19,6 +19,8 @@ guides:
 
 Hovercards provide an interactive preview of content when a user expresses interest in a link (via hover or focus). This is shown to users before they navigate, and either provides the user with the content they need or helps verify that the link will contain the content they are looking for.
 
+If you need plain-text, non-interactive tooltips rather than structured link previews, see {{ GUIDE_REF("interest-triggered-tooltips") }}.
+
 ## 1. Triggering the hovercard
 
 Use the **Interest Invokers** API to trigger the hovercard. This ensures the card appears on both hover and focus, and handles accessibility wiring automatically.
@@ -30,7 +32,7 @@ Use the **Interest Invokers** API to trigger the hovercard. This ensures the car
 <a href="/article" interestfor="article-preview">Article title</a>
 
 <!-- The `id` must match the `interestfor` value on the trigger. -->
-<div id="buzz-popover" popover="hint" class="hovercard">
+<div id="article-preview" popover="hint" class="hovercard">
   <h2>The buzz on hummingbirds</h2>
   <p class="byline">By Delphi Aguilar</p>
   <div>
@@ -42,8 +44,6 @@ Use the **Interest Invokers** API to trigger the hovercard. This ensures the car
 
 You do not need to include an additional link to the content inside of the hovercard, as it is redundant to the triggering link. 
 
-For more details on triggering and accessibility, see {{ GUIDE_REF("interest-triggered-tooltips") }}.
-
 ### Accessibility built in to `interestfor`
 
 {{ FEATURE("interest-invokers", "accessibility") }}
@@ -54,29 +54,47 @@ Position the hovercard relative to its trigger using **CSS Anchor Positioning**.
 
 ```css
 [popover].hovercard {
-  /* Position the card below the trigger and aligned with the inline end.
-     This assumes the trigger is the implicit anchor. */
+  /* Position the card below the trigger, aligned with its inline-start edge
+     and spanning toward the inline-end, flipping if it overflows the viewport. */
   position-area: block-end span-inline-end;
+  position-try-fallbacks: flip-block, flip-inline;
 }
 ```
 
 ## 3. Animating entry and exit
 
-{{ FEATURE("interst-invokers", "timing" }}
+{{ FEATURE("interest-invokers", "timing") }}
 
-See the {{ GUIDE_REF("animate-to-from-top-layer") }} guide to see how to use `transition` with `allow-discrete` and `@starting-style` to animate the hovercard's appearance and disappearance from the top layer.
-
-Always respect reduced motion.
+Use `@starting-style` to define the entry animation and `transition-behavior: allow-discrete` (along with `display` and `overlay`) to animate the exit from the top layer, gating the transitions behind `@media (prefers-reduced-motion: no-preference)`.
 
 ```css
+[popover].hovercard {
+  opacity: 0;
+  transform-origin: top;
+}
+
+[popover].hovercard:popover-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@starting-style {
+  [popover].hovercard:popover-open {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+}
+
 /* MANDATORY: Respect user preference for reduced motion by selectively applying transitions. */
-@media (prefers-reduced-motion: reduce) {
-  [popover] {
+@media (prefers-reduced-motion: no-preference) {
+  [popover].hovercard {
     transition:
-      display 0.4s allow-discrete,
-      overlay 0.4s allow-discrete,
-      opacity 0.4s,
-      transform 0.4s;
+      opacity,
+      transform,
+      display,
+      overlay;
+    transition-duration: 0.4s;
+    transition-behavior: allow-discrete;
   }
 }
 ```
@@ -93,26 +111,24 @@ By assigning matching `view-transition-name` values to elements in the hovercard
   navigation: auto;
 }
 
-/* Only show transitions when a popover is open */
+/* Don't show transitions when loading this page */
 ::view-transition-group(*) {
   animation-duration: 0s;
-}
-:root:has([popover]:popover-open) {
-  ::view-transition-group {
-    animation-duration: 0.4s;
-  }
 }
 
 /* Assign names ONLY when the popover is open to ensure only the correct elements are selected. */
 [popover]:popover-open {
   view-transition-name: --hovercard;
+  view-transition-class: morph;
 
   h2 {
     view-transition-name: --title;
+    view-transition-class: morph;
   }
 
   img {
     view-transition-name: --image;
+    view-transition-class: morph;
   }
 }
 ```
@@ -128,15 +144,44 @@ By assigning matching `view-transition-name` values to elements in the hovercard
 </head>
 <body>
   <main id="main-content">
-    <h1 style="view-transition-name: --title">The buzz on hummingbirds</h1>
-    <img style="view-transition-name: --image" src="bird.jpg">
+    <h1>The buzz on hummingbirds</h1>
+    <img src="bird.jpg">
   </main>
 </body>
 ```
 
+```css
+/* On the destination page: */
+main {
+  view-transition-name: --hovercard;
+  view-transition-class: morph;
+}
+h1 {
+  view-transition-name: --title;
+  view-transition-class: morph;
+}
+img {
+  view-transition-name: --image;
+  view-transition-class: morph;
+}
+
+/* By default no transition */
+::view-transition-group(*) {
+  animation-duration: 0s;
+}
+/* Short transition for morphing elements */
+::view-transition-group(.morph) {
+  animation-duration: 0.4s;
+}
+/* Disable transition if no `old` view */
+::view-transition-new(.morph):only-child {
+  animation-duration: 0s;
+}
+```
+
 ## Fallback strategies
 
-This pattern is a progressive enhancement and does not require a fallback. Users with browsers that do not support these patterns will see a standard link that takes them to the next page when they click. You can also polyfill missing features as needed.
+Because the trigger is a standard `<a href="...">` link, browsers without support can still navigate on click if you choose to treat the hovercard as a progressive enhancement. When cross-browser hovercard support is required, conditionally load the polyfills below:
 
 {{ FEATURE_FALLBACKS("popover") }}
 
