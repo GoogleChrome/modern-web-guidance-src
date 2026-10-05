@@ -125,7 +125,7 @@ You can use `light-dark()` colors on any of these to apply colors that adapt to 
 
 For CSS images, `light-dark()` can also be used to provide different image values.
 
-IMPORTANT: Both values in `light-dark()` must be on the same type. You cannot combine a color with an image.
+IMPORTANT: Both values in `light-dark()` must be the same type. You cannot combine a color with an image.
 If one of the two must be an image, use `image(<color>)` to wrap the color value.
 
 ## OPTIONAL: Implementing a color-scheme toggle
