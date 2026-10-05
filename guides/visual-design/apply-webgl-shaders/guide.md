@@ -21,12 +21,15 @@ if ('requestPaint' in HTMLCanvasElement.prototype) {
 }
 ```
 
-2. Add the `layoutsubtree` attribute to the `<canvas>` HTML element.
-3. Place your HTML content inside the `<canvas>` element with the `layoutsubtree` attribute.
+> [!NOTE]
+> HTML-in-Canvas is supported from Chrome 157.
+
+2. Add the `content="drawable"` attribute to the `<canvas>` HTML element.
+3. Place your HTML content inside the `<canvas>` element, and add the `drawable` attribute to every element that you draw. An element with `drawable` captures its subtree, except nested descendants that are also `drawable`.
 
 ```html
-<canvas id="canvas" layoutsubtree>
-  <div id="html-content"></div>
+<canvas id="canvas" content="drawable">
+  <div id="html-content" drawable></div>
 </canvas>
 ```
 
@@ -52,21 +55,84 @@ const options = supportsDevicePixelContentBox
 observer.observe(canvas, options);
 ```
 
-5. Render the HTML content to the canvas inside a `canvas.onpaint` event handler using the `texElementImage2D` method:
+5. Pre-allocate the texture backing first using the `texImage2D` method. The snippets in this guide use a WebGL 2 context (`canvas.getContext("webgl2")`).
+
+Allocate texture storage first by calling `texImage2D()` with `null` instead of pixel data, which reserves GPU memory of the given size and format without uploading any pixels. Follow these rules:
+  - Size the texture from `canvas.captureElementImage(element)`. Its `width` and `height` are in canvas grid (backing store) pixels, so round them up with `Math.ceil()`. `captureElementImage()` throws if the element has no paint record yet: call `requestPaint()`, and retry on the next `paint` event.
+  - Allocate level 0 only on the first upload, or when the size changes, because reallocating clears the texture. Use mutable storage: immutable `texStorage2D()` storage can't be resized when the element changes size.
 
 ```js
+// Returns the element's size in canvas grid pixels, or null if the element
+// has no paint record yet.
+function getElementImageSize(canvas, element) {
+  let elementImage;
+  try {
+    elementImage = canvas.captureElementImage(element);
+  } catch (err) {
+    canvas.requestPaint(); // No paint record yet: retry on the next paint event.
+    return null;
+  }
+  const width = Math.ceil(elementImage.width);
+  const height = Math.ceil(elementImage.height);
+  elementImage.close();
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
+// Binds the texture, and allocates its storage on the first upload, and when
+// the element size changes. `state` stores the allocated size.
+function allocateElementTexture(gl, texture, state, width, height) {
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  if (state.width === width && state.height === height) return;
+
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,                // Mipmap level
+    gl.RGBA8,         // Internal format: 8 bits per RGBA channel
+    width,            // Size in canvas grid pixels
+    height,
+    0,                // Border: must be 0
+    gl.RGBA,          // Format and type that match RGBA8
+    gl.UNSIGNED_BYTE,
+    null              // null reserves GPU memory without uploading pixels
+  );
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  state.width = width;
+  state.height = height;
+}
+
+const texture = gl.createTexture();
+const textureState = { width: 0, height: 0 };
+```
+
+6. Render the HTML content to the texture inside a `canvas.onpaint` event handler using the `texElementSubImage2D` method. Follow these rules:
+  - An element can only be uploaded after the canvas has painted it. Upload from the `paint` event, and call `canvas.requestPaint()` to request one.
+  - Pass `{ width, height }` in the config. It makes the copy fill the allocated texture regardless of how the canvas is scaled.
+  - Reallocate the texture if the size changed, as shown in step 5.
+
+```js
+// Uploads the element into the texture. Returns false if the element has no
+// paint record yet. In that case, it's uploaded on the next paint event.
+function uploadElementWebGL(gl, canvas, texture, element, state) {
+  const size = getElementImageSize(canvas, element);
+  if (!size) return false;
+  const { width, height } = size;
+
+  // Bind the texture, and reallocate it if the size changed (step 5).
+  allocateElementTexture(gl, texture, state, width, height);
+  gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, { width, height });
+  return true;
+}
+
 canvas.onpaint = () => {
-  if (gl.texElementImage2D) {
-    try {
-      gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, uiElement);
-    } catch (err) {
-      console.error('texElementImage2D copy failed:', err);
-    }
+  try {
+    uploadElementWebGL(gl, canvas, texture, uiElement, textureState);
+  } catch (err) {
+    console.error('texElementSubImage2D copy failed:', err);
   }
 };
 ```
 
-  When using a `requestAnimationFrame` loop to render the scene, call `canvas.requestPaint()` within the loop to ensure that the HTML content is rendered to the canvas. Make sure you only re-render the canvas if there has been an update to the descendant HTML elements:
+  When using a `requestAnimationFrame` loop to render the scene, call `canvas.requestPaint()` within the loop to ensure that the HTML content is rendered to the canvas. `event.changedElements` lists the elements whose rendering changed. Make sure you only re-upload the texture if there has been an update to the descendant HTML elements:
 
   ```js
   function render() {
@@ -78,76 +144,67 @@ canvas.onpaint = () => {
 
   canvas.onpaint = (event) => {
     if (event.changedElements && event.changedElements.length > 0) {
-      // Update the texture with texElementImage2D, and update the CSS transform as shown in step 6
+      // Update the texture with uploadElementWebGL()
     }
+    // Render the scene, and sync the element geometry as shown in step 7
   };
   ```
 
-6. Update the CSS transform.
+7. Sync the element geometry.
 
-The browser needs to map from the 3D coordinate space into the CSS coordinate space using a viewport transform. To facilitate this, do the following:
-  - Convert WebGL MVP Matrix to DOM Matrix.
-  - Normalize the HTML element. HTML elements are sized in pixels (for example, 200px wide). WebGL, however, usually treats objects as "unit squares", for example, ranging from 0 to 1. If you don't normalize, your 200px button will look 200 times larger.
-  - Map to the canvas viewport. This step is the "re-scaling" phase: it stretches that unit-space math back out to match the actual pixel dimensions of your `<canvas>` element on the screen. It also flips the Y-axis, because in WebGL, up is positive, but in CSS, down is positive.
-  - Calculate the final transform. Multiply the matrices in order: Viewport * MVP * Normalization. Combining them into one final transform produces a "map" that tells the browser exactly where that HTML element layer should sit to align with the 3D drawing.
-  - Apply the transform to the HTML element. This moves the HTML element layer to sit directly on top of its rendered pixels. This ensures that when a user clicks a button or selects text, they are actually hitting the real HTML element.
+Compute a `DOMMatrix` that maps the element's border box, in CSS pixels, to the canvas, in CSS pixels. The browser needs to map from the 3D coordinate space into the CSS coordinate space using a viewport transform. To facilitate this, do the following:
+  - Normalize the HTML element. HTML elements are sized in pixels (for example, 200px wide). WebGL, however, usually treats objects as "unit squares", for example, ranging from -0.5 to 0.5. If you don't normalize, your 200px button will look 200 times larger. This step also flips the Y-axis, because in CSS, down is positive, but in WebGL, up is positive.
+  - Convert the WebGL MVP Matrix to a DOM Matrix.
+  - Map to the canvas viewport. This step is the "re-scaling" phase: it stretches that unit-space math back out to match the CSS pixel dimensions of your `<canvas>` element on the screen, and flips the Y-axis back.
+  - Calculate the final transform. Multiply the matrices in order: Viewport * MVP * Normalization. Combining them into one final transform produces a "map" that tells the browser exactly where that HTML element should sit to align with the 3D drawing. The browser performs the perspective divide.
 
   ```js
-  if (canvas.getElementTransform) {
-    // 1. Convert WebGL MVP Matrix to DOM Matrix
-    const mvpDOM = new DOMMatrix(Array.from(htmlElementMVP));
+  // Maps the element's border box (CSS pixels) to the canvas (CSS pixels), for a
+  // quad that spans -0.5 to 0.5 in model space and is drawn with the `mvp` matrix.
+  function computeCanvasTransform(canvas, element, mvp) {
+    const width = element.offsetWidth;
+    const height = element.offsetHeight;
 
-    // 2. Normalize the HTML element (Canvas Grid pixels -> WebGL Model Space)
-    const dprX = canvas.width / canvas.clientWidth;
-    const dprY = canvas.height / canvas.clientHeight;
-    const gridWidth = targetHTMLElement.offsetWidth * dprX;
-    const gridHeight = targetHTMLElement.offsetHeight * dprY;
-
+    // 1. Normalize the HTML element (CSS pixels -> WebGL Model Space)
     const toGLModel = new DOMMatrix()
       // Scale pixels to 1 unit, flip Y (as in CSS it points down, and in WebGL it points up)
-      .scale(1 / gridWidth, -1 / gridHeight, 1 / gridHeight)
+      .scale(1 / width, -1 / height, 1 / height)
       // Center the origin: (0,0) becomes (-width/2, -height/2) before scaling
-      .translate(-gridWidth / 2, -gridHeight / 2);
+      .translate(-width / 2, -height / 2);
 
-    // 3. Map to the canvas viewport
+    // 2. Convert WebGL MVP Matrix to DOM Matrix
+    const mvpDOM = new DOMMatrix(Array.from(mvp));
+
+    // 3. Map to the canvas viewport, in CSS pixels
     const clipToCanvasViewport = new DOMMatrix()
       // Move center (0,0) to center of canvas
-      .translate(canvas.width / 2, canvas.height / 2)
-      // Scale normalized clip (-1..1) to viewport size
-      .scale(canvas.width / 2, -canvas.height / 2, canvas.height / 2);
+      .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
+      // Scale normalized clip (-1..1) to viewport size, and flip Y back
+      .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
 
     // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
-    const screenSpaceTransform = clipToCanvasViewport
-      .multiply(mvpDOM)
-      .multiply(toGLModel);
-
-    // 5. Apply to the transform
-    const computedTransform = canvas.getElementTransform(
-      targetHTMLElement,
-      screenSpaceTransform,
-    );
-    targetHTMLElement.style.transform = computedTransform.toString();
+    return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
   }
   ```
 
-7. [Troubleshooting] If the developer is experiencing a mismatch in the DOM logical layout in 3D even after applying the CSS transform from step 5, check if the developer is experiencing the issue in Chromium 148 or earlier. If that's the case, check if `transform.is2D` is correctly set to false for a 3D DOMMatrix. If not, re-initialize the DOMMatrix which corrects `is2D` to be false before applying the transform to the target HTML element. This issue is fixed in Chromium 149+, and if the developer is experiencing it in newer Chromium versions, the is2D value is not the cause:
+Then pass the transform to `canvas.updateElementGeometry()` as `canvasTransform`. This moves the HTML element to sit directly on top of its rendered pixels. This ensures that when a user clicks a button or selects text, they are actually hitting the real HTML element. The browser also uses the transform for the element's accessibility bounds, for example, for screen reader focus rings:
 
-```js
-if (transform.is2D) {
-  // Workaround for Chromium bug https://crbug.com/512171941
-  // affecting Chrome versions under 149 where `transform.is2D`
-  // is incorrectly true for a 3D DOMMatrix. The assignment
-  // below re-initializes the DOMMatrix which corrects is2D to be false.
-  transform = DOMMatrix.fromFloat64Array(transform.toFloat64Array());
-}
-targetHTMLElement.style.transform = computedTransform.toString();
-```
+  ```js
+  canvas.updateElementGeometry(targetHTMLElement, {
+    canvasTransform: computeCanvasTransform(canvas, targetHTMLElement, htmlElementMVP),
+  });
+  ```
+
+Use these options to control hit testing:
+  - Each `updateElementGeometry()` call moves the element to the top of the hit-testing order. Pass `{ preserveHitTestOrder: true }` to keep its position.
+  - Call `canvas.clearElementGeometry(element)` to remove an element from hit testing, for example, when you hide it.
+  - Pass `{ canvasClip }`, a `DOMRectInit` in the coordinate space of `canvasTransform`, to limit the hit-testable area, for example, when only part of the element is drawn.
 
 ## Example code
 
 ```html
-<canvas id="canvas" layoutsubtree style="width: 400px; height: 400px;">
-  <div id="ui-element">
+<canvas id="canvas" content="drawable" style="width: 400px; height: 400px;">
+  <div id="ui-element" drawable>
     <p>WebGL UI Element</p>
     <button>Action</button>
   </div>
@@ -155,53 +212,32 @@ targetHTMLElement.style.transform = computedTransform.toString();
 
 <script>
   const canvas = document.getElementById("canvas");
-  const gl = canvas.getContext("webgl");
+  const gl = canvas.getContext("webgl2");
   const uiElement = document.getElementById("ui-element");
+
+  // getElementImageSize() and allocateElementTexture() are defined in step 5.
+  // uploadElementWebGL() is defined in step 6.
+  // computeCanvasTransform() is defined in step 7.
 
   // Setup WebGL texture...
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
+  const textureState = { width: 0, height: 0 };
 
   canvas.onpaint = () => {
     // 1. Update texture with HTML content
-    if (gl.texElementImage2D) {
-      try {
-        gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, uiElement);
-      } catch (err) {
-        console.error('texElementImage2D copy failed:', err);
-      }
+    try {
+      uploadElementWebGL(gl, canvas, texture, uiElement, textureState);
+    } catch (err) {
+      console.error('texElementSubImage2D copy failed:', err);
     }
 
     // ... Render your 3D scene here, calculating htmlElementMVP matrix ...
 
-    // 2. Sync DOM position with 3D scene
-    if (canvas.getElementTransform) {
-      const mvpDOM = new DOMMatrix(Array.from(htmlElementMVP));
-
-      // Recalculate the DPR compensation mapping
-      const dprX = canvas.width / canvas.clientWidth;
-      const dprY = canvas.height / canvas.clientHeight;
-      const gridWidth = uiElement.offsetWidth * dprX;
-      const gridHeight = uiElement.offsetHeight * dprY;
-
-      const cssToUnitSpace = new DOMMatrix()
-        .scale(1 / gridWidth, -1 / gridHeight, 1 / gridHeight)
-        .translate(-gridWidth / 2, -gridHeight / 2);
-
-      const clipToCanvasViewport = new DOMMatrix()
-        .translate(canvas.width / 2, canvas.height / 2)
-        .scale(canvas.width / 2, -canvas.height / 2, canvas.height / 2);
-
-      const screenSpaceTransform = clipToCanvasViewport
-        .multiply(mvpDOM)
-        .multiply(cssToUnitSpace);
-
-      const computedTransform = canvas.getElementTransform(
-        uiElement,
-        screenSpaceTransform,
-      );
-      uiElement.style.transform = computedTransform.toString();
-    }
+    // 2. Sync DOM position, hit testing, and accessibility bounds with 3D scene
+    canvas.updateElementGeometry(uiElement, {
+      canvasTransform: computeCanvasTransform(canvas, uiElement, htmlElementMVP),
+    });
   };
 </script>
 ```
@@ -209,10 +245,13 @@ targetHTMLElement.style.transform = computedTransform.toString();
 ## Best Practices
 
 - **MANDATORY**: Check browser support for the HTML-in-Canvas API before using it.
-- **MANDATORY**: Always add the `layoutsubtree` attribute to the `<canvas>` element.
+- **MANDATORY**: Always add the `content="drawable"` attribute to the `<canvas>` element.
+- **MANDATORY**: ALWAYS add the `drawable` attribute to the direct children of the canvas.
+- **MANDATORY**: Add the `drawable` attribute to every element that you want to be able to draw independently from its parent elements.
 - **MANDATORY**: Use an `onpaint` event handler to render the HTML content to the canvas.
-- **MANDATORY**: Use the `texElementImage2D` method to render the HTML content to the canvas.
-- **MANDATORY**: Update the CSS transform of the HTML element to match the transform of the rendered content by setting the `style.transform` property of the HTML element.
+- **MANDATORY**: Pre-allocate the texture buffer with `texImage2D()` once (when it's initialized or when the element size changes). Reallocate the texture only when the size changes, and set `TEXTURE_MIN_FILTER` to `LINEAR`.
+- **MANDATORY**: Use the `texElementSubImage2D` method to render the HTML content to a texture that you pre-allocate with `texImage2D()`, sized from `captureElementImage()`.
+- **MANDATORY**: Sync the geometry of the HTML element with the rendered content by calling `canvas.updateElementGeometry(element, { canvasTransform })`.
 - **MANDATORY**: Use `ResizeObserver` to observe the screen size and update the canvas size to match device pixels.
 - **DO NOT** embed cross-origin content in a canvas, as it is not supported.
 - **DO NOT** initialize `ResizeObserver` within the `onpaint` event handler, as it may lead to memory leaks.

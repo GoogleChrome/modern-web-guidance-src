@@ -19,8 +19,8 @@ test.describe('Interactive 3D Content Grader', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       (window as any).__featureChecked = false;
-      (window as any).__texElementImage2D_called = false;
-      (window as any).__copyElementImageToTexture_called = false;
+      (window as any).__texElementSubImage2D_called = false;
+      (window as any).__drawElementImageToTexture_called = false;
       (window as any).__resizeObserverObserved = false;
 
       if (typeof HTMLCanvasElement !== 'undefined') {
@@ -28,14 +28,20 @@ test.describe('Interactive 3D Content Grader', () => {
           (window as any).__featureChecked = true;
         };
 
-        const origGetElementTransform = (HTMLCanvasElement.prototype as any).getElementTransform;
-        Object.defineProperty(HTMLCanvasElement.prototype, 'getElementTransform', {
+        const origUpdateElementGeometry = (HTMLCanvasElement.prototype as any).updateElementGeometry;
+        Object.defineProperty(HTMLCanvasElement.prototype, 'updateElementGeometry', {
           configurable: true,
           get() {
             checkFeature();
-            return origGetElementTransform || function() { return 'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)'; };
+            return origUpdateElementGeometry || function() {};
           }
         });
+
+        // The upload path sizes the texture with captureElementImage().
+        (HTMLCanvasElement.prototype as any).captureElementImage = function(element: HTMLElement) {
+          checkFeature();
+          return { width: element.offsetWidth || 300, height: element.offsetHeight || 150, close() {} };
+        };
 
         HTMLCanvasElement.prototype.requestPaint = function() {
           checkFeature();
@@ -46,26 +52,26 @@ test.describe('Interactive 3D Content Grader', () => {
       }
 
       if (typeof WebGLRenderingContext !== 'undefined') {
-        const origTex = (WebGLRenderingContext.prototype as any).texElementImage2D;
-        (WebGLRenderingContext.prototype as any).texElementImage2D = function(...args: any[]) {
+        const origTex = (WebGLRenderingContext.prototype as any).texElementSubImage2D;
+        (WebGLRenderingContext.prototype as any).texElementSubImage2D = function(...args: any[]) {
           (window as any).__featureChecked = true;
-          (window as any).__texElementImage2D_called = true;
+          (window as any).__texElementSubImage2D_called = true;
           if (origTex) return origTex.apply(this, args);
         };
 
-        const origCopy = (WebGLRenderingContext.prototype as any).copyElementImageToTexture;
-        (WebGLRenderingContext.prototype as any).copyElementImageToTexture = function(...args: any[]) {
+        const origCopy = (WebGLRenderingContext.prototype as any).drawElementImageToTexture;
+        (WebGLRenderingContext.prototype as any).drawElementImageToTexture = function(...args: any[]) {
           (window as any).__featureChecked = true;
-          (window as any).__copyElementImageToTexture_called = true;
+          (window as any).__drawElementImageToTexture_called = true;
           if (origCopy) return origCopy.apply(this, args);
         };
       }
 
       if (typeof WebGL2RenderingContext !== 'undefined') {
-        const origTex2 = (WebGL2RenderingContext.prototype as any).texElementImage2D;
-        (WebGL2RenderingContext.prototype as any).texElementImage2D = function(...args: any[]) {
+        const origTex2 = (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
+        (WebGL2RenderingContext.prototype as any).texElementSubImage2D = function(...args: any[]) {
           (window as any).__featureChecked = true;
-          (window as any).__texElementImage2D_called = true;
+          (window as any).__texElementSubImage2D_called = true;
           if (origTex2) return origTex2.apply(this, args);
         };
       }
@@ -89,21 +95,33 @@ test.describe('Interactive 3D Content Grader', () => {
       const g = globalThis as any;
       if (g.__featureChecked) return true;
       const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '').join('\n');
-      return scripts.includes('texElementImage2D') || scripts.includes('layoutsubtree') || scripts.includes('requestPaint') || scripts.includes('onpaint');
+      return scripts.includes('texElementSubImage2D') || scripts.includes('drawable') || scripts.includes('requestPaint') || scripts.includes('onpaint');
     }).catch(() => true);
     expect(featureChecked).toBe(true);
   });
 
-  test('Canvas element MUST include the layoutsubtree attribute', async ({ page }) => {
+  test('Canvas element MUST include the content="drawable" attribute', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
     const canvas = page.locator('canvas').first();
-    const hasLayoutSubtree = await canvas.evaluate(el => el.hasAttribute('layoutsubtree')).catch(() => false);
-    if (hasLayoutSubtree) {
-      expect(hasLayoutSubtree).toBe(true);
+    const hasDrawableContent = await canvas.evaluate(el => el.getAttribute('content') === 'drawable').catch(() => false);
+    if (hasDrawableContent) {
+      expect(hasDrawableContent).toBe(true);
       return;
     }
     const code = getScriptContent();
-    expect(code.includes('layoutsubtree')).toBe(true);
+    expect(/content\s*=\s*["']?drawable\b|setAttribute\(\s*["']content["']\s*,\s*["']drawable["']/.test(code)).toBe(true);
+  });
+
+  test('Direct children of the canvas element MUST include the drawable attribute', async ({ page }) => {
+    await page.goto(fileUrl).catch(() => {});
+    // Check the markup as authored: without HTML-in-Canvas support, pages can move
+    // the canvas children out of the canvas, to show them as fallback content.
+    const hasDrawableChildren = await page.evaluate((html) => {
+      const markup = new DOMParser().parseFromString(html, 'text/html');
+      const canvas = Array.from(markup.querySelectorAll('canvas')).find(c => c.children.length > 0) || document.querySelector('canvas');
+      return !!canvas && canvas.children.length > 0 && Array.from(canvas.children).every(child => child.hasAttribute('drawable'));
+    }, getScriptContent()).catch(() => false);
+    expect(hasDrawableChildren).toBe(true);
   });
 
   test('Canvas rendering MUST be executed inside an onpaint event handler', async ({ page }) => {
@@ -121,24 +139,54 @@ test.describe('Interactive 3D Content Grader', () => {
     expect(code.includes('onpaint') || code.includes('requestPaint')).toBe(true);
   });
 
-  test('Rendering logic MUST use texElementImage2D or copyElementImageToTexture', async ({ page }) => {
+  test('Rendering logic MUST use texElementSubImage2D or drawElementImageToTexture', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
     await page.waitForTimeout(200);
-    const called = await page.evaluate(() => (window as any).__texElementImage2D_called || (window as any).__copyElementImageToTexture_called).catch(() => false);
+    const called = await page.evaluate(() => (window as any).__texElementSubImage2D_called || (window as any).__drawElementImageToTexture_called).catch(() => false);
     if (called) {
       expect(called).toBe(true);
       return;
     }
     const code = getScriptContent();
-    const has3DCode = code.includes('texElementImage2D') || code.includes('copyElementImageToTexture');
+    const has3DCode = code.includes('texElementSubImage2D') || code.includes('drawElementImageToTexture');
     expect(has3DCode).toBe(true);
   });
 
-  test('CSS transform of descendant HTML element MUST be updated or descendant is inert', async ({ page }) => {
+  test('Texture MUST be allocated at the element size from captureElementImage, rounded up', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
     await page.waitForTimeout(200);
     const code = getScriptContent();
-    expect(code.includes('transform') || code.includes('getElementTransform') || code.includes('matrix3d') || code.includes('inert')).toBe(true);
+    // WebGL allocates with texImage2D(); WebGPU creates the texture with device.createTexture({ size }).
+    const allocatesTexture = code.includes('texImage2D') || /createTexture\(\s*\{/.test(code);
+    expect(code.includes('captureElementImage') && code.includes('Math.ceil') && allocatesTexture).toBe(true);
+  });
+
+  test('Texture MUST only be reallocated or recreated when the element size changes', async ({ page }) => {
+    await page.goto(fileUrl).catch(() => {});
+    await page.waitForTimeout(200);
+    const code = getScriptContent();
+    const allocatesTexture = code.includes('texImage2D') || /createTexture\(\s*\{/.test(code);
+    // Look for a size comparison that guards the reallocation, for example: state.width === width
+    const comparesSize = /(width|height)\s*[!=]==?[^;\n]*(width|height)/i.test(code);
+    expect(allocatesTexture && comparesSize).toBe(true);
+  });
+
+  test('Element geometry MUST be updated with updateElementGeometry and a canvasTransform', async ({ page }) => {
+    await page.goto(fileUrl).catch(() => {});
+    await page.waitForTimeout(200);
+    const code = getScriptContent();
+    expect(code.includes('updateElementGeometry') && code.includes('canvasTransform')).toBe(true);
+  });
+
+  test('When using Three.js, the HTMLTexture mesh MUST be registered with an InteractionManager that is updated', async ({ page }) => {
+    await page.goto(fileUrl).catch(() => {});
+    const code = getScriptContent();
+    // Only applies when the HTML element is displayed with THREE.HTMLTexture.
+    if (!code.includes('HTMLTexture')) {
+      return;
+    }
+    const manager = code.match(/([\w$.]+)\s*=\s*new\s+(?:[\w$]+\.)?InteractionManager\s*\(/);
+    expect(manager !== null && code.includes(`${manager[1]}.add(`) && code.includes(`${manager[1]}.update(`)).toBe(true);
   });
 
   test('Screen size changes MUST be observed using ResizeObserver', async ({ page }) => {

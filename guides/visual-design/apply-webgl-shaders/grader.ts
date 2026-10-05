@@ -40,7 +40,7 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
   test('Feature detection for HTML-in-Canvas is conducted before using the API', async ({ page }) => {
     let hasError = false;
     page.on('pageerror', (err) => {
-      if (err.message.includes('texElementImage2D')) {
+      if (/texElementSubImage2D|texElementImage2D|captureElementImage|updateElementGeometry/.test(err.message)) {
         hasError = true;
       }
     });
@@ -51,16 +51,28 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     expect(hasError).toBe(false);
   });
 
-  test('The canvas element includes the layoutsubtree attribute', async ({ page }) => {
+  test('The canvas element includes the content="drawable" attribute', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
     const canvas = page.locator('canvas').first();
-    const hasLayoutSubtree = await canvas.evaluate(el => el.hasAttribute('layoutsubtree')).catch(() => false);
-    if (hasLayoutSubtree) {
-      expect(hasLayoutSubtree).toBe(true);
+    const hasDrawableContent = await canvas.evaluate(el => el.getAttribute('content') === 'drawable').catch(() => false);
+    if (hasDrawableContent) {
+      expect(hasDrawableContent).toBe(true);
       return;
     }
     const code = getScriptContent();
-    expect(code.includes('layoutsubtree')).toBe(true);
+    expect(/content\s*=\s*["']?drawable\b|setAttribute\(\s*["']content["']\s*,\s*["']drawable["']/.test(code)).toBe(true);
+  });
+
+  test('The direct children of the canvas element include the drawable attribute', async ({ page }) => {
+    await page.goto(targetUrl).catch(() => {});
+    // Check the markup as authored: without HTML-in-Canvas support, pages can move
+    // the canvas children out of the canvas, to show them as fallback content.
+    const hasDrawableChildren = await page.evaluate((html) => {
+      const markup = new DOMParser().parseFromString(html, 'text/html');
+      const canvas = Array.from(markup.querySelectorAll('canvas')).find(c => c.children.length > 0) || document.querySelector('canvas');
+      return !!canvas && canvas.children.length > 0 && Array.from(canvas.children).every(child => child.hasAttribute('drawable'));
+    }, getScriptContent()).catch(() => false);
+    expect(hasDrawableChildren).toBe(true);
   });
 
   test('Canvas rendering is executed inside an onpaint event handler', async ({ page }) => {
@@ -78,18 +90,34 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     expect(code.includes('onpaint') || code.includes('requestPaint')).toBe(true);
   });
 
-  test('The rendering logic uses texElementImage2D to draw HTML elements', async ({ page }) => {
+  test('The rendering logic uses texElementSubImage2D to upload HTML elements into a WebGL texture', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
     await page.waitForTimeout(500);
     const code = getScriptContent();
-    expect(code.includes('texElementImage2D') || code.includes('copyElementImageToTexture')).toBe(true);
+    expect(code.includes('texElementSubImage2D') || code.includes('drawElementImageToTexture')).toBe(true);
   });
 
-  test('The CSS transform property of the descendant HTML element is updated', async ({ page }) => {
+  test('The WebGL texture is allocated with texImage2D at the element size from captureElementImage, rounded up', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
     await page.waitForTimeout(500);
     const code = getScriptContent();
-    expect(code.includes('getElementTransform') || code.includes('matrix3d') || code.includes('transform')).toBe(true);
+    expect(code.includes('captureElementImage') && code.includes('Math.ceil') && code.includes('texImage2D')).toBe(true);
+  });
+
+  test('The WebGL texture is only reallocated with texImage2D when the element size changes', async ({ page }) => {
+    await page.goto(targetUrl).catch(() => {});
+    await page.waitForTimeout(500);
+    const code = getScriptContent();
+    // Look for a size comparison that guards the reallocation, for example: state.width === width
+    const comparesSize = /(width|height)\s*[!=]==?[^;\n]*(width|height)/i.test(code);
+    expect(code.includes('texImage2D') && comparesSize).toBe(true);
+  });
+
+  test('Each drawn HTML element is registered with updateElementGeometry and a canvasTransform', async ({ page }) => {
+    await page.goto(targetUrl).catch(() => {});
+    await page.waitForTimeout(500);
+    const code = getScriptContent();
+    expect(code.includes('updateElementGeometry') && code.includes('canvasTransform')).toBe(true);
   });
 
   test('A ResizeObserver is used to observe the canvas size', async ({ page }) => {
