@@ -416,24 +416,30 @@ export const PATCHES_DIR = 'patches';
 export const TEST_APP_RESULTS_DIR = 'test-app-results';
 
 export type SolutionAgent =
-  | typeof Agents.GEMINI_CLI
+  | typeof Agents.ANTIGRAVITY_CLI
   | typeof Agents.JETSKI_CLI
   | typeof Agents.CLAUDE_CODE
   | typeof Agents.CODEX_CLI;
 
-export function getDefaultSolutionAgent(): SolutionAgent {
-  return process.env.GD_DEV_USE_GEMINI === '1' ? Agents.GEMINI_CLI : Agents.JETSKI_CLI;
+export function getDefaultSolutionAgent(): typeof Agents.ANTIGRAVITY_CLI | typeof Agents.JETSKI_CLI {
+  return process.env.GD_DEV_USE_JETSKI === '1' ? Agents.JETSKI_CLI : Agents.ANTIGRAVITY_CLI;
+}
+
+/** Returns the primary solution agent whose patch already exists in targetDir, preferring the default agent. */
+function findExistingPrimarySolutionAgent(targetDir?: string): SolutionAgent | undefined {
+  if (!targetDir) return undefined;
+  const defaultAgent = getDefaultSolutionAgent();
+  const fallbackAgent = defaultAgent === Agents.ANTIGRAVITY_CLI ? Agents.JETSKI_CLI : Agents.ANTIGRAVITY_CLI;
+  return [defaultAgent, fallbackAgent].find(agent => fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[agent])));
 }
 
 export function getActiveSolutionAgents(targetDir?: string): SolutionAgent[] {
-  const hasGemini = Boolean(targetDir && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.GEMINI_CLI])));
-  const hasJetski = Boolean(targetDir && fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.JETSKI_CLI])));
-  const primary: SolutionAgent = hasGemini ? Agents.GEMINI_CLI : (hasJetski ? Agents.JETSKI_CLI : getDefaultSolutionAgent());
+  const primary: SolutionAgent = findExistingPrimarySolutionAgent(targetDir) ?? getDefaultSolutionAgent();
   return [primary, Agents.CLAUDE_CODE, Agents.CODEX_CLI];
 }
 
 export const SOLUTION_PATCH_FILES: Record<SolutionAgent, string> = {
-  [Agents.GEMINI_CLI]: path.join(PATCHES_DIR, 'gemini-solution.patch'),
+  [Agents.ANTIGRAVITY_CLI]: path.join(PATCHES_DIR, 'antigravity-solution.patch'),
   [Agents.JETSKI_CLI]: path.join(PATCHES_DIR, 'jetski-solution.patch'),
   [Agents.CLAUDE_CODE]: path.join(PATCHES_DIR, 'claude-solution.patch'),
   [Agents.CODEX_CLI]: path.join(PATCHES_DIR, 'codex-solution.patch'),
@@ -622,9 +628,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
     for (const baseApp of appsToInventory) {
       const targetDir = path.join(targetsDir, baseApp);
       const exists = fs.existsSync(targetDir) && fs.statSync(targetDir).isDirectory();
-      const hasPrimarySolution =
-        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.GEMINI_CLI])) ||
-        fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[Agents.JETSKI_CLI]));
+      const hasPrimarySolution = findExistingPrimarySolutionAgent(targetDir) !== undefined;
       const appInv: TargetInventory = {
         name: baseApp,
         dir: targetDir,

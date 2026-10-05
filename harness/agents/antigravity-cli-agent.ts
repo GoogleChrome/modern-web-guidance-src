@@ -71,7 +71,7 @@ export function setupAntigravityCliCredentials(tempHome: string): void {
   const sourceSettings = readAgySettings(path.join(agySource, 'settings.json'));
   const project = config.environment.antigravityGcpProject || sourceSettings.gcp?.project;
   if (!project) {
-    console.warn('Warning: No GCP project configured for agy. Set ANTIGRAVITY_GCP_PROJECT in .env.');
+    console.log('No GCP project configured for agy; using the signed-in Antigravity account.');
   }
 
   const settings: AgySettings = {
