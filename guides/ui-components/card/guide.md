@@ -155,9 +155,31 @@ native link. Do not nest links, buttons, or form controls inside it:
 </a>
 ```
 
-When a card has a primary destination and independent actions, link the title to
-the destination and keep the other links or buttons separate. Each action must
-remain independently operable.
+When a card has longer body copy or independent actions, do not wrap the whole
+card in `<a>` (which concatenates all inner text into the link's accessible
+name). Link the title to the primary destination, stretch its pointer hit area
+across the card with `::after`, and elevate secondary controls with
+`position: relative; z-index: 1` so each action remains independently operable:
+
+```css
+.card {
+  /* Anchor the stretched primary link pseudo-element to the card bounds */
+  position: relative;
+}
+
+.card h3 a::after {
+  /* Expand the heading link's pointer target across the entire card without wrapping body text in <a> */
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.card footer :is(button, a) {
+  /* Stack secondary controls above the ::after overlay so they remain independently clickable */
+  position: relative;
+  z-index: 1;
+}
+```
 
 When cards represent choices, style their native controls and labels as cards.
 Use radios for one choice and checkboxes for independent choices:
