@@ -32,7 +32,7 @@ Add the boolean `switch` attribute to a standard checkbox input:
 </label>
 ```
 
-When checked, the input submits its standard checkbox value. Read `.checked` (not `.value`) in JavaScript event listeners.
+- When checked, the input submits its standard checkbox value. In JavaScript, listen for `change` (or `input`) events and read `.checked` rather than `.value`.
 
 ## Feature Detection
 
@@ -154,18 +154,6 @@ html.no-native-switch .switch:focus-within {
     transition: none;
   }
 }
-```
-
-## State and Event Handling
-
-Listen to standard `change` events on the input:
-
-```js
-const toggle = document.querySelector('#notifications');
-
-toggle.addEventListener('change', () => {
-  console.log('Switch state:', toggle.checked);
-});
 ```
 
 ## Fallbacks & Browser Support
