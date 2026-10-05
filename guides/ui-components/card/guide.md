@@ -21,13 +21,13 @@ usable when optional styling or layout enhancements are unavailable.
 
 ## Guidelines
 
-Choose semantics from the card's purpose:
+Choose the card's semantics from what the card itself represents:
 
-- use an `article` for independently understandable content;
-- use one native link when the whole card is one destination;
-- use separate links or buttons when it has independent actions;
-- use labeled radios or checkboxes when cards represent choices;
-- use a native `select` when the interaction is a select.
+- an `article` when it is independently understandable content (any links and
+  buttons inside it remain separate native controls);
+- one native link when the whole card is a single destination;
+- a labeled radio or checkbox, or an `option` in a native `select`, when the card
+  is a choice.
 
 Keep media, title, supporting content, and actions in meaningful source order.
 Optional media, metadata, and actions must not make the remaining content
