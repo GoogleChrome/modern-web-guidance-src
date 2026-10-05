@@ -571,6 +571,7 @@ window.__featuresMapping = {
     "transition-behavior",
     "starting-style",
     "display-animation",
+    "overlay",
     "prefers-reduced-motion",
     "registered-custom-properties"
   ],
