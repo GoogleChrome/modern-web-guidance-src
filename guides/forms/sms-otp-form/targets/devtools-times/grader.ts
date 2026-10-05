@@ -503,9 +503,10 @@ test.describe('sms-otp-form Target Grader', () => {
       const populatesInput =
         /\.value\s*=/.test(text) || /\bset[A-Z]\w*\s*\(/.test(text);
       const triggersSubmitFlow =
-        /\.requestSubmit\s*\(/.test(text) ||
-        /\bsubmit\w*\s*\(/.test(text) ||
-        /\bverify\w*\s*\(/.test(text);
+        (/\.requestSubmit\s*\(/.test(text) ||
+          /(?<!\.)\bsubmit\w*\s*\(/.test(text) ||
+          /\bverify\w*\s*\(/.test(text)) &&
+        !/\.submit\s*\(/.test(text);
       return accessesCode && populatesInput && triggersSubmitFlow;
     });
 
