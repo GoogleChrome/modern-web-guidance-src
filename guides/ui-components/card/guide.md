@@ -205,11 +205,12 @@ immediate action rather than setting form state.
 ## Accessibility
 
 Keep native links, buttons, and form controls keyboard-operable, with accessible
-names and visible focus indicators. A card-level focus treatment may provide
-context, but must not replace the focused link or control's own indicator.
+names and visible focus indicators. Use `.card:has(:focus-visible)` to give the
+card a subtle focus ring for context, but never remove or replace the focused
+link or control's own `:focus-visible` indicator.
 
 Preserve the reading order when changing the visual layout. Do not make the card
-or its actions depend on hover, pointer input, colour alone, or a visual icon
+or its actions depend on hover, pointer input, color alone, or a visual icon
 without an accessible name. For related semantic, focus, and control guidance,
 see {{ GUIDE_REF("accessibility") }}.
 
