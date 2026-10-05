@@ -11,13 +11,6 @@ guides:
   - brand-consistent-forms
 ---
 
-<!--
-Keep the native input. Use accent-color for simple colour changes and
-appearance: none with vendor-prefixed slider pseudo-elements for deeper
-customisation until the standard slider pseudo-elements are widely available.
-Use GUIDE_REF for related guidance.
--->
-
 # Brand-Consistent Range Slider
 
 ## Use the native range input
