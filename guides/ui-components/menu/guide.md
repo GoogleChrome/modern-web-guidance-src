@@ -55,11 +55,10 @@ When nesting a menu trigger or bar within a header, you often want the header to
 
 ## Open and position the menu
 
-Use a button as the menu trigger. The [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API) places the menu in the top layer and supplies light-dismiss behaviour. Trigger the popover imperatively with `showPopover()` and `hidePopover()` rather than using `popovertarget` or `popovertargetaction`. Declarative popover targeting makes the browser treat the control as the popover source and adds implicit accessibility relationships, including `aria-expanded` and `aria-details`, that are not required for this menu pattern. This guide also moves focus into the menu when it opens, so imperative control lets the implementation coordinate the expanded-state update and focus transition without the announcement race that can occur when declarative targeting and immediate focus movement are combined.
+Use a button as the menu trigger. The Popover API places the menu in the top layer and supplies light-dismiss behavior. Trigger the popover imperatively with `showPopover()` and `hidePopover()` rather than using `popovertarget` or `popovertargetaction`. Declarative popover targeting makes the browser treat the control as the popover source and adds implicit accessibility relationships, including `aria-expanded` and `aria-details`, that are not required for this menu pattern. This guide also moves focus into the menu when it opens, so imperative control lets the implementation coordinate the expanded-state update and focus transition without the announcement race that can occur when declarative targeting and immediate focus movement are combined.
 
-> [!IMPORTANT]
-> **Workaround for popover clobbering focusgroup semantics:**
-> There is a known browser implementation bug where a parent `[popover]` clobbers the `focusgroup`'s semantics (see [Chromium Bug #564673920](https://issues.chromium.org/issues/564673920)). To work around this, **always nest the focusgroup container inside the popover div** instead of declaring `focusgroup` on the popover element itself.
+{# Maintainer note: Nesting the focusgroup container inside the popover div works around Chromium Bug #564673920, where declaring focusgroup directly on a [popover] element clobbers focusgroup keyboard semantics. #}
+Always nest the `focusgroup` container inside the `[popover]` element instead of declaring `focusgroup` directly on the popover container.
 
 ```html
 <!-- Trigger button -->
