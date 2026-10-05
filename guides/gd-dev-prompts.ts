@@ -176,11 +176,11 @@ export interface TaskPromptOptions {
 }
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
-  const target = opts.isDisciplineGuide ? 'discipline topic' : 'use case';
+  const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
 
   return `# GOAL
 Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
-Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to request or apply it inside the application.
+Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
