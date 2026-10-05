@@ -7,38 +7,11 @@
     <title>Switch demo</title>
 
     <script>
+        const supportsNativeSwitch = 'switch' in HTMLInputElement.prototype;
         const root = document.documentElement;
-        root.classList.add('switch-detection-pending');
-
-        function supportsNativeSwitchRendering() {
-            const frame = document.createElement('iframe');
-            frame.setAttribute('aria-hidden', 'true');
-            frame.style.cssText =
-                'position:absolute;inline-size:0;block-size:0;border:0;visibility:hidden;';
-            root.append(frame);
-
-            try {
-                const frameDocument = frame.contentDocument;
-                frameDocument.body.innerHTML = `
-                    <input id="checkbox" type="checkbox">
-                    <input id="switch" type="checkbox" switch>
-                `;
-
-                const checkbox = frameDocument.querySelector('#checkbox');
-                const switchControl = frameDocument.querySelector('#switch');
-
-                return switchControl.offsetWidth !== checkbox.offsetWidth ||
-                    switchControl.offsetHeight !== checkbox.offsetHeight;
-            } finally {
-                frame.remove();
-            }
-        }
-
-        const supportsNativeSwitch = supportsNativeSwitchRendering();
 
         root.classList.toggle('native-switch', supportsNativeSwitch);
         root.classList.toggle('no-native-switch', !supportsNativeSwitch);
-        root.classList.remove('switch-detection-pending');
     </script>
 
     <style>
@@ -100,7 +73,7 @@
             flex: 0 0 auto;
         }
 
-        /* Native switch styling (WebKit / Safari) */
+        /* Native switch styling */
         html.native-switch input[type="checkbox"][switch] {
             accent-color: var(--accent-color);
             inline-size: 3rem;
@@ -181,12 +154,6 @@
         html.no-native-switch .switch:has(.switch__control:checked)::after {
             inset-inline-end: var(--switch-border-size);
             border-color: var(--accent-color);
-        }
-
-        html.switch-detection-pending .switch__control,
-        html.switch-detection-pending .switch::before,
-        html.switch-detection-pending .switch::after {
-            visibility: hidden;
         }
 
         @media (prefers-reduced-motion: reduce) {

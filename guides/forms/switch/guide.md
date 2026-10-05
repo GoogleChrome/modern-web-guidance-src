@@ -1,6 +1,6 @@
 ---
 name: switch
-description: Build an accessible switch with the native HTML switch attribute, JavaScript feature detection, and a polyfill fallback for non-WebKit browsers.
+description: Build an accessible switch with the native HTML switch attribute, JavaScript feature detection, and a CSS polyfill fallback.
 web-feature-ids:
   - switch-control
   - accent-color
@@ -13,7 +13,7 @@ Use the native HTML `switch` attribute when supported, with a CSS polyfill fallb
 An accessible switch implementation requires:
 
 1. **Semantic Foundation:** A standard `<input type="checkbox" switch>` inside an associated `<label>`, preserving form submission, keyboard navigation, and screen reader semantics (see {{ GUIDE_REF("checkbox") }} and {{ GUIDE_REF("forms") }}).
-2. **Early Feature Detection:** A lightweight JavaScript check in `<head>` that detects native switch support before page render to avoid layout shifts.
+2. **Early Feature Detection:** A one-line JavaScript check in `<head>` that detects native switch support before first paint.
 3. **Polyfill Fallback:** A concise CSS stylesheet that uses the existing checkbox for semantics and the associated label's pseudo-elements for a visual toggle switch in browsers lacking native support.
 
 ## Markup
@@ -36,48 +36,21 @@ When checked, the input submits its standard checkbox value. Read `.checked` (no
 
 ## Feature Detection
 
-Because CSS cannot detect form control rendering support, perform feature detection via JavaScript. API exposure alone is not proof that the browser renders a native switch, so use the rendering probe below and keep the fallback when native rendering cannot be confirmed. Add the pending class before probing to prevent a flash of the wrong control:
+CSS cannot detect support for the `switch` attribute, so detect it in JavaScript with an inline script in `<head>`. It runs before first paint, so the correct implementation is selected without a flash of the wrong control:
 
 ```html
 <script>
+  const supportsNativeSwitch = 'switch' in HTMLInputElement.prototype;
   const root = document.documentElement;
-  root.classList.add('switch-detection-pending');
-
-  function supportsNativeSwitchRendering() {
-    const frame = document.createElement('iframe');
-    frame.setAttribute('aria-hidden', 'true');
-    frame.style.cssText =
-      'position:absolute;inline-size:0;block-size:0;border:0;visibility:hidden;';
-    root.append(frame);
-
-    try {
-      const frameDocument = frame.contentDocument;
-      frameDocument.body.innerHTML = `
-        <input id="checkbox" type="checkbox">
-        <input id="switch" type="checkbox" switch>
-      `;
-
-      const checkbox = frameDocument.querySelector('#checkbox');
-      const switchControl = frameDocument.querySelector('#switch');
-
-      return switchControl.offsetWidth !== checkbox.offsetWidth ||
-        switchControl.offsetHeight !== checkbox.offsetHeight;
-    } finally {
-      frame.remove();
-    }
-  }
-
-  const supportsNativeSwitch = supportsNativeSwitchRendering();
 
   root.classList.toggle('native-switch', supportsNativeSwitch);
   root.classList.toggle('no-native-switch', !supportsNativeSwitch);
-  root.classList.remove('switch-detection-pending');
 </script>
 ```
 
-## Native Styling (WebKit / Safari)
+## Native Styling
 
-When native switch support is confirmed, customize the control's highlight color using `accent-color` (see {{ GUIDE_REF("brand-consistent-forms") }}) and ensure visible focus styling:
+When native switch support is detected, customize the control's highlight color using `accent-color` (see {{ GUIDE_REF("brand-consistent-forms") }}) and ensure visible focus styling:
 
 ```css
 html.native-switch input[type="checkbox"][switch] {
@@ -94,20 +67,9 @@ input[type="checkbox"][switch]:focus-visible {
 }
 ```
 
-## Polyfill Fallback (Non-WebKit Browsers)
+## Polyfill Fallback
 
-Keep the controls hidden while the implementation class is being selected:
-
-```css
-html.switch-detection-pending input[type="checkbox"][switch],
-html.switch-detection-pending .switch::before,
-html.switch-detection-pending .switch::after {
-  visibility: hidden;
-}
-```
-
-
-For browsers without native switch rendering (Chrome, Edge, Firefox), use the existing checkbox for semantics and interaction, and use the associated label's pseudo-elements for the visual switch when the `no-native-switch` class is present. Do not rely on pseudo-elements on the checkbox itself; form controls are replaced elements and support is inconsistent.
+For browsers without native switch support, use the existing checkbox for semantics and interaction, and use the associated label's pseudo-elements for the visual switch when the `no-native-switch` class is present. Do not rely on pseudo-elements on the checkbox itself; form controls are replaced elements and support is inconsistent.
 
 ```css
 .switch {
