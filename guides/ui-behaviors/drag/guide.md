@@ -79,7 +79,7 @@ When the handle has focus, move the element with the arrow keys and call `preven
 
 ## Dialog-specific note
 
-A `<dialog>` or `[popover]` can use this mechanism with its header as the handle. Set `margin: 0` before assigning `left` and `top`, because the browser's default margins interfere with manual positioning. For dialog and popover opening, closing, focus, and dismissal behaviour, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("platform-controls-dismiss-dialog") }}.
+A `<dialog>` or `[popover]` can use this mechanism with its header as the handle. Set `margin: 0` before assigning `left` and `top`, because the browser's default margins interfere with manual positioning. For dialog and popover opening, closing, focus, and dismissal behavior, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("platform-controls-dismiss-dialog") }}.
 
 ## Fallback strategies
 
