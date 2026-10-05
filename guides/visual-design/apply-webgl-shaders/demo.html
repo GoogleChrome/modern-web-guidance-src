@@ -5,36 +5,72 @@
     <title>Demo: Apply WebGL shaders to HTML content</title>
     <style>
         body { font-family: sans-serif; }
-        canvas { border: 1px solid #ccc; }
-        .font {
+        /* The dark background shows behind the HTML content. The grid sizes the
+           canvas, or the fallback content, to fill the stage. */
+        .stage {
+            display: grid;
+            width: 400px;
+            height: 300px;
+            border: 1px solid #ccc;
+            background: #000;
+        }
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+        /* The element fills the canvas, so the shader, which stretches the
+           texture over the whole canvas, draws it at its DOM size. */
+        #effect_element {
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
             padding: 20px;
-            color: white;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 16px;
+            color: white;
+        }
+        .font {
+            margin: 0;
             font-weight: bold;
             font-size: 50px;
+        }
+        #effect_button {
+            font: inherit;
+            padding: 6px 16px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <h1>Apply Visual Effects using WebGL to HTML Content</h1>
-    <p>This demo shows how to apply WebGL shaders to HTML content rendered in a canvas.</p>
-    
-    <canvas id="canvas" style="width: 400px; height: 300px;" layoutsubtree>
-        <div id="effect_element" >
-           <h2 class="font"> Hello World</h2>
-        </div>
-    </canvas>
+    <p>This demo shows how to apply WebGL shaders to HTML content rendered in a canvas. The text stays selectable, and the button stays clickable.</p>
+    <p id="fallback_message" hidden>HTML-in-Canvas isn't supported in this browser, so the HTML content is shown without the shader effect.</p>
+
+    <div class="stage">
+        <canvas id="canvas" content="drawable">
+            <div id="effect_element" drawable>
+                <h2 class="font">Hello World</h2>
+                <button id="effect_button" type="button">Clicked 0 times</button>
+            </div>
+        </canvas>
+    </div>
 
     <script>
         const canvas = document.getElementById('canvas');
-        const gl = canvas.getContext('webgl2');
         const effect_element = document.getElementById('effect_element');
+        const effect_button = document.getElementById('effect_button');
+        const fallback_message = document.getElementById('fallback_message');
+        const gl = canvas.getContext('webgl2');
 
-        if (!gl) {
-            console.error("WebGL not supported");
-        }
+        // The drawn HTML stays interactive: count the button clicks.
+        let clickCount = 0;
+        effect_button.addEventListener('click', () => {
+            clickCount++;
+            effect_button.textContent = `Clicked ${clickCount} ${clickCount === 1 ? 'time' : 'times'}`;
+        });
 
         // Vertex Shader
         const vsSource = `
@@ -157,21 +193,6 @@
             return shaderProgram;
         }
 
-        const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
-        const programInfo = {
-            program: shaderProgram,
-            attribLocations: {
-                vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-                textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
-            },
-            uniformLocations: {
-                uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
-                u_resolution: gl.getUniformLocation(shaderProgram, 'u_resolution'),
-                u_mouse: gl.getUniformLocation(shaderProgram, 'u_mouse'),
-                u_time: gl.getUniformLocation(shaderProgram, 'u_time'),
-            },
-        };
-
         // Buffers
         function initBuffers(gl) {
             const positionBuffer = gl.createBuffer();
@@ -200,96 +221,214 @@
             };
         }
 
-        const buffers = initBuffers(gl);
-
-        // Texture
-        const texture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-
-        let startTime = Date.now();
-        let logError = true;
-        let mouseX = 200;
-        let mouseY = 150;
-
-        // Track mouse for u_mouse uniform
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = rect.height - (e.clientY - rect.top); // Invert Y for WebGL
-        });
-
-        canvas.onpaint = (event) => {
-            const currentTime = (Date.now() - startTime) * 0.001; // seconds
-            
-            // Set viewport to match canvas size
-            gl.viewport(0, 0, canvas.width, canvas.height);
-            
-            if (typeof gl.texElementImage2D !== 'function') {
-                if (logError) {
-                    console.error("texElementImage2D is not supported in this browser. Please use Chrome Canary with the #canvas-draw-element flag.");
-                    logError = false;
-                }
-                // Draw fallback background
-                gl.clearColor(0.2, 0.2, 0.2, 1.0);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                return;
+        // Returns the element's size in canvas grid pixels, or null if the element
+        // has no paint record yet.
+        function getElementImageSize(canvas, element) {
+            let elementImage;
+            try {
+                elementImage = canvas.captureElementImage(element);
+            } catch (err) {
+                canvas.requestPaint(); // No paint record yet: retry on the next paint event.
+                return null;
             }
-
-            if (gl.texElementImage2D) {
-                try {
-                    gl.bindTexture(gl.TEXTURE_2D, texture);
-                    gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, effect_element);
-                } catch (e) {
-                    console.log("texElementImage2D failed:", e);
-                    return;
-                }
-            }
-
-            gl.clearColor(0.0, 0.0, 0.0, 0.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-
-            gl.useProgram(programInfo.program);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-            gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
-            gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
-            
-            // Set uniforms
-            gl.uniform2f(programInfo.uniformLocations.u_resolution, canvas.width, canvas.height);
-            gl.uniform2f(programInfo.uniformLocations.u_mouse, mouseX, mouseY);
-            gl.uniform1f(programInfo.uniformLocations.u_time, currentTime);
-
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        };
-
-        function animate() {
-            canvas.requestPaint();
-            requestAnimationFrame(animate);
+            const width = Math.ceil(elementImage.width);
+            const height = Math.ceil(elementImage.height);
+            elementImage.close();
+            return width > 0 && height > 0 ? { width, height } : null;
         }
-        requestAnimationFrame(animate);
 
-        const observer = new ResizeObserver(([entry]) => {
-            const dpc = entry.devicePixelContentBoxSize;
-            canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
-            canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
-            canvas.requestPaint();
-        });
-        const supportsDevicePixelContentBox = 
-            typeof ResizeObserverEntry !== 'undefined' && 
-            'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
-        const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
-        observer.observe(canvas, options);
+        // Binds the texture, and allocates its storage on the first upload, and when
+        // the element size changes. `state` stores the allocated size.
+        function allocateElementTexture(gl, texture, state, width, height) {
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            if (state.width === width && state.height === height) return;
+
+            gl.texImage2D(
+                gl.TEXTURE_2D,
+                0,                // Mipmap level
+                gl.RGBA8,         // Internal format: 8 bits per RGBA channel
+                width,            // Size in canvas grid pixels
+                height,
+                0,                // Border: must be 0
+                gl.RGBA,          // Format and type that match RGBA8
+                gl.UNSIGNED_BYTE,
+                null              // null reserves GPU memory without uploading pixels
+            );
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            state.width = width;
+            state.height = height;
+        }
+
+        // Uploads the element into the texture. Returns false if the element has no
+        // paint record yet. In that case, it's uploaded on the next paint event.
+        function uploadElementWebGL(gl, canvas, texture, element, state) {
+            const size = getElementImageSize(canvas, element);
+            if (!size) return false;
+            const { width, height } = size;
+
+            // Bind the texture, and reallocate it if the size changed.
+            allocateElementTexture(gl, texture, state, width, height);
+            gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, element, { width, height });
+            return true;
+        }
+
+        // Maps the element's border box (CSS pixels) to the canvas (CSS pixels), for a
+        // quad that spans -0.5 to 0.5 in model space and is drawn with the `mvp` matrix.
+        function computeCanvasTransform(canvas, element, mvp) {
+            const width = element.offsetWidth;
+            const height = element.offsetHeight;
+
+            // 1. Normalize the HTML element (CSS pixels -> WebGL Model Space)
+            const toGLModel = new DOMMatrix()
+                // Scale pixels to 1 unit, flip Y (as in CSS it points down, and in WebGL it points up)
+                .scale(1 / width, -1 / height, 1 / height)
+                // Center the origin: (0,0) becomes (-width/2, -height/2) before scaling
+                .translate(-width / 2, -height / 2);
+
+            // 2. Convert WebGL MVP Matrix to DOM Matrix
+            const mvpDOM = new DOMMatrix(Array.from(mvp));
+
+            // 3. Map to the canvas viewport, in CSS pixels
+            const clipToCanvasViewport = new DOMMatrix()
+                // Move center (0,0) to center of canvas
+                .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
+                // Scale normalized clip (-1..1) to viewport size, and flip Y back
+                .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
+
+            // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
+            return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
+        }
+
+        function initHtmlInCanvas() {
+            const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+            const programInfo = {
+                program: shaderProgram,
+                attribLocations: {
+                    vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+                    textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+                },
+                uniformLocations: {
+                    uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+                    u_resolution: gl.getUniformLocation(shaderProgram, 'u_resolution'),
+                    u_mouse: gl.getUniformLocation(shaderProgram, 'u_mouse'),
+                    u_time: gl.getUniformLocation(shaderProgram, 'u_time'),
+                },
+            };
+
+            const buffers = initBuffers(gl);
+            // The quad covers the whole canvas: its vertices span -1 to 1 in clip
+            // space, and the vertex shader doesn't transform them. Scaling the -0.5
+            // to 0.5 quad that computeCanvasTransform() expects by 2 maps it onto
+            // this quad.
+            const quadMVP = new DOMMatrix().scale(2, 2).toFloat32Array();
+
+            // Texture
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            // Only mip level 0 is allocated, so use a filter without mipmaps.
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            const textureState = { width: 0, height: 0 };
+            // Upload on the first paint event, and after the canvas is resized.
+            let textureNeedsUpload = true;
+
+            const startTime = Date.now();
+            let mouseX = 200; // In CSS pixels, from the bottom-left corner of the canvas
+            let mouseY = 150;
+
+            // Track mouse for u_mouse uniform. Mouse events on the drawn HTML
+            // element bubble up to the canvas.
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = rect.height - (e.clientY - rect.top); // Invert Y for WebGL
+            });
+
+            canvas.onpaint = (event) => {
+                // Only re-upload the texture when the element's rendering changed,
+                // for example, when the button is hovered or its label changes.
+                if (textureNeedsUpload || event.changedElements.includes(effect_element)) {
+                    try {
+                        textureNeedsUpload = !uploadElementWebGL(gl, canvas, texture, effect_element, textureState);
+                    } catch (err) {
+                        console.error('texElementSubImage2D copy failed:', err);
+                    }
+                }
+                // Nothing to draw until the element is uploaded for the first time.
+                if (textureState.width === 0) return;
+
+                const currentTime = (Date.now() - startTime) * 0.001; // seconds
+
+                // Set viewport to match canvas size
+                gl.viewport(0, 0, canvas.width, canvas.height);
+
+                gl.clearColor(0.0, 0.0, 0.0, 0.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+
+                gl.useProgram(programInfo.program);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+                gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
+                gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+                // Set uniforms. gl_FragCoord is in canvas grid pixels, so scale
+                // the mouse position from CSS pixels to match.
+                const pixelRatio = canvas.width / canvas.clientWidth;
+                gl.uniform2f(programInfo.uniformLocations.u_resolution, canvas.width, canvas.height);
+                gl.uniform2f(programInfo.uniformLocations.u_mouse, mouseX * pixelRatio, mouseY * pixelRatio);
+                gl.uniform1f(programInfo.uniformLocations.u_time, currentTime);
+
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+                // Sync the element's DOM position, hit testing, and accessibility
+                // bounds with where it's drawn, so that its text can be selected,
+                // and its button can be clicked.
+                canvas.updateElementGeometry(effect_element, {
+                    canvasTransform: computeCanvasTransform(canvas, effect_element, quadMVP),
+                });
+            };
+
+            // The rain is animated, so request a paint event on every frame.
+            function animate() {
+                canvas.requestPaint();
+                requestAnimationFrame(animate);
+            }
+            requestAnimationFrame(animate);
+
+            const observer = new ResizeObserver(([entry]) => {
+                const dpc = entry.devicePixelContentBoxSize;
+                canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
+                canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
+                // The element's size in canvas grid pixels changes with the canvas size.
+                textureNeedsUpload = true;
+                canvas.requestPaint();
+            });
+            const supportsDevicePixelContentBox =
+                typeof ResizeObserverEntry !== 'undefined' &&
+                'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
+            const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
+            observer.observe(canvas, options);
+        }
+
+        // Check that HTML-in-Canvas, and its WebGL upload method, are supported.
+        if ('requestPaint' in HTMLCanvasElement.prototype && gl && 'texElementSubImage2D' in gl) {
+            initHtmlInCanvas();
+        } else {
+            // Fallback: canvas children aren't rendered without HTML-in-Canvas.
+            // Show the HTML content in place of the canvas, without the shader effect.
+            canvas.hidden = true;
+            canvas.after(effect_element);
+            fallback_message.hidden = false;
+        }
     </script>
 </body>
 </html>

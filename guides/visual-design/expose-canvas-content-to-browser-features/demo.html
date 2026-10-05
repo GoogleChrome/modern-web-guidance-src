@@ -5,7 +5,12 @@
     <title>Demo: Canvas Browser Features</title>
     <style>
         body { font-family: sans-serif; margin: 20px; }
-        canvas { border: 1px solid #ccc; display: block; margin-bottom: 20px; }
+        /* The canvases are flex items, so they're laid out as blocks. Don't set
+           `display` on them: it would override the `hidden` attribute.
+           An outline, unlike a border, keeps the canvas border box and content
+           box aligned, so the DOM position of drawn content matches where it's
+           drawn. */
+        canvas { outline: 1px solid #ccc; margin-bottom: 20px; }
         .translatable-content {
             font-size: 16px;
             color: #333;
@@ -52,14 +57,15 @@
 <body>
     <h1>Browser Features and Accessibility for Canvas Content</h1>
     <p>This demo shows how HTML-in-Canvas enables integration with browser features like assistive technologies, translation services, reader mode and autofill, and compares it with opaque manual rendering.</p>
+    <p id="fallback_message" hidden>HTML-in-Canvas isn't supported in this browser, so the HTML content of Canvas 1 is shown in place of the canvas.</p>
     
     <div class="container">
         <!-- Accessible canvas: DO this to expose canvas content to browser features -->
         <div class="canvas-wrapper">
             <h2>Canvas 1: HTML-in-Canvas (Accessible)</h2>
-            <canvas id="canvas" style="width: 400px; height: 400px;" layoutsubtree>
-                <div id="content_element" class="translatable-content">
-                    <p>This text is rendered inside the canvas but is present in the DOM tree. Browser features like translation services and reading mode can access this content because it is part of the layout subtree.</p>
+            <canvas id="canvas" style="width: 400px; height: 400px;" content="drawable">
+                <div id="content_element" class="translatable-content" drawable>
+                    <p>This text is rendered inside the canvas but is present in the DOM tree. Browser features like translation services and reading mode can access this content because the browser lays it out as regular HTML.</p>
                     <p>It even supports Autofill! If you have an email address saved in your browser, try to focus on the input field and trigger the Autofill dropdown.</p>
                     <input type="email" name="email" autocomplete="email" placeholder="enter your email">
                     <button type="button">Submit</button>
@@ -70,26 +76,37 @@
                 const canvas = document.getElementById('canvas');
                 const ctx = canvas.getContext('2d');
                 const content_element = document.getElementById('content_element');
+                const fallback_message = document.getElementById('fallback_message');
 
-                canvas.onpaint = (event) => {
-                    ctx.reset();
-                    // Draw the text element into the canvas
-                    const transform = ctx.drawElementImage(content_element, 10, 10);
-                    // Synchronize DOM position
-                    content_element.style.transform = transform.toString();
-                };
+                // Check that HTML-in-Canvas is supported before using it.
+                if ('requestPaint' in HTMLCanvasElement.prototype) {
+                    canvas.onpaint = (event) => {
+                        ctx.reset();
+                        // Draw the text element into the canvas. The browser synchronizes
+                        // its DOM position, hit testing, and accessibility bounds with
+                        // the drawn position.
+                        ctx.drawElementImage(content_element, 10, 10);
+                    };
 
-                const observer = new ResizeObserver(([entry]) => {
-                    const dpc = entry.devicePixelContentBoxSize;
-                    canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
-                    canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
-                    canvas.requestPaint();
-                });
-                const supportsDevicePixelContentBox = 
-                    typeof ResizeObserverEntry !== 'undefined' && 
-                    'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
-                const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
-                observer.observe(canvas, options);
+                    const observer = new ResizeObserver(([entry]) => {
+                        const dpc = entry.devicePixelContentBoxSize;
+                        canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
+                        canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
+                        canvas.requestPaint();
+                    });
+                    const supportsDevicePixelContentBox = 
+                        typeof ResizeObserverEntry !== 'undefined' && 
+                        'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
+                    const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
+                    observer.observe(canvas, options);
+                } else {
+                    // Fallback: canvas children aren't rendered without HTML-in-Canvas.
+                    // Show the HTML content in place of the canvas, so it stays
+                    // visible, and exposed to browser features.
+                    canvas.hidden = true;
+                    canvas.after(content_element);
+                    fallback_message.hidden = false;
+                }
             </script>
         </div>
 
@@ -117,7 +134,7 @@
                     ctx_manual.fillStyle = '#333';
                     ctx_manual.font = '16px sans-serif';
                     
-                    const text = "This text is not real HTML, it's a canvas and is not present in the DOM tree. Browser features like won't work with it. The elements in this canvas are not interactive.";
+                    const text = "This text is not real HTML, it's a canvas and is not present in the DOM tree. Browser features won't work with it. The elements in this canvas are not interactive.";
                     
                     // Simple word wrap
                     const words = text.split(' ');

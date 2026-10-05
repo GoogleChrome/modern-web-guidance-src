@@ -5,7 +5,9 @@
     <title>Demo: HTML Media Export</title>
     <style>
         body { font-family: sans-serif; }
-        canvas { border: 1px solid #ccc; }
+        /* An outline, unlike a border, keeps the canvas border box and content
+           box aligned, so the input's DOM position matches where it's drawn. */
+        canvas { outline: 1px solid #ccc; }
         .export-content {
             width: 300px;
             height: 50px;
@@ -23,8 +25,9 @@
     <h1>HTML Media Export</h1>
     <p>This demo shows how to render HTML content in canvas and export it as an image.</p>
     <p>What you see in the DOM is exactly what gets drawn into the canvas, including complex text shaping, custom fonts, and advanced CSS layouts</p>
-    <canvas id="canvas" style="width: 400px; height: 200px;" layoutsubtree>
-        <input id="export_element" class="export-content" type="text" placeholder="type anything to capture media">
+    <p id="fallback_message" hidden>HTML-in-Canvas isn't supported in this browser, so the HTML content can't be drawn into the canvas, or exported.</p>
+    <canvas id="canvas" style="width: 400px; height: 200px;" content="drawable">
+        <input id="export_element" class="export-content" type="text" placeholder="type anything to capture media" drawable>
     </canvas>
     
     <br><br>
@@ -41,14 +44,7 @@
         const export_btn = document.getElementById('export_btn');
         const download_btn = document.getElementById('download_btn');
         const output_img = document.getElementById('output_img');
-
-        canvas.onpaint = (event) => {
-            ctx.reset();
-            // Draw the element into the canvas
-            const transform = ctx.drawElementImage(export_element, 10, 10);
-            // Synchronize DOM position for hit testing (typing)
-            export_element.style.transform = transform.toString();
-        };
+        const fallback_message = document.getElementById('fallback_message');
 
         export_btn.onclick = () => {
             // Export the canvas content as an image
@@ -64,18 +60,33 @@
             link.click();
         };
 
-        // Initialize canvas size
-        const observer = new ResizeObserver(([entry]) => {
-            const dpc = entry.devicePixelContentBoxSize;
-            canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
-            canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
-            canvas.requestPaint();
-        });
-        const supportsDevicePixelContentBox = 
-            typeof ResizeObserverEntry !== 'undefined' && 
-            'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
-        const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
-        observer.observe(canvas, options);
+        // Check that HTML-in-Canvas is supported before using it.
+        if ('requestPaint' in HTMLCanvasElement.prototype) {
+            canvas.onpaint = (event) => {
+                ctx.reset();
+                // Draw the element into the canvas. The browser synchronizes its
+                // DOM position with the drawn position for hit testing (typing).
+                ctx.drawElementImage(export_element, 10, 10);
+            };
+
+            // Initialize canvas size
+            const observer = new ResizeObserver(([entry]) => {
+                const dpc = entry.devicePixelContentBoxSize;
+                canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
+                canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
+                canvas.requestPaint();
+            });
+            const supportsDevicePixelContentBox = 
+                typeof ResizeObserverEntry !== 'undefined' && 
+                'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
+            const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
+            observer.observe(canvas, options);
+        } else {
+            // Fallback: warn that the HTML content can't be exported, because the
+            // browser doesn't support HTML-in-Canvas.
+            fallback_message.hidden = false;
+            export_btn.disabled = true;
+        }
     </script>
 </body>
 </html>
