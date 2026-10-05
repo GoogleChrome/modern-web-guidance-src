@@ -810,5 +810,27 @@
     "validTop5HitRate": 0.9064,
     "validMeanReciprocalRank": 0.7184,
     "runId": "2026-10-05T20:25:34.169Z"
+  },
+  {
+    "timestamp": "2026-10-05T20:38:48.049Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "transformers-v4"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5212,
+    "top3HitRate": 0.7535,
+    "top5HitRate": 0.8066,
+    "meanReciprocalRank": 0.6337,
+    "validQueries": 748,
+    "validTop1HitRate": 0.5909,
+    "validTop3HitRate": 0.8543,
+    "validTop5HitRate": 0.9144,
+    "validMeanReciprocalRank": 0.7184,
+    "runId": "2026-10-05T20:38:16.086Z"
   }
 ]

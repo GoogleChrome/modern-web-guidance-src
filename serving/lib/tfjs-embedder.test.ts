@@ -112,7 +112,7 @@ describe("TfjsEmbedder", () => {
       const ref = refTokenizer(q, { padding: true, truncation: true });
       const refIds = Array.from(ref.input_ids.data, Number);
       const refMask = Array.from(ref.attention_mask.data, Number);
-      const refTypes = Array.from(ref.token_type_ids.data, Number);
+      const refTypes = ref.token_type_ids ? Array.from(ref.token_type_ids.data, Number) : new Array(refIds.length).fill(0);
 
       const enc = newTokenizer.encode(q);
       let newIds = enc.ids;
