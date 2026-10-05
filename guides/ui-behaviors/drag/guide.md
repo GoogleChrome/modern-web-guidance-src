@@ -17,7 +17,7 @@ Start dragging from a dedicated handle when the element contains selectable text
 
 Do not apply `role="application"` to the handle. It unnecessarily changes assistive-technology interaction.
 
-Apply `cursor: grab`/`grabbing`, `touch-action: none`, and both `user-select: none` and `-webkit-user-select: none` to the handle—not the entire draggable element—so text outside it remains selectable and touch gestures retain their usual behaviour:
+Apply `cursor: grab`/`grabbing`, `touch-action: none`, and both `user-select: none` and `-webkit-user-select: none` to the handle—not the entire draggable element—so text outside it remains selectable and touch gestures retain their usual behavior:
 
 ```css
 .drag-handle {
