@@ -55,8 +55,8 @@ container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
     </hgroup>
     <p>Two poached eggs served on toasted sourdough.</p>
     <footer>
-      <button>Favorite</button>
-      <a href="/recipes/poached-eggs">View recipe</a>
+      <button type="button">Favorite</button>
+      <button type="button">Share</button>
     </footer>
   </article>
 </div>
