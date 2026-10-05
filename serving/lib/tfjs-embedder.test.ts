@@ -76,7 +76,7 @@ describe("TfjsEmbedder", () => {
     assert.strictEqual(memory().numTensors, baselineTensors, "Tensor leak detected after concurrent calls");
 
     // Call that throws during prediction (verifies tensor disposal in finally block)
-    const model = (embedder as any).model;
+    const { model } = await embedder.init();
     const origPredict = model.predict;
     model.predict = () => {
       throw new Error("Simulated prediction fault");
