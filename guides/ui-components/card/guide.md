@@ -26,7 +26,7 @@ Choose semantics from the card's purpose:
 - use an `article` for independently understandable content;
 - use one native link when the whole card is one destination;
 - use separate links or buttons when it has independent actions;
-- use labelled radios or checkboxes when cards represent choices;
+- use labeled radios or checkboxes when cards represent choices;
 - use a native `select` when the interaction is a select.
 
 Keep media, title, supporting content, and actions in meaningful source order.
