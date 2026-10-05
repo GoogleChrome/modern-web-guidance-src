@@ -51,7 +51,21 @@ This will automatically:
 4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
    - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`. When the PR is marked ready for review, the ATL triage bot requests review from `EVAL_PR_REVIEWER` in `guides/atl-triage.ts`.
-5. Open a new draft Pull Request (or update the existing PR description and sync labels if a PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description.
+5. Open a new draft Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
+
+### Fixing Open Eval Gaps: `gd dev-gap`
+
+`eval-gap-watch` files an "Evals missing for the \<guide-name\> guide" issue (label `eval-gap`) for each guide that needs evals. `gd dev-gap` works through those issues, running `gd dev` and `gd pr` for each guide in turn. It doesn't handle "Expectations changed" issues yet.
+
+```bash
+gd dev-gap --dry-run   # show which guides would run and why the rest are skipped
+gd dev-gap --limit 1   # process at most one guide
+gd dev-gap             # process all of them
+```
+
+Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens a PR from a fresh `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`. The issue closes on its own once the PR merges.
+
+It skips guides that already have an open `grader updates: <guide-name>` PR and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` (delete the branch to retry).
 
 ### Checking Status: `gd audit`
 
