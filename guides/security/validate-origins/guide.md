@@ -106,17 +106,21 @@ let pinnedSandboxOrigin = new Origin();
 let isSandboxPinned = false;
 
 export function handleSandboxedWidgetMessage(event, expectedWidgetWindow) {
-  const senderOrigin = Origin.from(event);
+  try {
+    const senderOrigin = Origin.from(event);
 
-  // Pin the opaque origin only once on initialization from the expected sandboxed iframe
-  if (!isSandboxPinned && event.source === expectedWidgetWindow && event.data?.type === 'init') {
-    pinnedSandboxOrigin = senderOrigin;
-    isSandboxPinned = true;
+    // Pin the opaque origin only once on initialization from the expected sandboxed iframe
+    if (!isSandboxPinned && event.source === expectedWidgetWindow && event.data?.type === 'init') {
+      pinnedSandboxOrigin = senderOrigin;
+      isSandboxPinned = true;
+    }
+
+    // Subsequent messages from the SAME sandboxed iframe match pinnedSandboxOrigin;
+    // messages from any other sandboxed iframe (also event.origin === "null") return false.
+    return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
+  } catch {
+    return false;
   }
-
-  // Subsequent messages from the SAME sandboxed iframe match pinnedSandboxOrigin;
-  // messages from any other sandboxed iframe (also event.origin === "null") return false.
-  return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
 }
 ```
 
@@ -148,14 +152,20 @@ function extractUrlString(candidate) {
   if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
     return candidate.origin;
   }
+  if (candidate === globalThis) {
+    return globalThis.location?.href ?? '';
+  }
   return candidate?.href ?? '';
 }
 
 function extractOrigin(candidate) {
   try {
     return Origin.from(candidate);
-  } catch {
-    return Origin.from(extractUrlString(candidate));
+  } catch (err) {
+    if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
+      return Origin.from(candidate.origin);
+    }
+    throw err;
   }
 }
 

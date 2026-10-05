@@ -98,14 +98,20 @@
       if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
         return candidate.origin;
       }
+      if (candidate === globalThis) {
+        return globalThis.location?.href ?? '';
+      }
       return candidate?.href ?? '';
     }
 
     function extractOrigin(candidate) {
       try {
         return Origin.from(candidate);
-      } catch {
-        return Origin.from(extractUrlString(candidate));
+      } catch (err) {
+        if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
+          return Origin.from(candidate.origin);
+        }
+        throw err;
       }
     }
 
@@ -146,12 +152,16 @@
 
     function handleSandboxedWidgetMessage(event) {
       if ('Origin' in globalThis) {
-        const senderOrigin = Origin.from(event);
-        if (!isSandboxPinned && event.source === expectedSandboxWindow && event.data?.type === 'init') {
-          pinnedSandboxOrigin = senderOrigin;
-          isSandboxPinned = true;
+        try {
+          const senderOrigin = Origin.from(event);
+          if (!isSandboxPinned && event.source === expectedSandboxWindow && event.data?.type === 'init') {
+            pinnedSandboxOrigin = senderOrigin;
+            isSandboxPinned = true;
+          }
+          return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
+        } catch {
+          return false;
         }
-        return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
       }
       return event.source === expectedSandboxWindow;
     }
