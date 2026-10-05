@@ -7,7 +7,6 @@ web-feature-ids:
   - subgrid
 guides:
   - size-aware-styling
-  - content-based-styling
 ---
 
 # Build a Card
@@ -115,8 +114,6 @@ When cards need shared internal tracks, `subgrid` can align them without changin
 .card > p { grid-row: 3; }
 .card > footer { grid-row: 4; }
 ```
-
-Use `:has()` only when the card's content changes its presentation, such as when media changes the layout or a text-only card receives a different treatment. Do not use it when a class, element selector, or unconditional rule expresses the requirement more clearly. See {{ GUIDE_REF("content-based-styling") }}.
 
 ## Interaction models
 
