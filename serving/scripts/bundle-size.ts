@@ -31,6 +31,13 @@ export interface BundleSnapshot {
   shippedFiles: Record<string, ShippedFileStats>;
 }
 
+export interface MeasureOptions {
+  metaPath?: string;
+  explicitMeta?: boolean;
+}
+
+const DEFAULT_META_PATH = path.resolve(import.meta.dirname, "../../dist/search.meta.json");
+
 export function getPackageName(inputPath: string): string {
   const norm = inputPath.replace(/\\/g, "/");
   if (!norm.includes("node_modules/")) return "serving/lib";
@@ -40,14 +47,23 @@ export function getPackageName(inputPath: string): string {
   return parts[0].startsWith("@") ? `${parts[0]}/${parts[1]}` : parts[0];
 }
 
-export function decodeMetafileBreakdown(metafile: {
-  outputs: Record<string, { bytes: number; inputs: Record<string, { bytesInOutput: number }> }>;
-}): PackageBreakdown {
+export function decodeMetafileBreakdown(
+  metafile: {
+    outputs: Record<string, { bytes: number; inputs: Record<string, { bytesInOutput: number }> }>;
+  },
+  expectedBytes?: number
+): PackageBreakdown {
   const outputKey =
     Object.keys(metafile.outputs).find((k) => k.endsWith("search.mjs")) ||
     Object.keys(metafile.outputs)[0];
   const output = outputKey ? metafile.outputs[outputKey] : undefined;
   if (!output) throw new Error("No output entry found in metafile");
+
+  if (expectedBytes !== undefined && output.bytes !== expectedBytes) {
+    throw new Error(
+      `Metafile output size mismatch: metafile reports ${output.bytes} bytes for search.mjs, but measured ${expectedBytes} bytes`
+    );
+  }
 
   const packages: PackageBreakdown = {};
   for (const [inputPath, info] of Object.entries(output.inputs)) {
@@ -57,7 +73,7 @@ export function decodeMetafileBreakdown(metafile: {
   return packages;
 }
 
-export function measureDirectory(dir: string): BundleSnapshot {
+export function measureDirectory(dir: string, opts?: MeasureOptions): BundleSnapshot {
   const allEntries = fs.readdirSync(dir, { recursive: true, withFileTypes: true });
   const fileEntries = allEntries.filter((e) => e.isFile());
 
@@ -70,16 +86,14 @@ export function measureDirectory(dir: string): BundleSnapshot {
   const searchRawBytes = Buffer.byteLength(searchRaw, "utf8");
   const searchGzipBytes = zlib.gzipSync(Buffer.from(searchRaw, "utf8")).length;
 
-  const metaCandidates = [
-    path.join(dir, "search.meta.json"),
-    path.join(path.dirname(dir), "search.meta.json"),
-    path.join(dir, "skills/modern-web-guidance/search.meta.json"),
-  ];
-  const searchMetaPath = metaCandidates.find((p) => fs.existsSync(p));
   let packages: PackageBreakdown = {};
-  if (searchMetaPath) {
-    const metaJson = JSON.parse(fs.readFileSync(searchMetaPath, "utf8"));
-    packages = decodeMetafileBreakdown(metaJson);
+  const metaPath = opts?.metaPath !== undefined ? opts.metaPath : DEFAULT_META_PATH;
+  if (opts?.explicitMeta && (!metaPath || !fs.existsSync(metaPath))) {
+    throw new Error(`Specified metafile not found: ${metaPath}`);
+  }
+  if (metaPath && fs.existsSync(metaPath)) {
+    const metaJson = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+    packages = decodeMetafileBreakdown(metaJson, searchRawBytes);
   }
 
   const shippedFiles: Record<string, ShippedFileStats> = {};
@@ -134,17 +148,23 @@ export function measureDirectory(dir: string): BundleSnapshot {
   };
 }
 
-export function measureTarget(targetPath: string): { snapshot: BundleSnapshot; cleanup?: () => void } {
+export function measureTarget(
+  targetPath: string,
+  opts?: MeasureOptions
+): { snapshot: BundleSnapshot; cleanup?: () => void } {
   const resolved = path.resolve(targetPath);
   const stat = fs.statSync(resolved);
 
   if (stat.isFile() && (resolved.endsWith(".tgz") || resolved.endsWith(".tar.gz"))) {
+    if (opts?.explicitMeta) {
+      throw new Error("Cannot specify --meta when measuring a tarball (.tgz)");
+    }
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-size-"));
     let snapshot: BundleSnapshot;
     try {
       execFileSync("tar", ["-xzf", resolved, "-C", tmpDir]);
       const pkgDir = path.join(tmpDir, "package");
-      snapshot = measureDirectory(fs.existsSync(pkgDir) ? pkgDir : tmpDir);
+      snapshot = measureDirectory(fs.existsSync(pkgDir) ? pkgDir : tmpDir, { metaPath: "" });
     } catch (err) {
       try {
         fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -176,7 +196,7 @@ export function measureTarget(targetPath: string): { snapshot: BundleSnapshot; c
   }
 
   if (stat.isDirectory()) {
-    return { snapshot: measureDirectory(resolved) };
+    return { snapshot: measureDirectory(resolved, opts) };
   }
 
   throw new Error(`Target ${targetPath} is neither a directory nor a .tgz file`);
@@ -320,6 +340,7 @@ Arguments:
   [dist-dir-or-tarball]    Path to dist directory or .tgz tarball (default: <repo-root>/dist/skills-cli)
 
 Options:
+  --meta <path>             Path to esbuild metafile (default: <repo-root>/dist/search.meta.json)
   --compare <baseline.json> Compare current measurements against a saved baseline JSON
   --json [output.json]      Save current measurements to JSON snapshot file
   -h, --help                Show this help message
@@ -329,6 +350,7 @@ Options:
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     options: {
+      meta: { type: "string" },
       compare: { type: "string" },
       json: { type: "string" },
       help: { type: "boolean", short: "h" },
@@ -348,8 +370,12 @@ async function main(): Promise<void> {
   const jsonPath = values.json !== undefined
     ? path.resolve(process.cwd(), values.json || "bundle-size-snapshot.json")
     : null;
+  const metaPath = values.meta ? path.resolve(process.cwd(), values.meta) : undefined;
 
-  const { snapshot, cleanup } = measureTarget(targetPath);
+  const { snapshot, cleanup } = measureTarget(targetPath, {
+    metaPath,
+    explicitMeta: values.meta !== undefined,
+  });
   try {
     let baseline: BundleSnapshot | undefined = undefined;
     if (comparePath) {

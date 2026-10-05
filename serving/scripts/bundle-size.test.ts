@@ -20,9 +20,26 @@ test("decodeMetafileBreakdown aggregates inputs by package", () => {
       },
     },
   };
-  const packages = decodeMetafileBreakdown(metafile);
+  const packages = decodeMetafileBreakdown(metafile, 100);
   assert.equal(packages["marked"], 40);
   assert.equal(packages["serving/lib"], 50);
+});
+
+test("decodeMetafileBreakdown throws when output bytes do not match expected bytes", () => {
+  const metafile = {
+    outputs: {
+      "dist/search.mjs": {
+        bytes: 100,
+        inputs: {
+          "node_modules/marked/index.js": { bytesInOutput: 100 },
+        },
+      },
+    },
+  };
+  assert.throws(
+    () => decodeMetafileBreakdown(metafile, 200),
+    /Metafile output size mismatch/
+  );
 });
 
 test("getPackageName correctly extracts package identities", () => {
@@ -56,4 +73,16 @@ test("measureDirectory decodes search.mjs breakdown", (t) => {
   assert.ok(snapshot.searchBundle.rawBytes > 0);
   assert.ok(snapshot.searchBundle.gzipBytes > 0);
   assert.ok(snapshot.searchBundle.packages["@tensorflow/tfjs-core"] > 0);
+});
+
+test("measureDirectory throws when explicit meta file does not exist", (t) => {
+  const distDir = path.resolve(import.meta.dirname, "../../dist/skills-cli");
+  if (!fs.existsSync(distDir)) {
+    t.skip("dist not built");
+    return;
+  }
+  assert.throws(
+    () => measureDirectory(distDir, { metaPath: "/nonexistent/meta.json", explicitMeta: true }),
+    /Specified metafile not found/
+  );
 });
