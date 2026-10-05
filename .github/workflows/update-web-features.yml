@@ -87,7 +87,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
         with:
-          app-id: ${{ vars.GH_APP_ID }}
+          client-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
@@ -110,6 +110,7 @@ jobs:
             CI workflow checks will automatically run on this PR to report if any guidance macros, tests, or features require updates.
           branch: "auto/web-features-update"
           delete-branch: true
+          labels: "dependencies"
 
       - name: Comment on PR if validation identified post-update action items
         if: ${{ steps.cpr.outputs.pull-request-number != '' && steps.validate-web-feature-update.outputs.comment_body != '' }}
