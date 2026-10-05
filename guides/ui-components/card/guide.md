@@ -14,36 +14,23 @@ guides:
 
 ## Overview
 
-A card groups one related piece of content or one choice. It is a visual pattern,
-not a fixed semantic or interaction model. The implementation must preserve the
-content's meaning, use the native interaction that matches its purpose, and remain
-usable when optional styling or layout enhancements are unavailable.
+A card groups one related piece of content or one choice. It is a visual pattern, not a fixed semantic or interaction model. The implementation must preserve the content's meaning, use the native interaction that matches its purpose, and remain usable when optional styling or layout enhancements are unavailable.
 
 ## Guidelines
 
 Choose the card's semantics from what the card itself represents:
 
-- an `article` when it is independently understandable content (any links and
-  buttons inside it remain separate native controls);
+- an `article` when it is independently understandable content (any links and buttons inside it remain separate native controls);
 - one native link when the whole card is a single destination;
-- a labeled radio or checkbox, or an `option` in a native `select`, when the card
-  is a choice.
+- a labeled radio or checkbox, or an `option` in a native `select`, when the card is a choice.
 
-Keep media, title, supporting content, and actions in meaningful source order.
-Optional media, metadata, and actions must not make the remaining content
-ambiguous. Do not duplicate markup or use CSS `order` to contradict source order;
-see {{ GUIDE_REF("css-layout") }}.
+Keep media, title, supporting content, and actions in meaningful source order. Optional media, metadata, and actions must not make the remaining content ambiguous. Do not duplicate markup or use CSS `order` to contradict source order; see {{ GUIDE_REF("css-layout") }}.
 
 ## Implementation
 
-Start with a complete stacked layout. Adapt the card to its allocated inline size,
-not the viewport, when it appears in grids, sidebars, or other variable-width
-layouts. A media card may place media beside its content when there is enough
-space; a card without media must remain complete without special markup.
+Start with a complete stacked layout. Adapt the card to its allocated inline size, not the viewport, when it appears in grids, sidebars, or other variable-width layouts. A media card may place media beside its content when there is enough space; a card without media must remain complete without special markup.
 
-Put the query container on a wrapper around the card when the card's own layout
-needs to respond to that space. A card cannot query its own size. For the
-container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
+Put the query container on a wrapper around the card when the card's own layout needs to respond to that space. A card cannot query its own size. For the container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
 
 ```html
 <div class="card-container">
@@ -95,24 +82,15 @@ container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
 }
 ```
 
-The example shows a card with a primary destination and independent actions. A
-card may instead include a badge or metadata in its header, a hero image, or a
-footer containing a price and actions. Keep each region optional where the
-content allows it, and use layout rather than duplicated markup to arrange them.
+The example shows a card with a primary destination and independent actions. A card may instead include a badge or metadata in its header, a hero image, or a footer containing a price and actions. Keep each region optional where the content allows it, and use layout rather than duplicated markup to arrange them.
 
-Constrain media to an intentional size or aspect ratio and avoid distortion. An
-informative image needs an appropriate text alternative; decorative media should
-use an empty alternative. A hero image may be decorative when the adjacent title
-already communicates the same information.
+Constrain media to an intentional size or aspect ratio and avoid distortion. An informative image needs an appropriate text alternative; decorative media should use an empty alternative. A hero image may be decorative when the adjacent title already communicates the same information.
 
 ### Align cards in a grid
 
-Let the parent grid control columns and gaps. Align corresponding regions, such
-as titles, descriptions, or actions, only when that improves comparison. Do not
-force equal heights when natural content height is more appropriate.
+Let the parent grid control columns and gaps. Align corresponding regions, such as titles, descriptions, or actions, only when that improves comparison. Do not force equal heights when natural content height is more appropriate.
 
-When cards need shared internal tracks, `subgrid` can align them without changing
-source order:
+When cards need shared internal tracks, `subgrid` can align them without changing source order:
 
 ```css
 .card-grid {
@@ -138,15 +116,11 @@ source order:
 .card > footer { grid-row: 4; }
 ```
 
-Use `:has()` only when the card's content changes its presentation, such as when
-media changes the layout or a text-only card receives a different treatment. Do
-not use it when a class, element selector, or unconditional rule expresses the
-requirement more clearly. See {{ GUIDE_REF("content-based-styling") }}.
+Use `:has()` only when the card's content changes its presentation, such as when media changes the layout or a text-only card receives a different treatment. Do not use it when a class, element selector, or unconditional rule expresses the requirement more clearly. See {{ GUIDE_REF("content-based-styling") }}.
 
 ## Interaction models
 
-When the card is one destination and has no independent actions, it may be one
-native link. Do not nest links, buttons, or form controls inside it:
+When the card is one destination and has no independent actions, it may be one native link. Do not nest links, buttons, or form controls inside it:
 
 ```html
 <a class="card" href="/recipes/poached-eggs">
@@ -155,11 +129,7 @@ native link. Do not nest links, buttons, or form controls inside it:
 </a>
 ```
 
-When a card has longer body copy or independent actions, do not wrap the whole
-card in `<a>` (which concatenates all inner text into the link's accessible
-name). Link the title to the primary destination, stretch its pointer hit area
-across the card with `::after`, and elevate secondary controls with
-`position: relative; z-index: 1` so each action remains independently operable:
+When a card has longer body copy or independent actions, do not wrap the whole card in `<a>` (which concatenates all inner text into the link's accessible name). Link the title to the primary destination, stretch its pointer hit area across the card with `::after`, and elevate secondary controls with `position: relative; z-index: 1` so each action remains independently operable:
 
 ```css
 .card {
@@ -181,8 +151,7 @@ across the card with `::after`, and elevate secondary controls with
 }
 ```
 
-When cards represent choices, style their native controls and labels as cards.
-Use radios for one choice and checkboxes for independent choices:
+When cards represent choices, style their native controls and labels as cards. Use radios for one choice and checkboxes for independent choices:
 
 ```html
 <fieldset class="option-cards">
@@ -198,8 +167,7 @@ Use radios for one choice and checkboxes for independent choices:
 </fieldset>
 ```
 
-Style the selected option card with `:has(:checked)` using more than color alone
-(such as border thickness or font weight):
+Style the selected option card with `:has(:checked)` using more than color alone (such as border thickness or font weight):
 
 ```css
 .option-card:has(:checked) {
@@ -209,20 +177,10 @@ Style the selected option card with `:has(:checked)` using more than color alone
 }
 ```
 
-When choices belong in a dropdown picker whose options are laid out as cards,
-use a native `<select>` with `appearance: base-select` and style `::picker(select)`
-and `<option>` elements rather than replacing the select with `<div>` cards; see
-{{ GUIDE_REF("custom-select-picker-layouts") }}. Use `<button>` elements when
-selecting a card triggers an immediate action rather than setting form state.
+When choices belong in a dropdown picker whose options are laid out as cards, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }}. Use `<button>` elements when selecting a card triggers an immediate action rather than setting form state.
 
 ## Accessibility
 
-Keep native links, buttons, and form controls keyboard-operable, with accessible
-names and visible focus indicators. Use `.card:has(:focus-visible)` to give the
-card a subtle focus ring for context, but never remove or replace the focused
-link or control's own `:focus-visible` indicator.
+Keep native links, buttons, and form controls keyboard-operable, with accessible names and visible focus indicators. Use `.card:has(:focus-visible)` to give the card a subtle focus ring for context, but never remove or replace the focused link or control's own `:focus-visible` indicator.
 
-Preserve the reading order when changing the visual layout. Do not make the card
-or its actions depend on hover, pointer input, color alone, or a visual icon
-without an accessible name. For related semantic, focus, and control guidance,
-see {{ GUIDE_REF("accessibility") }}.
+Preserve the reading order when changing the visual layout. Do not make the card or its actions depend on hover, pointer input, color alone, or a visual icon without an accessible name. For related semantic, focus, and control guidance, see {{ GUIDE_REF("accessibility") }}.
