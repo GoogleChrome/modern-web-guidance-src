@@ -24,7 +24,7 @@
     "gray-matter": "^4.0.3"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "^2.1.170",
+    "@anthropic-ai/claude-code": "^2.1.289",
     "@google/gemini-cli-core": "latest",
     "serving": "workspace:*"
   }
