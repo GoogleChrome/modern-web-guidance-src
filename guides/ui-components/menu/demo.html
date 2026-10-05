@@ -446,7 +446,9 @@
         previewMenu(menu, trigger);
       });
       trigger.addEventListener('blur', () => {
-        if (previewedMenus.has(menu)) closeMenu(menu);
+        if (previewedMenus.has(menu)) {
+          closeMenu(menu);
+        }
       });
 
       trigger.addEventListener('pointerdown', event => {
@@ -556,13 +558,17 @@
         const item = event.target.closest('[focusgroup~="menu"] > button');
         if (item) {
           event.preventDefault();
+          event.stopPropagation();
           activate(item);
         }
       });
     });
 
     document.addEventListener('pointerdown', event => {
-      if (!event.target.closest('[popover], .bar [aria-haspopup="menu"]')) closeAllMenus();
+      if (!event.target.closest('[popover], .bar [aria-haspopup="menu"]')) {
+        closeAllMenus();
+      }
+      event.stopPropagation();
     });
     document.addEventListener('focusin', event => {
       if (!event.target.closest('[popover], .bar [aria-haspopup="menu"]')) closeAllMenus();

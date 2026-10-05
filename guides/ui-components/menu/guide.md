@@ -63,21 +63,52 @@ Position with CSS anchor positioning, not JavaScript coordinates. Opening, closi
 Do not add a second roving-tabindex system where native focusgroup is supported. JavaScript covers only what focusgroup does not:
 
 - One tab stop for the menubar. `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers. From an open top-level menu, those keys close it, open the adjacent menu, and focus its first item, wrapping at either end.
-- Focusing a trigger previews its menu: show it, set `aria-expanded="true"`, and leave focus on the trigger. No item is focused. `Enter` or `Space` closes that preview and does not activate a command. `ArrowDown` enters a top-level menu and moves focus immediately to the first enabled item. Pointer activation opens the menu and moves focus into it. Activating an already open trigger closes it and restores focus to the trigger.
+- Focusing a trigger previews its menu: show it, set `aria-expanded="true"`, and leave focus on the trigger. No item is focused. Blurring the trigger closes a preview-only menu. `Enter` or `Space` converts a preview to an open menu and focuses the first item. `ArrowDown` also enters and focuses the first item. Pointer click on a previewed trigger opens it and focuses the first item. Pointer click on an open trigger closes it. From an open top-level menu, Left/Right close it, open the adjacent menu (including its submenu if one exists without moving focus into it), and move focus to that menu's trigger. A trigger's `aria-expanded` stays true for both preview and open states.
 - `ArrowUp` and `ArrowDown` move between enabled items. `Home` and `End` move to the first and last enabled item.
 - `Enter` or `Space` on a focused command activates it, then closes the open menus.
 - `Escape` closes the current level and restores focus to the trigger that opened it. `Tab` leaves the menu system; do not trap it or use it to visit every command. Closing must not leave focus inside hidden content. Set `aria-expanded="false"` when closing each popover.
 
-Hide the trigger from assistive technology for one frame only when moving focus into a menu, then remove `aria-hidden` on the next frame. Do not hide the trigger during preview, when focus remains on it:
+A preview closes when the trigger loses focus. An open menu stays open until the user activates a command, presses Escape, or Tab away. Track which menus are only previewed (vs. open) in a WeakSet or similar; use that to know whether blur should close a menu and whether Enter/Space should focus the first item or dismiss without focus-moving:
 
 ```js
-function openMenu(menu, trigger) {
-  trigger.setAttribute('aria-hidden', 'true'); // One frame only, so Chrome does not announce just "expanded"
-  menu.showPopover();
+const previewedMenus = new WeakSet(); // Track menus shown by focus, not by explicit open
+
+trigger.addEventListener('focus', () => {
+  if (!menu.matches(':popover-open')) {
+    menu.showPopover();
+    previewedMenus.add(menu); // Preview state
+  }
   trigger.setAttribute('aria-expanded', 'true');
-  focusFirst(menu); // Focus immediately; do not delay it
-  requestAnimationFrame(() => trigger.removeAttribute('aria-hidden'));
-}
+});
+
+trigger.addEventListener('blur', () => {
+  if (previewedMenus.has(menu)) {
+    menu.hidePopover(); // Close preview on blur
+    previewedMenus.delete(menu);
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+});
+
+trigger.addEventListener('keydown', event => {
+  if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    if (previewedMenus.has(menu)) {
+      previewedMenus.delete(menu); // Convert preview to open
+    } else if (menu.matches(':popover-open')) {
+      menu.hidePopover(); // Close already-open menu
+      trigger.setAttribute('aria-expanded', 'false');
+      return;
+    } else {
+      menu.showPopover(); // Open from closed
+    }
+    if (menu.matches(':popover-open')) {
+      trigger.setAttribute('aria-hidden', 'true'); // One frame only
+      trigger.setAttribute('aria-expanded', 'true');
+      focusFirst(menu);
+      requestAnimationFrame(() => trigger.removeAttribute('aria-hidden'));
+    }
+  }
+});
 ```
 
 Light-dismiss fires `pointerdown` before `click`. Ignore that following click, or the trigger reopens the menu it just closed:
@@ -141,13 +172,27 @@ When a row has an icon, label, and shortcut or submenu indicator, define the col
 [focusgroup~="menu"] {
   display: grid;
   grid-template-columns: auto 1fr auto;
+  row-gap: .1rem;
 }
 
-[focusgroup~="menu"] > * {
+[focusgroup~="menu"] > button {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
+  align-items: center;
 }
+```
+
+Each button spans all three columns and inherits the parent's grid via `subgrid`. Content inside the button naturally aligns to its column. To place a submenu indicator or keyboard shortcut in the third column without wrapping, nest it in a `<span>` with `grid-column: 3`:
+
+```html
+<div focusgroup="menu no-memory">
+  <button type="button">Save</button>
+  <button type="button">
+    Preferences
+    <span aria-hidden="true" style="grid-column: 3;">›</span>
+  </button>
+</div>
 ```
 
 ## Progressive enhancement and fallbacks
