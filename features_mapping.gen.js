@@ -188,6 +188,12 @@ window.__featuresMapping = {
     "anchor-positioning",
     "progress"
   ],
+  "sms-otp-form": [
+    "web-otp",
+    "inputmode",
+    "aborting",
+    "permissions-policy"
+  ],
   "switch": [
     "switch-control",
     "accent-color"
