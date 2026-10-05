@@ -14,9 +14,36 @@ Use the Web Install API to give users an explicit, in-page way to install a web
 application. Installation is always completed through browser-controlled consent
 UI; websites cannot silently install an app.
 
-Use the declarative `<install>` element when the browser-provided install control
-fits the page. Use `navigator.install()` when the application needs a custom
-button or needs to respond to the result.
+Use either the HTML `<install>` element or the JavaScript
+`navigator.install()` method.
+
+## Choose which install approach to use: HTML element or JavaScript method
+
+Decide to use either the HTML `<install>` element or the JavaScript
+`navigator.install()` method based on the following considerations.
+
+* `<install>` element:
+
+  * Pros:
+    * The browser provides the install control, ensuring a consistent and
+      trustworthy installation experience.
+    * The label in the `<install>` element changes to "Launch" if the target
+      app is already installed.
+    * No JavaScript is required to trigger the installation.
+  * Cons:
+    * Visual customization of the button is restricted.
+    * The number of `<install>` elements on a page is limited by the browser.
+
+* JavaScript `navigator.install()` method:
+
+  * Pros:
+    * The installation UI can be fully customized to match the look and feel of
+      the website.
+    * The number of installation UI elements is not limited by the browser.
+  * Cons:
+    * Requires JavaScript to trigger the installation.
+    * Requires the user to approve an initial permission prompt asking them to
+      allow the installation of web apps.
 
 ## Prepare the web app
 
@@ -55,7 +82,7 @@ Keep the manifest URL stable. When offering a different app for installation,
 the manifest must be fetchable without credentials and must be served from the
 same origin as that app's `start_url`.
 
-## Use the declarative install control
+## Use the HTML `<install>` element
 
 The `<install>` element renders a user-agent-controlled button. Prefer it when
 the browser's standard label and presentation are appropriate, because the
@@ -66,8 +93,14 @@ browser-owned control gives users a trustworthy installation affordance.
 <install></install>
 ```
 
-To offer another web app, provide its manifest URL. If that manifest does not
-declare an `id`, also provide its computed manifest ID.
+To offer another web app, provide its manifest URL:
+
+```html
+<install manifest="https://app.example/manifest.webmanifest"></install>
+```
+
+The target manifest must explicitly declare an `id`. If that manifest does not
+declare an `id`, also provide the target web app's computed manifest ID:
 
 ```html
 <install
@@ -76,10 +109,41 @@ declare an `id`, also provide its computed manifest ID.
 ></install>
 ```
 
-Do not imitate, overlay, or transform the browser-controlled element. Its presentation and
-activation restrictions protect users from deceptive installation prompts.
+The `manifestId` attribute can either be absolute or relative. Relative values
+are resolved against the document's base URL. The resulting URL must match the
+processed manifest ID.
 
-## Use a custom install control
+Do not imitate, overlay, or transform the browser-controlled element. Its
+presentation and activation restrictions protect users from deceptive
+installation prompts.
+
+### Handle installation success and errors
+
+Listen for the `installresult` event to handle installation success and errors
+and use the `event.result` property to determine the outcome:
+
+* `success`: the app was installed successfully.
+* `aborted`: the user cancelled the installation or a browser condition
+  prevented the installation from completing.
+* `invalid_data`: the `manifest` or `manifestId` attribute values are invalid.
+
+```javascript
+installButton.addEventListener('installresult', (event) => {
+  switch (event.result) {
+    case 'success':
+      console.log('Install succeeded.');
+      break;
+    case 'aborted':
+      console.log('Install aborted.');
+      break;
+    case 'invalid_data':
+      console.log('Install data invalid.');
+      break;
+  }
+});
+```
+
+## Use the JavaScript `navigator.install()` method
 
 Use `navigator.install()` when custom page UI is necessary. Keep the button
 hidden until a supported installation mechanism is available. Call
@@ -111,7 +175,7 @@ required transient user activation.
     } catch (error) {
       if (error.name === "AbortError") {
         // Cancellation is an expected user choice, not an application error.
-        installStatus.textContent = "Installation canceled.";
+        installStatus.textContent = "Installation was cancelled or could not complete.";
         installButton.hidden = true;
       } else {
         installStatus.textContent = "Installation could not start.";
@@ -126,9 +190,18 @@ required transient user activation.
 ```
 
 Calling `navigator.install()` with no arguments installs the current document's
-linked app and requires the manifest to declare an `id`. To offer another app,
-pass its manifest URL. Pass `manifestId` only when the target manifest does not
-declare an `id`.
+linked app and requires the manifest to declare an `id`.
+
+To offer another app, pass its manifest URL:
+
+```js
+await navigator.install({
+  manifest: "https://app.example/manifest.webmanifest"
+});
+```
+
+The target manifest must explicitly declare an `id`. If that manifest does not
+declare an `id`, also provide the target web app's computed manifest ID:
 
 ```js
 await navigator.install({
@@ -137,10 +210,34 @@ await navigator.install({
 });
 ```
 
-Handle `AbortError` as normal cancellation. Treat `DataError` and `TypeError` as
-developer errors in the manifest or arguments. `NotAllowedError` usually means
-the call lost user activation, while `InvalidStateError` can indicate an invalid
-frame or document context. Do not repeatedly prompt after cancellation.
+The `manifestId` attribute can either be absolute or relative. Relative values
+are resolved against the document's base URL. The resulting URL must match the
+processed manifest ID.
+
+### Handle installation success and errors
+
+The `navigator.install()` method returns a promise that resolves when the
+installation completes successfully.
+
+The promise rejects with the following errors if the installation fails or is
+cancelled:
+
+* `AbortError`:
+  * The user aborted the installation.
+  * The permission was denied.
+  * The environment doesn't support installation.
+  * Multiple concurrent installation attempts.
+  * A page navigation occurred during the installation process.
+* `DataError`:
+  * Invalid manifest URL.
+  * Missing `manifestId` and no computed manifest ID provided.
+  * The `manifestId` does not match the computed manifest ID.
+* `NotAllowedError`:
+  * Missing user activation.
+* `TypeError`:
+  * The provided arguments are invalid.
+* `InvalidStateError`:
+  * The API was called outside of the main frame.
 
 ## Fallback strategies
 
