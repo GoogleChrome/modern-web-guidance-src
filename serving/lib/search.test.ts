@@ -39,7 +39,7 @@ describe("searchUseCases", () => {
 
   it("works with a custom mock EmbedderLike", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => new Array(384).fill(0),
+      embed: async () => Array.from({ length: 384 }, () => 0),
     };
     const results = await searchUseCases("test query", 5, 0.0, mockEmbedder);
     assert.ok(Array.isArray(results));
