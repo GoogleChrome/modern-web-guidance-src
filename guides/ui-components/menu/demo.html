@@ -210,13 +210,13 @@
 <body>
   <div class="bar-wrap">
     <div class="bar" role="menubar" aria-label="Document commands">
-      <button id="file-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu"
+      <button id="file-trigger" class="trigger" type="button" aria-haspopup="menu"
         aria-expanded="false">File</button>
-      <button id="edit-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false"
+      <button id="edit-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
         tabindex="-1">Edit</button>
-      <button id="view-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false"
+      <button id="view-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
         tabindex="-1">View</button>
-      <button id="help-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false"
+      <button id="help-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
         tabindex="-1">Help</button>
     </div>
   </div>
@@ -227,8 +227,11 @@
       navigation links on this page remain ordinary links and use normal Tab navigation.</p>
     <p><a href="#keyboard">Keyboard guidance</a> · <a href="#testing">Testing guidance</a></p>
     <h2 id="keyboard">Keyboard guidance</h2>
-    <p>Use Enter, Space, or Down Arrow to open the menu. Use Up and Down to move between commands, Right Arrow to open
-      Preferences, Left Arrow or Escape to return, and Tab to leave the menu.</p>
+    <p>Focus a top-level trigger to preview its menu; press Enter or Space to dismiss the preview, or Down Arrow to
+      enter it. In an open top-level menu, Left and Right Arrow switch to the adjacent menu and enter its first command.
+      Use Up and Down to move between commands, Right Arrow to open Preferences, Left Arrow or Escape to return from
+      the submenu, Right Arrow on a submenu item without a child submenu to preview the next top-level menu, and Tab to
+      leave the menu.</p>
     <h2 id="testing">Testing guidance</h2>
     <p>Test this demo with keyboard-only input, VoiceOver, and NVDA. The visible focus indicator and status message make
       the result easy to inspect.</p>
@@ -237,7 +240,7 @@
 
   <!-- Keep each focusgroup inside its popover: popover can otherwise clobber its semantics. -->
   <div id="file-menu" class="menu" popover="auto">
-    <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
+    <div focusgroup="menu no-memory" aria-labelledby="file-trigger">
       <button type="button">New file</button>
       <button type="button">Open…</button>
       <button id="open-recent-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Open Recent <span
@@ -248,14 +251,14 @@
       <button type="button">Close window</button>
     </div>
     <div id="open-recent-menu" class="menu submenu" popover="manual">
-      <div focusgroup="menu nomemory" aria-labelledby="open-recent-trigger">
+      <div focusgroup="menu no-memory" aria-labelledby="open-recent-trigger">
         <button type="button">Project brief</button>
         <button type="button">Design notes</button>
         <button type="button">Meeting agenda</button>
       </div>
     </div>
     <div id="export-menu" class="menu submenu" popover="manual">
-      <div focusgroup="menu nomemory" aria-labelledby="export-trigger">
+      <div focusgroup="menu no-memory" aria-labelledby="export-trigger">
         <button type="button">PDF</button>
         <button type="button">Rich Text</button>
         <button type="button">Plain Text</button>
@@ -264,7 +267,7 @@
   </div>
 
   <div id="edit-menu" class="menu" popover="auto">
-    <div focusgroup="menu nomemory" aria-labelledby="edit-trigger">
+    <div focusgroup="menu no-memory" aria-labelledby="edit-trigger">
       <button type="button">Undo</button>
       <button type="button">Redo</button>
       <button type="button">Cut</button>
@@ -274,14 +277,14 @@
   </div>
 
   <div id="view-menu" class="menu" popover="auto">
-    <div focusgroup="menu nomemory" aria-labelledby="view-trigger">
+    <div focusgroup="menu no-memory" aria-labelledby="view-trigger">
       <button type="button">Show Toolbar</button>
       <button id="appearance-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Appearance <span
           class="hint" aria-hidden="true">›</span></button>
       <button type="button">Enter Full Screen</button>
     </div>
     <div id="appearance-menu" class="menu submenu" popover="manual">
-      <div focusgroup="menu nomemory" aria-labelledby="appearance-trigger">
+      <div focusgroup="menu no-memory" aria-labelledby="appearance-trigger">
         <button type="button">Use Light Appearance</button>
         <button type="button">Use Dark Appearance</button>
         <button type="button">Use System Appearance</button>
@@ -290,7 +293,7 @@
   </div>
 
   <div id="help-menu" class="menu" popover="auto">
-    <div focusgroup="menu nomemory" aria-labelledby="help-trigger">
+    <div focusgroup="menu no-memory" aria-labelledby="help-trigger">
       <button type="button">Search Documentation</button>
       <button type="button">Keyboard Shortcuts</button>
       <button type="button">About Document</button>
@@ -298,10 +301,16 @@
   </div>
 
   <script type="module">
-    // Keep focusgroup in the markup as the progressive-enhancement hook, but
-    // use this small local fallback for browsers without native focusgroup.
+    // Native focusgroup supplies menu navigation and inferred roles where supported.
+    // Only install the local navigation and semantic fallback when it is unavailable.
     function installFocusgroupFallback() {
+      if ('focusgroup' in HTMLElement.prototype) return;
+
       document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
+        group.setAttribute('role', 'menu');
+        group.querySelectorAll(':scope > button').forEach(item => {
+          item.setAttribute('role', 'menuitem');
+        });
         group.addEventListener('keydown', event => {
           if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
           const items = [...group.querySelectorAll(':scope > button')]
@@ -322,6 +331,9 @@
     const status = document.querySelector('#status');
     const menus = [...document.querySelectorAll('[popover]')];
     const rootTriggers = [...document.querySelectorAll('.bar [aria-haspopup="menu"]')];
+    const previewedMenus = new WeakSet();
+    const skipPreviewFocus = new WeakSet();
+    const returnFocusTo = new WeakMap();
     const menuItems = menu => [...menu.querySelector(':scope > [focusgroup~="menu"]')
       .querySelectorAll(':scope > button')]
       .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
@@ -342,10 +354,16 @@
         .reverse()
         .forEach(child => closeMenu(child));
 
-      menu.hidePopover();
       const trigger = triggerForMenu(menu);
+      if (returnFocus && trigger && document.activeElement !== trigger) {
+        // hidePopover() can synchronously restore focus; install the guard first.
+        skipPreviewFocus.add(trigger);
+        returnFocusTo.set(trigger, menu);
+      }
+      menu.hidePopover();
+      previewedMenus.delete(menu);
       if (trigger) trigger.setAttribute('aria-expanded', 'false');
-      if (returnFocus && trigger) trigger.focus();
+      if (returnFocus && trigger && document.activeElement !== trigger) trigger.focus();
     }
 
     function closeAllMenus(returnFocus = false, except = null) {
@@ -362,16 +380,29 @@
         .forEach(sibling => closeMenu(sibling));
     }
 
-    function openMenu(menu, trigger) {
+    function previewMenu(menu, trigger) {
       if (menu.matches(':popover-open')) return;
       if (!menu.parentElement.closest('[popover]')) closeAllMenus(false, menu);
       else closeSiblingMenus(menu);
+      menu.showPopover();
+      previewedMenus.add(menu);
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+
+    function openMenu(menu, trigger) {
+      if (menu.matches(':popover-open')) {
+        if (!previewedMenus.has(menu)) return;
+        previewedMenus.delete(menu);
+      } else {
+        if (!menu.parentElement.closest('[popover]')) closeAllMenus(false, menu);
+        else closeSiblingMenus(menu);
+        menu.showPopover();
+      }
 
       // Chrome can announce only the trigger's "expanded" state and skip the newly focused first item.
       // Hiding the trigger from assistive technology for one frame suppresses that announcement
       // without delaying focus.
       trigger.setAttribute('aria-hidden', 'true');
-      menu.showPopover();
       trigger.setAttribute('aria-expanded', 'true');
       focusFirst(menu);
       requestAnimationFrame(() => trigger.removeAttribute('aria-hidden'));
@@ -380,7 +411,8 @@
     function activate(item) {
       const submenu = submenuTrigger(item) && menuForTrigger(item);
       if (submenu) {
-        if (submenu.matches(':popover-open')) closeMenu(submenu, true);
+        if (previewedMenus.has(submenu)) openMenu(submenu, item);
+        else if (submenu.matches(':popover-open')) closeMenu(submenu, true);
         else openMenu(submenu, item);
         return;
       }
@@ -388,11 +420,16 @@
       closeAllMenus(true);
     }
 
-    function moveToRootTrigger(from, direction) {
+    function moveToRootTrigger(from, direction, enterAdjacentMenu = false) {
       closeAllMenus();
       const next = rootTriggers[(rootTriggers.indexOf(from) + direction + rootTriggers.length) % rootTriggers.length];
       rootTriggers.forEach(item => { item.tabIndex = item === next ? 0 : -1; });
-      next.focus();
+      if (enterAdjacentMenu) {
+        // APG menubar navigation switches menus and places focus on the new menu's first item.
+        openMenu(menuForTrigger(next), next);
+      } else {
+        next.focus();
+      }
     }
 
     rootTriggers.forEach((trigger, index) => {
@@ -400,8 +437,20 @@
       if (index === 0) trigger.tabIndex = 0;
       let suppressNextClick = false;
 
+      trigger.addEventListener('focus', () => {
+        if (skipPreviewFocus.has(trigger)) {
+          skipPreviewFocus.delete(trigger);
+          closeMenu(returnFocusTo.get(trigger));
+          return;
+        }
+        previewMenu(menu, trigger);
+      });
+      trigger.addEventListener('blur', () => {
+        if (previewedMenus.has(menu)) closeMenu(menu);
+      });
+
       trigger.addEventListener('pointerdown', event => {
-        if (!menu.matches(':popover-open')) return;
+        if (!menu.matches(':popover-open') || previewedMenus.has(menu)) return;
         event.preventDefault();
         suppressNextClick = true;
         closeMenu(menu, true);
@@ -411,9 +460,14 @@
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
           event.preventDefault();
           moveToRootTrigger(trigger, event.key === 'ArrowRight' ? 1 : -1);
-        } else if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+        } else if (event.key === 'ArrowDown') {
           event.preventDefault();
           openMenu(menu, trigger);
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (previewedMenus.has(menu)) closeMenu(menu);
+          else if (menu.matches(':popover-open')) closeMenu(menu, true);
+          else openMenu(menu, trigger);
         }
       });
       trigger.addEventListener('click', event => {
@@ -422,7 +476,8 @@
           suppressNextClick = false;
           return;
         }
-        if (menu.matches(':popover-open')) closeMenu(menu, true);
+        if (previewedMenus.has(menu)) openMenu(menu, trigger);
+        else if (menu.matches(':popover-open')) closeMenu(menu, true);
         else openMenu(menu, trigger);
       });
     });
@@ -430,7 +485,25 @@
     menus.forEach(menu => {
       menu.addEventListener('toggle', () => {
         const trigger = triggerForMenu(menu);
-        if (trigger) trigger.setAttribute('aria-expanded', String(menu.matches(':popover-open')));
+        if (!menu.matches(':popover-open')) {
+          previewedMenus.delete(menu);
+          if (trigger) trigger.setAttribute('aria-expanded', 'false');
+          return;
+        }
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
+      });
+
+      menuItems(menu).forEach(item => {
+        const submenu = submenuTrigger(item) && menuForTrigger(item);
+        if (!submenu) return;
+        item.addEventListener('focus', () => {
+          if (skipPreviewFocus.has(item)) {
+            skipPreviewFocus.delete(item);
+            closeMenu(returnFocusTo.get(item));
+            return;
+          }
+          previewMenu(submenu, item);
+        });
       });
 
       menu.addEventListener('keydown', event => {
@@ -438,20 +511,35 @@
         const parentMenu = menu.parentElement.closest('[popover]');
         const activeSubmenu = submenuTrigger(active) && menuForTrigger(active);
         if (event.key === 'Tab') {
-          // Return focus to the root trigger so Tab leaves from visible content, not a closed popover.
-          closeAllMenus(true);
+          // Let Tab move naturally, then close menus once focus has reached visible content.
+          setTimeout(() => {
+            if (!document.activeElement.closest('[popover]')) closeAllMenus();
+          });
         } else if (event.key === 'ArrowRight' && activeSubmenu) {
           event.preventDefault();
           event.stopPropagation();
           openMenu(activeSubmenu, active);
+        } else if (event.key === 'ArrowRight' && parentMenu) {
+          // APG: from a submenu item without a submenu, move to the next menubar item.
+          // Keep focus on its trigger while previewing; explicit activation enters its menu.
+          event.preventDefault();
+          event.stopPropagation();
+          let rootMenu = menu;
+          while (rootMenu.parentElement.closest('[popover]')) {
+            rootMenu = rootMenu.parentElement.closest('[popover]');
+          }
+          moveToRootTrigger(triggerForMenu(rootMenu), 1);
         } else if (event.key === 'ArrowLeft' && parentMenu) {
           event.preventDefault();
           event.stopPropagation();
+          const parentTrigger = triggerForMenu(menu);
+          skipPreviewFocus.add(parentTrigger);
           closeMenu(menu, true);
         } else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !parentMenu) {
           event.preventDefault();
           event.stopPropagation();
-          moveToRootTrigger(triggerForMenu(menu), event.key === 'ArrowRight' ? 1 : -1);
+          // Switch to the adjacent top-level menu and enter its first enabled item.
+          moveToRootTrigger(triggerForMenu(menu), event.key === 'ArrowRight' ? 1 : -1, true);
         } else if (event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
@@ -459,7 +547,8 @@
         } else if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           event.stopPropagation();
-          activate(active);
+          if (activeSubmenu && previewedMenus.has(activeSubmenu)) closeMenu(activeSubmenu);
+          else activate(active);
         }
       });
 
@@ -473,6 +562,9 @@
     });
 
     document.addEventListener('pointerdown', event => {
+      if (!event.target.closest('[popover], .bar [aria-haspopup="menu"]')) closeAllMenus();
+    });
+    document.addEventListener('focusin', event => {
       if (!event.target.closest('[popover], .bar [aria-haspopup="menu"]')) closeAllMenus();
     });
   </script>
