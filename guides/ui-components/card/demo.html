@@ -165,9 +165,10 @@
       text-decoration: none;
     }
 
-    .card>hgroup> :is(h1, h2, h3, h4, h5, h6) a:focus {
-      outline: none;
-      /* Focus outline delegated to parent article above */
+    .card :is(hgroup a, footer button, footer a):focus-visible {
+      outline: 2px solid var(--focus-ring-color);
+      outline-offset: 2px;
+      border-radius: 2px;
     }
 
     /* Target description text paragraphs */
