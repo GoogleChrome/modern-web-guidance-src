@@ -126,17 +126,17 @@ importers:
   harness:
     dependencies:
       '@anthropic-ai/vertex-sdk':
-        specifier: ^0.16.0
-        version: 0.16.0(encoding@0.1.13)(zod@3.25.76)
+        specifier: ^0.20.2
+        version: 0.20.2(zod@3.25.76)
       '@google-cloud/storage':
         specifier: ^7.19.0
         version: 7.19.0(encoding@0.1.13)
       '@google/gemini-cli':
         specifier: latest
-        version: 0.61.0
+        version: 0.62.0
       '@openai/codex':
-        specifier: 0.160.0
-        version: 0.160.0
+        specifier: 0.160.1
+        version: 0.160.1
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
@@ -155,7 +155,7 @@ importers:
         version: 2.1.289
       '@google/gemini-cli-core':
         specifier: latest
-        version: 0.61.0(encoding@0.1.13)(express@5.2.1)
+        version: 0.62.0(encoding@0.1.13)(express@5.2.1)
       serving:
         specifier: workspace:*
         version: link:../serving
@@ -281,8 +281,8 @@ packages:
     engines: {node: '>=22.0.0'}
     hasBin: true
 
-  '@anthropic-ai/sdk@0.78.0':
-    resolution: {integrity: sha512-PzQhR715td/m1UaaN5hHXjYB8Gl2lF9UVhrrGrZeysiF6Rb74Wc9GCB8hzLdzmQtBd1qe89F9OptgB9Za1Ib5w==}
+  '@anthropic-ai/sdk@0.131.0':
+    resolution: {integrity: sha512-9+PepoU7qVMmM70jSahdnfcMHAvAnzhMOLv2W9WjRLO+OG/MAiBETkwKZqv7KIJ1Cj5h8eZ019bHzZaq+Mbepw==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -290,8 +290,8 @@ packages:
       zod:
         optional: true
 
-  '@anthropic-ai/vertex-sdk@0.16.0':
-    resolution: {integrity: sha512-ntxemtRkwPsjVzGQJsmBPRW38tfas6VuVlD1v6pHffDJKLPtCdaiN9KUQeraJ/F34tjxEWlsaCnl3t/orJm1Xw==}
+  '@anthropic-ai/vertex-sdk@0.20.2':
+    resolution: {integrity: sha512-lEZGMWG7FceQayg61Ujfur8PCP8XaN00laPb1FyJeWIh50rZu+TmqPxfKrrdt5EqXMFDeO9/YPhrlfvG4i2F/Q==}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -301,8 +301,8 @@ packages:
     resolution: {integrity: sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q==}
     engines: {node: '>=6.9.0'}
 
-  '@babel/runtime@7.28.6':
-    resolution: {integrity: sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==}
+  '@babel/runtime@7.29.7':
+    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
 
   '@bufbuild/protobuf@2.11.0':
@@ -526,12 +526,12 @@ packages:
     resolution: {integrity: sha512-n2FjE7NAOYyshogdc7KQOl/VZb4sneqPjWouSyia9CMDdMhRX5+RIbqalNmC7LOLzuLAN89VlF2HvG8na9G+zQ==}
     engines: {node: '>=14'}
 
-  '@google/gemini-cli-core@0.61.0':
-    resolution: {integrity: sha512-3H09+26TzD+HIuUV0KHeAp4Ag0iK3SiRB8H+NehOpsupbfZcEeprSN/85uzjTMQxcWJkzrNe/AY/y0ovFkSZ0A==}
+  '@google/gemini-cli-core@0.62.0':
+    resolution: {integrity: sha512-wNaVQpyys78qaaienhqFdnsdC0UJCuUQDUZosyqtT6BnW/g+oxTaSDuO+3Rcy1C0/JvFZGIm4+J0jUD7S3uk6g==}
     engines: {node: '>=20'}
 
-  '@google/gemini-cli@0.61.0':
-    resolution: {integrity: sha512-dbQ9A0qBtFJNi6XBkHvfZ6Azpn6PNgH/P8h2MZ67RLlX8hSAVjup39CRWqdRxZv7YXIuhrFaytr8y0jKnkoxnQ==}
+  '@google/gemini-cli@0.62.0':
+    resolution: {integrity: sha512-A1rw0Tf2sHLpGncfYdaq5WaJIufKAP8il4BmHD5Yw4ewmB/Wo0vRQb2bEvx7OqyaPFPZCh0hVhcMKsICZyIBww==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -854,43 +854,43 @@ packages:
   '@octokit/types@16.0.0':
     resolution: {integrity: sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg==}
 
-  '@openai/codex@0.160.0':
-    resolution: {integrity: sha512-kEtVGzjRAYAMOwJxN39bGcna7LT3IDQgq64NNJ/dDTfu4OzZaocJcyNb5/gGJ/IVF/Vj7oK7E2m3nmTan7lpjg==}
+  '@openai/codex@0.160.1':
+    resolution: {integrity: sha512-f1yrJhwgimKQI1kYQlxdPJcFwkNZxZrbz7Hf89EAcnLqkQ7TiESzr2FgSZn13Ga5RuHjlVUfurzwq10wk9zw2g==}
     engines: {node: '>=16'}
     hasBin: true
 
-  '@openai/codex@0.160.0-darwin-arm64':
-    resolution: {integrity: sha512-aefV6cqZA2REZgR//4McyXlp7zLcTti4CI2v3j9IVgNndPBv2kCeNEcz07qeelXcwOdSFPUKb6roA48vZmDgrQ==}
+  '@openai/codex@0.160.1-darwin-arm64':
+    resolution: {integrity: sha512-6Znu97O7+Ie/cnUpsWLx6NlcPc7DNuj6sAs58xpt0/tKRgx4+xgE9zca1YrwqQUBjUQO1HexudyimmhpZjdWlA==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [darwin]
 
-  '@openai/codex@0.160.0-darwin-x64':
-    resolution: {integrity: sha512-ir7cdsPrb9VkqNqpTECoTiomv04xws/FQ968mHQzuL+2J5Da0Dkh2Qlxp7sguDDZJab4YpYmNjQvBVMXbTeQaQ==}
+  '@openai/codex@0.160.1-darwin-x64':
+    resolution: {integrity: sha512-Q33hmY6BxhoQRgCo4f/xS20yMxORnilQMNdr5w1bXSkXGYAty8/z9odcHbsNYUM6m0fNle12DHLQ5F0Dpfji3A==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [darwin]
 
-  '@openai/codex@0.160.0-linux-arm64':
-    resolution: {integrity: sha512-VnVdsS06YlDsL8OwaJjQ3xdqdJNG4i+eBJBV3LytddknzSaF/urijLzVg3ptkwvoj8C7Gn7iWpVE+y8WEaPiCg==}
+  '@openai/codex@0.160.1-linux-arm64':
+    resolution: {integrity: sha512-JLyjBlmjPvwTaicHemw+y5xQSz3Uja2r7F/xkvS8gFufTA2g132Ak+0fo35xnJ/k2uc9fTtjm0LrsEGI78L6Ng==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [linux]
 
-  '@openai/codex@0.160.0-linux-x64':
-    resolution: {integrity: sha512-KI/73OqGrHmR18s7ya7E1NqV6rT0y3lxr0s8S1qR2m6zU6QRF/HlR529jALLh5vjdUnsRT4Ahoxt0axb4kY99g==}
+  '@openai/codex@0.160.1-linux-x64':
+    resolution: {integrity: sha512-sIDhqV+bsZKKVaVFVY5iB+pAzyOz2XRm3H1KXCsSJwGj5p98qnrT0Fweo1Hfe7WnyTp8mfBNdbVzUeO+mHYugA==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [linux]
 
-  '@openai/codex@0.160.0-win32-arm64':
-    resolution: {integrity: sha512-tTvK9ZIGuj9WnYaYOAnfjJVSfPV7dKqWtDHqUPLf0Hadp6SgynTxx7S7iMXRieFeXVOI2XH76KxEHSOTOnz3zw==}
+  '@openai/codex@0.160.1-win32-arm64':
+    resolution: {integrity: sha512-PCGz2kVUBKKzyKv/cqo/1WqWN8GVUyk9sk0LyWIyXftdU0t+SSsGp45c2I6iOitm88ftGB3LxFHpTMnaiIKU7w==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [win32]
 
-  '@openai/codex@0.160.0-win32-x64':
-    resolution: {integrity: sha512-/gCFcuOmGlQkgGivWCtY8BNEDixh70Pue0HZOk9S8bj2vUIE1GLD9zcNB/KqqDJmn0S+lIttauLpzQnw6HOCHA==}
+  '@openai/codex@0.160.1-win32-x64':
+    resolution: {integrity: sha512-yyqykHtHNhm0ZViofGozz9a4ffUyXDsiyRu9Q2hPNg/cu4uzSsovNr5kDmzBXPFWAilmlZuNkwpw1W7uae2nlg==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
@@ -1246,6 +1246,9 @@ packages:
   '@sindresorhus/merge-streams@4.0.0':
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
+
+  '@stablelib/base64@1.0.1':
+    resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
 
   '@swc/helpers@0.5.19':
     resolution: {integrity: sha512-QamiFeIK3txNjgUTNppE6MiG3p7TdninpZu0E0PbqVh1a9FNLT2FRhisaa4NcaX52XVhA5l7Pk58Ft7Sqi/2sA==}
@@ -1971,6 +1974,9 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
+  fast-sha256@1.3.0:
+    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
+
   fast-uri@3.1.8:
     resolution: {integrity: sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg==}
 
@@ -2166,6 +2172,10 @@ packages:
 
   google-auth-library@10.9.0:
     resolution: {integrity: sha512-xtvUqvINPhTaBm7nXqlYPcrMHJPm1lCNdSovxnKKhTm+4JsvQ+KGVYJViLoH9Yxu8w+T0Qv5HubzYT9BLrppJg==}
+    engines: {node: '>=18'}
+
+  google-auth-library@10.9.1:
+    resolution: {integrity: sha512-i1ydyHrqcIxXkWh/uBmVkzCvIuq5yiK2ATndIe5XxKholrG/MTYP9xGYka4sQhrbIAgGjL2B6NOE7rFaiF3fXw==}
     engines: {node: '>=18'}
 
   google-auth-library@9.15.1:
@@ -3058,8 +3068,8 @@ packages:
     resolution: {integrity: sha512-e0VyvkVTwVYViNovRkZ9aodhxVlyoMn7eJhVUPxZ+eK9P/7CBkxvvsBOHqFPEH416726W8tLXXXjKwqgTErrCQ==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+  source-map-js@1.2.2:
+    resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
 
   source-map@0.6.1:
@@ -3083,6 +3093,9 @@ packages:
 
   sprintf-js@1.1.3:
     resolution: {integrity: sha512-Oo+0REFV59/rz3gfJNKQiBlwfHaSESl1pcGyABQsnnIfWOFt6JNj5gCog2U6MLZ//IGYD+nA8nI+mTShREReaA==}
+
+  standardwebhooks@1.1.1:
+    resolution: {integrity: sha512-bCbX9ZEyFkWPsRz7Bl3NuQUJohmwGSev/yhr7vhaGPlc4AfIrspIRa6cPTBuI1ItmrTDJ4d/S2hCsfe4+vQGnQ==}
 
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
@@ -3474,18 +3487,18 @@ snapshots:
       '@anthropic-ai/claude-code-win32-arm64': 2.1.289
       '@anthropic-ai/claude-code-win32-x64': 2.1.289
 
-  '@anthropic-ai/sdk@0.78.0(zod@3.25.76)':
+  '@anthropic-ai/sdk@0.131.0(zod@3.25.76)':
     dependencies:
       json-schema-to-ts: 3.1.1
+      standardwebhooks: 1.1.1
     optionalDependencies:
       zod: 3.25.76
 
-  '@anthropic-ai/vertex-sdk@0.16.0(encoding@0.1.13)(zod@3.25.76)':
+  '@anthropic-ai/vertex-sdk@0.20.2(zod@3.25.76)':
     dependencies:
-      '@anthropic-ai/sdk': 0.78.0(zod@3.25.76)
-      google-auth-library: 9.15.1(encoding@0.1.13)
+      '@anthropic-ai/sdk': 0.131.0(zod@3.25.76)
+      google-auth-library: 10.9.1
     transitivePeerDependencies:
-      - encoding
       - supports-color
       - zod
 
@@ -3497,7 +3510,7 @@ snapshots:
 
   '@babel/helper-validator-identifier@7.28.5': {}
 
-  '@babel/runtime@7.28.6': {}
+  '@babel/runtime@7.29.7': {}
 
   '@bufbuild/protobuf@2.11.0': {}
 
@@ -3696,7 +3709,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@google/gemini-cli-core@0.61.0(encoding@0.1.13)(express@5.2.1)':
+  '@google/gemini-cli-core@0.62.0(encoding@0.1.13)(express@5.2.1)':
     dependencies:
       '@a2a-js/sdk': 0.3.11(@bufbuild/protobuf@2.11.0)(@grpc/grpc-js@1.14.3)(express@5.2.1)
       '@bufbuild/protobuf': 2.11.0
@@ -3789,7 +3802,7 @@ snapshots:
       - tree-sitter
       - utf-8-validate
 
-  '@google/gemini-cli@0.61.0':
+  '@google/gemini-cli@0.62.0':
     dependencies:
       semver: 7.7.4
     optionalDependencies:
@@ -3804,7 +3817,7 @@ snapshots:
 
   '@google/genai@1.30.0(@modelcontextprotocol/sdk@1.23.0(zod@3.25.76))':
     dependencies:
-      google-auth-library: 10.9.0
+      google-auth-library: 10.9.1
       ws: 8.20.0
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.23.0(zod@3.25.76)
@@ -4082,31 +4095,31 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 27.0.0
 
-  '@openai/codex@0.160.0':
+  '@openai/codex@0.160.1':
     optionalDependencies:
-      '@openai/codex-darwin-arm64': '@openai/codex@0.160.0-darwin-arm64'
-      '@openai/codex-darwin-x64': '@openai/codex@0.160.0-darwin-x64'
-      '@openai/codex-linux-arm64': '@openai/codex@0.160.0-linux-arm64'
-      '@openai/codex-linux-x64': '@openai/codex@0.160.0-linux-x64'
-      '@openai/codex-win32-arm64': '@openai/codex@0.160.0-win32-arm64'
-      '@openai/codex-win32-x64': '@openai/codex@0.160.0-win32-x64'
+      '@openai/codex-darwin-arm64': '@openai/codex@0.160.1-darwin-arm64'
+      '@openai/codex-darwin-x64': '@openai/codex@0.160.1-darwin-x64'
+      '@openai/codex-linux-arm64': '@openai/codex@0.160.1-linux-arm64'
+      '@openai/codex-linux-x64': '@openai/codex@0.160.1-linux-x64'
+      '@openai/codex-win32-arm64': '@openai/codex@0.160.1-win32-arm64'
+      '@openai/codex-win32-x64': '@openai/codex@0.160.1-win32-x64'
 
-  '@openai/codex@0.160.0-darwin-arm64':
+  '@openai/codex@0.160.1-darwin-arm64':
     optional: true
 
-  '@openai/codex@0.160.0-darwin-x64':
+  '@openai/codex@0.160.1-darwin-x64':
     optional: true
 
-  '@openai/codex@0.160.0-linux-arm64':
+  '@openai/codex@0.160.1-linux-arm64':
     optional: true
 
-  '@openai/codex@0.160.0-linux-x64':
+  '@openai/codex@0.160.1-linux-x64':
     optional: true
 
-  '@openai/codex@0.160.0-win32-arm64':
+  '@openai/codex@0.160.1-win32-arm64':
     optional: true
 
-  '@openai/codex@0.160.0-win32-x64':
+  '@openai/codex@0.160.1-win32-x64':
     optional: true
 
   '@opentelemetry/api-logs@0.218.0':
@@ -4470,6 +4483,8 @@ snapshots:
       '@simple-git/args-pathspec': 1.0.3
 
   '@sindresorhus/merge-streams@4.0.0': {}
+
+  '@stablelib/base64@1.0.1': {}
 
   '@swc/helpers@0.5.19':
     dependencies:
@@ -4883,7 +4898,7 @@ snapshots:
   css-tree@3.2.1:
     dependencies:
       mdn-data: 2.27.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   css-what@6.2.2: {}
 
@@ -5215,6 +5230,8 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
+  fast-sha256@1.3.0: {}
+
   fast-uri@3.1.8: {}
 
   fast-xml-builder@1.1.5:
@@ -5463,6 +5480,17 @@ snapshots:
       slash: 3.0.0
 
   google-auth-library@10.9.0:
+    dependencies:
+      base64-js: 1.5.1
+      ecdsa-sig-formatter: 1.0.11
+      gaxios: 7.3.1
+      gcp-metadata: 8.1.2
+      google-logging-utils: 1.1.3
+      jws: 4.0.1
+    transitivePeerDependencies:
+      - supports-color
+
+  google-auth-library@10.9.1:
     dependencies:
       base64-js: 1.5.1
       ecdsa-sig-formatter: 1.0.11
@@ -5729,7 +5757,7 @@ snapshots:
 
   json-schema-to-ts@3.1.1:
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.7
       ts-algebra: 2.0.0
 
   json-schema-traverse@1.0.0: {}
@@ -6454,7 +6482,7 @@ snapshots:
       ip-address: 10.7.2
       smart-buffer: 4.2.0
 
-  source-map-js@1.2.1: {}
+  source-map-js@1.2.2: {}
 
   source-map@0.6.1:
     optional: true
@@ -6476,6 +6504,11 @@ snapshots:
   sprintf-js@1.0.3: {}
 
   sprintf-js@1.1.3: {}
+
+  standardwebhooks@1.1.1:
+    dependencies:
+      '@stablelib/base64': 1.0.1
+      fast-sha256: 1.3.0
 
   statuses@2.0.2: {}
 

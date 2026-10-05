@@ -28,23 +28,23 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@mdn/browser-compat-data": "^7.3.13",
+    "@mdn/browser-compat-data": "^7.3.17",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
-    "apache-arrow": "21.1.0",
-    "marked": "^18.0.3",
-    "onnxruntime-node": "^1.25.1",
+    "apache-arrow": "21.2.0",
+    "marked": "^18.0.14",
+    "onnxruntime-node": "^1.30.0",
     "web-features": "^3.39.0"
   },
   "devDependencies": {
     "@types/gh-pages": "^6.1.0",
     "@types/minimatch": "^6.0.0",
-    "@types/node": "^25.6.0",
-    "esbuild": "^0.28.1",
+    "@types/node": "^25.9.8",
+    "esbuild": "^0.28.2",
     "gh-pages": "^6.3.0",
     "gray-matter": "^4.0.3",
-    "minimatch": "^10.2.5",
+    "minimatch": "^10.2.6",
     "typescript": "^5.9.3"
   }
 }
