@@ -67,6 +67,7 @@ web-feature-ids:
 * **DO NOT** include cross-browser fallbacks in the implementation section. Those should only be mentioned in the fallback section.
 * Only mark steps as `MANDATORY` if they are truly required for the feature to function. Optional steps (e.g., adding scroll snap, adding an event listener for progressive enhancement) must be labeled as optional. Incorrect use of `MANDATORY` causes agents to implement unnecessary complexity.
 * The guide is the agent's **only** source of truth. DO NOT reference `demo.html` or any other file — agents won't have access to them. Everything the agent needs to implement the use case must be in `guide.md`.
+* When listing alternatives, say how to choose between them (which use cases favor which). Optional improvements are alternatives too: the choice is between adding them or not, so say when they're worth adding. Don't invent criteria; if the choice genuinely depends on context you can't anticipate, leave it to the agent.
 
 ### 5. Fallback Strategies
 
