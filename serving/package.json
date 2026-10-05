@@ -34,7 +34,6 @@
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
-    "apache-arrow": "21.1.0",
     "marked": "^18.0.3",
     "web-features": "^3.39.0"
   },

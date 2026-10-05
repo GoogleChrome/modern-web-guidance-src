@@ -1,4 +1,3 @@
-import { Embedder } from "../../lib/transformers-embedder.ts";
 import { TfjsEmbedder } from "../../lib/tfjs-embedder.ts";
 import fs from "fs";
 import path from "path";
@@ -50,43 +49,9 @@ async function run() {
   const tfjsWarmMean = tfjsWarmDurations.reduce((a, b) => a + b, 0) / tfjsWarmDurations.length;
   console.log(`TFJS Warm Median Latency: ${tfjsWarmMedian.toFixed(2)}ms (mean: ${tfjsWarmMean.toFixed(2)}ms, samples: ${tfjsWarmDurations.length})`);
 
-  // --- 2. Native ONNX (Transformers.js / Native) ---
-  console.log("\n=== Benchmarking Native ONNX (Transformers.js / Native) ===");
-  Embedder.clearInstance();
-  let nativeColdDuration: number | null = null;
-  let nativeWarmMedian: number | null = null;
-  let nativeWarmMean: number | null = null;
-
-  try {
-    const nativeColdStart = Date.now();
-    const nativeEmbedder = Embedder.getInstance();
-    await nativeEmbedder.init();
-    await nativeEmbedder.embed(queries[0], true);
-    nativeColdDuration = Date.now() - nativeColdStart;
-    console.log(`Native Cold Start Latency (init + first embed): ${nativeColdDuration}ms`);
-
-    const nativeWarmDurations: number[] = [];
-    for (let r = 0; r < WARM_RUNS; r++) {
-      for (const q of queries) {
-        const t0 = performance.now();
-        await nativeEmbedder.embed(q, true);
-        nativeWarmDurations.push(performance.now() - t0);
-      }
-    }
-    nativeWarmMedian = median(nativeWarmDurations);
-    nativeWarmMean = nativeWarmDurations.reduce((a, b) => a + b, 0) / nativeWarmDurations.length;
-    console.log(`Native Warm Median Latency: ${nativeWarmMedian.toFixed(2)}ms (mean: ${nativeWarmMean.toFixed(2)}ms, samples: ${nativeWarmDurations.length})`);
-  } catch (err) {
-    console.warn("Native ONNX benchmark skipped or failed:", (err as Error).message);
-  }
-
   console.log("\n=== Latency Summary ===");
   console.log(`TFJS Cold Start:  ${tfjsColdDuration}ms`);
   console.log(`TFJS Warm Median: ${tfjsWarmMedian.toFixed(2)}ms`);
-  if (nativeColdDuration !== null && nativeWarmMedian !== null) {
-    console.log(`Native Cold Start:  ${nativeColdDuration}ms`);
-    console.log(`Native Warm Median: ${nativeWarmMedian.toFixed(2)}ms`);
-  }
 
   // Record results
   const resultsFile = path.resolve(currentDir, "../../benchmarks/data/eval-results-latency.json");
