@@ -172,12 +172,15 @@ export interface TaskPromptOptions {
   guideFile: string;
   taskFile: string;
   baseApp: string;
+  isDisciplineGuide?: boolean;
 }
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
+  const target = opts.isDisciplineGuide ? 'discipline topic' : 'use case';
+
   return `# GOAL
-Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the use case.
-Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to request the overall use case inside the application.
+Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
+Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to request or apply it inside the application.
 
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
