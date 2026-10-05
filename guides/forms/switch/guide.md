@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Build Accessible Switch Controls
 
-Use the native HTML `switch` attribute when supported, but provide a visual fallback for other browsers. Native `switch` support is currently **Safari/WebKit-only** (limited availability). Because most browsers do not yet render native switches, delivering a visual polyfill is essential when a switch UI is requested.
+Use the native HTML `switch` attribute when supported, with a CSS polyfill fallback for browsers that don't render it natively.
 
 An accessible switch implementation requires:
 
@@ -208,6 +208,6 @@ toggle.addEventListener('change', () => {
 
 ## Fallbacks & Browser Support
 
-{{ FEATURE_FALLBACKS("switch-control") }}
+{{ BASELINE_STATUS("switch-control") }}
 
-{{ FEATURE_FALLBACKS("accent-color") }}
+{{ BASELINE_STATUS("accent-color") }}
