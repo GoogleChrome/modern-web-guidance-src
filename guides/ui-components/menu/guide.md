@@ -145,6 +145,22 @@ A submenu trigger is a focusgroup-managed menu item with `aria-haspopup="menu"` 
 
 Pointer activation must provide the same result as keyboard activation. Activating an already open submenu trigger closes that submenu and restores focus to its trigger. Keep the submenu open while focus moves into it, and ensure that clicking outside closes all open levels without leaving focus in hidden content.
 
+Stop key event propagation inside nested submenus so `Escape` and `ArrowLeft` close only the active submenu level:
+
+```js
+submenu.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation(); // Close only the current submenu level
+    closeMenu(submenu, true);
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    event.stopPropagation(); // Return to the invoking item without closing the parent
+    closeMenu(submenu, true);
+  }
+});
+```
+
 ### Position the submenu with CSS Anchor Positioning
 
 Use CSS anchor positioning to lay out the nested submenu beside its trigger automatically. This eliminates the need for absolute coordinate math in JavaScript.
