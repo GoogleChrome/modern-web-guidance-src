@@ -51,6 +51,7 @@ web-feature-ids:
 * **Formatting Directives:** Use strict imperative directives (`MANDATORY:`, `DO`, `DO NOT`) only when emphasis is strictly needed (e.g., for critical constraints, security, or common pitfalls). Do not overuse them for every single instruction. Coding agents respond best to rigid constraints when they are selectively applied.
 * **Focus:** Keep the guidance focused on the specific use case and short. No fluff. No conversational text. Include a brief overview of the use case and explanation of why the solution outlined in the guide is the recommended approach.
 * **Self-Contained:** DO NOT include any external links in the markdown body (`[link text](url)`). All required knowledge to use the feature MUST be fully synthesized into the markdown body. Agents must not be slowed down or require additional resources to implement the guidance.
+* **American English:** Always author guidance in American English (`behavior`, `color`, `synchronize`, `center`, `optimize`, etc.) for consistency across documentation, RAG tokens, and search embeddings.
 
 ### 3. Code Snippets
 
