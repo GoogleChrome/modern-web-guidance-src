@@ -14,17 +14,11 @@ guides:
 
 # SVG Icon Implementation
 
-Modern web icon systems prioritize performance, accessibility, ease of styling, and separation of concerns. Rather than flooding HTML templates with repetitive inline SVG code or relying on un-semantic and inaccessible "icon fonts," modern architectures utilize **CSS Masks and Container Style Queries** to create a zero-markup, highly flexible icon engine.
-
-This approach allows the injection of scalable vector icons into any element (such as buttons, links, or badges) using standard CSS variables, without modifying the underlying HTML markup.
-
----
+Use CSS Masks and Container Style Queries to inject scalable vector icons into any element via CSS variables. This approach delivers zero-markup injection, dynamic color control, and automatic transitions without altering HTML structure.
 
 ## Choosing the Right Technique
 
-Modern web icon implementation is a balance between color control, performance, caching, and markup clutter. While the preferred standard utilizes the **CSS-Driven Icon Engine** (CSS Masks and Style Queries), other techniques like **Inline SVG**, **Plain `<img>`**, or **`<img>` with Filters** are critical tools depending on the use case.
-
-Use this decision tree to find the right approach:
+Use this decision tree to select the appropriate icon technique for your use case:
 
 1. **Does it need to animate internal vector paths, or use multiple colors in a single icon?**
    * **Yes**: Use **Inline SVG**. This is the only way to gain full DOM access to the icon's internals.
@@ -45,36 +39,17 @@ Use this decision tree to find the right approach:
 | **`<img>` + CSS Filter**      | Partial (Color math) | ⚠️ (Limited) |   ✅ (Filters)    |       None        |    ✅     |
 | **Plain `<img>`**             | None                 |      ❌      |        ❌         |       None        |    ✅     |
 
----
+## Primary Approach: CSS-Driven Icon Engine
 
-### Secondary Standard: Inline SVG (Best for Vector Animations & Multi-Color)
+The engine uses three CSS capabilities to render icons:
 
-When needing multi-color assets or path-level morph animations, use Inline SVG. It integrates directly into the DOM:
+1. **Registered Custom Properties (`@property`)**: Register `--icon-start` and `--icon-end` with `<image>` syntax and `inherits: false` for type safety.
+2. **Container Style Queries (`@container style(...)`)**: Automatically detects and renders when custom properties are set.
+3. **CSS Masks & `currentColor`**: Icons render as pseudo-elements using masks, with sizing in relative units (`em`) and colors via `currentColor`.
 
-```html
-<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-  <path d="..." fill="currentColor" />
-  <!-- Dynamic variables for multi-color support -->
-  <circle cx="12" cy="12" r="3" fill="var(--icon-accent, gold)" />
-</svg>
-```
+## Implementation
 
----
-
-## Core Concept: CSS-Driven Icon Engine
-
-The engine relies on three modern CSS capabilities:
-1. **Registered Custom Properties (`@property`)**: Register `--icon-start` and `--icon-end` with a `<image>` syntax and `inherits: false` to ensure type safety and prevent unexpected inheritance issues.
-2. **Container Style Queries (`@container style(...)`)**: The browser automatically monitors elements for changes to these custom properties. Setting a property like `--icon-start: var(--icon-trash)` instantly compiles and injects the icon.
-3. **CSS Masks & `currentColor`**: Icons are rendered as pseudo-elements (`::before` / `::after`) using a CSS mask. Sizing is governed by relative units (`1em`), and colors dynamically transition using `currentColor`.
-
----
-
-## Basic Implementation
-
-### 1. Registering the Custom Properties
-
-Registering custom properties with `@property` ensures they are correctly typed as `<image>` elements:
+### 1. Register Custom Properties
 
 ```css
 @property --icon-start {
@@ -163,22 +138,21 @@ For standalone icons or buttons that have no text (e.g. icon-only controls), est
 }
 ```
 
----
+## Usage Examples
 
-## HTML Usage Examples
+### Decorative Icons (Via CSS Property)
 
-### Decorative Icons (Zero Extra Markup)
-To attach an icon to a button, link, or header, set the `--icon-start` or `--icon-end` custom properties directly in CSS or style tags:
+Attach an icon to a button or other element by setting `--icon-start` or `--icon-end`:
 
 ```html
-<!-- The icon is rendered purely via pseudo-elements -->
 <button style="--icon-start: var(--icon-trash);">
   Delete Item
 </button>
 ```
 
-### Standalone and Icon-Only Buttons
-For cases where an icon stands alone without adjacent text, use an empty `.icon` element inside an interactively labeled container:
+### Icon-Only Controls
+
+For standalone icons or icon-only buttons, use an empty `.icon` element with an accessible name on the container:
 
 ```html
 <button aria-label="Delete item">
@@ -186,47 +160,51 @@ For cases where an icon stands alone without adjacent text, use an empty `.icon`
 </button>
 ```
 
----
+## When to Use Inline SVG Instead
 
-## Strengths and Trade-offs
+If you need multi-color icons or path-level animations, use Inline SVG. It provides full DOM access but requires more markup:
 
-### Pros:
-- **Zero HTML clutter**: No inline SVG paths bloated across templates.
-- **Skins & Themes**: Easily swap icons or colors with standard CSS rule modifications.
-- **Automated Layout**: Space and margins are dynamically calculated and applied only when the container is not empty.
-- **Built-in Transitions**: Colors transition seamlessly using native text `color` transitions.
+```html
+<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+  <path d="..." fill="currentColor" />
+  <circle cx="12" cy="12" r="3" fill="var(--icon-accent, gold)" />
+</svg>
+```
 
-### Cons:
-- **Single Color**: Limited to single-color icons. For complex, multi-color illustrations, inline SVG is preferred.
-- **No Morphing**: It cannot animate or morph vector paths directly; use inline SVG if path-level morph animations are required.
+## Common Pitfalls
 
----
-
-## Known Issues to Be Aware of
-
-- **Style Query Support**: For browsers that do not natively support CSS
-  Container Style Queries (`@container style(...)`), supplying a robust CSS
-  selector fallback (see **Fallback strategies** below) to ensure the icon
-  engine degrades gracefully is a mush.
-- **Linked Parameters**: Once linked parameters ship natively, masking workarounds can be replaced with native background parameters, keeping this same custom property contract as the primary guidance.
-- **Scalability & Layout Gotchas (viewBox)**:
-  * **The Problem**: When SVGs are referenced as background images or masks, missing or malformed `viewBox` attributes inside the SVG source files will cause layout issues and scale distortion.
-  * **The Solution**: Ensure all SVG assets possess a valid, explicit `viewBox` attribute (e.g., `viewBox="0 0 24 24"`), and declare explicit `width` and `height` dimensions in relative units in CSS to prevent cumulative layout shift (CLS).
+- **Missing or Malformed `viewBox`**: SVG assets must have a valid `viewBox` attribute (e.g., `viewBox="0 0 24 24"`) to render correctly when used as masks or backgrounds. Omitting it causes scale distortion and layout issues.
+- **Cursor Interaction Requirement (Safari)**: Without the workaround above, Safari requires user interaction before rendering icons.
 
 {{ FEATURE_ISSUES("masks") }}
 {{ FEATURE_ISSUES("container-style-queries") }}
 
----
+### Safari Browser Workarounds
+
+Safari has two bugs affecting icons (WebKit #301609, #320220): icons don't render until user interaction, and a related rendering issue. Apply this CSS fix to force immediate rendering:
+
+```css
+@keyframes webkit-301609 {}
+
+@supports (-webkit-nbsp-mode: normal) and (content-visibility: auto) {
+  @layer webkit-301609-fix {
+    ::before, ::after {
+      animation: webkit-301609 0s;
+    }
+  }
+}
+```
+
+The `@supports` query targets Safari only, and `@layer` prevents animation conflicts.
 
 ## Fallback Strategies
 
-### High-Compatibility Fallback
+### For Browsers Without Container Style Queries
 
-For browsers that do not natively support style queries use the `@supports not (container-name: style(any))` directive combined with **style attribute substring match selectors** to automatically inject the icon when `--icon-start` or `--icon-end` are declared as inline styles:
+Use the `@supports not (container-name: style(any))` directive with style attribute substring selectors to inject icons when `--icon-start` or `--icon-end` are set inline:
 
 ```css
 @supports not (container-name: style(any)) {
-  /* Substring matching on inline styles to mimic style queries */
   [style*="--icon-start"]::before {
     content: "";
     display: inline-block;
@@ -257,7 +235,6 @@ For browsers that do not natively support style queries use the `@supports not (
     margin-inline-start: 0.4em;
   }
 
-  /* Fallback for standalone, empty icons */
   .icon:empty[style*="--icon"]::before {
     content: "";
     display: inline-block;

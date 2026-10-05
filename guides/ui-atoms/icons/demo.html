@@ -32,6 +32,17 @@
       inherits: false;
     }
 
+    /* Safari bug workaround (WebKit #301609, #320220): Force ::before/::after recalculation */
+    @keyframes webkit-301609 {}
+
+    @supports (-webkit-nbsp-mode: normal) and (content-visibility: auto) {
+      @layer webkit-301609-fix {
+        ::before, ::after {
+          animation: webkit-301609 0s;
+        }
+      }
+    }
+
     /* Base interactive button styles */
     button {
       all: unset;
