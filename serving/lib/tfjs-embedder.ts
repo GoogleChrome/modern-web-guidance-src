@@ -58,7 +58,7 @@ export class TfjsEmbedder {
         combined.byteOffset + combined.byteLength
       );
 
-      const ioHandler = io.fromMemorySync({
+      const ioHandler = io.fromMemory({
         modelTopology: modelJson.modelTopology,
         weightSpecs,
         weightData
