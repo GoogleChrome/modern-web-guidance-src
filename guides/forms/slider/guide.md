@@ -5,6 +5,8 @@ web-feature-ids:
   - accent-color
   - input-range
   - appearance
+  - progress
+  - attr
 # later: ::slider-thumb, ::slider-track, ::slider-fill
 guides:
   - slider-tooltip
@@ -147,8 +149,6 @@ function updateSliderProgress() {
 updateSliderProgress();
 slider.addEventListener('input', updateSliderProgress);
 ```
-
-When `control-value()` is supported, this JavaScript can move to a fallback or be removed. `progress()` and `attr()` may also provide future CSS-only implementations; do not require them until their support and value syntax are suitable for the target browsers.
 
 ## Support right-to-left layouts
 
