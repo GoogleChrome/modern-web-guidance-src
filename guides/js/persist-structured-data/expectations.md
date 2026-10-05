@@ -1,13 +1,10 @@
-- `indexedDB.open()` is called with a database name and an integer version.
-- Object stores are created inside the `upgradeneeded` event handler using `createObjectStore()`.
-- Incremental schema migrations check `event.oldVersion` inside the `upgradeneeded` handler.
-- At least one index is created with `createIndex()` for efficient querying.
-- Data reads use `"readonly"` transactions; data writes use `"readwrite"` transactions.
-- IndexedDB operations are wrapped in Promises for ergonomic async/await usage.
-- Write transaction Promises resolve on the transaction's `oncomplete` event to ensure durability on disk.
-- Transactions handle both `onerror` and `onabort` events (e.g., rejecting Promises on error or abort).
-- The `versionchange` event is handled on the database connection to close it when another tab upgrades.
-- Database connections are closed during `pagehide` and reopened during `pageshow` when restored from bfcache.
-- `put()` is used for insert-or-update operations; `add()` is used when duplicate keys should error.
-- Sensitive data (tokens, passwords) is NOT stored in IndexedDB without encryption.
-- Simple string key-value storage does NOT use IndexedDB when `localStorage` would suffice.
+- The application persists structured records across page reloads in IndexedDB rather than `localStorage`.
+- The application opens an IndexedDB database by calling `indexedDB.open()` with a database name and a positive integer version.
+- The application creates object stores (and any secondary indexes needed for non-primary-key queries) inside the `upgradeneeded` event handler, checking `event.oldVersion` to run schema migrations incrementally.
+- The application handles the `versionchange` event on open `IDBDatabase` instances by calling `close()` so schema upgrades in other tabs are not blocked.
+- The application closes open `IDBDatabase` connections during the `pagehide` event and reopens them during the `pageshow` event when restored from bfcache (`event.persisted` is `true`).
+- The application uses `"readonly"` transactions for read queries and `"readwrite"` transactions for mutations without setting transaction `durability` to `"strict"`.
+- When writing multiple records or performing a read-modify-write update, the application coalesces the requests into a single `"readwrite"` transaction without awaiting non-IDB Promises mid-transaction.
+- The application calls `commit()` on write transactions once all requests are queued.
+- The application waits for the transaction's `complete` event (rather than an individual request's `success` event) before resolving write operations, and handles both `error` and `abort` events on transactions.
+- When querying records in reverse order or bounded batches on an index or object store, the application feature-detects `getAllRecords()` and falls back to `openCursor()` or `getAll()` when unavailable.
