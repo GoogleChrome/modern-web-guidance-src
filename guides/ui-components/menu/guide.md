@@ -111,11 +111,23 @@ Keep the opening, closing, and keyboard traversal independent of CSS anchor posi
 Do not implement a second roving-tabindex system when using `focusgroup="menu nomemory"`. Native focusgroup supplies the menu roles and the menu pattern's focus behavior, including its directional and boundary keys, unless another attribute or element such as `popover` clobbers those semantics. JavaScript remains responsible for the parts focusgroup does not cover:
 
 - Treating the menubar and its invoked menus as a composite widget with a single sequential-tab stop. `Tab` enters the menubar at its first top-level trigger; `ArrowLeft` and `ArrowRight` then move between top-level triggers without tabbing through each one. Ordinary links outside the application menu continue to use normal `Tab` navigation.
-- Opening the menu with pointer activation, `Enter`, `Space`, or `ArrowDown`, setting `aria-expanded="true"`, and moving focus immediately to the first enabled item. Activating an already open top-level menu trigger closes that menu and restores focus to the trigger. `nomemory` ensures the focusgroup does not restore the previously focused item.
+- Opening the menu with pointer activation, `Enter`, `Space`, or `ArrowDown`, setting `aria-expanded="true"`, and moving focus immediately to the first enabled item. Activating an already open top-level menu trigger closes that menu and restores focus to the trigger. `nomemory` ensures the focusgroup does not restore the previously focused item. Hide the trigger from assistive technology for one frame while focus moves, or Chrome can announce only "expanded" and skip the focused item.
 - Using `ArrowUp` and `ArrowDown` to move between commands, with `Home` and `End` moving to the first and last enabled command.
 - Setting `aria-expanded="false"` when closing each popover and restoring focus to its invoking trigger.
 - Activating or selecting a command with `Enter` or `Space`.
 - Closing with `Escape`, or with `Tab` when leaving the menu system, and restoring focus where appropriate. `Tab` must not be trapped inside the menu or used to visit every command.
+
+Hide the trigger for one frame around the open and focus move. Remove `aria-hidden` on the next frame so the trigger is available again when the menu closes:
+
+```js
+function openMenu(menu, trigger) {
+  trigger.setAttribute('aria-hidden', 'true');
+  menu.showPopover();
+  trigger.setAttribute('aria-expanded', 'true');
+  focusFirst(menu); // Focus immediately; do not delay it
+  requestAnimationFrame(() => trigger.removeAttribute('aria-hidden'));
+}
+```
 
 Prevent the trigger's `click` handler from immediately re-opening a menu that light-dismiss closed on `pointerdown`:
 
@@ -219,7 +231,7 @@ These checks complement WCAG 2.2 criteria for keyboard operability, focus order,
 
 ## Progressive enhancement and fallbacks
 
-The demos retain `focusgroup="menu nomemory"` in the markup and use a small local fallback for browsers without native support. They open and close popovers imperatively, synchronise `aria-expanded` themselves, and move DOM focus immediately to the first enabled item. Moving focus into the first item is an intentional choice for this command-menu pattern, not a universal requirement for menus whose popover is adjacent to the trigger. Imperative control avoids the declarative popover source relationship and the associated trigger-announcement race; test the result with VoiceOver and NVDA.
+The demos retain `focusgroup="menu nomemory"` in the markup and use a small local fallback for browsers without native support. They open and close popovers imperatively, synchronise `aria-expanded` themselves, and move DOM focus immediately to the first enabled item. Moving focus into the first item is an intentional choice for this command-menu pattern, not a universal requirement for menus whose popover is adjacent to the trigger. Imperative control avoids the declarative popover source relationship. It does not by itself stop Chrome announcing only the trigger's expanded state, so hide the trigger for one frame as shown above. Test the result with VoiceOver and NVDA.
 
 ```js
 document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {

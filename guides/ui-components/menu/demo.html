@@ -41,6 +41,7 @@
       padding: 1rem max(1rem, calc((100% - 48rem) / 2));
       border-block-end: 1px solid var(--line);
       background: var(--surface);
+      transition: box-shadow .2s ease;
     }
 
     @container bar scroll-state(stuck: top) {
@@ -96,70 +97,98 @@
       anchor-name: --file-trigger;
     }
 
-    #edit-trigger { anchor-name: --edit-trigger; }
-    #view-trigger { anchor-name: --view-trigger; }
-    #help-trigger { anchor-name: --help-trigger; }
-    #open-recent-trigger { anchor-name: --open-recent-trigger; }
-    #export-trigger { anchor-name: --export-trigger; }
-    #appearance-trigger { anchor-name: --appearance-trigger; }
+    #edit-trigger {
+      anchor-name: --edit-trigger;
+    }
 
-    /* Align each top-level menu's start edge with its trigger's start edge. */
+    #view-trigger {
+      anchor-name: --view-trigger;
+    }
+
+    #help-trigger {
+      anchor-name: --help-trigger;
+    }
+
+    #open-recent-trigger {
+      anchor-name: --open-recent-trigger;
+    }
+
+    #export-trigger {
+      anchor-name: --export-trigger;
+    }
+
+    #appearance-trigger {
+      anchor-name: --appearance-trigger;
+    }
+
     #file-menu {
       position-anchor: --file-trigger;
-      inset-inline-start: anchor(--file-trigger left);
-      inset-block-start: anchor(--file-trigger bottom);
     }
 
     #edit-menu {
       position-anchor: --edit-trigger;
-      inset-inline-start: anchor(--edit-trigger left);
-      inset-block-start: anchor(--edit-trigger bottom);
     }
 
     #view-menu {
       position-anchor: --view-trigger;
-      inset-inline-start: anchor(--view-trigger left);
-      inset-block-start: anchor(--view-trigger bottom);
     }
 
     #help-menu {
       position-anchor: --help-trigger;
-      inset-inline-start: anchor(--help-trigger left);
-      inset-block-start: anchor(--help-trigger bottom);
     }
 
-    /* Align each submenu's start edge with its trigger's end edge. */
+    #open-recent-menu {
+      position-anchor: --open-recent-trigger;
+    }
+
+    #export-menu {
+      position-anchor: --export-trigger;
+    }
+
+    #appearance-menu {
+      position-anchor: --appearance-trigger;
+    }
+
+    /* Place each top-level menu below its trigger, aligned to the trigger's start edge. */
+    #file-menu,
+    #edit-menu,
+    #view-menu,
+    #help-menu {
+      position-area: block-end span-inline-end;
+      inset: auto;
+    }
+
+    /* Place each submenu beside its trigger, flipping if it would overflow. */
     .submenu {
-      inset-inline-start: anchor(right);
-      inset-block-start: anchor(top);
+      position-area: inline-end span-block-end;
+      position-try-fallbacks: flip-inline, flip-block;
+      inset: auto;
     }
-
-    #open-recent-menu { position-anchor: --open-recent-trigger; }
-    #export-menu { position-anchor: --export-trigger; }
-    #appearance-menu { position-anchor: --appearance-trigger; }
 
     @media (max-width: 40rem) {
-      /* Centre open menus below their triggers on narrow viewports. */
-      #file-menu,
-      #edit-menu,
-      #view-menu,
-      #help-menu,
+
+      /* Place submenus below their parent item on narrow viewports. */
       .submenu {
-        position-area: block-end center;
-        inset: auto;
+        position-area: block-end span-inline-end;
       }
     }
 
+    /* Define the columns once on the focusgroup; each row inherits them with subgrid. */
     [focusgroup~="menu"] {
       display: grid;
-      gap: .1rem;
+      grid-template-columns: auto 1fr auto;
+      row-gap: .1rem;
       min-inline-size: 14rem;
     }
 
+    [focusgroup~="menu"]>* {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: subgrid;
+    }
+
     [focusgroup~="menu"]>button {
-      display: flex;
       align-items: center;
-      justify-content: space-between;
       inline-size: 100%;
       padding: .55rem .7rem;
       border: 0;
@@ -171,6 +200,7 @@
     }
 
     .hint {
+      grid-column: 3;
       margin-inline-start: 1.5rem;
       opacity: .75;
     }
@@ -180,10 +210,14 @@
 <body>
   <div class="bar-wrap">
     <div class="bar" role="menubar" aria-label="Document commands">
-      <button id="file-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">File</button>
-      <button id="edit-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false" tabindex="-1">Edit</button>
-      <button id="view-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false" tabindex="-1">View</button>
-      <button id="help-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false" tabindex="-1">Help</button>
+      <button id="file-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu"
+        aria-expanded="false">File</button>
+      <button id="edit-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false"
+        tabindex="-1">Edit</button>
+      <button id="view-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false"
+        tabindex="-1">View</button>
+      <button id="help-trigger" class="trigger" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false"
+        tabindex="-1">Help</button>
     </div>
   </div>
 
@@ -206,9 +240,11 @@
     <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
       <button type="button">New file</button>
       <button type="button">Open…</button>
-      <button id="open-recent-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Open Recent <span class="hint" aria-hidden="true">›</span></button>
+      <button id="open-recent-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Open Recent <span
+          class="hint" aria-hidden="true">›</span></button>
       <button type="button">Save</button>
-      <button id="export-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Export <span class="hint" aria-hidden="true">›</span></button>
+      <button id="export-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Export <span class="hint"
+          aria-hidden="true">›</span></button>
       <button type="button">Close window</button>
     </div>
     <div id="open-recent-menu" class="menu submenu" popover="manual">
@@ -240,7 +276,8 @@
   <div id="view-menu" class="menu" popover="auto">
     <div focusgroup="menu nomemory" aria-labelledby="view-trigger">
       <button type="button">Show Toolbar</button>
-      <button id="appearance-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Appearance <span class="hint" aria-hidden="true">›</span></button>
+      <button id="appearance-trigger" type="button" aria-haspopup="menu" aria-expanded="false">Appearance <span
+          class="hint" aria-hidden="true">›</span></button>
       <button type="button">Enter Full Screen</button>
     </div>
     <div id="appearance-menu" class="menu submenu" popover="manual">
@@ -274,6 +311,7 @@
           const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
             (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
           event.preventDefault();
+          event.stopImmediatePropagation();
           items[next < 0 ? 0 : next].focus({ preventScroll: true });
         }, true);
       });
@@ -328,9 +366,15 @@
       if (menu.matches(':popover-open')) return;
       if (!menu.parentElement.closest('[popover]')) closeAllMenus(false, menu);
       else closeSiblingMenus(menu);
+
+      // Chrome can announce only the trigger's "expanded" state and skip the newly focused first item.
+      // Hiding the trigger from assistive technology for one frame suppresses that announcement
+      // without delaying focus.
+      trigger.setAttribute('aria-hidden', 'true');
       menu.showPopover();
       trigger.setAttribute('aria-expanded', 'true');
       focusFirst(menu);
+      requestAnimationFrame(() => trigger.removeAttribute('aria-hidden'));
     }
 
     function activate(item) {
@@ -342,6 +386,13 @@
       }
       status.textContent = `${item.textContent.trim()} selected`;
       closeAllMenus(true);
+    }
+
+    function moveToRootTrigger(from, direction) {
+      closeAllMenus();
+      const next = rootTriggers[(rootTriggers.indexOf(from) + direction + rootTriggers.length) % rootTriggers.length];
+      rootTriggers.forEach(item => { item.tabIndex = item === next ? 0 : -1; });
+      next.focus();
     }
 
     rootTriggers.forEach((trigger, index) => {
@@ -359,11 +410,7 @@
       trigger.addEventListener('keydown', event => {
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
           event.preventDefault();
-          closeAllMenus();
-          const direction = event.key === 'ArrowRight' ? 1 : -1;
-          const nextIndex = (rootTriggers.indexOf(trigger) + direction + rootTriggers.length) % rootTriggers.length;
-          rootTriggers.forEach(item => { item.tabIndex = item === rootTriggers[nextIndex] ? 0 : -1; });
-          rootTriggers[nextIndex].focus();
+          moveToRootTrigger(trigger, event.key === 'ArrowRight' ? 1 : -1);
         } else if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           openMenu(menu, trigger);
@@ -391,7 +438,8 @@
         const parentMenu = menu.parentElement.closest('[popover]');
         const activeSubmenu = submenuTrigger(active) && menuForTrigger(active);
         if (event.key === 'Tab') {
-          closeAllMenus();
+          // Return focus to the root trigger so Tab leaves from visible content, not a closed popover.
+          closeAllMenus(true);
         } else if (event.key === 'ArrowRight' && activeSubmenu) {
           event.preventDefault();
           event.stopPropagation();
@@ -400,6 +448,10 @@
           event.preventDefault();
           event.stopPropagation();
           closeMenu(menu, true);
+        } else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !parentMenu) {
+          event.preventDefault();
+          event.stopPropagation();
+          moveToRootTrigger(triggerForMenu(menu), event.key === 'ArrowRight' ? 1 : -1);
         } else if (event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
