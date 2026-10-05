@@ -226,11 +226,3 @@ Preserve the reading order when changing the visual layout. Do not make the card
 or its actions depend on hover, pointer input, color alone, or a visual icon
 without an accessible name. For related semantic, focus, and control guidance,
 see {{ GUIDE_REF("accessibility") }}.
-
-## Fallback strategies
-
-Without container queries or `:has()`, the semantic HTML and stacked layout must
-remain usable. Do not make enhanced layout or styling necessary for the card's
-content or interaction. If a card's enhanced presentation depends on `:has()`,
-provide the same essential content and interaction through the default structure
-rather than requiring a script-only replacement.
