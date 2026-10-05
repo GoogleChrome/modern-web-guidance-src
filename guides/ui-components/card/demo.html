@@ -171,6 +171,13 @@
       border-radius: 2px;
     }
 
+    /* Stretch the title link's pointer target across the card without wrapping body text in <a> */
+    .card>hgroup a::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+
     /* Target description text paragraphs */
     .card>p {
       margin: 0;
@@ -201,6 +208,9 @@
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
+      /* Stack secondary controls above the stretched link so they remain independently clickable */
+      position: relative;
+      z-index: 1;
       transition: background 0.15s ease, color 0.15s ease;
     }
 
@@ -232,17 +242,6 @@
       .card:has(> :is(img, picture, svg))> :not(:is(img, picture, svg)) {
         grid-column: 2;
       }
-    }
-
-    /* --------------------------------------------------
-     CONTENT-BASED STYLING OVERRIDES (If media is absent)
-     -------------------------------------------------- */
-    /* Give text-only cards a distinct heading treatment. */
-    .card:not(:has(> :is(img, picture, svg))) > hgroup {
-      background: var(--text-main);
-      color: var(--bg-card);
-      padding: 0.75rem;
-      border-radius: 8px;
     }
 
     /* Presentation header styling */
@@ -297,7 +296,7 @@
           </hgroup>
           <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
           <footer>
-            <button>Favorite</button>
+            <button type="button">Favorite</button>
             <a href="#cart">Add to Cart</a>
           </footer>
         </article>
@@ -323,7 +322,7 @@
           </hgroup>
           <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
           <footer>
-            <button>Favorite</button>
+            <button type="button">Favorite</button>
             <a href="#cart">Add to Cart</a>
           </footer>
         </article>
@@ -349,7 +348,7 @@
           </hgroup>
           <p>Two perfectly poached organic eggs served on fresh toasted sourdough bread with microgreens.</p>
           <footer>
-            <button>Favorite</button>
+            <button type="button">Favorite</button>
             <a href="#cart">Add to Cart</a>
           </footer>
         </article>
@@ -374,7 +373,7 @@
           <p>Sourcing exclusively local, organic ingredients supports sustainable agriculture, and serving handcrafted
             meals cooked from scratch every single day.</p>
           <footer>
-            <button>Learn More</button>
+            <button type="button">Learn More</button>
           </footer>
         </article>
       </div>
