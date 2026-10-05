@@ -88,7 +88,7 @@ A `focusgroup="menu nomemory"` supplies the `menu` and `menuitem` roles, togethe
 
 ### Position the menu with CSS Anchor Positioning
 
-Use [CSS anchor positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_anchor_positioning) to tether the popover menu to its trigger button automatically. This avoids complex absolute coordinate calculation in JavaScript.
+Use CSS anchor positioning to tether the popover menu to its trigger button automatically. This avoids complex absolute coordinate calculation in JavaScript.
 
 ```css
 /* Define the anchor name on the trigger button */
