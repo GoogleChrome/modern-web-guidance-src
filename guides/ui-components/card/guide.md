@@ -198,9 +198,22 @@ Use radios for one choice and checkboxes for independent choices:
 </fieldset>
 ```
 
-Use a native `select` when the interaction is a select; do not represent its
-options as arbitrary card markup. Use a button when selecting a card performs an
-immediate action rather than setting form state.
+Style the selected option card with `:has(:checked)` using more than color alone
+(such as border thickness or font weight):
+
+```css
+.option-card:has(:checked) {
+  /* Pair any color change with non-color indicators (example border width and weight) so selection is never conveyed by color alone */
+  border-width: 2px;
+  font-weight: 600;
+}
+```
+
+When choices belong in a dropdown picker whose options are laid out as cards,
+use a native `<select>` with `appearance: base-select` and style `::picker(select)`
+and `<option>` elements rather than replacing the select with `<div>` cards; see
+{{ GUIDE_REF("custom-select-picker-layouts") }}. Use `<button>` elements when
+selecting a card triggers an immediate action rather than setting form state.
 
 ## Accessibility
 
