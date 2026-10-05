@@ -60,7 +60,7 @@ The naive approach leads to duplicated code:
 
 ## What to do instead
 
-A custom property encodes the result of the matching, then rules key on that property.
+Store the result of the combined filter on a custom property, then use container style queries to set rules based on that property.
 
 IMPORTANT: Due to how container queries work, this technique only works if we can set the custom property on an ancestor of any rules that must be matched.
 
