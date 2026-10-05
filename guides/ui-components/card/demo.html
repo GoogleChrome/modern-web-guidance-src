@@ -217,12 +217,13 @@
       /* Automatically shift to sidebar grid ONLY if an image/media element is present */
       .card:has(> :is(img, picture, svg)) {
         grid-template-columns: 140px 1fr;
+        grid-template-rows: auto 1fr auto;
         gap: 0.5rem 1.25rem;
       }
 
       .card:has(> :is(img, picture, svg))> :is(img, picture, svg) {
         grid-column: 1;
-        grid-row: 1 / span 10;
+        grid-row: 1 / -1;
         align-self: start;
         height: 100%;
         min-height: 140px;
