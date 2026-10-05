@@ -227,6 +227,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         },
         external: ["sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
         sourcemap: true,
+        sourcesContent: false,
         loader: { ".node": "file" },
         metafile: true,
         minify: true,
