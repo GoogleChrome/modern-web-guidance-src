@@ -50,6 +50,8 @@ Use `appearance: none` on the input and the established vendor-prefixed pseudo-e
 input[type="range"] {
   --slider-track-size: 0.5rem;
   --slider-thumb-size: 1.25rem;
+  --slider-track-radius: 999px;
+  --slider-thumb-radius: 50%;
   --slider-track-color: light-dark(#d9d9d9, #404040);
   --slider-fill-color: light-dark(#06c, #66b3ff);
   --slider-thumb-color: var(--slider-fill-color);
@@ -71,7 +73,7 @@ input[type="range"] {
 input[type="range"]::-webkit-slider-runnable-track {
   block-size: var(--slider-track-size);
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--slider-track-radius);
   background: linear-gradient(
     var(--slider-direction),
     var(--slider-fill-color) var(--slider-progress),
@@ -88,7 +90,7 @@ input[type="range"]::-webkit-slider-thumb {
     (var(--slider-track-size) - var(--slider-thumb-size)) / 2
   );
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--slider-thumb-radius);
   background: var(--slider-thumb-color);
 }
 
@@ -96,13 +98,13 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]::-moz-range-track {
   block-size: var(--slider-track-size);
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--slider-track-radius);
   background: var(--slider-track-color);
 }
 
 input[type="range"]::-moz-range-progress {
   block-size: var(--slider-track-size);
-  border-radius: 999px;
+  border-radius: var(--slider-track-radius);
   background: var(--slider-fill-color);
 }
 
@@ -110,7 +112,7 @@ input[type="range"]::-moz-range-thumb {
   inline-size: var(--slider-thumb-size);
   block-size: var(--slider-thumb-size);
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--slider-thumb-radius);
   background: var(--slider-thumb-color);
 }
 ```
