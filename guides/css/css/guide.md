@@ -270,5 +270,5 @@ See {{ GUIDE_REF('visual-effects') }} for look & feel enhancements such as conve
 See {{ GUIDE_REF('motion') }}. For rendering performance (`content-visibility`, containment), see {{ GUIDE_REF('performance') }}.
 
 ## 11. Generated content
-
 See {{ GUIDE_REF('accessible-generated-content') }} for adding decorative or supplementary content with CSS without breaking screen readers or copy-paste.
+
