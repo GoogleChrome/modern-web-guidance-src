@@ -13,7 +13,7 @@ guides:
 
 ## Overview
 
-A card groups one related piece of content or one choice. It is a visual pattern, not a fixed semantic or interaction model. The implementation must preserve the content's meaning, use the native interaction that matches its purpose, and remain usable when optional styling or layout enhancements are unavailable.
+A card groups one related piece of content or one choice. It is a visual pattern, not a fixed semantic or interaction model, so preserve the content's meaning and use the native interaction that matches its purpose.
 
 ## Guidelines
 
@@ -23,13 +23,11 @@ Choose the card's semantics from what the card itself represents:
 - one native link when the whole card is a single destination;
 - a labeled radio or checkbox, or an `option` in a native `select`, when the card is a choice.
 
-Keep media, title, supporting content, and actions in meaningful source order. Optional media, metadata, and actions must not make the remaining content ambiguous. Do not duplicate markup or use CSS `order` to contradict source order; see {{ GUIDE_REF("css-layout") }}.
+Keep media, title, supporting content, and actions in meaningful source order; don't use CSS `order` to contradict it (see {{ GUIDE_REF("css-layout") }}).
 
 ## Implementation
 
-Start with a complete stacked layout. Adapt the card to its allocated inline size, not the viewport, when it appears in grids, sidebars, or other variable-width layouts. A media card may place media beside its content when there is enough space; a card without media must remain complete without special markup.
-
-Put the query container on a wrapper around the card when the card's own layout needs to respond to that space. A card cannot query its own size. For the container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
+Put the query container on a wrapper around the card, because a card can't query its own size. For the container-query pattern, see {{ GUIDE_REF("size-aware-styling") }}.
 
 ```html
 <div class="card-container">
@@ -81,13 +79,9 @@ Put the query container on a wrapper around the card when the card's own layout 
 }
 ```
 
-The example shows a card with a primary destination and independent actions. A card may instead include a badge or metadata in its header, a hero image, or a footer containing a price and actions. Keep each region optional where the content allows it, and use layout rather than duplicated markup to arrange them.
-
-Constrain media to an intentional size or aspect ratio and avoid distortion, for example with `aspect-ratio` and `object-fit: cover`. An informative image needs an appropriate text alternative; decorative media should use an empty alternative. A hero image may be decorative when the adjacent title already communicates the same information.
+Constrain media to an intentional size or aspect ratio and avoid distortion, for example with `aspect-ratio` and `object-fit: cover`. An informative image needs an appropriate text alternative; decorative media should use an empty alternative.
 
 ### Align cards in a grid
-
-Let the parent grid control columns and gaps. Align corresponding regions, such as titles, descriptions, or actions, only when that improves comparison. Do not force equal heights when natural content height is more appropriate.
 
 When cards need shared internal tracks, `subgrid` can align them without changing source order:
 
@@ -126,24 +120,21 @@ When the card is one destination and has no independent actions, it may be one n
 </a>
 ```
 
-When a card has longer body copy or independent actions, do not wrap the whole card in `<a>` (which concatenates all inner text into the link's accessible name). Link the title to the primary destination, stretch its pointer hit area across the card with `::after`, and elevate secondary controls with `position: relative; z-index: 1` so each action remains independently operable:
+When a card has longer body copy or independent actions, do not wrap the whole card in `<a>`. Link the title to the primary destination, stretch its pointer hit area across the card with `::after`, and elevate secondary controls with `position: relative; z-index: 1` so each action remains independently operable:
 
 ```css
 .card {
-  /* Anchor the stretched primary link pseudo-element to the card bounds */
-  position: relative;
+  position: relative; /* Containing block for the stretched link */
 }
 
 .card h3 a::after {
-  /* Expand the heading link's pointer target across the entire card without wrapping body text in <a> */
-  content: "";
+  content: ""; /* Stretch the title link across the card */
   position: absolute;
   inset: 0;
 }
 
 .card footer :is(button, a) {
-  /* Stack secondary controls above the ::after overlay so they remain independently clickable */
-  position: relative;
+  position: relative; /* Keep secondary controls above the overlay */
   z-index: 1;
 }
 ```
@@ -178,6 +169,4 @@ When choices belong in a dropdown picker whose options are laid out as cards, us
 
 ## Accessibility
 
-Keep native links, buttons, and form controls keyboard-operable, with accessible names and visible focus indicators. Use `.card:has(:focus-visible)` to give the card a subtle focus ring for context, but never remove or replace the focused link or control's own `:focus-visible` indicator.
-
-Preserve the reading order when changing the visual layout. Do not make the card or its actions depend on hover, pointer input, color alone, or a visual icon without an accessible name. For related semantic, focus, and control guidance, see {{ GUIDE_REF("accessibility") }}.
+Keep native links, buttons, and form controls keyboard-operable, with accessible names and visible focus indicators. Use `.card:has(:focus-visible)` to give the card a subtle focus ring for context, but never remove or replace the focused link or control's own `:focus-visible` indicator. For related semantic, focus, and control guidance, see {{ GUIDE_REF("accessibility") }}.
