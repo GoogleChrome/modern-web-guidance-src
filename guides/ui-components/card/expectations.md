@@ -1,15 +1,10 @@
-- **MANDATORY**: A card representing independently understandable content uses an `article` containing a meaningful title, supporting content, and any related actions in reading order.
-- **MANDATORY**: A card's semantics match its purpose: destinations use links, actions use buttons or links, and choices use native form controls.
-- **MANDATORY**: A media card remains vertically stacked when its own container is narrow, regardless of the viewport width.
-- **MANDATORY**: When a media card's own container becomes wide enough, its media is displayed beside its title, supporting content, and actions.
-- **MANDATORY**: A card without media retains a complete, readable stacked layout at every container width.
-- **MANDATORY**: Card media has a stable displayed shape and crops without distortion.
-- **MANDATORY**: Informative card media has an appropriate text alternative; decorative media has an empty alternative.
-- **MANDATORY**: The card title is a link to its primary destination when the card has one.
-- **MANDATORY**: A card with independent actions does not place those actions inside a link.
-- **MANDATORY**: Secondary actions are separate native links or buttons and remain independently keyboard-focusable.
-- **MANDATORY**: Keyboard focus on an interactive card descendant gives the card a visible focus context without obscuring the focused control.
-- **MANDATORY**: Cards preserve meaningful source order when their layout changes.
-- **MANDATORY**: Cards with optional media, metadata, or actions remain understandable when those regions are absent.
-- **OPTIONAL**: Cards in a grid align corresponding regions when that improves comparison, using layout techniques such as `subgrid` where appropriate.
-- **OPTIONAL**: A text-only card has an additional visual treatment when that distinction conveys useful content meaning.
+- Each card is an `<article>` containing a heading (`<h1>`–`<h6>`) and supporting body text.
+- Each card's ancestor wrapper establishes an inline-size query container (`container-type: inline-size`).
+- A card with media stacks its media above its text content in a single column when its container is narrow, regardless of viewport width.
+- A card with media places its media in a side column beside its text content when its container is wide.
+- A card without media renders in a single-column layout at both narrow and wide container widths.
+- Card images use `object-fit: cover` (or `contain`) so media does not distort across container sizes.
+- Informative card images have a non-empty `alt` attribute.
+- When a card has both a primary destination and secondary actions, the heading contains the primary `<a>` link and secondary actions are separate `<button>` or `<a>` controls not nested inside another interactive element.
+- Focusing an interactive control inside a card displays a visible focus indicator on the focused control itself and a focus indicator on the parent card.
+- The visual order of card regions matches their DOM reading order across container sizes.
