@@ -836,6 +836,8 @@ window.__featuresMapping = {
     "color-scheme",
     "prefers-color-scheme",
     "light-dark",
+    "light-dark-image",
+    "image-function",
     "accent-color"
   ],
   "element-shape": [
