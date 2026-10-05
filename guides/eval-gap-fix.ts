@@ -4,8 +4,7 @@
  * Works through open `missing-evals` issues filed by `eval-gap-watch.ts`. For
  * each guide without an open `gd pr` PR or a leftover `gd-dev/` branch, runs
  * `gd dev`, opens a PR with `gd pr`, then returns to `main` and deletes the
- * local branch. Discipline guides are skipped. eval-gap-watch closes the issue
- * once the evals land.
+ * local branch. eval-gap-watch closes the issue once the evals land.
  *
  * Usage: gd dev-gap [--dry-run] [--limit <n>]
  */
@@ -72,7 +71,6 @@ export function planFixes(
 
     const inv = guidesByPath.get(marker.guidePath);
     if (!inv) { skip('guide not found'); continue; }
-    if (inv.isDisciplineGuide) { skip('discipline guide'); continue; }
     if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) { skip('guide no longer needs evals'); continue; }
 
     // `gd pr` titles its PR the same way whichever branch it runs from.

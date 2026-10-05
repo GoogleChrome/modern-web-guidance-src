@@ -39,10 +39,10 @@ describe('planFixes', () => {
     assert.deepStrictEqual(skipped, []);
   });
 
-  it('skips discipline guides', () => {
+  it('includes discipline guides', () => {
     const { toFix, skipped } = planFixes([issueFor('css', 1)], [], [makeGuide('css', { isDisciplineGuide: true })], new Set());
-    assert.deepStrictEqual(toFix, []);
-    assert.strictEqual(skipped[0].reason, 'discipline guide');
+    assert.deepStrictEqual(toFix.map(g => [g.issueNumber, g.guidePath]), [[1, 'guides/css/css']]);
+    assert.deepStrictEqual(skipped, []);
   });
 
   it('skips guides with an open gd pr PR, matching the exact title', () => {

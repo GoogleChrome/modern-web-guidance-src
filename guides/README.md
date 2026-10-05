@@ -65,7 +65,7 @@ gd dev-gap             # process all of them
 
 Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens a PR from a fresh `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`. The issue closes on its own once the PR merges.
 
-It skips discipline guides, guides that already have an open `grader updates: <guide-name>` PR, and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` (delete the branch to retry).
+It skips guides that already have an open `grader updates: <guide-name>` PR and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` (delete the branch to retry).
 
 ### Checking Status: `gd audit`
 
