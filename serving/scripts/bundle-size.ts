@@ -38,7 +38,79 @@ for (let i = 0; i < B64_CHARS.length; i++) {
   B64_MAP[B64_CHARS.charCodeAt(i)] = i;
 }
 
-export function getPackageName(source: string): string {
+let bareNameToScopedMap: Map<string, string[]> | null = null;
+
+export function buildScopedPackageMap(scopedPackages: Iterable<string>): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const pkg of scopedPackages) {
+    if (!pkg.startsWith("@")) continue;
+    const slashIdx = pkg.indexOf("/");
+    if (slashIdx === -1) continue;
+    const bare = pkg.slice(slashIdx + 1);
+    const list = map.get(bare) || [];
+    if (!list.includes(pkg)) {
+      list.push(pkg);
+    }
+    map.set(bare, list);
+  }
+  return map;
+}
+
+export function getBareNameToScopedMap(): Map<string, string[]> {
+  if (bareNameToScopedMap) return bareNameToScopedMap;
+
+  const scopedPackages = new Set<string>();
+
+  function addFromPkg(pkgPath: string) {
+    try {
+      if (!fs.existsSync(pkgPath)) return;
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+      for (const dep of Object.keys(pkg.dependencies || {})) {
+        if (dep.startsWith("@")) scopedPackages.add(dep);
+      }
+      for (const dep of Object.keys(pkg.devDependencies || {})) {
+        if (dep.startsWith("@")) scopedPackages.add(dep);
+      }
+    } catch {}
+  }
+
+  addFromPkg(path.resolve(import.meta.dirname, "../package.json"));
+  addFromPkg(path.resolve(import.meta.dirname, "../../package.json"));
+
+  for (const nmBase of ["../../node_modules/.pnpm", "../node_modules/.pnpm"]) {
+    const pnpmDir = path.resolve(import.meta.dirname, nmBase);
+    try {
+      if (fs.existsSync(pnpmDir)) {
+        for (const entry of fs.readdirSync(pnpmDir)) {
+          if (entry.startsWith("@")) {
+            const atIdx = entry.indexOf("@", 1);
+            const pkgName = atIdx !== -1 ? entry.slice(0, atIdx) : entry;
+            scopedPackages.add(pkgName.replace("+", "/"));
+          }
+        }
+      }
+    } catch {}
+  }
+
+  bareNameToScopedMap = buildScopedPackageMap(scopedPackages);
+  return bareNameToScopedMap;
+}
+
+export function resolveBarePackageName(bareName: string, customMap?: Map<string, string[]>): string {
+  const map = customMap || getBareNameToScopedMap();
+  const matches = map.get(bareName) || [];
+  if (matches.length === 1) {
+    return matches[0]!;
+  }
+  if (matches.length === 0) {
+    throw new Error(`Unmatched bare package name in sourcemap: "${bareName}"`);
+  }
+  throw new Error(
+    `Ambiguous bare package name in sourcemap: "${bareName}" matches multiple scoped packages: ${matches.join(", ")}`
+  );
+}
+
+export function getPackageName(source: string, customMap?: Map<string, string[]>): string {
   if (!source.includes("node_modules")) {
     return "serving/lib";
   }
@@ -53,9 +125,10 @@ export function getPackageName(source: string): string {
       return parts[0].startsWith("@") ? `${parts[0]}/${parts[1]}` : parts[0];
     }
     const top = afterPnpm.split("/")[0];
-    if (top === "tfjs-core") return "@tensorflow/tfjs-core";
-    if (top === "tfjs-backend-cpu") return "@tensorflow/tfjs-backend-cpu";
     const atIdx = top.indexOf("@", 1);
+    if (atIdx === -1 && !top.startsWith("@")) {
+      return resolveBarePackageName(top, customMap);
+    }
     const raw = atIdx !== -1 ? top.slice(0, atIdx) : top;
     return raw.replace("+", "/");
   }
