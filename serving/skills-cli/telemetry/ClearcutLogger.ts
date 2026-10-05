@@ -14,6 +14,7 @@ import {
   OsType,
 } from './types.ts';
 import { getVersion } from '../../lib/version.ts';
+import { determineAgent } from './detect-agent.ts';
 
 function isTelemetryEnabled(): boolean {
   const optOutSetting = process.env.DISABLE_TELEMETRY?.toLowerCase();
@@ -45,16 +46,19 @@ export function bucketizeLatency(latencyMs: number): number {
 export class ClearcutLogger {
   #watchdog: WatchdogClient | null = null;
   #skillVersion?: string;
+  #agent?: string;
 
   constructor(options: {
     clearcutEndpoint?: string;
     clearcutIncludePidHeader?: boolean;
     skillVersion?: string | null;
+    agent?: string | null;
   } = {}) {
     if (!isTelemetryEnabled()) {
       return;
     }
     this.#skillVersion = options.skillVersion ?? undefined;
+    this.#agent = options.agent ?? determineAgent().agent?.name;
     this.#watchdog = new WatchdogClient({
       clearcutEndpoint: options.clearcutEndpoint,
       clearcutIncludePidHeader: options.clearcutIncludePidHeader,
@@ -74,6 +78,7 @@ export class ClearcutLogger {
       os: detectOS(),
       version: getVersion(import.meta.dirname),
       skill_version: this.#skillVersion,
+      agent: this.#agent,
       latency_ms: bucketizeLatency(latencyMs),
       success,
     };
@@ -96,6 +101,7 @@ export class ClearcutLogger {
       os: detectOS(),
       version: getVersion(import.meta.dirname),
       skill_version: this.#skillVersion,
+      agent: this.#agent,
       latency_ms: bucketizeLatency(latencyMs),
       success,
     };
@@ -126,6 +132,7 @@ export class ClearcutLogger {
       os: detectOS(),
       version: getVersion(import.meta.dirname),
       skill_version: this.#skillVersion,
+      agent: this.#agent,
       latency_ms: bucketizeLatency(latencyMs),
       success,
     };
