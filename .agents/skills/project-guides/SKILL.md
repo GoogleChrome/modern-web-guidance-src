@@ -89,6 +89,7 @@ If the primary implementation uses features that are not Baseline Widely Availab
   * Prefer `FEATURE_FALLBACKS` so that fallbacks can be centralized. If there is no `features/<feature-id>.md`, create it.
   * Use `BASELINE_STATUS` directly when you need the BCD-key second argument: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
   * Use `BASELINE_STATUS` directly when the fallback strategy is too specific to the use case or the feature is only used in one guide, so creating a separate `features/<feature-id>.md` would be premature.
+* **Baseline Widely Available Features:** While fallback strategies are not required for Baseline Widely Available features, you **SHOULD** include `{{ BASELINE_STATUS("feature-id") }}` for recent or commonly misjudged Baseline Widely Available features (such as `subgrid` or `:has()`). This affirmatively reassures coding agents whose training data might predate wide availability that the feature is universally supported without needing defensive fallbacks.
 * **Placement:** Use separate subsections with their own macros if multiple features are used. **DO NOT** use these macros outside the fallback section.
 
 #### Polyfill Guidelines
