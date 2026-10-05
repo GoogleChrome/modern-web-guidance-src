@@ -97,6 +97,9 @@ window.__featuresMapping = {
     "min-max-clamp",
     "viewport-units"
   ],
+  "selector-atrule-combinations": [
+    "container-style-queries"
+  ],
   "size-aware-styling": [
     "container-queries"
   ],
