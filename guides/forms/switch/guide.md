@@ -23,12 +23,7 @@ Add the boolean `switch` attribute to a standard checkbox input:
 ```html
 <label class="switch">
   Enable notifications
-  <input
-    class="switch__control"
-    id="notifications"
-    type="checkbox"
-    switch
-  >
+  <input class="switch__control" id="notifications" type="checkbox" switch>
 </label>
 ```
 
