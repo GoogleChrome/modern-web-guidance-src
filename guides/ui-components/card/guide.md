@@ -4,6 +4,7 @@ description: "Build a card component that adapts its presentation to its own ava
 web-feature-ids:
   - has
   - container-queries
+  - subgrid
 guides:
   - size-aware-styling
   - content-based-styling
