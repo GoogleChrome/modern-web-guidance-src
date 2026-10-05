@@ -57,5 +57,3 @@ When `moveBefore()` is unavailable, use `insertBefore()` as a fallback while pre
 {{ FEATURE_FALLBACKS("pointer-events-api") }}
 
 {{ FEATURE_FALLBACKS("user-select") }}
-
-{{ FEATURE_FALLBACKS("reading-flow") }}
