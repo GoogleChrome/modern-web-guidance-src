@@ -76,14 +76,16 @@ function getTransformersVersion(): string {
       const pkgPath = path.join(dir, "package.json");
       if (fs.existsSync(pkgPath)) {
         const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-        if (pkg.name === "@huggingface/transformers") {
+        if (pkg.name === "@huggingface/transformers" && typeof pkg.version === "string") {
           return pkg.version;
         }
       }
       dir = path.dirname(dir);
     }
-  } catch {}
-  return "unknown";
+    throw new Error("Could not find package.json with name '@huggingface/transformers'");
+  } catch (err) {
+    throw new Error(`Failed to extract @huggingface/transformers version for pipeline hash: ${(err as Error).message}`);
+  }
 }
 
 async function computePipelineHash(

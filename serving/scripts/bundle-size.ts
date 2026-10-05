@@ -314,10 +314,18 @@ export function measureTarget(targetPath: string): { snapshot: BundleSnapshot; c
 
   if (stat.isFile() && (resolved.endsWith(".tgz") || resolved.endsWith(".tar.gz"))) {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-size-"));
-    execFileSync("tar", ["-xzf", resolved, "-C", tmpDir]);
-    const pkgDir = path.join(tmpDir, "package");
-    const dirToMeasure = fs.existsSync(pkgDir) ? pkgDir : tmpDir;
-    const snapshot = measureDirectory(dirToMeasure);
+    let snapshot: BundleSnapshot;
+    try {
+      execFileSync("tar", ["-xzf", resolved, "-C", tmpDir]);
+      const pkgDir = path.join(tmpDir, "package");
+      const dirToMeasure = fs.existsSync(pkgDir) ? pkgDir : tmpDir;
+      snapshot = measureDirectory(dirToMeasure);
+    } catch (err) {
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch {}
+      throw err;
+    }
     // When measuring a .tgz directly, record the packed .tgz file size
     if (!snapshot.npmPack) {
       snapshot.npmPack = {

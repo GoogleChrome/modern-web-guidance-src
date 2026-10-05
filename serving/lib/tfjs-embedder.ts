@@ -17,6 +17,8 @@ function createNodeFileSystemIOHandler(modelJsonPath: string) {
       const weightSpecs: any[] = [];
 
       // NOTE: Simplified assuming 1 shard for MiniLM (group1-shard1of1.bin).
+      // If we go back to multiple shards in the future, restore the loops:
+      // for (const manifest of weightsManifest) { weightSpecs.push(...manifest.weights); for (const shardPath of manifest.paths) shardPromises.push(fs.promises.readFile(path.resolve(dir, shardPath))); }
       const manifest = weightsManifest[0];
       weightSpecs.push(...manifest.weights);
       const shardPath = manifest.paths[0];
@@ -37,6 +39,7 @@ export class TfjsEmbedder {
   private model: GraphModel | null = null;
   private tokenizer: Tokenizer | null = null;
   private modelMaxLength = 512;
+  private sepTokenId = 102;
   private initPromise: Promise<void> | null = null;
   public modelName = "tfjs:all-MiniLM-L6-v2";
 
@@ -95,8 +98,20 @@ export class TfjsEmbedder {
       const tokJsonGz = fs.readFileSync(tokGzPath);
       const tokJson = JSON.parse(zlib.gunzipSync(tokJsonGz).toString("utf8"));
       const tokCfg = JSON.parse(fs.readFileSync(tokCfgPath, "utf8"));
-      this.modelMaxLength = tokCfg.model_max_length ?? 512;
+      if (typeof tokCfg.model_max_length !== "number") {
+        throw new Error(`Tokenizer config missing valid numeric model_max_length: ${tokCfgPath}`);
+      }
+      this.modelMaxLength = tokCfg.model_max_length;
       this.tokenizer = new Tokenizer(tokJson, tokCfg);
+
+      if (typeof tokCfg.sep_token !== "string") {
+        throw new Error(`Tokenizer config missing sep_token string: ${tokCfgPath}`);
+      }
+      const sepTokenId = this.tokenizer.token_to_id(tokCfg.sep_token);
+      if (typeof sepTokenId !== "number") {
+        throw new Error(`Failed to resolve sep_token "${tokCfg.sep_token}" to token ID`);
+      }
+      this.sepTokenId = sepTokenId;
     })();
 
     try {
@@ -119,7 +134,7 @@ export class TfjsEmbedder {
     let inputIdsData = enc.ids;
     let attentionMaskData = enc.attention_mask;
     if (inputIdsData.length > maxLen) {
-      inputIdsData = [...inputIdsData.slice(0, maxLen - 1), 102];
+      inputIdsData = [...inputIdsData.slice(0, maxLen - 1), this.sepTokenId];
       attentionMaskData = attentionMaskData.slice(0, maxLen);
     }
     const tokenTypeIdsData = Array.from({ length: inputIdsData.length }, () => 0);
