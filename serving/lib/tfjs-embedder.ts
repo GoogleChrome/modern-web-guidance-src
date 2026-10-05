@@ -1,9 +1,10 @@
-import { setBackend, tensor2d, Tensor } from "@tensorflow/tfjs-core";
-import { loadGraphModel, GraphModel } from "@tensorflow/tfjs-converter";
-import { BertTokenizer } from "@huggingface/transformers";
+import { setBackend, tensor2d, type Tensor } from "@tensorflow/tfjs-core";
+import { loadGraphModel, type GraphModel } from "@tensorflow/tfjs-converter";
+import { Tokenizer } from "@huggingface/tokenizers";
 import "./tfjs-kernels.ts";
-import path from "path";
-import fs from "fs";
+import path from "node:path";
+import fs from "node:fs";
+import zlib from "node:zlib";
 
 // Custom IOHandler for loading TFJS models from disk in Node without fetch
 function createNodeFileSystemIOHandler(modelJsonPath: string) {
@@ -16,8 +17,6 @@ function createNodeFileSystemIOHandler(modelJsonPath: string) {
       const weightSpecs: any[] = [];
 
       // NOTE: Simplified assuming 1 shard for MiniLM (group1-shard1of1.bin).
-      // If we go back to multiple shards in the future, restore the loops:
-      // for (const manifest of weightsManifest) { weightSpecs.push(...manifest.weights); for (const shardPath of manifest.paths) shardPromises.push(fs.promises.readFile(path.resolve(dir, shardPath))); }
       const manifest = weightsManifest[0];
       weightSpecs.push(...manifest.weights);
       const shardPath = manifest.paths[0];
@@ -34,9 +33,11 @@ function createNodeFileSystemIOHandler(modelJsonPath: string) {
 }
 
 export class TfjsEmbedder {
-  private static instance: TfjsEmbedder;
+  private static instance: TfjsEmbedder | null = null;
   private model: GraphModel | null = null;
-  private tokenizer: any = null;
+  private tokenizer: Tokenizer | null = null;
+  private modelMaxLength = 512;
+  private initPromise: Promise<void> | null = null;
   public modelName = "tfjs:all-MiniLM-L6-v2";
 
   private constructor() {}
@@ -48,87 +49,111 @@ export class TfjsEmbedder {
     return TfjsEmbedder.instance;
   }
 
-  public static clearInstance() {
-    TfjsEmbedder.instance = null as any;
+  public static clearInstance(): void {
+    if (TfjsEmbedder.instance) {
+      TfjsEmbedder.instance.shutdown();
+      TfjsEmbedder.instance = null;
+    }
   }
 
-  public async init() {
-    if (this.model) return;
+  public async init(): Promise<void> {
+    if (this.model && this.tokenizer) return;
+    if (this.initPromise) return this.initPromise;
 
-    const benchmarkDir = path.resolve(import.meta.dirname);
-    const modelPath = path.resolve(benchmarkDir, "tfjs_model_minilm/model.json");
+    this.initPromise = (async () => {
+      const benchmarkDir = path.resolve(import.meta.dirname);
+      const modelPath = path.resolve(benchmarkDir, "tfjs_model_minilm/model.json");
+      const tokGzPath = path.resolve(benchmarkDir, "tfjs_model_minilm/tokenizer.json.gz");
+      const tokCfgPath = path.resolve(benchmarkDir, "tfjs_model_minilm/tokenizer_config.json");
+
+      if (!fs.existsSync(modelPath)) {
+        throw new Error(`TFJS model file not found: ${modelPath}`);
+      }
+      if (!fs.existsSync(tokGzPath)) {
+        throw new Error(`Tokenizer file not found: ${tokGzPath}`);
+      }
+      if (!fs.existsSync(tokCfgPath)) {
+        throw new Error(`Tokenizer config not found: ${tokCfgPath}`);
+      }
+
+      const ioHandler = createNodeFileSystemIOHandler(modelPath);
+
+      // Silence TFJS console warning about node backend
+      const oldLog = console.log;
+      const oldWarn = console.warn;
+      console.log = () => {};
+      console.warn = () => {};
+
+      try {
+        await setBackend("cpu");
+        this.model = await loadGraphModel(ioHandler as any);
+      } finally {
+        console.log = oldLog;
+        console.warn = oldWarn;
+      }
+
+      const tokJsonGz = fs.readFileSync(tokGzPath);
+      const tokJson = JSON.parse(zlib.gunzipSync(tokJsonGz).toString("utf8"));
+      const tokCfg = JSON.parse(fs.readFileSync(tokCfgPath, "utf8"));
+      this.modelMaxLength = tokCfg.model_max_length ?? 512;
+      this.tokenizer = new Tokenizer(tokJson, tokCfg);
+    })();
 
     try {
-        const ioHandler = createNodeFileSystemIOHandler(modelPath);
-
-        // Silence TFJS console warning about node backend
-        const oldLog = console.log;
-        const oldWarn = console.warn;
-        console.log = () => {};
-        console.warn = () => {};
-
-        try {
-            await setBackend('cpu');
-            this.model = await loadGraphModel(ioHandler as any);
-        } finally {
-            console.log = oldLog;
-            console.warn = oldWarn;
-        }
-
-        // Use local_files_only first to avoid a network request to huggingface.
-        try {
-            this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
-        } catch (e) {
-            this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
-        }
-    } catch (e) {
-        console.error("Failed to load TFJS model:", e);
-        throw e;
+      await this.initPromise;
+    } finally {
+      this.initPromise = null;
     }
   }
 
   public async embed(text: string): Promise<number[]> {
     if (!this.model || !this.tokenizer) {
-        await this.init();
+      await this.init();
     }
     if (!this.model || !this.tokenizer) {
-        throw new Error("Failed to initialize TFJS Embedder");
+      throw new Error("Failed to initialize TFJS Embedder");
     }
 
-    const tokenized = await this.tokenizer(text, { padding: true, truncation: true });
+    const enc = this.tokenizer.encode(text);
+    const maxLen = this.modelMaxLength;
+    let inputIdsData = enc.ids;
+    let attentionMaskData = enc.attention_mask;
+    if (inputIdsData.length > maxLen) {
+      inputIdsData = [...inputIdsData.slice(0, maxLen - 1), 102];
+      attentionMaskData = attentionMaskData.slice(0, maxLen);
+    }
+    const tokenTypeIdsData = new Array(inputIdsData.length).fill(0);
 
-    // Extract data and convert to numbers (handling BigInt if present)
-    const extractData = (tensor: any) => {
-        const data = tensor.data || tensor;
-        return Array.from(data).map((x: any) => Number(x));
-    };
+    const inputIds = tensor2d([inputIdsData], undefined, "int32");
+    const attentionMask = tensor2d([attentionMaskData], undefined, "int32");
+    const tokenTypeIds = tensor2d([tokenTypeIdsData], undefined, "int32");
+    let result: Tensor | null = null;
 
-    const inputIdsData = extractData(tokenized.input_ids);
-    const attentionMaskData = extractData(tokenized.attention_mask);
-    const tokenTypeIdsData = extractData(tokenized.token_type_ids);
+    try {
+      result = this.model.predict({
+        input_ids: inputIds,
+        attention_mask: attentionMask,
+        token_type_ids: tokenTypeIds
+      }) as Tensor;
 
-    const inputIds = tensor2d([inputIdsData], undefined, 'int32');
-    const attentionMask = tensor2d([attentionMaskData], undefined, 'int32');
-    const tokenTypeIds = tensor2d([tokenTypeIdsData], undefined, 'int32');
-
-    const result = this.model.predict({
-        "input_ids": inputIds,
-        "attention_mask": attentionMask,
-        "token_type_ids": tokenTypeIds
-    }) as Tensor;
-
-    const data = await result.data();
-
-    // Cleanup tensors
-    inputIds.dispose();
-    attentionMask.dispose();
-    tokenTypeIds.dispose();
-    result.dispose();
-
-    return Array.from(data);
+      const data = await result.data();
+      return Array.from(data);
+    } finally {
+      inputIds.dispose();
+      attentionMask.dispose();
+      tokenTypeIds.dispose();
+      if (result) {
+        result.dispose();
+      }
+    }
   }
 
-  public shutdown() {
-    // No-op: we use custom IO handler instead of local server now
+  public shutdown(): void {
+    if (this.model) {
+      this.model.dispose();
+      this.model = null;
+    }
+    this.tokenizer = null;
+    this.initPromise = null;
   }
 }

@@ -208,7 +208,12 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
           const stat = fs.statSync(src);
           if (stat.isDirectory()) return true;
           const basename = path.basename(src);
-          return basename === "model.json" || basename.startsWith("group1-shard");
+          return (
+            basename === "model.json" ||
+            basename.startsWith("group1-shard") ||
+            basename === "tokenizer.json.gz" ||
+            basename === "tokenizer_config.json"
+          );
         }
       });
     }
@@ -231,15 +236,6 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         loader: { ".node": "file" },
         metafile: true,
         minify: true,
-        alias: {
-          // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
-          "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
-          // We leverage Transformers.js only for tokenization. But it is a large dependency and
-          // tries to do a lot more, including loading native dependencies (onnxruntime-node) that
-          // we have no use for. We use this dummy shim to ensure we can use the library without
-          // pulling in native binaries.
-          "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
-        },
         plugins: [{
           // TFJS deep imports fail in pure Node ESM because they lack extensions.
           // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).

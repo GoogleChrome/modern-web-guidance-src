@@ -7,6 +7,7 @@ This directory contains the `all-MiniLM-L6-v2` model converted to TensorFlow.js 
 - **Format**: TensorFlow.js Graph Model, single shard (`group1-shard1of1.bin`, ~22.5 MB). The loader in [`tfjs-embedder.ts`](../tfjs-embedder.ts) assumes exactly one shard.
 - **Quantization**: 8-bit (`--quantization_bytes=1`). The 149 float32 weights are stored as `uint8` on disk and dequantized to float32 at load time; the int32 weights are unquantized. This took the payload from ~90 MB to ~22.5 MB with no change in RAG MRR (see [PR #528](https://github.com/GoogleChrome/guidance/pull/528)).
 - **Embedded Operations**: The graph includes **Mean Pooling** and **L2 Normalization** layers, so the output tensor is the final normalized embedding vector.
+- **Tokenizer**: Vendored `tokenizer.json.gz` (gzipped) and `tokenizer_config.json` from `Xenova/all-MiniLM-L6-v2` at pinned commit `751bff37182d3f1213fa05d7196b954e230abad9`. Loaded at runtime via `@huggingface/tokenizers` directly from disk with zero network requests.
 - **Kernels**: The production bundle registers only the CPU kernels this graph uses ([`tfjs-kernels-precise.ts`](../tfjs-kernels-precise.ts)). If a regenerated graph uses a new op, add its kernel there or the bundled CLI will fail at runtime (unbundled runs load every kernel and won't catch it).
 
 ## How to Recreate

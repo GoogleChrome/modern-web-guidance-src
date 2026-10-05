@@ -162,6 +162,9 @@ importers:
 
   serving:
     dependencies:
+      '@huggingface/tokenizers':
+        specifier: ^0.2.0
+        version: 0.2.0
       '@huggingface/transformers':
         specifier: ^3.8.1
         version: 3.8.1
@@ -561,6 +564,9 @@ packages:
   '@huggingface/jinja@0.5.5':
     resolution: {integrity: sha512-xRlzazC+QZwr6z4ixEqYHo9fgwhTZ3xNSdljlKfUFGZSdlvt166DljRELFUfFytlYOYvo3vTisA/AFOuOAzFQQ==}
     engines: {node: '>=18'}
+
+  '@huggingface/tokenizers@0.2.0':
+    resolution: {integrity: sha512-LidMHe1FpcSYH4vcSjXooda34pC0M8m1gmDOv7SQi6Iv+ib1zX7J3sHBCC9/3FPCkn2k1b55FneVqMRxrr99pg==}
 
   '@huggingface/transformers@3.8.1':
     resolution: {integrity: sha512-tsTk4zVjImqdqjS8/AOZg2yNLd1z9S5v+7oUPpXaasDRwEDhB+xnglK1k5cad26lL5/ZIaeREgWWy0bs9y9pPA==}
@@ -3833,6 +3839,8 @@ snapshots:
       yargs: 17.7.2
 
   '@huggingface/jinja@0.5.5': {}
+
+  '@huggingface/tokenizers@0.2.0': {}
 
   '@huggingface/transformers@3.8.1':
     dependencies:

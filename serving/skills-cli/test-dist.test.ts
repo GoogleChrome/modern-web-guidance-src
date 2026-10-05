@@ -250,4 +250,37 @@ test.skip('THIRD_PARTY_NOTICES validation', async () => {
   assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
 });
 
+test('packaged dist contains tokenizer files and no .cache', async () => {
+  const packJson = execSync('npm pack --dry-run --json', { encoding: 'utf8', cwd: STAGING_DIR });
+  const parsed = JSON.parse(packJson);
+  const pkgInfo = Array.isArray(parsed) ? parsed[0] : parsed;
+  const paths: string[] = pkgInfo.files.map((f: { path: string }) => f.path);
+
+  // Must not have skills/.cache
+  const cacheFiles = paths.filter((p: string) => p.includes('.cache'));
+  assert.strictEqual(cacheFiles.length, 0, `Expected 0 .cache files in pack, found: ${cacheFiles.join(', ')}`);
+
+  // Must have tokenizer files
+  assert.ok(
+    paths.some((p: string) => p.endsWith('tfjs_model_minilm/tokenizer.json.gz')),
+    'Pack must contain tokenizer.json.gz'
+  );
+  assert.ok(
+    paths.some((p: string) => p.endsWith('tfjs_model_minilm/tokenizer_config.json')),
+    'Pack must contain tokenizer_config.json'
+  );
+});
+
+test('search operates strictly offline with zero socket or fetch calls', async () => {
+  const searchOut = execSync(`node --input-type=module -e '
+    import { Socket } from "node:net";
+    Socket.prototype.connect = function() { throw new Error("Network forbidden during offline search"); };
+    globalThis.fetch = () => { throw new Error("Fetch forbidden during offline search"); };
+    const { searchUseCases } = await import("./dist/skills-cli/skills/modern-web-guidance/search.mjs");
+    const res = await searchUseCases("address form", 2);
+    console.log(JSON.stringify(res));
+  '`, { encoding: 'utf8', cwd: ROOT_DIR });
+  assertSearchResults(searchOut);
+});
+
 

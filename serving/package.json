@@ -28,6 +28,7 @@
     "plot:serve": "npx serve benchmarks/data"
   },
   "dependencies": {
+    "@huggingface/tokenizers": "^0.2.0",
     "@huggingface/transformers": "^3.8.1",
     "@mdn/browser-compat-data": "^7.3.13",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
