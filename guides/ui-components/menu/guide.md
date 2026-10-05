@@ -180,7 +180,7 @@ Automated checks cannot verify the whole interaction contract. Test each demo wi
 5. Confirm Tab leaves the menu, and closing never leaves focus on hidden content.
 6. In VoiceOver, test both Control + Option navigation and keyboard interaction. In NVDA, test browse mode and focus mode; pressing Enter on the menu trigger should enter the interactive menu. Each item should be announced once with its name and menu-item role, not once as a button and again as a separate text node.
 
-These checks complement [WCAG 2.2 Keyboard](https://www.w3.org/WAI/WCAG22/Understanding/keyboard), [Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order), [Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible), and [Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value). WCAG requires keyboard operability and understandable focus management; it does not require arrow keys for every navigation component.
+These checks complement WCAG 2.2 criteria for keyboard operability, focus order, focus visibility, and accessible names. WCAG requires keyboard operability and understandable focus management; it does not require arrow keys for every navigation component.
 
 ## Progressive enhancement and fallbacks
 
