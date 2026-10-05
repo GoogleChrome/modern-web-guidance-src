@@ -62,20 +62,20 @@ Declarative popover targeting makes the trigger the popover source and causes th
 
 ---
 
-## 5. Why the Guide Retains `focusgroup="menu nomemory"` but Implements a Local Fallback
+## 5. Why the Guide Retains `focusgroup="menu no-memory"` but Implements a Local Fallback
 
 ### Context in `guide.md`
-The guide advocates retaining the native `focusgroup="menu nomemory"` attribute in the HTML markup as the progressive enhancement hook, but utilizing a local capture-phase keyboard listener as a fallback.
+The guide advocates retaining the native `focusgroup="menu no-memory"` attribute in the HTML markup as the progressive enhancement hook, but utilizing a local capture-phase keyboard listener as a fallback.
 
 ### Architectural Rationale
 While native browser support for `focusgroup` is emerging, the existing [Microsoft Focusgroup Polyfill](https://github.com/microsoft/polyfills/tree/main/packages/focusgroup) is highly verbose and introduces:
 1. **Memory Leaks:** It leaks element and event-listener ownership references when DOM elements are dynamically detached.
 2. **Viewport Scrolling:** It fails to cleanly call `preventDefault()` in older Safari engines, causing arrow presses to simultaneously scroll the parent viewport.
 
-By advising a clean HTML markup declaration (`focusgroup="menu nomemory"`) coupled with a small, capture-phase progressive enhancement script, the guide allows the component to:
+By advising a clean HTML markup declaration (`focusgroup="menu no-memory"`) coupled with a small, capture-phase progressive enhancement script, the guide allows the component to:
 - Act as an immediate fallback for engines without native support (cleanly calling `preventDefault` and preventing Safari viewport scrolling).
 - Upgrade automatically to native browser-level focusgroup handling once support matures, without requiring any alterations to the markup.
-- Use `nomemory` to opt out of restoring the last focused item when a menu reopens; focusgroup also provides related configuration tokens for wrapping and direction.
+- Use `no-memory` to opt out of restoring the last focused item when a menu reopens; focusgroup also provides related configuration tokens for wrapping and direction.
 - Avoid the overhead and memory overhead associated with standard external polyfill scripts.
 
 - **Spec Explainer:** Refer to the [Open UI Focusgroup Explainer](https://open-ui.org/components/scoped-focusgroup.explainer/) for the standard progressive-enhancement target attributes.

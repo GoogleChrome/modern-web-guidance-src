@@ -1,15 +1,30 @@
 # Menu expectations
 
-Each item is an observable expectation for the menu demos. Keep these focused on agreed menu behaviour; implementation rationale, visual suggestions, and general guide-quality checks belong elsewhere.
-
-- When native `focusgroup` is supported, the demo uses it for menu keyboard navigation.
-- When native `focusgroup` is unsupported, feature detection enables the keyboard-navigation fallback.
-- Without native `focusgroup`, the menu and its commands expose menu and menu-item semantics to assistive technology.
-- Focusing a top-level trigger may preview its menu without moving focus from the trigger.
-- A previewed menu exposes `aria-expanded="true"` on its trigger and does not present a menu item as focused.
-- Pressing the relevant arrow key from a preview moves focus into the menu.
-- Pressing Enter or Space while the menu is only previewed dismisses the preview without activating a command.
-- Opening a menu by keyboard moves focus immediately to its first enabled item; there is no 250 ms delay.
-- During the immediate focus transition, the trigger is temporarily hidden from assistive technology for one frame, and `aria-hidden` is then removed.
-- In an open top-level menu, Left and Right Arrow follow the APG menubar pattern by moving to and opening the adjacent menu.
-- Each menu trigger's `aria-expanded` value reflects whether its menu is open or previewed.
+- Each menu list has `focusgroup="menu no-memory"` on an element inside its popover, not on the popover element.
+- Each trigger is a button with `aria-haspopup="menu"`.
+- Focusing a top-level trigger shows its menu and leaves focus on the trigger.
+- A previewed trigger has `aria-expanded="true"`.
+- A previewed menu does not show a menu item as focused.
+- Pressing Enter while a menu is only previewed closes it.
+- Pressing Space while a menu is only previewed closes it.
+- Pressing Enter or Space on a preview does not activate a menu command.
+- Pressing ArrowDown on a previewed top-level trigger moves focus to that menu's first enabled item in the same turn.
+- Pressing ArrowUp and ArrowDown moves focus between enabled items in an open menu.
+- Pressing Home moves focus to the first enabled item.
+- Pressing End moves focus to the last enabled item.
+- From an open top-level menu, ArrowRight closes it, opens the next top-level menu, and focuses that menu's first item.
+- From an open top-level menu, ArrowLeft closes it, opens the previous top-level menu, and focuses that menu's first item.
+- ArrowLeft and ArrowRight wrap from the last top-level menu to the first, and from the first to the last.
+- Pressing ArrowRight on a submenu trigger opens that submenu and moves focus to its first item.
+- Pressing ArrowRight on a submenu item with no child submenu closes the open menus and moves to the next top-level trigger.
+- After that ArrowRight, the next top-level menu is previewed and focus stays on its trigger.
+- Pressing ArrowLeft in a submenu closes that submenu and restores focus to its parent item.
+- Pressing Escape closes only the current menu level and restores focus to the trigger that opened it.
+- Pressing Tab leaves the menu system instead of moving through every command.
+- Activating an already open trigger closes its menu and restores focus to that trigger.
+- Clicking outside closes every open menu level.
+- Closing a menu does not leave focus inside hidden content.
+- An open top-level menu is positioned against its trigger, not centered in the viewport.
+- An open submenu is positioned beside its trigger.
+- Activating a command closes the open menus.
+- A closed trigger has `aria-expanded="false"`.
