@@ -140,14 +140,15 @@ Use CSS anchor positioning to lay out the nested submenu beside its trigger auto
 /* Position the submenu popover relative to its trigger button */
 #preferences-menu {
   position-anchor: --preferences-trigger;
-  position-area: inline-end span-block-start; /* Aligns to the side of the parent menu item */
+  position-area: inline-end span-block-end; /* Aligns to the side of the parent menu item */
+  position-try-fallbacks: flip-inline, flip-block;
   inset: auto;
 }
 
 /* On narrow viewports, position the submenu underneath its parent item to prevent clipping/overlapping */
 @media (max-width: 40rem) {
   #preferences-menu {
-    position-area: block-end span-inline-start;
+    position-area: block-end span-inline-end;
   }
 }
 ```
