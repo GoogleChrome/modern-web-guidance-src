@@ -54,6 +54,5 @@ When reordering is supplementary, keep the collection readable and usable in its
 
 When `moveBefore()` is unavailable, use `insertBefore()` as a fallback while preserving the same destination and existing item node. This fallback keeps the item in the DOM rather than recreating it, but may not preserve all state that `moveBefore()` retains.
 
-{{ FEATURE_FALLBACKS("pointer-events-api") }}
 
 {{ FEATURE_FALLBACKS("user-select") }}
