@@ -2,12 +2,12 @@
 
 ## Zizmor
 
-Every PR that touches `.github/workflows/` is scanned by [Zizmor](https://docs.zizmor.sh/), a static analyzer for GitHub Actions. It's an Alphabet-wide required check ([go/github-zizmor-help](http://go/github-zizmor-help), rule notes at [go/gh-zizmor-rules](http://go/gh-zizmor-rules)), and findings of medium severity or higher block merging.
+Every PR that touches `.github/workflows/` is scanned by [Zizmor](https://docs.zizmor.sh/), a static analyzer for GitHub Actions. Fix or suppress what it reports.
 
-Run it locally with the same version the org check uses:
+Run it locally:
 
 ```sh
-uvx zizmor@1.25.2 --gh-token="$(gh auth token)" .github/workflows
+uvx zizmor@latest --gh-token="$(gh auth token)" .github/workflows
 ```
 
 Add `--fix=all` to apply auto-fixes, but review the diff: some fixes (e.g. `persist-credentials: false`) can break steps that rely on the old behavior. Add `--persona=pedantic` to see the low-confidence findings too.
