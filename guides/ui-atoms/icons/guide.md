@@ -177,24 +177,6 @@ If you need multi-color icons or arbitrary path-level animations, use Inline SVG
 {{ FEATURE_ISSUES("masks") }}
 {{ FEATURE_ISSUES("container-style-queries") }}
 
-### Safari Browser Workarounds
-
-Safari has two bugs affecting icons (WebKit #301609, #320220): icons don't render until user interaction, and a related rendering issue. Apply this CSS fix to force immediate rendering:
-
-```css
-@keyframes webkit-301609 {}
-
-@supports (-webkit-nbsp-mode: normal) and (content-visibility: auto) {
-  @layer webkit-301609-fix {
-    ::before, ::after {
-      animation: webkit-301609 0s;
-    }
-  }
-}
-```
-
-The `@supports` query targets Safari only, and `@layer` reduces animation conflicts.
-
 ## Fallback Strategies
 
 ### For Browsers Without Container Style Queries
@@ -242,6 +224,25 @@ Use the `@supports not (container-name: style(any))` directive with style attrib
   }
 }
 ```
+
+### Safari Browser Workarounds
+
+Safari has two bugs affecting icons (WebKit #301609, #320220): icons don't render until user interaction, and a related rendering issue. Apply this CSS fix to force immediate rendering:
+
+```css
+@keyframes webkit-301609 {}
+
+@supports (-webkit-nbsp-mode: normal) and (content-visibility: auto) {
+  @layer webkit-301609-fix {
+    ::before, ::after {
+      animation: webkit-301609 0s;
+    }
+  }
+}
+```
+
+The `@supports` query targets Safari only, and `@layer` reduces animation conflicts.
+
 
 {{ FEATURE_FALLBACKS("masks") }}
 {{ FEATURE_FALLBACKS("container-style-queries") }}
