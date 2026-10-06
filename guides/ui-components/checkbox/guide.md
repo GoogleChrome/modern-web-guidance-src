@@ -101,26 +101,14 @@ Set explicit relative sizes for `--checkbox-size` and `--checkbox-icon-size` bec
 
 ## The indeterminate state
 
-When a checkbox is programmatically set to `indeterminate = true`, style the `:indeterminate` pseudo-class so the state is visually distinguishable.
+The indeterminate state cannot be set via an HTML attribute; set the `indeterminate` DOM property in JavaScript (`checkbox.indeterminate = true`) and ensure the `:indeterminate` pseudo-class is visually distinct from both `:checked` and unchecked states:
 
-* **Native (`accent-color`):** Automatically styled by the browser to match `accent-color`.
-* **Custom (`appearance: none`):** Dynamically assign the `--checkbox-icon` variable to the custom dash icon.
+* **Native (`accent-color`):** Automatically styled by the browser using the element's `accent-color` (no extra `:indeterminate` CSS rule needed).
+* **Custom (`appearance: none`):** Swap `--checkbox-icon` to `var(--icon-dash)` on `.checkbox-custom:indeterminate` as shown above.
 
-```css
-/* Native checkboxes inherit the accent color in the indeterminate state */
-.checkbox-native:indeterminate {
-  accent-color: #1a73e8;
-}
-
-/* Dynamically swap the custom property to the dash icon */
-.checkbox-custom:indeterminate {
-  --checkbox-icon: var(--icon-dash);
-}
-
-/* Animate indeterminate dash visibility */
-.checkbox-custom:indeterminate::before {
-  scale: 1;
-}
+```js
+const selectAll = document.querySelector("#select-all");
+selectAll.indeterminate = true;
 ```
 
 ## Accessibility and interaction
