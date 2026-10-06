@@ -18,7 +18,7 @@ guides:
 
 ## Use the native range input
 
-Use a labelled `<input type="range">` rather than recreating a slider with generic elements. The native control preserves semantics, keyboard and pointer interaction, touch behaviour, value constraints, and assistive-technology support. Configure `min`, `max`, `step`, and `value` for the use case.
+Use a labelled `<input type="range">` rather than recreating a slider with `<div>` elements or custom pointer handlers. The native control preserves keyboard and pointer interaction, touch behaviour, and accessibility support. Configure `min`, `max`, `step`, and `value` for the use case.
 
 ```html
 <label for="range-slider">Volume</label>
@@ -29,9 +29,7 @@ Use a labelled `<input type="range">` rather than recreating a slider with gener
 />
 ```
 
-If the numeric value needs a human-readable unit, expose the formatted value in ordinary DOM content and update `aria-valuetext` when the value changes; otherwise, let the native slider expose its numeric value.
-
-If a tooltip that follows the thumb is required, use the {{ GUIDE_REF("slider-tooltip") }} guide.
+If the value requires a formatted label or unit, expose it in ordinary DOM content and update `aria-valuetext` when changed. Do not use `::before` or `::after` on slider pseudo-elements, as generated content on form controls is not interoperable. If a tooltip that follows the thumb is required, use the {{ GUIDE_REF("slider-tooltip") }} guide.
 
 ## Choose the styling approach
 
@@ -162,8 +160,6 @@ slider.addEventListener('input', syncSliderProperties);
 ## Limitations
 
 - Do not combine WebKit and Firefox pseudo-selectors into a single comma-separated list (e.g. `::-webkit-slider-thumb, ::-moz-range-thumb`); browsers drop the entire rule if an unrecognized vendor pseudo-element is encountered.
-- Generated content on slider pseudo-elements is not interoperable and should not contain essential labels, values, instructions, or functionality. In particular, do not rely on `::before` or `::after` for cross-browser slider UI.
-- Do not replace the input with a `div`, custom pointer handlers, or a second interactive control merely to obtain visual styling.
 
 ## Fallbacks
 
