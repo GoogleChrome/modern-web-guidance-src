@@ -163,15 +163,11 @@ slider.addEventListener('input', syncSliderProperties);
 
 - Do not combine WebKit and Firefox pseudo-selectors into a single comma-separated list (e.g. `::-webkit-slider-thumb, ::-moz-range-thumb`); browsers drop the entire rule if an unrecognized vendor pseudo-element is encountered.
 - Generated content on slider pseudo-elements is not interoperable and should not contain essential labels, values, instructions, or functionality. In particular, do not rely on `::before` or `::after` for cross-browser slider UI.
-- A custom appearance does not remove the need for a programmatic label, visible focus indicator, adequate contrast, or a usable interaction area.
-- Test horizontal, RTL, vertical, zoomed, high-contrast, touch, keyboard, and assistive-technology use cases in every supported browser.
 - Do not replace the input with a `div`, custom pointer handlers, or a second interactive control merely to obtain visual styling.
 
 ## Fallbacks
 
-For browsers that do not support `appearance: none` or the required slider pseudo-elements, retain the native rendering rather than recreating the control:
-
-{{ FEATURE_FALLBACKS("appearance") }}
+{{ FEATURE_FALLBACKS("accent-color") }}
 
 ## Future standard pseudo-elements
 
