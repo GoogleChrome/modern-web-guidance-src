@@ -771,5 +771,66 @@
     "top5HitRate": 0.9717,
     "meanReciprocalRank": 0.8117,
     "runId": "2026-04-09T21:35:03.972Z"
+  },
+  {
+    "timestamp": "2026-10-05T20:18:14.971Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "baseline-pre"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5236,
+    "top3HitRate": 0.7476,
+    "top5HitRate": 0.7995,
+    "meanReciprocalRank": 0.6337,
+    "runId": "2026-10-05T20:13:45.880Z"
+  },
+  {
+    "timestamp": "2026-10-05T20:30:05.146Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "tokenizer-swap"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5236,
+    "top3HitRate": 0.7476,
+    "top5HitRate": 0.7995,
+    "meanReciprocalRank": 0.6337,
+    "validQueries": 748,
+    "validTop1HitRate": 0.5936,
+    "validTop3HitRate": 0.8476,
+    "validTop5HitRate": 0.9064,
+    "validMeanReciprocalRank": 0.7184,
+    "runId": "2026-10-05T20:25:34.169Z"
+  },
+  {
+    "timestamp": "2026-10-05T20:38:48.049Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "transformers-v4"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.5212,
+    "top3HitRate": 0.7535,
+    "top5HitRate": 0.8066,
+    "meanReciprocalRank": 0.6337,
+    "validQueries": 748,
+    "validTop1HitRate": 0.5909,
+    "validTop3HitRate": 0.8543,
+    "validTop5HitRate": 0.9144,
+    "validMeanReciprocalRank": 0.7184,
+    "runId": "2026-10-05T20:38:16.086Z"
   }
 ]
