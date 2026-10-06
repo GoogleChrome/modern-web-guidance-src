@@ -54,7 +54,7 @@ targetHeading.focus({ preventScroll: true });
 - **DO NOT** wrap `scrollend` in a manual `new Promise()` as your primary implementation—`scrollend` does not fire when the target is already in view and no scroll distance is traveled, whereas scroll method promises resolve automatically in that case.
 - **DO**: Pass `{ preventScroll: true }` when calling `.focus()` after awaiting a scroll method so the browser does not jump or scroll a second time.
 - **DO**: Guard post-scroll effects with a request token if rapid user interactions can trigger overlapping smooth scrolls on the same container, since interrupting a smooth scroll resolves (rather than rejects) the previous promise.
-- **Known Chrome bug with the root scroller**: Chrome has a bug ([Chromium issue 567407819](https://issues.chromium.org/issues/567407819)) where the `Promise` returned by `scrollIntoView()` resolves too early when it is the document's root scroller that is scrolling. Awaiting a `scrollIntoView()` on a nested scroll container works as expected. Do not wrap your content in a scroll container, such as `div` with `overflow-y: auto`, as a workaround for this bug.
+- **Known Chrome bug with the root scroller**: Chrome has a bug {# https://issues.chromium.org/issues/567407819 #} where the `Promise` returned by `scrollIntoView()` resolves too early when it is the document's root scroller that is scrolling. Awaiting a `scrollIntoView()` on a nested scroll container works as expected. Do not wrap your content in a scroll container, such as `div` with `overflow-y: auto`, as a workaround for this bug.
 
 ## Fallback strategies
 
