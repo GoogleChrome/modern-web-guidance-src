@@ -36,7 +36,7 @@ Use `appearance: none` when the design requires control over the checkbox’s
 shape, size, states, or indicators. This removes the native visual styling while
 leaving the `<input>` as the interactive target.
 
-Set explicit relative sizes for `--checkbox-size` and `--checkbox-icon-size` because appearance: none removes the browser’s default dimensions. Keep the icon smaller than the checkbox to provide space for its border and visual padding.
+Set explicit relative sizes for `--checkbox-size` and `--checkbox-icon-size` because `appearance: none` removes the browser’s default dimensions. Keep the icon smaller than the checkbox to provide space for its border and visual padding.
 
 ```css
 /* Reusable SVG assets */
