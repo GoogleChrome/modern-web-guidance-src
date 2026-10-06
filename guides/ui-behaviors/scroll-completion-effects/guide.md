@@ -26,6 +26,7 @@ The programmatic scroll methods on `Element` (`scrollIntoView()`, `scroll()`, `s
 
 ```javascript
 let currentScrollId = 0;
+const sections = document.querySelectorAll('section');
 
 async function scrollToAndHighlight(targetElement) {
   const scrollId = ++currentScrollId;
