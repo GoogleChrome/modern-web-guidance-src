@@ -165,6 +165,7 @@ describe('runDevPr', () => {
     devPrCli.getCurrentBranch = () => 'feat/test-branch';
     devPrCli.commitChanges = () => {};
     devPrCli.pushBranch = () => {};
+    devPrCli.findFinishedPrInHistory = () => null;
   });
 
   afterEach(() => {
@@ -184,7 +185,7 @@ describe('runDevPr', () => {
     let prTitleArg = '';
     let prLabelsArg: DevPrLabel[] = [];
 
-    devPrCli.viewPr = () => null;
+    devPrCli.viewOpenPr = () => null;
     devPrCli.createPr = (title, _bodyPath, labels) => {
       prCreated = true;
       prTitleArg = title;
@@ -193,8 +194,8 @@ describe('runDevPr', () => {
     };
 
     try {
-      const success = await runDevPr(tempDir);
-      assert.equal(success, true);
+      const prUrl = await runDevPr(tempDir);
+      assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/101');
       assert.equal(prCreated, true);
       assert.equal(prTitleArg, `grader updates: ${path.basename(tempDir)}`);
       assert.deepEqual(prLabelsArg, ['gd-dev-content']);
@@ -217,10 +218,9 @@ describe('runDevPr', () => {
     let addedLabels: DevPrLabel[] = [];
     let removedLabels: DevPrLabel[] = [];
 
-    devPrCli.viewPr = () => ({
+    devPrCli.viewOpenPr = () => ({
       number: 42,
       url: 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42',
-      state: 'OPEN',
       labels: [{ name: 'gd-dev-content' }, { name: 'category:css' }],
     });
 
@@ -232,8 +232,8 @@ describe('runDevPr', () => {
     };
 
     try {
-      const success = await runDevPr(tempDir);
-      assert.equal(success, true);
+      const prUrl = await runDevPr(tempDir);
+      assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42');
       assert.equal(prUpdated, true);
       assert.equal(updatedPrNumber, 42);
       assert.deepEqual(addedLabels, ['gd-dev-eval']);
@@ -243,7 +243,7 @@ describe('runDevPr', () => {
     }
   });
 
-  it('refuses to update when existing PR is closed or merged', async () => {
+  it('opens a new PR when the branch has no open PR and no finished PR in its history', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const resultsDir = path.join(tempDir, 'test-app-results');
     fs.mkdirSync(resultsDir, { recursive: true });
@@ -252,20 +252,43 @@ describe('runDevPr', () => {
       '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n'
     );
 
-    let called = false;
+    let edited = false;
 
-    devPrCli.viewPr = () => ({
-      number: 42,
-      url: 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42',
-      state: 'MERGED',
-      labels: [],
-    });
-    devPrCli.editPr = () => { called = true; };
+    devPrCli.viewOpenPr = () => null;
+    devPrCli.editPr = () => { edited = true; };
+    devPrCli.createPr = () => 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/43';
 
     try {
-      const success = await runDevPr(tempDir);
-      assert.equal(success, false);
-      assert.equal(called, false);
+      const prUrl = await runDevPr(tempDir);
+      assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/43');
+      assert.equal(edited, false);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a branch whose history already contains a merged PR, before pushing', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
+    const resultsDir = path.join(tempDir, 'test-app-results');
+    fs.mkdirSync(resultsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(resultsDir, 'report.md'),
+      '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n'
+    );
+
+    let pushed = false;
+    let created = false;
+
+    devPrCli.viewOpenPr = () => null;
+    devPrCli.findFinishedPrInHistory = () => ({ number: 7, state: 'MERGED' });
+    devPrCli.pushBranch = () => { pushed = true; };
+    devPrCli.createPr = () => { created = true; return 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/44'; };
+
+    try {
+      const prUrl = await runDevPr(tempDir);
+      assert.strictEqual(prUrl, null);
+      assert.equal(pushed, false);
+      assert.equal(created, false);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -288,12 +311,12 @@ describe('runDevPr', () => {
       createdBranch = branchName;
       current = branchName;
     };
-    devPrCli.viewPr = () => null;
+    devPrCli.viewOpenPr = () => null;
     devPrCli.createPr = () => 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/105';
 
     try {
-      const success = await runDevPr(tempDir);
-      assert.equal(success, true);
+      const prUrl = await runDevPr(tempDir);
+      assert.ok(prUrl);
       assert.equal(createdBranch, `gd-dev/${path.basename(tempDir)}`);
       assert.equal(current, `gd-dev/${path.basename(tempDir)}`);
     } finally {
@@ -301,17 +324,17 @@ describe('runDevPr', () => {
     }
   });
 
-  it('returns false when no evaluation report is found', async () => {
+  it('returns null when no evaluation report is found', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     try {
-      const success = await runDevPr(tempDir);
-      assert.equal(success, false);
+      const prUrl = await runDevPr(tempDir);
+      assert.strictEqual(prUrl, null);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  it('returns false when gh pr create throws an error', async () => {
+  it('returns null when gh pr create throws an error', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const resultsDir = path.join(tempDir, 'test-app-results');
     fs.mkdirSync(resultsDir, { recursive: true });
@@ -320,20 +343,20 @@ describe('runDevPr', () => {
       '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n'
     );
 
-    devPrCli.viewPr = () => null;
+    devPrCli.viewOpenPr = () => null;
     devPrCli.createPr = () => {
       throw new Error('GraphQL authentication error');
     };
 
     try {
-      const success = await runDevPr(tempDir);
-      assert.equal(success, false);
+      const prUrl = await runDevPr(tempDir);
+      assert.strictEqual(prUrl, null);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  it('returns false when gh pr edit throws an error', async () => {
+  it('returns null when gh pr edit throws an error', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
     const resultsDir = path.join(tempDir, 'test-app-results');
     fs.mkdirSync(resultsDir, { recursive: true });
@@ -342,10 +365,9 @@ describe('runDevPr', () => {
       '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n'
     );
 
-    devPrCli.viewPr = () => ({
+    devPrCli.viewOpenPr = () => ({
       number: 42,
       url: 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42',
-      state: 'OPEN',
       labels: [],
     });
     devPrCli.editPr = () => {
@@ -353,8 +375,8 @@ describe('runDevPr', () => {
     };
 
     try {
-      const success = await runDevPr(tempDir);
-      assert.equal(success, false);
+      const prUrl = await runDevPr(tempDir);
+      assert.strictEqual(prUrl, null);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

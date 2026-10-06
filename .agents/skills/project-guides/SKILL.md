@@ -50,7 +50,8 @@ web-feature-ids:
 
 * **Formatting Directives:** Use strict imperative directives (`MANDATORY:`, `DO`, `DO NOT`) only when emphasis is strictly needed (e.g., for critical constraints, security, or common pitfalls). Do not overuse them for every single instruction. Coding agents respond best to rigid constraints when they are selectively applied.
 * **Focus:** Keep the guidance focused on the specific use case and short. No fluff. No conversational text. Include a brief overview of the use case and explanation of why the solution outlined in the guide is the recommended approach.
-* **Self-Contained:** DO NOT include any external links in the markdown body (`[link text](url)`). All required knowledge to use the feature MUST be fully synthesized into the markdown body. Agents must not be slowed down or require additional resources to implement the guidance.
+* **Self-Contained:** DO NOT include any external links in the markdown body (`[link text](url)`), and DO NOT rely on internal `{{ GUIDE_REF("...") }}` cross-references to supply required implementation details. All required knowledge to use the feature MUST be fully synthesized into the markdown body (or transcluded at build time via `INCLUDE`/`FEATURE`). Agents must not be slowed down or require additional retrievals to implement the guidance.
+* **American English:** Always author guidance in American English (`behavior`, `color`, `synchronize`, `center`, `optimize`, etc.) for consistency across documentation, RAG tokens, and search embeddings.
 
 ### 3. Code Snippets
 
@@ -67,6 +68,7 @@ web-feature-ids:
 * **DO NOT** include cross-browser fallbacks in the implementation section. Those should only be mentioned in the fallback section.
 * Only mark steps as `MANDATORY` if they are truly required for the feature to function. Optional steps (e.g., adding scroll snap, adding an event listener for progressive enhancement) must be labeled as optional. Incorrect use of `MANDATORY` causes agents to implement unnecessary complexity.
 * The guide is the agent's **only** source of truth. DO NOT reference `demo.html` or any other file — agents won't have access to them. Everything the agent needs to implement the use case must be in `guide.md`.
+* When listing alternatives, say how to choose between them (which use cases favor which). Optional improvements are alternatives too: the choice is between adding them or not, so say when they're worth adding. Don't invent criteria; if the choice genuinely depends on context you can't anticipate, leave it to the agent.
 
 ### 5. Fallback Strategies
 
@@ -86,8 +88,10 @@ If the primary implementation uses features that are not Baseline Widely Availab
 
 #### Baseline Status Macros
 * **MANDATORY:** Include `{{ FEATURE_FALLBACKS("feature-id") }}` (preferred) or `{{ BASELINE_STATUS("feature-id") }}` as a standalone line for *every* non-widely available feature used.
-  * Prefer `FEATURE_FALLBACKS` even when no `features/<feature-id>.md` exists yet — it gracefully degrades to just the baseline status, and any shared fallback content added later flows in automatically without a guide-side edit.
-  * Use `BASELINE_STATUS` directly only when you need the BCD-key second argument: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
+  * Prefer `FEATURE_FALLBACKS` so that fallbacks can be centralized. If there is no `features/<feature-id>.md`, create it.
+  * Use `BASELINE_STATUS` directly when you need the BCD-key second argument: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
+  * Use `BASELINE_STATUS` directly when the fallback strategy is too specific to the use case or the feature is only used in one guide, so creating a separate `features/<feature-id>.md` would be premature.
+* **Baseline Widely Available Features:** While fallback strategies are not required for Baseline Widely Available features, you **SHOULD** include `{{ BASELINE_STATUS("feature-id") }}` for features that became Baseline Widely Available within the last 12 months (such as `subgrid` or `:has()`), or that are commonly misjudged by coding agents as lacking support. This affirmatively reassures coding agents whose training data might predate wide availability that the feature is universally supported without needing defensive fallbacks.
 * **Placement:** Use separate subsections with their own macros if multiple features are used. **DO NOT** use these macros outside the fallback section.
 
 #### Polyfill Guidelines
@@ -104,10 +108,21 @@ If the primary implementation uses features that are not Baseline Widely Availab
 | `{{ FEATURE("feature-id", "section") }}` | Sugar for `INCLUDE("features/<feature-id>.md#<section>")`. |
 | `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section. If `#fallbacks` is empty, emits only `BASELINE_STATUS` (no heading). |
 | `{{ FEATURE_ISSUES("feature-id") }}` | `### Issues to be aware of when using <Feature name>` + the `#issues` section. Returns `""` if `#issues` is empty/missing. |
+| `{{ GUIDE_REF("guide-slug") }}` | Cross-reference to another guide (`\`guide-slug\` (via \`npx -y modern-web-guidance@latest retrieve "guide-slug"\`)` in `skills-cli`; relative path in `local-dev`; markdown link in `static-site`). |
 
-* **Errors**: invalid feature ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* (file or section) → silent `""`, so guides can reference content that doesn't exist yet.
+* **Errors**: invalid feature/guide ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* in `INCLUDE`/`FEATURE` (file or section) → silent `""`, so guides can reference content that doesn't exist yet.
 * **Section IDs**: slugified heading text (`### Fallback strategies` → `fallback-strategies`), or an explicit `{#id}` suffix on the heading.
 * **Recursion**: macros inside transcluded content expand normally. No cycle detection — don't write self-referential includes.
+
+#### Cross-referencing other guides with `GUIDE_REF`
+
+Coding agents mostly discover and batch-retrieve guides upfront (`retrieve "a,b"`) from `search` or `list` results, and rarely follow cross-references after reading a guide.
+
+* **Never rely on `GUIDE_REF` for requirements of the current guide:** Anything needed to implement *this* guide's use case — core rules, shared prerequisites, accessibility requirements, or fallbacks — must be inlined in `guide.md` or transcluded at build time via `INCLUDE`/`FEATURE`.
+* **Use `GUIDE_REF` to point to a separate use case that is out of scope for the current guide:**
+  * **Router / orientation hubs** routing to specialized sub-guides (e.g., `passkeys` or `web-components` routing to specific use-case guides).
+  * **Disambiguating closely related sibling guides** so an agent that retrieved the wrong primitive can pivot (e.g., `progress-ring` vs. `spinner` for determinate vs. indeterminate loading, or `usage-aware-component-variations` vs. `design-token-reactivity`).
+  * **Referencing an adjacent use case** (e.g., `forms` pointing to `ime-safe-enter-submit` for `Enter`-key submission during IME composition).
 
 ### 7. Reusing per-feature content via `features/`
 

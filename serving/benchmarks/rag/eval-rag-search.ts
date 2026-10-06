@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import { fileURLToPath } from "url";
 import { searchUseCases } from "../../lib/search.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
@@ -18,6 +19,11 @@ interface EvalRun {
   top3HitRate: number;
   top5HitRate: number;
   meanReciprocalRank: number;
+  validQueries?: number;
+  validTop1HitRate?: number;
+  validTop3HitRate?: number;
+  validTop5HitRate?: number;
+  validMeanReciprocalRank?: number;
 }
 
 // Simple CLI arg parser for --model=X
@@ -65,10 +71,34 @@ async function main() {
     await embedder.init();
   }
 
+  const vectorsFile = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
+  let validGuideIds = new Set<string>();
+  if (fs.existsSync(vectorsFile)) {
+    const jsonContent = zlib.gunzipSync(fs.readFileSync(vectorsFile)).toString("utf-8");
+    const items: Array<{ id: string }> = JSON.parse(jsonContent);
+    validGuideIds = new Set(items.map((item) => item.id));
+  }
+
+  const orphanedGuides = new Set<string>();
+  for (const q of queries) {
+    if (validGuideIds.size > 0 && !validGuideIds.has(q.guideId)) {
+      orphanedGuides.add(q.guideId);
+    }
+  }
+  if (orphanedGuides.size > 0) {
+    console.warn(`⚠️ Warning: ${orphanedGuides.size} target guides no longer exist in the corpus: ${Array.from(orphanedGuides).join(", ")}`);
+  }
+
   let hitsTop1 = 0;
   let hitsTop3 = 0;
   let hitsTop5 = 0;
   let mrrSum = 0;
+
+  let validHitsTop1 = 0;
+  let validHitsTop3 = 0;
+  let validHitsTop5 = 0;
+  let validMrrSum = 0;
+  let validTotal = 0;
 
   console.log(`Running evaluation on ${queries.length} queries...\n`);
 
@@ -85,6 +115,15 @@ async function main() {
     if (rank > 0 && rank <= 3) hitsTop3++;
     if (rank > 0 && rank <= 5) hitsTop5++;
     if (rank > 0) mrrSum += 1.0 / rank;
+
+    const isValid = validGuideIds.size === 0 || validGuideIds.has(q.guideId);
+    if (isValid) {
+      validTotal++;
+      if (rank === 1) validHitsTop1++;
+      if (rank > 0 && rank <= 3) validHitsTop3++;
+      if (rank > 0 && rank <= 5) validHitsTop5++;
+      if (rank > 0) validMrrSum += 1.0 / rank;
+    }
   }
 
   const total = queries.length;
@@ -96,14 +135,32 @@ async function main() {
     top3HitRate: +(hitsTop3 / total).toFixed(4),
     top5HitRate: +(hitsTop5 / total).toFixed(4),
     meanReciprocalRank: +(mrrSum / total).toFixed(4),
+    ...(validTotal > 0 && validTotal !== total ? {
+      validQueries: validTotal,
+      validTop1HitRate: +(validHitsTop1 / validTotal).toFixed(4),
+      validTop3HitRate: +(validHitsTop3 / validTotal).toFixed(4),
+      validTop5HitRate: +(validHitsTop5 / validTotal).toFixed(4),
+      validMeanReciprocalRank: +(validMrrSum / validTotal).toFixed(4),
+    } : {}),
   };
 
-  console.table([{
+  const tableRows: any[] = [{
+    Scope: `All queries (${total})`,
     Model: metrics.model,
     "Top-1 Hit %": (metrics.top1HitRate * 100).toFixed(1) + "%",
     "Top-3 Hit %": (metrics.top3HitRate * 100).toFixed(1) + "%",
     "MRR": metrics.meanReciprocalRank.toFixed(3)
-  }]);
+  }];
+  if (metrics.validQueries) {
+    tableRows.push({
+      Scope: `Valid queries (${metrics.validQueries})`,
+      Model: metrics.model,
+      "Top-1 Hit %": ((metrics.validTop1HitRate || 0) * 100).toFixed(1) + "%",
+      "Top-3 Hit %": ((metrics.validTop3HitRate || 0) * 100).toFixed(1) + "%",
+      "MRR": (metrics.validMeanReciprocalRank || 0).toFixed(3)
+    });
+  }
+  console.table(tableRows);
 
   // Load old results and append
   let history: EvalRun[] = [];

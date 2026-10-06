@@ -12,6 +12,7 @@ web-feature-ids:
   - transition-behavior
   - starting-style
   - display-animation
+  - overlay
   - prefers-reduced-motion
   - registered-custom-properties
 ---
@@ -25,12 +26,17 @@ web-feature-ids:
 ### Performance
 
 - Prefer to animate `opacity` and `transform` (including individual transform properties, e.g. `translate` instead of `left/right/top/bottom`) to ensure animations stay on the compositor thread.
-- Use `transition-behavior: allow-discrete` + `@starting-style` to animate layout properties like `display` or `<dialog>` state natively.
+- Use `transition-behavior: allow-discrete`, `@starting-style`, and (for top-layer elements like `<dialog>` or `[popover]`) `overlay` to animate discrete entry and exit states natively; see {{ GUIDE_REF("animate-element-entry-exit") }} and {{ GUIDE_REF("animate-to-from-top-layer") }}.
 
 ```css
 .popover-reveal {
-  /* Allow discrete animations for display transitions */
-  transition: display 0.2s allow-discrete;
+  /* Transition discrete display and top-layer overlay alongside opacity */
+  transition:
+    opacity ease-out,
+    display,
+    overlay;
+  transition-duration: 0.2s;
+  transition-behavior: allow-discrete;
 }
 ```
 

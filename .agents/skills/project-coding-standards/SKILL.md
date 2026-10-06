@@ -27,12 +27,12 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 ## Architectural Principles
 
 ### Use Existing Abstractions & CLI Runners
-- **Reuse repository tooling:** When interacting with LLMs or executing agent workflows, use the shared repository abstractions in `config.environment` (such as `config.environment.jetskiCliBin` or `config.environment.geminiCliBin`) instead of writing custom REST API clients, bespoke fetch loops, or ad-hoc token validators.
-- **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_GEMINI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
+- **Reuse repository tooling:** When interacting with LLMs or executing agent workflows, use the shared repository abstractions in `config.environment` (such as `config.environment.antigravityCliBin` or `config.environment.jetskiCliBin`) instead of writing custom REST API clients, bespoke fetch loops, or ad-hoc token validators.
+- **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_JETSKI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
 
 ### Single Source of Truth & Canonical Enums
 - **Never hardcode string constants for agents:**
-  - Use centralized enums like `Agents` from `harness/config.ts` (`Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.GEMINI_CLI`, `Agents.CODEX_CLI`).
+  - Use centralized enums like `Agents` from `harness/config.ts` (`Agents.ANTIGRAVITY_CLI`, `Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.CODEX_CLI`).
 - **Extract metadata from source-of-truth files:**
   - Never infer properties (such as `targetFile` or `agent`) using fragile path heuristics or regexes if canonical metadata files (e.g., `evals.json`) exist in the parent hierarchy. Extract canonical properties directly from `evals.json`.
 
