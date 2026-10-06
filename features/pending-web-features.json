@@ -1,24 +1,77 @@
 {
-  "tmp-linked-parameters": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/3492"
-  },
-  "tmp-streaming-api": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4117"
-  },
   "tmp-cross-origin-storage": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4029"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4029",
+    "compat_features": "api.Navigator.crossOriginStorage"
   },
   "tmp-scroll-axis-lock": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4213",
-    "group": "scrolling"
+    "group": "scrolling",
+    "compat_features": "css.properties.scroll-axis-lock"
   },
   "tmp-aria-actions": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4108"
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4108",
+    "compat_features": "api.Element.ariaActionsElements"
   },
-  "tmp-animations-css-animation-accessor": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4107"
+  "tmp-animations-css-animation-accessors": {
+    "issue": "https://github.com/web-platform-dx/web-features/pull/4444",
+    "group": [
+      "animation",
+      "css"
+    ],
+    "compat_features": "api.AnimationEvent.animation"
   },
   "tmp-iterator-includes": {
-    "issue": "https://github.com/web-platform-dx/web-features/pull/4405"
+    "issue": "https://github.com/web-platform-dx/web-features/pull/4405",
+    "compat_features": "javascript.builtins.Iterator.includes"
+  },
+  "tmp-webcrypto-modern-algos": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4267",
+    "group": "security",
+    "compat_features": "api.SubtleCrypto.encapsulateKey"
+  },
+  "tmp-wheel-events-momentum": {
+    "issue": "https://github.com/web-platform-dx/web-features/pull/4448",
+    "group": "scrolling",
+    "compat_features": "api.WheelEvent.momentum"
+  },
+  "tmp-window-management-resizing": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
+    "compat_features": "api.Window.minimize"
+  },
+  "tmp-display-state": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
+    "group": "css",
+    "compat_features": "css.at-rules.media.display-state"
+  },
+  "tmp-resizable": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
+    "group": "css",
+    "compat_features": "css.at-rules.media.resizable"
+  },
+  "tmp-media-playback-while-not-visible": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4292",
+    "compat_features": "html.elements.iframe.allow.media-playback-while-not-visible"
+  },
+  "tmp-scroll-triggered-animations": {
+    "issue": "https://github.com/web-platform-dx/web-features/pull/4163",
+    "group": [
+      "scrolling",
+      "animation"
+    ],
+    "compat_features": "css.properties.animation-trigger"
+  },
+  "tmp-navigation-source": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4301",
+    "group": "css",
+    "compat_features": "css.selectors.navigation-source"
+  },
+  "tmp-calc-dimensions": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4196",
+    "group": "css",
+    "compat_features": "css.types.calc.dimension_division"
+  },
+  "tmp-long-animation-frames-style-layout": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4453",
+    "compat_features": "api.PerformanceLongAnimationFrameTiming.styleDuration"
   }
 }

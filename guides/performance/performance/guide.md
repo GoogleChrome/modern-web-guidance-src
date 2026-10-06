@@ -157,6 +157,7 @@ Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Conta
 ### DOs
 *   **DO use `content-visibility: auto` on off-screen sections on large, complex pages**: Instruct the browser to skip layout and paint calculations for entire subtrees until they approach the viewport.
 *   **DO pair `content-visibility` with `contain-intrinsic-size`**: Prevent layout shifts and scrollbar jumping by providing a placeholder height/width for unrendered containers.
+*   **DO derive `contain-intrinsic-size` from the content**: When setting `contain-intrinsic-size` use the `auto` keyword and a value that's derived from what is known about the contents (i.e. text size, spacing, size of graphics, character count). Preferably use units such as `rem`, `lh`, `cap`, or `ch` that match values used for the elements within the contents rather than `px`. If the content for items in a group is not consistently sized, then use an average size.
 *   **DO apply explicit CSS containment (`contain`)**: For isolated UI components (like modals or widgets), use `contain: layout style paint` to prevent internal changes from triggering page-wide reflows.
 
 ### DON'Ts
@@ -173,6 +174,18 @@ Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Conta
 .article-list-item {
   content-visibility: auto;
   contain-intrinsic-size: auto 600px; /* Provides a 600px placeholder */
+}
+
+.row {
+  --row-gap: .4rem;
+  --title-height: 1lh;
+  --description-height: 0.85lh;
+
+  display: grid;
+  row-gap: var(--row-gap);
+  content-visibility: auto;
+  /* The sum of the title height, row gap, and description height should be the size of the contents when skipped for rendering. */
+  contain-intrinsic-block-size: auto calc(var(--title-height) + var(--row-gap) + var(--description-height));
 }
 
 /* Scope a complex widget to prevent layout thrashing */

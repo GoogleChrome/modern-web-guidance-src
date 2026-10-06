@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { features } from 'web-features';
-import { scanAllGuides } from '../lib/guide-validation.ts';
+import { scanAllGuides, checkOriginTrialGraduations } from '../lib/guide-validation.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,10 +57,17 @@ if (fs.existsSync(atlsPath)) {
   }
 }
 
-// 3. Check for expired / graduating registered temporary feature IDs (primary, moved, or split)
+// 3. Check for expired / graduating registered temporary feature IDs (primary, moved, split, or matched via compat_features)
+interface PendingEntry {
+  issue?: string;
+  group?: string | string[];
+  compat_features?: string | string[];
+}
+
 interface ExpiredTempItem {
   tmpId: string;
   realId: string;
+  matchedBcdKey?: string;
   kind: 'feature' | 'moved' | 'split';
   redirectTarget?: string;
   redirectTargets?: string[];
@@ -69,11 +76,33 @@ interface ExpiredTempItem {
   locations: string[];
 }
 
+const bcdToFeatureId = new Map<string, string>();
+for (const [fid, feat] of Object.entries(features)) {
+  for (const key of (feat as any)?.compat_features ?? []) {
+    if (!bcdToFeatureId.has(key)) {
+      bcdToFeatureId.set(key, fid);
+    }
+  }
+}
+
 const expiredTemps: ExpiredTempItem[] = [];
-for (const id of Object.keys(pending)) {
+for (const [id, rawEntry] of Object.entries(pending as Record<string, PendingEntry>)) {
   if (!id.startsWith('tmp-')) continue;
-  const realId = id.slice(4);
-  const feat = features[realId] as any;
+  let realId = id.slice(4);
+  let matchedBcdKey: string | undefined;
+  let feat = features[realId] as any;
+  if (!feat) {
+    const compatKeys = rawEntry?.compat_features ? [rawEntry.compat_features].flat() : [];
+    for (const key of compatKeys) {
+      const viaBcd = bcdToFeatureId.get(key);
+      if (viaBcd && features[viaBcd]) {
+        realId = viaBcd;
+        matchedBcdKey = key;
+        feat = features[viaBcd] as any;
+        break;
+      }
+    }
+  }
   if (!feat) continue;
 
   const hasSnippet = fs.existsSync(path.join(featuresDir, `${id}.md`));
@@ -84,6 +113,7 @@ for (const id of Object.keys(pending)) {
     expiredTemps.push({
       tmpId: id,
       realId,
+      matchedBcdKey,
       kind: 'moved',
       redirectTarget: feat.redirect_target,
       hasSnippet,
@@ -94,6 +124,7 @@ for (const id of Object.keys(pending)) {
     expiredTemps.push({
       tmpId: id,
       realId,
+      matchedBcdKey,
       kind: 'split',
       redirectTargets: feat.redirect_targets || [],
       hasSnippet,
@@ -104,6 +135,7 @@ for (const id of Object.keys(pending)) {
     expiredTemps.push({
       tmpId: id,
       realId,
+      matchedBcdKey,
       kind: 'feature',
       hasSnippet,
       snippetFile,
@@ -116,12 +148,13 @@ if (expiredTemps.length > 0) {
   hasError = true;
   console.log('⚠️ Expired/graduated temporary feature IDs detected:');
   for (const item of expiredTemps) {
+    const bcdNote = item.matchedBcdKey ? ` (matched via compat_features "${item.matchedBcdKey}")` : '';
     if (item.kind === 'split') {
-      console.log(`  - ${item.tmpId} was split upstream into: ${item.redirectTargets?.join(', ')}`);
+      console.log(`  - ${item.tmpId} was split upstream into: ${item.redirectTargets?.join(', ')}${bcdNote}`);
     } else if (item.kind === 'moved') {
-      console.log(`  - ${item.tmpId} was moved upstream to: "${item.redirectTarget}"`);
+      console.log(`  - ${item.tmpId} was moved upstream to: "${item.redirectTarget}"${bcdNote}`);
     } else {
-      console.log(`  - ${item.tmpId} is now available upstream as "${item.realId}"`);
+      console.log(`  - ${item.tmpId} is now available upstream as "${item.realId}"${bcdNote}`);
     }
     if (item.hasSnippet) {
       console.log(`    ↳ Remember to remove or rename ${item.snippetFile}`);
@@ -187,21 +220,49 @@ if (changedRegularFeatures.length > 0) {
   }
 }
 
+// 5. Check for graduated Origin Trial features (features in features/origin-trials.json that now have browser support)
+interface GraduatedOriginTrialWithLocations {
+  featureId: string;
+  supportedBrowsers: string[];
+  locations: string[];
+}
+
+const rawGraduated = checkOriginTrialGraduations();
+const graduatedOriginTrials: GraduatedOriginTrialWithLocations[] = rawGraduated.map(item => ({
+  ...item,
+  locations: Array.from(featureToLocations.get(item.featureId) || []),
+}));
+if (graduatedOriginTrials.length > 0) {
+  hasError = true;
+  console.log('🎓 Graduated Origin Trial feature IDs detected:');
+  for (const item of graduatedOriginTrials) {
+    console.log(`  - "${item.featureId}" now has browser support (${item.supportedBrowsers.join(', ')})`);
+    console.log('    ↳ Remove from features/origin-trials.json');
+    if (item.locations.length > 0) {
+      console.log('    ↳ Referenced in:');
+      for (const loc of item.locations) {
+        console.log(`      • ${loc}`);
+      }
+    }
+  }
+}
+
 // Write structured Markdown comment body to GITHUB_OUTPUT if any items were flagged
-if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatures.length > 0)) {
+if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatures.length > 0 || graduatedOriginTrials.length > 0)) {
   const sections: string[] = [
-    '⚠️ **Action Required**: This automated `web-features` update introduced official feature IDs or platform record shifts (`moved` / `split`) affecting guidance in this repository.\n'
+    '⚠️ **Action Required**: This automated `web-features` update introduced official feature IDs, platform record shifts (`moved` / `split`), or graduated Origin Trials affecting guidance in this repository.\n'
   ];
 
   if (expiredTemps.length > 0) {
     sections.push('### 1. Graduated Temporary Feature IDs (`tmp-*`)');
     for (const item of expiredTemps) {
+      const bcdNote = item.matchedBcdKey ? ` via \`compat_features\` (\`${item.matchedBcdKey}\`)` : '';
       if (item.kind === 'split') {
-        sections.push(`- **⚠️ \`${item.tmpId}\` was split upstream into:** \`${item.redirectTargets?.join('`, `')}\` — inspect affected files to assign appropriate sub-feature ID(s)`);
+        sections.push(`- **⚠️ \`${item.tmpId}\` was split upstream into:** \`${item.redirectTargets?.join('`, `')}\`${bcdNote} — inspect affected files to assign appropriate sub-feature ID(s)`);
       } else if (item.kind === 'moved') {
-        sections.push(`- **\`${item.tmpId}\` was moved upstream to:** \`${item.redirectTarget}\``);
+        sections.push(`- **\`${item.tmpId}\` was moved upstream to:** \`${item.redirectTarget}\`${bcdNote}`);
       } else {
-        sections.push(`- **\`${item.tmpId}\` → \`${item.realId}\`** (Primary feature available upstream)`);
+        sections.push(`- **\`${item.tmpId}\` → \`${item.realId}\`** (Primary feature available upstream${bcdNote})`);
       }
       if (item.hasSnippet) {
         sections.push(`  ↳ *Action:* Rename or delete \`${item.snippetFile}\``);
@@ -234,6 +295,21 @@ if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatu
     sections.push('');
   }
 
+  if (graduatedOriginTrials.length > 0) {
+    sections.push('### 3. Graduated Origin Trial Features');
+    for (const item of graduatedOriginTrials) {
+      sections.push(`- **🎓 \`${item.featureId}\` has graduated** with browser support: ${item.supportedBrowsers.join(', ')}`);
+      sections.push('  ↳ *Action:* Remove from `features/origin-trials.json`');
+      if (item.locations.length > 0) {
+        sections.push('  ↳ *Referenced in:*');
+        for (const loc of item.locations) {
+          sections.push(`    - \`${loc}\``);
+        }
+      }
+    }
+    sections.push('');
+  }
+
   sections.push('Before merging this PR, please resolve the items flagged above and re-run guide validation checks.');
 
   const delimiter = `EOF_${Date.now()}`;
@@ -244,6 +320,6 @@ if (process.env.GITHUB_OUTPUT && (expiredTemps.length > 0 || changedRegularFeatu
 if (hasError) {
   process.exit(1);
 } else {
-  console.log('✅ All temporary and regular feature IDs are valid and active upstream.');
+  console.log('✅ All temporary, origin trial, and regular feature IDs are valid and active upstream.');
   process.exit(0);
 }

@@ -17,7 +17,7 @@ export interface StoreUseCase {
 }
 import { replaceMacros, type BuildTarget, formatTitle } from "../lib/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub } from "../../lib/guide-validation.ts";
 import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
@@ -274,13 +274,13 @@ async function processSingleGuideFile(
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
 
-  if (!data.description || !frontmatter) {
-    throw new Error(`Missing frontmatter or description in ${filePath}`);
-  }
-
-  if (stripAllComments(markdownBody).trim().length === 0) {
+  if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
     // Just a stub guide. No content to index.
     return;
+  }
+
+  if (!data.description || !frontmatter) {
+    throw new Error(`Missing frontmatter or description in ${filePath}`);
   }
 
   const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });

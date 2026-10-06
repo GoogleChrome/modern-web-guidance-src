@@ -126,7 +126,7 @@ describe('ClearcutLogger', () => {
     });
 
     try {
-      const logger = new ClearcutLogger({ skillVersion: '2026_05_14-search' });
+      const logger = new ClearcutLogger({ skillVersion: '2026_05_14-search', agent: 'claude' });
       await logger.logSearchResult('address form', 80, true, [{ guide_id: 'guide-1', similarity: 0.9 }]);
 
       assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
@@ -138,6 +138,7 @@ describe('ClearcutLogger', () => {
       assert.strictEqual(payload.success, true);
       assert.strictEqual(payload.latency_ms, 100); // 80 bucketized to 100
       assert.strictEqual(payload.skill_version, '2026_05_14-search');
+      assert.strictEqual(payload.agent, 'claude');
     } finally {
       sendMock.mock.restore();
     }
