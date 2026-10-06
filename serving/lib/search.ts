@@ -13,57 +13,61 @@ export interface UseCaseResult {
   similarity: number;
 }
 
-let cachedVectors: { id: string; description: string; category: string; featuresUsed: string[]; tokenCount: number; vector: number[]; norm: number }[] | null = null;
+export interface UseCaseVector {
+  id: string;
+  description: string;
+  category: string;
+  featuresUsed: string[];
+  tokenCount: number;
+  vector: number[];
+}
+
+export interface EmbedderLike {
+  embed(text: string): Promise<number[]>;
+}
+
+let cachedVectors: UseCaseVector[] | null = null;
 
 function dotProduct(a: number[], b: number[]): number {
-  let dotProduct = 0;
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-  }
-  return dotProduct;
-}
-
-function calculateNorm(v: number[]): number {
   let sum = 0;
-  for (const val of v) {
-    sum += val * val;
+  for (let i = 0; i < a.length; i++) {
+    sum += a[i] * b[i];
   }
-  return Math.sqrt(sum);
+  return sum;
 }
 
-export async function searchUseCases(query: string, limit = 5, minSimilarity = 0.3, embedder?: any): Promise<UseCaseResult[]> {
-  const actualEmbedder = embedder || TfjsEmbedder.getInstance();
+function loadVectors(): UseCaseVector[] {
+  const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json.gz");
+  const compressed = fs.readFileSync(VECTORS_FILE);
+  const jsonContent = zlib.gunzipSync(compressed).toString("utf-8");
+  const items: UseCaseVector[] = JSON.parse(jsonContent);
+
+  for (const item of items) {
+    if (!item.id || !Array.isArray(item.vector) || item.vector.length === 0) {
+      throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id or vector`);
+    }
+  }
+  return items;
+}
+
+export async function searchUseCases(
+  query: string,
+  limit = 5,
+  minSimilarity = 0.3,
+  embedder?: EmbedderLike
+): Promise<UseCaseResult[]> {
+  const actualEmbedder = embedder ?? TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
-  const queryNorm = calculateNorm(queryVector);
 
   if (!cachedVectors) {
-    const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json.gz");
-    if (!fs.existsSync(VECTORS_FILE)) {
-      return [];
-    }
-
-    const compressed = fs.readFileSync(VECTORS_FILE);
-    const jsonContent = zlib.gunzipSync(compressed).toString("utf-8");
-    const items: any[] = JSON.parse(jsonContent);
-
-    cachedVectors = items.map(item => ({
-      id: item.id,
-      description: item.description,
-      category: item.category,
-      featuresUsed: item.featuresUsed || [],
-      tokenCount: item.tokenCount || 0,
-      vector: item.vector,
-      norm: item.vector ? calculateNorm(item.vector) : 0
-    })).filter(item => item.vector);
+    cachedVectors = loadVectors();
   }
 
-  const resultsMap = new Map<string, { item: (typeof cachedVectors)[0]; similarity: number }>();
+  const resultsMap = new Map<string, { item: UseCaseVector; similarity: number }>();
 
+  // Both query and corpus vectors are L2-normalized unit vectors, so cosine similarity is dot product
   for (const item of cachedVectors) {
-    if (item.norm === 0 || queryNorm === 0) continue;
-    
-    const sim = dotProduct(queryVector, item.vector) / (queryNorm * item.norm);
-    
+    const sim = dotProduct(queryVector, item.vector);
     if (sim < minSimilarity) continue;
 
     const existing = resultsMap.get(item.id);
@@ -81,7 +85,7 @@ export async function searchUseCases(query: string, limit = 5, minSimilarity = 0
     id: r.item.id,
     description: r.item.description,
     category: r.item.category,
-    featuresUsed: r.item.featuresUsed?.length ? r.item.featuresUsed : undefined,
+    featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
     tokenCount: r.item.tokenCount,
     similarity: parseFloat(r.similarity.toFixed(4))
   }));

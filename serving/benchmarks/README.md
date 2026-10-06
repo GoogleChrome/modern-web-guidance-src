@@ -12,7 +12,6 @@ Because embedding models and chunking strategies can be notoriously difficult to
     *   **`generate-eval-queries.ts`**: Uses the Gemini API to rapidly synthesize 50 highly-realistic edge-case search queries per guide, automatically updating the master pool.
     *   **`eval-rag-suite.ts`**: The core statistical runner. By default, it executes a full-pool deterministic evaluation sequence against the entirety of the master queries to guarantee strictly comparable Top-1 MRR scores and eliminate all randomized sampling noise.
     *   **`eval-rag-search.ts`**: The operational script that executes queries natively against the database and measures vector retrieval accuracy against the ground-truth target.
-    *   **`gpt4all-embedder.ts`**: An isolated wrapper used specifically by the benchmarking suite to test historical C++ natively-bound `.gguf` quantizations completely separate from the production Transformers.js workflow.
     *   **`plot-evals.ts`**: Dynamically compiles the historic `NaN/JSON` metrics logged out of the test suite into an interactive Plotly HTML scatter-box diagram.
 *   **`data/`**: The strictly segregated data mapping.
     *   `eval-queries-pool.json`: The massive master dataset of edge-case prompts.

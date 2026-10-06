@@ -5,11 +5,7 @@ import path from 'path';
 const ROOT = path.join(process.cwd());
 
 function run(cmd: string) {
-  try {
-    execSync(cmd, { stdio: 'inherit', cwd: ROOT });
-  } catch {
-    console.warn(`Command failed but continuing: ${cmd}`);
-  }
+  execSync(cmd, { stdio: 'inherit', cwd: ROOT });
 }
 
 // Randomly shuffles an array safely
@@ -137,7 +133,8 @@ async function main() {
     for (const model of models) {
       console.log(`\nEvaluating ${model} (Iter ${iter})...`);
       // Rebuild the vector database table for the specific model before querying
-      const buildCmd = `node --experimental-strip-types scripts/build-guides.ts --model=${model}${isNoChunking ? ' --no-chunking' : ''}`;
+      const corpusModel = model === 'tfjs' ? 'Xenova/all-MiniLM-L6-v2@q8' : model;
+      const buildCmd = `node --experimental-strip-types scripts/build-guides.ts --model=${corpusModel} --force${isNoChunking ? ' --no-chunking' : ''}`;
       run(buildCmd);
       run(`node --experimental-strip-types benchmarks/rag/eval-rag-search.ts --model=${model}`);
       
@@ -179,16 +176,20 @@ async function main() {
 
     const mrrValues = modelRuns.map((r: any) => r.meanReciprocalRank);
     const top1Values = modelRuns.map((r: any) => r.top1HitRate);
+    const top3Values = modelRuns.map((r: any) => r.top3HitRate);
 
     const mrrAvg = mrrValues.reduce((a:number, b:number) => a + b, 0) / mrrValues.length;
     const top1Avg = top1Values.reduce((a:number, b:number) => a + b, 0) / top1Values.length;
+    const top3Avg = top3Values.reduce((a:number, b:number) => a + b, 0) / top3Values.length;
 
     const mrrVar = mrrValues.reduce((a:number, b:number) => a + Math.pow(b - mrrAvg, 2), 0) / mrrValues.length;
     const top1Var = top1Values.reduce((a:number, b:number) => a + Math.pow(b - top1Avg, 2), 0) / top1Values.length;
+    const top3Var = top3Values.reduce((a:number, b:number) => a + Math.pow(b - top3Avg, 2), 0) / top3Values.length;
 
     console.log(`\nModel: ${targetModelStr}`);
     console.log(`Sample size: ${modelRuns.length} runs`);
     console.log(`Top-1 Hit Rate:  ${(top1Avg * 100).toFixed(2)}% (StdDev: ±${(Math.sqrt(top1Var) * 100).toFixed(2)}%)`);
+    console.log(`Top-3 Hit Rate:  ${(top3Avg * 100).toFixed(2)}% (StdDev: ±${(Math.sqrt(top3Var) * 100).toFixed(2)}%)`);
     console.log(`MRR:             ${mrrAvg.toFixed(4)} (StdDev: ±${Math.sqrt(mrrVar).toFixed(4)})`);
   }
 }

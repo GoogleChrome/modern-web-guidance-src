@@ -40,7 +40,6 @@
     "onlyBuiltDependencies": [
       "@github/keytar",
       "esbuild",
-      "gpt4all",
       "keytar",
       "node-pty",
       "onnxruntime-node",
