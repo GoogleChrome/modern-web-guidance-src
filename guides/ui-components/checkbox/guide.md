@@ -113,16 +113,19 @@ selectAll.indeterminate = true;
 
 ## Accessibility and interaction
 
-- **DO** use `:focus-visible` rather than `:focus` to style focus indicators on custom checkboxes. This ensures that a distinct keyboard outline is visible for accessibility, but is omitted for mouse/touch clicks.
+- **DO** use `:focus-visible` rather than `:focus` to style focus indicators on custom checkboxes so a distinct outline appears for keyboard navigation without showing on pointer clicks.
+- **DO NOT** use `outline: none` or hide focus indicators on checkboxes.
+- **DO** ensure the checkbox or its wrapping `<label>` provides an interactive hit target of at least `44px x 44px` while keeping the visual checkbox box sized in relative units:
   ```css
-  .checkbox-custom:focus-visible {
-    outline: 2px solid #1a73e8;
-    outline-offset: 2px;
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-block-size: 44px;
+    cursor: pointer;
   }
   ```
-- **DO NOT** use `outline: none` or hide focus indicators on checkboxes.
-- **DO** ensure the checkbox or the label has an active click/touch target of at least `44px x 44px` to comply with mobile touch guidelines.
-- **DO** provide a `:disabled` style variant that lowers opacity, alters background, and sets `cursor: not-allowed` to convey active states clearly.
+- **DO** provide a `:disabled` style variant that lowers opacity and sets `cursor: not-allowed` to convey inactive states clearly.
 
 
 ## Fallback strategies
