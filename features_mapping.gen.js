@@ -68,7 +68,8 @@ window.__featuresMapping = {
     "cascade-layers",
     "abs-sign",
     "color-mix",
-    "light-dark"
+    "light-dark",
+    "tmp-revert-rule"
   ],
   "design-token-reactivity": [
     "container-style-queries"
@@ -265,10 +266,6 @@ window.__featuresMapping = {
   "support-global-calendar-systems": [
     "temporal"
   ],
-  "scoped-component-transitions": [
-    "view-transitions-element-scoped",
-    "view-transitions"
-  ],
   "avoid-redundant-large-asset-downloads": [
     "tmp-cross-origin-storage",
     "fetch",
@@ -450,6 +447,13 @@ window.__featuresMapping = {
     "color-scheme",
     "light-dark"
   ],
+  "custom-list-markers": [
+    "marker",
+    "list-style",
+    "subgrid",
+    "counter-style",
+    "symbols-function"
+  ],
   "icons": [
     "masks",
     "image-set",
@@ -613,6 +617,10 @@ window.__featuresMapping = {
     "container-queries"
   ],
   "same-document-transitions": [
+    "view-transitions"
+  ],
+  "scoped-component-transitions": [
+    "view-transitions-element-scoped",
     "view-transitions"
   ],
   "scroll-entry-exit-effects": [
@@ -824,7 +832,8 @@ window.__featuresMapping = {
     "relative-color",
     "function",
     "oklab",
-    "color-mix"
+    "color-mix",
+    "lab"
   ],
   "complex-shapes": [
     "masks",
@@ -848,7 +857,8 @@ window.__featuresMapping = {
   "element-shape": [
     "border-shape",
     "corner-shape",
-    "border-radius"
+    "border-radius",
+    "tmp-polygon-round"
   ],
   "equal-width-text-lines": [
     "text-fit",
@@ -864,8 +874,11 @@ window.__featuresMapping = {
   "fit-text-to-container": [
     "text-fit"
   ],
-  "generate-derived-colors": [
-    "relative-color"
+  "gradient-borders": [
+    "background-clip-border-area",
+    "background-clip",
+    "masks",
+    "registered-custom-properties"
   ],
   "improve-text-layout-and-legibility": [
     "text-wrap-balance",
