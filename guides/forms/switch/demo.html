@@ -7,11 +7,10 @@
     <title>Switch demo</title>
 
     <script>
-        const supportsNativeSwitch = 'switch' in HTMLInputElement.prototype;
-        const root = document.documentElement;
-
-        root.classList.toggle('native-switch', supportsNativeSwitch);
-        root.classList.toggle('no-native-switch', !supportsNativeSwitch);
+        document.documentElement.classList.toggle(
+            'no-native-switch',
+            !('switch' in HTMLInputElement.prototype)
+        );
     </script>
 
     <style>
@@ -70,7 +69,7 @@
         }
 
         /* Native switch styling */
-        html.native-switch input[type="checkbox"][switch] {
+        html:where(:not(.no-native-switch)) input[type="checkbox"][switch] {
             accent-color: var(--accent-color);
             inline-size: 3rem;
             block-size: 1.75rem;
