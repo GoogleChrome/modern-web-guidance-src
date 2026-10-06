@@ -63,7 +63,7 @@ The engine uses three CSS capabilities to render icons:
 }
 ```
 
-### 2. Defining SVG Assets as Variables
+### 2. Defining Icon Assets as Design Tokens
 
 Define SVG icons as reusable custom variables and use inline SVG data URIs or relative URLs:
 
