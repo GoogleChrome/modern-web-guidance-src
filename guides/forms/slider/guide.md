@@ -7,6 +7,7 @@ web-feature-ids:
   - appearance
   - progress
   - attr
+  - dir-pseudo
 # later: ::slider-thumb, ::slider-track, ::slider-fill
 guides:
   - slider-tooltip
@@ -46,7 +47,7 @@ input[type="range"] {
 
 ## Style the track and thumb
 
-Use `appearance: none` on the input and the established vendor-prefixed pseudo-elements. These selectors are widely implemented but not yet standardised; they are preferable to replacing the native control with custom elements. Keep consumer-facing values on the input as custom properties so themes do not need to target pseudo-elements directly.
+Reset default OS styling with `appearance: none`, `margin: 0`, and `border: 0`. To normalize cross-browser rendering, declare WebKit and Firefox pseudo-elements in separate rule blocks, and center the WebKit thumb using `margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2)` (Firefox centers the thumb automatically). Keep consumer-facing values as custom properties on the input so themes do not target pseudo-elements directly.
 
 ```css
 input[type="range"] {
@@ -160,7 +161,7 @@ slider.addEventListener('input', syncSliderProperties);
 
 ## Limitations
 
-- `::-webkit-slider-runnable-track`, `::-webkit-slider-thumb`, `::-moz-range-track`, `::-moz-range-progress`, and `::-moz-range-thumb` are browser-specific and can differ in sizing, alignment, and behaviour.
+- Do not combine WebKit and Firefox pseudo-selectors into a single comma-separated list (e.g. `::-webkit-slider-thumb, ::-moz-range-thumb`); browsers drop the entire rule if an unrecognized vendor pseudo-element is encountered.
 - Generated content on slider pseudo-elements is not interoperable and should not contain essential labels, values, instructions, or functionality. In particular, do not rely on `::before` or `::after` for cross-browser slider UI.
 - A custom appearance does not remove the need for a programmatic label, visible focus indicator, adequate contrast, or a usable interaction area.
 - Test horizontal, RTL, vertical, zoomed, high-contrast, touch, keyboard, and assistive-technology use cases in every supported browser.
