@@ -21,7 +21,7 @@ Per the CSS Overscroll Behavior specification, `overscroll-behavior` applies to 
 
 ### 1. Contain scroll chaining on the `<dialog>`
 
-The user-agent stylesheet sets `overflow: auto` on `<dialog>`, making it a scroll container by default. Apply `overscroll-behavior: contain` (or `none`) to `dialog`. 
+The user-agent stylesheet sets `overflow: auto` on `<dialog>`, making it a scroll container by default. Apply `overscroll-behavior: contain` (or `none`) to `dialog:modal` (or `dialog`).
 
 ### 2. Turn `::backdrop` into a scroll container and contain its scroll
 
