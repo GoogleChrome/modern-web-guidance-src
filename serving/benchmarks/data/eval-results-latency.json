@@ -229,5 +229,23 @@
       41,
       43
     ]
+  },
+  {
+    "timestamp": "2026-10-05T20:13:30.231Z",
+    "model": "minilm q8 - TFJS - maxsim",
+    "type": "latency-cold-and-warm",
+    "coldStartMs": 680,
+    "warmMedianMs": 230.82,
+    "warmMeanMs": 253.38,
+    "warmSamples": 50
+  },
+  {
+    "timestamp": "2026-10-05T20:30:31.932Z",
+    "model": "minilm q8 - TFJS - maxsim",
+    "type": "latency-cold-and-warm",
+    "coldStartMs": 691,
+    "warmMedianMs": 227.37,
+    "warmMeanMs": 250.84,
+    "warmSamples": 50
   }
 ]
