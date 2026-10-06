@@ -2,12 +2,12 @@
 
 ## Zizmor
 
-Every PR that touches `.github/workflows/` is scanned by [Zizmor](https://docs.zizmor.sh/), a static analyzer for GitHub Actions. Fix or suppress what it reports.
+Every PR that touches `.github/workflows/` is scanned by [Zizmor](https://docs.zizmor.sh/), a static analyzer for GitHub Actions, via [`github_actions_scan.yml`](https://github.com/google-gh-automation/workflows/blob/main/.github/workflows/github_actions_scan.yml). Fix or suppress what it reports.
 
-Run it locally:
+Run it locally at the [same version](https://github.com/google-gh-automation/workflows/blob/main/.github/workflows/github_actions_scan.yml#L21) (the check also applies an org-managed config, so results can differ slightly):
 
 ```sh
-uvx zizmor@latest --gh-token="$(gh auth token)" .github/workflows
+uvx zizmor@1.25.2 --gh-token="$(gh auth token)" .github/workflows
 ```
 
 Add `--fix=all` to apply auto-fixes, but review the diff: some fixes (e.g. `persist-credentials: false`) can break steps that rely on the old behavior. Add `--persona=pedantic` to see the low-confidence findings too.
