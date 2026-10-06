@@ -1,0 +1,247 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..1eae0cf
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++dist/
++node_modules/
+diff --git a/index.html b/index.html
+index 66c9173..afc690f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,43 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Latte Art Generator */
++    .latte-art {
++      text-align: center;
++    }
++
++    .latte-art canvas {
++      display: block;
++      margin: 20px auto;
++      max-width: 100%;
++      height: auto;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
++      background: var(--secondary);
++    }
++
++    .latte-art .btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .latte-art .btn:disabled {
++      cursor: progress;
++      opacity: 0.7;
++    }
++
++    .latte-art .btn:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .brew-status {
++      margin-top: 10px;
++      min-height: 1.2em;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +232,14 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="latte-art">
++      <h2>Generative Latte Art</h2>
++      <p>Every cup gets a one-of-a-kind rosette, poured fresh by WebAssembly.</p>
++      <canvas id="brew-canvas" width="320" height="320" aria-label="Generated latte art pattern"></canvas>
++      <button id="brew-button" class="btn" type="button">Brew New Pattern</button>
++      <p id="brew-status" class="brew-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +252,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="src/main.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..750f051 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "mkdir -p dist && em++ src/generator.cpp -o dist/generator.mjs -sEXPORT_ES6=1 -sENVIRONMENT=worker -sSTRICT=1 -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_FUNCTIONS=_malloc,_free,_generate_image -sEXPORTED_RUNTIME_METHODS=HEAPU8 -Oz -flto -fno-exceptions",
++    "prestart": "npm run build",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/src/generator.cpp b/src/generator.cpp
+new file mode 100644
+index 0000000..f90aaab
+--- /dev/null
++++ b/src/generator.cpp
+@@ -0,0 +1,69 @@
++#include <cstdint>
++#include <cmath>
++#include <emscripten/emscripten.h>
++
++namespace {
++
++// Small, fast xorshift32 PRNG so a seed from JS deterministically drives
++// the pattern's shape without pulling in <random>.
++uint32_t next_random(uint32_t &state) {
++  state ^= state << 13;
++  state ^= state >> 17;
++  state ^= state << 5;
++  return state;
++}
++
++} // namespace
++
++extern "C" {
++
++// Renders a swirled "latte art" style raster into a caller-owned RGBA
++// buffer of size width * height * 4 bytes. Deliberately layers several
++// trig passes per pixel so the call is heavy enough that it must run off
++// the main thread (see guide.md, section 2).
++EMSCRIPTEN_KEEPALIVE
++void generate_image(uint8_t *out, int width, int height, uint32_t seed) {
++  uint32_t state = seed ? seed : 0x9e3779b9u;
++
++  const float cx = width * 0.5f;
++  const float cy = height * 0.5f;
++  const float max_dist = sqrtf(cx * cx + cy * cy);
++  const int arms = 4 + static_cast<int>(next_random(state) % 5);
++  const float freq = 4.0f + static_cast<float>(next_random(state) % 100) / 20.0f;
++  const float twist = 2.0f + static_cast<float>(next_random(state) % 100) / 40.0f;
++  const float ripple = 1.5f + static_cast<float>(next_random(state) % 100) / 50.0f;
++
++  for (int y = 0; y < height; ++y) {
++    for (int x = 0; x < width; ++x) {
++      const float dx = static_cast<float>(x) - cx;
++      const float dy = static_cast<float>(y) - cy;
++      const float dist = sqrtf(dx * dx + dy * dy) / max_dist;
++      const float angle = atan2f(dy, dx);
++
++      const float swirl = angle * static_cast<float>(arms) + dist * twist * 6.2831853f;
++      const float wave = sinf(swirl + freq * dist);
++      const float fine = 0.35f * sinf(dist * ripple * 20.0f - angle * 3.0f);
++
++      float mix = 0.5f + 0.5f * (wave + fine);
++      if (mix < 0.0f) mix = 0.0f;
++      if (mix > 1.0f) mix = 1.0f;
++
++      float fall = 1.0f - dist;
++      if (fall < 0.0f) fall = 0.0f;
++      mix *= fall;
++
++      // Blend between espresso (dark) and steamed milk (light) tones.
++      const uint8_t r = static_cast<uint8_t>(61 + mix * (233 - 61));
++      const uint8_t g = static_cast<uint8_t>(35 + mix * (198 - 35));
++      const uint8_t b = static_cast<uint8_t>(23 + mix * (150 - 23));
++
++      const int idx = (y * width + x) * 4;
++      out[idx + 0] = r;
++      out[idx + 1] = g;
++      out[idx + 2] = b;
++      out[idx + 3] = 255;
++    }
++  }
++}
++
++} // extern "C"
+diff --git a/src/main.js b/src/main.js
+new file mode 100644
+index 0000000..3db811c
+--- /dev/null
++++ b/src/main.js
+@@ -0,0 +1,45 @@
++const canvas = document.getElementById('brew-canvas');
++const ctx = canvas.getContext('2d');
++const button = document.getElementById('brew-button');
++const status = document.getElementById('brew-status');
++
++const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
++
++function setBusy(isBusy) {
++  button.disabled = isBusy;
++  button.textContent = isBusy ? 'Brewing…' : 'Brew New Pattern';
++  status.textContent = isBusy ? 'Generating your pattern…' : '';
++}
++
++worker.onmessage = (event) => {
++  const { ok, width, height, pixels, message } = event.data;
++
++  if (!ok) {
++    console.error('Latte art generation failed:', message);
++    status.textContent = 'Something went wrong brewing that pattern. Please try again.';
++    button.disabled = false;
++    button.textContent = 'Brew New Pattern';
++    return;
++  }
++
++  const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height);
++  ctx.putImageData(imageData, 0, 0);
++  setBusy(false);
++};
++
++worker.onerror = (error) => {
++  console.error('Latte art worker error:', error.message || error);
++  status.textContent = 'Something went wrong brewing that pattern. Please try again.';
++  button.disabled = false;
++  button.textContent = 'Brew New Pattern';
++};
++
++function requestPattern() {
++  setBusy(true);
++  const seed = Math.floor(Math.random() * 0xffffffff);
++  worker.postMessage({ width: canvas.width, height: canvas.height, seed });
++}
++
++button.addEventListener('click', requestPattern);
++
++requestPattern();
+diff --git a/src/worker.js b/src/worker.js
+new file mode 100644
+index 0000000..237f135
+--- /dev/null
++++ b/src/worker.js
+@@ -0,0 +1,23 @@
++import createGeneratorModule from '../dist/generator.mjs';
++
++const modulePromise = createGeneratorModule();
++
++self.onmessage = async (event) => {
++  const { width, height, seed } = event.data;
++
++  try {
++    const Module = await modulePromise;
++    const byteLength = width * height * 4;
++    const ptr = Module._malloc(byteLength);
++
++    try {
++      Module._generate_image(ptr, width, height, seed >>> 0);
++      const pixels = Module.HEAPU8.slice(ptr, ptr + byteLength);
++      self.postMessage({ ok: true, width, height, pixels }, [pixels.buffer]);
++    } finally {
++      Module._free(ptr);
++    }
++  } catch (error) {
++    self.postMessage({ ok: false, message: error && error.message ? error.message : String(error) });
++  }
++};

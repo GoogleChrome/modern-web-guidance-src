@@ -57,6 +57,9 @@ To participate as a verifying site (relying party):
 When the form is submitted, treat the `token` field as untrusted input. Atomically read and delete the expected `nonce` from your server-side session store on receipt. If the `token` field is empty (for example, in browsers that do not support EVP or when the user is signed out of their email provider) or if verification fails, fall back immediately to your standard email OTP or magic link flow:
 
 ```javascript
+// Replace with your public relying-party origin
+const RP_ORIGIN = 'https://rp.example.com';
+
 export async function handleSignupSubmission(request) {
   const formData = await request.formData();
   const submittedEmail = String(formData.get('email') || '').trim();
@@ -70,12 +73,13 @@ export async function handleSignupSubmission(request) {
         rawToken,
         submittedEmail,
         expectedNonce,
-        expectedAudience: new URL(request.url).origin,
+        expectedAudience: RP_ORIGIN,
       });
       // Fast path: email ownership is cryptographically verified; skip OTP email.
       return completeAccountCreation(submittedEmail);
-    } catch {
-      // Verification failed or expired; fall through to standard OTP/magic link flow.
+    } catch (err) {
+      // Log token verification failures before falling back to standard email verification.
+      console.error('Email verification token check failed:', err);
     }
   }
 
@@ -140,19 +144,19 @@ const issuerJwks = createRemoteJWKSet(new URL(metadata.jwks_uri));
 
 ### Step 3: Verify the EVT signature and Key Binding JWT (`KB-JWT`)
 
-Finally, verify both signatures and the cryptographic binding between the two tokens using the protocol's explicit asymmetric algorithm allowlist (`['Ed25519', 'ES256']`):
+Finally, verify both signatures and the cryptographic binding between the two tokens using the explicit asymmetric algorithm allowlist (`['Ed25519', 'EdDSA', 'ES256']`):
 1. **EVT signature (`verifier`):** Verify against `issuerJwks` (catching `ERR_JWKS_MULTIPLE_MATCHING_KEYS` to iterate candidate keys when `kid` is omitted), enforcing `iss` and a tight freshness window (`maxTokenAge: '5m'`, `clockTolerance: '1m'`).
-2. **Holder binding (`kbVerifier` and `sdJwt.verify` options):** Extract the browser's ephemeral public key from `evtPayload.cnf.jwk`, confirm `cnf.jwk.alg` is in `ALLOWED_ALGS` and matches the `KB-JWT` header `alg`, and verify the `KB-JWT` signature with `typ: 'kb+jwt'`. Pass `keyBindingNonce: expectedNonce`, `expectedKeyBindingAudience: expectedAudience`, and `keyBindingMaxAgeSeconds: 300` to `sdJwt.verify()`—`@sd-jwt/core` only invokes `kbVerifier` and validates `nonce`, `aud`, `iat`, and `sd_hash` when `keyBindingNonce` is supplied.
+2. **Holder binding (`kbVerifier` and `sdJwt.verify` options):** Extract the browser's ephemeral public key from `evtPayload.cnf.jwk`, confirm both `cnf.jwk.alg` and `decoded.kbJwt.header.alg` are in `ALLOWED_ALGS` and match (treating `'Ed25519'` and `'EdDSA'` as equivalent while Origin Trial implementations transition to RFC 9864 `'Ed25519'`), and verify the `KB-JWT` signature with `typ: 'kb+jwt'`. Pass `keyBindingNonce: expectedNonce`, `expectedKeyBindingAudience: expectedAudience`, and `keyBindingMaxAgeSeconds: 300` to `sdJwt.verify()`—`@sd-jwt/core` only invokes `kbVerifier` and validates `nonce`, `aud`, `iat`, and `sd_hash` when `keyBindingNonce` is supplied.
 
 ```javascript
 import { SDJwtInstance } from '@sd-jwt/core';
 import { importJWK, jwtVerify } from 'jose';
 
-// IETF draft-hardt-email-verification-02 (§3.3, §5.1.1) requires fully-specified
-// RFC 9864 algorithm identifiers ('Ed25519', 'ES256') and forbids polymorphic 'EdDSA'.
-// Note: Early Chrome Origin Trial builds still emit 'EdDSA' in cnf.jwk.alg and the
-// KB-JWT header; include 'EdDSA' only while testing against those builds.
-const ALLOWED_ALGS = ['Ed25519', 'ES256'];
+// IETF draft-hardt-email-verification-02 (§3.3, §5.1.1) specifies RFC 9864 'Ed25519' and 'ES256'.
+// TODO: Remove 'EdDSA' once live issuers (e.g. Gmail) and Chrome Origin Trial builds finish
+// transitioning from 'EdDSA' (with crv: 'Ed25519') to 'Ed25519'.
+const ALLOWED_ALGS = ['Ed25519', 'EdDSA', 'ES256'];
+const normalizeAlg = (alg) => (alg === 'Ed25519' ? 'EdDSA' : alg);
 const evtOptions = {
   typ: 'ev+sd-jwt',
   issuer: iss,
@@ -186,14 +190,21 @@ const sdJwt = new SDJwtInstance({
   kbVerifier: async (data, sig) => {
     const holderJwk = evtPayload.cnf?.jwk;
     const holderAlg = holderJwk?.alg;
-    if (!holderAlg || !ALLOWED_ALGS.includes(holderAlg) || decoded.kbJwt.header.alg !== holderAlg) {
+    const kbAlg = decoded.kbJwt.header.alg;
+    if (
+      !holderAlg ||
+      !kbAlg ||
+      !ALLOWED_ALGS.includes(holderAlg) ||
+      !ALLOWED_ALGS.includes(kbAlg) ||
+      normalizeAlg(kbAlg) !== normalizeAlg(holderAlg)
+    ) {
       throw new Error('Missing, disallowed, or mismatched KB-JWT algorithm.');
     }
-    const holderKey = await importJWK(holderJwk, holderAlg);
+    const holderKey = await importJWK(holderJwk, kbAlg);
     await jwtVerify(`${data}.${sig}`, holderKey, {
       typ: 'kb+jwt',
       audience: expectedAudience,
-      algorithms: [holderAlg],
+      algorithms: [kbAlg],
       maxTokenAge: '5m',
       clockTolerance: '1m',
     });
@@ -214,7 +225,7 @@ const verified = await sdJwt.verify(rawToken, {
 
 - **DO** perform all token verification strictly on the server. **DO NOT** validate tokens in client-side JavaScript or trust any client-side verification state—client-side checks can be trivially bypassed or forged and provide zero trust guarantee to the relying party.
 - **DO** use established SD-JWT and JOSE/JWT libraries for your backend platform (for example, `@sd-jwt/core` and `jose` in Node.js) to parse and validate the `EVT~KB-JWT` presentation, and pass `keyBindingNonce` to `sdJwt.verify()` so Key Binding verification cannot be bypassed. **DO NOT** hand-roll custom JWT, SD-JWT, or `sd_hash` parsing and signature verification routines.
-- **DO** generate a fresh cryptographic `nonce` (at least 128 bits, such as `randomBytes(32).toString('base64url')`) on the server for each form render, store it in **server-side session state** (not directly in a client cookie), and serve the form page with `Cache-Control: no-store`. **DO NOT** re-enable a submit button on `pageshow` after back/forward navigation—once a form is submitted, its `nonce` has already been consumed on the server, so navigating back must load a fresh form and `nonce`.
+- **DO** generate a fresh cryptographic `nonce` (at least 128 bits, such as `randomBytes(32).toString('base64url')`) on the server for each form render, store it in **server-side session state** (not directly in a client cookie), and serve the form page with `Cache-Control: no-store`.
 - **DO** atomically read and delete the expected `nonce` from server-side session storage immediately when the `POST` request arrives so an intercepted token cannot be replayed.
 - **DO** perform a **case-insensitive comparison** between `evtPayload.email` and the submitted form email address (`email.toLowerCase()`), while preserving the submitted email string.
 - **DO** trial-verify all keys in the issuer's JWKS when `kid` is absent from the EVT header (providers such as Gmail omit `kid`).
