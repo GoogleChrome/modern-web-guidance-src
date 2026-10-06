@@ -44,6 +44,7 @@ Set explicit relative sizes for `--checkbox-size` and `--checkbox-icon-size` bec
   --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
 }
 
+```css
 /* Custom checkbox */
 .checkbox-custom {
   --checkbox-size: 1.25em;
@@ -57,42 +58,42 @@ Set explicit relative sizes for `--checkbox-size` and `--checkbox-icon-size` bec
   margin: 0;
   border: 2px solid currentColor;
   cursor: pointer;
-}
 
-.checkbox-custom::before {
-  content: "";
-  inline-size: var(--checkbox-icon-size);
-  aspect-ratio: 1;
-  background-color: currentColor;
-  mask: var(--checkbox-icon) no-repeat center / contain;
-  scale: 0;
-  transition: scale 150ms ease;
-}
+  &::before {
+    content: "";
+    inline-size: var(--checkbox-icon-size);
+    aspect-ratio: 1;
+    background-color: currentColor;
+    mask: var(--checkbox-icon) no-repeat center / contain;
+    scale: 0;
+    transition: scale 150ms ease;
+  }
 
-.checkbox-custom:checked {
-  --checkbox-icon: var(--icon-check);
-}
+  &:checked {
+    --checkbox-icon: var(--icon-check);
 
-.checkbox-custom:checked::before {
-  scale: 1;
-}
+    &::before {
+      scale: 1;
+    }
+  }
 
-.checkbox-custom:indeterminate {
-  --checkbox-icon: var(--icon-dash);
-}
+  &:indeterminate {
+    --checkbox-icon: var(--icon-dash);
 
-.checkbox-custom:indeterminate::before {
-  scale: 1;
-}
+    &::before {
+      scale: 1;
+    }
+  }
 
-.checkbox-custom:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
 
-.checkbox-custom:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 ```
 
