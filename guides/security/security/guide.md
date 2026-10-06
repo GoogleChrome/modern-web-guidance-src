@@ -62,7 +62,7 @@ Before attempting to deploy global security policies, focus on code-level hygien
 
 ### 1.2 Avoid Dangerous DOM Sinks
 - **DO**: Prefer `textContent` or `innerText` over `innerHTML` when setting text content.
-- **DO**: Use `setHTML` (part of the Sanitizer API) when available to safely insert HTML.
+- **DO**: Use `setHTML()` (part of the Sanitizer API; see {{ GUIDE_REF("sanitize-untrusted-html") }}) when available to safely insert untrusted HTML without going through `innerHTML`.
 - **DO NOT**: Use `innerHTML` or `setHTMLUnsafe` with untrusted or unsanitized input.
 - **DO**: Use DOMParser or create elements programmatically (`document.createElement`) instead of concatenating HTML strings.
 
@@ -80,10 +80,10 @@ element.textContent = `Hello, ${untrustedName}!`;
 Trusted Types can enforce this pattern at runtime by blocking string assignments to dangerous sinks. Deploying it is a CSP enforcement step with real breakage risk — see §3.3.
 
 ### 1.3 Secure Cookies
-Ensure new cookies are configured securely by default.
-- **DO**: Prefer naming cookies with the `__Host-` prefix when they'll only be used by one domain. This requires the `Secure` and `Path=/` attributes to be set, and the `Domain` attribute to be omitted. This protects against same-site and network attackers.
+Ensure session and application cookies are configured securely by default, whether set via `Set-Cookie` headers or framework session configuration (such as Astro or Express session middleware).
+- **DO**: Name first-party session cookies with the `__Host-` prefix (`name: '__Host-session'`) when used by a single domain. This requires `Secure` (`secure: true`), `Path=/` (`path: '/'`), and omitting the `Domain` attribute, protecting against same-site and network attackers.
 - **DO**: Prefer naming cookies with the `__Secure-` prefix when `__Host-` isn't appropriate. This requires the `Secure` attribute, and protects against network attackers.
-- **DO**: Explicitly set `SameSite=Lax` for standard first-party cookies.
+- **DO**: Set `HttpOnly` (`httpOnly: true`) on session and authentication cookies unless the cookie must be read by client-side script, and explicitly set `SameSite=Lax` (`sameSite: 'lax'`) for standard first-party cookies.
 - **DO**: If your application will be embedded as an iframe in third-party contexts, use `SameSite=None; Secure; Partitioned`.
 - **DO NOT**: Rely on unpartitioned `SameSite=None` — these are being systematically blocked for tracking prevention.
 
@@ -249,16 +249,19 @@ For static/cached HTML (SPAs) where a per-response nonce is not possible, use ha
 Trusted Types enforces source-level guidance at runtime by blocking raw string assignments to dangerous DOM XSS sinks (`innerHTML`, `outerHTML`, `document.write`, `script.src`, `script.textContent`) unless they pass through a named policy.
 
 - **DO**: Enforce Trusted Types in your `Content-Security-Policy` header by including the `require-trusted-types-for 'script'` directive.
-- **DO**: Sanitize any HTML sink assignments through a named `trustedTypes.createPolicy(...)` instance rather than assigning raw strings.
+- **DO**: Sanitize any HTML sink assignments through a named `trustedTypes.createPolicy(...)` instance rather than assigning raw strings (or prefer `element.setHTML()` directly, which sanitizes HTML without needing a Trusted Types policy).
 - **DO NOT**: Create a pass-through policy (such as `createHTML: (s) => s`) that returns unsanitized input unchanged, as this neutralizes Trusted Types protection.
 - **DO**: Consult the dedicated {{ GUIDE_REF("trusted-types") }} guide for full implementation details, including `trusted-types` policy allowlisting and rollout strategies.
 
 ```javascript
 const htmlPolicy = window.trustedTypes?.createPolicy('app-html', {
   createHTML(input) {
-    const template = document.createElement('template');
-    template.setHTML(String(input));
-    return template.innerHTML;
+    return String(input)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   },
 });
 ```
@@ -302,6 +305,8 @@ Server-side enforcement that uses `Sec-Fetch-*` request headers to reject suspic
 
 ```javascript
 app.use((req, res, next) => {
+  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
+
   const site = req.get('Sec-Fetch-Site');
   const mode = req.get('Sec-Fetch-Mode');
   const dest = req.get('Sec-Fetch-Dest');
