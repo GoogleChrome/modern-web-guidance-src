@@ -42,14 +42,9 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
 
     if (pkgJson.scripts && pkgJson.scripts.build) {
       // Running install on base app
-      const repoRoot = path.resolve(import.meta.dirname, '..');
-      const lockfilePath = path.join(repoRoot, 'pnpm-lock.yaml');
-      if (fs.existsSync(lockfilePath)) {
-        fs.copyFileSync(lockfilePath, path.join(targetDir, 'pnpm-lock.yaml'));
-      }
       console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
-      // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, and the copied
-      // workspace lockfile's overrides never match the standalone base app, so install would fail.
+      // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, which would fail
+      // if a solution patch adds a dependency to package.json without updating pnpm-lock.yaml.
       const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force', '--no-frozen-lockfile'], {
         cwd: targetDir,
         stdio: 'ignore',
