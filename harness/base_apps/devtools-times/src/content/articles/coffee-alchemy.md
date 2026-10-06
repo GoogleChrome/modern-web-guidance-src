@@ -6,8 +6,7 @@ author: "Food & Drink"
 category: "lifestyle"
 readingTime: 4
 date: 2026-01-29
-prompt_comment: "Prompt: Why is this network request failing?\n    Request:coffee-brew\n
-Explanation: Internal server error"
+prompt_comment: "Prompt: Why is this network request failing?\n    Request:coffee-brew\nExplanation: Internal server error"
 ---
 
 Coffee is more than a morning ritual; it is a complex beverage derived from the roasted seeds of the Coffea plant. Originating in the Ethiopian highlands, coffee has evolved into a global commodity that fuels modern industry and social connection.
