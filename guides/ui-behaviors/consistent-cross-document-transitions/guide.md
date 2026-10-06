@@ -72,7 +72,7 @@ If a non-blocking script in the `<head>` must run before the transition animates
 
 Stylesheets and `blocking="render"` scripts in the `<head>` only guarantee that the `<head>` has been fully processed. They do **not** wait for any `<body>` content to be parsed. Without additional blocking, the browser may take the new-page snapshot before above-the-fold elements exist in the DOM — resulting in a transition that animates to a blank or partially rendered page.
 
-`<link rel="expect">` solves this by blocking rendering until a specific element (identified by its `id`) has been parsed. The `href` value must be a fragment identifier (e.g., `#hero`) matching the target element's `id` attribute. Once that element's closing tag is parsed, the render block is released.
+`<link rel="expect">` solves this by blocking rendering until a specific element (identified by its `id`) has been parsed. The `href` value must be a fragment identifier (e.g., `#hero`) matching the target element's `id` attribute. Once that element's closing tag is parsed, the render block is released. Note that `<link rel="expect">` only guarantees that the target DOM element exists in the document — it does **not** wait for external subresources (such as `<img>` pixels) to download or decode.
 
 **DO** use `<link rel="expect">` in all of the following scenarios:
 
@@ -107,9 +107,19 @@ Even when no individual elements have a `view-transition-name`, the default `roo
 
 When elements on both pages share a `view-transition-name`, the browser morphs them smoothly across the navigation. If the target element has not been parsed when the transition starts, the browser cannot find it — the morph degrades to separate exit and entry animations. Block rendering until the element with the `view-transition-name` has been parsed.
 
+Because `<link rel="expect">` only pauses rendering until the target DOM element is parsed and does not wait for image data to download or decode, an uncached `<img>` may be captured as an empty rectangle in the new-page snapshot. To prevent blank snapshots or layout shifts during image morphs, preload or pre-decode critical transition images (for example, with `<link rel="preload" as="image">` or by prerendering the destination page) and provide explicit sizing fallbacks (`width` and `height` attributes or CSS `aspect-ratio`, plus a placeholder background color).
+
 ```html
 <head>
   <link rel="stylesheet" href="/css/styles.css">
+
+  <!--
+    DO: Preload critical transition images so their pixels are
+    available to decode before the new-page snapshot is captured.
+    <link rel="expect"> only waits for the DOM element to be parsed,
+    NOT for image pixels to download or decode.
+  -->
+  <link rel="preload" as="image" href="/img/product.webp" fetchpriority="high">
 
   <!--
     DO: Block rendering until the element participating in the
@@ -131,7 +141,18 @@ When elements on both pages share a `view-transition-name`, the browser morphs t
   <header>...</header>
   <section id="hero">
     <h1 style="view-transition-name: page-title">Product Name</h1>
-    <img style="view-transition-name: hero-image" src="/img/product.webp" alt="Product">
+    <!--
+      DO: Provide explicit dimensions (width/height or aspect-ratio)
+      as a sizing fallback so the snapshot captures the correct layout
+      box even if image decoding is still in progress.
+    -->
+    <img
+      style="view-transition-name: hero-image"
+      src="/img/product.webp"
+      width="800"
+      height="600"
+      alt="Product"
+    >
   </section>
 </body>
 ```
@@ -173,8 +194,10 @@ If `view-transition-name` values are assigned statically in CSS, or if you are o
 <head>
   <!--
     MANDATORY: The pagereveal listener must be registered before
-    the page renders. Use an async script with blocking="render"
-    so the listener is registered early without blocking parsing.
+    the page renders. Inline small setup scripts with blocking="render"
+    to avoid an extra network round-trip on cold loads, or use an
+    external async script with blocking="render" so the listener is
+    registered early without blocking HTML parsing.
     If the listener is registered too late (e.g., in a deferred
     script), the event may have already fired.
   -->
