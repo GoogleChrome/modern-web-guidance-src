@@ -23,7 +23,6 @@
     "collect-evals": "node --experimental-strip-types scripts/collect-eval-results.ts",
     "test": "DISABLE_TELEMETRY=1 node --test --test-reporter ${TEST_REPORTER:-dot} **/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "bundle-size": "node --experimental-strip-types scripts/bundle-size.ts",
     "benchmark:rag": "node --experimental-strip-types benchmarks/rag/eval-rag-suite.ts",
     "plot:serve": "npx serve benchmarks/data"
   },
