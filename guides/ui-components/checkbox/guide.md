@@ -23,8 +23,9 @@ For simple, brand-consistent styling that retains native rendering, keyboard beh
   accent-color: #1a73e8;
   
   /* Sizing is controlled via relative units */
-  width: 1.25em;
-  height: 1.25em;
+  inline-size: 1.25em;
+  aspect-ratio: 1;
+  margin: 0;
   cursor: pointer;
 }
 ```
