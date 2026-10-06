@@ -77,26 +77,26 @@
       return new Promise((resolve) => {
         let timeoutId;
 
-        const onScrollEnd = () => {
+        const finish = () => {
           clearTimeout(timeoutId);
+          scroller.removeEventListener('scrollend', finish);
           scroller.removeEventListener('scroll', onScroll);
           resolve();
         };
 
         const onScroll = () => {
-          // Scroll is actively happening; clear the no-scroll timeout and wait for scrollend
+          // Restart the idle timer on every scroll event. If scrollend never fires
+          // (browsers without scrollend support), this resolves once scrolling goes idle.
           clearTimeout(timeoutId);
+          timeoutId = setTimeout(finish, 100);
         };
 
-        scroller.addEventListener('scrollend', onScrollEnd, { once: true });
+        scroller.addEventListener('scrollend', finish, { once: true });
         scroller.addEventListener('scroll', onScroll, { passive: true });
 
-        // If no scroll event fires within 100ms (e.g., already in view), clean up and resolve
-        timeoutId = setTimeout(() => {
-          scroller.removeEventListener('scrollend', onScrollEnd);
-          scroller.removeEventListener('scroll', onScroll);
-          resolve();
-        }, 100);
+        // If no scroll event fires within the idle window (e.g., already in view), resolve.
+        // 100ms is an example value; it only needs to exceed the gap between scroll events.
+        timeoutId = setTimeout(finish, 100);
       });
     }
 
