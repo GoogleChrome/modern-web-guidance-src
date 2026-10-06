@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { TfjsEmbedder } from '../serving/lib/tfjs-embedder.ts';
+// Native ONNX (onnxruntime-node). TfjsEmbedder exists for the published bundle, which can't ship
+// native binaries, but its pure-JS CPU backend is ~100x slower here.
+import { Embedder } from '../serving/lib/transformers-embedder.ts';
 
 const embedCache = new Map<string, number[]>();
 
@@ -142,7 +144,7 @@ export async function validateGraderExpectationCoverage(
     };
   }
 
-  const embedder = TfjsEmbedder.getInstance();
+  const embedder = Embedder.getInstance();
   await embedder.init();
 
   async function getVec(t: string): Promise<number[]> {

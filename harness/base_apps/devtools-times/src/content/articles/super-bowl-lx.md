@@ -6,8 +6,7 @@ author: "Sports Desk"
 category: "sports"
 readingTime: 4
 date: 2026-01-26
-prompt_comment: "Prompt: Why is this network request failing?\n    Request:article-popularity\n
-Explanation: Invalid parameters"
+prompt_comment: "Prompt: Why is this network request failing?\n    Request:article-popularity\nExplanation: Invalid parameters"
 ---
 
 The stage is set for a high-stakes reunion. Following a grueling Conference Championship weekend, the New England Patriots and Seattle Seahawks have officially punched their tickets to Super Bowl LX on February 8, 2026.

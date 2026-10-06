@@ -15,6 +15,7 @@
  */
 
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import { rootDir, harnessDir } from '../../lib/paths.ts';
@@ -26,8 +27,10 @@ export interface SandboxPolicy {
   hiddenDir: string;
   /** Paths inside hiddenDir re-exposed read-only. */
   readOnlyPaths: string[];
-  /** Paths inside hiddenDir re-exposed read-write. */
+  /** Paths re-exposed read-write (inside hiddenDir or an extraHiddenPaths mount). */
   writablePaths: string[];
+  /** Additional directories outside hiddenDir that are hidden from the agent. */
+  extraHiddenPaths?: string[];
 }
 
 function realpathOrSelf(p: string): string {
@@ -39,13 +42,55 @@ function realpathOrSelf(p: string): string {
 }
 
 /**
+ * Directories outside the repo that could leak guides, expectations, or graders:
+ * - On Linux, `/tmp` is mounted as a fresh tmpfs (with only the current agent's
+ *   isolated HOME re-bound into it), hiding host `/tmp` guide dumps, Playwright's
+ *   compile cache (`/tmp/playwright-transform-cache-*`), and other workers' HOMEs.
+ * - On macOS (`sandbox-exec` cannot mount a writable tmpfs over `/tmp`), we deny
+ *   Playwright's compile cache directory directly (creating it first so the deny
+ *   rule applies even before grading populates it).
+ * - The real user's `~/.gemini` directory (conversation logs and scratch files).
+ */
+export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.platform): string[] {
+  const dirs = [path.join(os.userInfo().homedir, '.gemini')];
+  if (platform === 'linux') {
+    dirs.unshift('/tmp');
+  } else {
+    const euid = process.geteuid?.();
+    const pwCacheDir = process.env.PWTEST_CACHE_DIR
+      || (euid !== undefined ? path.join(os.tmpdir(), `playwright-transform-cache-${euid}`) : undefined);
+    if (pwCacheDir) {
+      fs.mkdirSync(pwCacheDir, { recursive: true });
+      dirs.unshift(pwCacheDir);
+    }
+  }
+  return dirs;
+}
+
+/**
  * Builds the sandbox policy for an agent run.
  * @param targetDir The per-run results directory (holds the npx shim and modern-web.log)
  * @param runType The run type; the skills-cli dist is only exposed for guided runs
  * @param repoRoot Repository root to hide (defaults to this repo)
+ * @param extraHidden Directories outside the repo to hide (defaults to {@link defaultExtraHiddenPaths})
  */
-export function buildSandboxPolicy(targetDir: string, runType: string, repoRoot: string = rootDir): SandboxPolicy {
+export function buildSandboxPolicy(
+  targetDir: string,
+  runType: string,
+  repoRoot: string = rootDir,
+  extraHidden: string[] = defaultExtraHiddenPaths()
+): SandboxPolicy {
   const hiddenDir = realpathOrSelf(repoRoot);
+  const isDir = (p: string) => fs.existsSync(p) && fs.statSync(p).isDirectory();
+  const extraHiddenPaths = [
+    ...new Set(
+      extraHidden
+        .filter(isDir)
+        .map(realpathOrSelf)
+        .filter(p => p !== hiddenDir && !p.startsWith(hiddenDir + path.sep))
+    ),
+  ];
+
   const readOnlyPaths = [
     // Agent CLI binaries (claude/codex/gemini) and their pnpm-linked dependencies.
     path.join(harnessDir, 'node_modules'),
@@ -56,22 +101,27 @@ export function buildSandboxPolicy(targetDir: string, runType: string, repoRoot:
     // The npx shim redirects `npx modern-web-guidance@latest` to this local build.
     const skillsCliDir = path.join(repoRoot, 'dist', 'skills-cli');
     readOnlyPaths.push(skillsCliDir);
-    // The bundled transformers.js tokenizer caches downloads next to the skill.
-    const tokenizerCacheDir = path.join(skillsCliDir, 'skills', '.cache');
-    if (fs.existsSync(skillsCliDir)) {
-      fs.mkdirSync(tokenizerCacheDir, { recursive: true });
-      writablePaths.push(tokenizerCacheDir);
-    }
   }
 
-  const isInside = (p: string) => p === hiddenDir || p.startsWith(hiddenDir + path.sep);
+  // When /tmp is mounted as a fresh tmpfs, re-bind the agent's isolated HOME inside /tmp.
+  const tmpRoot = realpathOrSelf('/tmp');
+  const home = process.env.HOME && fs.existsSync(process.env.HOME) ? realpathOrSelf(process.env.HOME) : undefined;
+  if (home && extraHiddenPaths.includes(tmpRoot) && home.startsWith(tmpRoot + path.sep)) {
+    writablePaths.push(home);
+  }
+
+  const isInside = (p: string) =>
+    p === hiddenDir ||
+    p.startsWith(hiddenDir + path.sep) ||
+    extraHiddenPaths.some(h => p.startsWith(h + path.sep));
   const resolveExisting = (paths: string[]) =>
-    paths.filter(p => fs.existsSync(p)).map(realpathOrSelf).filter(isInside);
+    [...new Set(paths.filter(p => fs.existsSync(p)).map(realpathOrSelf).filter(isInside))];
 
   return {
     hiddenDir,
     readOnlyPaths: resolveExisting(readOnlyPaths),
     writablePaths: resolveExisting(writablePaths),
+    extraHiddenPaths,
   };
 }
 
@@ -152,6 +202,7 @@ function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
 
 export function buildBwrapArgs(command: string, commandArgs: string[], policy: SandboxPolicy, runDir: string = '/run'): string[] {
   const args = ['--dev-bind', '/', '/', '--die-with-parent', '--tmpfs', policy.hiddenDir];
+  for (const p of policy.extraHiddenPaths ?? []) args.push('--tmpfs', p);
   for (const p of policy.readOnlyPaths) args.push('--ro-bind', p, p);
   for (const p of policy.writablePaths) args.push('--bind', p, p);
   appendRunDirMounts(args, runDir);
@@ -180,12 +231,18 @@ export function buildSeatbeltArgs(command: string, commandArgs: string[], policy
     '(allow default)',
     '(deny file-read* file-write* (subpath (param "HIDDEN")))',
   ];
+  (policy.extraHiddenPaths ?? []).forEach((p, idx) => {
+    params.push('-D', `XHIDDEN${idx}=${p}`);
+    rules.push(`(deny file-read* file-write* (subpath (param "XHIDDEN${idx}")))`);
+  });
 
   // Later rules take precedence in SBPL. Allow stat() (but not listing) on the
-  // ancestors of re-exposed paths so path resolution through the hidden dir works.
+  // ancestors of re-exposed paths so path resolution through hidden dirs works.
   const ancestors = new Set<string>();
-  for (const p of [...policy.readOnlyPaths, ...policy.writablePaths]) {
-    for (const a of ancestorsWithin(p, policy.hiddenDir)) ancestors.add(a);
+  for (const root of [policy.hiddenDir, ...(policy.extraHiddenPaths ?? [])]) {
+    for (const p of [...policy.readOnlyPaths, ...policy.writablePaths]) {
+      for (const a of ancestorsWithin(p, root)) ancestors.add(a);
+    }
   }
 
   let i = 0;

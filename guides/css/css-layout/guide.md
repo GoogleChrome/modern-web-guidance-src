@@ -270,7 +270,7 @@ Manage layout shifts, scrollbars, and clipping predictably.
 - Use `dvh`/`dvw` for mobile layout containers that must account for browser UI shifting (URL bar collapse/expand).
 - Don't use `100vw` for full-width layout — it ignores scrollbar width and causes horizontal overflow. Use `100%`, `100dvw`, or `100svw` instead.
 
-> For the full viewport unit reference (`svh`, `lvh`, `dvi`, `dvb`, etc.), see {{ GUIDE_REF("css") }}.
+> For the responsive design entry point (dynamic viewport units, reserving space for media, fluid typography), see {{ GUIDE_REF("responsive-design") }}.
 
 ## 8 Grid lanes (aka masonry)
 

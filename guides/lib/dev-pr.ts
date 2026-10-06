@@ -7,6 +7,12 @@ import { REPORT_FILE, TEST_APP_RESULTS_DIR } from '../../lib/guide-validation.ts
 export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
 export const ALL_DEV_PR_LABELS: readonly DevPrLabel[] = ['gd-dev-content', 'gd-dev-eval'];
 
+interface OpenDevPr {
+  number: number;
+  url: string;
+  labels: { name: string }[];
+}
+
 export const devPrCli = {
   getCurrentBranch(): string {
     return execSync('git branch --show-current', { encoding: 'utf-8' }).trim();
@@ -36,16 +42,46 @@ export const devPrCli = {
       }
     }
   },
-  viewPr(branch: string): { number: number; url: string; state: string; labels: { name: string }[] } | null {
+  /**
+   * The open PR for a branch, if any. Merged and closed PRs are ignored, so a
+   * branch name can be reused once its earlier PR is done.
+   */
+  viewOpenPr(branch: string): OpenDevPr | null {
     try {
-      const output = execSync(`gh pr view "${branch}" --json number,url,state,labels`, {
+      const output = execSync(`gh pr list --head "${branch}" --state open --limit 1 --json number,url,labels`, {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
       }).trim();
-      return output ? JSON.parse(output) : null;
+      return (JSON.parse(output || '[]') as OpenDevPr[])[0] ?? null;
     } catch {
       return null;
     }
+  },
+  /**
+   * A merged or closed PR from this branch whose head commit is in HEAD's
+   * history, i.e. the current branch continues a finished PR. A fresh branch
+   * off main reusing the name doesn't match (merges are squashed).
+   */
+  findFinishedPrInHistory(branch: string): { number: number; state: string } | null {
+    let prs: { number: number; state: string; headRefOid: string }[];
+    try {
+      const output = execSync(`gh pr list --head "${branch}" --state all --limit 20 --json number,state,headRefOid`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }).trim();
+      prs = JSON.parse(output || '[]');
+    } catch {
+      return null;
+    }
+    const inHistory = (commit: string): boolean => {
+      try {
+        execSync(`git merge-base --is-ancestor ${commit} HEAD`, { stdio: 'ignore' });
+        return true;
+      } catch {
+        return false; // Not an ancestor, or the commit isn't available locally.
+      }
+    };
+    return prs.find(pr => pr.state !== 'OPEN' && inHistory(pr.headRefOid)) ?? null;
   },
   createPr(title: string, bodyPath: string, labels: DevPrLabel[]): string {
     const labelFlags = labels.map(l => `--label "${l}"`).join(' ');
@@ -112,17 +148,28 @@ export function determinePrLabels(reportContent: string): DevPrLabel[] {
   return Array.from(labels);
 }
 
+/** Branch `gd pr` creates when run from `main`. */
+export function devPrBranch(guideName: string): string {
+  return `gd-dev/${guideName}`;
+}
+
+/** Title `gd pr` gives a new PR. */
+export function devPrTitle(guideName: string): string {
+  return `grader updates: ${guideName}`;
+}
+
 /**
  * Orchestrates branch push, label determination, and GitHub PR creation or update.
+ * Returns the PR URL, or null on failure.
  */
-export async function runDevPr(guideDir: string): Promise<boolean> {
+export async function runDevPr(guideDir: string): Promise<string | null> {
   const resolvedGuideDir = path.resolve(guideDir);
   const reportPath = path.join(resolvedGuideDir, TEST_APP_RESULTS_DIR, REPORT_FILE);
 
   if (!fs.existsSync(reportPath)) {
     console.error(cRed(`❌ No evaluation report found at ${path.relative(process.cwd(), reportPath)}.`));
     console.log(cDim(`Please run 'gd dev ${guideDir}' first to generate the evaluation report.`));
-    return false;
+    return null;
   }
 
   // 1. Verify and resolve git branch (auto-create branch if currently on main)
@@ -132,63 +179,65 @@ export async function runDevPr(guideDir: string): Promise<boolean> {
     currentBranch = devPrCli.getCurrentBranch();
   } catch {
     console.error(cRed('❌ Failed to determine current git branch.'));
-    return false;
+    return null;
   }
 
   if (currentBranch === 'main') {
-    const targetBranch = `gd-dev/${guideName}`;
+    const targetBranch = devPrBranch(guideName);
     console.log(cCyan(`Currently on 'main'. Automatically creating and switching to branch '${targetBranch}'...`));
     try {
       devPrCli.createAndCheckoutBranch(targetBranch);
       currentBranch = devPrCli.getCurrentBranch();
     } catch (err) {
       console.error(cRed(`❌ Failed to create branch '${targetBranch}': ${(err as Error).message || String(err)}`));
-      return false;
+      return null;
     }
   }
 
-  // 2. Commit uncommitted changes if present and push to origin
+  // 2. Without an open PR, refuse to continue a branch whose earlier PR is
+  //    already merged or closed; a new PR would repeat that work.
+  const existingPr = devPrCli.viewOpenPr(currentBranch);
+  const finishedPr = existingPr ? null : devPrCli.findFinishedPrInHistory(currentBranch);
+  if (finishedPr) {
+    console.error(cRed(`❌ Branch '${currentBranch}' already contains ${finishedPr.state.toLowerCase()} Pull Request #${finishedPr.number}.`));
+    console.log(cDim(`Please switch to a new branch off main if you want to open a new PR.`));
+    return null;
+  }
+
+  // 3. Commit uncommitted changes if present and push to origin
   try {
     devPrCli.commitChanges(resolvedGuideDir, guideName);
     devPrCli.pushBranch(currentBranch);
   } catch (err) {
     console.error(cRed(`❌ Failed to push branch: ${(err as Error).message || String(err)}`));
-    return false;
+    return null;
   }
 
-  // 3. Parse report.md for PR labels
+  // 4. Parse report.md for PR labels
   const reportContent = fs.readFileSync(reportPath, 'utf-8');
   const labels = determinePrLabels(reportContent);
 
-  // 4. Create or update Pull Request
-  const existingPr = devPrCli.viewPr(currentBranch);
-
+  // 5. Update the branch's open PR, or create one
   if (existingPr) {
-    if (existingPr.state !== 'OPEN') {
-      console.error(cRed(`❌ A ${existingPr.state.toLowerCase()} Pull Request (#${existingPr.number}) already exists for branch '${currentBranch}'.`));
-      console.log(cDim(`Please switch to a new branch if you want to open a new PR.`));
-      return false;
-    }
-
     const { addLabels, removeLabels } = computeLabelDiff(labels, existingPr.labels ?? []);
     console.log(cCyan(`Updating existing Pull Request #${existingPr.number}...`));
     try {
       devPrCli.editPr(existingPr.number, reportPath, addLabels, removeLabels);
       console.log(`\n${cGreen('📄 Updated Pull Request:')} ${existingPr.url}`);
-      return true;
+      return existingPr.url;
     } catch (err) {
       console.error(cRed(`❌ Failed to update Pull Request #${existingPr.number} via gh CLI: ${(err as Error).message || String(err)}`));
-      return false;
+      return null;
     }
   } else {
-    const prTitle = `grader updates: ${guideName}`;
+    const prTitle = devPrTitle(guideName);
     try {
       const prUrl = devPrCli.createPr(prTitle, reportPath, labels);
       console.log(`\n${cGreen('📄 Pull Request:')} ${prUrl}`);
-      return true;
+      return prUrl;
     } catch (err) {
       console.error(cRed(`❌ Failed to create Pull Request via gh CLI: ${(err as Error).message || String(err)}`));
-      return false;
+      return null;
     }
   }
 }
