@@ -32,6 +32,8 @@ const ALL_OPTIONS = {
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
+  'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
+  limit: { type: 'string', desc: 'Process at most <n> guides' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
@@ -39,6 +41,7 @@ type OptionName = keyof typeof ALL_OPTIONS;
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app'] },
+  'dev-gap': { desc: 'Run dev + pr for each open eval-gap issue without a PR', flags: ['dry-run', 'limit'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
@@ -166,7 +169,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'pr', 'audit'],
+      commands: ['dev', 'pr', 'dev-gap', 'audit'],
     },
 
     {
@@ -202,7 +205,7 @@ function showHelp() {
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : '';
+          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -229,6 +232,21 @@ async function main() {
       completion.setupShellInitFile();
       console.log('Auto-completion installed. Restart your terminal to apply.');
       process.exit(0);
+    }
+
+    case 'dev-gap': {
+      if (positionals[1]) {
+        console.error(cRed(`gd dev-gap picks guides from open issues; don't pass a guide ('${positionals[1]}').`));
+        process.exit(1);
+      }
+      const { fixEvalGaps } = await import('../guides/eval-gap-fix.ts');
+      const success = await fixEvalGaps({
+        dryRun: !!values['dry-run'],
+        limit: values.limit ? Number(values.limit) : undefined,
+        verbose: !!values.verbose,
+        suiteConfig: await resolveSuiteConfig(values.config as string | undefined),
+      });
+      process.exit(success ? 0 : 1);
     }
 
     case 'dev': {
@@ -338,8 +356,8 @@ async function main() {
     case 'pr': {
       const dir = requireArg(positionals[1], 'gd pr <path/to/guide>');
       const { runDevPr } = await import('../guides/lib/dev-pr.ts');
-      const success = await runDevPr(dir);
-      process.exit(success ? 0 : 1);
+      const prUrl = await runDevPr(dir);
+      process.exit(prUrl ? 0 : 1);
     }
 
 

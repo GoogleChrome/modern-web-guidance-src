@@ -520,15 +520,21 @@ process.exit(graderStatus !== null ? graderStatus : (result.status ?? 1));
   }, null, 2));
 }
 
+const AGENT_SCRIPTS: Record<string, string> = {
+  [Agents.CLAUDE_CODE]: 'claude-code-agent.ts',
+  [Agents.CODEX_CLI]: 'codex-cli-agent.ts',
+  [Agents.JETSKI_CLI]: 'jetski-cli-agent.ts',
+  [Agents.PI]: 'pi-agent.ts',
+  [Agents.ANTIGRAVITY_CLI]: 'antigravity-cli-agent.ts',
+  [Agents.GEMINI_CLI]: 'gemini-cli-agent.ts',
+};
+
 function getAgentScript(agent: string): string {
-  return path.join(harnessDir, 'agents',
-    agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-      agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-        agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
-          agent === Agents.PI ? 'pi-agent.ts' :
-            agent === Agents.ANTIGRAVITY_CLI ? 'antigravity-cli-agent.ts' :
-              'gemini-cli-agent.ts'
-  );
+  const script = AGENT_SCRIPTS[agent];
+  if (!script) {
+    throw new Error(`Unsupported agent: ${agent}. Expected one of: ${Object.keys(AGENT_SCRIPTS).join(', ')}`);
+  }
+  return path.join(harnessDir, 'agents', script);
 }
 
 // If invoked directly, retain legacy fallback logic if strictly required (optional).

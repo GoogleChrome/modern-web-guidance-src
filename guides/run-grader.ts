@@ -68,6 +68,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 
   if (opts.jsonOutputName) {
     env.PLAYWRIGHT_JSON_OUTPUT_NAME = opts.jsonOutputName;
+    env.PWTEST_CACHE_DIR = `${opts.jsonOutputName}-cache`;
   }
 
   const playwrightBin = path.join(guidesDir, 'node_modules', '.bin', 'playwright');
@@ -132,6 +133,7 @@ export async function runPlaywright(
     await fs.promises.unlink(tmpJson).catch(() => {});
     return JSON.parse(content);
   } finally {
+    await fs.promises.rm(`${tmpJson}-cache`, { recursive: true, force: true }).catch(() => {});
     if (cleanupGradingDir) {
       cleanupGradingDir();
     }

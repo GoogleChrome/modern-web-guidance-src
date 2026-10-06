@@ -101,12 +101,6 @@ export function buildSandboxPolicy(
     // The npx shim redirects `npx modern-web-guidance@latest` to this local build.
     const skillsCliDir = path.join(repoRoot, 'dist', 'skills-cli');
     readOnlyPaths.push(skillsCliDir);
-    // The bundled transformers.js tokenizer caches downloads next to the skill.
-    const tokenizerCacheDir = path.join(skillsCliDir, 'skills', '.cache');
-    if (fs.existsSync(skillsCliDir)) {
-      fs.mkdirSync(tokenizerCacheDir, { recursive: true });
-      writablePaths.push(tokenizerCacheDir);
-    }
   }
 
   // When /tmp is mounted as a fresh tmpfs, re-bind the agent's isolated HOME inside /tmp.
