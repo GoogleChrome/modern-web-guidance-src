@@ -116,7 +116,7 @@ function removeItem(listEl, itemEl) {
 
 When starting a view transition outside of the intended scope (e.g. from a parent component, or from the document for a page-level transition), the outer transition will capture and animate the scope element and everything inside it.
 
-To prevent this from happening wrap the scope element in a separate named wrapper element and give it its own `view-transition-name` and apply `view-transition-scope: all` on it. This allows the wrapper itself to be captured and animated by the outer transition, while the contents inside won’t be captured by the outer transition.
+To prevent this from happening, wrap the scope element in a separate wrapper element with its own `view-transition-name`, and apply `view-transition-scope: all` to the inner scope element. This allows the wrapper itself to be captured and animated by the outer transition while preventing the inner scope's contents from being captured.
 
 ```html
 <div class="page" id="page">
