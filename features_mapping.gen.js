@@ -534,6 +534,8 @@ window.__featuresMapping = {
     "active-view-transition"
   ],
   "drag": [
+    "pointer-events-api",
+    "touch-action",
     "user-select"
   ],
   "drag-and-drop": [
