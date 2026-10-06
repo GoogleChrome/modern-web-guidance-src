@@ -1,0 +1,209 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..68ff8c0 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,55 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .coffee-panel {
++      position: fixed;
++      right: min(20px, 2vw);
++      bottom: min(20px, 2vh);
++      z-index: 1100;
++      width: 300px;
++      max-width: 96vw;
++      max-height: 96vh;
++      max-height: 96dvh;
++      overflow: auto;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 4px 20px rgb(0 0 0 / 18%);
++    }
++
++    .coffee-panel-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      padding: 12px 16px;
++      background: var(--secondary);
++    }
++
++    .coffee-panel-header h2 { font-size: 1rem; }
++    .coffee-panel-content { padding: 16px; }
++    .coffee-panel-content p { font-size: 0.9rem; }
++    .coffee-panel-content .drag-help { margin-top: 12px; font-size: 0.8rem; }
++
++    .drag-handle {
++      flex-shrink: 0;
++      width: 44px;
++      height: 44px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      font-size: 1.5rem;
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .drag-handle.dragging { cursor: grabbing; }
++    .drag-handle:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
++    .drag-handle[hidden] { display: none; }
+   </style>
+ </head>
+ 
+@@ -207,6 +256,21 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside id="coffee-panel" class="coffee-panel" aria-labelledby="coffee-panel-title">
++    <div class="coffee-panel-header">
++      <h2 id="coffee-panel-title">Your next coffee break</h2>
++      <button id="coffee-drag-handle" class="drag-handle" type="button"
++        aria-label="Move coffee panel: drag or use arrow keys" aria-describedby="coffee-drag-help" hidden>
++        <span aria-hidden="true">⠿</span>
++      </button>
++    </div>
++    <div class="coffee-panel-content">
++      <p>Make time for your favorite roast. Explore our menu and order a cup made just for you.</p>
++      <a href="/order-online" class="btn">Start an order</a>
++      <p id="coffee-drag-help" class="drag-help">When the grip is available, drag it or focus it and use the arrow keys to move this panel.</p>
++    </div>
++  </aside>
++  <script type="module" src="/src/drag.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..4c59ef3 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3",
++    "vite": "^7.1.9"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/src/drag.ts b/src/drag.ts
+new file mode 100644
+index 0000000..edb5406
+--- /dev/null
++++ b/src/drag.ts
+@@ -0,0 +1,78 @@
++const panel = document.querySelector<HTMLElement>('#coffee-panel');
++const handle = document.querySelector<HTMLButtonElement>('#coffee-drag-handle');
++
++if (panel && handle) {
++  let activePointer: number | null = null;
++  let offsetX = 0;
++  let offsetY = 0;
++
++  // Pointer, keyboard, and resize updates all use the same viewport limits.
++  function moveTo(left: number, top: number): void {
++    if (!panel) return;
++    const rect = panel.getBoundingClientRect();
++    const maxLeft = Math.max(0, window.innerWidth - rect.width);
++    const maxTop = Math.max(0, window.innerHeight - rect.height);
++    panel.style.right = 'auto';
++    panel.style.bottom = 'auto';
++    panel.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++    panel.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++  }
++
++  function reclamp(): void {
++    if (!panel) return;
++    const rect = panel.getBoundingClientRect();
++    moveTo(rect.left, rect.top);
++  }
++
++  function endDrag(event: PointerEvent): void {
++    if (!handle || event.pointerId !== activePointer) return;
++    activePointer = null;
++    handle.classList.remove('dragging');
++    if (handle.hasPointerCapture(event.pointerId)) {
++      handle.releasePointerCapture(event.pointerId);
++    }
++  }
++
++  handle.addEventListener('pointerdown', (event: PointerEvent) => {
++    if (event.button !== 0 || !event.isPrimary || activePointer !== null) return;
++    // Only the dedicated grip starts a drag; panel links and text are unaffected.
++    const rect = panel.getBoundingClientRect();
++    offsetX = event.clientX - rect.left;
++    offsetY = event.clientY - rect.top;
++    handle.setPointerCapture(event.pointerId);
++    activePointer = event.pointerId;
++    handle.classList.add('dragging');
++    handle.focus({ preventScroll: true });
++    event.preventDefault();
++  });
++
++  handle.addEventListener('pointermove', (event: PointerEvent) => {
++    if (event.pointerId !== activePointer) return;
++    moveTo(event.clientX - offsetX, event.clientY - offsetY);
++  });
++  handle.addEventListener('pointerup', endDrag);
++  handle.addEventListener('pointercancel', endDrag);
++  handle.addEventListener('lostpointercapture', endDrag);
++
++  handle.addEventListener('keydown', (event: KeyboardEvent) => {
++    const step = 15;
++    let dx = 0;
++    let dy = 0;
++    switch (event.key) {
++      case 'ArrowLeft': dx = -step; break;
++      case 'ArrowRight': dx = step; break;
++      case 'ArrowUp': dy = -step; break;
++      case 'ArrowDown': dy = step; break;
++      default: return;
++    }
++    event.preventDefault();
++    const rect = panel.getBoundingClientRect();
++    moveTo(rect.left + dx, rect.top + dy);
++  });
++
++  // Reveal the grip only after its interactions are ready.
++  handle.hidden = false;
++  reclamp();
++  window.addEventListener('resize', reclamp);
++  new ResizeObserver(reclamp).observe(panel);
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..dfd4fe3
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM"],
++    "strict": true,
++    "noEmit": true
++  },
++  "include": ["src/**/*.ts"]
++}
