@@ -5,7 +5,7 @@ description: Action-oriented guidelines for privacy by design, data minimization
 
 # Privacy
 
-Web application architects and developers must treat privacy not as an compliance afterthought, but as a foundational architectural design requirement. Modern web platforms are shifting away from implicit tracking toward explicit, user-consented, browser-mediated identity and permission exchanges.
+Web application architects and developers must treat privacy not as a compliance afterthought, but as a foundational architectural design requirement. Modern web platforms are shifting away from implicit tracking toward explicit, user-consented, browser-mediated identity and permission exchanges.
 
 ## 1. Privacy by Design and Data Minimization
 
