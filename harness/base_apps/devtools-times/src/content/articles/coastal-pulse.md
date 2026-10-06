@@ -6,8 +6,7 @@ author: "Nature Weekly"
 category: "lifestyle"
 readingTime: 5
 date: 2026-01-29
-prompt_comment: "Prompt: Why is this network request failing?\n    Request:tide-levels\n
-Explanation: Redirected to a different URL"
+prompt_comment: "Prompt: Why is this network request failing?\n    Request:tide-levels\nExplanation: Redirected to a different URL"
 ---
 
 Living by the seaside offers a sensory experience that shifts with the tides. It’s a lifestyle defined by the intertidal rhythm, where the day’s activities are often dictated by the water's retreat and advance. Beyond the aesthetic appeal, coastal living has profound effects on both physical health and psychological well-being.
