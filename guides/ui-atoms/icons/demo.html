@@ -11,7 +11,8 @@
       --icon-color-danger: #b00020;
       --icon-color-success: #1a7f37;
 
-      --icon-size: 1.25em; /* Easily configurable relative unit icon sizing */
+      --icon-size: 1.25em;
+      /* Easily configurable relative unit icon sizing */
       --icon-transition-duration: 0.2s;
       --icon-transition-easing: ease;
 
@@ -37,7 +38,9 @@
 
     @supports (-webkit-nbsp-mode: normal) and (content-visibility: auto) {
       @layer webkit-301609-fix {
-        ::before, ::after {
+
+        ::before,
+        ::after {
           animation: webkit-301609 0s;
         }
       }
@@ -101,7 +104,6 @@
         height: var(--icon-size);
         background-color: currentColor;
         mask: var(--icon-start) no-repeat center / contain;
-        -webkit-mask: var(--icon-start) no-repeat center / contain;
         opacity: 0.85;
         pointer-events: none;
         vertical-align: middle;
@@ -124,7 +126,6 @@
         height: var(--icon-size);
         background-color: currentColor;
         mask: var(--icon-end) no-repeat center / contain;
-        -webkit-mask: var(--icon-end) no-repeat center / contain;
         opacity: 0.85;
         pointer-events: none;
         vertical-align: middle;
@@ -140,6 +141,7 @@
      ROBUST COMPATIBILITY FALLBACK (Style Queries Lack of Support)
      -------------------------------------------------- */
     @supports not (container-name: style(any)) {
+
       /* Injection fallback for start icons using inline style attribute matching */
       [style*="--icon-start"]::before {
         content: "";
@@ -148,7 +150,6 @@
         height: var(--icon-size);
         background-color: currentColor;
         mask: var(--icon-start) no-repeat center / contain;
-        -webkit-mask: var(--icon-start) no-repeat center / contain;
         opacity: 0.85;
         pointer-events: none;
         vertical-align: middle;
@@ -167,7 +168,6 @@
         height: var(--icon-size);
         background-color: currentColor;
         mask: var(--icon-end) no-repeat center / contain;
-        -webkit-mask: var(--icon-end) no-repeat center / contain;
         opacity: 0.85;
         pointer-events: none;
         vertical-align: middle;
@@ -186,7 +186,6 @@
         height: var(--icon-size);
         background-color: currentColor;
         mask: var(--icon) no-repeat center / contain;
-        -webkit-mask: var(--icon) no-repeat center / contain;
         opacity: 0.85;
         pointer-events: none;
         vertical-align: middle;
@@ -199,7 +198,7 @@
 <body>
   <section style="padding: 1rem; font-family: system-ui, sans-serif;">
     <h2>Modern CSS Icons Demo</h2>
-    
+
     <p><strong>1. Icon-only button</strong> (accessible name via aria-label on the button, empty span inside)</p>
     <button aria-label="Delete item">
       <span class="icon" style="--icon: var(--icon-trash);" aria-hidden="true"></span>
@@ -210,7 +209,8 @@
     </button>
     <hr />
 
-    <p><strong>2. Zero extra markup icons</strong> (icon applied directly via CSS property on the parent container, visible text provides accessible name)</p>
+    <p><strong>2. Zero extra markup icons</strong> (icon applied directly via CSS property on the parent container,
+      visible text provides accessible name)</p>
     <button style="--icon-start: var(--icon-trash);">
       delete item
     </button>

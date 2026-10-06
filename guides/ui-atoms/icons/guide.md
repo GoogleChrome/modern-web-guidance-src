@@ -89,7 +89,6 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
     height: var(--icon-size, 1.25em);
     background-color: currentColor;
     mask: var(--icon-start) no-repeat center / contain;
-    -webkit-mask: var(--icon-start) no-repeat center / contain;
     vertical-align: middle;
   }
 
@@ -109,7 +108,6 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
     height: var(--icon-size, 1.25em);
     background-color: currentColor;
     mask: var(--icon-end) no-repeat center / contain;
-    -webkit-mask: var(--icon-end) no-repeat center / contain;
     vertical-align: middle;
   }
 
@@ -212,7 +210,6 @@ Use the `@supports not (container-name: style(any))` directive with style attrib
     height: var(--icon-size, 1.25em);
     background-color: currentColor;
     mask: var(--icon-start) no-repeat center / contain;
-    -webkit-mask: var(--icon-start) no-repeat center / contain;
     vertical-align: middle;
   }
 
@@ -227,7 +224,6 @@ Use the `@supports not (container-name: style(any))` directive with style attrib
     height: var(--icon-size, 1.25em);
     background-color: currentColor;
     mask: var(--icon-end) no-repeat center / contain;
-    -webkit-mask: var(--icon-end) no-repeat center / contain;
     vertical-align: middle;
   }
 
@@ -242,7 +238,6 @@ Use the `@supports not (container-name: style(any))` directive with style attrib
     height: var(--icon-size, 1.25em);
     background-color: currentColor;
     mask: var(--icon) no-repeat center / contain;
-    -webkit-mask: var(--icon) no-repeat center / contain;
     vertical-align: middle;
   }
 }
