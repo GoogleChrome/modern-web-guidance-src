@@ -1,6 +1,6 @@
 ---
 name: switch
-description: Build an accessible switch with the native HTML switch attribute, JavaScript feature detection, and a CSS polyfill fallback.
+description: Build an accessible switch with the native HTML switch attribute, falling back to a styled checkbox when not supported.
 web-feature-ids:
   - switch-control
   - accent-color
