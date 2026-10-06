@@ -57,6 +57,4 @@ Instead, treat scroll containment on non-scrollable scroll containers as a **pro
 
 - In browsers that support `overscroll-behavior` on non-scrollable scroll containers, background page scrolling is completely prevented both over `dialog::backdrop` and inside the `<dialog>` (whether or not its content overflows).
 - In browsers that do not yet support `overscroll-behavior` on non-scrollable scroll containers, `overscroll-behavior: contain` on `dialog` still prevents scroll chaining whenever the dialog's own content overflows and is scrollable. Meanwhile, `showModal()` still traps keyboard focus and marks the background document `inert`.
-- Relying on progressive enhancement avoids the layout shifts, disappearing scrollbars, and iOS viewport scroll jumps caused by legacy `html { overflow: hidden }` workarounds.
-
-This approach is recommended over legacy workarounds that apply `overflow: hidden` or `position: fixed` to `<html>` or `<body>`, because it does not remove the root scrollbar, cause horizontal layout shifts, jump the page scroll position, or break `position: sticky` elements on the underlying page.
+- Relying on progressive enhancement is recommended over legacy workarounds that apply `overflow: hidden` or `position: fixed` to `<html>` or `<body>`, because it does not remove the root scrollbar, cause horizontal layout shifts, jump the page scroll position, or break `position: sticky` elements on the underlying page.
