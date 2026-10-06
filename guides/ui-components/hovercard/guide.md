@@ -181,7 +181,7 @@ img {
 
 ## Fallback strategies
 
-Because the trigger is a standard `<a href="...">` link, browsers without support can still navigate on click if you choose to treat the hovercard as a progressive enhancement. When cross-browser hovercard support is required, conditionally load the polyfills below:
+Because the trigger is a standard `<a href="...">` link, browsers without support can still navigate on click if you choose to treat the hovercard as a progressive enhancement. When cross-browser hovercard support is required, conditionally load polyfills as needed.
 
 {{ FEATURE_FALLBACKS("popover") }}
 
