@@ -164,6 +164,7 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('ROOT-CAUSE DIAGNOSIS RULES'));
   assert.ok(prompt.includes('needs-eval-gen'));
   assert.ok(prompt.includes('needs-eval-run'));
+  assert.ok(prompt.includes('```diff'));
 });
 
 import { rootDir } from '../core/paths.ts';
