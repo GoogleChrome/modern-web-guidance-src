@@ -15,103 +15,33 @@ Swipe-to-reveal patterns let users slide a foreground row or content pane horizo
 
 ## How to implement
 
-A swipe-to-reveal component wraps the foreground content and the hidden panel inside an outer horizontal scroll container configured with **CSS Scroll Snap** (`scroll-snap-type: x mandatory`) and **`overscroll-behavior: chain`**. The browser's native scrolling engine handles momentum, snapping, keyboard focus scrolling, and scroll chaining without JavaScript gesture listeners.
+Whether you are revealing action buttons on a list item or a side menu next to a scrollable pane, the mechanics are identical: wrap the foreground content and the hidden panel inside an outer horizontal scroll container configured with **CSS Scroll Snap** (`scroll-snap-type: x mandatory`) and **`overscroll-behavior: chain`**. The browser's native scrolling engine handles momentum, snapping, keyboard focus scrolling, and scroll chaining without JavaScript gesture listeners.
 
-### Preventing menu bounce while chaining scroll with `overscroll-behavior: chain`
+### Step 1: Mark up the swipe wrapper, content, and revealed panel
 
-When you wrap an element in an outer scroll container solely to create a swipe-to-reveal effect, that outer wrapper is an intermediate scroller inside the document (or another parent scroll container).
-
-The four keywords of `overscroll-behavior` independently control whether excess scroll propagates to an ancestor scroll container (**scroll chaining**) and whether the container displays local overscroll affordances such as elastic rubber-band stretching or edge glow (**local boundary effect**):
-
-| Value | Scroll Chaining (Propagates to Ancestor) | Local Boundary Effect (Rubber-band / Glow) | Role in Swipe-to-Reveal |
-| :--- | :--- | :--- | :--- |
-| `auto` | Yes | Yes | Default behavior; keep this on inner content scrollers where normal bounce feedback is desired, but avoid on the swipe wrapper where it causes the menu to bounce |
-| `chain` | **Yes** | **No** | **Use on the outer swipe-to-reveal scroller so excess scroll chains into the parent scroller (such as the document) without the menu or action strip bouncing** |
-| `contain` | No | Yes | Traps scroll inside the container while still bouncing locally |
-| `none` | No | No | Blocks both local bounce and scroll chaining to ancestors |
-
----
-
-### Pattern 1: Swipe-to-reveal action buttons on a list item
-
-To reveal contextual action buttons beside a row without auto-activating them, make the row's track a two-column horizontal scroll-snap container (`grid-template-columns: 100% max-content`). The foreground content spans `100%` of the row width and snaps to `start`; the action strip sizes to its buttons (`max-content`) and snaps to `end`.
-
-Because the main content is the first column, the track naturally starts at scroll offset `0` with the actions hidden off-screen to the right. Setting `overscroll-behavior: chain` on `.SwipeRevealList-track` suppresses local rubber-band bounce on the swipe track (so the action strip does not bounce at its edges) while still allowing excess scroll to chain into the parent scroller.
+Place the foreground content first and the revealed controls (action buttons or a side menu) second inside the `.SwipeReveal` scroll container. Because the content is first in DOM order, the scroll container naturally starts at scroll offset `0` with the panel hidden off-screen to the right.
 
 ```html
-<ul class="SwipeRevealList">
-  <li class="SwipeRevealList-item">
-    <div class="SwipeRevealList-track">
-      <div class="SwipeRevealList-content">
-        <strong>Design review notes</strong>
-        <p>Updated component specs for the Q3 release.</p>
-      </div>
-      <div class="SwipeRevealList-actions" role="group" aria-label="Item actions">
-        <button type="button" class="action-pin">Pin</button>
-        <button type="button" class="action-archive">Archive</button>
-        <button type="button" class="action-delete">Delete</button>
-      </div>
-    </div>
-  </li>
-</ul>
-```
+<!-- Example A: List item with revealable action buttons -->
+<div class="SwipeReveal">
+  <div class="SwipeReveal-content">
+    <strong>Design review notes</strong>
+    <p>Updated component specs for the Q3 release.</p>
+  </div>
+  <div class="SwipeReveal-panel" role="group" aria-label="Item actions">
+    <button type="button">Pin</button>
+    <button type="button">Archive</button>
+    <button type="button">Delete</button>
+  </div>
+</div>
 
-```css
-.SwipeRevealList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.SwipeRevealList-track {
-  /* Column 1: full-width row content. Column 2: auto-sized action buttons. */
-  display: grid;
-  grid-template-columns: 100% max-content;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-
-  /* Chain excess scroll to the parent scroller without local rubber-band
-     bounce on the swipe track or action strip. */
-  overscroll-behavior: chain;
-}
-
-.SwipeRevealList-content {
-  scroll-snap-align: start;
-  background: Canvas;
-  padding: 1rem;
-}
-
-.SwipeRevealList-actions {
-  /* Snapping the action group to `end` brings all buttons fully into view
-     while keeping the trailing edge of the row content visible on the left. */
-  scroll-snap-align: end;
-  display: flex;
-  align-items: stretch;
-}
-```
-
-> If you also want to reveal actions on the left (`inline-start`) side of a row using three columns (`grid-template-columns: max-content 100% max-content`), apply `scroll-initial-target: nearest` to `.SwipeRevealList-content` so the scroll container initially rests on the middle content column rather than the leading action strip.
-
----
-
-### Pattern 2: Swipe-to-reveal side menu around a scrollable container
-
-When wrapping a scrollable content container (`.MenuReveal-content`) inside an outer horizontal scroll-snap container (`.MenuReveal`) that reveals a side menu, the two scroll containers have distinct roles:
-
-1. **Outer horizontal swipe wrapper (`.MenuReveal`)**: Uses `overscroll-behavior: chain`.
-   - Because `.MenuReveal` only exists to provide the horizontal swipe-to-reveal effect, you do not want the menu wrapper itself to rubber-band when reaching its horizontal boundary. Setting `overscroll-behavior: chain` prevents the menu from bouncing while still allowing horizontal and vertical scroll gestures to chain into the parent scroller (such as the document).
-2. **Inner scrollable content (`.MenuReveal-content`)**: Keeps the default `overscroll-behavior: auto`.
-   - Because `.MenuReveal-content` is a true content scroller, keeping `auto` preserves its natural vertical bounce feedback while still chaining horizontal swipes out to `.MenuReveal` (to reveal the side menu) and vertical scrolls through `.MenuReveal` to the document.
-
-```html
-<div class="MenuReveal" role="region" aria-label="Document preview with swipeable side menu">
-  <div class="MenuReveal-content" tabindex="0">
+<!-- Example B: Scrollable content pane with a revealable side menu -->
+<div class="SwipeReveal" role="region" aria-label="Document preview with swipeable side menu">
+  <div class="SwipeReveal-content is-scrollable" tabindex="0">
     <h2>Article Preview</h2>
     <p>Scroll vertically through this pane, or swipe left to reveal the side menu...</p>
-    <!-- Long scrollable content -->
   </div>
-  <nav class="MenuReveal-menu" aria-label="Contextual menu">
+  <nav class="SwipeReveal-panel" aria-label="Contextual menu">
     <a href="#share">Share</a>
     <a href="#bookmark">Bookmark</a>
     <a href="#export">Export PDF</a>
@@ -119,42 +49,65 @@ When wrapping a scrollable content container (`.MenuReveal-content`) inside an o
 </div>
 ```
 
+### Step 2: Configure the horizontal snap container and `overscroll-behavior: chain`
+
+When you wrap an element in an outer scroll container solely to create a swipe-to-reveal effect, that outer wrapper becomes an intermediate scroller inside the document (or another parent scroll container).
+
+The four keywords of `overscroll-behavior` independently control whether excess scroll propagates to an ancestor scroll container (**scroll chaining**) and whether the container displays local overscroll affordances such as elastic rubber-band stretching or edge glow (**local boundary effect**):
+
+| Value | Scroll Chaining (Propagates to Ancestor) | Local Boundary Effect (Rubber-band / Glow) | Role in Swipe-to-Reveal |
+| :--- | :--- | :--- | :--- |
+| `auto` | Yes | Yes | Default behavior; keep this on inner content scrollers where normal bounce feedback is desired, but avoid on the outer swipe wrapper where it causes the menu to bounce |
+| `chain` | **Yes** | **No** | **Use on the outer `.SwipeReveal` scroller so excess scroll chains into the parent scroller (such as the document) without the menu or action strip bouncing** |
+| `contain` | No | Yes | Traps scroll inside the container while still bouncing locally |
+| `none` | No | No | Blocks both local bounce and scroll chaining to ancestors |
+
+Make `.SwipeReveal` a two-column grid (`grid-template-columns: 100% max-content`) where `.SwipeReveal-content` snaps to `start` and `.SwipeReveal-panel` snaps to `end`:
+
 ```css
-.MenuReveal {
+.SwipeReveal {
+  /* Column 1: full-width content. Column 2: auto-sized actions or side menu. */
   display: grid;
   grid-template-columns: 100% max-content;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
 
-  /* Prevent the menu wrapper from bouncing locally while still chaining
-     scroll into the parent scroller (the document). */
+  /* Prevent the swipe wrapper and revealed panel from bouncing locally while
+     still chaining excess scroll into the parent scroller (the document). */
   overscroll-behavior: chain;
 }
 
-.MenuReveal-content {
+.SwipeReveal-content {
   scroll-snap-align: start;
+  background: Canvas;
+}
+
+.SwipeReveal-content.is-scrollable {
   block-size: 20rem;
   overflow: auto;
   /* Keeps default `overscroll-behavior: auto` so the content pane retains
-     its normal bounce effect while chaining horizontal swipes to `.MenuReveal`. */
+     its normal bounce effect while chaining horizontal swipes to `.SwipeReveal`. */
 }
 
-.MenuReveal-menu {
+.SwipeReveal-panel {
+  /* Snapping the panel to `end` brings all controls fully into view while
+     keeping the trailing edge of the content visible on the left. */
   scroll-snap-align: end;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 1rem 1.5rem;
 }
 ```
 
-Because `.MenuReveal-content` spans `100%` of the outer container's width, most of it remains visible inside the scrollport even when the side menu is snapped open. Consequently, tabbing into `.MenuReveal-menu` automatically scrolls the menu into view, but pressing `Shift+Tab` to move focus back onto `.MenuReveal-content` will not automatically scroll the track back to `0`.
+> If you also want to reveal controls on the left (`inline-start`) side using three columns (`grid-template-columns: max-content 100% max-content`), apply `scroll-initial-target: nearest` to `.SwipeReveal-content` so the scroll container initially rests on the middle content column rather than the leading panel.
 
-To snap `.MenuReveal-content` fully back into view on keyboard focus—without interfering with pointer clicks or touch drags that also focus the element—listen for `focus` and gate `scrollIntoView()` with `.matches(':focus-visible')`:
+### Step 3: Snap focusable content panes back into view on keyboard focus
+
+Because the buttons or links inside `.SwipeReveal-panel` are off-screen at rest, tabbing into them with a keyboard automatically scrolls `.SwipeReveal` to reveal the focused control. However, when `.SwipeReveal-content` is itself a focusable scroll container (`tabindex="0"`), it spans `100%` of the outer container's width and remains partially visible in the scrollport even while the side panel is open—so pressing `Shift+Tab` to move focus back onto `.SwipeReveal-content` will not automatically scroll the track back to `0`.
+
+Listen for `focus` on focusable `.SwipeReveal-content` elements and gate `scrollIntoView()` with `.matches(':focus-visible')` so keyboard focus snaps the content pane fully back into view without interfering with pointer clicks or touch drags:
 
 ```js
-for (const content of document.querySelectorAll('.MenuReveal-content')) {
+for (const content of document.querySelectorAll('.SwipeReveal-content[tabindex]')) {
   content.addEventListener('focus', () => {
     if (content.matches(':focus-visible')) {
       content.scrollIntoView({
@@ -170,8 +123,8 @@ for (const content of document.querySelectorAll('.MenuReveal-content')) {
 ## Best practices and pitfalls
 
 - **DO** use `scroll-snap-type: x mandatory` rather than `proximity`. With `proximity`, a light swipe can leave the action buttons or side menu partially exposed at rest.
-- **DO** set `overscroll-behavior: chain` on the outer horizontal swipe-to-reveal scroller (`.MenuReveal`, `.SwipeRevealList-track`) so scroll can chain into the parent scroller without the revealed menu or action strip bouncing.
-- **DO** leave `overscroll-behavior: auto` (the default) on inner scrollable content panes (`.MenuReveal-content`) where you want normal bounce feedback to happen while still chaining horizontal swipes to the outer menu scroller.
+- **DO** set `overscroll-behavior: chain` on the outer horizontal swipe-to-reveal scroller (`.SwipeReveal`) so scroll can chain into the parent scroller without the revealed menu or action strip bouncing.
+- **DO** leave `overscroll-behavior: auto` (the default) on inner scrollable content panes (`.SwipeReveal-content.is-scrollable`) where you want normal bounce feedback to happen while still chaining horizontal swipes to the outer swipe scroller.
 - **DO** implement revealed actions and side-menu items as real focusable DOM controls (`<button>`, `<a>`). When a focusable full-width content pane precedes the focusable DOM controls, pair a `focus` listener with `.matches(':focus-visible')` to call `scrollIntoView({ block: 'nearest', inline: 'start' })` so tabbing back onto the content pane closes the side panel without affecting pointer interactions.
 - **DO NOT** intercept `wheel`, `touchmove`, or `pointermove` events in JavaScript to manually translate the content or emulate scroll chaining. Main-thread gesture interception blocks compositor-driven scrolling, breaks native scroll momentum, and degrades responsiveness.
 
