@@ -7,37 +7,38 @@
 - The implementation MUST NOT place heading elements (`<h1>`–`<h6>`) inside `<summary>` elements.
 - The implementation MUST NOT use `<table>` elements for purely visual page layout.
 - The implementation MUST use native interactive HTML elements (`<button>`, `<a>`, `<input>`) instead of generic elements with `role="button"`.
-- The implementation MUST NOT add redundant ARIA roles or attributes that duplicate native HTML semantics (such as `<nav role="navigation">` or `<input required aria-required="true">`).
+- The implementation MUST NOT add redundant ARIA roles or attributes that duplicate native HTML semantics (such as `<nav role="navigation">` or `<input required aria-required="true">`), except for `role="list"` on `<ul>` or `<ol>` elements styled with `list-style: none`, `display: flex`, or `display: grid`.
 - The implementation MUST explicitly associate every `<label>` with its form control using matching `for` and `id` attributes.
-- The implementation MUST prefer `aria-labelledby` over `aria-label` when a visible label element already exists in the DOM.
+- When a landmark, dialog, or group has a visible heading or label element in the DOM, the implementation MUST reference it with `aria-labelledby` rather than duplicating its text in `aria-label`.
 - The implementation MUST disambiguate identical-looking interactive controls in a list (such as multiple "Edit" or "Delete" buttons) using visually hidden text or `aria-labelledby`.
-- The implementation MUST NOT apply `aria-label` or `aria-labelledby` to generic `<div>` or `<span>` elements that lack an interactive or landmark role.
+- The implementation MUST NOT apply `aria-label` or `aria-labelledby` to generic `<div>` or `<span>` elements that lack an explicit ARIA `role`.
 - The implementation MUST NOT include the element's role word (such as "navigation" or "button") inside its `aria-label` text.
 - The implementation MUST NOT rely on `title` or `placeholder` attributes as the accessible name for interactive controls.
 - The implementation MUST declare the primary document language using the `lang` attribute on the `<html>` element.
 - The implementation MUST provide a descriptive `<title>` element within the document `<head>`.
 - The implementation MUST provide a descriptive `title` attribute on every `<iframe>` element.
 - The implementation MUST NOT disable scrolling on `<iframe>` elements via `scrolling="no"` or `overflow: hidden`.
-- The implementation MUST explicitly style `:focus-visible` states with a high-contrast visual focus indicator.
-- The implementation MUST NOT remove focus outlines (`outline: none`) without providing a clearly visible alternative focus indicator.
+- The implementation MUST define custom keyboard focus styles using `:focus-visible` paired with `outline` and `outline-offset` rather than `:focus`.
+- The implementation MUST NOT remove focus outlines (`outline: none`) without providing a visible, high-contrast focus indicator.
+- The implementation MUST ensure interactive touch targets meet a minimum size of `24px` by `24px` using `min-inline-size` and `min-block-size` or padding.
+- The implementation MUST NOT apply `touch-action: none` to scrollable containers when axis-specific values (`pan-x` or `pan-y`) suffice.
 - The implementation MUST NOT use positive `tabindex` values (`tabindex="1"` or greater).
-- The implementation MUST NOT apply `aria-hidden="true"` or `role="presentation"` to focusable elements or their ancestors.
-- The implementation MUST communicate state changes on toggleable controls using `aria-expanded` or `aria-pressed`.
-- The implementation MUST provide descriptive `alt` text on informative `<img>` elements without redundant prefixes like "Image of" or "Picture of".
-- The implementation MUST use an empty `alt=""` attribute on purely decorative `<img>` elements.
-- The implementation MUST hide decorative inline `<svg>` icons from assistive technologies using `aria-hidden="true"`.
+- The implementation MUST NOT apply `aria-hidden="true"` to focusable elements or their ancestors, and MUST NOT apply `role="presentation"` or `role="none"` directly to focusable elements.
+- The implementation MUST communicate state changes on toggle buttons and custom toggleable controls using `aria-expanded` or `aria-pressed`.
+- The implementation MUST include an `alt` attribute on every `<img>` element (using descriptive text for informative images or `alt=""` for decorative images) and MUST NOT use redundant prefixes like "Image of" or "Picture of" in `alt` text.
+- The implementation MUST give every inline `<svg>` element either `aria-hidden="true"` (when decorative) or `role="img"` with an accessible name such as a nested `<title>` element (when informative).
 - The implementation MUST provide `<track kind="captions">` for `<video>` elements containing speech or meaningful audio.
 - The implementation MUST link form input help text and validation hints to controls using `aria-describedby`.
 - The implementation MUST set valid `autocomplete` attributes on personal data form inputs.
-- The implementation MUST announce dynamic form validation errors or status updates using `aria-live` regions or programmatic focus management.
-- The implementation MUST use `aria-live="polite"` for standard status updates and reserve `role="alert"` or `aria-live="assertive"` strictly for critical, time-sensitive warnings.
+- The implementation MUST announce dynamic form validation errors or status updates using live regions (`aria-live`, `role="status"`, or `role="alert"`) or programmatic focus management.
+- The implementation MUST use `aria-live="polite"` (or `role="status"`) for standard status updates and reserve `role="alert"` or `aria-live="assertive"` strictly for critical, time-sensitive warnings.
 - The implementation MUST NOT trigger live-region updates inside `inert` DOM subtrees.
 - The implementation MUST maintain a minimum color contrast ratio of 4.5:1 for normal body text and 3:1 for large text and UI component boundaries.
 - The implementation MUST NOT rely on color alone to communicate status or validation states (must pair color with icons or text labels).
 - The implementation MUST use relative units (`rem` or `em`) rather than `px` for typography `font-size` declarations.
-- The implementation MUST NOT use `text-align: justify` on reading content.
-- The implementation MUST constrain long-form reading paragraphs to a maximum line width of `80ch`.
-- The implementation MUST support light and dark color schemes using `@media (prefers-color-scheme: dark)` and the `color-scheme` CSS property.
+- The implementation MUST NOT use `text-align: justify`.
+- When rendering long-form reading content, the implementation MUST constrain line width to at most `80ch` (e.g., `max-width` or `max-inline-size` of `80ch` or less on paragraphs or their container).
+- The implementation MUST support light and dark color schemes using the `color-scheme` CSS property paired with `@media (prefers-color-scheme: dark)` or `light-dark()`.
 - The implementation MUST honor `@media (prefers-reduced-motion: reduce)` by disabling or reducing heavy animations and transitions.
 - The implementation MUST use the native `<dialog>` element invoked via `.showModal()` for modal dialogs rather than custom JavaScript focus traps.
 - The implementation MUST apply the `inert` attribute to background content when custom non-dialog modal overlays or drawers are open.
