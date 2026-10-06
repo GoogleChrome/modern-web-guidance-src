@@ -179,6 +179,10 @@ If you need multi-color icons or arbitrary path-level animations, use Inline SVG
 
 ## Fallback Strategies
 
+{{ FEATURE_FALLBACKS("masks") }}
+{{ FEATURE_FALLBACKS("container-style-queries") }}
+{{ FEATURE_FALLBACKS("registered-custom-properties") }}
+
 ### For Browsers Without Container Style Queries
 
 Use the `@supports not (container-name: container)` directive with style attribute substring selectors to inject icons when `--icon-start` or `--icon-end` are set inline:
@@ -242,8 +246,3 @@ Safari has two bugs affecting icons (WebKit #301609, #320220): icons don't rende
 ```
 
 The `@supports` query targets Safari only, and `@layer` reduces animation conflicts.
-
-
-{{ FEATURE_FALLBACKS("masks") }}
-{{ FEATURE_FALLBACKS("container-style-queries") }}
-{{ FEATURE_FALLBACKS("registered-custom-properties") }}
