@@ -85,8 +85,8 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
     --icon-start: inherit; /* Forward the value inside the query block */
     content: "";
     display: inline-block;
-    width: var(--icon-size, 1.25em);
-    height: var(--icon-size, 1.25em);
+    width: var(--icon-size);
+    height: var(--icon-size);
     background-color: currentColor;
     mask: var(--icon-start) no-repeat center / contain;
     vertical-align: middle;
@@ -104,8 +104,8 @@ This block handles the injection, sizing, masking, and automatic layout adjustme
     --icon-end: inherit;
     content: "";
     display: inline-block;
-    width: var(--icon-size, 1.25em);
-    height: var(--icon-size, 1.25em);
+    width: var(--icon-size);
+    height: var(--icon-size);
     background-color: currentColor;
     mask: var(--icon-end) no-repeat center / contain;
     vertical-align: middle;
@@ -124,8 +124,8 @@ For standalone icons or buttons that have no text (e.g. icon-only controls), est
 ```css
 .icon {
   display: inline-block;
-  width: var(--icon-size, 1.25em);
-  height: var(--icon-size, 1.25em);
+  width: var(--icon-size);
+  height: var(--icon-size);
   vertical-align: middle;
   flex-shrink: 0;
   color: inherit;
@@ -206,8 +206,8 @@ Use the `@supports not (container-name: style(any))` directive with style attrib
   [style*="--icon-start"]::before {
     content: "";
     display: inline-block;
-    width: var(--icon-size, 1.25em);
-    height: var(--icon-size, 1.25em);
+    width: var(--icon-size);
+    height: var(--icon-size);
     background-color: currentColor;
     mask: var(--icon-start) no-repeat center / contain;
     vertical-align: middle;
@@ -220,8 +220,8 @@ Use the `@supports not (container-name: style(any))` directive with style attrib
   [style*="--icon-end"]::after {
     content: "";
     display: inline-block;
-    width: var(--icon-size, 1.25em);
-    height: var(--icon-size, 1.25em);
+    width: var(--icon-size);
+    height: var(--icon-size);
     background-color: currentColor;
     mask: var(--icon-end) no-repeat center / contain;
     vertical-align: middle;
@@ -234,8 +234,8 @@ Use the `@supports not (container-name: style(any))` directive with style attrib
   .icon:empty[style*="--icon"]::before {
     content: "";
     display: inline-block;
-    width: var(--icon-size, 1.25em);
-    height: var(--icon-size, 1.25em);
+    width: var(--icon-size);
+    height: var(--icon-size);
     background-color: currentColor;
     mask: var(--icon) no-repeat center / contain;
     vertical-align: middle;
