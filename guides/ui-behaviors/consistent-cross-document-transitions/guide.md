@@ -220,15 +220,24 @@ window.addEventListener('pagereveal', async (event) => {
   // list page to the heading on the detail page.
   if (fromUrl.pathname === '/products/') {
     const heading = document.querySelector('main h1');
-    if (heading) {
-      heading.style.viewTransitionName = 'product-title';
-    }
+    if (!heading) return;
 
-    // MANDATORY: Remove the temporary name after the transition
-    // finishes. Stale names interfere with subsequent navigations
-    // and prevent the page from entering the bfcache.
-    await event.viewTransition.finished;
-    heading.style.viewTransitionName = '';
+    heading.style.viewTransitionName = 'product-title';
+
+    try {
+      await event.viewTransition.ready;
+    } catch (error) {
+      // Skipped view transitions reject `ready` with InvalidStateError.
+      if (error.name !== 'InvalidStateError') {
+        throw error;
+      }
+    } finally {
+      // MANDATORY: Remove the temporary name after the transition
+      // finishes. Stale names interfere with subsequent navigations
+      // and prevent the page from entering the bfcache.
+      await event.viewTransition.finished;
+      heading.style.viewTransitionName = '';
+    }
   }
 });
 ```
@@ -236,7 +245,7 @@ window.addEventListener('pagereveal', async (event) => {
 ## Best Practices
 
 - **DO** assign `view-transition-name` via CSS whenever possible. Reserve JavaScript assignment (via `pagereveal`) for cases where the name depends on navigation context.
-- **DO** keep render-blocking scripts small and fast. The browser has a built-in timeout (around 4 seconds), after which the transition is skipped entirely with a `TimeoutError`.
+- **DO** keep render-blocking scripts small and fast. The browser has a built-in timeout (around 4 seconds), after which the transition is skipped entirely (rejecting `viewTransition.ready` with an `InvalidStateError` if a transition was initiated).
 - **DO NOT** use `<link rel="expect">` to block on elements deep in the page that are not visible in the initial viewport. This delays the transition without visual benefit.
 - **DO NOT** mark analytics, ad-network, tag-manager or other third-party loaders with `blocking="render"`, even if they inject content into the initial viewport. Their network latency counts toward the transition timeout and their output is not part of the page's stable state.
 - **DO NOT** assign the same `view-transition-name` to multiple elements on the same page. Duplicate names cause the entire transition to be skipped.
@@ -253,5 +262,5 @@ All browsers that support cross-document view transitions also support `blocking
 ## Other Considerations
 
 1. **Performance Impact**: Every render-blocking resource delays the view transition animation start. Minimize the number of render-blocking scripts and use `<link rel="expect">` only for elements that are above the fold. Prerender destination pages using the Speculation Rules API to eliminate loading delays entirely.
-2. **Timeout Behavior**: If the combined render-blocking time exceeds approximately 4 seconds, the browser skips the transition with a `TimeoutError`. Ensure critical resources load well within this window.
+2. **Timeout Behavior**: If the combined render-blocking time exceeds approximately 4 seconds, the browser skips the transition (and any active `viewTransition.ready` promise rejects with an `InvalidStateError`). Ensure critical resources load well within this window.
 3. **bfcache Compatibility**: Temporary `view-transition-name` assignments that are not cleaned up after the transition can prevent the page from entering the bfcache. Always remove dynamically assigned names in the `finished` callback.
