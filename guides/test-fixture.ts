@@ -47,20 +47,24 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
       // if a solution patch adds a dependency to package.json without updating pnpm-lock.yaml.
       const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force', '--no-frozen-lockfile'], {
         cwd: targetDir,
-        stdio: 'ignore',
+        stdio: 'pipe',
+        encoding: 'utf8',
         shell: process.platform === 'win32'
       });
       if (installResult.status !== 0) {
-        console.warn(`[TEST-FIXTURE] pnpm install failed in ${targetDir}`);
+        const output = [installResult.stdout, installResult.stderr].filter(Boolean).join('\n').trim();
+        console.warn(`[TEST-FIXTURE] pnpm install failed in ${targetDir}${output ? `:\n${output}` : ''}`);
       }
 
       const buildResult = spawnSync('pnpm', ['--ignore-workspace', 'run', 'build'], {
         cwd: targetDir,
-        stdio: 'ignore',
+        stdio: 'pipe',
+        encoding: 'utf8',
         shell: process.platform === 'win32'
       });
       if (buildResult.status !== 0) {
-        throw new Error(`Failed to build target app in ${targetDir}`);
+        const output = [buildResult.stdout, buildResult.stderr].filter(Boolean).join('\n').trim();
+        throw new Error(`Failed to build target app in ${targetDir}${output ? `:\n${output}` : ''}`);
       }
     }
 
