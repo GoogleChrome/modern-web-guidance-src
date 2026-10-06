@@ -119,7 +119,8 @@ describe('Guides Validation (Single Source of Truth)', () => {
     const targetsDir = path.join(guide.dir, 'targets');
     const expectationsPath = path.join(guide.dir, 'expectations.md');
 
-    if (fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
+    // Discipline guide graders only cover the expectations relevant to each target app.
+    if (!guide.isDisciplineGuide && fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
       const targetApps = fs.readdirSync(targetsDir, { withFileTypes: true })
         .filter(e => e.isDirectory() && !e.name.startsWith('.'))
         .map(e => e.name);
@@ -182,17 +183,25 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
   });
 
-  it('validates that pending temporary feature groups exist in web-features', async () => {
+  it('validates that pending temporary feature groups and compat_features are valid', async () => {
     const { groups } = await import('web-features');
     const pendingPath = path.join(REPO_ROOT, 'features', 'pending-web-features.json');
     const pending = JSON.parse(fs.readFileSync(pendingPath, 'utf8'));
 
-    for (const [fid, entry] of Object.entries<{ group?: string | string[] }>(pending)) {
+    for (const [fid, entry] of Object.entries<{ group?: string | string[]; compat_features?: string | string[] }>(pending)) {
       const entryGroups = entry.group === undefined ? [] : [entry.group].flat();
       for (const group of entryGroups) {
         if (!(group in groups)) {
           assert.fail(`Feature ID "${fid}" in features/pending-web-features.json has unknown group "${group}"`);
         }
+      }
+
+      const compatKeys = entry.compat_features === undefined ? [] : [entry.compat_features].flat();
+      for (const bcdKey of compatKeys) {
+        assert.ok(
+          typeof bcdKey === 'string' && bcdKey.trim().length > 0 && bcdKey.includes('.'),
+          `Feature ID "${fid}" in features/pending-web-features.json has invalid compat_features entry "${bcdKey}"`
+        );
       }
     }
   });

@@ -4,7 +4,7 @@
  * Usage: gd eval --config harness/config-pi.ts <task-name>
  * 
  * This configuration runs the evaluation suite with the Pi coding agent
- * instead of the default Gemini CLI.
+ * instead of the default Antigravity CLI.
  */
 
 import { mergeSuiteConfig, Agents } from './config.ts';

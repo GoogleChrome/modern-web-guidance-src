@@ -11,6 +11,7 @@ import {
   KNOWN_CATEGORIES,
   extractFeatureIdsFromContent,
   EVAL_PR_REVIEWER,
+  featureGroups,
   githubApi
 } from './atl-triage.ts';
 import { getTranscludedFeatureIds, parseArguments } from '../serving/lib/macro-parsing.ts';
@@ -381,6 +382,24 @@ Some description.
 `;
     const result = handleIssue(123, [], description, mockConfig);
     assert.deepStrictEqual(result, ['override-issue-reviewer']);
+  });
+
+  it('resolves unprefixed feature IDs in issue descriptions against tmp-* pending feature groups and overrides', () => {
+    featureGroups['tmp-mock-scrolling-feature'] = ['scrolling'];
+    try {
+      const description = `
+### web-feature-id
+
+mock-scrolling-feature
+
+### Feature description
+Some description.
+`;
+      const result = handleIssue(123, [], description, mockConfig);
+      assert.deepStrictEqual(result, ['group-issue-reviewer']);
+    } finally {
+      delete featureGroups['tmp-mock-scrolling-feature'];
+    }
   });
 
   it('supports extracting Web Feature ID from webstatus.dev URLs in the issue template', () => {
@@ -794,18 +813,38 @@ describe('handlePR', () => {
   });
 
   it('resolves pending temporary features to their group owner', () => {
-    const config = {
-      default: {},
-      web_features: {},
-      web_features_groups: {
-        scrolling: 'scrolling-group-owner'
-      }
-    };
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guidance-triage-tmp-group-'));
+    featureGroups['tmp-mock-scrolling-feature'] = ['scrolling'];
+    try {
+      const guideDir = path.join(tmpDir, 'ui-behaviors', 'mock-guide');
+      fs.mkdirSync(guideDir, { recursive: true });
+      const guidePath = path.join(guideDir, 'guide.md');
+      fs.writeFileSync(
+        guidePath,
+        '---\nname: mock-guide\nweb-feature-ids:\n  - tmp-mock-scrolling-feature\n---\n# Mock Guide\n',
+        'utf8'
+      );
 
-    // 'tmp-scroll-axis-lock' is registered under 'scrolling' in features/pending-web-features.json
-    const mockFiles = ['guides/ui-behaviors/diagonal-panning/guide.md'];
-    const result = handlePR(99999, 'some-contributor', config, mockFiles);
-    assert.deepStrictEqual(result, ['scrolling-group-owner']);
+      const config = {
+        default: {},
+        web_features: {},
+        web_features_groups: {
+          scrolling: 'scrolling-group-owner'
+        }
+      };
+
+      const result = handlePR(
+        99999,
+        'some-contributor',
+        config,
+        ['guides/ui-behaviors/mock-guide/guide.md'],
+        tmpDir
+      );
+      assert.deepStrictEqual(result, ['scrolling-group-owner']);
+    } finally {
+      delete featureGroups['tmp-mock-scrolling-feature'];
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   it('auto-assigns category owners across multiple categories where a feature is transcluded', () => {
@@ -870,6 +909,10 @@ describe('handlePR', () => {
 
       const result = handlePR(99999, 'some-contributor', config, ['features/my-feature.md'], tmpDir);
       assert.deepStrictEqual(result.sort(), ['my-feature-owner', 'custom-cat-owner'].sort());
+
+      // Also matches when the feature file or transclusion has a tmp- prefix difference
+      const resultTmp = handlePR(99999, 'some-contributor', config, ['features/tmp-my-feature.md'], tmpDir);
+      assert.deepStrictEqual(resultTmp.sort(), ['my-feature-owner', 'custom-cat-owner'].sort());
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
