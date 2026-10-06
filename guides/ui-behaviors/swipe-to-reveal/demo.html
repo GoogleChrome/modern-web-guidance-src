@@ -86,9 +86,7 @@
         overflow-x: auto;
         scroll-snap-type: x mandatory;
         scrollbar-width: none;
-        overscroll-behavior-x: none;
-        overscroll-behavior-y: auto;
-        overscroll-behavior-y: chain;
+        overscroll-behavior: chain;
       }
 
       .SwipeRevealList-track::-webkit-scrollbar {
@@ -149,9 +147,7 @@
         overflow-x: auto;
         scroll-snap-type: x mandatory;
         scrollbar-width: none;
-        overscroll-behavior-x: none;
-        overscroll-behavior-y: auto;
-        overscroll-behavior-y: chain;
+        overscroll-behavior: chain;
         border: 1px solid var(--border);
         border-radius: 0.75rem;
         background: var(--menu-bg);
@@ -165,8 +161,6 @@
         scroll-snap-align: start;
         block-size: 16rem;
         overflow: auto;
-        overscroll-behavior: auto;
-        overscroll-behavior: chain;
         background: var(--surface);
         padding: 1.25rem;
         display: grid;
@@ -266,14 +260,14 @@
 
     <section aria-labelledby="menu-heading">
       <h2 id="menu-heading">2. Swipe-to-reveal side menu on a scrollable pane</h2>
-      <p>The inner pane scrolls vertically and uses <code>overscroll-behavior: chain</code>. Vertical scroll at the top or bottom chains to the page without local rubber-banding, and horizontal swipes chain to the outer wrapper to reveal the side menu.</p>
+      <p>The outer horizontal wrapper (<code>.MenuReveal</code>) uses <code>overscroll-behavior: chain</code> so scroll chains into the parent scroller (the document) without the menu bouncing, while the inner content pane keeps the default <code>auto</code> behavior so its own vertical bounce still happens.</p>
 
       <div class="MenuReveal" role="region" aria-labelledby="menu-heading">
         <div class="MenuReveal-content" tabindex="0">
           <h3>Scrollable Article Preview</h3>
           <p>Scroll up and down inside this pane, or swipe from the right to reveal the contextual side menu.</p>
-          <p>Because the inner scroll container sets <code>overscroll-behavior: chain</code>, reaching its scroll boundary does not trigger a local rubber-band stretch that would pull the surface away from its edge or cause a double bounce.</p>
-          <p>Instead, excess horizontal scroll chains directly to the outer <code>.MenuReveal</code> scroll-snap container to open the menu, and excess vertical scroll chains directly to the document.</p>
+          <p>The inner content container (<code>.MenuReveal-content</code>) keeps the default <code>overscroll-behavior: auto</code> so it retains its normal bounce effect and chains horizontal swipes out to <code>.MenuReveal</code> to reveal the menu.</p>
+          <p>The outer horizontal wrapper (<code>.MenuReveal</code>) sets <code>overscroll-behavior: chain</code> so that once the menu reaches its scroll boundary, excess scroll chains into the parent scroller (here, the document) without the menu bouncing.</p>
           <p>In browsers that do not yet support the <code>chain</code> keyword, the property falls back to its initial <code>auto</code> value as a progressive enhancement, preserving scroll chaining across all engines.</p>
         </div>
         <nav class="MenuReveal-menu" aria-label="Article actions">

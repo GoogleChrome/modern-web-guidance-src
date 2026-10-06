@@ -15,20 +15,20 @@ Swipe-to-reveal patterns let users slide a foreground row or content pane horizo
 
 ## How to implement
 
-A swipe-to-reveal component combines **CSS Scroll Snap** (`scroll-snap-type: x mandatory`) with **`overscroll-behavior`** (`chain` and `none`) so the browser's native scrolling engine handles momentum, snapping, keyboard focus scrolling, and nested scroll handoff without JavaScript gesture listeners.
+A swipe-to-reveal component wraps the foreground content and the hidden panel inside an outer horizontal scroll container configured with **CSS Scroll Snap** (`scroll-snap-type: x mandatory`) and **`overscroll-behavior: chain`**. The browser's native scrolling engine handles momentum, snapping, keyboard focus scrolling, and scroll chaining without JavaScript gesture listeners.
 
-### Controlling boundary behavior with `overscroll-behavior: chain`
+### Preventing menu bounce while chaining scroll with `overscroll-behavior: chain`
 
-Swipe-to-reveal interfaces frequently nest scroll containers—for example, swipeable rows inside a vertically scrolling feed, or a swipe-to-reveal side menu wrapping a vertically (or horizontally) scrollable content pane.
+When you wrap an element in an outer scroll container solely to create a swipe-to-reveal effect, that outer wrapper is an intermediate scroller inside the document (or another parent scroll container).
 
 The four keywords of `overscroll-behavior` independently control whether excess scroll propagates to an ancestor scroll container (**scroll chaining**) and whether the container displays local overscroll affordances such as elastic rubber-band stretching or edge glow (**local boundary effect**):
 
 | Value | Scroll Chaining (Propagates to Ancestor) | Local Boundary Effect (Rubber-band / Glow) | Role in Swipe-to-Reveal |
 | :--- | :--- | :--- | :--- |
-| `auto` | Yes | Yes | Default behavior; causes inner scroll containers to rubber-band locally before or while chaining to the swipe track or page |
-| `chain` | **Yes** | **No** | **Suppresses local rubber-band stretch on an inner scroller or intermediate wrapper while still chaining excess scroll to its ancestor** |
+| `auto` | Yes | Yes | Default behavior; keep this on inner content scrollers where normal bounce feedback is desired, but avoid on the swipe wrapper where it causes the menu to bounce |
+| `chain` | **Yes** | **No** | **Use on the outer swipe-to-reveal scroller so excess scroll chains into the parent scroller (such as the document) without the menu or action strip bouncing** |
 | `contain` | No | Yes | Traps scroll inside the container while still bouncing locally |
-| `none` | No | No | Blocks both local bounce and scroll chaining; used on the outermost horizontal swipe axis to prevent browser back/forward navigation and edge peeking |
+| `none` | No | No | Blocks both local bounce and scroll chaining to ancestors |
 
 ---
 
@@ -36,7 +36,7 @@ The four keywords of `overscroll-behavior` independently control whether excess 
 
 To reveal contextual action buttons beside a row without auto-activating them, make the row's track a two-column horizontal scroll-snap container (`grid-template-columns: 100% max-content`). The foreground content spans `100%` of the row width and snaps to `start`; the action strip sizes to its buttons (`max-content`) and snaps to `end`.
 
-Because the main content is the first column, the track naturally starts at scroll offset `0` with the actions hidden off-screen to the right. Because the buttons are real focusable DOM elements inside the scroll container, swiping left snaps them into view for pointer or touch input, and tabbing into them with a keyboard automatically scrolls the snap track to reveal the focused button.
+Because the main content is the first column, the track naturally starts at scroll offset `0` with the actions hidden off-screen to the right. Setting `overscroll-behavior: chain` on `.SwipeRevealList-track` suppresses local rubber-band bounce on the swipe track (so the action strip does not bounce at its edges) while still allowing excess scroll to chain into the parent scroller.
 
 ```html
 <ul class="SwipeRevealList">
@@ -71,15 +71,9 @@ Because the main content is the first column, the track naturally starts at scro
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
 
-  /* Suppress both browser back/forward gesture chaining and local horizontal
-     rubber-banding (which would otherwise pull the row away from the left
-     edge and peek at the action strip when swiping right). */
-  overscroll-behavior-x: none;
-
-  /* Chain vertical scroll gestures to the parent list or document without
-     any local vertical bounce on the track. */
-  overscroll-behavior-y: auto;
-  overscroll-behavior-y: chain;
+  /* Chain excess scroll to the parent scroller without local rubber-band
+     bounce on the swipe track or action strip. */
+  overscroll-behavior: chain;
 }
 
 .SwipeRevealList-content {
@@ -103,14 +97,12 @@ Because the main content is the first column, the track naturally starts at scro
 
 ### Pattern 2: Swipe-to-reveal side menu around a scrollable container
 
-When wrapping a scrollable content container inside a horizontal scroll-snap container that reveals a side menu, both the outer menu wrapper and the inner content pane are scroll containers:
+When wrapping a scrollable content container (`.MenuReveal-content`) inside an outer horizontal scroll-snap container (`.MenuReveal`) that reveals a side menu, the two scroll containers have distinct roles:
 
-1. **Inner scrollable content (`.MenuReveal-content`)**: Uses `overscroll-behavior: chain`.
-   - When the user scrolls vertically to the top or bottom of the inner content, excess vertical scroll chains directly to the parent page without triggering a local rubber-band bounce inside the pane.
-   - When the user swipes horizontally inside the content pane, excess horizontal scroll chains directly to the outer `.MenuReveal` scroller to slide the side menu into view—again without locally stretching the inner container.
-2. **Outer horizontal swipe wrapper (`.MenuReveal`)**: Uses `overscroll-behavior-x: none` and `overscroll-behavior-y: chain`.
-   - On the horizontal axis, `none` stops overswipes from chaining into browser back/forward history navigation and prevents local elastic stretch at the outer edges.
-   - On the vertical axis, `chain` ensures vertical scroll gestures pass cleanly up to the document without local bounce.
+1. **Outer horizontal swipe wrapper (`.MenuReveal`)**: Uses `overscroll-behavior: chain`.
+   - Because `.MenuReveal` only exists to provide the horizontal swipe-to-reveal effect, you do not want the menu wrapper itself to rubber-band when reaching its horizontal boundary. Setting `overscroll-behavior: chain` prevents the menu from bouncing while still allowing horizontal and vertical scroll gestures to chain into the parent scroller (such as the document).
+2. **Inner scrollable content (`.MenuReveal-content`)**: Keeps the default `overscroll-behavior: auto`.
+   - Because `.MenuReveal-content` is a true content scroller, keeping `auto` preserves its natural vertical bounce feedback while still chaining horizontal swipes out to `.MenuReveal` (to reveal the side menu) and vertical scrolls through `.MenuReveal` to the document.
 
 ```html
 <div class="MenuReveal" role="region" aria-label="Document preview with swipeable side menu">
@@ -134,21 +126,18 @@ When wrapping a scrollable content container inside a horizontal scroll-snap con
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
-  overscroll-behavior-x: none;
-  overscroll-behavior-y: auto;
-  overscroll-behavior-y: chain;
+
+  /* Prevent the menu wrapper from bouncing locally while still chaining
+     scroll into the parent scroller (the document). */
+  overscroll-behavior: chain;
 }
 
 .MenuReveal-content {
   scroll-snap-align: start;
   block-size: 20rem;
   overflow: auto;
-
-  /* Fallback to `auto` if `chain` is overriding an inherited `contain`/`none` rule */
-  overscroll-behavior: auto;
-  /* Suppress local rubber-band bounce on both axes while chaining horizontal
-     swipes to `.MenuReveal` and vertical scrolls to the document */
-  overscroll-behavior: chain;
+  /* Keeps default `overscroll-behavior: auto` so the content pane retains
+     its normal bounce effect while chaining horizontal swipes to `.MenuReveal`. */
 }
 
 .MenuReveal-menu {
@@ -181,8 +170,8 @@ for (const content of document.querySelectorAll('.MenuReveal-content')) {
 ## Best practices and pitfalls
 
 - **DO** use `scroll-snap-type: x mandatory` rather than `proximity`. With `proximity`, a light swipe can leave the action buttons or side menu partially exposed at rest.
-- **DO** set `overscroll-behavior: chain` on nested scroll containers inside a swipe-to-reveal wrapper so excess scroll hands off cleanly to the swipe track or page without a local rubber-band bounce.
-- **DO** set `overscroll-behavior-x: none` on the outermost horizontal swipe container so horizontal overswipes do not trigger browser back/forward navigation or elastic edge peeking.
+- **DO** set `overscroll-behavior: chain` on the outer horizontal swipe-to-reveal scroller (`.MenuReveal`, `.SwipeRevealList-track`) so scroll can chain into the parent scroller without the revealed menu or action strip bouncing.
+- **DO** leave `overscroll-behavior: auto` (the default) on inner scrollable content panes (`.MenuReveal-content`) where you want normal bounce feedback to happen while still chaining horizontal swipes to the outer menu scroller.
 - **DO** implement revealed actions and side-menu items as real focusable DOM controls (`<button>`, `<a>`). When a focusable full-width content pane precedes the focusable DOM controls, pair a `focus` listener with `.matches(':focus-visible')` to call `scrollIntoView({ block: 'nearest', inline: 'start' })` so tabbing back onto the content pane closes the side panel without affecting pointer interactions.
 - **DO NOT** intercept `wheel`, `touchmove`, or `pointermove` events in JavaScript to manually translate the content or emulate scroll chaining. Main-thread gesture interception blocks compositor-driven scrolling, breaks native scroll momentum, and degrades responsiveness.
 
@@ -196,5 +185,5 @@ for (const content of document.querySelectorAll('.MenuReveal-content')) {
 
 Treat `overscroll-behavior: chain` strictly as a progressive enhancement without fallbacks:
 
-- **Automatic CSS cascade fallback**: The initial value of `overscroll-behavior` is `auto`. Browsers that do not yet recognize the `chain` keyword ignore `overscroll-behavior: chain` at parse time and retain `auto`. Because `auto` already allows scroll chaining to ancestor scroll containers, both the swipe-to-reveal gesture and nested scroll handoff work across all browsers out of the box; supporting browsers simply remove the redundant local rubber-band bounce at the inner scroll boundary.
+- **Automatic CSS cascade fallback**: The initial value of `overscroll-behavior` is `auto`. Browsers that do not yet recognize the `chain` keyword ignore `overscroll-behavior: chain` at parse time and retain `auto`. Because `auto` already allows scroll chaining to ancestor scroll containers, both the swipe-to-reveal gesture and scroll chaining to the parent work across all browsers out of the box; supporting browsers simply suppress the unwanted rubber-band bounce on the outer swipe wrapper.
 - **Overriding `contain` or `none`**: If a base stylesheet or utility class sets `overscroll-behavior: contain` or `none`, declare `overscroll-behavior: auto` immediately before `overscroll-behavior: chain` so browsers that do not yet support `chain` still chain scrolling to the parent rather than trapping it.
