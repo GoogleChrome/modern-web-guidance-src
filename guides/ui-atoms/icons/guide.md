@@ -162,7 +162,7 @@ For standalone icons or icon-only buttons, use an empty `.icon` element with an 
 
 ## When to Use Inline SVG Instead
 
-If you need multi-color icons or path-level animations, use Inline SVG. It provides full DOM access but requires more markup:
+If you need multi-color icons or arbitrary path-level animations, use Inline SVG. It provides full DOM access but requires more markup:
 
 ```html
 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
