@@ -44,7 +44,7 @@ dialog::backdrop {
 
 - **MANDATORY**: Set `overscroll-behavior: contain` on the `<dialog>` element itself (using the `dialog:modal` selector) and the `dialog::backdrop`. Without this declaration, scroll gestures over the backdrop or inside the dialog will still chain to the page.
 - **MANDATORY**: Set `overflow: hidden` (or `overflow: auto`) on `dialog::backdrop` so that it becomes a scroll container. Without this declaration `::backdrop` defaults to `overflow: visible` and `overscroll-behavior` will have no effect.
-- **DO NOT** use `overflow: clip` on `dialog::backdrop` or `dialog`. `overflow: clip` does not establish a scroll container, so `overscroll-behavior` will not apply.
+- **DO NOT** use `overflow: clip` or `overflow: visible` on `dialog::backdrop` or `dialog`. Neither value establishes a scroll container, so `overscroll-behavior` will not apply.
 - **DO NOT** apply `overflow: hidden` or `position: fixed` to `<html>` or `<body>` to lock background scrolling when a dialog opens. Mutating root overflow removes the page scrollbar (causing horizontal layout shift), can reset or jump the page scroll position, and can break `position: sticky` elements on the underlying page.
 
 ## Fallback Strategies
